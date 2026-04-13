@@ -15,8 +15,16 @@ router = APIRouter(prefix="/admin/rewards", tags=["Admin Rewards"])
 
 
 @router.get("", response_model=list[RewardOut])
-async def list_rewards_admin(user: User = Depends(require_role("admin")), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Reward).order_by(Reward.created_at.desc()))
+async def list_rewards_admin(
+    include_deleted: bool = False,
+    user: User = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    q = select(Reward)
+    if not include_deleted:
+        q = q.where(Reward.deleted_at.is_(None))
+    q = q.order_by(Reward.created_at.desc())
+    result = await db.execute(q)
     return result.scalars().all()
 
 

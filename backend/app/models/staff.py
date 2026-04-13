@@ -46,3 +46,12 @@ class StaffShift(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
 
     staff = relationship("Staff", back_populates="shifts")
+
+
+class PinAttempt(Base):
+    """Database-backed PIN rate limiting. Persists across process restarts."""
+    __tablename__ = "pin_attempts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False, index=True)
+    attempted_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow())

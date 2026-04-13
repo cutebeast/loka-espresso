@@ -9,7 +9,7 @@ from app.models.notification import Notification
 from app.models.wallet import Wallet, WalletTransaction, PaymentMethod, WalletTxType
 from app.models.social import Referral, Favorite
 from app.models.splash import AppConfig, SplashContent
-from app.models.staff import Staff, StaffShift, StaffRole
+from app.models.staff import Staff, StaffShift, StaffRole, PinAttempt
 from app.models.admin_extras import Feedback, AuditLog, NotificationBroadcast, PromoBanner
 from app.models.marketing import CustomizationOption, MarketingCampaign, TableOccupancySnapshot
 

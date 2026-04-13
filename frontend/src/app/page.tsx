@@ -40,6 +40,7 @@ import OrdersPage from '@/components/pages/OrdersPage';
 import MenuPage from '@/components/pages/MenuPage';
 import TablesPage from '@/components/pages/TablesPage';
 import CustomersPage from '@/components/pages/CustomersPage';
+import { BarChart, DonutChart, SparkLine } from '@/components/charts';
 
 export default function MerchantDashboard() {
   const [token, setToken] = useState('');
@@ -710,42 +711,46 @@ export default function MerchantDashboard() {
                       <div className="card" style={{ textAlign: 'center' }}>
                         <div style={{ color: '#64748B', fontSize: 13 }}>Total Revenue</div>
                         <div style={{ fontSize: 28, fontWeight: 700, color: '#059669' }}>{formatRM(revenueReport.total || 0)}</div>
+                        <div style={{ marginTop: 8 }}>
+                          <SparkLine
+                            data={Object.entries(revenueReport.by_day || {}).sort((a, b) => a[0].localeCompare(b[0])).map(([, v]: [string, any]) => Number(v))}
+                            width={180}
+                            height={36}
+                            color="#059669"
+                          />
+                        </div>
                       </div>
                       <div className="card">
                         <h4 style={{ fontSize: 14, marginBottom: 12 }}>By Order Type</h4>
-                        {revenueReport.by_type && Object.entries(revenueReport.by_type).map(([type, rev]: [string, any]) => (
-                          <div key={type} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 14 }}>
-                            <span style={{ textTransform: 'capitalize' }}>{type.replace('_', ' ')}</span>
-                            <strong>{formatRM(rev)}</strong>
-                          </div>
-                        ))}
+                        <DonutChart
+                          data={Object.entries(revenueReport.by_type || {}).map(([type, rev]: [string, any]) => ({ label: type.replace('_', ' '), value: Number(rev) }))}
+                          size={140}
+                          formatValue={(v) => formatRM(v)}
+                        />
                       </div>
                       <div className="card">
                         <h4 style={{ fontSize: 14, marginBottom: 12 }}>By Store</h4>
-                        {revenueReport.by_store && Object.entries(revenueReport.by_store).map(([sid, rev]: [string, any]) => {
-                          const s = stores.find(st => st.id === Number(sid));
-                          return (
-                            <div key={sid} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 14 }}>
-                              <span>{s?.name || `Store ${sid}`}</span>
-                              <strong>{formatRM(rev)}</strong>
-                            </div>
-                          );
-                        })}
+                        <DonutChart
+                          data={Object.entries(revenueReport.by_store || {}).map(([sid, rev]: [string, any]) => {
+                            const s = stores.find(st => st.id === Number(sid));
+                            return { label: s?.name || `Store ${sid}`, value: Number(rev) };
+                          })}
+                          size={140}
+                          formatValue={(v) => formatRM(v)}
+                        />
                       </div>
                     </div>
                     {revenueReport.by_day && Object.keys(revenueReport.by_day).length > 0 && (
                       <div className="card">
-                        <h4 style={{ marginBottom: 12 }}>Daily Revenue</h4>
-                        <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-                          <table>
-                            <thead><tr><th>Date</th><th>Revenue</th></tr></thead>
-                            <tbody>
-                              {Object.entries(revenueReport.by_day).sort((a, b) => a[0].localeCompare(b[0])).map(([day, rev]: [string, any]) => (
-                                <tr key={day}><td>{day}</td><td style={{ fontWeight: 600 }}>{formatRM(rev)}</td></tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                        <h4 style={{ marginBottom: 16 }}>Daily Revenue</h4>
+                        <BarChart
+                          data={Object.entries(revenueReport.by_day).sort((a, b) => a[0].localeCompare(b[0])).map(([day, rev]: [string, any]) => ({
+                            label: day.slice(5),
+                            value: Number(rev),
+                          }))}
+                          height={180}
+                          formatValue={(v) => formatRM(v)}
+                        />
                       </div>
                     )}
                   </>

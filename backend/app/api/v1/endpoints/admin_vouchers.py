@@ -15,8 +15,16 @@ router = APIRouter(prefix="/admin/vouchers", tags=["Admin Vouchers"])
 
 
 @router.get("", response_model=list[VoucherOut])
-async def list_vouchers_admin(user: User = Depends(require_role("admin")), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Voucher).order_by(Voucher.created_at.desc()))
+async def list_vouchers_admin(
+    include_deleted: bool = False,
+    user: User = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    q = select(Voucher)
+    if not include_deleted:
+        q = q.where(Voucher.deleted_at.is_(None))
+    q = q.order_by(Voucher.created_at.desc())
+    result = await db.execute(q)
     return result.scalars().all()
 
 

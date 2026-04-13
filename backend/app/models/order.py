@@ -29,6 +29,7 @@ class CartItem(Base):
     item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
     quantity = Column(Integer, default=1, nullable=False)
     customizations = Column(JSON, nullable=True)
+    customization_option_ids = Column(JSON, nullable=True)
     unit_price = Column(DECIMAL(10, 2), nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
 

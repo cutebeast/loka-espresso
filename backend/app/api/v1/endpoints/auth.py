@@ -18,6 +18,8 @@ from jose import jwt as jose_jwt
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+# Use a module-level limiter — must be the SAME instance registered in main.py
+# via app.state.limiter. We create it here and main.py will import and assign it.
 limiter = Limiter(key_func=get_remote_address)
 
 settings = get_settings()

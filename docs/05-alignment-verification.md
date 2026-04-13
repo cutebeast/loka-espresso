@@ -144,7 +144,7 @@
 | vouchers | deleted_at | DELETE /admin/vouchers/{id} | Sets deleted_at + is_active=false ✅ |
 | rewards | deleted_at | DELETE /admin/rewards/{id} | Sets deleted_at + is_active=false ✅ |
 
-**Note:** GET endpoints for these tables should ideally filter `WHERE deleted_at IS NULL`. Currently they don't — this is a known gap for Phase 2. Items are hidden by `is_available=false`/`is_active=false` instead.
+**Note:** GET endpoints now filter `WHERE deleted_at IS NULL` by default (Phase 2 fix). Admin endpoints accept `?include_deleted=true` to see all records. Public endpoints always exclude soft-deleted items.
 
 ## Triggers
 
@@ -160,16 +160,23 @@
 | ix_table_occupancy_store_occupied | table_occupancy_snapshot | store_id, is_occupied | Find free tables per store |
 | 15 composite indexes (v4) | Various | Various | Scalability for 100k+ users |
 
-## Outstanding Items (Phase 2)
+## Outstanding Items (Phase 3 — External Integrations)
 
-1. **Soft delete filter** — GET endpoints should exclude `deleted_at IS NOT NULL` records
-2. **Wallet pre-top-up** — Integration with Stripe
-3. **SMS OTP** — Integration with Twilio/Signal
-4. **Rate limiting on auth endpoints** — Login/register rate limiting (not yet implemented)
-5. **File upload validation** — Size/type limits
-6. **Charts** — For reports page in merchant dashboard
-7. **Customization options integration** — Cart/order flow should use normalized table
-8. **delivery_provider population** — Order creation should set this field for delivery orders
+1. **Wallet pre-top-up** — Integration with Stripe payment gateway
+2. **SMS OTP** — Integration with Twilio/Signal (currently prints to console)
+3. **WhatsApp notifications** — Integration with WhatsApp Business API (currently stub)
+4. **Push notifications** — Integration with Firebase Cloud Messaging (currently stub)
+
+## Completed Phase 2 Features
+
+1. ✅ **Soft delete filter** — Admin GET endpoints now exclude `deleted_at IS NOT NULL` by default; `?include_deleted=true` shows all
+2. ✅ **Rate limiting on auth** — slowapi with shared Limiter instance: send-otp 5/min, register 5/min, login 10/min
+3. ✅ **File upload validation** — 5MB max size, only JPEG/PNG/WebP/GIF MIME types allowed
+4. ✅ **Charts in merchant dashboard** — SVG-based BarChart, DonutChart, SparkLine components on reports page
+5. ✅ **Customization options integration** — Cart validates `customization_option_ids` against DB, resolves names + prices
+6. ✅ **delivery_provider population** — Order creation sets delivery_provider for delivery orders (defaults to "internal")
+7. ✅ **Staff clock-in fix** — StaffShift now correctly includes store_id from staff record
+8. ✅ **Customer PWA refactor** — Monolithic 660-line page broken into 10 components with shared React Context
 
 ## Completed Security Features (Phase 1)
 
