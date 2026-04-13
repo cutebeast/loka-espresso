@@ -1,6 +1,6 @@
 # FNB Super-App — Database Schema
 
-> Last updated: 2026-04-13 | PostgreSQL 16 | Database: `fnb` | 38 tables | 60 FKs | 1 trigger
+> Last updated: 2026-04-13 | PostgreSQL 16 | Database: `fnb` | 39 tables | 60 FKs | 1 trigger
 
 ## Enums
 
@@ -73,7 +73,19 @@ Push notification tokens (FCM/APNs).
 | user_id | integer | NO | | FK→users.id |
 | token | varchar | NO | | Device push token |
 | platform | varchar | YES | | `ios`, `android`, `web` |
+| is_active | boolean | NO | true | Active token flag |
 | created_at | timestamptz | YES | now() | |
+
+#### `token_blacklist`
+Revoked JWT tokens for proper logout. Checked on every authenticated request.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | integer | NO | auto | PK |
+| jti | varchar | NO | | JWT ID claim (unique) |
+| user_id | integer | YES | | FK→users.id |
+| expires_at | timestamptz | NO | | When the token naturally expires |
+| created_at | timestamptz | YES | now() | When blacklisted |
 
 #### `otp_sessions`
 OTP codes for phone-based authentication.

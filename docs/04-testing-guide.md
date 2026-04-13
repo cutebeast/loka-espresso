@@ -98,24 +98,94 @@ curl -s https://admin.loyaltysystem.uk/api/v1/admin/dashboard \
 ### 5. Soft Delete Verification
 ```bash
 # DELETE /admin/stores/1/items/{item_id}
-# Expected: item gets deleted_at = NOW(), not removed from DB
-# Verify: SELECT id, name, deleted_at FROM menu_items WHERE deleted_at IS NOT NULL;
+# Expected: item gets deleted_at = NOW() AND is_available = false
+# Verify: SELECT id, name, deleted_at, is_available FROM menu_items WHERE deleted_at IS NOT NULL;
 ```
 
-### 6. Table Occupancy Trigger
+### 6. Token Blacklist / Logout
+```bash
+TOKEN=$(curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/login-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@loyaltysystem.uk","password":"admin123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+
+# Use token — should work
+curl -s https://admin.loyaltysystem.uk/api/v1/users/me -H "Authorization: Bearer $TOKEN"
+# Expected: { "id": 1, "name": "Admin User", ... }
+
+# Logout — blacklists the token
+curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/logout -H "Authorization: Bearer $TOKEN"
+# Expected: { "message": "Logged out" }
+
+# Use same token — should be rejected
+curl -s https://admin.loyaltysystem.uk/api/v1/users/me -H "Authorization: Bearer $TOKEN"
+# Expected: { "detail": "Token has been revoked" }
+```
+
+### 7. PIN Rate Limiting
+```bash
+# 5 wrong PINs → 6th attempt returns 429
+for i in $(seq 1 6); do
+  curl -s -w "HTTP:%{http_code}\n" -X POST http://localhost:8000/api/v1/admin/staff/1/clock-in \
+    -H "Content-Type: application/json" \
+    -d '{"pin_code":"0000"}'
+done
+# Expected: 5 × 400 "Invalid PIN", then 1 × 429 "Too many PIN attempts"
+```
+
+### 8. Order Cancel with Loyalty Rollback
+```bash
+# Cancel an order that earned loyalty points
+# Before cancel: check user's loyalty balance
+docker exec fnb-db psql -U fnb -d fnb -c "SELECT points_balance FROM loyalty_accounts WHERE user_id=6;"
+
+# Cancel order (as admin)
+curl -s -X POST https://admin.loyaltysystem.uk/api/v1/orders/20/cancel \
+  -H "Authorization: Bearer $TOKEN"
+# Expected: { "message": "Order cancelled", "loyalty_reversed": true }
+
+# After cancel: points_balance should decrease by loyalty_points_earned
+# A reversal LoyaltyTransaction with negative points should exist
+```
+
+### 9. Table Occupancy Override
+```bash
+# Manual override table occupancy (bypass trigger)
+curl -s -X PATCH https://admin.loyaltysystem.uk/api/v1/admin/stores/1/tables/1/occupancy \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"is_occupied": true}'
+# Expected: { "table_id": 1, "is_occupied": true }
+```
+
+### 10. Customization Options CRUD
+```bash
+# List customizations for menu item 1
+curl -s https://admin.loyaltysystem.uk/api/v1/admin/stores/1/items/1/customizations \
+  -H "Authorization: Bearer $TOKEN"
+# Expected: [ { "id": 1, "name": "Extra Shot", ... }, ... ]
+
+# Create new customization
+curl -s -X POST https://admin.loyaltysystem.uk/api/v1/admin/stores/1/items/1/customizations \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Size","price_adjustment":0.0}'
+# Expected: { "id": ..., "name": "Size", ... }
+```
+
+### 11. Table Occupancy Trigger
 ```bash
 # 1. Create a dine-in order with status=confirmed → table should become occupied
 # 2. Update order status to completed → table should become free
 # Verify: SELECT * FROM table_occupancy_snapshot WHERE is_occupied = TRUE;
 ```
 
-### 7. Marketing Campaigns
+### 12. Marketing Campaigns
 ```bash
 # GET /admin/marketing/campaigns
 # Expected: { total: 3, campaigns: [...] }
 ```
 
-### 8. Order Flow
+### 13. Order Flow
 ```bash
 # 1. POST /cart/items — add item to cart
 # 2. GET /cart — verify cart

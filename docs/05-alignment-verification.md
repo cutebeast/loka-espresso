@@ -13,8 +13,9 @@
 | a1b2c3d4e5f6 | Schema v4: consolidate promos, add indexes |
 | 6546b42e617a | Add assistant_manager to StaffRole enum |
 | b7c8d9e0f1a2 | Schema v5: delivery provider, soft deletes, occupancy, marketing, customizations |
+| c8d9e0f1a2b3 | Schema v6: token_blacklist, device_tokens.is_active |
 
-**Current head:** `b7c8d9e0f1a2`
+**Current head:** `c8d9e0f1a2b3`
 
 ## Model Files vs DB Tables
 
@@ -23,7 +24,8 @@
 | user.py | User | users | ✅ Aligned (phone_verified added) |
 | user.py | UserAddress | user_addresses | ✅ Aligned |
 | user.py | OTPSession | otp_sessions | ✅ Aligned |
-| user.py | DeviceToken | device_tokens | ✅ Aligned |
+| user.py | DeviceToken | device_tokens | ✅ Aligned (is_active added) |
+| user.py | TokenBlacklist | token_blacklist | ✅ New table (v6) |
 | store.py | Store | stores | ✅ Aligned |
 | store.py | StoreTable | store_tables | ✅ Aligned (is_occupied added) |
 | menu.py | MenuCategory | menu_categories | ✅ Aligned |
@@ -59,7 +61,7 @@
 | marketing.py | MarketingCampaign | marketing_campaigns | ✅ New table |
 | marketing.py | TableOccupancySnapshot | table_occupancy_snapshot | ✅ New table |
 
-**Total: 38 tables, 38 models, 15 model files — ALL ALIGNED ✅**
+**Total: 39 tables, 39 models, 15 model files — ALL ALIGNED ✅**
 
 ## Endpoint Files vs Router Registration
 
@@ -95,7 +97,7 @@
 | admin_marketing.py | `/admin/marketing` | ✅ | admin |
 | reports.py | `/admin/reports` | ✅ | admin, store_owner |
 
-**Total: 29 endpoint files, 106 endpoints — ALL REGISTERED ✅**
+**Total: 29 endpoint files, 112 endpoints — ALL REGISTERED ✅**
 
 ## Enums: Model vs DB
 
@@ -126,7 +128,7 @@
 
 | Table | Column | Delete Endpoint | Implementation |
 |-------|--------|----------------|----------------|
-| menu_items | deleted_at | DELETE /admin/stores/{id}/items/{id} | Sets deleted_at = now() ✅ |
+| menu_items | deleted_at | DELETE /admin/stores/{id}/items/{id} | Sets deleted_at = now() + is_available=false ✅ |
 | vouchers | deleted_at | DELETE /admin/vouchers/{id} | Sets deleted_at + is_active=false ✅ |
 | rewards | deleted_at | DELETE /admin/rewards/{id} | Sets deleted_at + is_active=false ✅ |
 
@@ -151,9 +153,18 @@
 1. **Soft delete filter** — GET endpoints should exclude `deleted_at IS NOT NULL` records
 2. **Wallet pre-top-up** — Integration with Stripe
 3. **SMS OTP** — Integration with Twilio/Signal
-4. **Rate limiting** — On auth endpoints
+4. **Rate limiting on auth endpoints** — Login/register rate limiting (not yet implemented)
 5. **File upload validation** — Size/type limits
 6. **Charts** — For reports page in merchant dashboard
 7. **Customization options integration** — Cart/order flow should use normalized table
 8. **delivery_provider population** — Order creation should set this field for delivery orders
-9. **created_by on loyalty_transactions** — Manual point adjustments should set this field
+
+## Completed Security Features (Phase 1)
+
+1. ✅ **JWT Token Blacklist** — Logout invalidates tokens via JTI
+2. ✅ **PIN Rate Limiting** — 5 attempts per 5 minutes per staff member
+3. ✅ **Order Cancel Loyalty Rollback** — Reverses points on cancellation
+4. ✅ **created_by on loyalty_transactions** — Manual adjustments tracked
+5. ✅ **Menu soft delete** — Sets both deleted_at and is_available=false
+6. ✅ **Admin can cancel any order** — Not just own orders
+7. ✅ **DeviceToken.is_active** — Model aligned with DB schema

@@ -100,7 +100,7 @@ Config files:
 ├── backend/
 │   ├── .venv/                    # Python virtualenv (use for all commands)
 │   ├── alembic/
-│   │   ├── versions/             # 6 migration files
+ │   │   ├── versions/             # 7 migration files
 │   │   ├── env.py
 │   │   └── script.py.mako
 │   ├── app/
@@ -108,9 +108,9 @@ Config files:
 │   │   ├── core/
 │   │   │   ├── config.py         # Settings (pydantic-settings)
 │   │   │   ├── database.py       # Async SQLAlchemy engine
-│   │   │   ├── security.py       # JWT + ACL system
+│   │   │   ├── security.py       # JWT + ACL system + token blacklist check
 │   │   │   └── audit.py          # log_action() helper
-│   │   ├── models/               # 15 model files, 38 tables
+│   │   ├── models/               # 16 model files, 39 tables
 │   │   ├── schemas/              # Pydantic request/response schemas
 │   │   └── api/v1/
 │   │       ├── router.py         # Assembles all endpoint routers
@@ -166,3 +166,11 @@ Located at `/root/fnb-super-app/.env`. Resolved via `env_file = "../.env"` from 
 - Merchant frontend is a single `'use client'` SPA (no Next.js routing)
 - Soft deletes on `menu_items`, `vouchers`, `rewards` via `deleted_at` column
 - Table occupancy auto-updated via PostgreSQL trigger on order status changes
+
+## Security
+
+- **JWT Token Blacklist**: Every JWT includes a `jti` claim. On logout, the JTI is stored in the `token_blacklist` table. `get_current_user()` checks the blacklist on every request.
+- **PIN Rate Limiting**: Staff clock-in attempts are rate-limited to 5 per 5 minutes per staff member (in-memory tracking).
+- **Soft Deletes**: `menu_items`, `vouchers`, `rewards` use `deleted_at`. Menu items also set `is_available=false`.
+- **Order Cancel Rollback**: Cancelling an order reverses loyalty points with a negative `LoyaltyTransaction`.
+- **ACL**: Two-tier access control — `UserRole` (admin/store_owner/customer) + `StaffRole` (manager/assistant_manager/barista/cashier/delivery) with per-store isolation.
