@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case, desc, or_
 
 from app.core.database import get_db
-from app.core.security import require_role
+from app.core.security import require_role, require_store_access
 from app.core.audit import log_action
 from app.models.user import User
 from app.models.order import Order, OrderStatus, OrderType
@@ -124,7 +124,7 @@ async def create_store(req: StoreCreate, user: User = Depends(require_role("admi
 
 
 @router.post("/stores/{store_id}/categories", status_code=201)
-async def create_category(store_id: int, req: CategoryCreate, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+async def create_category(store_id: int, req: CategoryCreate, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
     slug = req.slug or req.name.lower().replace(" ", "-")
     cat = MenuCategory(store_id=store_id, name=req.name, slug=slug, display_order=req.display_order)
     db.add(cat)
@@ -133,7 +133,7 @@ async def create_category(store_id: int, req: CategoryCreate, user: User = Depen
 
 
 @router.put("/stores/{store_id}/categories/{cat_id}")
-async def update_category(store_id: int, cat_id: int, req: CategoryCreate, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+async def update_category(store_id: int, cat_id: int, req: CategoryCreate, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(MenuCategory).where(MenuCategory.id == cat_id, MenuCategory.store_id == store_id))
     cat = result.scalar_one_or_none()
     if not cat:
@@ -147,7 +147,7 @@ async def update_category(store_id: int, cat_id: int, req: CategoryCreate, user:
 
 
 @router.post("/stores/{store_id}/items", status_code=201)
-async def create_item(store_id: int, req: MenuItemCreate, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+async def create_item(store_id: int, req: MenuItemCreate, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
     item = MenuItem(store_id=store_id, **req.model_dump())
     db.add(item)
     await db.flush()
@@ -157,7 +157,7 @@ async def create_item(store_id: int, req: MenuItemCreate, user: User = Depends(r
 
 
 @router.put("/stores/{store_id}/items/{item_id}")
-async def update_item(store_id: int, item_id: int, req: dict, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+async def update_item(store_id: int, item_id: int, req: dict, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(MenuItem).where(MenuItem.id == item_id, MenuItem.store_id == store_id))
     item = result.scalar_one_or_none()
     if not item:
@@ -172,7 +172,7 @@ async def update_item(store_id: int, item_id: int, req: dict, user: User = Depen
 
 
 @router.delete("/stores/{store_id}/items/{item_id}")
-async def delete_item(store_id: int, item_id: int, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+async def delete_item(store_id: int, item_id: int, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(MenuItem).where(MenuItem.id == item_id, MenuItem.store_id == store_id))
     item = result.scalar_one_or_none()
     if not item:
@@ -184,7 +184,7 @@ async def delete_item(store_id: int, item_id: int, user: User = Depends(require_
 
 
 @router.post("/stores/{store_id}/tables", status_code=201)
-async def create_table(store_id: int, req: TableCreate, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+async def create_table(store_id: int, req: TableCreate, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
     table = StoreTable(store_id=store_id, table_number=req.table_number, capacity=req.capacity)
     db.add(table)
     await db.flush()
@@ -198,7 +198,7 @@ async def create_table(store_id: int, req: TableCreate, user: User = Depends(req
 
 
 @router.put("/stores/{store_id}/tables/{table_id}")
-async def update_table(store_id: int, table_id: int, req: TableUpdate, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+async def update_table(store_id: int, table_id: int, req: TableUpdate, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(StoreTable).where(StoreTable.id == table_id, StoreTable.store_id == store_id))
     table = result.scalar_one_or_none()
     if not table:
@@ -214,7 +214,7 @@ async def update_table(store_id: int, table_id: int, req: TableUpdate, user: Use
 
 
 @router.delete("/stores/{store_id}/tables/{table_id}")
-async def delete_table(store_id: int, table_id: int, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+async def delete_table(store_id: int, table_id: int, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(StoreTable).where(StoreTable.id == table_id, StoreTable.store_id == store_id))
     table = result.scalar_one_or_none()
     if not table:
@@ -225,7 +225,7 @@ async def delete_table(store_id: int, table_id: int, user: User = Depends(requir
 
 
 @router.delete("/stores/{store_id}/categories/{cat_id}")
-async def delete_category(store_id: int, cat_id: int, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+async def delete_category(store_id: int, cat_id: int, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(MenuCategory).where(MenuCategory.id == cat_id, MenuCategory.store_id == store_id))
     cat = result.scalar_one_or_none()
     if not cat:

@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_role
+from app.core.security import get_current_user, require_role, get_staff_record, ALL_STAFF_ROLES
 from app.core.audit import log_action
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.order import Order, OrderStatusHistory, OrderType, OrderStatus, CartItem, OrderItem
 from app.models.menu import MenuItem
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
@@ -167,8 +167,11 @@ async def get_order(
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    if order.user_id != user.id and user.role not in ("admin", "store_owner"):
-        raise HTTPException(status_code=403, detail="Forbidden")
+    if order.user_id != user.id and user.role not in (UserRole.admin, UserRole.store_owner):
+        # Check if user is staff at order's store
+        staff = await get_staff_record(user.id, order.store_id, db)
+        if not staff:
+            raise HTTPException(status_code=403, detail="Forbidden")
     hist_result = await db.execute(
         select(OrderStatusHistory).where(OrderStatusHistory.order_id == order_id).order_by(OrderStatusHistory.created_at)
     )
@@ -235,9 +238,23 @@ async def cancel_order(order_id: int, user: User = Depends(get_current_user), db
 @router.patch("/{order_id}/status")
 async def update_order_status(
     order_id: int, req: OrderStatusUpdate,
-    user: User = Depends(require_role("admin", "store_owner")),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Check permission: admin/store_owner OR staff at order's store
+    if user.role not in (UserRole.admin, UserRole.store_owner):
+        # Must be staff — look up the order first to find store_id
+        order_check = await db.execute(select(Order).where(Order.id == order_id))
+        order_obj = order_check.scalar_one_or_none()
+        if not order_obj:
+            raise HTTPException(status_code=404, detail="Order not found")
+        staff = await get_staff_record(user.id, order_obj.store_id, db)
+        if not staff:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No staff record found for this store")
+        staff_role = staff.role.value if hasattr(staff.role, 'value') else str(staff.role)
+        if staff_role not in ALL_STAFF_ROLES:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalar_one_or_none()
     if not order:

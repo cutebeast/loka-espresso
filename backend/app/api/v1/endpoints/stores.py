@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_role
+from app.core.security import get_current_user, require_role, require_store_access
 from app.models.user import User
 from app.models.store import Store, StoreTable
 from app.models.menu import MenuCategory, MenuItem
@@ -127,7 +127,7 @@ async def get_pickup_slots(
 async def update_store(
     store_id: int,
     req: StoreUpdate,
-    user: User = Depends(require_role("admin", "store_owner")),
+    user: User = Depends(require_store_access("store_id", allowed_staff_roles={"manager"})),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Store).where(Store.id == store_id))

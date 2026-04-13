@@ -7,6 +7,7 @@ from app.core.database import Base
 
 class StaffRole(str, enum.Enum):
     manager = "manager"
+    assistant_manager = "assistant_manager"
     barista = "barista"
     cashier = "cashier"
     delivery = "delivery"

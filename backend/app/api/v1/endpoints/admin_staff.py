@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_role
+from app.core.security import get_current_user, require_role, require_store_access
 from app.models.user import User, UserRole
 from app.models.staff import Staff, StaffShift, StaffRole
 from app.schemas.admin_extras import (
@@ -23,7 +23,7 @@ router = APIRouter()
 async def list_staff(
     store_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(UserRole.admin, UserRole.store_owner)),
+    user: User = Depends(require_store_access("store_id", allowed_staff_roles={"manager", "assistant_manager"})),
 ):
     result = await db.execute(
         select(Staff).where(Staff.store_id == store_id)
@@ -128,7 +128,7 @@ async def clock_out(
 async def list_shifts(
     store_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(UserRole.admin, UserRole.store_owner)),
+    user: User = Depends(require_store_access("store_id", allowed_staff_roles={"manager", "assistant_manager"})),
 ):
     result = await db.execute(
         select(StaffShift)
