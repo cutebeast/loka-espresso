@@ -45,10 +45,13 @@ async def get_cart(user: User = Depends(get_current_user), db: AsyncSession = De
 async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(CartItem).where(CartItem.user_id == user.id))
     existing_items = existing.scalars().all()
+    cart_cleared = False
     if existing_items and existing_items[0].store_id != req.store_id:
+        # Clear cart from previous store to prevent cross-store pollution
         for ei in existing_items:
             await db.delete(ei)
         await db.flush()
+        cart_cleared = True
 
     item_result = await db.execute(select(MenuItem).where(MenuItem.id == req.item_id))
     menu_item = item_result.scalar_one_or_none()

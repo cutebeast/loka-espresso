@@ -222,17 +222,36 @@ async def reorder(order_id: int, user: User = Depends(get_current_user), db: Asy
 
 @router.post("/{order_id}/cancel")
 async def cancel_order(order_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if user.role not in ("admin", "store_owner") and order.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Cannot cancel another user's order")
     if order.status in (OrderStatus.completed, OrderStatus.cancelled):
         raise HTTPException(status_code=400, detail="Cannot cancel this order")
     order.status = OrderStatus.cancelled
     history = OrderStatusHistory(order_id=order.id, status=OrderStatus.cancelled, note="Cancelled by user")
     db.add(history)
+
+    # Rollback loyalty points earned on this order
+    if order.loyalty_points_earned and order.loyalty_points_earned > 0:
+        la_result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.user_id == order.user_id))
+        la = la_result.scalar_one_or_none()
+        if la:
+            la.points_balance = max(0, la.points_balance - order.loyalty_points_earned)
+            la.total_points_earned = max(0, la.total_points_earned - order.loyalty_points_earned)
+            lt = LoyaltyTransaction(
+                user_id=order.user_id, order_id=order.id, store_id=order.store_id,
+                points=-order.loyalty_points_earned, type="redeem",
+                description=f"Points reversed: order {order.order_number} cancelled",
+            )
+            db.add(lt)
+        order.loyalty_points_earned = 0
+
     await db.flush()
-    return {"message": "Order cancelled"}
+    return {"message": "Order cancelled", "loyalty_reversed": True}
 
 
 @router.patch("/{order_id}/status")

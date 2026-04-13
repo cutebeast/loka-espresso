@@ -1,6 +1,6 @@
 # FNB Super-App — Backend API Reference
 
-> Last updated: 2026-04-13 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 106 endpoints
+> Last updated: 2026-04-13 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 112 endpoints
 > OpenAPI docs: `https://admin.loyaltysystem.uk/docs`
 
 ## Authentication
@@ -16,7 +16,7 @@ All authenticated endpoints require `Authorization: Bearer <JWT>` header.
 | POST | `/auth/send-otp` | Send OTP to phone |
 | POST | `/auth/verify-otp` | Verify OTP code |
 | POST | `/auth/refresh` | Refresh access token |
-| POST | `/auth/logout` | Logout (invalidate) |
+| POST | `/auth/logout` | Logout (blacklists JWT via JTI) |
 | POST | `/auth/device-token` | Register push notification token |
 | DELETE | `/auth/device-token` | Unregister push token |
 
@@ -95,7 +95,16 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | GET | `/stores/{store_id}/menu` | public | Full menu (categories + items tree) |
 | POST | `/admin/stores/{store_id}/items` | require_store_access | Create item |
 | PUT | `/admin/stores/{store_id}/items/{item_id}` | require_store_access | Update item |
-| DELETE | `/admin/stores/{store_id}/items/{item_id}` | require_store_access | **Soft-delete** (sets deleted_at) |
+| DELETE | `/admin/stores/{store_id}/items/{item_id}` | require_store_access | **Soft-delete** (sets deleted_at + is_available=false) |
+
+### Customization Options (PER-ITEM, PER-STORE)
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| GET | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_store_access | List customization options for a menu item |
+| POST | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_store_access | Create customization option |
+| PUT | `/admin/stores/{store_id}/customizations/{option_id}` | require_store_access | Update customization option |
+| DELETE | `/admin/stores/{store_id}/customizations/{option_id}` | require_store_access | Deactivate customization option |
 
 ### Table CRUD (PER-STORE)
 
@@ -107,6 +116,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | DELETE | `/admin/stores/{store_id}/tables/{table_id}` | require_store_access | Soft-delete table |
 | POST | `/tables/scan` | customer | Scan QR → get table info |
 | GET | `/tables/{table_id}` | public | Get table details |
+| PATCH | `/admin/stores/{store_id}/tables/{table_id}/occupancy` | require_store_access | **Override** table occupancy (is_occupied) |
 
 ### Inventory (PER-STORE)
 
@@ -126,7 +136,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | POST | `/admin/stores/{store_id}/staff` | admin | Create staff member |
 | PUT | `/admin/staff/{staff_id}` | admin | Update staff |
 | DELETE | `/admin/staff/{staff_id}` | admin | Deactivate staff |
-| POST | `/admin/staff/{staff_id}/clock-in` | any (PIN-based) | Clock in |
+| POST | `/admin/staff/{staff_id}/clock-in` | any (PIN-based) | Clock in (rate-limited: 5 attempts/5 min) |
 | POST | `/admin/staff/{staff_id}/clock-out` | any (PIN-based) | Clock out |
 | GET | `/admin/stores/{store_id}/shifts` | manager, assistant_manager | View shifts |
 
@@ -138,7 +148,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | GET | `/orders` | customer | List own orders |
 | GET | `/orders/{order_id}` | customer (own), admin, store_owner, staff | Get order details + timeline |
 | PATCH | `/orders/{order_id}/status` | admin, store_owner, **any staff at order's store** | Update order status |
-| POST | `/orders/{order_id}/cancel` | customer | Cancel own order |
+| POST | `/orders/{order_id}/cancel` | customer (own), admin, store_owner | Cancel order (**rolls back loyalty points**) |
 | POST | `/orders/{order_id}/reorder` | customer | Re-add items to cart |
 
 ### Customer Management
@@ -150,7 +160,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | GET | `/admin/customers/{user_id}/orders` | admin | Customer's orders |
 | GET | `/admin/customers/{user_id}/loyalty-history` | admin | Loyalty history |
 | GET | `/admin/customers/{user_id}/wallet-history` | admin | Wallet history |
-| POST | `/admin/customers/{user_id}/adjust-points` | admin | Manual points adjustment |
+| POST | `/admin/customers/{user_id}/adjust-points` | admin | Manual points adjustment (sets created_by + description) |
 
 ### Voucher Management
 
@@ -335,3 +345,24 @@ The `require_store_access` dependency checks for a matching staff record at the 
 { "detail": "No staff record found for this store" }
 { "detail": "Staff role 'barista' not authorized for this action" }
 ```
+
+### Token Revocation
+```json
+// 401 Unauthorized (after logout)
+{ "detail": "Token has been revoked" }
+```
+
+### PIN Rate Limiting
+```json
+// 429 Too Many Requests (after 5 wrong PINs in 5 minutes)
+{ "detail": "Too many PIN attempts. Try again after 5 minutes." }
+```
+
+---
+
+## Security Features
+
+- **JWT Token Blacklist**: Tokens include a `jti` claim. On logout, the JTI is stored in `token_blacklist` table. Every request checks if the token's JTI is blacklisted.
+- **PIN Rate Limiting**: Staff clock-in PIN attempts are rate-limited to 5 per 5 minutes per staff member (in-memory tracking).
+- **Soft Deletes**: Menu items, vouchers, and rewards use `deleted_at` timestamp instead of hard deletion. Menu items also set `is_available=false`.
+- **Order Cancellation Rollback**: Cancelling an order reverses loyalty points earned (creates a reversal `LoyaltyTransaction` with negative points).

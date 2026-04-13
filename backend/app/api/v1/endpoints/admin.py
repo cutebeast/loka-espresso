@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.order import Order, OrderStatus, OrderType
 from app.models.menu import MenuCategory, MenuItem
 from app.models.store import Store, StoreTable
+from app.models.marketing import CustomizationOption, TableOccupancySnapshot
 from app.schemas.store import StoreCreate, TableCreate, TableUpdate
 from app.schemas.menu import CategoryCreate, MenuItemCreate
 
@@ -179,6 +180,7 @@ async def delete_item(store_id: int, item_id: int, user: User = Depends(require_
         raise HTTPException(status_code=404, detail="Item not found")
     await log_action(db, action="DELETE_MENU_ITEM", user_id=user.id, store_id=store_id, entity_type="menu_item", entity_id=item_id, details={"name": item.name})
     item.deleted_at = datetime.utcnow()
+    item.is_available = False
     await db.flush()
     return {"message": "Item soft-deleted"}
 
@@ -292,3 +294,128 @@ async def export_data(
             "created_at": o.created_at.isoformat() if o.created_at else "",
         })
     return {"data": rows, "count": len(rows)}
+
+
+# ---------------------------------------------------------------------------
+# Customization Options CRUD
+# ---------------------------------------------------------------------------
+
+@router.get("/stores/{store_id}/items/{item_id}/customizations")
+async def list_customization_options(
+    store_id: int, item_id: int,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """List customization options for a menu item."""
+    result = await db.execute(
+        select(CustomizationOption).where(
+            CustomizationOption.menu_item_id == item_id,
+            CustomizationOption.is_active == True,
+        ).order_by(CustomizationOption.display_order)
+    )
+    return result.scalars().all()
+
+
+@router.post("/stores/{store_id}/items/{item_id}/customizations", status_code=201)
+async def create_customization_option(
+    store_id: int, item_id: int, req: dict,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a customization option to a menu item."""
+    # Verify item belongs to store
+    result = await db.execute(select(MenuItem).where(MenuItem.id == item_id, MenuItem.store_id == store_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    opt = CustomizationOption(
+        menu_item_id=item_id,
+        name=req.get("name"),
+        price_adjustment=req.get("price_adjustment", 0),
+        display_order=req.get("display_order", 0),
+    )
+    db.add(opt)
+    await db.flush()
+    await db.commit()
+    return {"id": opt.id, "name": opt.name, "price_adjustment": float(opt.price_adjustment)}
+
+
+@router.put("/stores/{store_id}/customizations/{option_id}")
+async def update_customization_option(
+    store_id: int, option_id: int, req: dict,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a customization option."""
+    result = await db.execute(select(CustomizationOption).where(CustomizationOption.id == option_id))
+    opt = result.scalar_one_or_none()
+    if not opt:
+        raise HTTPException(status_code=404, detail="Option not found")
+    for k, v in req.items():
+        if hasattr(opt, k):
+            setattr(opt, k, v)
+    await db.flush()
+    await db.commit()
+    return {"message": "Option updated"}
+
+
+@router.delete("/stores/{store_id}/customizations/{option_id}")
+async def delete_customization_option(
+    store_id: int, option_id: int,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft-delete a customization option."""
+    result = await db.execute(select(CustomizationOption).where(CustomizationOption.id == option_id))
+    opt = result.scalar_one_or_none()
+    if not opt:
+        raise HTTPException(status_code=404, detail="Option not found")
+    opt.is_active = False
+    await db.flush()
+    await db.commit()
+    return {"message": "Option deactivated"}
+
+
+# ---------------------------------------------------------------------------
+# Manual Table Occupancy Override
+# ---------------------------------------------------------------------------
+
+@router.patch("/stores/{store_id}/tables/{table_id}/occupancy")
+async def set_table_occupancy(
+    store_id: int, table_id: int, req: dict,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually set table occupancy (override trigger-based status).
+    Body: {"is_occupied": true/false}
+    """
+    is_occupied = req.get("is_occupied")
+    if is_occupied is None:
+        raise HTTPException(status_code=400, detail="is_occupied is required")
+
+    # Verify table belongs to store
+    result = await db.execute(select(StoreTable).where(StoreTable.id == table_id, StoreTable.store_id == store_id))
+    table = result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+
+    # Update both the snapshot and the table flag
+    table.is_occupied = is_occupied
+
+    snap_result = await db.execute(
+        select(TableOccupancySnapshot).where(TableOccupancySnapshot.table_id == table_id)
+    )
+    snap = snap_result.scalar_one_or_none()
+    if snap:
+        snap.is_occupied = is_occupied
+        if not is_occupied:
+            snap.current_order_id = None
+        snap.updated_at = datetime.utcnow()
+    else:
+        snap = TableOccupancySnapshot(
+            table_id=table_id, store_id=store_id, is_occupied=is_occupied,
+        )
+        db.add(snap)
+
+    await db.flush()
+    await db.commit()
+    return {"table_id": table_id, "is_occupied": is_occupied}

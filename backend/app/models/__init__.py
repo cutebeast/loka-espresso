@@ -1,4 +1,4 @@
-from app.models.user import User, UserAddress, OTPSession, DeviceToken, UserRole
+from app.models.user import User, UserAddress, OTPSession, DeviceToken, UserRole, TokenBlacklist
 from app.models.store import Store, StoreTable
 from app.models.menu import MenuCategory, MenuItem, InventoryItem
 from app.models.order import CartItem, Order, OrderItem, OrderStatusHistory, Payment, OrderType, OrderStatus
@@ -14,7 +14,7 @@ from app.models.admin_extras import Feedback, AuditLog, NotificationBroadcast, P
 from app.models.marketing import CustomizationOption, MarketingCampaign, TableOccupancySnapshot
 
 __all__ = [
-    "User", "UserAddress", "OTPSession", "DeviceToken", "UserRole",
+    "User", "UserAddress", "OTPSession", "DeviceToken", "UserRole", "TokenBlacklist",
     "Store", "StoreTable",
     "MenuCategory", "MenuItem", "InventoryItem",
     "CartItem", "Order", "OrderItem", "OrderStatusHistory", "Payment", "OrderType", "OrderStatus",

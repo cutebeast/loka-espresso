@@ -227,6 +227,8 @@ async def adjust_customer_points(
         user_id=user_id,
         points=data.points,
         type="earn" if data.points > 0 else "redeem",
+        created_by=user.id,
+        description=data.reason,
     )
     db.add(txn)
     await log_action(db, action="ADJUST_CUSTOMER_POINTS", user_id=user.id, entity_type="customer", entity_id=user_id, details={"points": data.points, "reason": data.reason, "new_balance": account.points_balance + data.points})

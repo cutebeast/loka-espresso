@@ -1,6 +1,7 @@
 import random
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -9,8 +10,14 @@ from app.core.security import (
     create_access_token, create_refresh_token, verify_password,
     hash_password, get_current_user,
 )
+from app.core.config import get_settings
 from app.core.audit import log_action
-from app.models.user import User, OTPSession, DeviceToken, UserRole
+from app.models.user import User, OTPSession, DeviceToken, UserRole, TokenBlacklist
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt as jose_jwt
+
+settings = get_settings()
+_bearer = HTTPBearer()
 from app.schemas.auth import (
     SendOTPRequest, SendOTPResponse, VerifyOTPRequest, TokenResponse,
     RegisterRequest, LoginPasswordRequest, RefreshRequest, DeviceTokenRequest,
@@ -108,7 +115,32 @@ async def refresh_token(req: RefreshRequest):
 
 
 @router.post("/logout")
-async def logout(user: User = Depends(get_current_user)):
+async def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Blacklist the current access token so it cannot be reused."""
+    token = credentials.credentials
+    try:
+        payload = jose_jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+    except Exception:
+        jti = None
+        exp = None
+
+    if jti and exp:
+        from datetime import datetime as dt, timezone
+        blacklisted = TokenBlacklist(
+            jti=jti,
+            user_id=user.id,
+            expires_at=dt.fromtimestamp(exp, tz=timezone.utc),
+        )
+        db.add(blacklisted)
+        await db.flush()
+        await db.commit()
+
     return {"message": "Logged out"}
 
 
