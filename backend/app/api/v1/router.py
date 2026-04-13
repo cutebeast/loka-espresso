@@ -5,6 +5,7 @@ from app.api.v1.endpoints import (
     loyalty, rewards, vouchers, favorites, notifications,
     referral, tables, wallet, promos, upload, splash, config,
     inventory, admin, admin_rewards, admin_vouchers, reports,
+    admin_staff, admin_feedback, admin_system,
 )
 
 api_router = APIRouter()
@@ -33,3 +34,6 @@ api_router.include_router(admin.router)
 api_router.include_router(admin_rewards.router)
 api_router.include_router(admin_vouchers.router)
 api_router.include_router(reports.router)
+api_router.include_router(admin_staff.router)
+api_router.include_router(admin_feedback.router)
+api_router.include_router(admin_system.router)

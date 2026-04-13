@@ -41,4 +41,5 @@ class LoyaltyTier(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), nullable=False, unique=True)
     min_points = Column(Integer, nullable=False)
+    points_multiplier = Column(DECIMAL(3, 2), default=1.0)
     benefits = Column(JSON, nullable=True)
