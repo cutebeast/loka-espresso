@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -45,8 +46,9 @@ async def deactivate_voucher(voucher_id: int, user: User = Depends(require_role(
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
     voucher.is_active = False
+    voucher.deleted_at = datetime.utcnow()
     await db.flush()
-    return {"message": "Voucher deactivated"}
+    return {"message": "Voucher soft-deleted"}
 
 
 @router.get("/{voucher_id}/usage")

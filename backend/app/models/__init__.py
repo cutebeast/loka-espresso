@@ -11,6 +11,7 @@ from app.models.social import Referral, Favorite
 from app.models.splash import AppConfig, SplashContent
 from app.models.staff import Staff, StaffShift, StaffRole
 from app.models.admin_extras import Feedback, AuditLog, NotificationBroadcast, PromoBanner
+from app.models.marketing import CustomizationOption, MarketingCampaign, TableOccupancySnapshot
 
 __all__ = [
     "User", "UserAddress", "OTPSession", "DeviceToken", "UserRole",
@@ -26,4 +27,5 @@ __all__ = [
     "AppConfig", "SplashContent",
     "Staff", "StaffShift", "StaffRole",
     "Feedback", "AuditLog", "NotificationBroadcast", "PromoBanner",
+    "CustomizationOption", "MarketingCampaign", "TableOccupancySnapshot",
 ]

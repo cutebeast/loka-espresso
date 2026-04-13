@@ -33,6 +33,7 @@ class LoyaltyTransaction(Base):
 
     type = Column(Enum(TxType), nullable=False)
     description = Column(Text, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)  # Who issued (for manual/goodwill points)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
 
 

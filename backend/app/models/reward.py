@@ -25,6 +25,7 @@ class Reward(Base):
     stock_limit = Column(Integer, nullable=True)
     total_redeemed = Column(Integer, default=0)
     is_active = Column(Boolean, default=True, nullable=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
 

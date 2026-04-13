@@ -178,9 +178,9 @@ async def delete_item(store_id: int, item_id: int, user: User = Depends(require_
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     await log_action(db, action="DELETE_MENU_ITEM", user_id=user.id, store_id=store_id, entity_type="menu_item", entity_id=item_id, details={"name": item.name})
-    await db.delete(item)
+    item.deleted_at = datetime.utcnow()
     await db.flush()
-    return {"message": "Item deleted"}
+    return {"message": "Item soft-deleted"}
 
 
 @router.post("/stores/{store_id}/tables", status_code=201)

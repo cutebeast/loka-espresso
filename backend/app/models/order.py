@@ -54,6 +54,7 @@ class Order(Base):
     payment_status = Column(String(50), default="pending")
     loyalty_points_earned = Column(Integer, default=0)
     notes = Column(Text, nullable=True)
+    delivery_provider = Column(String(50), nullable=True)  # 'grab', 'panda', 'internal'
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
 
@@ -67,7 +68,7 @@ class OrderItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
-    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=True, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="SET NULL"), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     quantity = Column(Integer, nullable=False)
     unit_price = Column(DECIMAL(10, 2), nullable=False)

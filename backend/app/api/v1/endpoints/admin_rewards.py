@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -45,8 +46,9 @@ async def deactivate_reward(reward_id: int, user: User = Depends(require_role("a
     if not reward:
         raise HTTPException(status_code=404, detail="Reward not found")
     reward.is_active = False
+    reward.deleted_at = datetime.utcnow()
     await db.flush()
-    return {"message": "Reward deactivated"}
+    return {"message": "Reward soft-deleted"}
 
 
 @router.get("/{reward_id}/redemptions")

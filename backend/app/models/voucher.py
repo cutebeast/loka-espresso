@@ -30,6 +30,7 @@ class Voucher(Base):
     image_url = Column(String(500), nullable=True)
     promo_type = Column(String(50), nullable=True)
     store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
 
 

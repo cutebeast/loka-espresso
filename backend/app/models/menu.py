@@ -32,6 +32,7 @@ class MenuItem(Base):
     is_available = Column(Boolean, default=True, nullable=False)
     display_order = Column(Integer, default=0)
     popularity = Column(Integer, default=0)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete
 
     store = relationship("Store", back_populates="items")
     category = relationship("MenuCategory", back_populates="items")

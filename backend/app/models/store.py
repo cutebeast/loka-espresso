@@ -38,5 +38,6 @@ class StoreTable(Base):
     qr_code_url = Column(String(500), nullable=True)
     capacity = Column(Integer, default=4)
     is_active = Column(Boolean, default=True, nullable=False)
+    is_occupied = Column(Boolean, default=False, nullable=False)
 
     store = relationship("Store", back_populates="tables")
