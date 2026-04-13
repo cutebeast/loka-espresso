@@ -34,5 +34,5 @@ async def health():
     return {"status": "ok"}
 
 
-# from app.api.v1.router import api_router  # noqa: E402
-# app.include_router(api_router, prefix="/api/v1")  # Phase 2
+from app.api.v1.router import api_router
+app.include_router(api_router, prefix="/api/v1")
