@@ -6,6 +6,7 @@ from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.core.security import get_current_user, require_role
+from app.core.audit import log_action
 from app.models.user import User
 from app.models.order import Order, OrderStatusHistory, OrderType, OrderStatus, CartItem
 from app.models.menu import MenuItem
@@ -229,14 +230,17 @@ async def update_order_status(
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    old_status = order.status.value if hasattr(order.status, 'value') else str(order.status)
+    new_status = req.status.value if hasattr(req.status, 'value') else str(req.status)
     order.status = req.status
     history = OrderStatusHistory(order_id=order.id, status=req.status, note=req.note)
     db.add(history)
     notif = Notification(
-        user_id=order.user_id, title=f"Order {req.status.value}",
-        body=f"Your order {order.order_number} is now {req.status.value}",
+        user_id=order.user_id, title=f"Order {new_status}",
+        body=f"Your order {order.order_number} is now {new_status}",
         type="order",
     )
     db.add(notif)
+    await log_action(db, action="ORDER_STATUS_CHANGE", user_id=user.id, store_id=order.store_id, entity_type="order", entity_id=order.id, details={"order_number": order.order_number, "from": old_status, "to": new_status})
     await db.flush()
-    return {"message": f"Order status updated to {req.status.value}"}
+    return {"message": f"Order status updated to {new_status}"}

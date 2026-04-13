@@ -11,7 +11,7 @@ interface Reward { id: number; name: string; description: string; points_cost: n
 interface Order { id: number; order_number: string; order_type: string; status: string; total: number; items: Array<Record<string, unknown>>; created_at: string; }
 interface CartItem { id?: number; name: string; price: number; quantity: number; customizations?: Record<string, unknown>; itemId?: number; }
 
-type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'orders' | 'profile';
+type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'orders' | 'profile' | 'history';
 type OrderMode = 'pickup' | 'delivery';
 
 function apiFetch(path: string, token?: string, options?: RequestInit) {
@@ -49,6 +49,9 @@ export default function CustomerApp() {
   const [showModal, setShowModal] = useState(false);
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [modalTitle, setModalTitle] = useState('');
+  const [loyaltyHistory, setLoyaltyHistory] = useState<Array<{ id: number; points: number; type: string; created_at: string }>>([]);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletHistory, setWalletHistory] = useState<Array<{ id: number; amount: number; type: string; description: string; created_at: string }>>([]);
 
   const [showStoreLocator, setShowStoreLocator] = useState(false);
 
@@ -74,7 +77,21 @@ export default function CustomerApp() {
     if (!token) return;
     if (page === 'orders') loadOrders();
     if (page === 'rewards') loadRewards();
+    if (page === 'history') loadHistory();
   }, [page, token]);
+
+  async function loadHistory() {
+    try {
+      const [loyaltyRes, walletRes] = await Promise.all([
+        apiFetch('/loyalty/history?page_size=20', token),
+        apiFetch('/wallet/transactions?page_size=20', token),
+      ]);
+      if (loyaltyRes.ok) setLoyaltyHistory(await loyaltyRes.json());
+      if (walletRes.ok) { const w = await walletRes.json(); setWalletHistory(Array.isArray(w) ? w : (w.transactions || [])); }
+      const balRes = await apiFetch('/wallet', token);
+      if (balRes.ok) { const b = await balRes.json(); setWalletBalance(b.balance || 0); }
+    } catch {}
+  }
 
   async function loadUserData() {
     try {
@@ -460,20 +477,103 @@ export default function CustomerApp() {
                 </div>
                 <div><h3>{userName || 'Guest'}</h3><p style={{ color: '#64748B' }}>{userEmail || userPhone}</p></div>
               </div>
+
+              {/* Loyalty Summary Card */}
+              <div style={{ background: 'linear-gradient(135deg, #002F6C, #1E4A7A)', borderRadius: 20, padding: 20, marginBottom: 16, color: 'white' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 14, opacity: 0.8 }}>⭐ {loyaltyTier}</span>
+                  <span style={{ fontSize: 24, fontWeight: 700 }}>{loyaltyPoints} pts</span>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 10, height: 6 }}>
+                  <div style={{ background: 'white', width: `${Math.min((loyaltyPoints / 400) * 100, 100)}%`, height: 6, borderRadius: 10 }}></div>
+                </div>
+                <p style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{Math.max(0, 400 - loyaltyPoints)} pts to next tier</p>
+              </div>
+
+              {/* Wallet Card */}
+              <div style={{ background: 'white', borderRadius: 20, padding: 20, marginBottom: 16, border: '1px solid #ECF1F7' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: 13, color: '#64748B' }}>Wallet Balance</p>
+                    <p style={{ fontSize: 28, fontWeight: 700, color: '#002F6C' }}>RM {walletBalance.toFixed(2)}</p>
+                  </div>
+                  <i className="fas fa-wallet" style={{ fontSize: 32, color: '#002F6C', opacity: 0.3 }}></i>
+                </div>
+              </div>
+
               <div style={{ background: 'white', borderRadius: 24, padding: '8px 0' }}>
-                <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0F3F8', cursor: 'pointer' }} onClick={() => {
+                <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0F3F8', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={() => setPage('history')}>
+                  <span><i className="fas fa-clock-rotate-left" style={{ marginRight: 14, color: '#002F6C' }}></i> Transaction History</span>
+                  <i className="fas fa-chevron-right" style={{ color: '#94A3B8', fontSize: 12 }}></i>
+                </div>
+                <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0F3F8', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={() => {
                   setModalTitle('Delivery Addresses');
                   setModalContent(<p style={{ color: '#64748B' }}>Manage your delivery addresses here.</p>);
                   setShowModal(true);
-                }}><i className="fas fa-map-marker-alt" style={{ marginRight: 14 }}></i> Addresses</div>
-                <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0F3F8', cursor: 'pointer' }} onClick={() => {
+                }}>
+                  <span><i className="fas fa-map-marker-alt" style={{ marginRight: 14, color: '#002F6C' }}></i> Addresses</span>
+                  <i className="fas fa-chevron-right" style={{ color: '#94A3B8', fontSize: 12 }}></i>
+                </div>
+                <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0F3F8', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={() => {
                   setModalTitle('Payment Methods');
                   setModalContent(<p style={{ color: '#64748B' }}>Manage your payment methods here.</p>);
                   setShowModal(true);
-                }}><i className="fas fa-credit-card" style={{ marginRight: 14 }}></i> Payment methods</div>
-                <div style={{ padding: '18px 20px', cursor: 'pointer' }}><i className="fas fa-bell" style={{ marginRight: 14 }}></i> Push notifications <span style={{ float: 'right' }}>ON</span></div>
+                }}>
+                  <span><i className="fas fa-credit-card" style={{ marginRight: 14, color: '#002F6C' }}></i> Payment methods</span>
+                  <i className="fas fa-chevron-right" style={{ color: '#94A3B8', fontSize: 12 }}></i>
+                </div>
+                <div style={{ padding: '18px 20px', cursor: 'pointer' }}>
+                  <span><i className="fas fa-bell" style={{ marginRight: 14, color: '#002F6C' }}></i> Push notifications</span>
+                  <span style={{ float: 'right', color: '#10B981', fontWeight: 600 }}>ON</span>
+                </div>
               </div>
               <button style={{ marginTop: 20, width: '100%', padding: 16, borderRadius: 40, border: '1px solid #DDE3E9', background: 'white', fontWeight: 600, cursor: 'pointer', fontSize: 16 }} onClick={() => { setToken(''); localStorage.removeItem('fnb_customer_token'); setShowLogin(true); }}>Sign out</button>
+            </div>
+          )}
+
+          {/* TRANSACTION HISTORY */}
+          {page === 'history' && (
+            <div className="page-enter">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
+                <button onClick={() => setPage('profile')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#002F6C' }}><i className="fas fa-arrow-left"></i></button>
+                <h3>Transaction History</h3>
+              </div>
+
+              {/* Loyalty Points History */}
+              <div style={{ background: 'white', borderRadius: 20, padding: 16, marginBottom: 16, border: '1px solid #ECF1F7' }}>
+                <h4 style={{ marginBottom: 12, color: '#002F6C' }}>⭐ Loyalty Points</h4>
+                {loyaltyHistory.length === 0 ? (
+                  <p style={{ color: '#94A3B8', textAlign: 'center', padding: 20 }}>No loyalty history yet</p>
+                ) : loyaltyHistory.map(t => (
+                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F0F3F8' }}>
+                    <div>
+                      <p style={{ fontWeight: 600, textTransform: 'capitalize' }}>{t.type}</p>
+                      <p style={{ fontSize: 12, color: '#94A3B8' }}>{new Date(t.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <span style={{ fontWeight: 700, color: t.points > 0 ? '#10B981' : '#EF4444' }}>
+                      {t.points > 0 ? '+' : ''}{t.points} pts
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Wallet History */}
+              <div style={{ background: 'white', borderRadius: 20, padding: 16, marginBottom: 16, border: '1px solid #ECF1F7' }}>
+                <h4 style={{ marginBottom: 12, color: '#002F6C' }}>💰 Wallet Transactions</h4>
+                {walletHistory.length === 0 ? (
+                  <p style={{ color: '#94A3B8', textAlign: 'center', padding: 20 }}>No wallet transactions yet</p>
+                ) : walletHistory.map(t => (
+                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F0F3F8' }}>
+                    <div>
+                      <p style={{ fontWeight: 600 }}>{t.description || t.type}</p>
+                      <p style={{ fontSize: 12, color: '#94A3B8' }}>{new Date(t.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <span style={{ fontWeight: 700, color: t.amount > 0 ? '#10B981' : '#EF4444' }}>
+                      {t.amount > 0 ? '+' : ''}RM {Math.abs(t.amount).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

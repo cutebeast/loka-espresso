@@ -9,6 +9,7 @@ from app.core.security import (
     create_access_token, create_refresh_token, verify_password,
     hash_password, get_current_user,
 )
+from app.core.audit import log_action
 from app.models.user import User, OTPSession, DeviceToken, UserRole
 from app.schemas.auth import (
     SendOTPRequest, SendOTPResponse, VerifyOTPRequest, TokenResponse,
@@ -77,7 +78,13 @@ async def login_password(req: LoginPasswordRequest, db: AsyncSession = Depends(g
     result = await db.execute(select(User).where(User.email == req.email))
     user = result.scalar_one_or_none()
     if not user or not user.password_hash or not verify_password(req.password, user.password_hash):
+        # Log failed login attempt
+        if user:
+            await log_action(db, action="LOGIN_FAILED", user_id=user.id, entity_type="user", details={"email": req.email}, status="failed")
+        await db.commit()
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    await log_action(db, action="LOGIN", user_id=user.id, entity_type="user", entity_id=user.id, details={"email": req.email, "role": user.role.value if hasattr(user.role, 'value') else str(user.role)})
+    await db.commit()
     access = create_access_token({"sub": str(user.id)})
     refresh = create_refresh_token({"sub": str(user.id)})
     return TokenResponse(access_token=access, refresh_token=refresh)

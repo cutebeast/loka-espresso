@@ -1,157 +1,76 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent } from 'react';
-
-const API = '/api/v1';
-
-interface Store {
-  id: number;
-  name: string;
-  slug: string;
-  address: string;
-  phone: string;
-  opening_hours: Record<string, string>;
-  pickup_lead_minutes: number;
-  is_active: boolean;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  slug: string;
-  display_order: number;
-  is_active: boolean;
-}
-
-interface MenuItem {
-  id: number;
-  store_id: number;
-  category_id: number;
-  name: string;
-  description: string;
-  base_price: number;
-  image_url: string | null;
-  is_available: boolean;
-  display_order: number;
-}
-
-interface TableItem {
-  id: number;
-  table_number: string;
-  qr_code_url: string;
-  capacity: number;
-  is_active: boolean;
-}
-
-interface Reward {
-  id: number;
-  name: string;
-  description: string;
-  points_cost: number;
-  reward_type: string;
-  stock_limit: number | null;
-  total_redeemed: number;
-  is_active: boolean;
-}
-
-interface Voucher {
-  id: number;
-  code: string;
-  description: string;
-  discount_type: string;
-  discount_value: number;
-  min_order: number;
-  max_uses: number | null;
-  used_count: number;
-  valid_from: string | null;
-  valid_until: string | null;
-  is_active: boolean;
-}
-
-interface InventoryItem {
-  id: number;
-  name: string;
-  current_stock: number;
-  unit: string;
-  reorder_level: number;
-  cost_per_unit: number | null;
-}
-
-interface Order {
-  id: number;
-  order_number: string;
-  order_type: string;
-  status: string;
-  total: number;
-  items: Array<Record<string, unknown>>;
-  created_at: string;
-  store_id: number;
-  table_id: number | null;
-  pickup_time: string | null;
-  user_id: number;
-}
-
-interface DashboardData {
-  total_orders: number;
-  total_revenue: number;
-  total_customers: number;
-  orders_today: number;
-  revenue_today: number;
-  orders_by_type: Record<string, number>;
-}
-
-type PageId = 'dashboard' | 'orders' | 'menu' | 'inventory' | 'tables' | 'rewards' | 'vouchers' | 'reports' | 'customers' | 'store';
-
-function apiFetch(path: string, token: string, options?: RequestInit) {
-  return fetch(`${API}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...options?.headers,
-    },
-  });
-}
-
-function statusBadge(status: string) {
-  const map: Record<string, string> = {
-    pending: 'badge-yellow',
-    confirmed: 'badge-blue',
-    preparing: 'badge-yellow',
-    ready: 'badge-green',
-    completed: 'badge-green',
-    cancelled: 'badge-red',
-  };
-  return <span className={`badge ${map[status] || 'badge-gray'}`}>{status}</span>;
-}
-
-function formatRM(amount: number) {
-  return `RM ${Number(amount).toFixed(2)}`;
-}
+import { useState, useEffect, useCallback } from 'react';
+import { apiFetch, formatRM, statusBadge } from '@/lib/merchant-api';
+import type {
+  PageId,
+  MerchantStore,
+  MerchantCategory,
+  MerchantMenuItem,
+  MerchantTableItem,
+  MerchantInventoryItem,
+  MerchantOrder,
+  MerchantDashboardData,
+  MerchantStaffMember,
+  MerchantReward,
+  MerchantVoucher,
+  MerchantBanner,
+  MerchantBroadcast,
+  MerchantAuditEntry,
+  MerchantFeedbackItem,
+  MerchantFeedbackStats,
+  MerchantLoyaltyTier,
+} from '@/lib/merchant-types';
+import LoginScreen from '@/components/LoginScreen';
+import Sidebar from '@/components/Sidebar';
+import {
+  AddItemForm,
+  AddTableForm,
+  AddRewardForm,
+  AddVoucherForm,
+  AddStaffForm,
+  AddBannerForm,
+  AddBroadcastForm,
+  FeedbackReplyForm,
+  EditTierForm,
+  StoreSettingsForm,
+} from '@/components/Modals';
+import DashboardPage from '@/components/pages/DashboardPage';
+import OrdersPage from '@/components/pages/OrdersPage';
+import MenuPage from '@/components/pages/MenuPage';
+import TablesPage from '@/components/pages/TablesPage';
+import CustomersPage from '@/components/pages/CustomersPage';
 
 export default function MerchantDashboard() {
   const [token, setToken] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
   const [page, setPage] = useState<PageId>('dashboard');
   const [selectedStore, setSelectedStore] = useState<string>('all');
-  const [stores, setStores] = useState<Store[]>([]);
+  const [stores, setStores] = useState<MerchantStore[]>([]);
   const [showStoreModal, setShowStoreModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [modalTitle, setModalTitle] = useState('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [dashboard, setDashboard] = useState<MerchantDashboardData | null>(null);
+  const [orders, setOrders] = useState<MerchantOrder[]>([]);
+  const [categories, setCategories] = useState<MerchantCategory[]>([]);
+  const [menuItems, setMenuItems] = useState<MerchantMenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [tables, setTables] = useState<TableItem[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [rewards, setRewards] = useState<Reward[]>([]);
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [tables, setTables] = useState<MerchantTableItem[]>([]);
+  const [inventory, setInventory] = useState<MerchantInventoryItem[]>([]);
+  const [rewards, setRewards] = useState<MerchantReward[]>([]);
+  const [vouchers, setVouchers] = useState<MerchantVoucher[]>([]);
+  const [staff, setStaff] = useState<MerchantStaffMember[]>([]);
+  const [banners, setBanners] = useState<MerchantBanner[]>([]);
+  const [broadcasts, setBroadcasts] = useState<MerchantBroadcast[]>([]);
+  const [auditLog, setAuditLog] = useState<MerchantAuditEntry[]>([]);
+  const [feedbackList, setFeedbackList] = useState<MerchantFeedbackItem[]>([]);
+  const [feedbackStats, setFeedbackStats] = useState<MerchantFeedbackStats | null>(null);
+  const [feedbackStoreFilter, setFeedbackStoreFilter] = useState<string>('');
+  const [loyaltyTiers, setLoyaltyTiers] = useState<MerchantLoyaltyTier[]>([]);
   const [loading, setLoading] = useState(false);
+  const [notifTab, setNotifTab] = useState<'inbox' | 'manage'>('inbox');
 
   const [revenueReport, setRevenueReport] = useState<any>(null);
   const [reportFrom, setReportFrom] = useState(() => {
@@ -192,30 +111,16 @@ export default function MerchantDashboard() {
     else if (page === 'menu') fetchMenu();
     else if (page === 'inventory') fetchInventory();
     else if (page === 'tables') fetchTables();
+    else if (page === 'staff') fetchStaff();
     else if (page === 'rewards') fetchRewards();
     else if (page === 'vouchers') fetchVouchers();
+    else if (page === 'promotions') fetchBanners();
+    else if (page === 'feedback') fetchFeedback();
     else if (page === 'reports') fetchRevenueReport();
-  }, [page, token, selectedStore, reportFrom, reportTo]);
-
-  async function handleLogin(e: FormEvent) {
-    e.preventDefault();
-    setLoginError('');
-    try {
-      const res = await fetch(`${API}/auth/login-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (res.ok && data.access_token) {
-        setToken(data.access_token);
-      } else {
-        setLoginError(data.detail || 'Login failed');
-      }
-    } catch {
-      setLoginError('Network error');
-    }
-  }
+    else if (page === 'notifications') fetchBroadcasts();
+    else if (page === 'auditlog') fetchAuditLog();
+    else if (page === 'loyaltyrules') fetchLoyaltyTiers();
+  }, [page, token, selectedStore, reportFrom, reportTo, feedbackStoreFilter]);
 
   function handleLogout() {
     setToken('');
@@ -237,7 +142,7 @@ export default function MerchantDashboard() {
     setLoading(true);
     try {
       const params = storeId ? `?store_id=${storeId}&page_size=50` : '?page_size=50';
-      const res = await apiFetch(`/orders${params}`, token);
+      const res = await apiFetch(`/admin/orders${params}`, token);
       if (res.ok) {
         const data = await res.json();
         setOrders(Array.isArray(data) ? data : (data.orders || []));
@@ -283,6 +188,18 @@ export default function MerchantDashboard() {
     } catch {} finally { setLoading(false); }
   }
 
+  async function fetchStaff() {
+    if (selectedStore === 'all') return;
+    setLoading(true);
+    try {
+      const res = await apiFetch(`/admin/stores/${selectedStore}/staff`, token);
+      if (res.ok) {
+        const data = await res.json();
+        setStaff(Array.isArray(data) ? data : (data.staff || []));
+      }
+    } catch {} finally { setLoading(false); }
+  }
+
   async function fetchRewards() {
     setLoading(true);
     try {
@@ -299,6 +216,68 @@ export default function MerchantDashboard() {
     } catch {} finally { setLoading(false); }
   }
 
+  async function fetchBanners() {
+    setLoading(true);
+    try {
+      const res = await apiFetch('/admin/banners', token);
+      if (res.ok) {
+        const data = await res.json();
+        setBanners(Array.isArray(data) ? data : (data.banners || []));
+      }
+    } catch {} finally { setLoading(false); }
+  }
+
+  async function fetchBroadcasts() {
+    setLoading(true);
+    try {
+      const res = await apiFetch('/admin/broadcasts', token);
+      if (res.ok) {
+        const data = await res.json();
+        setBroadcasts(Array.isArray(data) ? data : (data.broadcasts || []));
+      }
+    } catch {} finally { setLoading(false); }
+  }
+
+  async function fetchAuditLog() {
+    setLoading(true);
+    try {
+      const res = await apiFetch('/admin/audit-log?page_size=50', token);
+      if (res.ok) {
+        const data = await res.json();
+        setAuditLog(Array.isArray(data) ? data : (data.entries || data.items || []));
+      }
+    } catch {} finally { setLoading(false); }
+  }
+
+  async function fetchFeedback() {
+    setLoading(true);
+    try {
+      const storeParam = feedbackStoreFilter ? `?store_id=${feedbackStoreFilter}` : '';
+      const [fbRes, statsRes] = await Promise.all([
+        apiFetch(`/admin/feedback${storeParam}`, token),
+        apiFetch(`/admin/feedback/stats${storeParam ? storeParam.replace('?', '?') : ''}`, token),
+      ]);
+      if (fbRes.ok) {
+        const data = await fbRes.json();
+        setFeedbackList(Array.isArray(data) ? data : (data.feedback || []));
+      }
+      if (statsRes.ok) {
+        setFeedbackStats(await statsRes.json());
+      }
+    } catch {} finally { setLoading(false); }
+  }
+
+  async function fetchLoyaltyTiers() {
+    setLoading(true);
+    try {
+      const res = await apiFetch('/admin/loyalty-tiers', token);
+      if (res.ok) {
+        const data = await res.json();
+        setLoyaltyTiers(Array.isArray(data) ? data : (data.tiers || []));
+      }
+    } catch {} finally { setLoading(false); }
+  }
+
   async function fetchRevenueReport() {
     setLoading(true);
     try {
@@ -308,122 +287,63 @@ export default function MerchantDashboard() {
     } catch {} finally { setLoading(false); }
   }
 
-  async function updateOrderStatus(orderId: number, newStatus: string) {
+  async function toggleBanner(banner: MerchantBanner) {
     try {
-      const res = await apiFetch(`/orders/${orderId}/status`, token, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (res.ok) fetchOrders(selectedStore === 'all' ? undefined : selectedStore);
-    } catch {}
-  }
-
-  async function toggleMenuItem(item: MenuItem) {
-    try {
-      await apiFetch(`/admin/stores/${item.store_id}/items/${item.id}`, token, {
+      await apiFetch(`/admin/banners/${banner.id}`, token, {
         method: 'PUT',
-        body: JSON.stringify({ ...item, is_available: !item.is_available }),
+        body: JSON.stringify({ ...banner, is_active: !banner.is_active }),
       });
-      fetchMenu();
+      fetchBanners();
     } catch {}
-  }
-
-  function openAddItemModal() {
-    setModalTitle('Add Menu Item');
-    setModalContent(
-      <AddItemForm storeId={Number(selectedStore)} categories={categories} token={token} onClose={() => { setShowModal(false); fetchMenu(); }} />
-    );
-    setShowModal(true);
-  }
-
-  function openAddTableModal() {
-    setModalTitle('Add Table');
-    setModalContent(
-      <AddTableForm storeId={Number(selectedStore)} token={token} onClose={() => { setShowModal(false); fetchTables(); }} />
-    );
-    setShowModal(true);
   }
 
   function openAddRewardModal() {
     setModalTitle('Create Reward');
-    setModalContent(
-      <AddRewardForm token={token} onClose={() => { setShowModal(false); fetchRewards(); }} />
-    );
+    setModalContent(<AddRewardForm token={token} onClose={() => { setShowModal(false); fetchRewards(); }} />);
     setShowModal(true);
   }
 
   function openAddVoucherModal() {
     setModalTitle('Create Voucher');
-    setModalContent(
-      <AddVoucherForm token={token} onClose={() => { setShowModal(false); fetchVouchers(); }} />
-    );
+    setModalContent(<AddVoucherForm token={token} onClose={() => { setShowModal(false); fetchVouchers(); }} />);
     setShowModal(true);
   }
 
-  function openOrderDetail(order: Order) {
-    setModalTitle(`Order ${order.order_number}`);
-    setModalContent(
-      <div>
-        <p><strong>Type:</strong> {order.order_type}</p>
-        <p><strong>Status:</strong> {statusBadge(order.status)}</p>
-        <p><strong>Total:</strong> {formatRM(order.total)}</p>
-        <p><strong>Created:</strong> {new Date(order.created_at).toLocaleString()}</p>
-        {order.table_id && <p><strong>Table:</strong> {order.table_id}</p>}
-        {order.pickup_time && <p><strong>Pickup:</strong> {new Date(order.pickup_time).toLocaleString()}</p>}
-        <div style={{ marginTop: 16 }}>
-          <strong>Update Status:</strong>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-            {['confirmed', 'preparing', 'ready', 'completed', 'cancelled'].map(s => (
-              <button key={s} className="btn btn-sm" onClick={() => { updateOrderStatus(order.id, s); setShowModal(false); }}>{s}</button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+  function openAddStaffModal() {
+    setModalTitle('Add Staff');
+    setModalContent(<AddStaffForm storeId={Number(selectedStore)} token={token} onClose={() => { setShowModal(false); fetchStaff(); }} />);
+    setShowModal(true);
+  }
+
+  function openAddBannerModal() {
+    setModalTitle('New Banner');
+    setModalContent(<AddBannerForm token={token} onClose={() => { setShowModal(false); fetchBanners(); }} />);
+    setShowModal(true);
+  }
+
+  function openBroadcastModal() {
+    setModalTitle('New Broadcast');
+    setModalContent(<AddBroadcastForm token={token} onClose={() => { setShowModal(false); fetchBroadcasts(); }} />);
+    setShowModal(true);
+  }
+
+  function openFeedbackReplyModal(fb: MerchantFeedbackItem) {
+    setModalTitle(`Reply to ${fb.customer_name}`);
+    setModalContent(<FeedbackReplyForm feedbackId={fb.id} token={token} onClose={() => { setShowModal(false); fetchFeedback(); }} />);
+    setShowModal(true);
+  }
+
+  function openEditTierModal(tier: MerchantLoyaltyTier) {
+    setModalTitle(`Edit Tier: ${tier.name}`);
+    setModalContent(<EditTierForm tier={tier} token={token} onClose={() => { setShowModal(false); fetchLoyaltyTiers(); }} />);
     setShowModal(true);
   }
 
   if (!token) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5F7FA' }}>
-        <div className="card" style={{ maxWidth: 400, width: '100%' }}>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <i className="fas fa-mug-saucer" style={{ fontSize: 40, color: '#002F6C' }}></i>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: '#002F6C', marginTop: 8 }}>ZUS Merchant</h1>
-            <p style={{ color: '#64748B', fontSize: 14 }}>Sign in to your dashboard</p>
-          </div>
-          <form onSubmit={handleLogin}>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 4 }}>Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" required />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 4 }}>Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
-            </div>
-            {loginError && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 12 }}>{loginError}</p>}
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px 16px' }}>Sign In</button>
-          </form>
-        </div>
-      </div>
-    );
+    return <LoginScreen onLogin={setToken} />;
   }
 
-  const filteredItems = selectedCategory ? menuItems.filter(i => i.category_id === selectedCategory) : menuItems;
   const storeObj = stores.find(s => s.id === Number(selectedStore));
-
-  const navItems: Array<{ id: PageId; icon: string; label: string }> = [
-    { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
-    { id: 'orders', icon: 'fa-clipboard-list', label: 'Orders' },
-    { id: 'menu', icon: 'fa-mug-hot', label: 'Menu' },
-    { id: 'inventory', icon: 'fa-boxes-stacked', label: 'Inventory' },
-    { id: 'tables', icon: 'fa-chair', label: 'Tables' },
-    { id: 'rewards', icon: 'fa-gift', label: 'Rewards' },
-    { id: 'vouchers', icon: 'fa-ticket', label: 'Vouchers' },
-    { id: 'reports', icon: 'fa-chart-line', label: 'Reports' },
-    { id: 'customers', icon: 'fa-users', label: 'Customers' },
-    { id: 'store', icon: 'fa-store', label: 'Store Settings' },
-  ];
 
   const pageTitle: Record<PageId, string> = {
     dashboard: 'Dashboard',
@@ -431,58 +351,39 @@ export default function MerchantDashboard() {
     menu: 'Menu Management',
     inventory: 'Inventory',
     tables: 'Tables',
+    staff: 'Staff',
     rewards: 'Rewards',
     vouchers: 'Vouchers',
+    promotions: 'Promotions',
+    feedback: 'Feedback',
     reports: 'Reports',
     customers: 'Customers',
+    notifications: 'Notifications',
+    auditlog: 'Audit Log',
+    loyaltyrules: 'Loyalty Rules',
     store: 'Store Settings',
   };
 
   return (
     <div style={{ height: '100vh', display: 'flex', overflow: 'hidden', background: '#F5F7FA' }}>
-      {/* Sidebar */}
-      <aside style={{ width: 280, background: '#002F6C', color: 'white', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto' }}>
-        <div style={{ padding: '24px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <i className="fas fa-mug-saucer" style={{ color: '#FFD166', fontSize: 28 }}></i>
-          <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5 }}>ZUS Merchant</span>
-        </div>
-        <nav style={{ flex: 1, padding: '0 12px' }}>
-          {navItems.map(n => (
-            <div
-              key={n.id}
-              onClick={() => setPage(n.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px',
-                borderRadius: 14, fontWeight: page === n.id ? 600 : 500, marginBottom: 4,
-                cursor: 'pointer', fontSize: 15,
-                background: page === n.id ? 'rgba(255,255,255,0.18)' : 'transparent',
-                color: page === n.id ? 'white' : 'rgba(255,255,255,0.85)',
-                transition: 'all 0.15s',
-              }}
-            >
-              <i className={`fas ${n.icon}`} style={{ width: 22, fontSize: 18, textAlign: 'center' }}></i>
-              {n.label}
-            </div>
-          ))}
-        </nav>
-        <div style={{ padding: '24px 16px 28px', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 44, height: 44, background: '#1E4A7A', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 18, border: '1.5px solid rgba(255,255,255,0.2)' }}>ZH</div>
-            <div>
-              <div style={{ fontWeight: 500, fontSize: 15 }}>ZUS HQ</div>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>Admin</div>
-            </div>
-          </div>
-        </div>
-      </aside>
+      <Sidebar
+        page={page}
+        setPage={setPage}
+        collapsedGroups={collapsedGroups}
+        setCollapsedGroups={setCollapsedGroups}
+        stores={stores}
+        selectedStore={selectedStore}
+        onLogout={handleLogout}
+      />
 
-      {/* Main */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Top Bar */}
         <header style={{ background: 'white', padding: '12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E9ECF2', boxShadow: '0 2px 6px rgba(0,0,0,0.01)' }}>
           <div style={{ fontSize: 26, fontWeight: 700, color: '#002F6C', letterSpacing: -0.5 }}>{pageTitle[page]}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <div style={{ position: 'relative', fontSize: 20, color: '#475569', cursor: 'pointer' }}>
+            <div
+              onClick={() => setPage('notifications')}
+              style={{ position: 'relative', fontSize: 20, color: '#475569', cursor: 'pointer' }}
+            >
               <i className="far fa-bell"></i>
               <span style={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, background: '#EF4444', border: '2px solid white', borderRadius: '50%' }}></span>
             </div>
@@ -498,160 +399,35 @@ export default function MerchantDashboard() {
           </div>
         </header>
 
-        {/* Content */}
         <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
           <div className="page-enter">
             {loading && <div style={{ textAlign: 'center', padding: 40, color: '#64748B' }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>}
 
-            {/* DASHBOARD */}
-            {page === 'dashboard' && dashboard && (
-              <div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 28 }}>
-                  <StatCard icon="fa-clipboard" color="#002F6C" label="Orders Today" value={String(dashboard.orders_today)} />
-                  <StatCard icon="fa-dollar-sign" color="#059669" label="Revenue Today" value={formatRM(dashboard.revenue_today)} />
-                  <StatCard icon="fa-fire" color="#EA580C" label="Active Orders" value={String(dashboard.total_orders)} />
-                  <StatCard icon="fa-clock" color="#7C3AED" label="Total Customers" value={String(dashboard.total_customers)} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 24 }}>
-                  <div className="card">
-                    <h3 style={{ marginBottom: 16 }}><i className="fas fa-bolt"></i> Orders by Type</h3>
-                    {Object.keys(dashboard.orders_by_type).length === 0 ? (
-                      <p style={{ color: '#94A3B8' }}>No orders yet</p>
-                    ) : (
-                      Object.entries(dashboard.orders_by_type).map(([type, count]) => (
-                        <div key={type} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #EDF2F8' }}>
-                          <span style={{ textTransform: 'capitalize' }}>{type.replace('_', ' ')}</span>
-                          <strong>{String(count)}</strong>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <div className="card">
-                    <h3 style={{ marginBottom: 16 }}>Revenue</h3>
-                    <div style={{ fontSize: 36, fontWeight: 700, color: '#059669' }}>{formatRM(dashboard.total_revenue)}</div>
-                    <p style={{ color: '#64748B', marginTop: 8 }}>Total all-time revenue</p>
-                  </div>
-                </div>
-                <div style={{ marginTop: 20, background: '#EFF6FF', borderRadius: 40, padding: '14px 24px', color: '#002F6C' }}>
-                  Total orders: {dashboard.total_orders} | Total revenue: {formatRM(dashboard.total_revenue)} | Customers: {dashboard.total_customers}
-                </div>
-              </div>
-            )}
+            {page === 'dashboard' && <DashboardPage dashboard={dashboard} loading={loading} />}
 
-            {/* ORDERS */}
             {page === 'orders' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <h3>Order Management</h3>
-                </div>
-                <div className="table-wrapper" style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Order #</th>
-                        <th>Type</th>
-                        <th>Total</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orders.length === 0 ? (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>No orders yet</td></tr>
-                      ) : orders.map(o => (
-                        <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => openOrderDetail(o)}>
-                          <td style={{ fontWeight: 600 }}>{o.order_number}</td>
-                          <td><span style={{ textTransform: 'capitalize' }}>{o.order_type?.replace('_', ' ')}</span></td>
-                          <td>{formatRM(o.total)}</td>
-                          <td>{statusBadge(o.status)}</td>
-                          <td>{new Date(o.created_at).toLocaleDateString()}</td>
-                          <td>
-                            <button className="btn btn-sm" onClick={e => { e.stopPropagation(); openOrderDetail(o); }}>View</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <OrdersPage
+                orders={orders}
+                loading={loading}
+                token={token}
+                selectedStore={selectedStore}
+                onUpdate={() => fetchOrders(selectedStore === 'all' ? undefined : selectedStore)}
+              />
             )}
 
-            {/* MENU */}
             {page === 'menu' && (
-              <div>
-                {selectedStore === 'all' ? (
-                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                    <i className="fas fa-store" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                    <p>Select a specific store to manage its menu</p>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                      <h3>Menu &middot; {storeObj?.name}</h3>
-                      <button className="btn btn-primary" onClick={openAddItemModal}><i className="fas fa-plus"></i> New Item</button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 24 }}>
-                      <div className="card">
-                        <h4 style={{ marginBottom: 12 }}>Categories</h4>
-                        <ul style={{ listStyle: 'none' }}>
-                          {categories.map(c => (
-                            <li
-                              key={c.id}
-                              onClick={() => setSelectedCategory(c.id)}
-                              style={{
-                                padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
-                                background: selectedCategory === c.id ? '#EFF6FF' : 'transparent',
-                                fontWeight: selectedCategory === c.id ? 600 : 400, color: selectedCategory === c.id ? '#002F6C' : '#334155',
-                                marginBottom: 4,
-                              }}
-                            >
-                              {c.name}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="card">
-                        <h4 style={{ marginBottom: 16 }}>Items ({filteredItems.length})</h4>
-                        <div style={{ display: 'grid', gap: 12 }}>
-                          {filteredItems.map(item => (
-                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #EDF2F8' }}>
-                              <div>
-                                <strong>{item.name}</strong>
-                                <span style={{ marginLeft: 12, color: '#059669', fontWeight: 600 }}>{formatRM(item.base_price)}</span>
-                                {item.description && <p style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>{item.description}</p>}
-                              </div>
-                              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={item.is_available}
-                                  onChange={() => toggleMenuItem(item)}
-                                  style={{ opacity: 0, width: 0, height: 0 }}
-                                />
-                                <span style={{
-                                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                                  backgroundColor: item.is_available ? '#002F6C' : '#CBD5E1',
-                                  borderRadius: 34, transition: '.2s',
-                                }}>
-                                  <span style={{
-                                    position: 'absolute', height: 18, width: 18, left: 3, bottom: 3,
-                                    backgroundColor: 'white', borderRadius: '50%',
-                                    transform: item.is_available ? 'translateX(20px)' : 'translateX(0)',
-                                    transition: '.2s',
-                                  }}></span>
-                                </span>
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+              <MenuPage
+                categories={categories}
+                menuItems={menuItems}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                selectedStore={selectedStore}
+                storeObj={storeObj}
+                token={token}
+                onRefresh={fetchMenu}
+              />
             )}
 
-            {/* INVENTORY */}
             {page === 'inventory' && (
               <div>
                 {selectedStore === 'all' ? (
@@ -690,35 +466,53 @@ export default function MerchantDashboard() {
               </div>
             )}
 
-            {/* TABLES */}
             {page === 'tables' && (
+              <TablesPage
+                tables={tables}
+                selectedStore={selectedStore}
+                storeObj={storeObj}
+                token={token}
+                onRefresh={fetchTables}
+              />
+            )}
+
+            {page === 'staff' && (
               <div>
                 {selectedStore === 'all' ? (
                   <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                    <i className="fas fa-chair" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                    <p>Select a specific store to manage tables</p>
+                    <i className="fas fa-user-tie" style={{ fontSize: 40, marginBottom: 16 }}></i>
+                    <p>Select a specific store to manage staff</p>
                   </div>
                 ) : (
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                      <h3>Floor Plan &middot; {storeObj?.name}</h3>
-                      <button className="btn btn-primary" onClick={openAddTableModal}><i className="fas fa-plus"></i> Add Table</button>
+                      <h3>Staff &middot; {storeObj?.name}</h3>
+                      <button className="btn btn-primary" onClick={openAddStaffModal}><i className="fas fa-plus"></i> Add Staff</button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
-                      {tables.map(t => (
-                        <div key={t.id} className="card" style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>T{t.table_number}</div>
-                          <div style={{ marginBottom: 8 }}>{t.capacity} seats</div>
-                          <span className={`badge ${t.is_active ? 'badge-green' : 'badge-gray'}`}>{t.is_active ? 'Active' : 'Inactive'}</span>
-                        </div>
-                      ))}
+                    <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
+                      <table>
+                        <thead>
+                          <tr><th>Name</th><th>Role</th><th>Phone</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                          {staff.length === 0 ? (
+                            <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>No staff members yet</td></tr>
+                          ) : staff.map(s => (
+                            <tr key={s.id}>
+                              <td style={{ fontWeight: 500 }}>{s.name}</td>
+                              <td><span className="badge badge-blue">{s.role}</span></td>
+                              <td>{s.phone}</td>
+                              <td><span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? 'Active' : 'Inactive'}</span></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </>
                 )}
               </div>
             )}
 
-            {/* REWARDS */}
             {page === 'rewards' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -747,7 +541,6 @@ export default function MerchantDashboard() {
               </div>
             )}
 
-            {/* VOUCHERS */}
             {page === 'vouchers' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -776,7 +569,123 @@ export default function MerchantDashboard() {
               </div>
             )}
 
-            {/* REPORTS */}
+            {page === 'promotions' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                  <h3>Promotional Banners</h3>
+                  <button className="btn btn-primary" onClick={openAddBannerModal}><i className="fas fa-plus"></i> New Banner</button>
+                </div>
+                {banners.length === 0 ? (
+                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
+                    <i className="fas fa-bullhorn" style={{ fontSize: 40, marginBottom: 16 }}></i>
+                    <p>No banners yet. Create your first promotional banner.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+                    {banners.map(b => (
+                      <div key={b.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ height: 120, background: 'linear-gradient(135deg, #002F6C, #1E4A7A)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 600, overflow: 'hidden' }}>
+                          {b.image_url ? (
+                            <img src={b.image_url} alt={b.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <span>{b.title}</span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <strong>{b.title}</strong>
+                          <span className={`badge ${b.is_active ? 'badge-green' : 'badge-gray'}`}>{b.is_active ? 'Active' : 'Inactive'}</span>
+                        </div>
+                        {b.target_url && <div style={{ fontSize: 12, color: '#64748B', wordBreak: 'break-all' }}>{b.target_url}</div>}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, color: '#94A3B8' }}>{new Date(b.created_at).toLocaleDateString()}</span>
+                          <button className="btn btn-sm" onClick={() => toggleBanner(b)}>
+                            {b.is_active ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {page === 'feedback' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                  <h3>Customer Feedback</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Filter by Store:</label>
+                    <select
+                      value={feedbackStoreFilter}
+                      onChange={e => setFeedbackStoreFilter(e.target.value)}
+                      style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #DDE3E9', fontSize: 14 }}
+                    >
+                      <option value="">All Stores</option>
+                      {stores.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {feedbackStats && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+                    <div className="card" style={{ textAlign: 'center' }}>
+                      <div style={{ color: '#64748B', fontSize: 13 }}>Average Rating</div>
+                      <div style={{ fontSize: 32, fontWeight: 700, color: '#F59E0B' }}>
+                        {'★'.repeat(Math.round(feedbackStats.average_rating))}{'☆'.repeat(5 - Math.round(feedbackStats.average_rating))}
+                      </div>
+                      <div style={{ fontSize: 14, color: '#64748B' }}>{feedbackStats.average_rating.toFixed(1)} / 5.0</div>
+                    </div>
+                    <div className="card" style={{ textAlign: 'center' }}>
+                      <div style={{ color: '#64748B', fontSize: 13 }}>Total Reviews</div>
+                      <div style={{ fontSize: 32, fontWeight: 700 }}>{feedbackStats.total_reviews}</div>
+                    </div>
+                    <div className="card">
+                      <h4 style={{ fontSize: 14, marginBottom: 12 }}>Rating Distribution</h4>
+                      {feedbackStats.rating_distribution && Object.entries(feedbackStats.rating_distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([rating, count]: [string, any]) => (
+                        <div key={rating} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}>
+                          <span>{'★'.repeat(Number(rating))}</span>
+                          <strong>{count}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {feedbackList.length === 0 ? (
+                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
+                    <i className="fas fa-star" style={{ fontSize: 40, marginBottom: 16 }}></i>
+                    <p>No feedback yet</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 16 }}>
+                    {feedbackList.map(fb => (
+                      <div key={fb.id} className="card" style={{ padding: '20px 24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <strong style={{ fontSize: 15 }}>{fb.customer_name}</strong>
+                            <span style={{ marginLeft: 12, color: '#F59E0B', fontSize: 14 }}>
+                              {'★'.repeat(fb.rating)}{'☆'.repeat(5 - fb.rating)}
+                            </span>
+                            <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
+                              {fb.store_name} &middot; {new Date(fb.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          {!fb.reply && (
+                            <button className="btn btn-sm" onClick={() => openFeedbackReplyModal(fb)}>Reply</button>
+                          )}
+                        </div>
+                        <p style={{ marginTop: 12, color: '#334155' }}>{fb.comment}</p>
+                        {fb.reply && (
+                          <div style={{ marginTop: 12, padding: '12px 16px', background: '#F0F9FF', borderRadius: 12, borderLeft: '3px solid #002F6C' }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#002F6C', marginBottom: 4 }}>Merchant Reply</div>
+                            <div style={{ fontSize: 14, color: '#334155' }}>{fb.reply}</div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {page === 'reports' && (
               <div>
                 <h3 style={{ marginBottom: 20 }}>Revenue Breakdown</h3>
@@ -848,41 +757,164 @@ export default function MerchantDashboard() {
               </div>
             )}
 
-            {/* CUSTOMERS */}
             {page === 'customers' && (
+              <CustomersPage token={token} selectedStore={selectedStore} />
+            )}
+
+            {page === 'notifications' && (
               <div>
-                <h3 style={{ marginBottom: 20 }}>All Customers</h3>
-                {dashboard ? (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
-                      <div className="card" style={{ textAlign: 'center' }}>
-                        <div style={{ color: '#64748B', fontSize: 13 }}>Total Customers</div>
-                        <div style={{ fontSize: 28, fontWeight: 700 }}>{dashboard.total_customers}</div>
+                <h3 style={{ marginBottom: 20 }}>Notifications</h3>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+                  <button
+                    className={`btn ${notifTab === 'inbox' ? 'btn-primary' : ''}`}
+                    onClick={() => setNotifTab('inbox')}
+                  >
+                    <i className="fas fa-inbox"></i> Inbox
+                  </button>
+                  <button
+                    className={`btn ${notifTab === 'manage' ? 'btn-primary' : ''}`}
+                    onClick={() => setNotifTab('manage')}
+                  >
+                    <i className="fas fa-bullhorn"></i> Manage Broadcasts
+                  </button>
+                </div>
+
+                {notifTab === 'inbox' && (
+                  <div>
+                    {broadcasts.length === 0 ? (
+                      <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
+                        <i className="fas fa-inbox" style={{ fontSize: 40, marginBottom: 16 }}></i>
+                        <p>No notifications</p>
                       </div>
-                      <div className="card" style={{ textAlign: 'center' }}>
-                        <div style={{ color: '#64748B', fontSize: 13 }}>Total Orders</div>
-                        <div style={{ fontSize: 28, fontWeight: 700 }}>{dashboard.total_orders}</div>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 12 }}>
+                        {broadcasts.map(bc => (
+                          <div key={bc.id} className="card" style={{ padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <strong style={{ fontSize: 15 }}>{bc.title}</strong>
+                                <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
+                                  {bc.target_audience} &middot; {bc.sent_at ? new Date(bc.sent_at).toLocaleDateString() : 'Pending'}
+                                </div>
+                              </div>
+                              <span className={`badge ${bc.status === 'sent' ? 'badge-green' : bc.status === 'pending' ? 'badge-yellow' : 'badge-gray'}`}>{bc.status}</span>
+                            </div>
+                            <p style={{ marginTop: 8, color: '#334155', fontSize: 14 }}>{bc.message}</p>
+                          </div>
+                        ))}
                       </div>
-                      <div className="card" style={{ textAlign: 'center' }}>
-                        <div style={{ color: '#64748B', fontSize: 13 }}>Total Revenue</div>
-                        <div style={{ fontSize: 28, fontWeight: 700, color: '#059669' }}>{formatRM(dashboard.total_revenue)}</div>
-                      </div>
+                    )}
+                  </div>
+                )}
+
+                {notifTab === 'manage' && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                      <button className="btn btn-primary" onClick={openBroadcastModal}><i className="fas fa-plus"></i> New Broadcast</button>
                     </div>
-                    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-                      <i className="fas fa-users" style={{ fontSize: 32, color: '#94A3B8', marginBottom: 12 }}></i>
-                      <p style={{ color: '#64748B' }}>Individual customer profiles require a dedicated admin customers endpoint.</p>
-                    </div>
-                  </>
-                ) : (
-                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                    <i className="fas fa-users" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                    <p>No customer data available</p>
+                    {broadcasts.length === 0 ? (
+                      <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
+                        <i className="fas fa-bullhorn" style={{ fontSize: 40, marginBottom: 16 }}></i>
+                        <p>No broadcasts sent yet</p>
+                      </div>
+                    ) : (
+                      <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
+                        <table>
+                          <thead>
+                            <tr><th>Title</th><th>Target</th><th>Sent At</th><th>Status</th></tr>
+                          </thead>
+                          <tbody>
+                            {broadcasts.map(bc => (
+                              <tr key={bc.id}>
+                                <td style={{ fontWeight: 500 }}>{bc.title}</td>
+                                <td>{bc.target_audience}</td>
+                                <td>{bc.sent_at ? new Date(bc.sent_at).toLocaleString() : '-'}</td>
+                                <td><span className={`badge ${bc.status === 'sent' ? 'badge-green' : bc.status === 'pending' ? 'badge-yellow' : 'badge-gray'}`}>{bc.status}</span></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* STORE SETTINGS */}
+            {page === 'auditlog' && (
+              <div>
+                <h3 style={{ marginBottom: 20 }}>Audit Log</h3>
+                {auditLog.length === 0 ? (
+                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
+                    <i className="fas fa-history" style={{ fontSize: 40, marginBottom: 16 }}></i>
+                    <p>No audit log entries</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
+                    <table>
+                      <thead>
+                        <tr><th>Timestamp</th><th>User</th><th>Action</th><th>IP</th><th>Store</th><th>Status</th></tr>
+                      </thead>
+                      <tbody>
+                        {auditLog.map(entry => {
+                          const store = stores.find(s => s.id === entry.store_id);
+                          return (
+                            <tr key={entry.id}>
+                              <td style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{new Date(entry.timestamp).toLocaleString()}</td>
+                              <td style={{ fontWeight: 500 }}>{entry.user_email}</td>
+                              <td><span className="badge badge-blue">{entry.action}</span></td>
+                              <td style={{ fontSize: 13, color: '#64748B', fontFamily: 'monospace' }}>{entry.ip_address}</td>
+                              <td>{store?.name || (entry.store_id ? `Store ${entry.store_id}` : '-')}</td>
+                              <td>
+                                <span className={`badge ${entry.status === 'success' ? 'badge-green' : entry.status === 'failed' ? 'badge-red' : 'badge-yellow'}`}>
+                                  {entry.status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {page === 'loyaltyrules' && (
+              <div>
+                <h3 style={{ marginBottom: 20 }}>Loyalty Tiers</h3>
+                {loyaltyTiers.length === 0 ? (
+                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
+                    <i className="fas fa-medal" style={{ fontSize: 40, marginBottom: 16 }}></i>
+                    <p>No loyalty tiers configured</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
+                    <table>
+                      <thead>
+                        <tr><th>Tier Name</th><th>Min Points</th><th>Multiplier</th><th>Benefits</th><th>Actions</th></tr>
+                      </thead>
+                      <tbody>
+                        {loyaltyTiers.map(tier => (
+                          <tr key={tier.id}>
+                            <td style={{ fontWeight: 600 }}>{tier.name}</td>
+                            <td>{tier.min_points} pts</td>
+                            <td><span className="badge badge-blue">{tier.multiplier}x</span></td>
+                            <td style={{ fontSize: 13, color: '#64748B', maxWidth: 300 }}>{tier.benefits || '-'}</td>
+                            <td>
+                              <button className="btn btn-sm" onClick={() => openEditTierModal(tier)}>
+                                <i className="fas fa-edit"></i> Edit
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             {page === 'store' && (
               <div>
                 {selectedStore === 'all' ? (
@@ -899,7 +931,6 @@ export default function MerchantDashboard() {
         </main>
       </div>
 
-      {/* Store Selector Modal */}
       {showStoreModal && (
         <div className="modal-overlay" onClick={() => setShowStoreModal(false)}>
           <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
@@ -928,7 +959,6 @@ export default function MerchantDashboard() {
         </div>
       )}
 
-      {/* Generic Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -940,263 +970,6 @@ export default function MerchantDashboard() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function StatCard({ icon, color, label, value }: { icon: string; color: string; label: string; value: string }) {
-  return (
-    <div style={{ background: 'white', borderRadius: 24, padding: '22px 20px', border: '1px solid #EDF2F7', boxShadow: '0 6px 12px -6px rgba(0,47,108,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <div>
-        <div style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>{label}</div>
-        <div style={{ fontSize: 28, fontWeight: 700 }}>{value}</div>
-      </div>
-      <i className={`fas ${icon}`} style={{ fontSize: 28, color }}></i>
-    </div>
-  );
-}
-
-function AddItemForm({ storeId, categories, token, onClose }: { storeId: number; categories: Category[]; token: string; onClose: () => void }) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [categoryId, setCategoryId] = useState(categories[0]?.id || 0);
-  const [saving, setSaving] = useState(false);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await apiFetch(`/admin/stores/${storeId}/items`, token, {
-        method: 'POST',
-        body: JSON.stringify({
-          name, description, base_price: parseFloat(price),
-          category_id: categoryId, is_available: true, display_order: 0,
-        }),
-      });
-      onClose();
-    } catch {} finally { setSaving(false); }
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Name</label>
-        <input value={name} onChange={e => setName(e.target.value)} required />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} style={{ outline: 'none', border: '1px solid #DDE3E9', borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%' }} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Price (RM)</label>
-        <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Category</label>
-        <select value={categoryId} onChange={e => setCategoryId(Number(e.target.value))}>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
-        {saving ? 'Saving...' : 'Create Item'}
-      </button>
-    </form>
-  );
-}
-
-function AddTableForm({ storeId, token, onClose }: { storeId: number; token: string; onClose: () => void }) {
-  const [number, setNumber] = useState('');
-  const [capacity, setCapacity] = useState('4');
-  const [saving, setSaving] = useState(false);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await apiFetch(`/admin/stores/${storeId}/tables`, token, {
-        method: 'POST',
-        body: JSON.stringify({ table_number: number, capacity: parseInt(capacity) }),
-      });
-      onClose();
-    } catch {} finally { setSaving(false); }
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Table Number</label>
-        <input value={number} onChange={e => setNumber(e.target.value)} required placeholder="e.g. 11" />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Capacity</label>
-        <input type="number" value={capacity} onChange={e => setCapacity(e.target.value)} required />
-      </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
-        {saving ? 'Saving...' : 'Add Table'}
-      </button>
-    </form>
-  );
-}
-
-function AddRewardForm({ token, onClose }: { token: string; onClose: () => void }) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [pointsCost, setPointsCost] = useState('');
-  const [rewardType, setRewardType] = useState('free_item');
-  const [saving, setSaving] = useState(false);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await apiFetch('/admin/rewards', token, {
-        method: 'POST',
-        body: JSON.stringify({
-          name, description, points_cost: parseInt(pointsCost),
-          reward_type: rewardType, is_active: true,
-        }),
-      });
-      onClose();
-    } catch {} finally { setSaving(false); }
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Name</label>
-        <input value={name} onChange={e => setName(e.target.value)} required />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
-        <input value={description} onChange={e => setDescription(e.target.value)} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Points Cost</label>
-        <input type="number" value={pointsCost} onChange={e => setPointsCost(e.target.value)} required />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Type</label>
-        <select value={rewardType} onChange={e => setRewardType(e.target.value)}>
-          <option value="free_item">Free Item</option>
-          <option value="discount_voucher">Discount Voucher</option>
-          <option value="custom">Custom</option>
-        </select>
-      </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
-        {saving ? 'Creating...' : 'Create Reward'}
-      </button>
-    </form>
-  );
-}
-
-function AddVoucherForm({ token, onClose }: { token: string; onClose: () => void }) {
-  const [code, setCode] = useState('');
-  const [description, setDescription] = useState('');
-  const [discountType, setDiscountType] = useState('fixed');
-  const [discountValue, setDiscountValue] = useState('');
-  const [minOrder, setMinOrder] = useState('0');
-  const [saving, setSaving] = useState(false);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await apiFetch('/admin/vouchers', token, {
-        method: 'POST',
-        body: JSON.stringify({
-          code: code.toUpperCase(), description,
-          discount_type: discountType,
-          discount_value: parseFloat(discountValue),
-          min_order: parseFloat(minOrder),
-          is_active: true,
-        }),
-      });
-      onClose();
-    } catch {} finally { setSaving(false); }
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Code</label>
-        <input value={code} onChange={e => setCode(e.target.value.toUpperCase())} required placeholder="e.g. SUMMER20" />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
-        <input value={description} onChange={e => setDescription(e.target.value)} />
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Type</label>
-          <select value={discountType} onChange={e => setDiscountType(e.target.value)}>
-            <option value="fixed">Fixed (RM)</option>
-            <option value="percent">Percent (%)</option>
-          </select>
-        </div>
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Value</label>
-          <input type="number" step="0.01" value={discountValue} onChange={e => setDiscountValue(e.target.value)} required />
-        </div>
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Min Order (RM)</label>
-        <input type="number" step="0.01" value={minOrder} onChange={e => setMinOrder(e.target.value)} />
-      </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
-        {saving ? 'Creating...' : 'Create Voucher'}
-      </button>
-    </form>
-  );
-}
-
-function StoreSettingsForm({ store, token }: { store: Store; token: string }) {
-  const [name, setName] = useState(store.name);
-  const [address, setAddress] = useState(store.address);
-  const [phone, setPhone] = useState(store.phone);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setSaved(false);
-    try {
-      const res = await apiFetch(`/stores/${store.id}`, token, {
-        method: 'PUT',
-        body: JSON.stringify({ name, address, phone }),
-      });
-      if (res.ok) setSaved(true);
-    } catch {} finally { setSaving(false); }
-  }
-
-  return (
-    <div className="card">
-      <h3 style={{ marginBottom: 20 }}>Store Configuration</h3>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Store Name</label>
-          <input value={name} onChange={e => setName(e.target.value)} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Address</label>
-          <input value={address} onChange={e => setAddress(e.target.value)} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Phone</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Slug</label>
-          <input value={store.slug} disabled style={{ background: '#F1F5F9' }} />
-        </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          {saved && <span style={{ color: '#059669', fontWeight: 500 }}><i className="fas fa-check"></i> Saved!</span>}
-        </div>
-      </form>
     </div>
   );
 }
