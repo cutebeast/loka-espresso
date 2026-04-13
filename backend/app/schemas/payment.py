@@ -17,7 +17,7 @@ class PaymentMethodOut(BaseModel):
     type: Optional[str] = None
     provider: Optional[str] = None
     last4: Optional[str] = None
-    is_default: int = 0
+    is_default: bool = False
 
     class Config:
         from_attributes = True

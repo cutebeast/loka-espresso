@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, DECIMAL
 from app.core.database import Base
 
 
@@ -25,7 +25,7 @@ class Referral(Base):
     referrer_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     invitee_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     code = Column(String(50), unique=True, nullable=False, index=True)
-    reward_amount = Column(String(50), nullable=True)
+    reward_amount = Column(DECIMAL(10, 2), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
 
 

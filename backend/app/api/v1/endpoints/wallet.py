@@ -32,7 +32,7 @@ async def topup_wallet(req: WalletTopup, user: User = Depends(get_current_user),
     wallet = await _get_or_create_wallet(user.id, db)
     wallet.balance += req.amount
     tx = WalletTransaction(
-        wallet_id=wallet.id, amount=req.amount,
+        wallet_id=wallet.id, user_id=user.id, amount=req.amount,
         type=WalletTxType.topup, description=req.description or "Top up",
     )
     db.add(tx)

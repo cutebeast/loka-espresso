@@ -35,6 +35,20 @@ class OrderStatusUpdate(BaseModel):
     note: Optional[str] = None
 
 
+class OrderItemOut(BaseModel):
+    id: int
+    order_id: int
+    menu_item_id: Optional[int] = None
+    name: str
+    quantity: int
+    unit_price: float
+    customizations: Optional[dict] = None
+    line_total: float
+
+    class Config:
+        from_attributes = True
+
+
 class OrderOut(BaseModel):
     id: int
     user_id: int

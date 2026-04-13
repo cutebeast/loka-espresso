@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, DECIMAL, JSON
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, DECIMAL, JSON, Text
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -32,6 +32,7 @@ class LoyaltyTransaction(Base):
         expire = "expire"
 
     type = Column(Enum(TxType), nullable=False)
+    description = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
 
 

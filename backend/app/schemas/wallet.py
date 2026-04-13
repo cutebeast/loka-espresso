@@ -23,6 +23,7 @@ class WalletTransactionOut(BaseModel):
     amount: float
     type: str
     description: Optional[str] = None
+    user_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
     class Config:

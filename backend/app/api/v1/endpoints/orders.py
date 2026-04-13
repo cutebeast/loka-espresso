@@ -8,7 +8,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user, require_role
 from app.core.audit import log_action
 from app.models.user import User
-from app.models.order import Order, OrderStatusHistory, OrderType, OrderStatus, CartItem
+from app.models.order import Order, OrderStatusHistory, OrderType, OrderStatus, CartItem, OrderItem
 from app.models.menu import MenuItem
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.notification import Notification
@@ -71,6 +71,18 @@ async def create_order(
     )
     db.add(order)
     await db.flush()
+
+    # Write normalized order_items
+    for oi in order_items:
+        db.add(OrderItem(
+            order_id=order.id,
+            menu_item_id=oi.get("item_id"),
+            name=oi["name"],
+            quantity=oi["quantity"],
+            unit_price=oi["unit_price"],
+            customizations=oi.get("customizations"),
+            line_total=oi["line_total"],
+        ))
 
     history = OrderStatusHistory(order_id=order.id, status=OrderStatus.pending, note="Order placed")
     db.add(history)

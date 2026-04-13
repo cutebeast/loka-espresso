@@ -20,18 +20,6 @@ class OrderStatus(str, enum.Enum):
     cancelled = "cancelled"
 
 
-class DeliveryAddress(Base):
-    __tablename__ = "delivery_addresses"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    label = Column(String(100), nullable=False)
-    address = Column(Text, nullable=False)
-    lat = Column(DECIMAL(10, 7), nullable=False)
-    lng = Column(DECIMAL(10, 7), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
-
-
 class CartItem(Base):
     __tablename__ = "cart_items"
 
@@ -54,7 +42,7 @@ class Order(Base):
     table_id = Column(Integer, ForeignKey("store_tables.id"), nullable=True)
     order_number = Column(String(50), unique=True, nullable=False, index=True)
     order_type = Column(Enum(OrderType), nullable=False)
-    items = Column(JSON, nullable=False)
+    items = Column(JSON, nullable=False)  # Kept as JSON for backwards compat; also stored in order_items
     subtotal = Column(DECIMAL(10, 2), nullable=False)
     delivery_fee = Column(DECIMAL(10, 2), default=0)
     discount = Column(DECIMAL(10, 2), default=0)
@@ -71,6 +59,24 @@ class Order(Base):
 
     status_history = relationship("OrderStatusHistory", back_populates="order", cascade="all, delete-orphan")
     payment = relationship("Payment", back_populates="order", uselist=False)
+    order_items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=True, index=True)
+    name = Column(String(255), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    unit_price = Column(DECIMAL(10, 2), nullable=False)
+    customizations = Column(JSON, nullable=True)
+    line_total = Column(DECIMAL(10, 2), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+
+    order = relationship("Order", back_populates="order_items")
+    menu_item = relationship("MenuItem")
 
 
 class OrderStatusHistory(Base):

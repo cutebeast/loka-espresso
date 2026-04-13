@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, DECIMAL, Text
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, DECIMAL, Text, Boolean
 from app.core.database import Base
 
 
@@ -24,6 +24,7 @@ class WalletTransaction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     amount = Column(DECIMAL(10, 2), nullable=False)
     type = Column(Enum(WalletTxType), nullable=False)
     description = Column(Text, nullable=True)
@@ -38,4 +39,4 @@ class PaymentMethod(Base):
     type = Column(String(50), nullable=True)
     provider = Column(String(50), nullable=True)
     last4 = Column(String(4), nullable=True)
-    is_default = Column(Integer, default=0)
+    is_default = Column(Boolean, default=False)

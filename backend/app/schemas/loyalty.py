@@ -18,6 +18,7 @@ class LoyaltyTransactionOut(BaseModel):
     type: str
     order_id: Optional[int] = None
     store_id: Optional[int] = None
+    description: Optional[str] = None
     created_at: Optional[datetime] = None
 
     class Config:
