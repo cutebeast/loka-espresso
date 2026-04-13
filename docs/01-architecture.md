@@ -1,6 +1,6 @@
 # FNB Super-App — Architecture Overview
 
-> Last updated: 2026-04-13
+> Last updated: 2026-04-13 | Phase 2 Complete
 
 ## System Architecture
 
@@ -88,9 +88,9 @@ Config files:
 |-----------|-----------|
 | Framework | Next.js 16 + TypeScript |
 | Styling | Tailwind CSS 4 |
-| Architecture | Single-page client component (no SSR routing) |
-| Merchant | 11 component files in `src/components/` |
-| Customer | Single `page.tsx` (PWA) |
+| Architecture | Single-page client components (no SSR routing) |
+| Merchant | 12 component files in `src/components/` (pages, modals, charts) |
+| Customer | 10 component files + shared React Context (`src/lib/app-context.tsx`) |
 
 ## Project Structure
 
@@ -110,21 +110,41 @@ Config files:
 │   │   │   ├── database.py       # Async SQLAlchemy engine
 │   │   │   ├── security.py       # JWT + ACL system + token blacklist check
 │   │   │   └── audit.py          # log_action() helper
-│   │   ├── models/               # 16 model files, 39 tables
+│   │   ├── models/               # 15 model files, 41 tables
 │   │   ├── schemas/              # Pydantic request/response schemas
 │   │   └── api/v1/
 │   │       ├── router.py         # Assembles all endpoint routers
-│   │       └── endpoints/        # 29 endpoint files
+│   │       └── endpoints/        # 29 endpoint files, 112 routes
 │   └── seed_full.sql             # Comprehensive seed data
 ├── frontend/                     # Merchant Dashboard (Next.js)
 │   └── src/
-│       ├── app/page.tsx
-│       ├── components/           # 11 component files
+│       ├── app/page.tsx          # Main SPA entry
+│       ├── components/           # 12 component files
+│       │   ├── pages/            # DashboardPage, OrdersPage, MenuPage, TablesPage, CustomersPage
+│       │   ├── charts.tsx        # SVG BarChart, DonutChart, SparkLine
+│       │   ├── LoginScreen.tsx
+│       │   ├── Sidebar.tsx
+│       │   └── Modals.tsx        # All modal forms
 │       └── lib/
 │           ├── merchant-api.tsx  # API helpers
 │           └── merchant-types.ts # TypeScript interfaces
 ├── customer-app/                 # Customer PWA (Next.js)
-│   └── src/app/page.tsx
+│   └── src/
+│       ├── app/page.tsx          # Entry → AppShell
+│       ├── components/           # 10 component files
+│       │   ├── AppShell.tsx      # Main shell (header, nav, modals)
+│       │   ├── HomePage.tsx
+│       │   ├── MenuPage.tsx
+│       │   ├── RewardsPage.tsx
+│       │   ├── CartPage.tsx
+│       │   ├── OrdersPage.tsx
+│       │   ├── ProfilePage.tsx
+│       │   ├── HistoryPage.tsx
+│       │   ├── LoginModal.tsx
+│       │   └── StoreLocator.tsx
+│       └── lib/
+│           ├── api.ts            # API helper + types
+│           └── app-context.tsx   # Shared React Context (state management)
 └── docs/                         # Documentation
 ```
 
@@ -173,7 +193,19 @@ Located at `/root/fnb-super-app/.env`. Resolved via `env_file = "../.env"` from 
 ## Security
 
 - **JWT Token Blacklist**: Every JWT includes a `jti` claim. On logout, the JTI is stored in the `token_blacklist` table. `get_current_user()` checks the blacklist on every request.
-- **PIN Rate Limiting**: Staff clock-in attempts are rate-limited to 5 per 5 minutes per staff member (in-memory tracking).
-- **Soft Deletes**: `menu_items`, `vouchers`, `rewards` use `deleted_at`. Menu items also set `is_available=false`.
+- **PIN Rate Limiting**: Staff clock-in attempts are rate-limited to 5 per 5 minutes per staff member (database-backed via `pin_attempts` table).
+- **API Rate Limiting**: slowapi on auth endpoints — send-otp 5/min, register 5/min, login 10/min. Shared Limiter instance across all decorated endpoints.
+- **Soft Deletes**: `menu_items`, `vouchers`, `rewards` use `deleted_at`. GET endpoints filter `WHERE deleted_at IS NULL` by default; admin endpoints accept `?include_deleted=true`.
+- **File Upload Validation**: 5MB max size, only JPEG/PNG/WebP/GIF MIME types allowed.
 - **Order Cancel Rollback**: Cancelling an order reverses loyalty points with a negative `LoyaltyTransaction`.
+- **Cross-Store Cart Guard**: Adding items from a different store returns 400. User must clear cart first.
 - **ACL**: Two-tier access control — `UserRole` (admin/store_owner/customer) + `StaffRole` (manager/assistant_manager/barista/cashier/delivery) with per-store isolation.
+- **Delivery Provider**: Delivery orders set `delivery_provider` field (defaults to `"internal"`, can be `"grab"`, `"panda"`, etc.).
+
+## Phase Status
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| Phase 1 | ✅ Complete | Core backend (112 endpoints, 41 tables), merchant dashboard, customer PWA, security hardening |
+| Phase 2 | ✅ Complete | Production readiness — bug fixes, rate limiting, soft delete filters, charts, PWA refactor |
+| Phase 3 | 🔲 Pending | External integrations — Stripe payments, Twilio SMS, WhatsApp Business, Firebase FCM |

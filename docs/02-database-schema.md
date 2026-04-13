@@ -1,6 +1,6 @@
 # FNB Super-App — Database Schema
 
-> Last updated: 2026-04-13 | PostgreSQL 16 | Database: `fnb` | 39 tables | 60 FKs | 1 trigger
+> Last updated: 2026-04-13 | PostgreSQL 16 | Database: `fnb` | 41 tables | 60+ FKs | 1 trigger
 
 ## Enums
 
@@ -286,7 +286,7 @@ Status change timeline for each order.
 | created_at | timestamptz | YES | now() | |
 
 #### `cart_items`
-Shopping cart. One cart per user. HYBRID.
+Shopping cart. One cart per user. HYBRID. Supports normalized customization options.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
@@ -295,7 +295,8 @@ Shopping cart. One cart per user. HYBRID.
 | store_id | integer | NO | | FK→stores.id |
 | item_id | integer | NO | | FK→menu_items.id |
 | quantity | integer | NO | 1 | |
-| customizations | json | YES | | Selected customizations |
+| customizations | json | YES | | Resolved customization details (name + price_adjustment) |
+| customization_option_ids | integer[] | YES | | FK→customization_options.id (normalized references) |
 | unit_price | numeric(10,2) | NO | | Price at add time |
 | created_at | timestamptz | YES | now() | |
 
@@ -521,6 +522,17 @@ Clock-in/out records.
 | clock_out | timestamptz | YES | | Clock-out time (null = still on shift) |
 | notes | text | YES | | Shift notes |
 | created_at | timestamptz | YES | now() | |
+
+#### `pin_attempts`
+Database-backed PIN rate limiting. Persists across process restarts.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | integer | NO | auto | PK |
+| staff_id | integer | NO | | FK→staff.id (ON DELETE CASCADE) |
+| attempted_at | timestamptz | NO | now() | When the attempt occurred |
+
+**Rate limit rule:** Max 5 attempts per 5 minutes per staff_id. Enforced in `admin_staff.py:_check_pin_rate_limit()`.
 
 ---
 

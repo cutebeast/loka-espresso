@@ -1,7 +1,7 @@
 # FNB Super-App — Alignment Verification
 
-> Last updated: 2026-04-13
-> Purpose: Ensure models ↔ DB ↔ endpoints are aligned before backend testing
+> Last updated: 2026-04-13 | Phase 2 Complete
+> Purpose: Ensure models ↔ DB ↔ endpoints are aligned
 
 ## Migration History
 
@@ -15,8 +15,9 @@
 | b7c8d9e0f1a2 | Schema v5: delivery provider, soft deletes, occupancy, marketing, customizations |
 | c8d9e0f1a2b3 | Schema v6: token_blacklist, device_tokens.is_active |
 | d1e2f3a4b5c6 | Schema v7: staff unique constraint (store_id, user_id), referral timing guard |
+| e2f3a4b5c6d7 | Schema v8: cart customization_option_ids, pin_attempts table |
 
-**Current head:** `d1e2f3a4b5c6`
+**Current head:** `e2f3a4b5c6d7`
 
 ## Model Files vs DB Tables
 
@@ -32,7 +33,7 @@
 | menu.py | MenuCategory | menu_categories | ✅ Aligned |
 | menu.py | MenuItem | menu_items | ✅ Aligned (deleted_at added) |
 | menu.py | InventoryItem | inventory_items | ✅ Aligned |
-| order.py | CartItem | cart_items | ✅ Aligned |
+| order.py | CartItem | cart_items | ✅ Aligned (customization_option_ids added v8) |
 | order.py | Order | orders | ✅ Aligned (delivery_provider added) |
 | order.py | OrderItem | order_items | ✅ Aligned (ON DELETE SET NULL) |
 | order.py | OrderStatusHistory | order_status_history | ✅ Aligned |
@@ -54,6 +55,7 @@
 | splash.py | SplashContent | splash_content | ✅ Aligned |
 | staff.py | Staff | staff | ✅ Aligned (unique: store_id+user_id partial index) |
 | staff.py | StaffShift | staff_shifts | ✅ Aligned |
+| staff.py | PinAttempt | pin_attempts | ✅ New table (v8) |
 | admin_extras.py | Feedback | feedback | ✅ Aligned |
 | admin_extras.py | AuditLog | audit_log | ✅ Aligned |
 | admin_extras.py | NotificationBroadcast | notification_broadcasts | ✅ Aligned |
@@ -62,7 +64,7 @@
 | marketing.py | MarketingCampaign | marketing_campaigns | ✅ New table |
 | marketing.py | TableOccupancySnapshot | table_occupancy_snapshot | ✅ New table |
 
-**Total: 39 tables, 39 models, 15 model files — ALL ALIGNED ✅**
+**Total: 41 tables, 41 models, 15 model files — ALL ALIGNED ✅**
 
 ## Endpoint Files vs Router Registration
 

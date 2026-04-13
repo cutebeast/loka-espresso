@@ -1,6 +1,6 @@
 # FNB Super-App — Test Credentials & Verification Guide
 
-> Last updated: 2026-04-13
+> Last updated: 2026-04-13 | Phase 2 Complete
 
 ## Test Accounts
 
@@ -245,6 +245,82 @@ curl -s -X POST https://admin.loyaltysystem.uk/api/v1/admin/stores/1/items/1/cus
 # 5. PATCH /orders/{id}/status — update status (admin/staff)
 ```
 
+### 17. Staff Clock-In/Out (Phase 2 Fix)
+```bash
+# Clock in with valid PIN
+curl -s -X POST http://localhost:8000/api/v1/admin/staff/1/clock-in \
+  -H "Content-Type: application/json" \
+  -d '{"pin_code":"1234"}'
+# Expected: { "detail": "Clocked in", "shift_id": <id> }
+
+# Clock out
+curl -s -X POST http://localhost:8000/api/v1/admin/staff/1/clock-out
+# Expected: { "detail": "Clocked out", "shift_id": <id> }
+
+# Wrong PIN → 400
+curl -s -X POST http://localhost:8000/api/v1/admin/staff/1/clock-in \
+  -H "Content-Type: application/json" \
+  -d '{"pin_code":"0000"}'
+# Expected: { "detail": "Invalid PIN" }
+```
+
+### 18. Soft Delete Filters (Phase 2)
+```bash
+# Admin list vouchers — excludes soft-deleted by default
+curl -s https://admin.loyaltysystem.uk/api/v1/admin/vouchers \
+  -H "Authorization: Bearer $TOKEN"
+# Expected: only vouchers where deleted_at IS NULL
+
+# Include deleted vouchers
+curl -s "https://admin.loyaltysystem.uk/api/v1/admin/vouchers?include_deleted=true" \
+  -H "Authorization: Bearer $TOKEN"
+# Expected: all vouchers including soft-deleted ones
+```
+
+### 19. API Rate Limiting (Phase 2)
+```bash
+# Send more than 5 OTPs in 1 minute → 429
+for i in $(seq 1 6); do
+  curl -s -w "HTTP:%{http_code}\n" -X POST http://localhost:8000/api/v1/auth/send-otp \
+    -H "Content-Type: application/json" \
+    -d '{"phone":"+60123456789"}'
+done
+# Expected: 5 × 200, then 1 × 429 Too Many Requests
+```
+
+### 20. File Upload Validation (Phase 2)
+```bash
+# Valid image upload (must be <5MB, JPEG/PNG/WebP/GIF)
+curl -s -X POST https://admin.loyaltysystem.uk/api/v1/upload/image \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@test-image.jpg"
+# Expected: { "url": "/uploads/menu/<uuid>.jpg", "filename": "<uuid>.jpg" }
+
+# Invalid file type → 400
+curl -s -X POST https://admin.loyaltysystem.uk/api/v1/upload/image \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@document.pdf"
+# Expected: { "detail": "Only JPEG, PNG, WebP, GIF images allowed" }
+```
+
+### 21. Delivery Order with Provider (Phase 2)
+```bash
+# Create delivery order — delivery_provider is set automatically
+curl -s -X POST https://admin.loyaltysystem.uk/api/v1/orders \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"order_type":"delivery","store_id":1,"delivery_address":{"line1":"123 Jalan Bukit Bintang"},"delivery_provider":"internal"}'
+# Expected: delivery_provider="internal", delivery_fee=3.00
+```
+
+### 22. Cart with Customization Options (Phase 2)
+```bash
+# Add item with normalized customization_option_ids
+curl -s -X POST https://admin.loyaltysystem.uk/api/v1/cart/items \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"store_id":1,"item_id":1,"quantity":1,"customization_option_ids":[1,2]}'
+# Expected: customizations resolved to {"options":[{"id":1,"name":"Extra Shot","price_adjustment":1.5},...]}
+```
+
 ## Common API Base URLs
 
 | Purpose | URL |
@@ -283,6 +359,16 @@ docker exec -it fnb-db psql -U fnb -d fnb
 3. **Store owner password** was previously wrong hash — fixed to admin123 hash
 4. **Merchant frontend** is a single SPA — no Next.js routing, all state in one page
 5. **Middleware.ts** in Next.js caused infinite loops — disabled (no-op)
-6. **OTP login** is stubbed — no actual SMS sending
+6. **OTP login** is stubbed — no actual SMS sending (prints to backend logs)
 7. **Payment intents** are stubbed — no Stripe integration yet
 8. **Naive datetimes** — all models use `datetime.utcnow()`, no timezone awareness
+9. **Customer users** have dummy password hashes (`$2b$12$dummyhash*`) — they can only log in via OTP, not password
+10. **Shared Limiter** — `app/api/v1/endpoints/auth.py` exports the Limiter instance; `main.py` imports it for `app.state.limiter`
+
+## Phase History
+
+| Phase | Status | Key Deliverables |
+|-------|--------|-----------------|
+| Phase 1 | ✅ Complete | 112 endpoints, 41 tables, merchant dashboard (10 pages), customer PWA, security hardening |
+| Phase 2 | ✅ Complete | Staff clock-in fix, rate limiting (slowapi), soft delete filters, file upload validation, charts (BarChart/DonutChart/SparkLine), PWA refactor (10 components + Context), delivery_provider, customization integration |
+| Phase 3 | 🔲 Pending | Stripe payments, Twilio SMS OTP, WhatsApp Business API, Firebase FCM |

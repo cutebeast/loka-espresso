@@ -3,6 +3,17 @@
 > Last updated: 2026-04-13 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 112 endpoints
 > OpenAPI docs: `https://admin.loyaltysystem.uk/docs`
 
+## Rate Limiting
+
+API rate limiting via slowapi (IP-based):
+
+| Endpoint | Limit |
+|----------|-------|
+| `POST /auth/send-otp` | 5 requests/minute |
+| `POST /auth/register` | 5 requests/minute |
+| `POST /auth/login-password` | 10 requests/minute |
+| `POST /admin/staff/{id}/clock-in` | 5 PIN attempts/5 minutes (database-backed) |
+
 ## Authentication
 
 All authenticated endpoints require `Authorization: Bearer <JWT>` header.
@@ -166,7 +177,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/admin/vouchers` | admin | List all vouchers |
+| GET | `/admin/vouchers` | admin | List all vouchers (excludes soft-deleted; `?include_deleted=true` to see all) |
 | POST | `/admin/vouchers` | admin | Create voucher |
 | PUT | `/admin/vouchers/{voucher_id}` | admin | Update voucher |
 | DELETE | `/admin/vouchers/{voucher_id}` | admin | **Soft-delete** voucher |
@@ -179,7 +190,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/admin/rewards` | admin | List all rewards |
+| GET | `/admin/rewards` | admin | List all rewards (excludes soft-deleted; `?include_deleted=true` to see all) |
 | POST | `/admin/rewards` | admin | Create reward |
 | PUT | `/admin/rewards/{reward_id}` | admin | Update reward |
 | DELETE | `/admin/rewards/{reward_id}` | admin | **Soft-delete** reward |
@@ -215,7 +226,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
 | GET | `/cart` | customer | Get current cart |
-| POST | `/cart/items` | customer | Add item to cart (**400 if cart has items from a different store**) |
+| POST | `/cart/items` | customer | Add item to cart (**400 if cart has items from a different store**). Accepts `customization_option_ids` for normalized add-ons. |
 | PUT | `/cart/items/{item_id}` | customer | Update cart item quantity |
 | DELETE | `/cart/items/{item_id}` | customer | Remove from cart |
 | DELETE | `/cart` | customer | Clear entire cart |
@@ -337,6 +348,14 @@ The `require_store_access` dependency checks for a matching staff record at the 
   "payment_method": "wallet",
   "notes": "Less sugar please"
 }
+
+// Delivery order
+{
+  "store_id": 1,
+  "order_type": "delivery",
+  "delivery_address": {"line1": "123 Jalan Bukit Bintang"},
+  "delivery_provider": "internal"
+}
 ```
 
 ### Store-Scoped Access Error
@@ -377,9 +396,12 @@ The `require_store_access` dependency checks for a matching staff record at the 
 ## Security Features
 
 - **JWT Token Blacklist**: Tokens include a `jti` claim. On logout, the JTI is stored in `token_blacklist` table. Every request checks if the token's JTI is blacklisted.
-- **PIN Rate Limiting**: Staff clock-in PIN attempts are rate-limited to 5 per 5 minutes per staff member (in-memory tracking).
-- **Soft Deletes**: Menu items, vouchers, and rewards use `deleted_at` timestamp instead of hard deletion. Menu items also set `is_available=false`.
+- **API Rate Limiting**: slowapi on auth endpoints — send-otp 5/min, register 5/min, login 10/min. Shared Limiter instance registered via `app.state.limiter`.
+- **PIN Rate Limiting**: Staff clock-in PIN attempts are rate-limited to 5 per 5 minutes per staff member (database-backed via `pin_attempts` table).
+- **Soft Deletes**: Menu items, vouchers, and rewards use `deleted_at` timestamp. GET endpoints filter `WHERE deleted_at IS NULL` by default. Admin endpoints accept `?include_deleted=true`.
+- **File Upload Validation**: `POST /upload/image` enforces 5MB max size and JPEG/PNG/WebP/GIF MIME types only.
 - **Order Cancellation Rollback**: Cancelling an order reverses loyalty points earned (creates a reversal `LoyaltyTransaction` with negative points).
 - **Cross-Store Cart Guard**: Adding items from a different store than the current cart returns 400. User must clear cart first.
 - **Referral Code Expiry**: Referral codes can only be applied within 7 days of account creation. Each user can apply only one referral code.
 - **Staff Unique Constraint**: Partial unique index `(store_id, user_id) WHERE user_id IS NOT NULL` prevents duplicate staff records.
+- **Delivery Provider**: Delivery orders populate `delivery_provider` field (defaults to `"internal"`).
