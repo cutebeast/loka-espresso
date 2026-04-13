@@ -95,14 +95,65 @@ curl -s https://admin.loyaltysystem.uk/api/v1/admin/dashboard \
 #       The staff records at stores 1+2 are additional, not limiting.
 ```
 
-### 5. Soft Delete Verification
+### 5. Cross-Store Cart Guard
+```bash
+TOKEN=$(curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/login-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@loyaltysystem.uk","password":"admin123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+
+# Add item from store 1
+curl -s -X POST https://admin.loyaltysystem.uk/api/v1/cart/items \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"store_id":1,"item_id":1,"quantity":1}'
+# Expected: 201 Created
+
+# Try adding from store 2 — should fail
+curl -s -w "\nHTTP:%{http_code}\n" -X POST https://admin.loyaltysystem.uk/api/v1/cart/items \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"store_id":2,"item_id":5,"quantity":1}'
+# Expected: 400 "Cart contains items from a different store..."
+
+# Clear cart, then add from store 2 — should succeed
+curl -s -X DELETE https://admin.loyaltysystem.uk/api/v1/cart -H "Authorization: Bearer $TOKEN"
+curl -s -X POST https://admin.loyaltysystem.uk/api/v1/cart/items \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"store_id":2,"item_id":5,"quantity":1}'
+# Expected: 201 Created
+```
+
+### 6. Soft Delete Verification
 ```bash
 # DELETE /admin/stores/1/items/{item_id}
 # Expected: item gets deleted_at = NOW() AND is_available = false
 # Verify: SELECT id, name, deleted_at, is_available FROM menu_items WHERE deleted_at IS NOT NULL;
 ```
 
-### 6. Token Blacklist / Logout
+### 7. Staff Unique Constraint
+```bash
+# Verify partial unique index exists:
+docker exec fnb-db psql -U fnb -d fnb -c \
+  "SELECT indexdef FROM pg_indexes WHERE tablename='staff' AND indexname='uq_staff_store_user';"
+# Expected: CREATE UNIQUE INDEX ... WHERE (user_id IS NOT NULL)
+
+# Attempt duplicate — should fail:
+docker exec fnb-db psql -U fnb -d fnb -c \
+  "INSERT INTO staff (store_id, user_id, name, role, is_active) VALUES (1, 7, 'Dup', 'barista', true);"
+# Expected: ERROR: duplicate key value violates unique constraint "uq_staff_store_user"
+```
+
+### 8. Referral Code Timing Guard
+```bash
+# Accounts older than 7 days cannot apply referral codes:
+TOKEN=$(curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/login-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@loyaltysystem.uk","password":"admin123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+
+curl -s -w "\nHTTP:%{http_code}\n" -X POST "https://admin.loyaltysystem.uk/api/v1/referral/apply?code=REF-2-ABC123" \
+  -H "Authorization: Bearer $TOKEN"
+# Expected: 400 "Referral codes can only be applied within 7 days of account creation"
+```
+
+### 9. Token Blacklist / Logout
 ```bash
 TOKEN=$(curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/login-password \
   -H "Content-Type: application/json" \
@@ -121,7 +172,7 @@ curl -s https://admin.loyaltysystem.uk/api/v1/users/me -H "Authorization: Bearer
 # Expected: { "detail": "Token has been revoked" }
 ```
 
-### 7. PIN Rate Limiting
+### 10. PIN Rate Limiting
 ```bash
 # 5 wrong PINs → 6th attempt returns 429
 for i in $(seq 1 6); do
@@ -132,7 +183,7 @@ done
 # Expected: 5 × 400 "Invalid PIN", then 1 × 429 "Too many PIN attempts"
 ```
 
-### 8. Order Cancel with Loyalty Rollback
+### 11. Order Cancel with Loyalty Rollback
 ```bash
 # Cancel an order that earned loyalty points
 # Before cancel: check user's loyalty balance
@@ -147,7 +198,7 @@ curl -s -X POST https://admin.loyaltysystem.uk/api/v1/orders/20/cancel \
 # A reversal LoyaltyTransaction with negative points should exist
 ```
 
-### 9. Table Occupancy Override
+### 12. Table Occupancy Override
 ```bash
 # Manual override table occupancy (bypass trigger)
 curl -s -X PATCH https://admin.loyaltysystem.uk/api/v1/admin/stores/1/tables/1/occupancy \
@@ -157,7 +208,7 @@ curl -s -X PATCH https://admin.loyaltysystem.uk/api/v1/admin/stores/1/tables/1/o
 # Expected: { "table_id": 1, "is_occupied": true }
 ```
 
-### 10. Customization Options CRUD
+### 13. Customization Options CRUD
 ```bash
 # List customizations for menu item 1
 curl -s https://admin.loyaltysystem.uk/api/v1/admin/stores/1/items/1/customizations \
@@ -172,20 +223,20 @@ curl -s -X POST https://admin.loyaltysystem.uk/api/v1/admin/stores/1/items/1/cus
 # Expected: { "id": ..., "name": "Size", ... }
 ```
 
-### 11. Table Occupancy Trigger
+### 14. Table Occupancy Trigger
 ```bash
 # 1. Create a dine-in order with status=confirmed → table should become occupied
 # 2. Update order status to completed → table should become free
 # Verify: SELECT * FROM table_occupancy_snapshot WHERE is_occupied = TRUE;
 ```
 
-### 12. Marketing Campaigns
+### 15. Marketing Campaigns
 ```bash
 # GET /admin/marketing/campaigns
 # Expected: { total: 3, campaigns: [...] }
 ```
 
-### 13. Order Flow
+### 16. Order Flow
 ```bash
 # 1. POST /cart/items — add item to cart
 # 2. GET /cart — verify cart

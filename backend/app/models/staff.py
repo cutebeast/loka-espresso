@@ -15,6 +15,8 @@ class StaffRole(str, enum.Enum):
 
 class Staff(Base):
     __tablename__ = "staff"
+    # DB has partial unique index: (store_id, user_id) WHERE user_id IS NOT NULL
+    # enforced by migration d1e2f3a4b5c6, not by SQLAlchemy __table_args__
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)

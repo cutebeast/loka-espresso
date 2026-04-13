@@ -506,7 +506,7 @@ Staff members at stores. PER-STORE. Same user can have records at multiple store
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 
-**Unique:** (store_id, email) — same email at different stores = different rows
+**Unique:** (store_id, user_id) WHERE user_id IS NOT NULL — partial unique index prevents duplicate staff records at the same store. NULL user_id rows (PIN-only staff) are exempt.
 **Indexes:** user_id, store_id
 
 #### `staff_shifts`

@@ -215,7 +215,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
 | GET | `/cart` | customer | Get current cart |
-| POST | `/cart/items` | customer | Add item to cart |
+| POST | `/cart/items` | customer | Add item to cart (**400 if cart has items from a different store**) |
 | PUT | `/cart/items/{item_id}` | customer | Update cart item quantity |
 | DELETE | `/cart/items/{item_id}` | customer | Remove from cart |
 | DELETE | `/cart` | customer | Clear entire cart |
@@ -302,7 +302,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
 | GET | `/referral/code` | customer | Get my referral code |
-| POST | `/referral/apply` | customer | Apply referral code |
+| POST | `/referral/apply` | customer | Apply referral code (**≤7 days after account creation, one-time only**) |
 | GET | `/favorites` | customer | List my favorites |
 | POST | `/favorites/{item_id}` | customer | Add to favorites |
 | DELETE | `/favorites/{item_id}` | customer | Remove from favorites |
@@ -358,6 +358,20 @@ The `require_store_access` dependency checks for a matching staff record at the 
 { "detail": "Too many PIN attempts. Try again after 5 minutes." }
 ```
 
+### Cross-Store Cart Rejection
+```json
+// 400 Bad Request (cart has items from a different store)
+{ "detail": "Cart contains items from a different store. Clear your cart first before adding items from this store." }
+```
+
+### Referral Code Expiry
+```json
+// 400 Bad Request (account too old for referral)
+{ "detail": "Referral codes can only be applied within 7 days of account creation" }
+// 400 Bad Request (already applied a referral)
+{ "detail": "You have already applied a referral code" }
+```
+
 ---
 
 ## Security Features
@@ -366,3 +380,6 @@ The `require_store_access` dependency checks for a matching staff record at the 
 - **PIN Rate Limiting**: Staff clock-in PIN attempts are rate-limited to 5 per 5 minutes per staff member (in-memory tracking).
 - **Soft Deletes**: Menu items, vouchers, and rewards use `deleted_at` timestamp instead of hard deletion. Menu items also set `is_available=false`.
 - **Order Cancellation Rollback**: Cancelling an order reverses loyalty points earned (creates a reversal `LoyaltyTransaction` with negative points).
+- **Cross-Store Cart Guard**: Adding items from a different store than the current cart returns 400. User must clear cart first.
+- **Referral Code Expiry**: Referral codes can only be applied within 7 days of account creation. Each user can apply only one referral code.
+- **Staff Unique Constraint**: Partial unique index `(store_id, user_id) WHERE user_id IS NOT NULL` prevents duplicate staff records.

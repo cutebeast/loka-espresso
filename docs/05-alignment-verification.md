@@ -14,8 +14,9 @@
 | 6546b42e617a | Add assistant_manager to StaffRole enum |
 | b7c8d9e0f1a2 | Schema v5: delivery provider, soft deletes, occupancy, marketing, customizations |
 | c8d9e0f1a2b3 | Schema v6: token_blacklist, device_tokens.is_active |
+| d1e2f3a4b5c6 | Schema v7: staff unique constraint (store_id, user_id), referral timing guard |
 
-**Current head:** `c8d9e0f1a2b3`
+**Current head:** `d1e2f3a4b5c6`
 
 ## Model Files vs DB Tables
 
@@ -51,7 +52,7 @@
 | social.py | Favorite | favorites | ✅ Aligned |
 | splash.py | AppConfig | app_config | ✅ Aligned |
 | splash.py | SplashContent | splash_content | ✅ Aligned |
-| staff.py | Staff | staff | ✅ Aligned |
+| staff.py | Staff | staff | ✅ Aligned (unique: store_id+user_id partial index) |
 | staff.py | StaffShift | staff_shifts | ✅ Aligned |
 | admin_extras.py | Feedback | feedback | ✅ Aligned |
 | admin_extras.py | AuditLog | audit_log | ✅ Aligned |
@@ -124,6 +125,17 @@
 | customization_options | menu_item_id | menu_items(id) | CASCADE | ✅ |
 | All other FKs | — | — | RESTRICT (default) | ✅ |
 
+## Unique Constraints
+
+| Table | Constraint | Type | Status |
+|-------|-----------|------|--------|
+| staff | (store_id, user_id) WHERE user_id IS NOT NULL | Partial unique index | ✅ v7 fix |
+| users | email | Unique | ✅ |
+| vouchers | code | Unique | ✅ |
+| loyalty_accounts | user_id | Unique | ✅ |
+| device_tokens | token | Unique | ✅ |
+| referrals | code | Unique | ✅ |
+
 ## Soft Delete Implementation
 
 | Table | Column | Delete Endpoint | Implementation |
@@ -168,3 +180,6 @@
 5. ✅ **Menu soft delete** — Sets both deleted_at and is_available=false
 6. ✅ **Admin can cancel any order** — Not just own orders
 7. ✅ **DeviceToken.is_active** — Model aligned with DB schema
+8. ✅ **Cross-Store Cart Guard** — Returns 400 when adding items from different store
+9. ✅ **Staff Unique Constraint** — Partial unique index (store_id, user_id) WHERE user_id IS NOT NULL
+10. ✅ **Referral Code Timing Guard** — Only applicable within 7 days of account creation, one-time only

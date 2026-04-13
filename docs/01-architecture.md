@@ -166,6 +166,9 @@ Located at `/root/fnb-super-app/.env`. Resolved via `env_file = "../.env"` from 
 - Merchant frontend is a single `'use client'` SPA (no Next.js routing)
 - Soft deletes on `menu_items`, `vouchers`, `rewards` via `deleted_at` column
 - Table occupancy auto-updated via PostgreSQL trigger on order status changes
+- Staff unique constraint: `(store_id, user_id) WHERE user_id IS NOT NULL` — prevents duplicate staff records at the same store
+- Cart enforces single-store per cart — adding items from a different store returns 400
+- Referral codes can only be applied within 7 days of account creation
 
 ## Security
 
