@@ -153,6 +153,14 @@ export default function MerchantDashboard() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const [revenueReport, setRevenueReport] = useState<any>(null);
+  const [reportFrom, setReportFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [reportTo, setReportTo] = useState(() => new Date().toISOString().slice(0, 10));
+
   useEffect(() => {
     const saved = localStorage.getItem('fnb_token');
     if (saved) setToken(saved);
@@ -186,7 +194,8 @@ export default function MerchantDashboard() {
     else if (page === 'tables') fetchTables();
     else if (page === 'rewards') fetchRewards();
     else if (page === 'vouchers') fetchVouchers();
-  }, [page, token, selectedStore]);
+    else if (page === 'reports') fetchRevenueReport();
+  }, [page, token, selectedStore, reportFrom, reportTo]);
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
@@ -227,9 +236,12 @@ export default function MerchantDashboard() {
   async function fetchOrders(storeId?: string) {
     setLoading(true);
     try {
-      const params = storeId ? `?store_id=${storeId}` : '';
+      const params = storeId ? `?store_id=${storeId}&page_size=50` : '?page_size=50';
       const res = await apiFetch(`/orders${params}`, token);
-      if (res.ok) setOrders(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(Array.isArray(data) ? data : (data.orders || []));
+      }
     } catch {} finally { setLoading(false); }
   }
 
@@ -284,6 +296,15 @@ export default function MerchantDashboard() {
     try {
       const res = await apiFetch('/admin/vouchers', token);
       if (res.ok) setVouchers(await res.json());
+    } catch {} finally { setLoading(false); }
+  }
+
+  async function fetchRevenueReport() {
+    setLoading(true);
+    try {
+      const storeParam = selectedStore !== 'all' ? `&store_id=${selectedStore}` : '';
+      const res = await apiFetch(`/admin/reports/revenue?from_date=${reportFrom}T00:00:00&to_date=${reportTo}T23:59:59${storeParam}`, token);
+      if (res.ok) setRevenueReport(await res.json());
     } catch {} finally { setLoading(false); }
   }
 
@@ -759,11 +780,71 @@ export default function MerchantDashboard() {
             {page === 'reports' && (
               <div>
                 <h3 style={{ marginBottom: 20 }}>Revenue Breakdown</h3>
-                <div className="card">
-                  <div style={{ height: 200, background: '#F1F5F9', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>
-                    Revenue reports will appear here. Use the API: <code style={{ marginLeft: 8, background: '#E2E8F0', padding: '2px 8px', borderRadius: 6 }}>GET /api/v1/admin/reports/revenue</code>
+                <div className="card" style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 4 }}>From</label>
+                      <input type="date" value={reportFrom} onChange={e => setReportFrom(e.target.value)} style={{ width: 180 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 4 }}>To</label>
+                      <input type="date" value={reportTo} onChange={e => setReportTo(e.target.value)} style={{ width: 180 }} />
+                    </div>
+                    <div style={{ paddingBottom: 8, color: '#64748B' }}>Store: <strong>{selectedStore === 'all' ? 'All Stores' : storeObj?.name}</strong></div>
                   </div>
                 </div>
+                {loading ? (
+                  <div style={{ textAlign: 'center', padding: 40, color: '#64748B' }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>
+                ) : revenueReport ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+                      <div className="card" style={{ textAlign: 'center' }}>
+                        <div style={{ color: '#64748B', fontSize: 13 }}>Total Revenue</div>
+                        <div style={{ fontSize: 28, fontWeight: 700, color: '#059669' }}>{formatRM(revenueReport.total || 0)}</div>
+                      </div>
+                      <div className="card">
+                        <h4 style={{ fontSize: 14, marginBottom: 12 }}>By Order Type</h4>
+                        {revenueReport.by_type && Object.entries(revenueReport.by_type).map(([type, rev]: [string, any]) => (
+                          <div key={type} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 14 }}>
+                            <span style={{ textTransform: 'capitalize' }}>{type.replace('_', ' ')}</span>
+                            <strong>{formatRM(rev)}</strong>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="card">
+                        <h4 style={{ fontSize: 14, marginBottom: 12 }}>By Store</h4>
+                        {revenueReport.by_store && Object.entries(revenueReport.by_store).map(([sid, rev]: [string, any]) => {
+                          const s = stores.find(st => st.id === Number(sid));
+                          return (
+                            <div key={sid} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 14 }}>
+                              <span>{s?.name || `Store ${sid}`}</span>
+                              <strong>{formatRM(rev)}</strong>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {revenueReport.by_day && Object.keys(revenueReport.by_day).length > 0 && (
+                      <div className="card">
+                        <h4 style={{ marginBottom: 12 }}>Daily Revenue</h4>
+                        <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                          <table>
+                            <thead><tr><th>Date</th><th>Revenue</th></tr></thead>
+                            <tbody>
+                              {Object.entries(revenueReport.by_day).sort((a, b) => a[0].localeCompare(b[0])).map(([day, rev]: [string, any]) => (
+                                <tr key={day}><td>{day}</td><td style={{ fontWeight: 600 }}>{formatRM(rev)}</td></tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
+                    <p>Select a date range to generate report</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -771,10 +852,33 @@ export default function MerchantDashboard() {
             {page === 'customers' && (
               <div>
                 <h3 style={{ marginBottom: 20 }}>All Customers</h3>
-                <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                  <i className="fas fa-users" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                  <p>Customer data available when orders are placed. Current customers: {dashboard?.total_customers || 0}</p>
-                </div>
+                {dashboard ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+                      <div className="card" style={{ textAlign: 'center' }}>
+                        <div style={{ color: '#64748B', fontSize: 13 }}>Total Customers</div>
+                        <div style={{ fontSize: 28, fontWeight: 700 }}>{dashboard.total_customers}</div>
+                      </div>
+                      <div className="card" style={{ textAlign: 'center' }}>
+                        <div style={{ color: '#64748B', fontSize: 13 }}>Total Orders</div>
+                        <div style={{ fontSize: 28, fontWeight: 700 }}>{dashboard.total_orders}</div>
+                      </div>
+                      <div className="card" style={{ textAlign: 'center' }}>
+                        <div style={{ color: '#64748B', fontSize: 13 }}>Total Revenue</div>
+                        <div style={{ fontSize: 28, fontWeight: 700, color: '#059669' }}>{formatRM(dashboard.total_revenue)}</div>
+                      </div>
+                    </div>
+                    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+                      <i className="fas fa-users" style={{ fontSize: 32, color: '#94A3B8', marginBottom: 12 }}></i>
+                      <p style={{ color: '#64748B' }}>Individual customer profiles require a dedicated admin customers endpoint.</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
+                    <i className="fas fa-users" style={{ fontSize: 40, marginBottom: 16 }}></i>
+                    <p>No customer data available</p>
+                  </div>
+                )}
               </div>
             )}
 
