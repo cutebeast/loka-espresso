@@ -1,6 +1,6 @@
 import enum
-from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, ForeignKey, DECIMAL
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, ForeignKey, DECIMAL, Text
 from app.core.database import Base
 
 
@@ -24,6 +24,12 @@ class Voucher(Base):
     valid_from = Column(DateTime(timezone=True), nullable=True)
     valid_until = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    # Marketing fields (migrated from promos table)
+    title = Column(String(255), nullable=True)
+    body = Column(Text, nullable=True)
+    image_url = Column(String(500), nullable=True)
+    promo_type = Column(String(50), nullable=True)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
 
 

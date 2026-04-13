@@ -179,3 +179,10 @@ class LoyaltyTierUpdate(BaseModel):
     min_points: Optional[int] = None
     points_multiplier: Optional[float] = None
     benefits: Optional[dict] = None
+
+
+class LoyaltyTierCreate(BaseModel):
+    name: str
+    min_points: int
+    points_multiplier: float = 1.0
+    benefits: Optional[dict] = None

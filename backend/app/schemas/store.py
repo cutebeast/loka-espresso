@@ -62,6 +62,12 @@ class TableCreate(BaseModel):
     capacity: int = 4
 
 
+class TableUpdate(BaseModel):
+    table_number: Optional[str] = None
+    capacity: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
 class TableScanRequest(BaseModel):
     store_slug: str
     table_id: int

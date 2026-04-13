@@ -19,7 +19,7 @@ class Reward(Base):
     description = Column(String(500), nullable=True)
     points_cost = Column(Integer, nullable=False)
     reward_type = Column(Enum(RewardType), nullable=False)
-    item_id = Column(Integer, nullable=True)
+    item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=True)
     discount_value = Column(DECIMAL(10, 2), nullable=True)
     image_url = Column(String(500), nullable=True)
     stock_limit = Column(Integer, nullable=True)

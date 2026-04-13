@@ -18,6 +18,7 @@ from app.schemas.admin_extras import (
     PromoBannerOut,
     LoyaltyTierOut,
     LoyaltyTierUpdate,
+    LoyaltyTierCreate,
 )
 
 router = APIRouter()
@@ -87,6 +88,22 @@ async def create_broadcast(
     return obj
 
 
+@router.get("/banners", response_model=list[PromoBannerOut])
+async def list_active_banners(
+    db: AsyncSession = Depends(get_db),
+):
+    """Public endpoint — returns active banners for the customer app."""
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(PromoBanner).where(
+            PromoBanner.is_active == True,
+            (PromoBanner.start_date == None) | (PromoBanner.start_date <= now),
+        ).order_by(PromoBanner.position)
+    )
+    return result.scalars().all()
+
+
 @router.get("/admin/banners", response_model=list[PromoBannerOut])
 async def list_banners(
     db: AsyncSession = Depends(get_db),
@@ -152,6 +169,20 @@ async def list_loyalty_tiers(
 ):
     result = await db.execute(select(LoyaltyTier))
     return result.scalars().all()
+
+
+@router.post("/admin/loyalty-tiers", status_code=201, response_model=LoyaltyTierOut)
+async def create_loyalty_tier(
+    data: LoyaltyTierCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(UserRole.admin)),
+):
+    obj = LoyaltyTier(**data.model_dump())
+    db.add(obj)
+    await db.flush()
+    await db.refresh(obj)
+    await db.commit()
+    return obj
 
 
 @router.put("/admin/loyalty-tiers/{tier_id}", response_model=LoyaltyTierOut)

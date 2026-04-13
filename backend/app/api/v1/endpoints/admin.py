@@ -10,7 +10,7 @@ from app.models.user import User
 from app.models.order import Order, OrderStatus, OrderType
 from app.models.menu import MenuCategory, MenuItem
 from app.models.store import Store, StoreTable
-from app.schemas.store import StoreCreate, TableCreate
+from app.schemas.store import StoreCreate, TableCreate, TableUpdate
 from app.schemas.menu import CategoryCreate, MenuItemCreate
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -195,6 +195,44 @@ async def create_table(store_id: int, req: TableCreate, user: User = Depends(req
     table.qr_code_url = f"https://app.loyaltysystem.uk?store={slug}&table={table.id}"
     await db.flush()
     return {"id": table.id, "table_number": table.table_number, "qr_code_url": table.qr_code_url}
+
+
+@router.put("/stores/{store_id}/tables/{table_id}")
+async def update_table(store_id: int, table_id: int, req: TableUpdate, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(StoreTable).where(StoreTable.id == table_id, StoreTable.store_id == store_id))
+    table = result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(404, "Table not found")
+    if req.table_number is not None:
+        table.table_number = req.table_number
+    if req.capacity is not None:
+        table.capacity = req.capacity
+    if req.is_active is not None:
+        table.is_active = req.is_active
+    await log_action(db, action="UPDATE_TABLE", user_id=user.id, store_id=store_id, entity_type="store_table", entity_id=table_id)
+    return {"id": table.id, "table_number": table.table_number, "capacity": table.capacity, "is_active": table.is_active}
+
+
+@router.delete("/stores/{store_id}/tables/{table_id}")
+async def delete_table(store_id: int, table_id: int, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(StoreTable).where(StoreTable.id == table_id, StoreTable.store_id == store_id))
+    table = result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(404, "Table not found")
+    table.is_active = False
+    await log_action(db, action="DELETE_TABLE", user_id=user.id, store_id=store_id, entity_type="store_table", entity_id=table_id)
+    return {"deleted": True, "id": table_id}
+
+
+@router.delete("/stores/{store_id}/categories/{cat_id}")
+async def delete_category(store_id: int, cat_id: int, user: User = Depends(require_role("admin", "store_owner")), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(MenuCategory).where(MenuCategory.id == cat_id, MenuCategory.store_id == store_id))
+    cat = result.scalar_one_or_none()
+    if not cat:
+        raise HTTPException(404, "Category not found")
+    cat.is_active = False
+    await log_action(db, action="DELETE_CATEGORY", user_id=user.id, store_id=store_id, entity_type="menu_category", entity_id=cat_id)
+    return {"deleted": True, "id": cat_id}
 
 
 @router.get("/reports/sales")

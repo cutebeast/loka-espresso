@@ -15,6 +15,12 @@ class VoucherOut(BaseModel):
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None
     is_active: bool = True
+    # Marketing fields
+    title: Optional[str] = None
+    body: Optional[str] = None
+    image_url: Optional[str] = None
+    promo_type: Optional[str] = None
+    store_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -29,6 +35,12 @@ class VoucherCreate(BaseModel):
     max_uses: Optional[int] = None
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None
+    # Marketing fields
+    title: Optional[str] = None
+    body: Optional[str] = None
+    image_url: Optional[str] = None
+    promo_type: Optional[str] = None
+    store_id: Optional[int] = None
 
 
 class VoucherUpdate(BaseModel):
@@ -41,6 +53,12 @@ class VoucherUpdate(BaseModel):
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None
     is_active: Optional[bool] = None
+    # Marketing fields
+    title: Optional[str] = None
+    body: Optional[str] = None
+    image_url: Optional[str] = None
+    promo_type: Optional[str] = None
+    store_id: Optional[int] = None
 
 
 class VoucherValidate(BaseModel):
