@@ -1,10 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import os
 from app.core.config import get_settings
 
 settings = get_settings()
+
+# Rate limiter: key by client IP
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="FNB Super-App API",
@@ -14,6 +21,9 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -21,6 +31,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting middleware (applies after CORS)
+app.add_middleware(SlowAPIMiddleware)
 
 upload_dir = settings.UPLOAD_DIR
 os.makedirs(os.path.join(upload_dir, "menu"), exist_ok=True)
@@ -32,6 +45,17 @@ app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+# #3: Token blacklist cleanup — runs on startup
+@app.on_event("startup")
+async def startup_cleanup():
+    from app.core.database import engine
+    from sqlalchemy import text
+    async with engine.begin() as conn:
+        result = await conn.execute(text("DELETE FROM token_blacklist WHERE expires_at < NOW()"))
+        if result.rowcount > 0:
+            print(f"[startup] Cleaned {result.rowcount} expired token_blacklist rows")
 
 
 from app.api.v1.router import api_router

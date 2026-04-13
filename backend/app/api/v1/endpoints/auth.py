@@ -1,6 +1,6 @@
 import random
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -15,6 +15,10 @@ from app.core.audit import log_action
 from app.models.user import User, OTPSession, DeviceToken, UserRole, TokenBlacklist
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt as jose_jwt
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
 
 settings = get_settings()
 _bearer = HTTPBearer()
@@ -28,7 +32,8 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/send-otp", response_model=SendOTPResponse)
-async def send_otp(req: SendOTPRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Depends(get_db)):
     code = f"{random.randint(0, 999999):06d}"
     otp = OTPSession(
         phone=req.phone,
@@ -68,7 +73,8 @@ async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/register", response_model=UserOut)
-async def register(req: RegisterRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(request: Request, req: RegisterRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if req.name:
         user.name = req.name
     if req.email:
@@ -81,7 +87,8 @@ async def register(req: RegisterRequest, user: User = Depends(get_current_user),
 
 
 @router.post("/login-password", response_model=TokenResponse)
-async def login_password(req: LoginPasswordRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login_password(request: Request, req: LoginPasswordRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == req.email))
     user = result.scalar_one_or_none()
     if not user or not user.password_hash or not verify_password(req.password, user.password_hash):

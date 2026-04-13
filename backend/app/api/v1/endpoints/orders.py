@@ -35,6 +35,12 @@ async def create_order(
         raise HTTPException(status_code=400, detail="delivery_address required for delivery")
 
     store_id = req.store_id or cart_items[0].store_id
+
+    # #6: Validate all cart items belong to the same store
+    for ci in cart_items:
+        if ci.store_id != store_id:
+            raise HTTPException(status_code=400, detail="All cart items must be from the same store")
+
     order_items = []
     subtotal = 0.0
     for ci in cart_items:
@@ -50,11 +56,14 @@ async def create_order(
         subtotal += price * ci.quantity
 
     delivery_fee = 0.0
+    delivery_provider = None
     if req.order_type == OrderType.delivery:
         from app.models.splash import AppConfig
         cfg = await db.execute(select(AppConfig).where(AppConfig.key == "delivery_fee"))
         fee_row = cfg.scalar_one_or_none()
         delivery_fee = float(fee_row.value) if fee_row else 3.0
+        # #5: Set delivery_provider from request or default to "internal"
+        delivery_provider = getattr(req, 'delivery_provider', None) or "internal"
 
     discount = 0.0
     total = round(subtotal + delivery_fee - discount, 2)
@@ -68,6 +77,7 @@ async def create_order(
         total=total, status=OrderStatus.pending,
         pickup_time=req.pickup_time, delivery_address=req.delivery_address,
         payment_method=req.payment_method, notes=req.notes,
+        delivery_provider=delivery_provider,
     )
     db.add(order)
     await db.flush()
@@ -122,7 +132,8 @@ async def create_order(
         delivery_address=order.delivery_address, payment_method=order.payment_method,
         payment_status=order.payment_status,
         loyalty_points_earned=order.loyalty_points_earned,
-        notes=order.notes, created_at=order.created_at, updated_at=order.updated_at,
+        notes=order.notes, delivery_provider=order.delivery_provider,
+        created_at=order.created_at, updated_at=order.updated_at,
     )
 
 
@@ -152,7 +163,8 @@ async def list_orders(
             delivery_address=o.delivery_address, payment_method=o.payment_method,
             payment_status=o.payment_status,
             loyalty_points_earned=o.loyalty_points_earned,
-            notes=o.notes, created_at=o.created_at, updated_at=o.updated_at,
+            notes=o.notes, delivery_provider=o.delivery_provider,
+            created_at=o.created_at, updated_at=o.updated_at,
         ))
     return OrderListOut(orders=out, total=total, page=page, page_size=page_size)
 
@@ -186,7 +198,8 @@ async def get_order(
         delivery_address=order.delivery_address, payment_method=order.payment_method,
         payment_status=order.payment_status,
         loyalty_points_earned=order.loyalty_points_earned,
-        notes=order.notes, created_at=order.created_at, updated_at=order.updated_at,
+        notes=order.notes, delivery_provider=order.delivery_provider,
+        created_at=order.created_at, updated_at=order.updated_at,
         status_timeline=timeline,
     )
 

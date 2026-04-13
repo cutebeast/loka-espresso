@@ -28,6 +28,7 @@ class OrderCreate(BaseModel):
     notes: Optional[str] = None
     payment_method: Optional[str] = None
     voucher_code: Optional[str] = None
+    delivery_provider: Optional[str] = None
 
 
 class OrderStatusUpdate(BaseModel):
@@ -68,6 +69,7 @@ class OrderOut(BaseModel):
     payment_status: Optional[str] = None
     loyalty_points_earned: int = 0
     notes: Optional[str] = None
+    delivery_provider: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     status_timeline: Optional[list[dict]] = None

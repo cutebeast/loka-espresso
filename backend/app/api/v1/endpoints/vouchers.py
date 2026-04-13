@@ -28,7 +28,7 @@ async def my_vouchers(user: User = Depends(get_current_user), db: AsyncSession =
 
 @router.post("/validate")
 async def validate_voucher(req: VoucherValidate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Voucher).where(Voucher.code == req.code, Voucher.is_active == True))
+    result = await db.execute(select(Voucher).where(Voucher.code == req.code, Voucher.is_active == True, Voucher.deleted_at.is_(None)))
     voucher = result.scalar_one_or_none()
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
@@ -51,7 +51,7 @@ async def validate_voucher(req: VoucherValidate, user: User = Depends(get_curren
 
 @router.post("/apply")
 async def apply_voucher(req: VoucherApply, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Voucher).where(Voucher.code == req.code, Voucher.is_active == True))
+    result = await db.execute(select(Voucher).where(Voucher.code == req.code, Voucher.is_active == True, Voucher.deleted_at.is_(None)))
     voucher = result.scalar_one_or_none()
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")

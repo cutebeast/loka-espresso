@@ -7,6 +7,7 @@ from sqlalchemy import select, func, desc
 
 from app.core.database import get_db
 from app.core.security import get_current_user, require_role, require_store_access
+from app.core.audit import log_action
 from app.models.user import User, UserRole
 from app.models.staff import Staff, StaffShift, StaffRole
 
@@ -68,6 +69,7 @@ async def create_staff(
     db.add(obj)
     await db.flush()
     await db.refresh(obj)
+    await log_action(db, action="STAFF_CREATED", user_id=user.id, store_id=store_id, entity_type="staff", entity_id=obj.id)
     await db.commit()
     return obj
 
@@ -85,6 +87,7 @@ async def update_staff(
         raise HTTPException(404)
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(obj, key, value)
+    await log_action(db, action="STAFF_UPDATED", user_id=user.id, store_id=obj.store_id, entity_type="staff", entity_id=obj.id)
     await db.flush()
     await db.refresh(obj)
     await db.commit()
@@ -102,6 +105,7 @@ async def deactivate_staff(
     if not obj:
         raise HTTPException(404)
     obj.is_active = False
+    await log_action(db, action="STAFF_DEACTIVATED", user_id=user.id, store_id=obj.store_id, entity_type="staff", entity_id=obj.id)
     await db.flush()
     await db.commit()
     return {"detail": "Staff deactivated"}

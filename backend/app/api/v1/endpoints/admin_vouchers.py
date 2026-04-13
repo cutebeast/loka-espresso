@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.security import require_role
+from app.core.audit import log_action
 from app.models.user import User
 from app.models.voucher import Voucher, UserVoucher
 from app.models.user import User as UserModel
@@ -24,6 +25,7 @@ async def create_voucher(req: VoucherCreate, user: User = Depends(require_role("
     voucher = Voucher(**req.model_dump())
     db.add(voucher)
     await db.flush()
+    await log_action(db, action="VOUCHER_CREATED", user_id=user.id, entity_type="voucher", entity_id=voucher.id)
     return {"id": voucher.id, "code": voucher.code, "discount_type": voucher.discount_type, "discount_value": float(voucher.discount_value)}
 
 
@@ -35,6 +37,7 @@ async def update_voucher(voucher_id: int, req: VoucherUpdate, user: User = Depen
         raise HTTPException(status_code=404, detail="Voucher not found")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(voucher, k, v)
+    await log_action(db, action="VOUCHER_UPDATED", user_id=user.id, entity_type="voucher", entity_id=voucher.id)
     await db.flush()
     return {"message": "Voucher updated"}
 
@@ -47,6 +50,7 @@ async def deactivate_voucher(voucher_id: int, user: User = Depends(require_role(
         raise HTTPException(status_code=404, detail="Voucher not found")
     voucher.is_active = False
     voucher.deleted_at = datetime.utcnow()
+    await log_action(db, action="VOUCHER_DELETED", user_id=user.id, entity_type="voucher", entity_id=voucher.id)
     await db.flush()
     return {"message": "Voucher soft-deleted"}
 

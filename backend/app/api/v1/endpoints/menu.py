@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.models.menu import MenuCategory, MenuItem
+from app.models.marketing import CustomizationOption
 from app.schemas.menu import (
     MenuCategoryOut, CategoryCreate, MenuItemOut, MenuItemCreate, MenuItemUpdate,
 )
@@ -27,7 +28,7 @@ async def list_items(
     category: int | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(MenuItem).where(MenuItem.store_id == store_id, MenuItem.is_available == True)
+    q = select(MenuItem).where(MenuItem.store_id == store_id, MenuItem.is_available == True, MenuItem.deleted_at.is_(None))
     if category:
         q = q.where(MenuItem.category_id == category)
     q = q.order_by(MenuItem.display_order)
@@ -42,7 +43,7 @@ async def search_items(
     db: AsyncSession = Depends(get_db),
 ):
     sid = store_id_override if store_id_override is not None else 0
-    query = select(MenuItem).where(MenuItem.is_available == True)
+    query = select(MenuItem).where(MenuItem.is_available == True, MenuItem.deleted_at.is_(None))
     if sid:
         query = query.where(MenuItem.store_id == sid)
     query = query.where(MenuItem.name.ilike(f"%{q}%"))
@@ -58,8 +59,22 @@ async def popular_items(
 ):
     result = await db.execute(
         select(MenuItem)
-        .where(MenuItem.store_id == store_id, MenuItem.is_available == True)
+        .where(MenuItem.store_id == store_id, MenuItem.is_available == True, MenuItem.deleted_at.is_(None))
         .order_by(MenuItem.display_order)
         .limit(limit)
     )
     return result.scalars().all()
+
+
+@router.get("/items/{item_id}/customizations")
+async def list_customizations_public(store_id: int, item_id: int, db: AsyncSession = Depends(get_db)):
+    """Public endpoint: list available customization options for a menu item."""
+    result = await db.execute(
+        select(CustomizationOption)
+        .where(
+            CustomizationOption.menu_item_id == item_id,
+            CustomizationOption.is_active == True,
+        )
+        .order_by(CustomizationOption.display_order)
+    )
+    return [{"id": c.id, "name": c.name, "price_adjustment": float(c.price_adjustment)} for c in result.scalars().all()]

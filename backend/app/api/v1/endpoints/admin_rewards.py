@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.security import require_role
+from app.core.audit import log_action
 from app.models.user import User
 from app.models.reward import Reward, UserReward
 from app.models.user import User as UserModel
@@ -24,6 +25,7 @@ async def create_reward(req: RewardCreate, user: User = Depends(require_role("ad
     reward = Reward(**req.model_dump())
     db.add(reward)
     await db.flush()
+    await log_action(db, action="REWARD_CREATED", user_id=user.id, entity_type="reward", entity_id=reward.id)
     return {"id": reward.id, "name": reward.name, "points_cost": reward.points_cost}
 
 
@@ -35,6 +37,7 @@ async def update_reward(reward_id: int, req: RewardUpdate, user: User = Depends(
         raise HTTPException(status_code=404, detail="Reward not found")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(reward, k, v)
+    await log_action(db, action="REWARD_UPDATED", user_id=user.id, entity_type="reward", entity_id=reward.id)
     await db.flush()
     return {"message": "Reward updated"}
 
@@ -47,6 +50,7 @@ async def deactivate_reward(reward_id: int, user: User = Depends(require_role("a
         raise HTTPException(status_code=404, detail="Reward not found")
     reward.is_active = False
     reward.deleted_at = datetime.utcnow()
+    await log_action(db, action="REWARD_DELETED", user_id=user.id, entity_type="reward", entity_id=reward.id)
     await db.flush()
     return {"message": "Reward soft-deleted"}
 
