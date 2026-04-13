@@ -13,8 +13,8 @@ class LoyaltyAccount(Base):
     points_balance = Column(Integer, default=0, nullable=False)
     tier = Column(String(50), default="bronze", nullable=False)
     total_points_earned = Column(Integer, default=0, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
 
 
 class LoyaltyTransaction(Base):
@@ -32,7 +32,7 @@ class LoyaltyTransaction(Base):
         expire = "expire"
 
     type = Column(Enum(TxType), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
 
 
 class LoyaltyTier(Base):

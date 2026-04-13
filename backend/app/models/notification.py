@@ -12,4 +12,4 @@ class Notification(Base):
     body = Column(Text, nullable=True)
     type = Column(String(50), nullable=True)
     is_read = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())

@@ -25,8 +25,8 @@ class Reward(Base):
     stock_limit = Column(Integer, nullable=True)
     total_redeemed = Column(Integer, default=0)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
 
 
 class UserReward(Base):
@@ -36,6 +36,6 @@ class UserReward(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     reward_id = Column(Integer, ForeignKey("rewards.id"), nullable=False)
     store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)
-    redeemed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    redeemed_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
     is_used = Column(Boolean, default=False, nullable=False)

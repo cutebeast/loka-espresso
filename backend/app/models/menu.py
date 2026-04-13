@@ -47,6 +47,6 @@ class InventoryItem(Base):
     unit = Column(String(50), nullable=True)
     reorder_level = Column(DECIMAL(10, 2), default=0)
     cost_per_unit = Column(DECIMAL(10, 2), nullable=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
 
     store = relationship("Store", back_populates="inventory_items")
