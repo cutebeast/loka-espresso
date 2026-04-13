@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: fnb-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fnb
+      POSTGRES_USER: fnb
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - fnb-db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fnb -d fnb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  fnb-db-data:
+    name: fnb-db-data
+  fnb-uploads:
+    name: fnb-uploads
