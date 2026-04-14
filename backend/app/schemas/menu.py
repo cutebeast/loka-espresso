@@ -66,7 +66,8 @@ class InventoryItemOut(BaseModel):
     current_stock: float
     unit: Optional[str] = None
     reorder_level: float
-    cost_per_unit: Optional[float] = None
+    is_active: bool = True
+    category: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -77,7 +78,7 @@ class InventoryItemCreate(BaseModel):
     current_stock: float = 0
     unit: Optional[str] = None
     reorder_level: float = 0
-    cost_per_unit: Optional[float] = None
+    category: Optional[str] = None
 
 
 class InventoryItemUpdate(BaseModel):
@@ -85,4 +86,30 @@ class InventoryItemUpdate(BaseModel):
     current_stock: Optional[float] = None
     unit: Optional[str] = None
     reorder_level: Optional[float] = None
-    cost_per_unit: Optional[float] = None
+    category: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class InventoryAdjustRequest(BaseModel):
+    movement_type: str  # received, waste, transfer_out, transfer_in, cycle_count, adjustment
+    quantity: float  # always positive
+    note: str
+    attachment_path: Optional[str] = None
+
+
+class InventoryMovementOut(BaseModel):
+    id: int
+    store_id: int
+    inventory_item_id: int
+    inventory_item_name: Optional[str] = None
+    movement_type: str
+    quantity: float
+    balance_after: float
+    note: str
+    attachment_path: Optional[str] = None
+    created_by: int
+    created_by_name: Optional[str] = None
+    created_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True

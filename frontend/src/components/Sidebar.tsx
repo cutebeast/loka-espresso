@@ -11,6 +11,7 @@ const navGroups = [
   { label: 'Store Ops', icon: 'fa-store', items: [
     { id: 'menu' as PageId, icon: 'fa-mug-hot', label: 'Menu' },
     { id: 'inventory' as PageId, icon: 'fa-boxes-stacked', label: 'Inventory' },
+    { id: 'inventoryledger' as PageId, icon: 'fa-clock-rotate-left', label: 'Inventory Ledger' },
     { id: 'tables' as PageId, icon: 'fa-chair', label: 'Tables' },
     { id: 'staff' as PageId, icon: 'fa-user-tie', label: 'Staff' },
   ]},

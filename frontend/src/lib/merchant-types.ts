@@ -68,7 +68,23 @@ export interface MerchantInventoryItem {
   current_stock: number;
   unit: string;
   reorder_level: number;
-  cost_per_unit: number | null;
+  is_active: boolean;
+  category: string | null;
+}
+
+export interface InventoryMovement {
+  id: number;
+  store_id: number;
+  inventory_item_id: number;
+  inventory_item_name: string | null;
+  movement_type: string;
+  quantity: number;
+  balance_after: number;
+  note: string;
+  attachment_path: string | null;
+  created_by: number;
+  created_by_name: string | null;
+  created_at: string | null;
 }
 
 export interface MerchantOrder {
@@ -209,4 +225,4 @@ export interface CustomerLoyaltyTransaction {
   created_at: string;
 }
 
-export type PageId = 'dashboard' | 'orders' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'feedback' | 'surveys' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store';
+export type PageId = 'dashboard' | 'orders' | 'menu' | 'inventory' | 'inventoryledger' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'feedback' | 'surveys' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store';

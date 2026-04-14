@@ -18,6 +18,7 @@ const ROLES = [
   { value: 'barista', label: 'Barista' },
   { value: 'cashier', label: 'Cashier' },
   { value: 'delivery', label: 'Delivery' },
+  { value: 'hq_management', label: 'HQ Management' },
 ];
 
 const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' };

@@ -1,6 +1,6 @@
 from app.models.user import User, UserAddress, OTPSession, DeviceToken, UserRole, TokenBlacklist
 from app.models.store import Store, StoreTable
-from app.models.menu import MenuCategory, MenuItem, InventoryItem
+from app.models.menu import MenuCategory, MenuItem, InventoryItem, InventoryMovement, MovementType
 from app.models.order import CartItem, Order, OrderItem, OrderStatusHistory, Payment, OrderType, OrderStatus
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction, LoyaltyTier
 from app.models.reward import Reward, UserReward, RewardType
@@ -16,7 +16,7 @@ from app.models.marketing import CustomizationOption, MarketingCampaign, TableOc
 __all__ = [
     "User", "UserAddress", "OTPSession", "DeviceToken", "UserRole", "TokenBlacklist",
     "Store", "StoreTable",
-    "MenuCategory", "MenuItem", "InventoryItem",
+    "MenuCategory", "MenuItem", "InventoryItem", "InventoryMovement", "MovementType",
     "CartItem", "Order", "OrderItem", "OrderStatusHistory", "Payment", "OrderType", "OrderStatus",
     "LoyaltyAccount", "LoyaltyTransaction", "LoyaltyTier",
     "Reward", "UserReward", "RewardType",

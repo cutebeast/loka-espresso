@@ -30,6 +30,7 @@ import OrdersPage from '@/components/pages/OrdersPage';
 import MenuPage from '@/components/pages/MenuPage';
 import TablesPage from '@/components/pages/TablesPage';
 import InventoryPage from '@/components/pages/InventoryPage';
+import InventoryLedgerPage from '@/components/pages/InventoryLedgerPage';
 import StaffPage from '@/components/pages/StaffPage';
 import CustomersPage from '@/components/pages/CustomersPage';
 import StoreSettingsPage from '@/components/pages/StoreSettingsPage';
@@ -46,6 +47,7 @@ import { BarChart, DonutChart, SparkLine, LineGridChart } from '@/components/cha
 
 export default function MerchantDashboard() {
   const [token, setToken] = useState('');
+  const [currentUserRole, setCurrentUserRole] = useState('admin');
   const [page, setPage] = useState<PageId>('dashboard');
   const [selectedStore, setSelectedStore] = useState<string>('all');
   const [stores, setStores] = useState<MerchantStore[]>([]);
@@ -91,6 +93,7 @@ export default function MerchantDashboard() {
     if (token) {
       localStorage.setItem('fnb_token', token);
       fetchStores();
+      fetchUserRole();
     }
   }, [token]);
 
@@ -104,6 +107,17 @@ export default function MerchantDashboard() {
       }
     } catch {}
   }, [token]);
+
+  async function fetchUserRole() {
+    if (!token) return;
+    try {
+      const res = await apiFetch('/me', token);
+      if (res.ok) {
+        const user = await res.json();
+        setCurrentUserRole(user.role || 'admin');
+      }
+    } catch {}
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -279,6 +293,7 @@ export default function MerchantDashboard() {
     orders: 'Orders',
     menu: 'Menu Management',
     inventory: 'Inventory',
+    inventoryledger: 'Inventory Ledger',
     tables: 'Tables',
     staff: 'Staff',
     rewards: 'Rewards',
@@ -368,6 +383,15 @@ export default function MerchantDashboard() {
                 storeObj={storeObj}
                 token={token}
                 onRefresh={fetchInventory}
+                userRole={currentUserRole}
+              />
+            )}
+
+            {page === 'inventoryledger' && (
+              <InventoryLedgerPage
+                selectedStore={selectedStore}
+                storeObj={storeObj}
+                token={token}
               />
             )}
 
