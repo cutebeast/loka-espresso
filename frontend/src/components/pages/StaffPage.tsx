@@ -28,6 +28,8 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
   const [editingStaff, setEditingStaff] = useState<MerchantStaffMember | null>(null);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [tempPassword, setTempPassword] = useState<{ name: string; email: string; password: string } | null>(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState<{ name: string; email: string; password: string } | null>(null);
 
   // Form fields
   const [name, setName] = useState('');
@@ -87,8 +89,14 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
         setError(data.detail || `Failed (${res.status})`);
         return;
       }
+      const data = await res.json().catch(() => ({}));
       closeForm();
       onRefresh();
+
+      // Show temp password if new staff was created with email
+      if (!editingStaff && data.temp_password && email) {
+        setTempPassword({ name, email, password: data.temp_password });
+      }
     } catch (err: any) {
       setError(err.message || 'Network error');
     } finally { setSaving(false); }
@@ -125,6 +133,22 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
     } catch { setError('Network error'); }
   }
 
+  async function handleResetPassword(s: MerchantStaffMember) {
+    setError('');
+    try {
+      const res = await apiFetch(`/admin/staff/${s.id}/reset-password`, token, { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || 'Reset failed');
+        return;
+      }
+      const data = await res.json();
+      setResetPasswordResult({ name: s.name, email: data.email, password: data.temp_password });
+    } catch (err: any) {
+      setError(err.message || 'Network error');
+    }
+  }
+
   if (selectedStore === 'all') {
     return (
       <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
@@ -144,6 +168,35 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
       {error && !showForm && (
         <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           <i className="fas fa-exclamation-circle"></i> {error}
+        </div>
+      )}
+
+      {tempPassword && (
+        <div style={{ background: '#ECFDF5', color: '#065F46', padding: '12px 16px', borderRadius: 12, marginBottom: 12, fontSize: 13, border: '1px solid #A7F3D0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <strong><i className="fas fa-check-circle"></i> Staff account created!</strong>
+              <div style={{ marginTop: 6, fontFamily: 'monospace', fontSize: 14, background: 'white', padding: '6px 10px', borderRadius: 6, display: 'inline-block' }}>
+                Email: {tempPassword.email} &nbsp;|&nbsp; Password: <strong>{tempPassword.password}</strong>
+              </div>
+              <div style={{ marginTop: 4, opacity: 0.8 }}>Share these credentials with {tempPassword.name}. They can log in at admin.loyaltysystem.uk</div>
+            </div>
+            <button className="btn btn-sm" onClick={() => setTempPassword(null)}><i className="fas fa-times"></i></button>
+          </div>
+        </div>
+      )}
+
+      {resetPasswordResult && (
+        <div style={{ background: '#EFF6FF', color: '#1E40AF', padding: '12px 16px', borderRadius: 12, marginBottom: 12, fontSize: 13, border: '1px solid #BFDBFE' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <strong><i className="fas fa-key"></i> Password reset for {resetPasswordResult.name}</strong>
+              <div style={{ marginTop: 6, fontFamily: 'monospace', fontSize: 14, background: 'white', padding: '6px 10px', borderRadius: 6, display: 'inline-block' }}>
+                Email: {resetPasswordResult.email} &nbsp;|&nbsp; New Password: <strong>{resetPasswordResult.password}</strong>
+              </div>
+            </div>
+            <button className="btn btn-sm" onClick={() => setResetPasswordResult(null)}><i className="fas fa-times"></i></button>
+          </div>
         </div>
       )}
 
@@ -185,7 +238,7 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
               <div>
                 <label style={labelStyle}>Email <span style={{ fontWeight: 400, color: '#94A3B8' }}>(optional)</span></label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="e.g. ahmad@zus.com" />
-                <div style={hintStyle}>Used for login if linked to a user account</div>
+                <div style={hintStyle}>Adding email auto-creates a login account for this staff member</div>
               </div>
               <div>
                 <label style={labelStyle}>PIN Code <span style={{ fontWeight: 400, color: '#94A3B8' }}>(optional)</span></label>
@@ -212,11 +265,11 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
       <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
         <table>
           <thead>
-            <tr><th>Name</th><th>Role</th><th>Phone</th><th>Status</th><th>Actions</th></tr>
+            <tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Status</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {staff.length === 0 ? (
-              <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>
+              <tr><td colSpan={6} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>
                 <i className="fas fa-user-tie" style={{ fontSize: 40, display: 'block', marginBottom: 12 }}></i>
                 No staff members yet. Add your first team member.
               </td></tr>
@@ -228,6 +281,7 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
                     {ROLES.find(r => r.value === s.role)?.label || s.role}
                   </span>
                 </td>
+                <td style={{ fontSize: 13 }}>{(s as any).email || '—'}</td>
                 <td>{s.phone || '—'}</td>
                 <td>
                   <button onClick={() => toggleActive(s)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
@@ -238,14 +292,17 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
                 </td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn btn-sm" onClick={() => openEdit(s)}><i className="fas fa-edit"></i></button>
+                    <button className="btn btn-sm" onClick={() => openEdit(s)} title="Edit"><i className="fas fa-edit"></i></button>
+                    {(s as any).email && (
+                      <button className="btn btn-sm" onClick={() => handleResetPassword(s)} title="Reset password"><i className="fas fa-key"></i></button>
+                    )}
                     {confirmDelete === s.id ? (
                       <>
                         <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(s.id)}>Confirm</button>
                         <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
                       </>
                     ) : (
-                      <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(s.id)}><i className="fas fa-trash"></i></button>
+                      <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(s.id)} title="Deactivate"><i className="fas fa-trash"></i></button>
                     )}
                   </div>
                 </td>
