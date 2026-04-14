@@ -87,7 +87,7 @@ async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
 @router.get("/{store_id}/tables", response_model=list[StoreTableOut])
 async def get_store_tables(store_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(StoreTable).where(StoreTable.store_id == store_id, StoreTable.is_active == True)
+        select(StoreTable).where(StoreTable.store_id == store_id)
     )
     return result.scalars().all()
 

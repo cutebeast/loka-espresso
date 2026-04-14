@@ -16,7 +16,7 @@ router = APIRouter(prefix="/stores/{store_id}", tags=["Menu"])
 async def list_categories(store_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(MenuCategory)
-        .where(MenuCategory.store_id == store_id, MenuCategory.is_active == True)
+        .where(MenuCategory.store_id == store_id)
         .order_by(MenuCategory.display_order)
     )
     return result.scalars().all()
@@ -28,7 +28,7 @@ async def list_items(
     category: int | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(MenuItem).where(MenuItem.store_id == store_id, MenuItem.is_available == True, MenuItem.deleted_at.is_(None))
+    q = select(MenuItem).where(MenuItem.store_id == store_id, MenuItem.deleted_at.is_(None))
     if category:
         q = q.where(MenuItem.category_id == category)
     q = q.order_by(MenuItem.display_order)

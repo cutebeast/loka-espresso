@@ -271,11 +271,15 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '8px 12px', borderRadius: 10, cursor: 'pointer',
                         background: selectedCategory === c.id ? '#EFF6FF' : 'transparent',
-                        fontWeight: selectedCategory === c.id ? 600 : 400, color: selectedCategory === c.id ? '#002F6C' : '#334155',
-                        marginBottom: 4,
+                        fontWeight: selectedCategory === c.id ? 600 : 400,
+                        color: c.is_active ? (selectedCategory === c.id ? '#002F6C' : '#334155') : '#94A3B8',
+                        marginBottom: 4, opacity: c.is_active ? 1 : 0.6,
                       }}
                     >
-                      <span style={{ flex: 1 }} onClick={() => setSelectedCategory(c.id)}>{c.name}</span>
+                      <span style={{ flex: 1 }} onClick={() => setSelectedCategory(c.id)}>
+                        {c.name}
+                        {!c.is_active && <span style={{ fontSize: 10, marginLeft: 6, color: '#EF4444' }}>Inactive</span>}
+                      </span>
                       <div style={{ display: 'flex', gap: 2 }}>
                         <button onClick={(e) => { e.stopPropagation(); openEditCat(c); }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748B', fontSize: 11, padding: '2px 4px' }}><i className="fas fa-edit"></i></button>
                         <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteCat(c.id); }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', fontSize: 11, padding: '2px 4px' }}><i className="fas fa-trash"></i></button>
@@ -358,10 +362,11 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
             ) : (
               <div style={{ display: 'grid', gap: 0 }}>
                 {filteredItems.map(item => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #EDF2F8' }}>
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #EDF2F8', opacity: item.is_available ? 1 : 0.5 }}>
                     <div style={{ flex: 1 }}>
                       <strong>{item.name}</strong>
                       <span style={{ marginLeft: 12, color: '#059669', fontWeight: 600 }}>{formatRM(item.base_price)}</span>
+                      {!item.is_available && <span style={{ marginLeft: 8, fontSize: 11, color: '#EF4444', fontWeight: 500 }}>Hidden</span>}
                       {item.description && <p style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>{item.description}</p>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
