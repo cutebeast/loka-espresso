@@ -193,6 +193,16 @@ async def create_category(
     db: AsyncSession = Depends(get_db),
 ):
     slug = req.slug or req.name.lower().replace(" ", "-")
+    # Check for duplicate category name in this store
+    existing = await db.execute(
+        select(MenuCategory).where(
+            MenuCategory.store_id == store_id,
+            MenuCategory.name == req.name,
+            MenuCategory.is_active == True,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail=f"Category '{req.name}' already exists in this store")
     cat = MenuCategory(store_id=store_id, name=req.name, slug=slug, display_order=req.display_order)
     db.add(cat)
     await db.flush()
@@ -215,6 +225,17 @@ async def update_category(
     cat = result.scalar_one_or_none()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
+    # Check for duplicate name (excluding self)
+    existing = await db.execute(
+        select(MenuCategory).where(
+            MenuCategory.store_id == store_id,
+            MenuCategory.name == req.name,
+            MenuCategory.id != cat_id,
+            MenuCategory.is_active == True,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail=f"Category '{req.name}' already exists in this store")
     cat.name = req.name
     if req.slug:
         cat.slug = req.slug
@@ -322,6 +343,16 @@ async def create_table(
     user: User = Depends(require_store_access("store_id")),
     db: AsyncSession = Depends(get_db),
 ):
+    # Check for duplicate table number in this store
+    existing = await db.execute(
+        select(StoreTable).where(
+            StoreTable.store_id == store_id,
+            StoreTable.table_number == req.table_number,
+            StoreTable.is_active == True,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail=f"Table '{req.table_number}' already exists in this store")
     table = StoreTable(store_id=store_id, table_number=req.table_number, capacity=req.capacity)
     db.add(table)
     await db.flush()
@@ -349,6 +380,17 @@ async def update_table(
     if not table:
         raise HTTPException(404, "Table not found")
     if req.table_number is not None:
+        # Check for duplicate table number
+        existing = await db.execute(
+            select(StoreTable).where(
+                StoreTable.store_id == store_id,
+                StoreTable.table_number == req.table_number,
+                StoreTable.id != table_id,
+                StoreTable.is_active == True,
+            )
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail=f"Table '{req.table_number}' already exists in this store")
         table.table_number = req.table_number
     if req.capacity is not None:
         table.capacity = req.capacity
