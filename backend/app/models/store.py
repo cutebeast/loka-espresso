@@ -20,8 +20,8 @@ class Store(Base):
     pickup_lead_minutes = Column(Integer, default=15)
     delivery_radius_km = Column(DECIMAL(5, 2), default=5.0)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     tables = relationship("StoreTable", back_populates="store", cascade="all, delete-orphan")
     categories = relationship("MenuCategory", back_populates="store", cascade="all, delete-orphan")

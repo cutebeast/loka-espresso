@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import timezone, datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, DECIMAL, JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -16,7 +16,7 @@ class Feedback(Base):
     tags = Column(JSON, nullable=True)  # e.g. ["slow_service", "great_coffee"]
     is_resolved = Column(Boolean, default=False, nullable=False)
     admin_reply = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     store = relationship("Store")
     user = relationship("User")
@@ -34,7 +34,7 @@ class AuditLog(Base):
     details = Column(JSON, nullable=True)
     ip_address = Column(String(45), nullable=True)
     status = Column(String(20), default="success")  # success, failed
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     user = relationship("User")
     store = relationship("Store")
@@ -53,7 +53,8 @@ class NotificationBroadcast(Base):
     sent_count = Column(Integer, default=0)
     open_count = Column(Integer, default=0)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    is_archived = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class PromoBanner(Base):
@@ -61,13 +62,18 @@ class PromoBanner(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
-    subtitle = Column(String(255), nullable=True)
+    short_description = Column(String(255), nullable=True)
     image_url = Column(String(500), nullable=True)
-    target_url = Column(String(500), nullable=True)  # Where clicking the banner goes
     position = Column(Integer, default=0)  # Display order
     store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)  # null = all stores
     start_date = Column(DateTime(timezone=True), nullable=True)
     end_date = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    terms = Column(JSON, nullable=True)
+    how_to_redeem = Column(Text, nullable=True)
+    survey_id = Column(Integer, ForeignKey("surveys.id"), nullable=True)
+    voucher_id = Column(Integer, ForeignKey("vouchers.id"), nullable=True)
+    long_description = Column(Text, nullable=True)
+    action_type = Column(String(20), default="detail", nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

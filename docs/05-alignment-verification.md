@@ -1,106 +1,118 @@
 # FNB Super-App — Alignment Verification
 
-> Last updated: 2026-04-13 | Phase 2 Complete
+> Last updated: 2026-04-14 | Marketing Group + Wallet Infrastructure Complete
 > Purpose: Ensure models ↔ DB ↔ endpoints are aligned
 
 ## Migration History
 
-| Revision | Description |
-|----------|-------------|
-| 395b86453379 | Initial schema |
-| 8cb8a6633870 | Staff, feedback, audit, broadcast tables |
-| 5c4afbe8e02b | Schema v3: order_items, type fixes |
-| a1b2c3d4e5f6 | Schema v4: consolidate promos, add indexes |
-| 6546b42e617a | Add assistant_manager to StaffRole enum |
-| b7c8d9e0f1a2 | Schema v5: delivery provider, soft deletes, occupancy, marketing, customizations |
-| c8d9e0f1a2b3 | Schema v6: token_blacklist, device_tokens.is_active |
-| d1e2f3a4b5c6 | Schema v7: staff unique constraint (store_id, user_id), referral timing guard |
-| e2f3a4b5c6d7 | Schema v8: cart customization_option_ids, pin_attempts table |
-
-**Current head:** `e2f3a4b5c6d7`
+| Revision | File | Description |
+|----------|------|-------------|
+| 395b86453379 | initial | Initial schema |
+| 8cb8a6633870 | staff_feedback | Staff, feedback, audit, broadcast tables |
+| 5c4afbe8e02b | schema_v3 | Order_items, type fixes |
+| a1b2c3d4e5f6 | schema_v4 | Consolidate promos, add indexes |
+| 6546b42e617a | staff_role | Add assistant_manager to StaffRole enum |
+| b7c8d9e0f1a2 | schema_v5 | Delivery provider, soft deletes, occupancy, marketing, customizations |
+| c8d9e0f1a2b3 | schema_v6 | token_blacklist, device_tokens.is_active |
+| d1e2f3a4b5c6 | schema_v7 | Staff unique constraint, referral timing guard |
+| e2f3a4b5c6d7 | schema_v8 | Cart customization_option_ids, pin_attempts |
+| (auto) | marketing_group_v1 | Survey tables, reward.code, banner fields |
+| (auto) | marketing_terms_v2 | terms/how_to_redeem on rewards, vouchers, banners |
+| (auto) | marketing_pwa_v3 | short_description/long_description on rewards, vouchers, banners |
+| (auto) | promo_voucher_guards_v4 | voucher_id on banners, max_uses_per_user on vouchers, source/source_id on user_vouchers |
+| (auto) | customer_wallet_v5 | Full wallet gap fix: 17 columns across 5 tables, data backfill |
 
 ## Model Files vs DB Tables
 
 | Model File | Models | DB Table | Status |
 |------------|--------|----------|--------|
-| user.py | User | users | ✅ Aligned (phone_verified added) |
-| user.py | UserAddress | user_addresses | ✅ Aligned |
-| user.py | OTPSession | otp_sessions | ✅ Aligned |
-| user.py | DeviceToken | device_tokens | ✅ Aligned (is_active added) |
-| user.py | TokenBlacklist | token_blacklist | ✅ New table (v6) |
-| store.py | Store | stores | ✅ Aligned |
-| store.py | StoreTable | store_tables | ✅ Aligned (is_occupied added) |
-| menu.py | MenuCategory | menu_categories | ✅ Aligned |
-| menu.py | MenuItem | menu_items | ✅ Aligned (deleted_at added) |
-| menu.py | InventoryItem | inventory_items | ✅ Aligned |
-| order.py | CartItem | cart_items | ✅ Aligned (customization_option_ids added v8) |
-| order.py | Order | orders | ✅ Aligned (delivery_provider added) |
-| order.py | OrderItem | order_items | ✅ Aligned (ON DELETE SET NULL) |
-| order.py | OrderStatusHistory | order_status_history | ✅ Aligned |
-| order.py | Payment | payments | ✅ Aligned |
-| loyalty.py | LoyaltyAccount | loyalty_accounts | ✅ Aligned |
-| loyalty.py | LoyaltyTransaction | loyalty_transactions | ✅ Aligned (created_by added) |
-| loyalty.py | LoyaltyTier | loyalty_tiers | ✅ Aligned |
-| reward.py | Reward | rewards | ✅ Aligned (deleted_at added) |
-| reward.py | UserReward | user_rewards | ✅ Aligned |
-| voucher.py | Voucher | vouchers | ✅ Aligned (deleted_at added) |
-| voucher.py | UserVoucher | user_vouchers | ✅ Aligned |
-| notification.py | Notification | notifications | ✅ Aligned |
-| wallet.py | Wallet | wallets | ✅ Aligned |
-| wallet.py | WalletTransaction | wallet_transactions | ✅ Aligned |
-| wallet.py | PaymentMethod | payment_methods | ✅ Aligned |
-| social.py | Referral | referrals | ✅ Aligned |
-| social.py | Favorite | favorites | ✅ Aligned |
-| splash.py | AppConfig | app_config | ✅ Aligned |
-| splash.py | SplashContent | splash_content | ✅ Aligned |
-| staff.py | Staff | staff | ✅ Aligned (unique: store_id+user_id partial index) |
-| staff.py | StaffShift | staff_shifts | ✅ Aligned |
-| staff.py | PinAttempt | pin_attempts | ✅ New table (v8) |
-| admin_extras.py | Feedback | feedback | ✅ Aligned |
-| admin_extras.py | AuditLog | audit_log | ✅ Aligned |
-| admin_extras.py | NotificationBroadcast | notification_broadcasts | ✅ Aligned |
-| admin_extras.py | PromoBanner | promo_banners | ✅ Aligned |
-| marketing.py | CustomizationOption | customization_options | ✅ New table |
-| marketing.py | MarketingCampaign | marketing_campaigns | ✅ New table |
-| marketing.py | TableOccupancySnapshot | table_occupancy_snapshot | ✅ New table |
+| user.py | User | users | ✅ |
+| user.py | UserAddress | user_addresses | ✅ |
+| user.py | OTPSession | otp_sessions | ✅ |
+| user.py | DeviceToken | device_tokens | ✅ |
+| user.py | TokenBlacklist | token_blacklist | ✅ |
+| store.py | Store | stores | ✅ |
+| store.py | StoreTable | store_tables | ✅ |
+| menu.py | MenuCategory | menu_categories | ✅ |
+| menu.py | MenuItem | menu_items | ✅ |
+| menu.py | InventoryItem | inventory_items | ✅ |
+| order.py | CartItem | cart_items | ✅ |
+| order.py | Order | orders | ✅ |
+| order.py | OrderItem | order_items | ✅ |
+| order.py | OrderStatusHistory | order_status_history | ✅ |
+| order.py | Payment | payments | ✅ |
+| loyalty.py | LoyaltyAccount | loyalty_accounts | ✅ |
+| loyalty.py | LoyaltyTransaction | loyalty_transactions | ✅ |
+| loyalty.py | LoyaltyTier | loyalty_tiers | ✅ |
+| reward.py | Reward | rewards | ✅ (validity_days added) |
+| reward.py | UserReward | user_rewards | ✅ (status, expires_at, redemption_code, reward_snapshot, points_spent added) |
+| voucher.py | Voucher | vouchers | ✅ (validity_days, max_uses_per_user added) |
+| voucher.py | UserVoucher | user_vouchers | ✅ (status, code, expires_at, discount_type/value, min_spend, source, source_id added) |
+| notification.py | Notification | notifications | ✅ |
+| wallet.py | Wallet | wallets | ✅ |
+| wallet.py | WalletTransaction | wallet_transactions | ✅ (balance_after added) |
+| wallet.py | PaymentMethod | payment_methods | ✅ |
+| social.py | Referral | referrals | ✅ |
+| social.py | Favorite | favorites | ✅ |
+| splash.py | AppConfig | app_config | ✅ |
+| splash.py | SplashContent | splash_content | ✅ |
+| staff.py | Staff | staff | ✅ |
+| staff.py | StaffShift | staff_shifts | ✅ |
+| staff.py | PinAttempt | pin_attempts | ✅ |
+| admin_extras.py | Feedback | feedback | ✅ |
+| admin_extras.py | AuditLog | audit_log | ✅ |
+| admin_extras.py | NotificationBroadcast | notification_broadcasts | ✅ |
+| admin_extras.py | PromoBanner | promo_banners | ✅ (voucher_id, survey_id, action_type, long_description, terms, how_to_redeem added) |
+| marketing.py | CustomizationOption | customization_options | ✅ |
+| marketing.py | MarketingCampaign | marketing_campaigns | ✅ |
+| marketing.py | TableOccupancySnapshot | table_occupancy_snapshot | ✅ |
+| survey.py | Survey | surveys | ✅ NEW |
+| survey.py | SurveyQuestion | survey_questions | ✅ NEW |
+| survey.py | SurveyResponse | survey_responses | ✅ NEW |
+| survey.py | SurveyAnswer | survey_answers | ✅ NEW |
 
-**Total: 41 tables, 41 models, 15 model files — ALL ALIGNED ✅**
+**Total: 45 tables, 45 models, 16 model files — ALL ALIGNED ✅**
 
 ## Endpoint Files vs Router Registration
 
-| Endpoint File | Router Prefix | Registered | ACL |
-|---------------|--------------|------------|-----|
-| auth.py | `/auth` | ✅ | Public |
-| users.py | `/users` | ✅ | customer |
-| stores.py | `/stores` | ✅ | Public + require_store_access |
-| menu.py | `/stores/{id}/categories`, `/stores/{id}/items` | ✅ | Public |
-| cart.py | `/cart` | ✅ | customer |
-| orders.py | `/orders` | ✅ | customer + inline staff check |
-| payments.py | `/payments` | ✅ | customer |
-| loyalty.py | `/loyalty` | ✅ | customer |
-| rewards.py | `/rewards` | ✅ | customer |
-| vouchers.py | `/vouchers` | ✅ | customer |
-| favorites.py | `/favorites` | ✅ | customer |
-| notifications.py | `/notifications` | ✅ | customer |
-| referral.py | `/referral` | ✅ | customer |
-| tables.py | `/tables` | ✅ | Public/customer |
-| wallet.py | `/wallet` | ✅ | customer |
-| promos.py | `/promos` | ✅ | Public |
-| upload.py | `/upload` | ✅ | admin, store_owner |
-| splash.py | `/splash` | ✅ | Public GET / admin PUT |
-| config.py | `/config` | ✅ | Public GET / admin PUT |
-| inventory.py | `/stores/{id}/inventory` | ✅ | require_store_access |
-| admin.py | `/admin` | ✅ | require_role + require_store_access |
-| admin_customers.py | `/admin/customers` | ✅ | admin |
-| admin_feedback.py | `/admin/feedback` | ✅ | admin |
-| admin_rewards.py | `/admin/rewards` | ✅ | admin |
-| admin_staff.py | `/admin/stores/{id}/staff` | ✅ | require_store_access(manager/asst_mgr) |
-| admin_system.py | `/admin/audit-log, broadcasts, banners, tiers` | ✅ | admin |
-| admin_vouchers.py | `/admin/vouchers` | ✅ | admin |
-| admin_marketing.py | `/admin/marketing` | ✅ | admin |
-| reports.py | `/admin/reports` | ✅ | admin, store_owner |
+| Endpoint File | Router Prefix | Registered | Purpose |
+|---------------|--------------|------------|---------|
+| auth.py | `/auth` | ✅ | Login, OTP, device tokens |
+| users.py | `/users` | ✅ | Profile, addresses |
+| stores.py | `/stores` | ✅ | Store listing |
+| menu.py | `/stores/{id}/...` | ✅ | Categories, items, search |
+| cart.py | `/cart` | ✅ | Shopping cart |
+| orders.py | `/orders` | ✅ | Order CRUD |
+| payments.py | `/payments` | ✅ | Payment stubs |
+| loyalty.py | `/loyalty` | ✅ | Points balance, tiers |
+| rewards.py | `/rewards` | ✅ | PWA rewards catalog + redeem |
+| vouchers.py | `/vouchers` | ✅ | PWA voucher wallet + validate + use |
+| favorites.py | `/favorites` | ✅ | Favorites |
+| notifications.py | `/notifications` | ✅ | Notification management |
+| referral.py | `/referral` | ✅ | Referral codes |
+| tables.py | `/tables` | ✅ | Table scan |
+| wallet.py | `/wallet` | ✅ | Cash wallet |
+| promos.py | `/promos` | ✅ | Public promos |
+| upload.py | `/upload` | ✅ | Image uploads |
+| splash.py | `/splash` | ✅ | Splash screen |
+| config.py | — | ✅ | App config |
+| inventory.py | `/stores/{id}/inventory` | ✅ | Inventory CRUD |
+| admin.py | `/admin` | ✅ | Dashboard, store CRUD, reports |
+| admin_rewards.py | `/admin/rewards` | ✅ | Admin reward management |
+| admin_vouchers.py | `/admin/vouchers` | ✅ | Admin voucher management |
+| admin_surveys.py | `/admin/surveys` | ✅ NEW | Admin survey management |
+| reports.py | `/admin/reports` | ✅ | Revenue, sales, loyalty, marketing |
+| admin_staff.py | `/admin/stores/{id}/staff` | ✅ | Staff CRUD |
+| admin_feedback.py | `/admin/feedback` | ✅ | Feedback management |
+| admin_system.py | `/admin/...` | ✅ | Banners, broadcasts, audit log, loyalty tiers |
+| admin_customers.py | `/admin/customers` | ✅ | Customer management |
+| admin_marketing.py | `/admin/marketing` | ✅ | Marketing campaigns |
+| pwa_promos.py | `/promos/banners` | ✅ NEW | PWA banner listing, detail, status, claim |
+| pwa_surveys.py | `/surveys` | ✅ NEW | PWA survey detail, submit with auto-grant |
+| pwa_wallet.py | `/me` | ✅ NEW | PWA full customer wallet |
+| scan_cron.py | `/scan` | ✅ NEW | Barista scan + cron expiry |
 
-**Total: 29 endpoint files, 112 endpoints — ALL REGISTERED ✅**
+**Total: 34 endpoint files, 163 endpoints — ALL REGISTERED ✅**
 
 ## Enums: Model vs DB
 
@@ -113,82 +125,118 @@
 | DiscountType | percent, fixed, free_item | percent, fixed, free_item | ✅ |
 | RewardType | free_item, discount_voucher, custom | free_item, discount_voucher, custom | ✅ |
 | TxType | earn, redeem, expire | earn, redeem, expire | ✅ |
-| WalletTxType | topup, payment, refund | topup, payment, refund | ✅ |
+| WalletTxType | topup, payment, refund, cashback, promo_credit, admin_adjustment | topup, payment, refund, cashback, promo_credit, admin_adjustment | ✅ |
 
 **ALL ENUMS ALIGNED ✅**
 
-## FK Constraints: Model vs DB
+## New Schema Columns (Marketing Migrations)
 
-| Table | Column | References | ON DELETE | Status |
-|-------|--------|-----------|-----------|--------|
-| order_items | menu_item_id | menu_items(id) | SET NULL | ✅ v5 fix |
-| table_occupancy_snapshot | table_id | store_tables(id) | CASCADE | ✅ |
-| table_occupancy_snapshot | current_order_id | orders(id) | SET NULL | ✅ |
-| customization_options | menu_item_id | menu_items(id) | CASCADE | ✅ |
-| All other FKs | — | — | RESTRICT (default) | ✅ |
+### rewards (new columns)
+| Column | Type | Default | Migration |
+|--------|------|---------|-----------|
+| code | varchar(50) UNIQUE | — | v1 |
+| terms | json | — | v2 |
+| how_to_redeem | text | — | v2 |
+| short_description | varchar(500) | — | v3 |
+| long_description | text | — | v3 |
+| validity_days | integer | 30 | v5 |
 
-## Unique Constraints
+### user_rewards (new columns)
+| Column | Type | Default | Migration |
+|--------|------|---------|-----------|
+| status | varchar(20) | 'available' | v5 |
+| expires_at | timestamptz | — | v5 |
+| used_at | timestamptz | — | v5 |
+| redemption_code | varchar(50) UNIQUE | — | v5 |
+| points_spent | integer | — | v5 |
+| reward_snapshot | json | — | v5 |
 
-| Table | Constraint | Type | Status |
-|-------|-----------|------|--------|
-| staff | (store_id, user_id) WHERE user_id IS NOT NULL | Partial unique index | ✅ v7 fix |
-| users | email | Unique | ✅ |
-| vouchers | code | Unique | ✅ |
-| loyalty_accounts | user_id | Unique | ✅ |
-| device_tokens | token | Unique | ✅ |
-| referrals | code | Unique | ✅ |
+### vouchers (new columns)
+| Column | Type | Default | Migration |
+|--------|------|---------|-----------|
+| terms | json | — | v2 |
+| how_to_redeem | text | — | v2 |
+| short_description | varchar(500) | — | v3 |
+| long_description | text | — | v3 |
+| max_uses_per_user | integer | 1 | v4 |
+| validity_days | integer | 30 | v5 |
 
-## Soft Delete Implementation
+### user_vouchers (new columns)
+| Column | Type | Default | Migration |
+|--------|------|---------|-----------|
+| status | varchar(20) | 'available' | v5 |
+| code | varchar(50) UNIQUE | — | v5 |
+| expires_at | timestamptz | — | v5 |
+| used_at | timestamptz | — | v5 |
+| discount_type | varchar(20) | — | v5 |
+| discount_value | numeric(10,2) | — | v5 |
+| min_spend | numeric(10,2) | — | v5 |
+| source | varchar(30) | — | v4 |
+| source_id | integer | — | v4 |
 
-| Table | Column | Delete Endpoint | Implementation |
-|-------|--------|----------------|----------------|
-| menu_items | deleted_at | DELETE /admin/stores/{id}/items/{id} | Sets deleted_at = now() + is_available=false ✅ |
-| vouchers | deleted_at | DELETE /admin/vouchers/{id} | Sets deleted_at + is_active=false ✅ |
-| rewards | deleted_at | DELETE /admin/rewards/{id} | Sets deleted_at + is_active=false ✅ |
+### promo_banners (new columns)
+| Column | Type | Default | Migration |
+|--------|------|---------|-----------|
+| survey_id | integer FK | — | v1 |
+| action_type | varchar(20) | 'detail' | v1 |
+| terms | json | — | v2 |
+| how_to_redeem | text | — | v2 |
+| long_description | text | — | v3 |
+| voucher_id | integer FK | — | v4 |
 
-**Note:** GET endpoints now filter `WHERE deleted_at IS NULL` by default (Phase 2 fix). Admin endpoints accept `?include_deleted=true` to see all records. Public endpoints always exclude soft-deleted items.
+### wallet_transactions (new columns)
+| Column | Type | Default | Migration |
+|--------|------|---------|-----------|
+| balance_after | numeric(10,2) | — | v5 |
 
-## Triggers
+### New Tables
+| Table | Migration | Purpose |
+|-------|-----------|---------|
+| surveys | v1 | Survey forms (company-wide) |
+| survey_questions | v1 | Questions within surveys |
+| survey_responses | v1 | Customer responses |
+| survey_answers | v1 | Individual answers |
 
-| Trigger | Function | Table | Events | Status |
-|---------|----------|-------|--------|--------|
-| trg_order_status_occupancy | fn_update_table_occupancy() | orders | AFTER INSERT OR UPDATE OF status | ✅ Active |
+## Completed Features Summary
 
-## Indexes Added in v4+v5
+### Marketing Group (Session 3-4)
+1. ✅ **6 Admin Pages** — Rewards, Vouchers, Promotions, Feedback, Surveys, Marketing Reports
+2. ✅ **5 PWA Endpoint Files** — pwa_promos, pwa_surveys, pwa_wallet, scan_cron, admin_surveys
+3. ✅ **5 Migrations** — marketing_group_v1 through customer_wallet_v5
+4. ✅ **Catalog→Instance Pattern** — rewards/vouchers use catalog template + per-customer instances
+5. ✅ **Per-Instance Codes** — Each user_reward/user_voucher has unique scannable code
+6. ✅ **Per-Instance Expiry** — validity_days on catalog → expires_at on instance
+7. ✅ **Discount Snapshots** — Frozen discount details on user_voucher at claim time
+8. ✅ **Barista Scan** — POST /scan/reward/{code} and /scan/voucher/{code}
+9. ✅ **Cron Expiry** — POST /scan/cron/expire marks expired instances
+10. ✅ **Repeat Protection** — Guards against duplicate claims, submissions, redemptions
+11. ✅ **Source Tracking** — user_vouchers.source tracks origin (survey, promo_detail, admin_grant, loyalty)
+12. ✅ **Voucher Auto-Grant** — Survey completion and promo claim auto-grant voucher instances
 
-| Index | Table | Columns | Purpose |
-|-------|-------|---------|---------|
-| ix_orders_table_id | orders | table_id | Dine-in order lookup |
-| ix_table_occupancy_store_occupied | table_occupancy_snapshot | store_id, is_occupied | Find free tables per store |
-| 15 composite indexes (v4) | Various | Various | Scalability for 100k+ users |
+### Pre-Phase 3 Checklist
+1. ✅ Cross-Store Validation at Order Creation
+2. ✅ Self-Referral Prevention
+3. ✅ Public Endpoint for Customization Options
+4. ✅ Token Blacklist Cleanup
+5. ✅ Audit Log Hooks (25 log_action calls across 7 files)
+6. ✅ Timezone-Aware Datetimes
+7. ✅ Feedback Stats API
+8. ✅ Reports Date Range Presets
 
-## Outstanding Items (Phase 3 — External Integrations)
+### Phase 2 Features
+1. ✅ Soft delete filters
+2. ✅ Rate limiting (slowapi)
+3. ✅ File upload validation
+4. ✅ Charts (BarChart/DonutChart/SparkLine)
+5. ✅ Customization options integration
+6. ✅ delivery_provider
+7. ✅ Staff clock-in fix
+8. ✅ Customer PWA refactor
 
-1. **Wallet pre-top-up** — Integration with Stripe payment gateway
-2. **SMS OTP** — Integration with Twilio/Signal (currently prints to console)
-3. **WhatsApp notifications** — Integration with WhatsApp Business API (currently stub)
-4. **Push notifications** — Integration with Firebase Cloud Messaging (currently stub)
+## Outstanding Items (Phase 3)
 
-## Completed Phase 2 Features
-
-1. ✅ **Soft delete filter** — Admin GET endpoints now exclude `deleted_at IS NOT NULL` by default; `?include_deleted=true` shows all
-2. ✅ **Rate limiting on auth** — slowapi with shared Limiter instance: send-otp 5/min, register 5/min, login 10/min
-3. ✅ **File upload validation** — 5MB max size, only JPEG/PNG/WebP/GIF MIME types allowed
-4. ✅ **Charts in merchant dashboard** — SVG-based BarChart, DonutChart, SparkLine components on reports page
-5. ✅ **Customization options integration** — Cart validates `customization_option_ids` against DB, resolves names + prices
-6. ✅ **delivery_provider population** — Order creation sets delivery_provider for delivery orders (defaults to "internal")
-7. ✅ **Staff clock-in fix** — StaffShift now correctly includes store_id from staff record
-8. ✅ **Customer PWA refactor** — Monolithic 660-line page broken into 10 components with shared React Context
-
-## Completed Security Features (Phase 1)
-
-1. ✅ **JWT Token Blacklist** — Logout invalidates tokens via JTI
-2. ✅ **PIN Rate Limiting** — 5 attempts per 5 minutes per staff member
-3. ✅ **Order Cancel Loyalty Rollback** — Reverses points on cancellation
-4. ✅ **created_by on loyalty_transactions** — Manual adjustments tracked
-5. ✅ **Menu soft delete** — Sets both deleted_at and is_available=false
-6. ✅ **Admin can cancel any order** — Not just own orders
-7. ✅ **DeviceToken.is_active** — Model aligned with DB schema
-8. ✅ **Cross-Store Cart Guard** — Returns 400 when adding items from different store
-9. ✅ **Staff Unique Constraint** — Partial unique index (store_id, user_id) WHERE user_id IS NOT NULL
-10. ✅ **Referral Code Timing Guard** — Only applicable within 7 days of account creation, one-time only
+1. **Customer PWA rebuild** — Use new wallet API (GET /me/wallet, rewards catalog, voucher instances, scan)
+2. **Stripe payments** — Payment intent integration
+3. **Twilio SMS OTP** — Real OTP delivery
+4. **WhatsApp notifications** — Business API integration
+5. **Firebase FCM** — Push notification delivery

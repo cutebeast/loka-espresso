@@ -9,7 +9,7 @@ class AppConfig(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String(100), unique=True, nullable=False, index=True)
     value = Column(Text, nullable=True)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class SplashContent(Base):
@@ -27,5 +27,5 @@ class SplashContent(Base):
     is_active = Column(Boolean, default=False, nullable=False)
     fallback_title = Column(String(255), default="Coffee App")
     fallback_subtitle = Column(String(255), default="Coffee \u00b7 Community \u00b7 Culture")
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

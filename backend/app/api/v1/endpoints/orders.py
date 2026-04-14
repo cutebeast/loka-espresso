@@ -46,7 +46,15 @@ async def create_order(
     for ci in cart_items:
         ir = await db.execute(select(MenuItem).where(MenuItem.id == ci.item_id))
         mi = ir.scalar_one_or_none()
-        name = mi.name if mi else "Unknown"
+        if not mi:
+            raise HTTPException(status_code=400, detail=f"Menu item {ci.item_id} not found")
+        # Cross-store validation: every menu item must belong to the order's store
+        if mi.store_id != store_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Item '{mi.name}' belongs to store {mi.store_id}, not store {store_id}",
+            )
+        name = mi.name
         price = float(ci.unit_price)
         order_items.append({
             "item_id": ci.item_id, "name": name, "quantity": ci.quantity,

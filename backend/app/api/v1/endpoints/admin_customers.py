@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, or_
 
 from app.core.database import get_db
 from app.core.security import require_role
-from app.core.audit import log_action
+from app.core.audit import log_action, get_client_ip
 from app.models.user import User, UserRole
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.order import Order
 from app.models.wallet import Wallet, WalletTransaction
-from app.schemas.admin_customers import AdjustPointsRequest
+from app.schemas.admin_customers import AdjustPointsRequest, CustomerUpdateRequest
 
 router = APIRouter(prefix="/admin", tags=["Admin — Customers"])
 
@@ -235,3 +235,47 @@ async def adjust_customer_points(
     await db.flush()
     await db.commit()
     return {"message": "Points adjusted", "new_balance": account.points_balance}
+
+
+@router.put("/customers/{user_id}")
+async def update_customer(
+    user_id: int,
+    request: Request,
+    data: CustomerUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(UserRole.admin)),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    changes = data.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail="No changes provided")
+
+    # Check uniqueness constraints
+    if "phone" in changes and changes["phone"] != target.phone:
+        existing = await db.execute(select(User).where(User.phone == changes["phone"]))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="Phone number already in use by another account")
+
+    if "email" in changes and changes["email"] and changes["email"] != target.email:
+        existing = await db.execute(select(User).where(User.email == changes["email"]))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="Email already in use by another account")
+
+    for key, value in changes.items():
+        setattr(target, key, value)
+
+    ip = get_client_ip(request)
+    await log_action(db, action="UPDATE_CUSTOMER", user_id=user.id, entity_type="customer", entity_id=user_id, details={"changes": changes}, ip_address=ip)
+    await db.flush()
+    await db.refresh(target)
+    await db.commit()
+    return {
+        "id": target.id,
+        "name": target.name,
+        "email": target.email,
+        "phone": target.phone,
+    }

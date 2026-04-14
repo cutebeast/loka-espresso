@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timezone, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,7 @@ PIN_WINDOW_MINUTES = 5
 
 async def _check_pin_rate_limit(staff_id: int, db: AsyncSession):
     """Database-backed PIN rate limit: max 5 attempts per 5 minutes per staff member."""
-    cutoff = datetime.utcnow() - timedelta(minutes=PIN_WINDOW_MINUTES)
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=PIN_WINDOW_MINUTES)
     result = await db.execute(
         select(func.count()).select_from(PinAttempt).where(
             PinAttempt.staff_id == staff_id,
@@ -129,7 +129,7 @@ async def clock_in(
     shift = StaffShift(
         staff_id=staff_id,
         store_id=staff.store_id,
-        clock_in=datetime.utcnow(),
+        clock_in=datetime.now(timezone.utc),
     )
     db.add(shift)
     await db.flush()
@@ -152,7 +152,7 @@ async def clock_out(
     shift = result.scalar_one_or_none()
     if not shift:
         raise HTTPException(404, detail="No active shift found")
-    shift.clock_out = datetime.utcnow()
+    shift.clock_out = datetime.now(timezone.utc)
     await db.flush()
     await db.commit()
     return {"detail": "Clocked out", "shift_id": shift.id}

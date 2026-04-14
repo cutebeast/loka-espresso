@@ -1,10 +1,10 @@
 # FNB Super-App — Test Credentials & Verification Guide
 
-> Last updated: 2026-04-13 | Phase 2 Complete
+> Last updated: 2026-04-14 | Marketing Group + Wallet Infrastructure Complete
 
 ## Test Accounts
 
-All passwords: `admin123`
+All passwords: `admin123` (unless noted — some customers use OTP only)
 
 ### Admin & Store Owner
 
@@ -13,35 +13,28 @@ All passwords: `admin123`
 | admin@loyaltysystem.uk | admin | — | ALL stores | Full platform admin |
 | store.owner@zus.my | store_owner | manager | Stores 1 + 2 | Multi-store owner/operator |
 
-### Managers (Single Store)
+### Customers (for PWA testing)
 
-| Email | UserRole | StaffRole | Store Access | Purpose |
-|-------|----------|-----------|-------------|---------|
-| raj.manager@zus.my | customer | manager | Store 2 only | Single-store manager isolation test |
-| lisa.manager@zus.my | customer | manager | Store 3 only | Single-store manager isolation test |
+| Email | Password | Name | Loyalty Points | Wallet |
+|-------|----------|------|---------------|--------|
+| sarah.wong@email.my | password123 | Sarah Wong | 820 | RM120.50 |
+| raj.kumar@email.my | password123 | Raj Kumar | — | — |
+| mei.lim@email.my | password123 | Mei Lim | — | — |
+| aida.rahman@email.my | password123 | Aida Rahman | — | — |
 
-### Assistant Manager
+### Managers
 
-| Email | UserRole | StaffRole | Store Access | Purpose |
-|-------|----------|-----------|-------------|---------|
-| siti@zus.my | customer | assistant_manager | Store 2 only | ACL test: can manage menu/staff but not delete managers |
+| Email | UserRole | StaffRole | Store Access |
+|-------|----------|-----------|-------------|
+| raj.manager@zus.my | customer | manager | Store 2 only |
+| lisa.manager@zus.my | customer | manager | Store 3 only |
 
-### Staff (No Dashboard Access)
+### Staff
 
-| Email | UserRole | StaffRole | Store Access | Purpose |
-|-------|----------|-----------|-------------|---------|
-| priya.dashboard@zus.my | customer | barista | Store 1 only | ACL test: barista should be BLOCKED from management endpoints |
-| (PIN-only staff) | — | barista/cashier/delivery | Various | Clock-in/out only, no JWT |
-
-### Customers
-
-| Email | Name |
-|-------|------|
-| ahmad@zus.my | Ahmad Razak |
-| sarah@zus.my | Sarah Tan |
-| raj@zus.my | Raj Kumar |
-| meilin@zus.my | Mei Lin Wong |
-| aida@zus.my | Aida Hassan |
+| Email | StaffRole | Store | Purpose |
+|-------|-----------|-------|---------|
+| siti@zus.my | assistant_manager | Store 2 | ACL test |
+| priya.dashboard@zus.my | barista | Store 1 | ACL: BLOCKED from management |
 
 ## Store Data
 
@@ -55,270 +48,146 @@ All passwords: `admin123`
 
 ### 1. Authentication
 ```bash
-# Login
 curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/login-password \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@loyaltysystem.uk","password":"admin123"}'
 # Expected: { "access_token": "eyJ...", "refresh_token": "eyJ..." }
 ```
 
-### 2. Dashboard Access
+### 2. Rewards Catalog (PWA)
 ```bash
-TOKEN=$(curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/login-password \
+# Public — no auth needed
+curl -s http://localhost:8000/api/v1/rewards
+# Expected: [ { "id": 3, "name": "Free Kaya Toast", "points_cost": 80 }, ... ]
+
+curl -s http://localhost:8000/api/v1/rewards/1
+# Expected: { "id": 1, "name": "Free Cappuccino", "points_cost": 150, "stock_limit": 500, "total_redeemed": 23 }
+```
+
+### 3. Reward Redemption
+```bash
+CT=$(curl -s http://localhost:8000/api/v1/auth/login-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"sarah.wong@email.my","password":"password123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+
+curl -s -X POST -H "Authorization: Bearer $CT" http://localhost:8000/api/v1/rewards/1/redeem
+# Expected: { "success": true, "redemption_code": "RWD-1-XXXXXX", "remaining_points": 670 }
+```
+
+### 4. Full Customer Wallet
+```bash
+curl -s -H "Authorization: Bearer $CT" http://localhost:8000/api/v1/me/wallet
+# Expected: { "rewards": [...], "vouchers": [...], "cash": {"balance": 120.5}, "loyalty_points": 670 }
+```
+
+### 5. Barista Scan (Reward)
+```bash
+AT=$(curl -s http://localhost:8000/api/v1/auth/login-password \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@loyaltysystem.uk","password":"admin123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
-curl -s https://admin.loyaltysystem.uk/api/v1/admin/dashboard \
-  -H "Authorization: Bearer $TOKEN"
-# Expected: { total_orders: 21, total_revenue: 586.9, total_customers: 5, ... }
+# Scan the code from step 3
+curl -s -X POST -H "Authorization: Bearer $AT" -H "Content-Type: application/json" \
+  http://localhost:8000/api/v1/scan/reward/RWD-1-XXXXXX -d '{}'
+# Expected: { "success": true, "reward_name": "Free Cappuccino", "customer_id": 3 }
+
+# Duplicate scan → rejected
+curl -s -X POST -H "Authorization: Bearer $AT" http://localhost:8000/api/v1/scan/reward/RWD-1-XXXXXX -d '{}'
+# Expected: 400 "Reward already used"
 ```
 
-### 3. Cross-Outlet Isolation
+### 6. Voucher Validate & Use
+```bash
+# Validate per-instance code
+curl -s -X POST -H "Authorization: Bearer $CT" -H "Content-Type: application/json" \
+  http://localhost:8000/api/v1/vouchers/validate -d '{"code": "VCH-7-28a259", "order_total": 30}'
+# Expected: { "valid": true, "discount_type": "free_item", "discount_value": 8.9 }
+
+# Barista scans voucher
+curl -s -X POST -H "Authorization: Bearer $AT" -H "Content-Type: application/json" \
+  http://localhost:8000/api/v1/scan/voucher/VCH-7-28a259 -d '{}'
+# Expected: { "success": true, "message": "Voucher applied: FREECOFFEE" }
+```
+
+### 7. Survey Submit with Voucher Grant
+```bash
+curl -s -X POST -H "Authorization: Bearer $CT" -H "Content-Type: application/json" \
+  http://localhost:8000/api/v1/surveys/1/submit \
+  -d '{"answers": [{"question_id": 1, "answer_text": "5"}, {"question_id": 2, "answer_text": "Great!"}]}'
+# Expected: { "success": true, "voucher_granted": true/false, "voucher_code": "..." }
+
+# Duplicate submission → rejected
+curl -s -X POST -H "Authorization: Bearer $CT" http://localhost:8000/api/v1/surveys/1/submit \
+  -d '{"answers": [{"question_id": 1, "answer_text": "5"}]}'
+# Expected: { "success": false, "already_submitted": true }
+```
+
+### 8. Promo Banner Claim
+```bash
+# Check status
+curl -s -H "Authorization: Bearer $CT" http://localhost:8000/api/v1/promos/banners/1/status
+# Expected: { "claimed": false }
+
+# Claim
+curl -s -X POST -H "Authorization: Bearer $CT" http://localhost:8000/api/v1/promos/banners/1/claim
+# Expected: { "success": true, "voucher_code": "...", "voucher_title": "..." }
+```
+
+### 9. Cron Expire Job
+```bash
+curl -s -X POST -H "Authorization: Bearer $AT" http://localhost:8000/api/v1/scan/cron/expire
+# Expected: { "rewards_expired": 0, "vouchers_expired": N }
+```
+
+### 10. Dashboard Access
+```bash
+curl -s https://admin.loyaltysystem.uk/api/v1/admin/dashboard \
+  -H "Authorization: Bearer $AT"
+# Expected: { total_orders, total_revenue, total_customers, ... }
+```
+
+### 11. Cross-Outlet Isolation
 ```bash
 # Raj (manager store 2) → store 2 inventory = ALLOWED
 # Raj (manager store 2) → store 1 inventory = BLOCKED (403)
-# Lisa (manager store 3) → store 3 inventory = ALLOWED  
-# Lisa (manager store 3) → store 1 inventory = BLOCKED (403)
-# Siti (asst_mgr store 2) → store 2 staff = ALLOWED
-# Siti (asst_mgr store 2) → store 1 staff = BLOCKED (403)
 # Priya (barista store 1) → store 1 inventory = BLOCKED (barista not in MANAGEMENT_ROLES)
 # Admin → any store = ALWAYS ALLOWED
 ```
 
-### 4. Multi-Store Manager
-```bash
-# Amirul (store_owner + manager at stores 1+2):
-#   store 1 inventory = ALLOWED
-#   store 2 inventory = ALLOWED
-#   store 3 inventory = BLOCKED (no staff record at store 3)
-# NOTE: Amirul's UserRole is store_owner, so he actually gets ALL stores.
-#       The staff records at stores 1+2 are additional, not limiting.
-```
-
-### 5. Cross-Store Cart Guard
-```bash
-TOKEN=$(curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/login-password \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@loyaltysystem.uk","password":"admin123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
-
-# Add item from store 1
-curl -s -X POST https://admin.loyaltysystem.uk/api/v1/cart/items \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"store_id":1,"item_id":1,"quantity":1}'
-# Expected: 201 Created
-
-# Try adding from store 2 — should fail
-curl -s -w "\nHTTP:%{http_code}\n" -X POST https://admin.loyaltysystem.uk/api/v1/cart/items \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"store_id":2,"item_id":5,"quantity":1}'
-# Expected: 400 "Cart contains items from a different store..."
-
-# Clear cart, then add from store 2 — should succeed
-curl -s -X DELETE https://admin.loyaltysystem.uk/api/v1/cart -H "Authorization: Bearer $TOKEN"
-curl -s -X POST https://admin.loyaltysystem.uk/api/v1/cart/items \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"store_id":2,"item_id":5,"quantity":1}'
-# Expected: 201 Created
-```
-
-### 6. Soft Delete Verification
+### 12. Soft Delete Verification
 ```bash
 # DELETE /admin/stores/1/items/{item_id}
 # Expected: item gets deleted_at = NOW() AND is_available = false
 # Verify: SELECT id, name, deleted_at, is_available FROM menu_items WHERE deleted_at IS NOT NULL;
 ```
 
-### 7. Staff Unique Constraint
+### 13. Token Blacklist / Logout
 ```bash
-# Verify partial unique index exists:
-docker exec fnb-db psql -U fnb -d fnb -c \
-  "SELECT indexdef FROM pg_indexes WHERE tablename='staff' AND indexname='uq_staff_store_user';"
-# Expected: CREATE UNIQUE INDEX ... WHERE (user_id IS NOT NULL)
-
-# Attempt duplicate — should fail:
-docker exec fnb-db psql -U fnb -d fnb -c \
-  "INSERT INTO staff (store_id, user_id, name, role, is_active) VALUES (1, 7, 'Dup', 'barista', true);"
-# Expected: ERROR: duplicate key value violates unique constraint "uq_staff_store_user"
-```
-
-### 8. Referral Code Timing Guard
-```bash
-# Accounts older than 7 days cannot apply referral codes:
-TOKEN=$(curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/login-password \
+TOKEN=$(curl -s http://localhost:8000/api/v1/auth/login-password \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@loyaltysystem.uk","password":"admin123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
-curl -s -w "\nHTTP:%{http_code}\n" -X POST "https://admin.loyaltysystem.uk/api/v1/referral/apply?code=REF-2-ABC123" \
-  -H "Authorization: Bearer $TOKEN"
-# Expected: 400 "Referral codes can only be applied within 7 days of account creation"
-```
+curl -s http://localhost:8000/api/v1/users/me -H "Authorization: Bearer $TOKEN"
+# Expected: 200 OK
 
-### 9. Token Blacklist / Logout
-```bash
-TOKEN=$(curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/login-password \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@loyaltysystem.uk","password":"admin123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
-
-# Use token — should work
-curl -s https://admin.loyaltysystem.uk/api/v1/users/me -H "Authorization: Bearer $TOKEN"
-# Expected: { "id": 1, "name": "Admin User", ... }
-
-# Logout — blacklists the token
-curl -s -X POST https://admin.loyaltysystem.uk/api/v1/auth/logout -H "Authorization: Bearer $TOKEN"
+curl -s -X POST http://localhost:8000/api/v1/auth/logout -H "Authorization: Bearer $TOKEN"
 # Expected: { "message": "Logged out" }
 
-# Use same token — should be rejected
-curl -s https://admin.loyaltysystem.uk/api/v1/users/me -H "Authorization: Bearer $TOKEN"
-# Expected: { "detail": "Token has been revoked" }
+curl -s http://localhost:8000/api/v1/users/me -H "Authorization: Bearer $TOKEN"
+# Expected: 401 "Token has been revoked"
 ```
 
-### 10. PIN Rate Limiting
+### 14. Admin Surveys CRUD
 ```bash
-# 5 wrong PINs → 6th attempt returns 429
-for i in $(seq 1 6); do
-  curl -s -w "HTTP:%{http_code}\n" -X POST http://localhost:8000/api/v1/admin/staff/1/clock-in \
-    -H "Content-Type: application/json" \
-    -d '{"pin_code":"0000"}'
-done
-# Expected: 5 × 400 "Invalid PIN", then 1 × 429 "Too many PIN attempts"
+curl -s http://localhost:8000/api/v1/admin/surveys -H "Authorization: Bearer $AT"
+# Expected: [ { "id": 1, "title": "Customer Satisfaction", ... } ]
 ```
 
-### 11. Order Cancel with Loyalty Rollback
+### 15. Marketing Reports
 ```bash
-# Cancel an order that earned loyalty points
-# Before cancel: check user's loyalty balance
-docker exec fnb-db psql -U fnb -d fnb -c "SELECT points_balance FROM loyalty_accounts WHERE user_id=6;"
-
-# Cancel order (as admin)
-curl -s -X POST https://admin.loyaltysystem.uk/api/v1/orders/20/cancel \
-  -H "Authorization: Bearer $TOKEN"
-# Expected: { "message": "Order cancelled", "loyalty_reversed": true }
-
-# After cancel: points_balance should decrease by loyalty_points_earned
-# A reversal LoyaltyTransaction with negative points should exist
-```
-
-### 12. Table Occupancy Override
-```bash
-# Manual override table occupancy (bypass trigger)
-curl -s -X PATCH https://admin.loyaltysystem.uk/api/v1/admin/stores/1/tables/1/occupancy \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"is_occupied": true}'
-# Expected: { "table_id": 1, "is_occupied": true }
-```
-
-### 13. Customization Options CRUD
-```bash
-# List customizations for menu item 1
-curl -s https://admin.loyaltysystem.uk/api/v1/admin/stores/1/items/1/customizations \
-  -H "Authorization: Bearer $TOKEN"
-# Expected: [ { "id": 1, "name": "Extra Shot", ... }, ... ]
-
-# Create new customization
-curl -s -X POST https://admin.loyaltysystem.uk/api/v1/admin/stores/1/items/1/customizations \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Size","price_adjustment":0.0}'
-# Expected: { "id": ..., "name": "Size", ... }
-```
-
-### 14. Table Occupancy Trigger
-```bash
-# 1. Create a dine-in order with status=confirmed → table should become occupied
-# 2. Update order status to completed → table should become free
-# Verify: SELECT * FROM table_occupancy_snapshot WHERE is_occupied = TRUE;
-```
-
-### 15. Marketing Campaigns
-```bash
-# GET /admin/marketing/campaigns
-# Expected: { total: 3, campaigns: [...] }
-```
-
-### 16. Order Flow
-```bash
-# 1. POST /cart/items — add item to cart
-# 2. GET /cart — verify cart
-# 3. POST /orders — create order
-# 4. GET /orders/{id} — verify order with timeline
-# 5. PATCH /orders/{id}/status — update status (admin/staff)
-```
-
-### 17. Staff Clock-In/Out (Phase 2 Fix)
-```bash
-# Clock in with valid PIN
-curl -s -X POST http://localhost:8000/api/v1/admin/staff/1/clock-in \
-  -H "Content-Type: application/json" \
-  -d '{"pin_code":"1234"}'
-# Expected: { "detail": "Clocked in", "shift_id": <id> }
-
-# Clock out
-curl -s -X POST http://localhost:8000/api/v1/admin/staff/1/clock-out
-# Expected: { "detail": "Clocked out", "shift_id": <id> }
-
-# Wrong PIN → 400
-curl -s -X POST http://localhost:8000/api/v1/admin/staff/1/clock-in \
-  -H "Content-Type: application/json" \
-  -d '{"pin_code":"0000"}'
-# Expected: { "detail": "Invalid PIN" }
-```
-
-### 18. Soft Delete Filters (Phase 2)
-```bash
-# Admin list vouchers — excludes soft-deleted by default
-curl -s https://admin.loyaltysystem.uk/api/v1/admin/vouchers \
-  -H "Authorization: Bearer $TOKEN"
-# Expected: only vouchers where deleted_at IS NULL
-
-# Include deleted vouchers
-curl -s "https://admin.loyaltysystem.uk/api/v1/admin/vouchers?include_deleted=true" \
-  -H "Authorization: Bearer $TOKEN"
-# Expected: all vouchers including soft-deleted ones
-```
-
-### 19. API Rate Limiting (Phase 2)
-```bash
-# Send more than 5 OTPs in 1 minute → 429
-for i in $(seq 1 6); do
-  curl -s -w "HTTP:%{http_code}\n" -X POST http://localhost:8000/api/v1/auth/send-otp \
-    -H "Content-Type: application/json" \
-    -d '{"phone":"+60123456789"}'
-done
-# Expected: 5 × 200, then 1 × 429 Too Many Requests
-```
-
-### 20. File Upload Validation (Phase 2)
-```bash
-# Valid image upload (must be <5MB, JPEG/PNG/WebP/GIF)
-curl -s -X POST https://admin.loyaltysystem.uk/api/v1/upload/image \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@test-image.jpg"
-# Expected: { "url": "/uploads/menu/<uuid>.jpg", "filename": "<uuid>.jpg" }
-
-# Invalid file type → 400
-curl -s -X POST https://admin.loyaltysystem.uk/api/v1/upload/image \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@document.pdf"
-# Expected: { "detail": "Only JPEG, PNG, WebP, GIF images allowed" }
-```
-
-### 21. Delivery Order with Provider (Phase 2)
-```bash
-# Create delivery order — delivery_provider is set automatically
-curl -s -X POST https://admin.loyaltysystem.uk/api/v1/orders \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"order_type":"delivery","store_id":1,"delivery_address":{"line1":"123 Jalan Bukit Bintang"},"delivery_provider":"internal"}'
-# Expected: delivery_provider="internal", delivery_fee=3.00
-```
-
-### 22. Cart with Customization Options (Phase 2)
-```bash
-# Add item with normalized customization_option_ids
-curl -s -X POST https://admin.loyaltysystem.uk/api/v1/cart/items \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"store_id":1,"item_id":1,"quantity":1,"customization_option_ids":[1,2]}'
-# Expected: customizations resolved to {"options":[{"id":1,"name":"Extra Shot","price_adjustment":1.5},...]}
+curl -s "http://localhost:8000/api/v1/admin/reports/marketing?from_date=2026-01-01&to_date=2026-12-31" \
+  -H "Authorization: Bearer $AT"
+# Expected: { tier_distribution, points_issued, points_redeemed, reward_redemptions, voucher_usage }
 ```
 
 ## Common API Base URLs
@@ -333,42 +202,30 @@ curl -s -X POST https://admin.loyaltysystem.uk/api/v1/cart/items \
 ## Service Management Commands
 
 ```bash
-# Restart backend
-systemctl restart fnb-backend
-
-# Restart merchant dashboard
-systemctl restart fnb-admin
-
-# Restart customer app
-systemctl restart fnb-app
-
-# View backend logs
-journalctl -u fnb-backend -f
-
-# Run Alembic migration
-cd /root/fnb-super-app/backend && .venv/bin/alembic upgrade head
-
-# Database direct access
-docker exec -it fnb-db psql -U fnb -d fnb
+systemctl restart fnb-backend    # Restart backend
+systemctl restart fnb-admin      # Restart merchant dashboard
+systemctl restart fnb-app        # Restart customer app
+journalctl -u fnb-backend -f     # View backend logs
+cd /root/fnb-super-app/backend && .venv/bin/alembic upgrade head  # Run migrations
+docker exec -it fnb-db psql -U fnb -d fnb  # Database direct access
 ```
 
 ## Known Issues & Notes
 
 1. **Pyright false positives** — LSP errors on SQLAlchemy Column assignments are safe to ignore
 2. **bcrypt 4.3.0 breaks passlib** — must use `bcrypt<4.1` (4.0.x)
-3. **Store owner password** was previously wrong hash — fixed to admin123 hash
-4. **Merchant frontend** is a single SPA — no Next.js routing, all state in one page
-5. **Middleware.ts** in Next.js caused infinite loops — disabled (no-op)
-6. **OTP login** is stubbed — no actual SMS sending (prints to backend logs)
-7. **Payment intents** are stubbed — no Stripe integration yet
-8. **Naive datetimes** — all models use `datetime.utcnow()`, no timezone awareness
-9. **Customer users** have dummy password hashes (`$2b$12$dummyhash*`) — they can only log in via OTP, not password
-10. **Shared Limiter** — `app/api/v1/endpoints/auth.py` exports the Limiter instance; `main.py` imports it for `app.state.limiter`
+3. **Merchant frontend** is a single SPA — no Next.js routing, all state in one page
+4. **OTP login** is stubbed — no actual SMS sending
+5. **Payment intents** are stubbed — no Stripe integration yet
+6. **Customer users** have real password hashes — can log in with password123
+7. **Customer PWA** at app.loyaltysystem.uk is Phase 2 version — needs rebuild for new wallet API
 
 ## Phase History
 
 | Phase | Status | Key Deliverables |
 |-------|--------|-----------------|
-| Phase 1 | ✅ Complete | 112 endpoints, 41 tables, merchant dashboard (10 pages), customer PWA, security hardening |
-| Phase 2 | ✅ Complete | Staff clock-in fix, rate limiting (slowapi), soft delete filters, file upload validation, charts (BarChart/DonutChart/SparkLine), PWA refactor (10 components + Context), delivery_provider, customization integration |
-| Phase 3 | 🔲 Pending | Stripe payments, Twilio SMS OTP, WhatsApp Business API, Firebase FCM |
+| Phase 1 | ✅ Complete | Core backend, merchant dashboard, customer PWA, security hardening |
+| Phase 2 | ✅ Complete | Production readiness, rate limiting, charts, PWA refactor |
+| Pre-Phase 3 | ✅ Complete | Cross-store validation, audit log hooks, timezone-aware datetimes |
+| Marketing | ✅ Complete | 6 admin pages, 5 new PWA endpoint files, 5 migrations, customer wallet infrastructure (catalog→instance pattern, per-instance codes, expiry, scan, cron) |
+| Phase 3 | 🔲 Pending | Customer PWA rebuild, Stripe, Twilio, WhatsApp, FCM |

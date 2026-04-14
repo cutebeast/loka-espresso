@@ -1,6 +1,6 @@
 # FNB Super-App — Database Schema
 
-> Last updated: 2026-04-13 | PostgreSQL 16 | Database: `fnb` | 41 tables | 60+ FKs | 1 trigger
+> Last updated: 2026-04-14 | PostgreSQL 16 | Database: `fnb` | 45 tables | 65+ FKs | 1 trigger
 
 ## Enums
 
@@ -13,7 +13,7 @@
 | `discounttype` | `percent`, `fixed`, `free_item` |
 | `rewardtype` | `free_item`, `discount_voucher`, `custom` |
 | `txtype` | `earn`, `redeem`, `expire` |
-| `wallettxtype` | `topup`, `payment`, `refund` |
+| `wallettxtype` | `topup`, `payment`, `refund`, `cashback`, `promo_credit`, `admin_adjustment` |
 
 ## Triggers
 
@@ -254,7 +254,7 @@ Main order table. HYBRID scope (user + store).
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 
-**Indexes:** order_number (unique), user_id, store_id, table_id (ix_orders_table_id)
+**Indexes:** order_number (unique), user_id, store_id, table_id
 **FKs:** user_id→users, store_id→stores, table_id→store_tables
 
 #### `order_items`
@@ -295,7 +295,7 @@ Shopping cart. One cart per user. HYBRID. Supports normalized customization opti
 | store_id | integer | NO | | FK→stores.id |
 | item_id | integer | NO | | FK→menu_items.id |
 | quantity | integer | NO | 1 | |
-| customizations | json | YES | | Resolved customization details (name + price_adjustment) |
+| customizations | json | YES | | Resolved customization details |
 | customization_option_ids | integer[] | YES | | FK→customization_options.id (normalized references) |
 | unit_price | numeric(10,2) | NO | | Price at add time |
 | created_at | timestamptz | YES | now() | |
@@ -318,15 +318,15 @@ Payment records. One per order.
 ### Loyalty & Rewards
 
 #### `loyalty_accounts`
-One account per user. GLOBAL scope.
+One account per user. GLOBAL scope. **Tier is based on `total_points_earned` (lifetime cumulative) — does NOT drop when points spent.**
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
 | user_id | integer | NO | | FK→users.id (unique) |
-| points_balance | integer | NO | 0 | Current points |
+| points_balance | integer | NO | 0 | Current spendable points |
 | tier | varchar(50) | NO | bronze | Current tier name |
-| total_points_earned | integer | NO | 0 | Lifetime points |
+| total_points_earned | integer | NO | 0 | Lifetime cumulative points (determines tier) |
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 
@@ -357,7 +357,7 @@ Tier definitions with thresholds and benefits.
 | benefits | json | YES | | Tier benefit details |
 
 #### `rewards`
-Loyalty rewards catalog. Points-based redemption. Supports soft delete.
+Loyalty rewards **catalog** (company-wide). Points-based redemption. Supports soft delete. This is the template; `user_rewards` holds per-customer instances.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
@@ -372,12 +372,18 @@ Loyalty rewards catalog. Points-based redemption. Supports soft delete.
 | stock_limit | integer | YES | | Max redemptions |
 | total_redeemed | integer | YES | 0 | Redeemed count |
 | is_active | boolean | NO | true | |
+| code | varchar(50) | YES | | Unique code |
+| terms | json | YES | | Terms list |
+| how_to_redeem | text | YES | | Instructions |
+| short_description | varchar(500) | YES | | PWA card subtitle |
+| long_description | text | YES | | PWA detail page |
+| validity_days | integer | YES | 30 | Days until instance expires after redemption |
 | deleted_at | timestamptz | YES | | Soft delete |
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 
 #### `user_rewards`
-Reward redemption records.
+Per-customer reward **instances**. One row per redemption. Catalog→Instance pattern.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
@@ -385,40 +391,54 @@ Reward redemption records.
 | user_id | integer | NO | | FK→users.id |
 | reward_id | integer | NO | | FK→rewards.id |
 | store_id | integer | YES | | FK→stores.id |
-| redeemed_at | timestamptz | YES | now() | |
+| redeemed_at | timestamptz | YES | now() | When customer redeemed |
 | order_id | integer | YES | | FK→orders.id |
-| is_used | boolean | NO | false | |
+| is_used | boolean | NO | false | Legacy boolean flag |
+| status | varchar(20) | YES | 'available' | `available`, `used`, `expired`, `cancelled` |
+| expires_at | timestamptz | YES | | Per-instance expiry (redeemed_at + validity_days) |
+| used_at | timestamptz | YES | | When barista scanned |
+| redemption_code | varchar(50) | YES | | Unique scannable code (e.g. RWD-1-A3F2B1) |
+| points_spent | integer | YES | | Snapshot of points_cost at redemption time |
+| reward_snapshot | json | YES | | Frozen reward details (name, image, etc.) |
+
+**Indexes:** PK(id), UNIQUE(redemption_code), ix_user_rewards_user_id
 
 ---
 
 ### Vouchers & Promotions
 
 #### `vouchers`
-Promo codes + marketing campaigns. Supports soft delete.
+Voucher **catalog** (company-wide). Admin creates templates; `user_vouchers` holds per-customer instances. Supports soft delete.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
-| code | varchar(50) | NO | | Unique promo code |
+| code | varchar(50) | NO | | Unique catalog code (e.g. WELCOME10) |
+| title | varchar(255) | YES | | Marketing display title |
 | description | varchar(500) | YES | | Internal description |
 | discount_type | discounttype | NO | | `percent`, `fixed`, `free_item` |
 | discount_value | numeric(10,2) | NO | | Discount amount/percentage |
 | min_order | numeric(10,2) | YES | 0 | Minimum order amount |
-| max_uses | integer | YES | | Total use limit |
-| used_count | integer | YES | 0 | Current use count |
+| max_uses | integer | YES | | Total global use limit |
+| max_uses_per_user | integer | YES | 1 | Per-customer claim limit |
+| used_count | integer | YES | 0 | Current global use count |
 | valid_from | timestamptz | YES | | Start date |
 | valid_until | timestamptz | YES | | End date |
-| is_active | boolean | NO | true | |
-| title | varchar(255) | YES | | Marketing display title |
-| body | text | YES | | Marketing body text |
 | image_url | varchar(500) | YES | | Banner image |
+| body | text | YES | | Marketing body text |
 | promo_type | varchar(50) | YES | | Campaign classification |
 | store_id | integer | YES | | FK→stores.id (null=all stores) |
+| terms | json | YES | | Terms list |
+| how_to_redeem | text | YES | | Instructions |
+| short_description | varchar(500) | YES | | PWA card subtitle |
+| long_description | text | YES | | PWA detail page |
+| validity_days | integer | YES | 30 | Days until instance expires after claim |
+| is_active | boolean | NO | true | |
 | deleted_at | timestamptz | YES | | Soft delete |
 | created_at | timestamptz | YES | now() | |
 
 #### `user_vouchers`
-Voucher application/redemption records.
+Per-customer voucher **instances**. One row per claim. Catalog→Instance pattern.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
@@ -426,26 +446,95 @@ Voucher application/redemption records.
 | user_id | integer | NO | | FK→users.id |
 | voucher_id | integer | NO | | FK→vouchers.id |
 | store_id | integer | YES | | FK→stores.id |
-| applied_at | timestamptz | YES | now() | |
+| applied_at | timestamptz | YES | now() | When first created |
 | order_id | integer | YES | | FK→orders.id |
+| source | varchar(30) | YES | | Origin: `survey`, `promo_detail`, `admin_grant`, `loyalty` |
+| source_id | integer | YES | | FK to originating entity (survey_response.id, etc.) |
+| status | varchar(20) | YES | 'available' | `available`, `used`, `expired` |
+| code | varchar(50) | YES | | Unique per-instance code (e.g. WELCOME10-A3F2B1) |
+| expires_at | timestamptz | YES | | Per-instance expiry |
+| used_at | timestamptz | YES | | When applied at checkout |
+| discount_type | varchar(20) | YES | | Snapshotted from catalog at claim time |
+| discount_value | numeric(10,2) | YES | | Snapshotted from catalog at claim time |
+| min_spend | numeric(10,2) | YES | | Snapshotted from catalog at claim time |
+
+**Indexes:** PK(id), UNIQUE(code), ix_user_vouchers_user_id
 
 #### `promo_banners`
-In-app promotional banners. Displayed on customer app.
+In-app promotional banners. Company-wide. Displayed on customer PWA home.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
 | title | varchar(255) | NO | | Banner headline |
-| subtitle | varchar(255) | YES | | Sub-text |
+| short_description | varchar(255) | YES | | Card subtitle |
 | image_url | varchar(500) | YES | | Banner image |
-| target_url | varchar(500) | YES | | Click-through URL |
 | position | integer | YES | 0 | Display order |
 | store_id | integer | YES | | FK→stores.id (null=all) |
 | start_date | timestamptz | YES | | Campaign start |
 | end_date | timestamptz | YES | | Campaign end |
+| action_type | varchar(20) | YES | 'detail' | `detail` (show info) or `survey` (open survey) |
+| voucher_id | integer | YES | | FK→vouchers.id (voucher to offer on detail tap) |
+| survey_id | integer | YES | | FK→surveys.id (survey to show on survey tap) |
+| long_description | text | YES | | Full detail page content |
+| terms | json | YES | | Terms list |
+| how_to_redeem | text | YES | | Instructions |
 | is_active | boolean | NO | true | |
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
+
+---
+
+### Surveys
+
+#### `surveys`
+Survey forms for customer feedback/marketing. Company-wide.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | integer | NO | auto | PK |
+| title | varchar(255) | NO | | Survey title |
+| description | text | YES | | Survey description |
+| reward_voucher_id | integer | YES | | FK→vouchers.id (auto-grant on completion) |
+| is_active | boolean | NO | true | |
+| created_at | timestamptz | YES | now() | |
+| updated_at | timestamptz | YES | now() | |
+
+#### `survey_questions`
+Questions within a survey. Max 5 per survey. Types: text, single_choice, rating, dropdown.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | integer | NO | auto | PK |
+| survey_id | integer | NO | | FK→surveys.id (CASCADE) |
+| question_text | text | NO | | The question |
+| question_type | varchar(20) | NO | 'text' | `text`, `single_choice`, `rating`, `dropdown` |
+| options | json | YES | | Options for choice/dropdown types |
+| is_required | boolean | NO | true | |
+| sort_order | integer | NO | 0 | |
+| created_at | timestamptz | YES | now() | |
+
+#### `survey_responses`
+Customer responses to surveys. One per customer per survey (duplicate guard).
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | integer | NO | auto | PK |
+| survey_id | integer | NO | | FK→surveys.id (CASCADE) |
+| user_id | integer | YES | | FK→users.id |
+| rewarded | boolean | NO | false | Whether voucher was granted |
+| created_at | timestamptz | YES | now() | |
+
+#### `survey_answers`
+Individual answers within a survey response.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | integer | NO | auto | PK |
+| response_id | integer | NO | | FK→survey_responses.id (CASCADE) |
+| question_id | integer | NO | | FK→survey_questions.id (CASCADE) |
+| answer_text | text | YES | | The answer |
+| created_at | timestamptz | YES | now() | |
 
 ---
 
@@ -469,9 +558,10 @@ Wallet movement log.
 | id | integer | NO | auto | PK |
 | wallet_id | integer | NO | | FK→wallets.id |
 | amount | numeric(10,2) | NO | | Transaction amount |
-| type | wallettxtype | NO | | `topup`, `payment`, `refund` |
+| type | wallettxtype | NO | | `topup`, `payment`, `refund`, `cashback`, `promo_credit`, `admin_adjustment` |
 | description | text | YES | | Reason |
 | user_id | integer | YES | | FK→users.id |
+| balance_after | numeric(10,2) | YES | | Balance after this transaction |
 | created_at | timestamptz | YES | now() | |
 
 #### `payment_methods`
@@ -507,8 +597,7 @@ Staff members at stores. PER-STORE. Same user can have records at multiple store
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 
-**Unique:** (store_id, user_id) WHERE user_id IS NOT NULL — partial unique index prevents duplicate staff records at the same store. NULL user_id rows (PIN-only staff) are exempt.
-**Indexes:** user_id, store_id
+**Unique:** (store_id, user_id) WHERE user_id IS NOT NULL — partial unique index
 
 #### `staff_shifts`
 Clock-in/out records.
@@ -524,7 +613,7 @@ Clock-in/out records.
 | created_at | timestamptz | YES | now() | |
 
 #### `pin_attempts`
-Database-backed PIN rate limiting. Persists across process restarts.
+Database-backed PIN rate limiting.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
@@ -532,14 +621,14 @@ Database-backed PIN rate limiting. Persists across process restarts.
 | staff_id | integer | NO | | FK→staff.id (ON DELETE CASCADE) |
 | attempted_at | timestamptz | NO | now() | When the attempt occurred |
 
-**Rate limit rule:** Max 5 attempts per 5 minutes per staff_id. Enforced in `admin_staff.py:_check_pin_rate_limit()`.
+**Rate limit rule:** Max 5 attempts per 5 minutes per staff_id.
 
 ---
 
 ### Marketing
 
 #### `marketing_campaigns`
-Track email/SMS/push campaigns. Integrates with Twilio, Signal, FCM.
+Track email/SMS/push campaigns.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
@@ -598,7 +687,7 @@ Referral tracking.
 | created_at | timestamptz | YES | now() | |
 
 #### `feedback`
-Customer feedback on orders/stores.
+Customer feedback. Company-wide (store_id is optional).
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
@@ -636,6 +725,7 @@ Admin-sent broadcast notifications.
 | body | text | YES | | Message body |
 | audience | varchar(50) | YES | all | Target: all, loyalty_members, staff |
 | store_id | integer | YES | | FK→stores.id (null=all) |
+| is_archived | boolean | NO | false | |
 | scheduled_at | timestamptz | YES | | |
 | sent_at | timestamptz | YES | | |
 | sent_count | integer | YES | 0 | |
@@ -687,8 +777,8 @@ Immutable audit trail for all significant actions.
 | id | integer | NO | auto | PK |
 | user_id | integer | YES | | FK→users.id |
 | store_id | integer | YES | | FK→stores.id |
-| action | varchar(100) | NO | | Action name (e.g., ORDER_STATUS_CHANGE) |
-| entity_type | varchar(100) | YES | | Entity type (order, voucher, etc.) |
+| action | varchar(100) | NO | | Action name |
+| entity_type | varchar(100) | YES | | Entity type |
 | entity_id | integer | YES | | Entity ID |
 | details | json | YES | | Additional details |
 | ip_address | varchar(45) | YES | | Client IP |
@@ -703,12 +793,16 @@ Immutable audit trail for all significant actions.
 |--------|-------|---------|
 | Stores | 3 | ZUS Coffee KLCC, KLCC Park, Cheras |
 | Users | 11 | 1 admin, 1 store_owner, 5 customers, 4 staff users |
-| Staff | 9 | Multi-store manager (Amirul @ stores 1+2), single-store managers, assistant manager |
+| Staff | 9 | Multi-store manager, single-store managers, assistant manager |
 | Tables | 25 | 10 + 10 + 5 across 3 stores |
-| Categories | 6 | 2 per store |
-| Menu Items | 22 | ~7 per store |
-| Orders | 21 | With 42 order_items |
+| Categories | 11 | 4 + 3 + 2 across 3 stores |
+| Menu Items | 34 | 19 + 11 + 3 across 3 stores |
+| Orders | 30 | With 58 order_items |
 | Loyalty Tiers | 4 | Bronze, Silver, Gold, Platinum |
-| Customization Options | 5 | Extra Shot, Oat Milk, Whipped Cream, Extra Syrup |
-| Marketing Campaigns | 3 | Push (sent), SMS (draft), Email (scheduled) |
-| Table Occupancy Snapshots | 25 | One per table |
+| Customization Options | 63 | Across all stores |
+| Rewards | 4 | Free Cappuccino (150pts), RM10 Off (200pts), Free Kaya Toast (80pts), Free Affogato (250pts) |
+| Vouchers | 5 | WELCOME10, FLAT5, FREECOFFEE, ZUS20, HAPPY2PM |
+| Promo Banners | 4 | Ramadan Kareem, Happy Hour, etc. |
+| Surveys | 1 | Customer Satisfaction (2 questions) |
+| Marketing Campaigns | 3 | Push, SMS, Email |
+| Inventory Items | 30 | 14 + 11 + 5 across 3 stores |

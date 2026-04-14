@@ -139,3 +139,79 @@ export function SparkLine({ data, width = 200, height = 40, color = '#002F6C' }:
     </svg>
   );
 }
+
+
+// ── Line Chart with Grid ──────────────────────────────────────
+interface LineGridChartProps {
+  data: { label: string; value: number }[];
+  height?: number;
+  formatValue?: (v: number) => string;
+  color?: string;
+}
+
+export function LineGridChart({ data, height = 220, formatValue, color = '#002F6C' }: LineGridChartProps) {
+  if (!data || data.length === 0) return <p style={{ color: '#94A3B8', fontSize: 14 }}>No data</p>;
+
+  const pad = { top: 20, right: 16, bottom: 40, left: 60 };
+  const chartW = 800;
+  const plotW = chartW - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  const fmt = formatValue || ((v: number) => v.toFixed(2));
+
+  // Calculate nice Y-axis ticks
+  const yTicks = 5;
+  const yStep = Math.ceil(maxVal / yTicks);
+  const yMax = yStep * yTicks;
+
+  // Auto-skip x labels: show max ~12 labels
+  const skipInterval = Math.max(1, Math.ceil(data.length / 12));
+
+  const linePoints = data.map((d, i) => {
+    const x = pad.left + (i / Math.max(data.length - 1, 1)) * plotW;
+    const y = pad.top + plotH - (d.value / yMax) * plotH;
+    return { x, y, ...d };
+  });
+
+  const linePath = linePoints.map(p => `${p.x},${p.y}`).join(' ');
+  const areaPath = `M${linePoints[0]?.x},${pad.top + plotH} L${linePoints.map(p => `${p.x},${p.y}`).join(' L')} L${linePoints[linePoints.length - 1]?.x},${pad.top + plotH} Z`;
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${chartW} ${height}`} style={{ display: 'block' }}>
+      {/* Y-axis grid lines + labels */}
+      {Array.from({ length: yTicks + 1 }, (_, i) => {
+        const val = yStep * i;
+        const y = pad.top + plotH - (val / yMax) * plotH;
+        return (
+          <g key={`y${i}`}>
+            <line x1={pad.left} y1={y} x2={pad.left + plotW} y2={y} stroke="#E9ECF2" strokeWidth={1} />
+            <text x={pad.left - 8} y={y + 4} textAnchor="end" fontSize={11} fill="#94A3B8">{fmt(val)}</text>
+          </g>
+        );
+      })}
+
+      {/* Area fill */}
+      <path d={areaPath} fill={color} opacity={0.06} />
+
+      {/* Line */}
+      <polyline points={linePath} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+
+      {/* Data points + X labels */}
+      {linePoints.map((p, i) => {
+        const showLabel = i % skipInterval === 0 || i === data.length - 1;
+        return (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r={3.5} fill="white" stroke={color} strokeWidth={2}>
+              <title>{`${p.label}: ${fmt(p.value)}`}</title>
+            </circle>
+            {showLabel && (
+              <text x={p.x} y={pad.top + plotH + 18} textAnchor="middle" fontSize={11} fill="#64748B">
+                {p.label}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}

@@ -1,11 +1,11 @@
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import timezone, datetime
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case, desc, or_
 
 from app.core.database import get_db
 from app.core.security import require_role, require_store_access
-from app.core.audit import log_action
+from app.core.audit import log_action, get_client_ip
 from app.models.user import User
 from app.models.order import Order, OrderStatus, OrderType
 from app.models.menu import MenuCategory, MenuItem
@@ -114,27 +114,103 @@ async def list_all_orders(
     }
 
 
+# ---------------------------------------------------------------------------
+# Store CRUD
+# ---------------------------------------------------------------------------
+
 @router.post("/stores", status_code=201)
-async def create_store(req: StoreCreate, user: User = Depends(require_role("admin")), db: AsyncSession = Depends(get_db)):
+async def create_store(
+    request: Request,
+    req: StoreCreate,
+    user: User = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
     store = Store(**req.model_dump())
     db.add(store)
     await db.flush()
-    await log_action(db, action="CREATE_STORE", user_id=user.id, entity_type="store", entity_id=store.id, details={"name": store.name, "slug": store.slug})
+    ip = get_client_ip(request)
+    await log_action(db, action="CREATE_STORE", user_id=user.id, entity_type="store", entity_id=store.id, details={"name": store.name, "slug": store.slug}, ip_address=ip)
     await db.flush()
+    await db.commit()
     return {"id": store.id, "name": store.name, "slug": store.slug}
 
 
+@router.put("/stores/{store_id}")
+async def admin_update_store(
+    store_id: int,
+    request: Request,
+    req: dict,
+    user: User = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin-level store update (bypasses store_access check)."""
+    result = await db.execute(select(Store).where(Store.id == store_id))
+    store = result.scalar_one_or_none()
+    if not store:
+        raise HTTPException(404, "Store not found")
+    changes = {}
+    for k, v in req.items():
+        if hasattr(store, k) and k != "id":
+            setattr(store, k, v)
+            changes[k] = v
+    ip = get_client_ip(request)
+    await log_action(db, action="UPDATE_STORE", user_id=user.id, store_id=store_id, entity_type="store", entity_id=store_id, details={"changes": changes}, ip_address=ip)
+    await db.flush()
+    await db.commit()
+    return {"id": store.id, "name": store.name, "slug": store.slug}
+
+
+@router.delete("/stores/{store_id}")
+async def delete_store(
+    store_id: int,
+    request: Request,
+    user: User = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft-delete a store (sets is_active=false)."""
+    result = await db.execute(select(Store).where(Store.id == store_id))
+    store = result.scalar_one_or_none()
+    if not store:
+        raise HTTPException(404, "Store not found")
+    store.is_active = False
+    ip = get_client_ip(request)
+    await log_action(db, action="DELETE_STORE", user_id=user.id, entity_type="store", entity_id=store_id, details={"name": store.name}, ip_address=ip)
+    await db.flush()
+    await db.commit()
+    return {"message": "Store deactivated", "id": store_id}
+
+
+# ---------------------------------------------------------------------------
+# Category CRUD
+# ---------------------------------------------------------------------------
+
 @router.post("/stores/{store_id}/categories", status_code=201)
-async def create_category(store_id: int, req: CategoryCreate, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
+async def create_category(
+    store_id: int,
+    request: Request,
+    req: CategoryCreate,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
     slug = req.slug or req.name.lower().replace(" ", "-")
     cat = MenuCategory(store_id=store_id, name=req.name, slug=slug, display_order=req.display_order)
     db.add(cat)
     await db.flush()
+    ip = get_client_ip(request)
+    await log_action(db, action="CREATE_CATEGORY", user_id=user.id, store_id=store_id, entity_type="menu_category", entity_id=cat.id, details={"name": cat.name}, ip_address=ip)
+    await db.flush()
+    await db.commit()
     return {"id": cat.id, "name": cat.name, "slug": cat.slug}
 
 
 @router.put("/stores/{store_id}/categories/{cat_id}")
-async def update_category(store_id: int, cat_id: int, req: CategoryCreate, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
+async def update_category(
+    store_id: int, cat_id: int,
+    request: Request,
+    req: CategoryCreate,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(MenuCategory).where(MenuCategory.id == cat_id, MenuCategory.store_id == store_id))
     cat = result.scalar_one_or_none()
     if not cat:
@@ -143,22 +219,62 @@ async def update_category(store_id: int, cat_id: int, req: CategoryCreate, user:
     if req.slug:
         cat.slug = req.slug
     cat.display_order = req.display_order
+    ip = get_client_ip(request)
+    await log_action(db, action="UPDATE_CATEGORY", user_id=user.id, store_id=store_id, entity_type="menu_category", entity_id=cat_id, details={"name": cat.name}, ip_address=ip)
     await db.flush()
+    await db.commit()
     return {"id": cat.id, "name": cat.name}
 
 
+@router.delete("/stores/{store_id}/categories/{cat_id}")
+async def delete_category(
+    store_id: int, cat_id: int,
+    request: Request,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(MenuCategory).where(MenuCategory.id == cat_id, MenuCategory.store_id == store_id))
+    cat = result.scalar_one_or_none()
+    if not cat:
+        raise HTTPException(404, "Category not found")
+    cat.is_active = False
+    ip = get_client_ip(request)
+    await log_action(db, action="DELETE_CATEGORY", user_id=user.id, store_id=store_id, entity_type="menu_category", entity_id=cat_id, details={"name": cat.name}, ip_address=ip)
+    await db.flush()
+    await db.commit()
+    return {"deleted": True, "id": cat_id}
+
+
+# ---------------------------------------------------------------------------
+# Menu Item CRUD
+# ---------------------------------------------------------------------------
+
 @router.post("/stores/{store_id}/items", status_code=201)
-async def create_item(store_id: int, req: MenuItemCreate, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
+async def create_item(
+    store_id: int,
+    request: Request,
+    req: MenuItemCreate,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
     item = MenuItem(store_id=store_id, **req.model_dump())
     db.add(item)
     await db.flush()
-    await log_action(db, action="CREATE_MENU_ITEM", user_id=user.id, store_id=store_id, entity_type="menu_item", entity_id=item.id, details={"name": item.name, "price": float(item.base_price)})
+    ip = get_client_ip(request)
+    await log_action(db, action="CREATE_MENU_ITEM", user_id=user.id, store_id=store_id, entity_type="menu_item", entity_id=item.id, details={"name": item.name, "price": float(item.base_price)}, ip_address=ip)
     await db.flush()
+    await db.commit()
     return {"id": item.id, "name": item.name, "base_price": float(item.base_price)}
 
 
 @router.put("/stores/{store_id}/items/{item_id}")
-async def update_item(store_id: int, item_id: int, req: dict, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
+async def update_item(
+    store_id: int, item_id: int,
+    request: Request,
+    req: dict,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(MenuItem).where(MenuItem.id == item_id, MenuItem.store_id == store_id))
     item = result.scalar_one_or_none()
     if not item:
@@ -167,40 +283,67 @@ async def update_item(store_id: int, item_id: int, req: dict, user: User = Depen
     for k, v in req.items():
         if hasattr(item, k):
             setattr(item, k, v)
-    await log_action(db, action="UPDATE_MENU_ITEM", user_id=user.id, store_id=store_id, entity_type="menu_item", entity_id=item_id, details={"changes": changes})
+    ip = get_client_ip(request)
+    await log_action(db, action="UPDATE_MENU_ITEM", user_id=user.id, store_id=store_id, entity_type="menu_item", entity_id=item_id, details={"changes": changes}, ip_address=ip)
     await db.flush()
+    await db.commit()
     return {"message": "Item updated"}
 
 
 @router.delete("/stores/{store_id}/items/{item_id}")
-async def delete_item(store_id: int, item_id: int, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
+async def delete_item(
+    store_id: int, item_id: int,
+    request: Request,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(MenuItem).where(MenuItem.id == item_id, MenuItem.store_id == store_id))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    await log_action(db, action="DELETE_MENU_ITEM", user_id=user.id, store_id=store_id, entity_type="menu_item", entity_id=item_id, details={"name": item.name})
-    item.deleted_at = datetime.utcnow()
+    ip = get_client_ip(request)
+    await log_action(db, action="DELETE_MENU_ITEM", user_id=user.id, store_id=store_id, entity_type="menu_item", entity_id=item_id, details={"name": item.name}, ip_address=ip)
+    item.deleted_at = datetime.now(timezone.utc)
     item.is_available = False
     await db.flush()
+    await db.commit()
     return {"message": "Item soft-deleted"}
 
 
+# ---------------------------------------------------------------------------
+# Table CRUD
+# ---------------------------------------------------------------------------
+
 @router.post("/stores/{store_id}/tables", status_code=201)
-async def create_table(store_id: int, req: TableCreate, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
+async def create_table(
+    store_id: int,
+    request: Request,
+    req: TableCreate,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
     table = StoreTable(store_id=store_id, table_number=req.table_number, capacity=req.capacity)
     db.add(table)
     await db.flush()
-    qr_url = f"https://app.loyaltysystem.uk?store={{store_slug}}&table={table.id}"
     result = await db.execute(select(Store).where(Store.id == store_id))
     store = result.scalar_one_or_none()
-    slug = store.slug if store else store_id
+    slug = store.slug if store else str(store_id)
     table.qr_code_url = f"https://app.loyaltysystem.uk?store={slug}&table={table.id}"
+    ip = get_client_ip(request)
+    await log_action(db, action="CREATE_TABLE", user_id=user.id, store_id=store_id, entity_type="store_table", entity_id=table.id, details={"table_number": table.table_number}, ip_address=ip)
     await db.flush()
+    await db.commit()
     return {"id": table.id, "table_number": table.table_number, "qr_code_url": table.qr_code_url}
 
 
 @router.put("/stores/{store_id}/tables/{table_id}")
-async def update_table(store_id: int, table_id: int, req: TableUpdate, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
+async def update_table(
+    store_id: int, table_id: int,
+    request: Request,
+    req: TableUpdate,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(StoreTable).where(StoreTable.id == table_id, StoreTable.store_id == store_id))
     table = result.scalar_one_or_none()
     if not table:
@@ -211,31 +354,125 @@ async def update_table(store_id: int, table_id: int, req: TableUpdate, user: Use
         table.capacity = req.capacity
     if req.is_active is not None:
         table.is_active = req.is_active
-    await log_action(db, action="UPDATE_TABLE", user_id=user.id, store_id=store_id, entity_type="store_table", entity_id=table_id)
+    ip = get_client_ip(request)
+    await log_action(db, action="UPDATE_TABLE", user_id=user.id, store_id=store_id, entity_type="store_table", entity_id=table_id, ip_address=ip)
+    await db.flush()
+    await db.commit()
     return {"id": table.id, "table_number": table.table_number, "capacity": table.capacity, "is_active": table.is_active}
 
 
 @router.delete("/stores/{store_id}/tables/{table_id}")
-async def delete_table(store_id: int, table_id: int, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
+async def delete_table(
+    store_id: int, table_id: int,
+    request: Request,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(StoreTable).where(StoreTable.id == table_id, StoreTable.store_id == store_id))
     table = result.scalar_one_or_none()
     if not table:
         raise HTTPException(404, "Table not found")
     table.is_active = False
-    await log_action(db, action="DELETE_TABLE", user_id=user.id, store_id=store_id, entity_type="store_table", entity_id=table_id)
+    ip = get_client_ip(request)
+    await log_action(db, action="DELETE_TABLE", user_id=user.id, store_id=store_id, entity_type="store_table", entity_id=table_id, ip_address=ip)
+    await db.flush()
+    await db.commit()
     return {"deleted": True, "id": table_id}
 
 
-@router.delete("/stores/{store_id}/categories/{cat_id}")
-async def delete_category(store_id: int, cat_id: int, user: User = Depends(require_store_access("store_id")), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(MenuCategory).where(MenuCategory.id == cat_id, MenuCategory.store_id == store_id))
-    cat = result.scalar_one_or_none()
-    if not cat:
-        raise HTTPException(404, "Category not found")
-    cat.is_active = False
-    await log_action(db, action="DELETE_CATEGORY", user_id=user.id, store_id=store_id, entity_type="menu_category", entity_id=cat_id)
-    return {"deleted": True, "id": cat_id}
+# ---------------------------------------------------------------------------
+# Customization Options CRUD
+# ---------------------------------------------------------------------------
 
+@router.get("/stores/{store_id}/items/{item_id}/customizations")
+async def list_customization_options(
+    store_id: int, item_id: int,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """List customization options for a menu item."""
+    result = await db.execute(
+        select(CustomizationOption).where(
+            CustomizationOption.menu_item_id == item_id,
+            CustomizationOption.is_active == True,
+        ).order_by(CustomizationOption.display_order)
+    )
+    return result.scalars().all()
+
+
+@router.post("/stores/{store_id}/items/{item_id}/customizations", status_code=201)
+async def create_customization_option(
+    store_id: int, item_id: int,
+    request: Request,
+    req: dict,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a customization option to a menu item."""
+    result = await db.execute(select(MenuItem).where(MenuItem.id == item_id, MenuItem.store_id == store_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    opt = CustomizationOption(
+        menu_item_id=item_id,
+        name=req.get("name"),
+        price_adjustment=req.get("price_adjustment", 0),
+        display_order=req.get("display_order", 0),
+    )
+    db.add(opt)
+    await db.flush()
+    ip = get_client_ip(request)
+    await log_action(db, action="CREATE_CUSTOMIZATION", user_id=user.id, store_id=store_id, entity_type="customization_option", entity_id=opt.id, details={"name": opt.name, "item_id": item_id}, ip_address=ip)
+    await db.flush()
+    await db.commit()
+    return {"id": opt.id, "name": opt.name, "price_adjustment": float(opt.price_adjustment)}
+
+
+@router.put("/stores/{store_id}/customizations/{option_id}")
+async def update_customization_option(
+    store_id: int, option_id: int,
+    request: Request,
+    req: dict,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a customization option."""
+    result = await db.execute(select(CustomizationOption).where(CustomizationOption.id == option_id))
+    opt = result.scalar_one_or_none()
+    if not opt:
+        raise HTTPException(status_code=404, detail="Option not found")
+    for k, v in req.items():
+        if hasattr(opt, k):
+            setattr(opt, k, v)
+    ip = get_client_ip(request)
+    await log_action(db, action="UPDATE_CUSTOMIZATION", user_id=user.id, store_id=store_id, entity_type="customization_option", entity_id=option_id, ip_address=ip)
+    await db.flush()
+    await db.commit()
+    return {"message": "Option updated"}
+
+
+@router.delete("/stores/{store_id}/customizations/{option_id}")
+async def delete_customization_option(
+    store_id: int, option_id: int,
+    request: Request,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft-delete a customization option."""
+    result = await db.execute(select(CustomizationOption).where(CustomizationOption.id == option_id))
+    opt = result.scalar_one_or_none()
+    if not opt:
+        raise HTTPException(status_code=404, detail="Option not found")
+    opt.is_active = False
+    ip = get_client_ip(request)
+    await log_action(db, action="DELETE_CUSTOMIZATION", user_id=user.id, store_id=store_id, entity_type="customization_option", entity_id=option_id, details={"name": opt.name}, ip_address=ip)
+    await db.flush()
+    await db.commit()
+    return {"message": "Option deactivated"}
+
+
+# ---------------------------------------------------------------------------
+# Reports
+# ---------------------------------------------------------------------------
 
 @router.get("/reports/sales")
 async def sales_report(
@@ -297,85 +534,6 @@ async def export_data(
 
 
 # ---------------------------------------------------------------------------
-# Customization Options CRUD
-# ---------------------------------------------------------------------------
-
-@router.get("/stores/{store_id}/items/{item_id}/customizations")
-async def list_customization_options(
-    store_id: int, item_id: int,
-    user: User = Depends(require_store_access("store_id")),
-    db: AsyncSession = Depends(get_db),
-):
-    """List customization options for a menu item."""
-    result = await db.execute(
-        select(CustomizationOption).where(
-            CustomizationOption.menu_item_id == item_id,
-            CustomizationOption.is_active == True,
-        ).order_by(CustomizationOption.display_order)
-    )
-    return result.scalars().all()
-
-
-@router.post("/stores/{store_id}/items/{item_id}/customizations", status_code=201)
-async def create_customization_option(
-    store_id: int, item_id: int, req: dict,
-    user: User = Depends(require_store_access("store_id")),
-    db: AsyncSession = Depends(get_db),
-):
-    """Add a customization option to a menu item."""
-    # Verify item belongs to store
-    result = await db.execute(select(MenuItem).where(MenuItem.id == item_id, MenuItem.store_id == store_id))
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Menu item not found")
-    opt = CustomizationOption(
-        menu_item_id=item_id,
-        name=req.get("name"),
-        price_adjustment=req.get("price_adjustment", 0),
-        display_order=req.get("display_order", 0),
-    )
-    db.add(opt)
-    await db.flush()
-    await db.commit()
-    return {"id": opt.id, "name": opt.name, "price_adjustment": float(opt.price_adjustment)}
-
-
-@router.put("/stores/{store_id}/customizations/{option_id}")
-async def update_customization_option(
-    store_id: int, option_id: int, req: dict,
-    user: User = Depends(require_store_access("store_id")),
-    db: AsyncSession = Depends(get_db),
-):
-    """Update a customization option."""
-    result = await db.execute(select(CustomizationOption).where(CustomizationOption.id == option_id))
-    opt = result.scalar_one_or_none()
-    if not opt:
-        raise HTTPException(status_code=404, detail="Option not found")
-    for k, v in req.items():
-        if hasattr(opt, k):
-            setattr(opt, k, v)
-    await db.flush()
-    await db.commit()
-    return {"message": "Option updated"}
-
-
-@router.delete("/stores/{store_id}/customizations/{option_id}")
-async def delete_customization_option(
-    store_id: int, option_id: int,
-    user: User = Depends(require_store_access("store_id")),
-    db: AsyncSession = Depends(get_db),
-):
-    """Soft-delete a customization option."""
-    result = await db.execute(select(CustomizationOption).where(CustomizationOption.id == option_id))
-    opt = result.scalar_one_or_none()
-    if not opt:
-        raise HTTPException(status_code=404, detail="Option not found")
-    opt.is_active = False
-    await db.flush()
-    await db.commit()
-    return {"message": "Option deactivated"}
-
-
-# ---------------------------------------------------------------------------
 # Manual Table Occupancy Override
 # ---------------------------------------------------------------------------
 
@@ -392,13 +550,11 @@ async def set_table_occupancy(
     if is_occupied is None:
         raise HTTPException(status_code=400, detail="is_occupied is required")
 
-    # Verify table belongs to store
     result = await db.execute(select(StoreTable).where(StoreTable.id == table_id, StoreTable.store_id == store_id))
     table = result.scalar_one_or_none()
     if not table:
         raise HTTPException(status_code=404, detail="Table not found")
 
-    # Update both the snapshot and the table flag
     table.is_occupied = is_occupied
 
     snap_result = await db.execute(
@@ -409,7 +565,7 @@ async def set_table_occupancy(
         snap.is_occupied = is_occupied
         if not is_occupied:
             snap.current_order_id = None
-        snap.updated_at = datetime.utcnow()
+        snap.updated_at = datetime.now(timezone.utc)
     else:
         snap = TableOccupancySnapshot(
             table_id=table_id, store_id=store_id, is_occupied=is_occupied,

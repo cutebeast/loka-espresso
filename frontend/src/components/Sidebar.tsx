@@ -19,9 +19,11 @@ const navGroups = [
     { id: 'vouchers' as PageId, icon: 'fa-ticket', label: 'Vouchers' },
     { id: 'promotions' as PageId, icon: 'fa-bullhorn', label: 'Promotions' },
     { id: 'feedback' as PageId, icon: 'fa-star', label: 'Feedback' },
+    { id: 'surveys' as PageId, icon: 'fa-list-check', label: 'Surveys' },
   ]},
   { label: 'Analytics', icon: 'fa-chart-bar', items: [
-    { id: 'reports' as PageId, icon: 'fa-chart-line', label: 'Reports' },
+    { id: 'reports' as PageId, icon: 'fa-chart-line', label: 'Sales Reports' },
+    { id: 'marketingreports' as PageId, icon: 'fa-bullseye', label: 'Marketing Reports' },
     { id: 'customers' as PageId, icon: 'fa-users', label: 'Customers' },
   ]},
   { label: 'System', icon: 'fa-cog', items: [

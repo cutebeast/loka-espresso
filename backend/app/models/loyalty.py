@@ -13,8 +13,8 @@ class LoyaltyAccount(Base):
     points_balance = Column(Integer, default=0, nullable=False)
     tier = Column(String(50), default="bronze", nullable=False)
     total_points_earned = Column(Integer, default=0, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class LoyaltyTransaction(Base):
@@ -34,7 +34,7 @@ class LoyaltyTransaction(Base):
     type = Column(Enum(TxType), nullable=False)
     description = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)  # Who issued (for manual/goodwill points)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class LoyaltyTier(Base):

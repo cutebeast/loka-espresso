@@ -114,10 +114,23 @@ export interface MerchantBanner {
 export interface MerchantBroadcast {
   id: number;
   title: string;
-  message: string;
-  target_audience: string;
-  sent_at: string;
-  status: string;
+  body: string | null;
+  audience: string;
+  store_id: number | null;
+  scheduled_at: string | null;
+  sent_at: string | null;
+  sent_count: number;
+  open_count: number;
+  is_archived: boolean;
+  created_at: string | null;
+}
+
+export interface BroadcastListResponse {
+  broadcasts: MerchantBroadcast[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 export interface MerchantAuditEntry {
@@ -152,8 +165,8 @@ export interface MerchantLoyaltyTier {
   id: number;
   name: string;
   min_points: number;
-  multiplier: number;
-  benefits: string;
+  points_multiplier: number;
+  benefits: Record<string, unknown> | null;
 }
 
 export interface CustomerItem {
@@ -196,4 +209,4 @@ export interface CustomerLoyaltyTransaction {
   created_at: string;
 }
 
-export type PageId = 'dashboard' | 'orders' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'feedback' | 'reports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store';
+export type PageId = 'dashboard' | 'orders' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'feedback' | 'surveys' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store';

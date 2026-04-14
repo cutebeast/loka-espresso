@@ -8,6 +8,11 @@ from app.api.v1.endpoints import (
     admin_staff, admin_feedback, admin_system, admin_customers,
     admin_marketing,
 )
+from app.api.v1.endpoints.admin_surveys import router as admin_surveys_router
+from app.api.v1.endpoints.pwa_promos import router as pwa_promos_router
+from app.api.v1.endpoints.pwa_surveys import router as pwa_surveys_router
+from app.api.v1.endpoints.pwa_wallet import router as pwa_wallet_router
+from app.api.v1.endpoints.scan_cron import router as scan_cron_router
 
 api_router = APIRouter()
 
@@ -40,3 +45,8 @@ api_router.include_router(admin_feedback.router)
 api_router.include_router(admin_system.router)
 api_router.include_router(admin_customers.router)
 api_router.include_router(admin_marketing.router)
+api_router.include_router(admin_surveys_router)
+api_router.include_router(pwa_promos_router)
+api_router.include_router(pwa_surveys_router)
+api_router.include_router(pwa_wallet_router)
+api_router.include_router(scan_cron_router)

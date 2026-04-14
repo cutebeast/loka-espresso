@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import type { MerchantCategory, MerchantStore, MerchantLoyaltyTier } from '@/lib/merchant-types';
+import type { MerchantCategory } from '@/lib/merchant-types';
 
 export function StatCard({ icon, color, label, value }: { icon: string; color: string; label: string; value: string }) {
   return (
@@ -307,7 +307,7 @@ export function AddBroadcastForm({ token, onClose }: { token: string; onClose: (
     try {
       await apiFetch('/admin/broadcasts', token, {
         method: 'POST',
-        body: JSON.stringify({ title, message, target_audience: targetAudience }),
+        body: JSON.stringify({ title, body: message, audience: targetAudience }),
       });
       onClose();
     } catch {} finally { setSaving(false); }
@@ -349,7 +349,7 @@ export function FeedbackReplyForm({ feedbackId, token, onClose }: { feedbackId: 
     try {
       await apiFetch(`/admin/feedback/${feedbackId}/reply`, token, {
         method: 'POST',
-        body: JSON.stringify({ reply }),
+        body: JSON.stringify({ admin_reply: reply }),
       });
       onClose();
     } catch {} finally { setSaving(false); }
@@ -368,24 +368,95 @@ export function FeedbackReplyForm({ feedbackId, token, onClose }: { feedbackId: 
   );
 }
 
-export function EditTierForm({ tier, token, onClose }: { tier: MerchantLoyaltyTier; token: string; onClose: () => void }) {
-  const [name, setName] = useState(tier.name);
-  const [minPoints, setMinPoints] = useState(String(tier.min_points));
-  const [multiplier, setMultiplier] = useState(String(tier.multiplier));
-  const [benefits, setBenefits] = useState(tier.benefits || '');
+// --- Add Category Form ---
+export function AddCategoryForm({ storeId, token, onClose }: { storeId: number; token: string; onClose: () => void }) {
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      await apiFetch(`/admin/loyalty-tiers/${tier.id}`, token, {
-        method: 'PUT',
+      await apiFetch(`/admin/stores/${storeId}/categories`, token, {
+        method: 'POST',
+        body: JSON.stringify({ name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'), display_order: 0, is_active: true }),
+      });
+      onClose();
+    } catch {} finally { setSaving(false); }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Category Name</label>
+        <input value={name} onChange={e => { setName(e.target.value); if (!slug) setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-')); }} required placeholder="e.g. Smoothies" />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Slug (auto-generated)</label>
+        <input value={slug} onChange={e => setSlug(e.target.value)} placeholder="e.g. smoothies" />
+      </div>
+      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+        {saving ? 'Saving...' : 'Create Category'}
+      </button>
+    </form>
+  );
+}
+
+// --- Add Customization Option Form ---
+export function AddCustomizationForm({ storeId, itemId, token, onClose }: { storeId: number; itemId: number; token: string; onClose: () => void }) {
+  const [name, setName] = useState('');
+  const [priceAdj, setPriceAdj] = useState('0');
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await apiFetch(`/admin/stores/${storeId}/items/${itemId}/customizations`, token, {
+        method: 'POST',
+        body: JSON.stringify({ name, price_adjustment: parseFloat(priceAdj), is_active: true, display_order: 0 }),
+      });
+      onClose();
+    } catch {} finally { setSaving(false); }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Option Name</label>
+        <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Less Ice, Extra Sugar, Oat Milk" />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Price Adjustment (RM)</label>
+        <input type="number" step="0.01" value={priceAdj} onChange={e => setPriceAdj(e.target.value)} />
+      </div>
+      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+        {saving ? 'Saving...' : 'Add Option'}
+      </button>
+    </form>
+  );
+}
+
+// --- Add Inventory Item Form ---
+export function AddInventoryItemForm({ storeId, token, onClose }: { storeId: number; token: string; onClose: () => void }) {
+  const [name, setName] = useState('');
+  const [stock, setStock] = useState('');
+  const [unit, setUnit] = useState('pcs');
+  const [reorderLevel, setReorderLevel] = useState('');
+  const [costPerUnit, setCostPerUnit] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await apiFetch(`/stores/${storeId}/inventory`, token, {
+        method: 'POST',
         body: JSON.stringify({
-          name,
-          min_points: parseInt(minPoints),
-          multiplier: parseFloat(multiplier),
-          benefits,
+          name, current_stock: parseFloat(stock) || 0, unit,
+          reorder_level: parseFloat(reorderLevel) || 0,
+          cost_per_unit: costPerUnit ? parseFloat(costPerUnit) : null,
         }),
       });
       onClose();
@@ -395,77 +466,40 @@ export function EditTierForm({ tier, token, onClose }: { tier: MerchantLoyaltyTi
   return (
     <form onSubmit={handleSubmit}>
       <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Tier Name</label>
-        <input value={name} onChange={e => setName(e.target.value)} required />
+        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Ingredient Name</label>
+        <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Arabica Coffee Beans" />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Min Points</label>
-          <input type="number" value={minPoints} onChange={e => setMinPoints(e.target.value)} required />
+          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Current Stock</label>
+          <input type="number" step="0.01" value={stock} onChange={e => setStock(e.target.value)} required />
         </div>
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Multiplier</label>
-          <input type="number" step="0.1" value={multiplier} onChange={e => setMultiplier(e.target.value)} required />
+          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Unit</label>
+          <select value={unit} onChange={e => setUnit(e.target.value)}>
+            <option value="kg">kg</option>
+            <option value="litre">litre</option>
+            <option value="pcs">pcs</option>
+            <option value="g">g</option>
+            <option value="ml">ml</option>
+          </select>
         </div>
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Benefits</label>
-        <textarea value={benefits} onChange={e => setBenefits(e.target.value)} rows={3} style={{ outline: 'none', border: '1px solid #DDE3E9', borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%' }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reorder Level</label>
+          <input type="number" step="0.01" value={reorderLevel} onChange={e => setReorderLevel(e.target.value)} />
+        </div>
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Cost per Unit (RM)</label>
+          <input type="number" step="0.01" value={costPerUnit} onChange={e => setCostPerUnit(e.target.value)} />
+        </div>
       </div>
       <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
-        {saving ? 'Saving...' : 'Update Tier'}
+        {saving ? 'Saving...' : 'Add Ingredient'}
       </button>
     </form>
   );
 }
 
-export function StoreSettingsForm({ store, token }: { store: MerchantStore; token: string }) {
-  const [name, setName] = useState(store.name);
-  const [address, setAddress] = useState(store.address);
-  const [phone, setPhone] = useState(store.phone);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setSaved(false);
-    try {
-      const res = await apiFetch(`/stores/${store.id}`, token, {
-        method: 'PUT',
-        body: JSON.stringify({ name, address, phone }),
-      });
-      if (res.ok) setSaved(true);
-    } catch {} finally { setSaving(false); }
-  }
-
-  return (
-    <div className="card">
-      <h3 style={{ marginBottom: 20 }}>Store Configuration</h3>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Store Name</label>
-          <input value={name} onChange={e => setName(e.target.value)} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Address</label>
-          <input value={address} onChange={e => setAddress(e.target.value)} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Phone</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Slug</label>
-          <input value={store.slug} disabled style={{ background: '#F1F5F9' }} />
-        </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          {saved && <span style={{ color: '#059669', fontWeight: 500 }}><i className="fas fa-check"></i> Saved!</span>}
-        </div>
-      </form>
-    </div>
-  );
-}

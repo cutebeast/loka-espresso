@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import type { CustomerItem, CustomerDetail, CustomerWalletTransaction, CustomerLoyaltyTransaction, MerchantOrder } from '@/lib/merchant-types';
 
@@ -18,6 +18,12 @@ export default function CustomersPage({ token, selectedStore }: CustomersPagePro
   const [loyaltyHistory, setLoyaltyHistory] = useState<CustomerLoyaltyTransaction[]>([]);
   const [walletHistory, setWalletHistory] = useState<CustomerWalletTransaction[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   useEffect(() => {
     if (!token) return;
@@ -36,6 +42,7 @@ export default function CustomersPage({ token, selectedStore }: CustomersPagePro
   async function openCustomerDetail(customerId: number) {
     setDetailLoading(true);
     setSelectedCustomer(null);
+    setEditingCustomer(false);
     try {
       const [detailRes, ordersRes, loyaltyRes, walletRes] = await Promise.all([
         apiFetch(`/admin/customers/${customerId}`, token),
@@ -44,7 +51,11 @@ export default function CustomersPage({ token, selectedStore }: CustomersPagePro
         apiFetch(`/admin/customers/${customerId}/wallet-history`, token),
       ]);
       if (detailRes.ok) {
-        setSelectedCustomer(await detailRes.json());
+        const detail = await detailRes.json();
+        setSelectedCustomer(detail);
+        setEditName(detail.name || '');
+        setEditPhone(detail.phone || '');
+        setEditEmail(detail.email || '');
       }
       if (ordersRes.ok) {
         const data = await ordersRes.json();
@@ -59,6 +70,34 @@ export default function CustomersPage({ token, selectedStore }: CustomersPagePro
         setWalletHistory(Array.isArray(data) ? data : (data.transactions || []));
       }
     } catch {} finally { setDetailLoading(false); }
+  }
+
+  async function handleEditSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!selectedCustomer) return;
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const res = await apiFetch(`/admin/customers/${selectedCustomer.id}`, token, {
+        method: 'PUT',
+        body: JSON.stringify({ name: editName, phone: editPhone, email: editEmail }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setEditError(data.detail || `Failed (${res.status})`);
+        return;
+      }
+      // Refresh detail
+      setEditingCustomer(false);
+      await openCustomerDetail(selectedCustomer.id);
+      // Refresh list
+      const params = selectedStore !== 'all' ? `?store_id=${selectedStore}` : '';
+      const listRes = await apiFetch(`/admin/customers${params}`, token);
+      if (listRes.ok) {
+        const data = await listRes.json();
+        setCustomers(Array.isArray(data) ? data : (data.customers || []));
+      }
+    } catch { setEditError('Network error'); } finally { setEditSaving(false); }
   }
 
   const filtered = customers.filter(c => {
@@ -122,24 +161,62 @@ export default function CustomersPage({ token, selectedStore }: CustomersPagePro
       )}
 
       {selectedCustomer && (
-        <div className="modal-overlay" onClick={() => setSelectedCustomer(null)}>
+        <div className="modal-overlay" onClick={() => { setSelectedCustomer(null); setEditingCustomer(false); }}>
           <div className="modal" style={{ maxWidth: 700 }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3>Customer Detail</h3>
-              <button className="btn btn-sm" onClick={() => setSelectedCustomer(null)}><i className="fas fa-times"></i></button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {!editingCustomer && (
+                  <button className="btn btn-sm" onClick={() => setEditingCustomer(true)}><i className="fas fa-edit"></i> Edit</button>
+                )}
+                <button className="btn btn-sm" onClick={() => { setSelectedCustomer(null); setEditingCustomer(false); }}><i className="fas fa-times"></i></button>
+              </div>
             </div>
             {detailLoading ? (
               <div style={{ textAlign: 'center', padding: 40, color: '#64748B' }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>
             ) : (
               <>
+                {/* ── Profile & Balances ── */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
                   <div className="card">
                     <h4 style={{ marginBottom: 12 }}>Profile</h4>
-                    <p><strong>Name:</strong> {selectedCustomer.name || '-'}</p>
-                    <p><strong>Email:</strong> {selectedCustomer.email || '-'}</p>
-                    <p><strong>Phone:</strong> {selectedCustomer.phone || '-'}</p>
-                    <p><strong>Tier:</strong> <span className="badge badge-blue">{selectedCustomer.tier || 'Standard'}</span></p>
-                    <p><strong>Joined:</strong> {selectedCustomer.created_at ? new Date(selectedCustomer.created_at).toLocaleDateString() : '-'}</p>
+                    {editingCustomer ? (
+                      <form onSubmit={handleEditSubmit}>
+                        {editError && (
+                          <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+                            <i className="fas fa-exclamation-circle"></i> {editError}
+                          </div>
+                        )}
+                        <div style={{ marginBottom: 10 }}>
+                          <label style={labelStyle}>Name</label>
+                          <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Customer name" />
+                        </div>
+                        <div style={{ marginBottom: 10 }}>
+                          <label style={labelStyle}>Phone</label>
+                          <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="+60 12-345 6789" />
+                          <div style={hintStyle}>Used for passwordless login. Changing this will change how the customer logs in.</div>
+                        </div>
+                        <div style={{ marginBottom: 10 }}>
+                          <label style={labelStyle}>Email</label>
+                          <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="customer@email.com" />
+                          <div style={hintStyle}>Recovery channel — used to verify identity if phone is lost.</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button type="submit" className="btn btn-primary" disabled={editSaving}>{editSaving ? 'Saving...' : 'Save Changes'}</button>
+                          <button type="button" className="btn" onClick={() => setEditingCustomer(false)}>Cancel</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <p><strong>Name:</strong> {selectedCustomer.name || '-'}</p>
+                        <p><strong>Phone:</strong> {selectedCustomer.phone || '-'}</p>
+                        <p><strong>Email:</strong> {selectedCustomer.email || (
+                          <span style={{ color: '#D97706', fontWeight: 500 }}>Not set — recommend adding for account recovery</span>
+                        )}</p>
+                        <p><strong>Tier:</strong> <span className="badge badge-blue">{selectedCustomer.tier || 'Standard'}</span></p>
+                        <p><strong>Joined:</strong> {selectedCustomer.created_at ? new Date(selectedCustomer.created_at).toLocaleDateString() : '-'}</p>
+                      </>
+                    )}
                   </div>
                   <div className="card">
                     <h4 style={{ marginBottom: 12 }}>Balances</h4>
@@ -150,6 +227,7 @@ export default function CustomersPage({ token, selectedStore }: CustomersPagePro
                   </div>
                 </div>
 
+                {/* ── Recent Orders ── */}
                 <div style={{ marginBottom: 20 }}>
                   <h4 style={{ marginBottom: 12 }}>Recent Orders</h4>
                   {customerOrders.length === 0 ? (
@@ -174,6 +252,7 @@ export default function CustomersPage({ token, selectedStore }: CustomersPagePro
                   )}
                 </div>
 
+                {/* ── Loyalty & Wallet History ── */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div className="card">
                     <h4 style={{ marginBottom: 12 }}>Loyalty History</h4>
@@ -214,3 +293,6 @@ export default function CustomersPage({ token, selectedStore }: CustomersPagePro
     </div>
   );
 }
+
+const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' };
+const hintStyle: React.CSSProperties = { fontSize: 11, color: '#94A3B8', marginTop: 2 };

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import timezone, datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, DECIMAL
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -16,7 +16,7 @@ class CustomizationOption(Base):
     price_adjustment = Column(DECIMAL(10, 2), default=0, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     display_order = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     menu_item = relationship("MenuItem")
 
@@ -50,8 +50,8 @@ class MarketingCampaign(Base):
     failed_count = Column(Integer, default=0)
     cost = Column(DECIMAL(10, 2), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     store = relationship("Store")
     creator = relationship("User")
@@ -67,7 +67,7 @@ class TableOccupancySnapshot(Base):
     store_id = Column(Integer, ForeignKey("stores.id"), nullable=False)
     is_occupied = Column(Boolean, default=False, nullable=False)
     current_order_id = Column(Integer, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     table = relationship("StoreTable")
     store = relationship("Store")

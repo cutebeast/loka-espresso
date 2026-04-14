@@ -1,6 +1,6 @@
 # FNB Super-App — Backend API Reference
 
-> Last updated: 2026-04-13 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 112 endpoints
+> Last updated: 2026-04-14 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 163 endpoints
 > OpenAPI docs: `https://admin.loyaltysystem.uk/docs`
 
 ## Rate Limiting
@@ -47,26 +47,14 @@ The system uses a two-tier access control:
 | Pattern | Who Gets Access | Implementation |
 |---------|----------------|----------------|
 | `require_role("admin")` | Admin only | System-level configs |
-| `require_role("admin", "store_owner")` | Admin + store owners | Dashboard, reports |
+| `require_role("admin", "store_owner")` | Admin + store owners | Dashboard, reports, scan endpoints |
+| `require_role("customer", "admin")` | Customer + admin | PWA wallet, redeem, survey submit |
 | `require_store_access("store_id")` | Admin, store_owner, manager, assistant_manager at that store | Menu, tables, inventory CRUD |
-| `require_store_access("store_id", allowed_staff_roles={"manager"})` | Admin, store_owner, manager only | Store settings, staff management |
-| `require_store_access("store_id", allowed_staff_roles=ALL_STAFF_ROLES)` | Admin, store_owner, ALL staff roles | Order status updates |
 | `get_current_user` | Any authenticated user | Customer-facing features |
 
 ### Multi-Store Manager Support
 
-A single user can manage multiple stores by having multiple staff records:
-```
-staff: user_id=7, store_id=1, role=manager  ← Store 1 access
-staff: user_id=7, store_id=2, role=manager  ← Store 2 access
-```
-The `require_store_access` dependency checks for a matching staff record at the **specific** store in the URL path. No cross-store leakage.
-
-### Staff ↔ User Link
-
-- Staff with `user_id = NULL`: PIN-only access (clock in/out), no dashboard login
-- Staff with `user_id` set: Can log in to merchant dashboard with their user account email/password
-- Creating a staff member with dashboard access requires: (1) creating a user account, (2) creating a staff record linking to that user
+A single user can manage multiple stores by having multiple staff records. The `require_store_access` dependency checks for a matching staff record at the **specific** store in the URL path. No cross-store leakage.
 
 ---
 
@@ -103,16 +91,17 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | GET | `/stores/{store_id}/items` | public | List items |
 | GET | `/stores/{store_id}/items/search` | public | Search items |
 | GET | `/stores/{store_id}/items/popular` | public | Popular items |
+| GET | `/stores/{store_id}/items/{item_id}/customizations` | public | List customization options |
 | GET | `/stores/{store_id}/menu` | public | Full menu (categories + items tree) |
 | POST | `/admin/stores/{store_id}/items` | require_store_access | Create item |
 | PUT | `/admin/stores/{store_id}/items/{item_id}` | require_store_access | Update item |
-| DELETE | `/admin/stores/{store_id}/items/{item_id}` | require_store_access | **Soft-delete** (sets deleted_at + is_available=false) |
+| DELETE | `/admin/stores/{store_id}/items/{item_id}` | require_store_access | **Soft-delete** |
 
 ### Customization Options (PER-ITEM, PER-STORE)
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_store_access | List customization options for a menu item |
+| GET | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_store_access | List customization options |
 | POST | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_store_access | Create customization option |
 | PUT | `/admin/stores/{store_id}/customizations/{option_id}` | require_store_access | Update customization option |
 | DELETE | `/admin/stores/{store_id}/customizations/{option_id}` | require_store_access | Deactivate customization option |
@@ -127,7 +116,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | DELETE | `/admin/stores/{store_id}/tables/{table_id}` | require_store_access | Soft-delete table |
 | POST | `/tables/scan` | customer | Scan QR → get table info |
 | GET | `/tables/{table_id}` | public | Get table details |
-| PATCH | `/admin/stores/{store_id}/tables/{table_id}/occupancy` | require_store_access | **Override** table occupancy (is_occupied) |
+| PATCH | `/admin/stores/{store_id}/tables/{table_id}/occupancy` | require_store_access | Override table occupancy |
 
 ### Inventory (PER-STORE)
 
@@ -147,7 +136,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | POST | `/admin/stores/{store_id}/staff` | admin | Create staff member |
 | PUT | `/admin/staff/{staff_id}` | admin | Update staff |
 | DELETE | `/admin/staff/{staff_id}` | admin | Deactivate staff |
-| POST | `/admin/staff/{staff_id}/clock-in` | any (PIN-based) | Clock in (rate-limited: 5 attempts/5 min) |
+| POST | `/admin/staff/{staff_id}/clock-in` | any (PIN-based) | Clock in (rate-limited) |
 | POST | `/admin/staff/{staff_id}/clock-out` | any (PIN-based) | Clock out |
 | GET | `/admin/stores/{store_id}/shifts` | manager, assistant_manager | View shifts |
 
@@ -158,7 +147,7 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | POST | `/orders` | customer | Create order from cart |
 | GET | `/orders` | customer | List own orders |
 | GET | `/orders/{order_id}` | customer (own), admin, store_owner, staff | Get order details + timeline |
-| PATCH | `/orders/{order_id}/status` | admin, store_owner, **any staff at order's store** | Update order status |
+| PATCH | `/orders/{order_id}/status` | admin, store_owner, staff at order's store | Update order status |
 | POST | `/orders/{order_id}/cancel` | customer (own), admin, store_owner | Cancel order (**rolls back loyalty points**) |
 | POST | `/orders/{order_id}/reorder` | customer | Re-add items to cart |
 
@@ -171,39 +160,91 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | GET | `/admin/customers/{user_id}/orders` | admin | Customer's orders |
 | GET | `/admin/customers/{user_id}/loyalty-history` | admin | Loyalty history |
 | GET | `/admin/customers/{user_id}/wallet-history` | admin | Wallet history |
-| POST | `/admin/customers/{user_id}/adjust-points` | admin | Manual points adjustment (sets created_by + description) |
+| POST | `/admin/customers/{user_id}/adjust-points` | admin | Manual points adjustment |
+| PUT | `/admin/customers/{user_id}` | admin | Update customer details |
 
-### Voucher Management
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/vouchers` | admin | List all vouchers (excludes soft-deleted; `?include_deleted=true` to see all) |
-| POST | `/admin/vouchers` | admin | Create voucher |
-| PUT | `/admin/vouchers/{voucher_id}` | admin | Update voucher |
-| DELETE | `/admin/vouchers/{voucher_id}` | admin | **Soft-delete** voucher |
-| GET | `/admin/vouchers/{voucher_id}/usage` | admin | Voucher usage records |
-| GET | `/vouchers/me` | customer | My vouchers |
-| POST | `/vouchers/apply` | customer | Apply voucher to order |
-| POST | `/vouchers/validate` | customer | Validate voucher code |
-
-### Reward Management
+### Reward Management (Admin)
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/admin/rewards` | admin | List all rewards (excludes soft-deleted; `?include_deleted=true` to see all) |
+| GET | `/admin/rewards` | admin | List all rewards (excludes soft-deleted; `?include_deleted=true`) |
 | POST | `/admin/rewards` | admin | Create reward |
 | PUT | `/admin/rewards/{reward_id}` | admin | Update reward |
 | DELETE | `/admin/rewards/{reward_id}` | admin | **Soft-delete** reward |
 | GET | `/admin/rewards/{reward_id}/redemptions` | admin | Redemption records |
-| GET | `/rewards` | customer | List available rewards |
-| POST | `/rewards/{reward_id}/redeem` | customer | Redeem reward |
+
+### PWA Rewards (Customer)
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| GET | `/rewards` | public | Active rewards catalog (sorted by points_cost) |
+| GET | `/rewards/{reward_id}` | public | Reward detail page data |
+| POST | `/rewards/{reward_id}/redeem` | customer, admin | Redeem reward with points → creates user_reward instance with unique redemption_code |
+
+### Voucher Management (Admin)
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| GET | `/admin/vouchers` | admin | List all vouchers (excludes soft-deleted; `?include_deleted=true`) |
+| POST | `/admin/vouchers` | admin | Create voucher |
+| PUT | `/admin/vouchers/{voucher_id}` | admin | Update voucher |
+| DELETE | `/admin/vouchers/{voucher_id}` | admin | **Soft-delete** voucher |
+| GET | `/admin/vouchers/{voucher_id}/usage` | admin | Voucher usage records |
+
+### PWA Vouchers (Customer)
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| GET | `/vouchers/me` | customer, admin | Customer's voucher instances (all statuses) |
+| POST | `/vouchers/validate` | any user | Validate a voucher code before checkout (per-instance or catalog code). Accepts `order_total` for discount calculation |
+| POST | `/vouchers/use/{code}` | customer, admin, store_owner | Use/consume voucher instance at checkout |
+
+### Survey Management (Admin)
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| GET | `/admin/surveys` | admin | List all surveys |
+| GET | `/admin/surveys/{survey_id}` | admin | Get survey detail with questions |
+| POST | `/admin/surveys` | admin | Create survey (with questions) |
+| PUT | `/admin/surveys/{survey_id}` | admin | Update survey |
+| DELETE | `/admin/surveys/{survey_id}` | admin | Delete survey |
+
+### PWA Surveys (Customer)
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| GET | `/surveys/{survey_id}` | public | Get survey detail + questions for PWA display |
+| POST | `/surveys/{survey_id}/submit` | customer, admin | Submit answers. Auto-grants voucher if `reward_voucher_id` set. Guards: no duplicate submissions, per-user limit, global limit |
+
+### PWA Promo Banners
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| GET | `/promos/banners` | public | Active banners (within date range, sorted by position) |
+| GET | `/promos/banners/{banner_id}` | public | Banner detail (long_description, terms, linked voucher/survey) |
+| GET | `/promos/banners/{banner_id}/status` | any user | Check if customer already claimed this banner's voucher |
+| POST | `/promos/banners/{banner_id}/claim` | customer, admin | Claim voucher linked to this banner. Guards: max_uses_per_user, global limit, duplicate check |
+
+### PWA Customer Wallet
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| GET | `/me/wallet` | customer, admin | **Full wallet** — returns rewards (user_rewards where available), vouchers (user_vouchers where available), cash (wallets.balance), and loyalty_points (loyalty_accounts.points_balance) |
+
+### Barista Scan & Cron
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| POST | `/scan/reward/{code}` | admin, store_owner | Scan reward redemption code → marks `user_rewards.status='used'`. Returns reward name, image, customer_id |
+| POST | `/scan/voucher/{code}` | admin, store_owner | Scan voucher instance code → marks `user_vouchers.status='used'`, increments catalog `used_count` |
+| POST | `/scan/cron/expire` | admin | Marks all `available` instances past `expires_at` as `expired`. Returns counts expired |
 
 ### Loyalty
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/loyalty/balance` | customer | Get points balance + tier |
-| GET | `/loyalty/history` | customer | Points transaction history |
+| GET | `/loyalty/balance` | any user | Get points balance + tier + total_points_earned |
+| GET | `/loyalty/history` | any user | Points transaction history |
 | GET | `/loyalty/tiers` | public | Loyalty tier definitions |
 | GET | `/admin/loyalty-tiers` | admin | List tiers (admin) |
 | POST | `/admin/loyalty-tiers` | admin | Create tier |
@@ -213,39 +254,40 @@ The `require_store_access` dependency checks for a matching staff record at the 
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/wallet` | customer | Get wallet balance |
-| POST | `/wallet/topup` | customer | Top up wallet (stub) |
-| GET | `/wallet/transactions` | customer | Wallet transaction history |
-| GET | `/payments/methods` | customer | List saved payment methods |
-| POST | `/payments/methods` | customer | Add payment method |
-| POST | `/payments/create-intent` | customer | Create payment intent (stub) |
-| POST | `/payments/confirm` | customer | Confirm payment (stub) |
+| GET | `/wallet` | any user | Get wallet balance |
+| POST | `/wallet/topup` | any user | Top up wallet (stub) |
+| GET | `/wallet/transactions` | any user | Wallet transaction history |
+| GET | `/payments/methods` | any user | List saved payment methods |
+| POST | `/payments/methods` | any user | Add payment method |
+| POST | `/payments/create-intent` | any user | Create payment intent (stub) |
+| POST | `/payments/confirm` | any user | Confirm payment (stub) |
 
 ### Cart
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/cart` | customer | Get current cart |
-| POST | `/cart/items` | customer | Add item to cart (**400 if cart has items from a different store**). Accepts `customization_option_ids` for normalized add-ons. |
-| PUT | `/cart/items/{item_id}` | customer | Update cart item quantity |
-| DELETE | `/cart/items/{item_id}` | customer | Remove from cart |
-| DELETE | `/cart` | customer | Clear entire cart |
+| GET | `/cart` | any user | Get current cart |
+| POST | `/cart/items` | any user | Add item (**400 if different store**). Accepts `customization_option_ids` |
+| PUT | `/cart/items/{item_id}` | any user | Update cart item quantity |
+| DELETE | `/cart/items/{item_id}` | any user | Remove from cart |
+| DELETE | `/cart` | any user | Clear entire cart |
 
 ### Reports
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/admin/reports/revenue` | admin, store_owner | Revenue report (filterable by date/store) |
+| GET | `/admin/reports/revenue` | admin, store_owner | Revenue breakdown |
 | GET | `/admin/reports/sales` | admin, store_owner | Sales breakdown |
 | GET | `/admin/reports/popular` | admin, store_owner | Popular items report |
-| GET | `/admin/reports/loyalty` | admin | Loyalty points report |
+| GET | `/admin/reports/loyalty` | admin | Loyalty points stats |
 | GET | `/admin/reports/inventory` | admin, store_owner | Inventory report + low stock |
+| GET | `/admin/reports/marketing` | admin | Marketing report: loyalty, tier distribution, points flow, redemptions, voucher usage |
 
 ### Marketing Campaigns
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/admin/marketing/campaigns` | admin | List campaigns (filterable) |
+| GET | `/admin/marketing/campaigns` | admin | List campaigns |
 | POST | `/admin/marketing/campaigns` | admin | Create campaign |
 | PUT | `/admin/marketing/campaigns/{id}` | admin | Update campaign |
 | DELETE | `/admin/marketing/campaigns/{id}` | admin | Cancel campaign |
@@ -254,19 +296,20 @@ The `require_store_access` dependency checks for a matching staff record at the 
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| POST | `/feedback` | customer | Submit feedback |
+| POST | `/feedback` | any user | Submit feedback |
 | GET | `/admin/feedback` | admin | List all feedback |
-| GET | `/admin/feedback/stats` | admin | Feedback statistics |
+| GET | `/admin/feedback/stats` | admin | Aggregated stats (average_rating, total_reviews, rating_distribution). `?store_id=` filter |
 | GET | `/admin/feedback/{id}` | admin | Get feedback detail |
 | POST | `/admin/feedback/{id}/reply` | admin | Reply to feedback |
+| PUT | `/admin/feedback/{id}/reply` | admin | Update reply |
 
 ### Notifications
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/notifications` | customer | List own notifications |
-| PUT | `/notifications/read-all` | customer | Mark all as read |
-| PUT | `/notifications/{id}/read` | customer | Mark one as read |
+| GET | `/notifications` | any user | List own notifications |
+| PUT | `/notifications/read-all` | any user | Mark all as read |
+| PUT | `/notifications/{id}/read` | any user | Mark one as read |
 
 ### System & Config
 
@@ -275,8 +318,9 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | GET | `/admin/audit-log` | admin | View audit trail |
 | GET | `/admin/broadcasts` | admin | List broadcasts |
 | POST | `/admin/broadcasts` | admin | Send broadcast |
+| PATCH | `/admin/broadcasts/{id}/archive` | admin | Archive broadcast |
 | GET | `/admin/banners` | admin | Manage promo banners |
-| POST | `/admin/banners` | admin | Create banner |
+| POST | `/admin/banners` | admin | Create banner (accepts voucher_id, survey_id, action_type) |
 | PUT | `/admin/banners/{id}` | admin | Update banner |
 | DELETE | `/admin/banners/{id}` | admin | Delete banner |
 | GET | `/banners` | public | Active banners (customer app) |
@@ -285,19 +329,20 @@ The `require_store_access` dependency checks for a matching staff record at the 
 | PUT | `/splash` | admin, store_owner | Update splash screen |
 | GET | `/config` | public | App configuration |
 | PUT | `/admin/config` | admin | Update app config |
-| POST | `/upload/image` | admin, store_owner | Upload image file |
+| POST | `/upload/image` | admin, store_owner | Upload image file (5MB max, JPEG/PNG/WebP/GIF) |
+| POST | `/upload/marketing-image` | admin | Upload marketing image |
 
 ### User Profile
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/users/me` | customer | Get own profile |
-| PUT | `/users/me` | customer | Update profile |
-| PUT | `/users/me/avatar` | customer | Upload avatar |
-| GET | `/users/me/addresses` | customer | List saved addresses |
-| POST | `/users/me/addresses` | customer | Add address |
-| PUT | `/users/me/addresses/{id}` | customer | Update address |
-| DELETE | `/users/me/addresses/{id}` | customer | Delete address |
+| GET | `/users/me` | any user | Get own profile |
+| PUT | `/users/me` | any user | Update profile |
+| PUT | `/users/me/avatar` | any user | Upload avatar |
+| GET | `/users/me/addresses` | any user | List saved addresses |
+| POST | `/users/me/addresses` | any user | Add address |
+| PUT | `/users/me/addresses/{id}` | any user | Update address |
+| DELETE | `/users/me/addresses/{id}` | any user | Delete address |
 
 ### Stores (Public)
 
@@ -312,11 +357,11 @@ The `require_store_access` dependency checks for a matching staff record at the 
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/referral/code` | customer | Get my referral code |
-| POST | `/referral/apply` | customer | Apply referral code (**≤7 days after account creation, one-time only**) |
-| GET | `/favorites` | customer | List my favorites |
-| POST | `/favorites/{item_id}` | customer | Add to favorites |
-| DELETE | `/favorites/{item_id}` | customer | Remove from favorites |
+| GET | `/referral/code` | any user | Get my referral code |
+| POST | `/referral/apply` | any user | Apply referral code (**≤7 days after account creation, one-time only**) |
+| GET | `/favorites` | any user | List my favorites |
+| POST | `/favorites/{item_id}` | any user | Add to favorites |
+| DELETE | `/favorites/{item_id}` | any user | Remove from favorites |
 
 ---
 
@@ -331,31 +376,72 @@ The `require_store_access` dependency checks for a matching staff record at the 
 { "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "bearer" }
 ```
 
+### Reward Redemption
+```json
+// POST /rewards/1/redeem (auth required)
+// Response:
+{
+  "success": true,
+  "message": "Reward redeemed! Code: RWD-1-A3F2B1",
+  "user_reward_id": 6,
+  "redemption_code": "RWD-1-A3F2B1",
+  "expires_at": "2026-05-14T14:23:06Z",
+  "remaining_points": 670
+}
+```
+
+### Barista Scan
+```json
+// POST /scan/reward/RWD-1-A3F2B1 (admin/store_owner auth)
+// Response:
+{
+  "success": true,
+  "message": "Reward redeemed: Free Cappuccino",
+  "reward_name": "Free Cappuccino",
+  "reward_image_url": "/images/rewards/free-cappuccino.jpg",
+  "customer_id": 3,
+  "redeemed_at": "2026-04-14T14:23:06Z"
+}
+```
+
+### Voucher Validation
+```json
+// POST /vouchers/validate (auth required)
+{ "code": "WELCOME10-A3F2B1", "order_total": 50 }
+
+// Response:
+{ "valid": true, "discount_type": "percent", "discount_value": 10.0, "discount": 5.0, "min_spend": 20.0 }
+```
+
+### Full Wallet
+```json
+// GET /me/wallet (customer auth required)
+{
+  "rewards": [
+    { "id": 6, "reward_id": 1, "reward_name": "Free Cappuccino", "redemption_code": "RWD-1-A3F2B1", "status": "available", "expires_at": "2026-05-14T..." }
+  ],
+  "vouchers": [
+    { "id": 7, "voucher_id": 3, "code": "VCH-7-28a259", "discount_type": "free_item", "discount_value": 8.9, "status": "available", "expires_at": "2026-05-03T..." }
+  ],
+  "cash": { "balance": 120.5, "currency": "MYR" },
+  "loyalty_points": 670
+}
+```
+
+### Survey Submit
+```json
+// POST /surveys/1/submit (customer auth required)
+{ "answers": [{"question_id": 1, "answer_text": "5"}, {"question_id": 2, "answer_text": "Great!"}] }
+
+// Response:
+{ "success": true, "message": "Survey submitted successfully! Voucher granted!", "response_id": 1, "voucher_granted": true, "voucher_code": "WELCOME10-A3F2B1", "voucher_title": "First Order Discount" }
+```
+
 ### Pagination
 ```json
 // Request: ?page=1&page_size=20
 // Response:
 { "orders": [...], "total": 21, "page": 1, "page_size": 20 }
-```
-
-### Order Creation
-```json
-// POST /orders
-{
-  "store_id": 1,
-  "order_type": "dine_in",
-  "table_id": 5,
-  "payment_method": "wallet",
-  "notes": "Less sugar please"
-}
-
-// Delivery order
-{
-  "store_id": 1,
-  "order_type": "delivery",
-  "delivery_address": {"line1": "123 Jalan Bukit Bintang"},
-  "delivery_provider": "internal"
-}
 ```
 
 ### Store-Scoped Access Error
@@ -371,37 +457,18 @@ The `require_store_access` dependency checks for a matching staff record at the 
 { "detail": "Token has been revoked" }
 ```
 
-### PIN Rate Limiting
-```json
-// 429 Too Many Requests (after 5 wrong PINs in 5 minutes)
-{ "detail": "Too many PIN attempts. Try again after 5 minutes." }
-```
-
-### Cross-Store Cart Rejection
-```json
-// 400 Bad Request (cart has items from a different store)
-{ "detail": "Cart contains items from a different store. Clear your cart first before adding items from this store." }
-```
-
-### Referral Code Expiry
-```json
-// 400 Bad Request (account too old for referral)
-{ "detail": "Referral codes can only be applied within 7 days of account creation" }
-// 400 Bad Request (already applied a referral)
-{ "detail": "You have already applied a referral code" }
-```
-
 ---
 
 ## Security Features
 
 - **JWT Token Blacklist**: Tokens include a `jti` claim. On logout, the JTI is stored in `token_blacklist` table. Every request checks if the token's JTI is blacklisted.
-- **API Rate Limiting**: slowapi on auth endpoints — send-otp 5/min, register 5/min, login 10/min. Shared Limiter instance registered via `app.state.limiter`.
-- **PIN Rate Limiting**: Staff clock-in PIN attempts are rate-limited to 5 per 5 minutes per staff member (database-backed via `pin_attempts` table).
-- **Soft Deletes**: Menu items, vouchers, and rewards use `deleted_at` timestamp. GET endpoints filter `WHERE deleted_at IS NULL` by default. Admin endpoints accept `?include_deleted=true`.
-- **File Upload Validation**: `POST /upload/image` enforces 5MB max size and JPEG/PNG/WebP/GIF MIME types only.
-- **Order Cancellation Rollback**: Cancelling an order reverses loyalty points earned (creates a reversal `LoyaltyTransaction` with negative points).
-- **Cross-Store Cart Guard**: Adding items from a different store than the current cart returns 400. User must clear cart first.
-- **Referral Code Expiry**: Referral codes can only be applied within 7 days of account creation. Each user can apply only one referral code.
-- **Staff Unique Constraint**: Partial unique index `(store_id, user_id) WHERE user_id IS NOT NULL` prevents duplicate staff records.
-- **Delivery Provider**: Delivery orders populate `delivery_provider` field (defaults to `"internal"`).
+- **API Rate Limiting**: slowapi on auth endpoints — send-otp 5/min, register 5/min, login 10/min.
+- **PIN Rate Limiting**: Staff clock-in PIN attempts are rate-limited to 5 per 5 minutes per staff member (database-backed).
+- **Soft Deletes**: Menu items, vouchers, and rewards use `deleted_at` timestamp. GET endpoints filter by default.
+- **File Upload Validation**: 5MB max size, JPEG/PNG/WebP/GIF MIME types only.
+- **Order Cancellation Rollback**: Cancelling an order reverses loyalty points.
+- **Cross-Store Cart Guard**: Adding items from a different store returns 400.
+- **Referral Code Expiry**: Only within 7 days of account creation.
+- **Repeat Customer Protection**: Duplicate voucher claims, survey submissions, and reward redemptions are all guarded.
+- **Audit Log Hooks**: All critical admin actions are logged to `audit_log`.
+- **Token Blacklist Auto-Cleanup**: Background task purges expired rows every 24 hours.

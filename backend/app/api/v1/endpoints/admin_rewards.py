@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import timezone, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -28,13 +28,14 @@ async def list_rewards_admin(
     return result.scalars().all()
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=RewardOut)
 async def create_reward(req: RewardCreate, user: User = Depends(require_role("admin")), db: AsyncSession = Depends(get_db)):
     reward = Reward(**req.model_dump())
     db.add(reward)
     await db.flush()
+    await db.refresh(reward)
     await log_action(db, action="REWARD_CREATED", user_id=user.id, entity_type="reward", entity_id=reward.id)
-    return {"id": reward.id, "name": reward.name, "points_cost": reward.points_cost}
+    return reward
 
 
 @router.put("/{reward_id}")
@@ -57,7 +58,7 @@ async def deactivate_reward(reward_id: int, user: User = Depends(require_role("a
     if not reward:
         raise HTTPException(status_code=404, detail="Reward not found")
     reward.is_active = False
-    reward.deleted_at = datetime.utcnow()
+    reward.deleted_at = datetime.now(timezone.utc)
     await log_action(db, action="REWARD_DELETED", user_id=user.id, entity_type="reward", entity_id=reward.id)
     await db.flush()
     return {"message": "Reward soft-deleted"}

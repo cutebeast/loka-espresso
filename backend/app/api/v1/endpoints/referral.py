@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import timezone, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -39,7 +39,7 @@ async def apply_referral(code: str, user: User = Depends(get_current_user), db: 
 
     # Enforce account age limit
     if user.created_at:
-        account_age = datetime.utcnow() - user.created_at.replace(tzinfo=None)
+        account_age = datetime.now(timezone.utc) - user.created_at.replace(tzinfo=None)
         if account_age > timedelta(days=REFERRAL_MAX_AGE_DAYS):
             raise HTTPException(
                 status_code=400,

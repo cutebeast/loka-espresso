@@ -8,6 +8,8 @@ class WalletTxType(str, enum.Enum):
     topup = "topup"
     payment = "payment"
     refund = "refund"
+    promo_credit = "promo_credit"
+    admin_adjustment = "admin_adjustment"
 
 
 class Wallet(Base):
@@ -28,7 +30,8 @@ class WalletTransaction(Base):
     amount = Column(DECIMAL(10, 2), nullable=False)
     type = Column(Enum(WalletTxType), nullable=False)
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    balance_after = Column(DECIMAL(10, 2), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class PaymentMethod(Base):

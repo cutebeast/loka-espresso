@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { apiFetch, formatRM, statusBadge } from '@/lib/merchant-api';
 import type {
   PageId,
@@ -15,10 +16,7 @@ import type {
   MerchantReward,
   MerchantVoucher,
   MerchantBanner,
-  MerchantBroadcast,
   MerchantAuditEntry,
-  MerchantFeedbackItem,
-  MerchantFeedbackStats,
   MerchantLoyaltyTier,
 } from '@/lib/merchant-types';
 import LoginScreen from '@/components/LoginScreen';
@@ -26,21 +24,28 @@ import Sidebar from '@/components/Sidebar';
 import {
   AddItemForm,
   AddTableForm,
-  AddRewardForm,
-  AddVoucherForm,
   AddStaffForm,
-  AddBannerForm,
   AddBroadcastForm,
-  FeedbackReplyForm,
-  EditTierForm,
-  StoreSettingsForm,
+  AddCategoryForm,
+  AddCustomizationForm,
+  AddInventoryItemForm,
 } from '@/components/Modals';
 import DashboardPage from '@/components/pages/DashboardPage';
 import OrdersPage from '@/components/pages/OrdersPage';
 import MenuPage from '@/components/pages/MenuPage';
 import TablesPage from '@/components/pages/TablesPage';
 import CustomersPage from '@/components/pages/CustomersPage';
-import { BarChart, DonutChart, SparkLine } from '@/components/charts';
+import StoreSettingsPage from '@/components/pages/StoreSettingsPage';
+import LoyaltyRulesPage from '@/components/pages/LoyaltyRulesPage';
+import AuditLogPage from '@/components/pages/AuditLogPage';
+import NotificationsPage from '@/components/pages/NotificationsPage';
+import RewardsPage from '@/components/pages/RewardsPage';
+import VouchersPage from '@/components/pages/VouchersPage';
+import PromotionsPage from '@/components/pages/PromotionsPage';
+import FeedbackPage from '@/components/pages/FeedbackPage';
+import SurveysPage from '@/components/pages/SurveysPage';
+import MarketingReportsPage from '@/components/pages/MarketingReportsPage';
+import { BarChart, DonutChart, SparkLine, LineGridChart } from '@/components/charts';
 
 export default function MerchantDashboard() {
   const [token, setToken] = useState('');
@@ -64,19 +69,20 @@ export default function MerchantDashboard() {
   const [vouchers, setVouchers] = useState<MerchantVoucher[]>([]);
   const [staff, setStaff] = useState<MerchantStaffMember[]>([]);
   const [banners, setBanners] = useState<MerchantBanner[]>([]);
-  const [broadcasts, setBroadcasts] = useState<MerchantBroadcast[]>([]);
   const [auditLog, setAuditLog] = useState<MerchantAuditEntry[]>([]);
-  const [feedbackList, setFeedbackList] = useState<MerchantFeedbackItem[]>([]);
-  const [feedbackStats, setFeedbackStats] = useState<MerchantFeedbackStats | null>(null);
-  const [feedbackStoreFilter, setFeedbackStoreFilter] = useState<string>('');
   const [loyaltyTiers, setLoyaltyTiers] = useState<MerchantLoyaltyTier[]>([]);
   const [loading, setLoading] = useState(false);
-  const [notifTab, setNotifTab] = useState<'inbox' | 'manage'>('inbox');
+  const [notifRefreshKey, setNotifRefreshKey] = useState(0);
+  const [showStoreRevenueModal, setShowStoreRevenueModal] = useState(false);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [showAddInventory, setShowAddInventory] = useState(false);
+  const [editInventoryItem, setEditInventoryItem] = useState<MerchantInventoryItem | null>(null);
+  const [customizingItem, setCustomizingItem] = useState<MerchantMenuItem | null>(null);
 
   const [revenueReport, setRevenueReport] = useState<any>(null);
   const [reportFrom, setReportFrom] = useState(() => {
     const d = new Date();
-    d.setDate(1);
+    d.setDate(d.getDate() - 6);
     return d.toISOString().slice(0, 10);
   });
   const [reportTo, setReportTo] = useState(() => new Date().toISOString().slice(0, 10));
@@ -113,15 +119,13 @@ export default function MerchantDashboard() {
     else if (page === 'inventory') fetchInventory();
     else if (page === 'tables') fetchTables();
     else if (page === 'staff') fetchStaff();
-    else if (page === 'rewards') fetchRewards();
-    else if (page === 'vouchers') fetchVouchers();
-    else if (page === 'promotions') fetchBanners();
-    else if (page === 'feedback') fetchFeedback();
-    else if (page === 'reports') fetchRevenueReport();
-    else if (page === 'notifications') fetchBroadcasts();
-    else if (page === 'auditlog') fetchAuditLog();
+     else if (page === 'rewards') fetchRewards();
+     else if (page === 'vouchers') fetchVouchers();
+     else if (page === 'promotions') fetchBanners();
+     else if (page === 'reports') fetchRevenueReport();
+     else if (page === 'auditlog') fetchAuditLog();
     else if (page === 'loyaltyrules') fetchLoyaltyTiers();
-  }, [page, token, selectedStore, reportFrom, reportTo, feedbackStoreFilter]);
+  }, [page, token, selectedStore, reportFrom, reportTo]);
 
   function handleLogout() {
     setToken('');
@@ -228,17 +232,6 @@ export default function MerchantDashboard() {
     } catch {} finally { setLoading(false); }
   }
 
-  async function fetchBroadcasts() {
-    setLoading(true);
-    try {
-      const res = await apiFetch('/admin/broadcasts', token);
-      if (res.ok) {
-        const data = await res.json();
-        setBroadcasts(Array.isArray(data) ? data : (data.broadcasts || []));
-      }
-    } catch {} finally { setLoading(false); }
-  }
-
   async function fetchAuditLog() {
     setLoading(true);
     try {
@@ -246,24 +239,6 @@ export default function MerchantDashboard() {
       if (res.ok) {
         const data = await res.json();
         setAuditLog(Array.isArray(data) ? data : (data.entries || data.items || []));
-      }
-    } catch {} finally { setLoading(false); }
-  }
-
-  async function fetchFeedback() {
-    setLoading(true);
-    try {
-      const storeParam = feedbackStoreFilter ? `?store_id=${feedbackStoreFilter}` : '';
-      const [fbRes, statsRes] = await Promise.all([
-        apiFetch(`/admin/feedback${storeParam}`, token),
-        apiFetch(`/admin/feedback/stats${storeParam ? storeParam.replace('?', '?') : ''}`, token),
-      ]);
-      if (fbRes.ok) {
-        const data = await fbRes.json();
-        setFeedbackList(Array.isArray(data) ? data : (data.feedback || []));
-      }
-      if (statsRes.ok) {
-        setFeedbackStats(await statsRes.json());
       }
     } catch {} finally { setLoading(false); }
   }
@@ -283,31 +258,13 @@ export default function MerchantDashboard() {
     setLoading(true);
     try {
       const storeParam = selectedStore !== 'all' ? `&store_id=${selectedStore}` : '';
-      const res = await apiFetch(`/admin/reports/revenue?from_date=${reportFrom}T00:00:00&to_date=${reportTo}T23:59:59${storeParam}`, token);
+      // Detect monthly mode: if the "Monthly Sales" preset is active
+      const monthStart = (() => { const d = new Date(); d.setMonth(d.getMonth() - 5, 1); return d.toISOString().slice(0, 10); })();
+      const isMonthlyMode = reportFrom === monthStart;
+      const groupParam = isMonthlyMode ? '&group_by=month' : '';
+      const res = await apiFetch(`/admin/reports/revenue?from_date=${reportFrom}T00:00:00&to_date=${reportTo}T23:59:59${storeParam}${groupParam}`, token);
       if (res.ok) setRevenueReport(await res.json());
     } catch {} finally { setLoading(false); }
-  }
-
-  async function toggleBanner(banner: MerchantBanner) {
-    try {
-      await apiFetch(`/admin/banners/${banner.id}`, token, {
-        method: 'PUT',
-        body: JSON.stringify({ ...banner, is_active: !banner.is_active }),
-      });
-      fetchBanners();
-    } catch {}
-  }
-
-  function openAddRewardModal() {
-    setModalTitle('Create Reward');
-    setModalContent(<AddRewardForm token={token} onClose={() => { setShowModal(false); fetchRewards(); }} />);
-    setShowModal(true);
-  }
-
-  function openAddVoucherModal() {
-    setModalTitle('Create Voucher');
-    setModalContent(<AddVoucherForm token={token} onClose={() => { setShowModal(false); fetchVouchers(); }} />);
-    setShowModal(true);
   }
 
   function openAddStaffModal() {
@@ -316,27 +273,9 @@ export default function MerchantDashboard() {
     setShowModal(true);
   }
 
-  function openAddBannerModal() {
-    setModalTitle('New Banner');
-    setModalContent(<AddBannerForm token={token} onClose={() => { setShowModal(false); fetchBanners(); }} />);
-    setShowModal(true);
-  }
-
   function openBroadcastModal() {
     setModalTitle('New Broadcast');
-    setModalContent(<AddBroadcastForm token={token} onClose={() => { setShowModal(false); fetchBroadcasts(); }} />);
-    setShowModal(true);
-  }
-
-  function openFeedbackReplyModal(fb: MerchantFeedbackItem) {
-    setModalTitle(`Reply to ${fb.customer_name}`);
-    setModalContent(<FeedbackReplyForm feedbackId={fb.id} token={token} onClose={() => { setShowModal(false); fetchFeedback(); }} />);
-    setShowModal(true);
-  }
-
-  function openEditTierModal(tier: MerchantLoyaltyTier) {
-    setModalTitle(`Edit Tier: ${tier.name}`);
-    setModalContent(<EditTierForm tier={tier} token={token} onClose={() => { setShowModal(false); fetchLoyaltyTiers(); }} />);
+    setModalContent(<AddBroadcastForm token={token} onClose={() => { setShowModal(false); setNotifRefreshKey(k => k + 1); }} />);
     setShowModal(true);
   }
 
@@ -357,7 +296,9 @@ export default function MerchantDashboard() {
     vouchers: 'Vouchers',
     promotions: 'Promotions',
     feedback: 'Feedback',
-    reports: 'Reports',
+    surveys: 'Surveys',
+    reports: 'Sales Reports',
+    marketingreports: 'Marketing Reports',
     customers: 'Customers',
     notifications: 'Notifications',
     auditlog: 'Audit Log',
@@ -426,6 +367,7 @@ export default function MerchantDashboard() {
                 storeObj={storeObj}
                 token={token}
                 onRefresh={fetchMenu}
+                onCustomizeItem={(item) => setCustomizingItem(item)}
               />
             )}
 
@@ -438,15 +380,18 @@ export default function MerchantDashboard() {
                   </div>
                 ) : (
                   <>
-                    <h3 style={{ marginBottom: 20 }}>Ingredient Stock &middot; {storeObj?.name}</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                      <h3>Inventory &middot; {storeObj?.name}</h3>
+                      <button className="btn btn-primary" onClick={() => setShowAddInventory(true)}><i className="fas fa-plus"></i> Add Ingredient</button>
+                    </div>
                     <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
                       <table>
                         <thead>
-                          <tr><th>Ingredient</th><th>Current Stock</th><th>Unit</th><th>Reorder Level</th><th>Status</th></tr>
+                          <tr><th>Ingredient</th><th>Current Stock</th><th>Unit</th><th>Reorder Level</th><th>Cost/Unit</th><th>Status</th><th>Actions</th></tr>
                         </thead>
                         <tbody>
                           {inventory.length === 0 ? (
-                            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>No inventory items yet</td></tr>
+                            <tr><td colSpan={7} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>No inventory items yet</td></tr>
                           ) : inventory.map(item => {
                             const isLow = item.current_stock <= item.reorder_level;
                             return (
@@ -455,7 +400,14 @@ export default function MerchantDashboard() {
                                 <td>{item.current_stock}</td>
                                 <td>{item.unit}</td>
                                 <td>{item.reorder_level}</td>
+                                <td>{item.cost_per_unit != null ? `RM ${item.cost_per_unit}` : '-'}</td>
                                 <td><span className={`badge ${isLow ? 'badge-yellow' : 'badge-green'}`}>{isLow ? 'Low' : 'OK'}</span></td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <button className="btn btn-sm" onClick={() => setEditInventoryItem(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={async () => { if (confirm(`Delete "${item.name}"?`)) { await apiFetch(`/stores/${selectedStore}/inventory/${item.id}`, token, { method: 'DELETE' }); fetchInventory(); } }}><i className="fas fa-trash"></i></button>
+                                  </div>
+                                </td>
                               </tr>
                             );
                           })}
@@ -515,176 +467,23 @@ export default function MerchantDashboard() {
             )}
 
             {page === 'rewards' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <h3>Rewards Catalog</h3>
-                  <button className="btn btn-primary" onClick={openAddRewardModal}><i className="fas fa-plus"></i> New Reward</button>
-                </div>
-                <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-                  <table>
-                    <thead><tr><th>Reward</th><th>Points</th><th>Type</th><th>Stock</th><th>Redemptions</th><th>Status</th></tr></thead>
-                    <tbody>
-                      {rewards.length === 0 ? (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>No rewards yet</td></tr>
-                      ) : rewards.map(r => (
-                        <tr key={r.id}>
-                          <td><strong>{r.name}</strong><br /><span style={{ fontSize: 12, color: '#64748B' }}>{r.description}</span></td>
-                          <td style={{ fontWeight: 600 }}>{r.points_cost} pts</td>
-                          <td><span className="badge badge-blue">{r.reward_type}</span></td>
-                          <td>{r.stock_limit ?? 'Unlimited'}</td>
-                          <td>{r.total_redeemed}</td>
-                          <td><span className={`badge ${r.is_active ? 'badge-green' : 'badge-gray'}`}>{r.is_active ? 'Active' : 'Inactive'}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <RewardsPage rewards={rewards} token={token} onRefresh={fetchRewards} />
             )}
 
             {page === 'vouchers' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <h3>Global Vouchers</h3>
-                  <button className="btn btn-primary" onClick={openAddVoucherModal}><i className="fas fa-plus"></i> Create</button>
-                </div>
-                <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-                  <table>
-                    <thead><tr><th>Code</th><th>Discount</th><th>Min Order</th><th>Usage</th><th>Valid Until</th><th>Status</th></tr></thead>
-                    <tbody>
-                      {vouchers.length === 0 ? (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>No vouchers yet</td></tr>
-                      ) : vouchers.map(v => (
-                        <tr key={v.id}>
-                          <td style={{ fontWeight: 600 }}>{v.code}</td>
-                          <td>{v.discount_type === 'percent' ? `${v.discount_value}% off` : formatRM(v.discount_value)}</td>
-                          <td>{v.min_order > 0 ? formatRM(v.min_order) : '-'}</td>
-                          <td>{v.used_count}{v.max_uses ? `/${v.max_uses}` : '/∞'}</td>
-                          <td>{v.valid_until ? new Date(v.valid_until).toLocaleDateString() : 'No expiry'}</td>
-                          <td><span className={`badge ${v.is_active ? 'badge-green' : 'badge-gray'}`}>{v.is_active ? 'Active' : 'Inactive'}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <VouchersPage vouchers={vouchers} token={token} onRefresh={fetchVouchers} />
             )}
 
             {page === 'promotions' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <h3>Promotional Banners</h3>
-                  <button className="btn btn-primary" onClick={openAddBannerModal}><i className="fas fa-plus"></i> New Banner</button>
-                </div>
-                {banners.length === 0 ? (
-                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                    <i className="fas fa-bullhorn" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                    <p>No banners yet. Create your first promotional banner.</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-                    {banners.map(b => (
-                      <div key={b.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div style={{ height: 120, background: 'linear-gradient(135deg, #002F6C, #1E4A7A)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 600, overflow: 'hidden' }}>
-                          {b.image_url ? (
-                            <img src={b.image_url} alt={b.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <span>{b.title}</span>
-                          )}
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <strong>{b.title}</strong>
-                          <span className={`badge ${b.is_active ? 'badge-green' : 'badge-gray'}`}>{b.is_active ? 'Active' : 'Inactive'}</span>
-                        </div>
-                        {b.target_url && <div style={{ fontSize: 12, color: '#64748B', wordBreak: 'break-all' }}>{b.target_url}</div>}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 12, color: '#94A3B8' }}>{new Date(b.created_at).toLocaleDateString()}</span>
-                          <button className="btn btn-sm" onClick={() => toggleBanner(b)}>
-                            {b.is_active ? 'Deactivate' : 'Activate'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <PromotionsPage banners={banners} token={token} onRefresh={fetchBanners} />
             )}
 
             {page === 'feedback' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <h3>Customer Feedback</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Filter by Store:</label>
-                    <select
-                      value={feedbackStoreFilter}
-                      onChange={e => setFeedbackStoreFilter(e.target.value)}
-                      style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #DDE3E9', fontSize: 14 }}
-                    >
-                      <option value="">All Stores</option>
-                      {stores.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-                {feedbackStats && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
-                    <div className="card" style={{ textAlign: 'center' }}>
-                      <div style={{ color: '#64748B', fontSize: 13 }}>Average Rating</div>
-                      <div style={{ fontSize: 32, fontWeight: 700, color: '#F59E0B' }}>
-                        {'★'.repeat(Math.round(feedbackStats.average_rating))}{'☆'.repeat(5 - Math.round(feedbackStats.average_rating))}
-                      </div>
-                      <div style={{ fontSize: 14, color: '#64748B' }}>{feedbackStats.average_rating.toFixed(1)} / 5.0</div>
-                    </div>
-                    <div className="card" style={{ textAlign: 'center' }}>
-                      <div style={{ color: '#64748B', fontSize: 13 }}>Total Reviews</div>
-                      <div style={{ fontSize: 32, fontWeight: 700 }}>{feedbackStats.total_reviews}</div>
-                    </div>
-                    <div className="card">
-                      <h4 style={{ fontSize: 14, marginBottom: 12 }}>Rating Distribution</h4>
-                      {feedbackStats.rating_distribution && Object.entries(feedbackStats.rating_distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([rating, count]: [string, any]) => (
-                        <div key={rating} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}>
-                          <span>{'★'.repeat(Number(rating))}</span>
-                          <strong>{count}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {feedbackList.length === 0 ? (
-                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                    <i className="fas fa-star" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                    <p>No feedback yet</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gap: 16 }}>
-                    {feedbackList.map(fb => (
-                      <div key={fb.id} className="card" style={{ padding: '20px 24px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <strong style={{ fontSize: 15 }}>{fb.customer_name}</strong>
-                            <span style={{ marginLeft: 12, color: '#F59E0B', fontSize: 14 }}>
-                              {'★'.repeat(fb.rating)}{'☆'.repeat(5 - fb.rating)}
-                            </span>
-                            <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
-                              {fb.store_name} &middot; {new Date(fb.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          {!fb.reply && (
-                            <button className="btn btn-sm" onClick={() => openFeedbackReplyModal(fb)}>Reply</button>
-                          )}
-                        </div>
-                        <p style={{ marginTop: 12, color: '#334155' }}>{fb.comment}</p>
-                        {fb.reply && (
-                          <div style={{ marginTop: 12, padding: '12px 16px', background: '#F0F9FF', borderRadius: 12, borderLeft: '3px solid #002F6C' }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#002F6C', marginBottom: 4 }}>Merchant Reply</div>
-                            <div style={{ fontSize: 14, color: '#334155' }}>{fb.reply}</div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <FeedbackPage token={token} selectedStore={selectedStore} />
+            )}
+
+            {page === 'surveys' && (
+              <SurveysPage token={token} />
             )}
 
             {page === 'reports' && (
@@ -692,13 +491,44 @@ export default function MerchantDashboard() {
                 <h3 style={{ marginBottom: 20 }}>Revenue Breakdown</h3>
                 <div className="card" style={{ marginBottom: 20 }}>
                   <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {(() => {
+                        const today = new Date().toISOString().slice(0, 10);
+                        const d7 = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().slice(0, 10); })();
+                        const d30 = (() => { const d = new Date(); d.setDate(d.getDate() - 29); return d.toISOString().slice(0, 10); })();
+                        const mtdStart = (() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); })();
+                        const lastMonthStart = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1, 1); return d.toISOString().slice(0, 10); })();
+                        const lastMonthEnd = (() => { const d = new Date(); d.setDate(0); return d.toISOString().slice(0, 10); })();
+                        const monthStart = (() => { const d = new Date(); d.setMonth(d.getMonth() - 5, 1); return d.toISOString().slice(0, 10); })();
+
+                        const presets = [
+                          { label: '7D', from: d7, to: today },
+                          { label: '30D', from: d30, to: today },
+                          { label: 'MTD', from: mtdStart, to: today },
+                          { label: 'Last Month', from: lastMonthStart, to: lastMonthEnd },
+                          { label: 'Monthly Sales', from: monthStart, to: today },
+                        ];
+                        return presets.map(preset => {
+                          const isActive = reportFrom === preset.from && reportTo === preset.to;
+                          return (
+                            <button
+                              key={preset.label}
+                              className={`btn btn-sm ${isActive ? 'btn-primary' : ''}`}
+                              onClick={() => { setReportFrom(preset.from); setReportTo(preset.to); }}
+                            >
+                              {preset.label}
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
                     <div>
                       <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 4 }}>From</label>
-                      <input type="date" value={reportFrom} onChange={e => setReportFrom(e.target.value)} style={{ width: 180 }} />
+                      <input type="date" value={reportFrom} onChange={e => setReportFrom(e.target.value)} style={{ width: 160 }} />
                     </div>
                     <div>
                       <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 4 }}>To</label>
-                      <input type="date" value={reportTo} onChange={e => setReportTo(e.target.value)} style={{ width: 180 }} />
+                      <input type="date" value={reportTo} onChange={e => setReportTo(e.target.value)} style={{ width: 160 }} />
                     </div>
                     <div style={{ paddingBottom: 8, color: '#64748B' }}>Store: <strong>{selectedStore === 'all' ? 'All Stores' : storeObj?.name}</strong></div>
                   </div>
@@ -707,13 +537,27 @@ export default function MerchantDashboard() {
                   <div style={{ textAlign: 'center', padding: 40, color: '#64748B' }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>
                 ) : revenueReport ? (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+                    {/* ── KPI + By Order Type + By Store ── */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
                       <div className="card" style={{ textAlign: 'center' }}>
                         <div style={{ color: '#64748B', fontSize: 13 }}>Total Revenue</div>
                         <div style={{ fontSize: 28, fontWeight: 700, color: '#059669' }}>{formatRM(revenueReport.total || 0)}</div>
                         <div style={{ marginTop: 8 }}>
                           <SparkLine
-                            data={Object.entries(revenueReport.by_day || {}).sort((a, b) => a[0].localeCompare(b[0])).map(([, v]: [string, any]) => Number(v))}
+                            data={(() => {
+                              const raw = revenueReport.by_day || {};
+                              const monthStart = (() => { const d = new Date(); d.setMonth(d.getMonth() - 5, 1); return d.toISOString().slice(0, 10); })();
+                              if (reportFrom === monthStart) {
+                                return Object.entries(raw).sort(([a],[b]) => a.localeCompare(b)).map(([, v]) => Number(v));
+                              }
+                              const days: string[] = [];
+                              const from = new Date(reportFrom);
+                              const to = new Date(reportTo);
+                              for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+                                days.push(d.toISOString().slice(0, 10));
+                              }
+                              return days.map(day => Number(raw[day] || 0));
+                            })()}
                             width={180}
                             height={36}
                             color="#059669"
@@ -729,30 +573,91 @@ export default function MerchantDashboard() {
                         />
                       </div>
                       <div className="card">
-                        <h4 style={{ fontSize: 14, marginBottom: 12 }}>By Store</h4>
-                        <DonutChart
-                          data={Object.entries(revenueReport.by_store || {}).map(([sid, rev]: [string, any]) => {
-                            const s = stores.find(st => st.id === Number(sid));
-                            return { label: s?.name || `Store ${sid}`, value: Number(rev) };
-                          })}
-                          size={140}
-                          formatValue={(v) => formatRM(v)}
-                        />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <h4 style={{ fontSize: 14, margin: 0 }}>By Store</h4>
+                          {Object.keys(revenueReport.by_store || {}).length > 5 && (
+                            <button className="btn btn-sm" onClick={() => setShowStoreRevenueModal(true)}>
+                              <i className="fas fa-expand"></i> View All ({Object.keys(revenueReport.by_store).length})
+                            </button>
+                          )}
+                        </div>
+                        {(() => {
+                          const byStore = Object.entries(revenueReport.by_store || {})
+                            .map(([sid, rev]: [string, any]) => {
+                              const s = stores.find(st => st.id === Number(sid));
+                              return { name: s?.name || `Store ${sid}`, value: Number(rev) };
+                            })
+                            .sort((a, b) => b.value - a.value);
+                          if (byStore.length === 0) return <span style={{ color: '#94A3B8' }}>No data</span>;
+                          const total = byStore.reduce((s, d) => s + d.value, 0) || 1;
+                          const topStores = byStore.slice(0, 5);
+                          const colors = ['#002F6C', '#059669', '#EA580C', '#7C3AED', '#DB2777'];
+                          return (
+                            <div>
+                              {topStores.map((s, i) => (
+                                <div key={i} style={{ marginBottom: 10 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
+                                    <span style={{ fontWeight: 500, color: '#334155' }}>{s.name}</span>
+                                    <span style={{ color: '#64748B' }}>{formatRM(s.value)} <span style={{ fontSize: 11, color: '#94A3B8' }}>({((s.value / total) * 100).toFixed(0)}%)</span></span>
+                                  </div>
+                                  <div style={{ height: 6, background: '#F1F5F9', borderRadius: 10 }}>
+                                    <div style={{ height: 6, background: colors[i % colors.length], borderRadius: 10, width: `${(s.value / total) * 100}%`, transition: 'width 0.3s' }} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
-                    {revenueReport.by_day && Object.keys(revenueReport.by_day).length > 0 && (
-                      <div className="card">
-                        <h4 style={{ marginBottom: 16 }}>Daily Revenue</h4>
-                        <BarChart
-                          data={Object.entries(revenueReport.by_day).sort((a, b) => a[0].localeCompare(b[0])).map(([day, rev]: [string, any]) => ({
-                            label: day.slice(5),
-                            value: Number(rev),
-                          }))}
-                          height={180}
-                          formatValue={(v) => formatRM(v)}
-                        />
+
+                    {/* ── Time Series Chart ── */}
+                    <div className="card">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <h4 style={{ margin: 0 }}>{(() => {
+                          const monthStart = (() => { const d = new Date(); d.setMonth(d.getMonth() - 5, 1); return d.toISOString().slice(0, 10); })();
+                          return reportFrom === monthStart ? 'Monthly Revenue' : 'Revenue Trend';
+                        })()}</h4>
+                        <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#64748B' }}>
+                          <span><strong style={{ color: '#0F172A' }}>{formatRM(revenueReport.total || 0)}</strong> total</span>
+                          {(() => {
+                            const raw = revenueReport.by_day || {};
+                            const vals = Object.values(raw).map(Number);
+                            const days = Object.keys(raw).length || 1;
+                            return <span><strong style={{ color: '#0F172A' }}>{formatRM(vals.reduce((a, b) => a + b, 0) / days)}</strong> avg/day</span>;
+                          })()}
+                        </div>
                       </div>
-                    )}
+                      {(() => {
+                        const raw = revenueReport.by_day || {};
+                        const from = new Date(reportFrom);
+                        const to = new Date(reportTo);
+                        const monthStart = (() => { const d = new Date(); d.setMonth(d.getMonth() - 5, 1); return d.toISOString().slice(0, 10); })();
+                        const isMonthly = reportFrom === monthStart;
+
+                        if (isMonthly) {
+                          // Monthly: use BarChart (fewer items)
+                          const result: { label: string; value: number }[] = [];
+                          const d = new Date(from.getFullYear(), from.getMonth(), 1);
+                          const end = new Date(to.getFullYear(), to.getMonth(), 1);
+                          while (d <= end) {
+                            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                            const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                            result.push({ label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`, value: Number(raw[key] || 0) });
+                            d.setMonth(d.getMonth() + 1);
+                          }
+                          return <BarChart data={result} height={180} formatValue={(v) => formatRM(v)} />;
+                        } else {
+                          // Daily: use LineGridChart (handles 7-31 days cleanly)
+                          const result: { label: string; value: number }[] = [];
+                          for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+                            const key = d.toISOString().slice(0, 10);
+                            result.push({ label: key.slice(5), value: Number(raw[key] || 0) });
+                          }
+                          return <LineGridChart data={result} height={240} formatValue={(v) => formatRM(v)} color="#002F6C" />;
+                        }
+                      })()}
+                    </div>
                   </>
                 ) : (
                   <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
@@ -762,175 +667,75 @@ export default function MerchantDashboard() {
               </div>
             )}
 
+            {/* Store Revenue Breakdown Modal (outside reports conditional, inside main) */}
+            {showStoreRevenueModal && revenueReport && (
+              <div className="modal-overlay" onClick={() => setShowStoreRevenueModal(false)}>
+                <div className="modal" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <h3 style={{ margin: 0 }}>Revenue by Store</h3>
+                    <button className="btn btn-sm" onClick={() => setShowStoreRevenueModal(false)}><i className="fas fa-times"></i></button>
+                  </div>
+                  {(() => {
+                    const byStore = Object.entries(revenueReport.by_store || {})
+                      .map(([sid, rev]: [string, any]) => {
+                        const s = stores.find(st => st.id === Number(sid));
+                        return { name: s?.name || `Store ${sid}`, value: Number(rev) };
+                      })
+                      .sort((a, b) => b.value - a.value);
+                    const total = byStore.reduce((s, d) => s + d.value, 0) || 1;
+                    const colors = ['#002F6C', '#059669', '#EA580C', '#7C3AED', '#DB2777', '#0891B2', '#4F46E5', '#DC2626', '#65A30D', '#CA8A04'];
+                    return (
+                      <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                        {byStore.map((s, i) => (
+                          <div key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: i < byStore.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
+                              <span style={{ fontWeight: 600, color: '#334155' }}>
+                                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: colors[i % colors.length], marginRight: 8 }}></span>
+                                {s.name}
+                              </span>
+                              <span style={{ fontWeight: 600, color: '#0F172A' }}>{formatRM(s.value)}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ flex: 1, height: 8, background: '#F1F5F9', borderRadius: 10 }}>
+                                <div style={{ height: 8, background: colors[i % colors.length], borderRadius: 10, width: `${(s.value / total) * 100}%`, transition: 'width 0.3s' }} />
+                              </div>
+                              <span style={{ fontSize: 12, color: '#64748B', minWidth: 40, textAlign: 'right' }}>{((s.value / total) * 100).toFixed(1)}%</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {page === 'marketingreports' && (
+              <MarketingReportsPage token={token} stores={stores} selectedStore={selectedStore} />
+            )}
+
             {page === 'customers' && (
               <CustomersPage token={token} selectedStore={selectedStore} />
             )}
 
             {page === 'notifications' && (
-              <div>
-                <h3 style={{ marginBottom: 20 }}>Notifications</h3>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-                  <button
-                    className={`btn ${notifTab === 'inbox' ? 'btn-primary' : ''}`}
-                    onClick={() => setNotifTab('inbox')}
-                  >
-                    <i className="fas fa-inbox"></i> Inbox
-                  </button>
-                  <button
-                    className={`btn ${notifTab === 'manage' ? 'btn-primary' : ''}`}
-                    onClick={() => setNotifTab('manage')}
-                  >
-                    <i className="fas fa-bullhorn"></i> Manage Broadcasts
-                  </button>
-                </div>
-
-                {notifTab === 'inbox' && (
-                  <div>
-                    {broadcasts.length === 0 ? (
-                      <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                        <i className="fas fa-inbox" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                        <p>No notifications</p>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'grid', gap: 12 }}>
-                        {broadcasts.map(bc => (
-                          <div key={bc.id} className="card" style={{ padding: '16px 20px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <div>
-                                <strong style={{ fontSize: 15 }}>{bc.title}</strong>
-                                <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
-                                  {bc.target_audience} &middot; {bc.sent_at ? new Date(bc.sent_at).toLocaleDateString() : 'Pending'}
-                                </div>
-                              </div>
-                              <span className={`badge ${bc.status === 'sent' ? 'badge-green' : bc.status === 'pending' ? 'badge-yellow' : 'badge-gray'}`}>{bc.status}</span>
-                            </div>
-                            <p style={{ marginTop: 8, color: '#334155', fontSize: 14 }}>{bc.message}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {notifTab === 'manage' && (
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                      <button className="btn btn-primary" onClick={openBroadcastModal}><i className="fas fa-plus"></i> New Broadcast</button>
-                    </div>
-                    {broadcasts.length === 0 ? (
-                      <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                        <i className="fas fa-bullhorn" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                        <p>No broadcasts sent yet</p>
-                      </div>
-                    ) : (
-                      <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-                        <table>
-                          <thead>
-                            <tr><th>Title</th><th>Target</th><th>Sent At</th><th>Status</th></tr>
-                          </thead>
-                          <tbody>
-                            {broadcasts.map(bc => (
-                              <tr key={bc.id}>
-                                <td style={{ fontWeight: 500 }}>{bc.title}</td>
-                                <td>{bc.target_audience}</td>
-                                <td>{bc.sent_at ? new Date(bc.sent_at).toLocaleString() : '-'}</td>
-                                <td><span className={`badge ${bc.status === 'sent' ? 'badge-green' : bc.status === 'pending' ? 'badge-yellow' : 'badge-gray'}`}>{bc.status}</span></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <NotificationsPage
+                token={token}
+                refreshKey={notifRefreshKey}
+                onNewBroadcast={openBroadcastModal}
+              />
             )}
 
             {page === 'auditlog' && (
-              <div>
-                <h3 style={{ marginBottom: 20 }}>Audit Log</h3>
-                {auditLog.length === 0 ? (
-                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                    <i className="fas fa-history" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                    <p>No audit log entries</p>
-                  </div>
-                ) : (
-                  <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-                    <table>
-                      <thead>
-                        <tr><th>Timestamp</th><th>User</th><th>Action</th><th>IP</th><th>Store</th><th>Status</th></tr>
-                      </thead>
-                      <tbody>
-                        {auditLog.map(entry => {
-                          const store = stores.find(s => s.id === entry.store_id);
-                          return (
-                            <tr key={entry.id}>
-                              <td style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{new Date(entry.timestamp).toLocaleString()}</td>
-                              <td style={{ fontWeight: 500 }}>{entry.user_email}</td>
-                              <td><span className="badge badge-blue">{entry.action}</span></td>
-                              <td style={{ fontSize: 13, color: '#64748B', fontFamily: 'monospace' }}>{entry.ip_address}</td>
-                              <td>{store?.name || (entry.store_id ? `Store ${entry.store_id}` : '-')}</td>
-                              <td>
-                                <span className={`badge ${entry.status === 'success' ? 'badge-green' : entry.status === 'failed' ? 'badge-red' : 'badge-yellow'}`}>
-                                  {entry.status}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <AuditLogPage auditLog={auditLog} stores={stores} />
             )}
 
             {page === 'loyaltyrules' && (
-              <div>
-                <h3 style={{ marginBottom: 20 }}>Loyalty Tiers</h3>
-                {loyaltyTiers.length === 0 ? (
-                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                    <i className="fas fa-medal" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                    <p>No loyalty tiers configured</p>
-                  </div>
-                ) : (
-                  <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-                    <table>
-                      <thead>
-                        <tr><th>Tier Name</th><th>Min Points</th><th>Multiplier</th><th>Benefits</th><th>Actions</th></tr>
-                      </thead>
-                      <tbody>
-                        {loyaltyTiers.map(tier => (
-                          <tr key={tier.id}>
-                            <td style={{ fontWeight: 600 }}>{tier.name}</td>
-                            <td>{tier.min_points} pts</td>
-                            <td><span className="badge badge-blue">{tier.multiplier}x</span></td>
-                            <td style={{ fontSize: 13, color: '#64748B', maxWidth: 300 }}>{tier.benefits || '-'}</td>
-                            <td>
-                              <button className="btn btn-sm" onClick={() => openEditTierModal(tier)}>
-                                <i className="fas fa-edit"></i> Edit
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <LoyaltyRulesPage tiers={loyaltyTiers} token={token} onRefresh={fetchLoyaltyTiers} />
             )}
 
             {page === 'store' && (
-              <div>
-                {selectedStore === 'all' ? (
-                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                    <i className="fas fa-store" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                    <p>Select a specific store to edit settings</p>
-                  </div>
-                ) : storeObj ? (
-                  <StoreSettingsForm store={storeObj} token={token} />
-                ) : null}
-              </div>
+              <StoreSettingsPage stores={stores} token={token} onRefresh={fetchStores} />
             )}
           </div>
         </main>
@@ -975,6 +780,155 @@ export default function MerchantDashboard() {
           </div>
         </div>
       )}
+
+      {/* Add Category Modal */}
+      {showAddCategory && (
+        <div className="modal-overlay" onClick={() => setShowAddCategory(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3>Add Category</h3>
+              <button className="btn btn-sm" onClick={() => setShowAddCategory(false)}><i className="fas fa-times"></i></button>
+            </div>
+            <AddCategoryForm storeId={Number(selectedStore)} token={token} onClose={() => { setShowAddCategory(false); fetchMenu(); }} />
+          </div>
+        </div>
+      )}
+
+      {/* Add Inventory Modal */}
+      {showAddInventory && (
+        <div className="modal-overlay" onClick={() => setShowAddInventory(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3>Add Ingredient</h3>
+              <button className="btn btn-sm" onClick={() => setShowAddInventory(false)}><i className="fas fa-times"></i></button>
+            </div>
+            <AddInventoryItemForm storeId={Number(selectedStore)} token={token} onClose={() => { setShowAddInventory(false); fetchInventory(); }} />
+          </div>
+        </div>
+      )}
+
+      {/* Edit Inventory Modal */}
+      {editInventoryItem && (
+        <div className="modal-overlay" onClick={() => setEditInventoryItem(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3>Edit: {editInventoryItem.name}</h3>
+              <button className="btn btn-sm" onClick={() => setEditInventoryItem(null)}><i className="fas fa-times"></i></button>
+            </div>
+            <EditInventoryInline item={editInventoryItem} storeId={Number(selectedStore)} token={token} onClose={() => { setEditInventoryItem(null); fetchInventory(); }} />
+          </div>
+        </div>
+      )}
+
+      {/* Customize Item Modal */}
+      {customizingItem && (
+        <div className="modal-overlay" onClick={() => setCustomizingItem(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3>Customizations: {customizingItem.name}</h3>
+              <button className="btn btn-sm" onClick={() => setCustomizingItem(null)}><i className="fas fa-times"></i></button>
+            </div>
+            <CustomizationManager storeId={Number(selectedStore)} item={customizingItem} token={token} onClose={() => { setCustomizingItem(null); fetchMenu(); }} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Inline Edit Inventory ---
+function EditInventoryInline({ item, storeId, token, onClose }: { item: MerchantInventoryItem; storeId: number; token: string; onClose: () => void }) {
+  const [stock, setStock] = useState(String(item.current_stock));
+  const [reorder, setReorder] = useState(String(item.reorder_level));
+  const [cost, setCost] = useState(item.cost_per_unit != null ? String(item.cost_per_unit) : '');
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await apiFetch(`/stores/${storeId}/inventory/${item.id}`, token, {
+        method: 'PUT',
+        body: JSON.stringify({
+          current_stock: parseFloat(stock),
+          reorder_level: parseFloat(reorder),
+          cost_per_unit: cost ? parseFloat(cost) : null,
+        }),
+      });
+      onClose();
+    } catch {} finally { setSaving(false); }
+  }
+
+  return (
+    <form onSubmit={handleSave}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Current Stock</label>
+          <input type="number" step="0.01" value={stock} onChange={e => setStock(e.target.value)} required />
+        </div>
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reorder Level</label>
+          <input type="number" step="0.01" value={reorder} onChange={e => setReorder(e.target.value)} />
+        </div>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Cost per Unit (RM)</label>
+        <input type="number" step="0.01" value={cost} onChange={e => setCost(e.target.value)} />
+      </div>
+      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+        {saving ? 'Saving...' : 'Update'}
+      </button>
+    </form>
+  );
+}
+
+// --- Customization Manager per Item ---
+function CustomizationManager({ storeId, item, token, onClose }: { storeId: number; item: MerchantMenuItem; token: string; onClose: () => void }) {
+  const [options, setOptions] = useState<Array<{ id: number; name: string; price_adjustment: number; is_active: boolean }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function loadOptions() {
+    setLoading(true);
+    try {
+      const res = await apiFetch(`/admin/stores/${storeId}/items/${item.id}/customizations`, token);
+      if (res.ok) setOptions(await res.json());
+    } catch {} finally { setLoading(false); }
+  }
+
+  React.useEffect(() => { loadOptions(); }, [item.id]);
+
+  async function deleteOption(optId: number) {
+    await apiFetch(`/admin/stores/${storeId}/customizations/${optId}`, token, { method: 'DELETE' });
+    loadOptions();
+  }
+
+  return (
+    <div>
+      <AddCustomizationForm storeId={storeId} itemId={item.id} token={token} onClose={loadOptions} />
+      <div style={{ marginTop: 20, borderTop: '1px solid #EDF2F8', paddingTop: 16 }}>
+        <h4 style={{ marginBottom: 12 }}>Current Options ({options.length})</h4>
+        {loading ? <div style={{ color: '#64748B' }}>Loading...</div> : options.length === 0 ? (
+          <div style={{ color: '#94A3B8', textAlign: 'center', padding: 20 }}>No customization options yet</div>
+        ) : (
+          <div style={{ display: 'grid', gap: 8 }}>
+            {options.map(opt => (
+              <div key={opt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#F8FAFC', borderRadius: 10 }}>
+                <div>
+                  <span style={{ fontWeight: 500 }}>{opt.name}</span>
+                  {opt.price_adjustment > 0 && <span style={{ marginLeft: 8, color: '#059669', fontWeight: 600 }}>+RM {opt.price_adjustment.toFixed(2)}</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span className={`badge ${opt.is_active ? 'badge-green' : 'badge-gray'}`}>{opt.is_active ? 'Active' : 'Inactive'}</span>
+                  <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => deleteOption(opt.id)}><i className="fas fa-trash"></i></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <button className="btn" onClick={onClose}>Done</button>
+      </div>
     </div>
   );
 }

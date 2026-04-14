@@ -43,7 +43,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         <form onSubmit={handleLogin}>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 4 }}>Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" required />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@loyaltysystem.uk" required />
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 4 }}>Password</label>

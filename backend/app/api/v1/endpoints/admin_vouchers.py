@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import timezone, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -28,13 +28,15 @@ async def list_vouchers_admin(
     return result.scalars().all()
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=VoucherOut)
 async def create_voucher(req: VoucherCreate, user: User = Depends(require_role("admin")), db: AsyncSession = Depends(get_db)):
     voucher = Voucher(**req.model_dump())
     db.add(voucher)
     await db.flush()
     await log_action(db, action="VOUCHER_CREATED", user_id=user.id, entity_type="voucher", entity_id=voucher.id)
-    return {"id": voucher.id, "code": voucher.code, "discount_type": voucher.discount_type, "discount_value": float(voucher.discount_value)}
+    await db.refresh(voucher)
+    await db.commit()
+    return voucher
 
 
 @router.put("/{voucher_id}")
@@ -57,7 +59,7 @@ async def deactivate_voucher(voucher_id: int, user: User = Depends(require_role(
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
     voucher.is_active = False
-    voucher.deleted_at = datetime.utcnow()
+    voucher.deleted_at = datetime.now(timezone.utc)
     await log_action(db, action="VOUCHER_DELETED", user_id=user.id, entity_type="voucher", entity_id=voucher.id)
     await db.flush()
     return {"message": "Voucher soft-deleted"}

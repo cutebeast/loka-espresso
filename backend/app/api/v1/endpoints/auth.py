@@ -11,7 +11,7 @@ from app.core.security import (
     hash_password, get_current_user,
 )
 from app.core.config import get_settings
-from app.core.audit import log_action
+from app.core.audit import log_action, get_client_ip
 from app.models.user import User, OTPSession, DeviceToken, UserRole, TokenBlacklist
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt as jose_jwt
@@ -96,10 +96,10 @@ async def login_password(request: Request, req: LoginPasswordRequest, db: AsyncS
     if not user or not user.password_hash or not verify_password(req.password, user.password_hash):
         # Log failed login attempt
         if user:
-            await log_action(db, action="LOGIN_FAILED", user_id=user.id, entity_type="user", details={"email": req.email}, status="failed")
+            await log_action(db, action="LOGIN_FAILED", user_id=user.id, entity_type="user", details={"email": req.email}, status="failed", ip_address=get_client_ip(request))
         await db.commit()
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    await log_action(db, action="LOGIN", user_id=user.id, entity_type="user", entity_id=user.id, details={"email": req.email, "role": user.role.value if hasattr(user.role, 'value') else str(user.role)})
+    await log_action(db, action="LOGIN", user_id=user.id, entity_type="user", entity_id=user.id, details={"email": req.email, "role": user.role.value if hasattr(user.role, 'value') else str(user.role)}, ip_address=get_client_ip(request))
     await db.commit()
     access = create_access_token({"sub": str(user.id)})
     refresh = create_refresh_token({"sub": str(user.id)})

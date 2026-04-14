@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime
+from datetime import timezone, datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text, ForeignKey, DECIMAL, JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -27,8 +27,8 @@ class Staff(Base):
     role = Column(Enum(StaffRole), default=StaffRole.barista, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     pin_code = Column(String(10), nullable=True)  # Quick login PIN
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     shifts = relationship("StaffShift", back_populates="staff", cascade="all, delete-orphan")
     store_rel = relationship("Store")
@@ -43,7 +43,7 @@ class StaffShift(Base):
     clock_in = Column(DateTime(timezone=True), nullable=False)
     clock_out = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     staff = relationship("Staff", back_populates="shifts")
 
@@ -54,4 +54,4 @@ class PinAttempt(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False, index=True)
-    attempted_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow())
+    attempted_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))

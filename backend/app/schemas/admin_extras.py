@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -118,6 +118,7 @@ class BroadcastOut(BaseModel):
     sent_at: Optional[datetime] = None
     sent_count: int
     open_count: int
+    is_archived: bool = False
     created_at: Optional[datetime] = None
 
     class Config:
@@ -126,39 +127,54 @@ class BroadcastOut(BaseModel):
 
 class PromoBannerCreate(BaseModel):
     title: str
-    subtitle: Optional[str] = None
+    short_description: Optional[str] = None
     image_url: Optional[str] = None
-    target_url: Optional[str] = None
     position: int = 0
     store_id: Optional[int] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     is_active: bool = True
+    terms: Optional[List[str]] = None
+    how_to_redeem: Optional[str] = None
+    long_description: Optional[str] = None
+    survey_id: Optional[int] = None
+    voucher_id: Optional[int] = None
+    action_type: Optional[str] = "detail"
 
 
 class PromoBannerUpdate(BaseModel):
     title: Optional[str] = None
-    subtitle: Optional[str] = None
+    short_description: Optional[str] = None
     image_url: Optional[str] = None
-    target_url: Optional[str] = None
     position: Optional[int] = None
     is_active: Optional[bool] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    survey_id: Optional[int] = None
+    voucher_id: Optional[int] = None
+    action_type: Optional[str] = None
+    terms: Optional[List[str]] = None
+    how_to_redeem: Optional[str] = None
+    long_description: Optional[str] = None
 
 
 class PromoBannerOut(BaseModel):
     id: int
     title: str
-    subtitle: Optional[str] = None
+    short_description: Optional[str] = None
     image_url: Optional[str] = None
-    target_url: Optional[str] = None
     position: int
     store_id: Optional[int] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     is_active: bool
     created_at: Optional[datetime] = None
+    survey_id: Optional[int] = None
+    voucher_id: Optional[int] = None
+    action_type: Optional[str] = None
+    terms: Optional[List[str]] = None
+    how_to_redeem: Optional[str] = None
+    long_description: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -1,6 +1,19 @@
 """Audit logging utility for recording admin actions."""
+from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.admin_extras import AuditLog
+
+
+def get_client_ip(request: Request | None) -> str | None:
+    """Extract client IP from request, respecting X-Forwarded-For."""
+    if request is None:
+        return None
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return None
 
 
 async def log_action(

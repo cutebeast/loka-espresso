@@ -40,3 +40,9 @@ class CustomerDetailOut(BaseModel):
 class AdjustPointsRequest(BaseModel):
     points: int
     reason: Optional[str] = None
+
+
+class CustomerUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None

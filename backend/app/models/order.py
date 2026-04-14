@@ -31,7 +31,7 @@ class CartItem(Base):
     customizations = Column(JSON, nullable=True)
     customization_option_ids = Column(JSON, nullable=True)
     unit_price = Column(DECIMAL(10, 2), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class Order(Base):
@@ -56,8 +56,8 @@ class Order(Base):
     loyalty_points_earned = Column(Integer, default=0)
     notes = Column(Text, nullable=True)
     delivery_provider = Column(String(50), nullable=True)  # 'grab', 'panda', 'internal'
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     status_history = relationship("OrderStatusHistory", back_populates="order", cascade="all, delete-orphan")
     payment = relationship("Payment", back_populates="order", uselist=False)
@@ -75,7 +75,7 @@ class OrderItem(Base):
     unit_price = Column(DECIMAL(10, 2), nullable=False)
     customizations = Column(JSON, nullable=True)
     line_total = Column(DECIMAL(10, 2), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     order = relationship("Order", back_populates="order_items")
     menu_item = relationship("MenuItem")
@@ -88,7 +88,7 @@ class OrderStatusHistory(Base):
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
     status = Column(Enum(OrderStatus), nullable=False)
     note = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     order = relationship("Order", back_populates="status_history")
 
@@ -102,6 +102,6 @@ class Payment(Base):
     amount = Column(DECIMAL(10, 2), nullable=False)
     status = Column(String(50), default="pending")
     transaction_id = Column(String(255), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     order = relationship("Order", back_populates="payment")
