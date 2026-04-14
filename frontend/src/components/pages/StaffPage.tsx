@@ -281,7 +281,17 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
                     {ROLES.find(r => r.value === s.role)?.label || s.role}
                   </span>
                 </td>
-                <td style={{ fontSize: 13 }}>{(s as any).email || '—'}</td>
+                <td style={{ fontSize: 13 }}>
+                  {(s as any).email ? (
+                    <span>{(s as any).email}
+                      <span className="badge badge-green" style={{ marginLeft: 6, fontSize: 10 }}>Has Login</span>
+                    </span>
+                  ) : (
+                    <span style={{ color: '#94A3B8' }}>No login
+                      <span className="badge badge-gray" style={{ marginLeft: 6, fontSize: 10 }}>No Email</span>
+                    </span>
+                  )}
+                </td>
                 <td>{s.phone || '—'}</td>
                 <td>
                   <button onClick={() => toggleActive(s)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
@@ -293,9 +303,7 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className="btn btn-sm" onClick={() => openEdit(s)} title="Edit"><i className="fas fa-edit"></i></button>
-                    {(s as any).email && (
-                      <button className="btn btn-sm" onClick={() => handleResetPassword(s)} title="Reset password"><i className="fas fa-key"></i></button>
-                    )}
+                    <button className="btn btn-sm" onClick={() => (s as any).email ? handleResetPassword(s) : setError('Add an email to this staff member first to enable login access.')} title={(s as any).email ? 'Reset password' : 'No login — add email first'}><i className="fas fa-key" style={{ color: (s as any).email ? undefined : '#CBD5E1' }}></i></button>
                     {confirmDelete === s.id ? (
                       <>
                         <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(s.id)}>Confirm</button>

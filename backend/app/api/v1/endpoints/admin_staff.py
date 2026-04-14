@@ -222,16 +222,39 @@ async def reset_staff_password(
     admin: User = Depends(require_role(UserRole.admin)),
 ):
     """Admin resets a staff member's password. Generates a new temp password.
-    Staff must have an email and linked user account."""
+    If staff has email but no linked User, auto-creates one."""
     result = await db.execute(select(Staff).where(Staff.id == staff_id))
     staff = result.scalar_one_or_none()
     if not staff:
         raise HTTPException(404, "Staff not found")
     if not staff.email:
-        raise HTTPException(400, "Staff has no email — cannot create login credentials")
-    if not staff.user_id:
-        raise HTTPException(400, "Staff has no linked user account. Try editing and adding an email first.")
+        raise HTTPException(400, "Staff has no email — add an email first to enable login access")
 
+    # If no linked user account, auto-create one
+    if not staff.user_id:
+        existing = await db.execute(select(User).where(User.email == staff.email))
+        if existing.scalar_one_or_none():
+            raise HTTPException(400, f"A user with email '{staff.email}' already exists but is not linked to this staff record")
+        alphabet = string.ascii_letters + string.digits
+        temp_password = ''.join(secrets.choice(alphabet) for _ in range(8))
+        new_user = User(
+            email=staff.email,
+            name=staff.name,
+            phone=staff.phone,
+            password_hash=hash_password(temp_password),
+            role=UserRole.store_owner,
+            is_active=True,
+        )
+        db.add(new_user)
+        await db.flush()
+        staff.user_id = new_user.id
+        await db.flush()
+        ip = request.client.host if request.client else None
+        await log_action(db, action="STAFF_USER_AUTO_CREATED", user_id=admin.id, store_id=staff.store_id, entity_type="staff", entity_id=staff.id, details={"email": staff.email}, ip_address=ip)
+        await db.commit()
+        return {"temp_password": temp_password, "email": staff.email, "auto_created": True}
+
+    # Existing linked user — just reset password
     user_result = await db.execute(select(User).where(User.id == staff.user_id))
     linked_user = user_result.scalar_one_or_none()
     if not linked_user:
