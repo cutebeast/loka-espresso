@@ -150,12 +150,12 @@ export default function SurveysPage({ token }: SurveysPageProps) {
       is_active: isActive,
       reward_voucher_id: rewardVoucherId ? Number(rewardVoucherId) : null,
       questions: questions.map((q, i) => ({
-        text: q.question_text,
+        question_text: q.question_text,
         question_type: q.question_type,
         options: (q.question_type === 'single_choice' || q.question_type === 'dropdown')
           ? q.options.split(',').map((o: string) => o.trim()).filter(Boolean)
           : [],
-        required: q.required,
+        is_required: q.required,
         sort_order: i,
       })),
     };
