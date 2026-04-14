@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/merchant-api';
 
 interface SurveyQuestion {
   id?: number;
-  text: string;
+  question_text: string;
   question_type: 'text' | 'single_choice' | 'rating' | 'dropdown';
   options: string;
   required: boolean;
@@ -28,7 +28,7 @@ interface SurveysPageProps {
 }
 
 const emptyQuestion = (): SurveyQuestion => ({
-  text: '',
+  question_text: '',
   question_type: 'text',
   options: '',
   required: false,
@@ -150,7 +150,7 @@ export default function SurveysPage({ token }: SurveysPageProps) {
       is_active: isActive,
       reward_voucher_id: rewardVoucherId ? Number(rewardVoucherId) : null,
       questions: questions.map((q, i) => ({
-        text: q.text,
+        text: q.question_text,
         question_type: q.question_type,
         options: (q.question_type === 'single_choice' || q.question_type === 'dropdown')
           ? q.options.split(',').map((o: string) => o.trim()).filter(Boolean)
@@ -265,7 +265,7 @@ export default function SurveysPage({ token }: SurveysPageProps) {
                     )}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8, marginBottom: 8 }}>
-                    <input value={q.text} onChange={e => updateQuestion(i, 'text', e.target.value)} placeholder="Question text" required />
+                    <input value={q.question_text} onChange={e => updateQuestion(i, 'question_text', e.target.value)} placeholder="Question text" required />
                     <select value={q.question_type} onChange={e => updateQuestion(i, 'question_type', e.target.value)}>
                       <option value="text">Text</option>
                       <option value="single_choice">Single Choice</option>

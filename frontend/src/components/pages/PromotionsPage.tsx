@@ -154,10 +154,15 @@ export default function PromotionsPage({ banners, token, onRefresh }: Promotions
   const handleToggleActive = async (banner: any) => {
     setError('');
     try {
-      await apiFetch(`/admin/banners/${banner.id}`, token, {
+      const res = await apiFetch(`/admin/banners/${banner.id}`, token, {
         method: 'PUT',
-        body: JSON.stringify({ ...banner, is_active: !banner.is_active }),
+        body: JSON.stringify({ is_active: !banner.is_active }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || 'Failed to toggle banner');
+        return;
+      }
       onRefresh();
     } catch (err: any) {
       setError(err.message || 'Failed to toggle banner');
@@ -203,8 +208,8 @@ export default function PromotionsPage({ banners, token, onRefresh }: Promotions
                 <input type="text" required value={form.title} onChange={(e) => setField('title', e.target.value)} />
               </div>
               <div>
-                <label style={labelStyle}>Short Description</label>
-                <input type="text" value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} />
+                <label style={labelStyle}>Short Description <span style={{ color: '#94A3B8', fontWeight: 400 }}>(optional)</span></label>
+                <input type="text" value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} placeholder="Brief summary shown on banner card" />
               </div>
             </div>
 
@@ -248,39 +253,47 @@ export default function PromotionsPage({ banners, token, onRefresh }: Promotions
                   <option value="detail">Show Details (with redeem link)</option>
                   <option value="survey">Open Survey (auto-reward voucher)</option>
                 </select>
+                <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>
+                  {form.action_type === 'survey'
+                    ? 'Customer fills out survey → automatically receives reward voucher'
+                    : 'Customer sees banner details → can tap to claim linked voucher'}
+                </div>
               </div>
               {form.action_type === 'survey' ? (
                 <div>
-                  <label style={labelStyle}>Survey</label>
+                  <label style={labelStyle}>Survey <span style={{ color: '#EF4444', fontWeight: 400 }}>* required</span></label>
                   <select value={form.survey_id} onChange={(e) => setField('survey_id', e.target.value)}>
                     <option value="">— Select Survey —</option>
                     {surveys.map(s => (
                       <option key={s.id} value={String(s.id)}>{s.title}</option>
                     ))}
                   </select>
+                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>Select which survey to show when customer taps this banner</div>
                 </div>
               ) : (
                 <div>
-                  <label style={labelStyle}>Voucher to Redeem</label>
+                  <label style={labelStyle}>Voucher to Redeem <span style={{ color: '#94A3B8', fontWeight: 400 }}>(optional)</span></label>
                   <select value={form.voucher_id} onChange={(e) => setField('voucher_id', e.target.value)}>
-                    <option value="">— Select Voucher —</option>
+                    <option value="">— None (info only) —</option>
                     {vouchers.filter(v => v.is_active).map(v => (
                       <option key={v.id} value={String(v.id)}>{v.code} — {v.title || v.description}</option>
                     ))}
                   </select>
-                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>Customer gets this voucher when they tap Redeem</div>
+                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>Customer can claim this voucher when they tap "Redeem". Leave empty for info-only banners.</div>
                 </div>
               )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
               <div>
-                <label style={labelStyle}>Start Date</label>
+                <label style={labelStyle}>Start Date <span style={{ color: '#94A3B8', fontWeight: 400 }}>(blank = always)</span></label>
                 <input type="date" value={form.start_date} onChange={(e) => setField('start_date', e.target.value)} />
+                <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>When banner becomes visible. Leave blank to show immediately.</div>
               </div>
               <div>
-                <label style={labelStyle}>End Date</label>
+                <label style={labelStyle}>End Date <span style={{ color: '#94A3B8', fontWeight: 400 }}>(blank = unlimited)</span></label>
                 <input type="date" value={form.end_date} onChange={(e) => setField('end_date', e.target.value)} />
+                <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>When banner stops showing. Leave blank for no end date.</div>
               </div>
             </div>
 

@@ -262,6 +262,7 @@ function RewardForm({ token, onClose, existingReward }: RewardFormProps) {
         <div>
           <label style={labelStyle}>Points Cost *</label>
           <input type="number" min="0" value={pointsCost} onChange={e => setPointsCost(e.target.value)} required placeholder="e.g. 500" />
+          <div style={hintStyle}>Loyalty points customer spends to redeem this reward</div>
         </div>
         <div>
           <label style={labelStyle}>Reward Type *</label>
@@ -270,6 +271,7 @@ function RewardForm({ token, onClose, existingReward }: RewardFormProps) {
             <option value="discount_voucher">Discount Voucher</option>
             <option value="custom">Custom</option>
           </select>
+          <div style={hintStyle}>What the customer receives when they redeem</div>
         </div>
       </div>
 

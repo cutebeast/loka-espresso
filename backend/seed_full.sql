@@ -500,40 +500,40 @@ INSERT INTO loyalty_transactions (id, user_id, order_id, store_id, points, type,
 
 SELECT setval('loyalty_transactions_id_seq', 26);
 
-INSERT INTO rewards (id, name, description, points_cost, reward_type, item_id, discount_value, image_url, stock_limit, total_redeemed, is_active, created_at, updated_at) VALUES
-(1, 'Free Cappuccino',       'Enjoy a free Regular Cappuccino on us',               150,  'free_item',         2,   NULL,  '/images/rewards/free-cappuccino.jpg',   500, 23,  TRUE, NOW() - interval '60 days', NOW()),
-(2, 'RM10 Off Voucher',      'Get RM10 off your next order',                        200,  'discount_voucher',  NULL, 10.00, '/images/rewards/rm10-off.jpg',          NULL, 45, TRUE, NOW() - interval '60 days', NOW()),
-(3, 'Free Kaya Toast',       'Classic Malaysian breakfast on the house',            80,   'free_item',         12,  NULL,  '/images/rewards/free-kaya-toast.jpg',   300, 18,  TRUE, NOW() - interval '55 days', NOW()),
-(4, 'Free Affogato',         'Premium espresso dessert reward',                     250,  'free_item',         15,  NULL,  '/images/rewards/free-affogato.jpg',     100, 7,   TRUE, NOW() - interval '50 days', NOW());
+INSERT INTO rewards (id, name, description, points_cost, reward_type, item_id, discount_value, image_url, stock_limit, total_redeemed, is_active, code, validity_days, created_at, updated_at) VALUES
+(1, 'Free Cappuccino',       'Enjoy a free Regular Cappuccino on us',               150,  'free_item',         2,   NULL,  '/images/rewards/free-cappuccino.jpg',   500, 23,  TRUE, 'FREE-CAP',   30, NOW() - interval '60 days', NOW()),
+(2, 'RM10 Off Voucher',      'Get RM10 off your next order',                        200,  'discount_voucher',  NULL, 10.00, '/images/rewards/rm10-off.jpg',          NULL, 45, TRUE, 'RM10-OFF',   30, NOW() - interval '60 days', NOW()),
+(3, 'Free Kaya Toast',       'Classic Malaysian breakfast on the house',            80,   'free_item',         12,  NULL,  '/images/rewards/free-kaya-toast.jpg',   300, 18,  TRUE, 'FREE-TOAST', 30, NOW() - interval '55 days', NOW()),
+(4, 'Free Affogato',         'Premium espresso dessert reward',                     250,  'free_item',         15,  NULL,  '/images/rewards/free-affogato.jpg',     100, 7,   TRUE, 'FREE-AFF',   30, NOW() - interval '50 days', NOW());
 
 SELECT setval('rewards_id_seq', 4);
 
-INSERT INTO user_rewards (id, user_id, reward_id, store_id, redeemed_at, order_id, is_used) VALUES
-(1, 5, 1, 1, NOW() - interval '15 days', NULL, FALSE),
-(2, 4, 2, 1, NOW() - interval '10 days', NULL, FALSE),
-(3, 3, 4, 1, NOW() - interval '7 days',  NULL, FALSE),
-(4, 5, 3, 1, NOW() - interval '20 days', 8,   TRUE),
-(5, 2, 3, 1, NOW() - interval '5 days',  NULL, FALSE);
+INSERT INTO user_rewards (id, user_id, reward_id, store_id, redeemed_at, order_id, is_used, status, expires_at, redemption_code, points_spent) VALUES
+(1, 5, 1, 1, NOW() - interval '15 days', NULL, FALSE, 'available', NOW() + interval '15 days', 'RWD-1-F5A3C1', 150),
+(2, 4, 2, 1, NOW() - interval '10 days', NULL, FALSE, 'available', NOW() + interval '20 days', 'RWD-2-B7E2D9', 200),
+(3, 3, 4, 1, NOW() - interval '7 days',  NULL, FALSE, 'available', NOW() + interval '23 days', 'RWD-4-A1C8F5', 250),
+(4, 5, 3, 1, NOW() - interval '20 days', 8,   TRUE,  'used',     NOW() - interval '10 days', 'RWD-3-E4D6B2', 80),
+(5, 2, 3, 1, NOW() - interval '5 days',  NULL, FALSE, 'available', NOW() + interval '25 days', 'RWD-3-C9A7F1', 80);
 
 SELECT setval('user_rewards_id_seq', 5);
 
-INSERT INTO vouchers (id, code, description, discount_type, discount_value, min_order, max_uses, used_count, valid_from, valid_until, is_active, title, body, image_url, promo_type, store_id, created_at) VALUES
-(1, 'WELCOME10',   '10% off for new customers',               'percent',   10.00, 20.00,   1000, 234, NOW() - interval '90 days', NOW() + interval '180 days', TRUE, 'First Order Discount', 'New customers get 10% off their first order with code WELCOME10.', '/images/promos/welcome.jpg',    'percentage', NULL, NOW() - interval '90 days'),
-(2, 'FLAT5',       'RM5 off any order',                       'fixed',      5.00, 15.00,   500,  89,  NOW() - interval '60 days', NOW() + interval '120 days', TRUE, NULL, NULL, NULL, NULL, NULL, NOW() - interval '60 days'),
-(3, 'FREECOFFEE',  'Free Americano with any order over RM25', 'free_item',  8.90, 25.00,   200,  45,  NOW() - interval '30 days', NOW() + interval '60 days',  TRUE, NULL, NULL, NULL, NULL, NULL, NOW() - interval '30 days'),
-(4, 'ZUS20',       '20% off for loyalty members',             'percent',   20.00, 30.00,   100,  12,  NOW() - interval '15 days', NOW() + interval '45 days',  TRUE, 'Ramadan Special', '20% off all beverages during Ramadan. Use code ZUS20.', '/images/promos/ramadan.jpg', 'percentage', NULL, NOW() - interval '15 days'),
-(5, 'HAPPY2PM',    'Buy 1 Free 1 all lattes 2-4PM',          'percent',   100.00, 0.00,    500,  67,  NOW() - interval '5 days',  NOW() + interval '25 days',  TRUE, 'Happy Hour', 'Buy 1 Free 1 all lattes from 2-4PM daily.', '/images/promos/happy-hour.jpg', 'bogo', 1, NOW() - interval '5 days');
+INSERT INTO vouchers (id, code, description, discount_type, discount_value, min_order, max_uses, max_uses_per_user, used_count, valid_from, valid_until, is_active, title, body, image_url, promo_type, store_id, validity_days, created_at) VALUES
+(1, 'WELCOME10',   '10% off for new customers',               'percent',   10.00, 20.00,   1000, 1,   234, NOW() - interval '90 days', NOW() + interval '180 days', TRUE, 'First Order Discount', 'New customers get 10% off their first order with code WELCOME10.', '/images/promos/welcome.jpg',    'percentage', NULL, 30, NOW() - interval '90 days'),
+(2, 'FLAT5',       'RM5 off any order',                       'fixed',      5.00, 15.00,   500,  NULL, 89,  NOW() - interval '60 days', NOW() + interval '120 days', TRUE, NULL, NULL, NULL, NULL, NULL, 30, NOW() - interval '60 days'),
+(3, 'FREECOFFEE',  'Free Americano with any order over RM25', 'free_item',  8.90, 25.00,   200,  NULL, 45,  NOW() - interval '30 days', NOW() + interval '60 days',  TRUE, NULL, NULL, NULL, NULL, NULL, 30, NOW() - interval '30 days'),
+(4, 'ZUS20',       '20% off for loyalty members',             'percent',   20.00, 30.00,   100,  2,   12,  NOW() - interval '15 days', NOW() + interval '45 days',  TRUE, 'Ramadan Special', '20% off all beverages during Ramadan. Use code ZUS20.', '/images/promos/ramadan.jpg', 'percentage', NULL, 30, NOW() - interval '15 days'),
+(5, 'HAPPY2PM',    'Buy 1 Free 1 all lattes 2-4PM',          'percent',   100.00, 0.00,    500,  1,   67,  NOW() - interval '5 days',  NOW() + interval '25 days',  TRUE, 'Happy Hour', 'Buy 1 Free 1 all lattes from 2-4PM daily.', '/images/promos/happy-hour.jpg', 'bogo', 1, 30, NOW() - interval '5 days');
 
 SELECT setval('vouchers_id_seq', 5);
 
-INSERT INTO user_vouchers (id, user_id, voucher_id, store_id, applied_at, order_id) VALUES
-(1, 2, 1, 1, NOW() - interval '55 days', NULL),
-(2, 3, 1, 1, NOW() - interval '50 days', NULL),
-(3, 4, 2, 1, NOW() - interval '40 days', NULL),
-(4, 5, 1, 1, NOW() - interval '38 days', NULL),
-(5, 5, 4, 1, NOW() - interval '12 days', 13),
-(6, 6, 1, 2, NOW() - interval '25 days', NULL),
-(7, 3, 3, 1, NOW() - interval '10 days', NULL);
+INSERT INTO user_vouchers (id, user_id, voucher_id, store_id, applied_at, order_id, status, code, expires_at, discount_type, discount_value, min_spend, source) VALUES
+(1, 2, 1, 1, NOW() - interval '55 days', NULL, 'used',     'WELCOME10-A1B2C3', NOW() - interval '25 days', 'percent', 10.0, 20.0, 'admin_grant'),
+(2, 3, 1, 1, NOW() - interval '50 days', NULL, 'used',     'WELCOME10-D4E5F6', NOW() - interval '20 days', 'percent', 10.0, 20.0, 'admin_grant'),
+(3, 4, 2, 1, NOW() - interval '40 days', NULL, 'used',     'FLAT5-G7H8I9',     NOW() - interval '10 days', 'fixed',   5.0,  0.0,  'admin_grant'),
+(4, 5, 1, 1, NOW() - interval '38 days', NULL, 'used',     'WELCOME10-J1K2L3', NOW() - interval '8 days',  'percent', 10.0, 20.0, 'admin_grant'),
+(5, 5, 4, 1, NOW() - interval '12 days', 13,   'used',     'ZUS20-M4N5O6',     NOW() - interval '2 days',  'percent', 20.0, 30.0, 'admin_grant'),
+(6, 6, 1, 2, NOW() - interval '25 days', NULL, 'available', 'WELCOME10-P7Q8R9', NOW() + interval '5 days',  'percent', 10.0, 20.0, 'admin_grant'),
+(7, 3, 3, 1, NOW() - interval '10 days', NULL, 'available', 'FREECOFFEE-S1T2U3', NOW() + interval '20 days', 'free_item', 8.9, 0.0, 'admin_grant');
 
 SELECT setval('user_vouchers_id_seq', 7);
 
@@ -614,10 +614,10 @@ INSERT INTO marketing_campaigns (id, name, channel, subject, body, image_url, ct
 
 SELECT setval('marketing_campaigns_id_seq', 3);
 
-INSERT INTO promo_banners (id, title, subtitle, image_url, target_url, position, store_id, start_date, end_date, is_active, created_at, updated_at) VALUES
-(1, 'Ramadan Kareem',       '20% off all beverages',     '/images/promos/ramadan-banner.jpg',  '/promo/zus20',       1, 1, NOW() - interval '15 days', NOW() + interval '15 days', TRUE, NOW() - interval '15 days', NOW()),
-(2, 'New Store Opening',    'KLCC Park is NOW OPEN!',    '/images/promos/klcc-park-banner.jpg','/stores/klcc-park',  2, 2, NOW() - interval '75 days', NOW() + interval '30 days', TRUE, NOW() - interval '75 days', NOW()),
-(3, 'Happy Hour 2-4PM',     'Buy 1 Free 1 all lattes',   '/images/promos/happy-hour.jpg',      '/promo/happy-hour',  3, 1, NOW() - interval '5 days',  NOW() + interval '25 days', TRUE, NOW() - interval '5 days',  NOW());
+INSERT INTO promo_banners (id, title, short_description, image_url, position, store_id, start_date, end_date, is_active, action_type, voucher_id, created_at, updated_at) VALUES
+(1, 'Ramadan Kareem',       '20% off all beverages',     '/images/promos/ramadan-banner.jpg',  1, 1, NOW() - interval '15 days', NOW() + interval '15 days', TRUE, 'detail', 4, NOW() - interval '15 days', NOW()),
+(2, 'New Store Opening',    'KLCC Park is NOW OPEN!',    '/images/promos/klcc-park-banner.jpg',2, 2, NOW() - interval '75 days', NOW() + interval '30 days', TRUE, 'detail', NULL, NOW() - interval '75 days', NOW()),
+(3, 'Happy Hour 2-4PM',     'Buy 1 Free 1 all lattes',   '/images/promos/happy-hour.jpg',      3, 1, NOW() - interval '5 days',  NOW() + interval '25 days', TRUE, 'detail', 3, NOW() - interval '5 days',  NOW());
 
 SELECT setval('promo_banners_id_seq', 3);
 
@@ -755,5 +755,17 @@ INSERT INTO otp_sessions (id, phone, code, verified, expires_at, created_at) VAL
 (5, '+60112233445', '555666', TRUE,  NOW() - interval '29 days', NOW() - interval '30 days');
 
 SELECT setval('otp_sessions_id_seq', 5);
+
+-- Surveys
+INSERT INTO surveys (id, title, description, reward_voucher_id, is_active, created_at, updated_at) VALUES
+(1, 'Customer Satisfaction', 'Tell us about your experience and earn a reward!', 1, TRUE, NOW() - interval '30 days', NOW());
+
+SELECT setval('surveys_id_seq', 1);
+
+INSERT INTO survey_questions (id, survey_id, question_text, question_type, options, is_required, sort_order, created_at) VALUES
+(1, 1, 'How would you rate your overall experience?', 'rating', NULL, TRUE, 0, NOW() - interval '30 days'),
+(2, 1, 'What can we improve?', 'text', NULL, FALSE, 1, NOW() - interval '30 days');
+
+SELECT setval('survey_questions_id_seq', 2);
 
 COMMIT;

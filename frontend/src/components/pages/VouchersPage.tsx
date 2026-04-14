@@ -228,7 +228,7 @@ export default function VouchersPage({ vouchers, token, onRefresh }: VouchersPag
                 <input value={form.title} onChange={e => updateField('title', e.target.value)} placeholder="e.g. Summer Sale" required />
               </div>
               <div>
-                <label style={labelStyle}>Code</label>
+                <label style={labelStyle}>Code *</label>
                 <input
                   value={form.code}
                   onChange={e => updateField('code', e.target.value.toUpperCase())}
@@ -236,6 +236,7 @@ export default function VouchersPage({ vouchers, token, onRefresh }: VouchersPag
                   style={{ textTransform: 'uppercase' }}
                   required
                 />
+                <div style={hintStyle}>Unique catalog code. Customers receive a per-instance code (e.g. SUMMER2026-A3F2B1)</div>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>Short Description</label>
@@ -246,41 +247,46 @@ export default function VouchersPage({ vouchers, token, onRefresh }: VouchersPag
                 <textarea value={form.long_description} onChange={e => updateField('long_description', e.target.value)} placeholder="Full content shown when customer taps to view details..." rows={4} />
               </div>
               <div>
-                <label style={labelStyle}>Discount Type</label>
+                <label style={labelStyle}>Discount Type *</label>
                 <select value={form.discount_type} onChange={e => updateField('discount_type', e.target.value)}>
                   <option value="percent">Percentage (%)</option>
                   <option value="fixed">Fixed Amount (RM)</option>
+                  <option value="free_item">Free Item</option>
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>Discount Value</label>
+                <label style={labelStyle}>Discount Value *</label>
                 <input type="number" min="0" step="0.01" value={form.discount_value} onChange={e => updateField('discount_value', e.target.value)} placeholder="0" required />
+                <div style={hintStyle}>{form.discount_type === 'percent' ? 'Percentage off (e.g. 10 = 10% off)' : form.discount_type === 'fixed' ? 'Fixed amount in RM (e.g. 5 = RM5 off)' : 'Price of the free item in RM (for display only)'}</div>
               </div>
               <div>
-                <label style={labelStyle}>Min Order (RM)</label>
+                <label style={labelStyle}>Min Order (RM) <span style={{ color: '#94A3B8', fontWeight: 400 }}>(0 = no minimum)</span></label>
                 <input type="number" min="0" step="0.01" value={form.min_order} onChange={e => updateField('min_order', e.target.value)} />
               </div>
               <div>
                 <label style={labelStyle}>Max Uses <span style={{ color: '#94A3B8', fontWeight: 400 }}>(blank = unlimited)</span></label>
-                <input type="number" min="1" value={form.max_uses} onChange={e => updateField('max_uses', e.target.value)} placeholder="Unlimited" />
+                <input type="number" min="1" value={form.max_uses} onChange={e => updateField('max_uses', e.target.value)} placeholder="Blank = unlimited" />
+                <div style={hintStyle}>Total claims across all customers. Leave blank for unlimited.</div>
               </div>
               <div>
                 <label style={labelStyle}>Max Per User <span style={{ color: '#94A3B8', fontWeight: 400 }}>(blank = unlimited)</span></label>
                 <input type="number" min="1" value={form.max_uses_per_user} onChange={e => updateField('max_uses_per_user', e.target.value)} placeholder="1" />
-                <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>How many times each customer can claim this voucher</div>
+                <div style={hintStyle}>How many times each customer can claim this voucher. Default: 1</div>
               </div>
               <div>
                 <label style={labelStyle}>Validity Days <span style={{ color: '#94A3B8', fontWeight: 400 }}>(after claim)</span></label>
                 <input type="number" min="1" value={form.validity_days} onChange={e => updateField('validity_days', e.target.value)} placeholder="30" />
-                <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>How many days the voucher is usable after customer claims it</div>
+                <div style={hintStyle}>How many days the voucher instance is usable after customer claims it. Default: 30</div>
               </div>
               <div>
-                <label style={labelStyle}>Valid From</label>
+                <label style={labelStyle}>Valid From <span style={{ color: '#94A3B8', fontWeight: 400 }}>(blank = always)</span></label>
                 <input type="datetime-local" value={form.valid_from} onChange={e => updateField('valid_from', e.target.value)} />
+                <div style={hintStyle}>When this voucher becomes claimable. Leave blank for always available.</div>
               </div>
               <div>
-                <label style={labelStyle}>Valid Until</label>
+                <label style={labelStyle}>Valid Until <span style={{ color: '#94A3B8', fontWeight: 400 }}>(blank = unlimited)</span></label>
                 <input type="datetime-local" value={form.valid_until} onChange={e => updateField('valid_until', e.target.value)} />
+                <div style={hintStyle}>When this voucher expires from catalog. Leave blank for no expiry.</div>
               </div>
               <div>
                 <label style={labelStyle}>Promo Type</label>
@@ -292,12 +298,12 @@ export default function VouchersPage({ vouchers, token, onRefresh }: VouchersPag
                 </select>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelStyle}>Terms &amp; Conditions</label>
+                <label style={labelStyle}>Terms &amp; Conditions <span style={{ color: '#94A3B8', fontWeight: 400 }}>(optional)</span></label>
                 <textarea value={form.terms} onChange={e => updateField('terms', e.target.value)} placeholder="One per line. e.g. One per customer per day" rows={3} />
-                <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>One term per line</div>
+                <div style={hintStyle}>One term per line. Shown on voucher detail page in customer app.</div>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelStyle}>How to Redeem</label>
+                <label style={labelStyle}>How to Redeem <span style={{ color: '#94A3B8', fontWeight: 400 }}>(optional)</span></label>
                 <input value={form.how_to_redeem} onChange={e => updateField('how_to_redeem', e.target.value)} placeholder="e.g. Show this screen at checkout" />
               </div>
               <VoucherImageUpload imageUrl={form.image_url} token={token} onSet={(url) => updateField('image_url', url)} />
@@ -438,3 +444,4 @@ function VoucherImageUpload({ imageUrl, token, onSet }: { imageUrl: string; toke
 }
 
 const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' };
+const hintStyle: React.CSSProperties = { fontSize: 11, color: '#94A3B8', marginTop: 2 };
