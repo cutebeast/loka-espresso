@@ -22,18 +22,15 @@ import type {
 import LoginScreen from '@/components/LoginScreen';
 import Sidebar from '@/components/Sidebar';
 import {
-  AddItemForm,
-  AddTableForm,
-  AddStaffForm,
   AddBroadcastForm,
-  AddCategoryForm,
   AddCustomizationForm,
-  AddInventoryItemForm,
 } from '@/components/Modals';
 import DashboardPage from '@/components/pages/DashboardPage';
 import OrdersPage from '@/components/pages/OrdersPage';
 import MenuPage from '@/components/pages/MenuPage';
 import TablesPage from '@/components/pages/TablesPage';
+import InventoryPage from '@/components/pages/InventoryPage';
+import StaffPage from '@/components/pages/StaffPage';
 import CustomersPage from '@/components/pages/CustomersPage';
 import StoreSettingsPage from '@/components/pages/StoreSettingsPage';
 import LoyaltyRulesPage from '@/components/pages/LoyaltyRulesPage';
@@ -74,9 +71,6 @@ export default function MerchantDashboard() {
   const [loading, setLoading] = useState(false);
   const [notifRefreshKey, setNotifRefreshKey] = useState(0);
   const [showStoreRevenueModal, setShowStoreRevenueModal] = useState(false);
-  const [showAddCategory, setShowAddCategory] = useState(false);
-  const [showAddInventory, setShowAddInventory] = useState(false);
-  const [editInventoryItem, setEditInventoryItem] = useState<MerchantInventoryItem | null>(null);
   const [customizingItem, setCustomizingItem] = useState<MerchantMenuItem | null>(null);
 
   const [revenueReport, setRevenueReport] = useState<any>(null);
@@ -267,12 +261,6 @@ export default function MerchantDashboard() {
     } catch {} finally { setLoading(false); }
   }
 
-  function openAddStaffModal() {
-    setModalTitle('Add Staff');
-    setModalContent(<AddStaffForm storeId={Number(selectedStore)} token={token} onClose={() => { setShowModal(false); fetchStaff(); }} />);
-    setShowModal(true);
-  }
-
   function openBroadcastModal() {
     setModalTitle('New Broadcast');
     setModalContent(<AddBroadcastForm token={token} onClose={() => { setShowModal(false); setNotifRefreshKey(k => k + 1); }} />);
@@ -372,51 +360,13 @@ export default function MerchantDashboard() {
             )}
 
             {page === 'inventory' && (
-              <div>
-                {selectedStore === 'all' ? (
-                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                    <i className="fas fa-boxes-stacked" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                    <p>Select a specific store to manage inventory</p>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                      <h3>Inventory &middot; {storeObj?.name}</h3>
-                      <button className="btn btn-primary" onClick={() => setShowAddInventory(true)}><i className="fas fa-plus"></i> Add Ingredient</button>
-                    </div>
-                    <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-                      <table>
-                        <thead>
-                          <tr><th>Ingredient</th><th>Current Stock</th><th>Unit</th><th>Reorder Level</th><th>Cost/Unit</th><th>Status</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody>
-                          {inventory.length === 0 ? (
-                            <tr><td colSpan={7} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>No inventory items yet</td></tr>
-                          ) : inventory.map(item => {
-                            const isLow = item.current_stock <= item.reorder_level;
-                            return (
-                              <tr key={item.id}>
-                                <td style={{ fontWeight: 500 }}>{item.name}</td>
-                                <td>{item.current_stock}</td>
-                                <td>{item.unit}</td>
-                                <td>{item.reorder_level}</td>
-                                <td>{item.cost_per_unit != null ? `RM ${item.cost_per_unit}` : '-'}</td>
-                                <td><span className={`badge ${isLow ? 'badge-yellow' : 'badge-green'}`}>{isLow ? 'Low' : 'OK'}</span></td>
-                                <td>
-                                  <div style={{ display: 'flex', gap: 6 }}>
-                                    <button className="btn btn-sm" onClick={() => setEditInventoryItem(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={async () => { if (confirm(`Delete "${item.name}"?`)) { await apiFetch(`/stores/${selectedStore}/inventory/${item.id}`, token, { method: 'DELETE' }); fetchInventory(); } }}><i className="fas fa-trash"></i></button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
-              </div>
+              <InventoryPage
+                inventory={inventory}
+                selectedStore={selectedStore}
+                storeObj={storeObj}
+                token={token}
+                onRefresh={fetchInventory}
+              />
             )}
 
             {page === 'tables' && (
@@ -430,40 +380,13 @@ export default function MerchantDashboard() {
             )}
 
             {page === 'staff' && (
-              <div>
-                {selectedStore === 'all' ? (
-                  <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-                    <i className="fas fa-user-tie" style={{ fontSize: 40, marginBottom: 16 }}></i>
-                    <p>Select a specific store to manage staff</p>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                      <h3>Staff &middot; {storeObj?.name}</h3>
-                      <button className="btn btn-primary" onClick={openAddStaffModal}><i className="fas fa-plus"></i> Add Staff</button>
-                    </div>
-                    <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-                      <table>
-                        <thead>
-                          <tr><th>Name</th><th>Role</th><th>Phone</th><th>Status</th></tr>
-                        </thead>
-                        <tbody>
-                          {staff.length === 0 ? (
-                            <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>No staff members yet</td></tr>
-                          ) : staff.map(s => (
-                            <tr key={s.id}>
-                              <td style={{ fontWeight: 500 }}>{s.name}</td>
-                              <td><span className="badge badge-blue">{s.role}</span></td>
-                              <td>{s.phone}</td>
-                              <td><span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? 'Active' : 'Inactive'}</span></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
-              </div>
+              <StaffPage
+                staff={staff}
+                selectedStore={selectedStore}
+                storeObj={storeObj}
+                token={token}
+                onRefresh={fetchStaff}
+              />
             )}
 
             {page === 'rewards' && (
@@ -781,45 +704,6 @@ export default function MerchantDashboard() {
         </div>
       )}
 
-      {/* Add Category Modal */}
-      {showAddCategory && (
-        <div className="modal-overlay" onClick={() => setShowAddCategory(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3>Add Category</h3>
-              <button className="btn btn-sm" onClick={() => setShowAddCategory(false)}><i className="fas fa-times"></i></button>
-            </div>
-            <AddCategoryForm storeId={Number(selectedStore)} token={token} onClose={() => { setShowAddCategory(false); fetchMenu(); }} />
-          </div>
-        </div>
-      )}
-
-      {/* Add Inventory Modal */}
-      {showAddInventory && (
-        <div className="modal-overlay" onClick={() => setShowAddInventory(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3>Add Ingredient</h3>
-              <button className="btn btn-sm" onClick={() => setShowAddInventory(false)}><i className="fas fa-times"></i></button>
-            </div>
-            <AddInventoryItemForm storeId={Number(selectedStore)} token={token} onClose={() => { setShowAddInventory(false); fetchInventory(); }} />
-          </div>
-        </div>
-      )}
-
-      {/* Edit Inventory Modal */}
-      {editInventoryItem && (
-        <div className="modal-overlay" onClick={() => setEditInventoryItem(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3>Edit: {editInventoryItem.name}</h3>
-              <button className="btn btn-sm" onClick={() => setEditInventoryItem(null)}><i className="fas fa-times"></i></button>
-            </div>
-            <EditInventoryInline item={editInventoryItem} storeId={Number(selectedStore)} token={token} onClose={() => { setEditInventoryItem(null); fetchInventory(); }} />
-          </div>
-        </div>
-      )}
-
       {/* Customize Item Modal */}
       {customizingItem && (
         <div className="modal-overlay" onClick={() => setCustomizingItem(null)}>
@@ -833,52 +717,6 @@ export default function MerchantDashboard() {
         </div>
       )}
     </div>
-  );
-}
-
-// --- Inline Edit Inventory ---
-function EditInventoryInline({ item, storeId, token, onClose }: { item: MerchantInventoryItem; storeId: number; token: string; onClose: () => void }) {
-  const [stock, setStock] = useState(String(item.current_stock));
-  const [reorder, setReorder] = useState(String(item.reorder_level));
-  const [cost, setCost] = useState(item.cost_per_unit != null ? String(item.cost_per_unit) : '');
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await apiFetch(`/stores/${storeId}/inventory/${item.id}`, token, {
-        method: 'PUT',
-        body: JSON.stringify({
-          current_stock: parseFloat(stock),
-          reorder_level: parseFloat(reorder),
-          cost_per_unit: cost ? parseFloat(cost) : null,
-        }),
-      });
-      onClose();
-    } catch {} finally { setSaving(false); }
-  }
-
-  return (
-    <form onSubmit={handleSave}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Current Stock</label>
-          <input type="number" step="0.01" value={stock} onChange={e => setStock(e.target.value)} required />
-        </div>
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reorder Level</label>
-          <input type="number" step="0.01" value={reorder} onChange={e => setReorder(e.target.value)} />
-        </div>
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Cost per Unit (RM)</label>
-        <input type="number" step="0.01" value={cost} onChange={e => setCost(e.target.value)} />
-      </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
-        {saving ? 'Saving...' : 'Update'}
-      </button>
-    </form>
   );
 }
 
