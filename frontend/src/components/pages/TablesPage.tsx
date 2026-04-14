@@ -199,13 +199,24 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                 <>
                   <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>T{t.table_number}</div>
                   <div style={{ marginBottom: 8 }}>{t.capacity} seats</div>
-                  <div style={{ marginBottom: 10 }}>
-                    <button onClick={() => toggleActive(t)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
-                      <span className={`badge ${t.is_active ? 'badge-green' : 'badge-gray'}`}>
-                        {t.is_active ? 'Active' : 'Inactive'}
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 10, fontSize: 13, color: t.is_active ? '#059669' : '#94A3B8' }}>
+                    <span style={{ position: 'relative', display: 'inline-block', width: 36, height: 20 }}>
+                      <input type="checkbox" checked={t.is_active} onChange={() => toggleActive(t)} style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+                      <span style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: t.is_active ? '#059669' : '#CBD5E1',
+                        borderRadius: 34, transition: '.2s',
+                      }}>
+                        <span style={{
+                          position: 'absolute', height: 14, width: 14, left: 3, bottom: 3,
+                          backgroundColor: 'white', borderRadius: '50%',
+                          transform: t.is_active ? 'translateX(16px)' : 'translateX(0)',
+                          transition: '.2s',
+                        }}></span>
                       </span>
-                    </button>
-                  </div>
+                    </span>
+                    {t.is_active ? 'Active' : 'Inactive'}
+                  </label>
                   <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                     <button className="btn btn-sm" onClick={() => openEdit(t)}><i className="fas fa-edit"></i></button>
                     <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(t.id)}><i className="fas fa-trash"></i></button>
