@@ -559,7 +559,6 @@ async def reset_all_customers(
     except Exception as e:
         deleted_counts["wallets"] = f"ERROR: {str(e)[:80]}"
 
-    await db.commit()
 
     # Log the reset action
     ip = get_client_ip(request)

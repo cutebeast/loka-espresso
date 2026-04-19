@@ -372,9 +372,9 @@ async def use_voucher(
     """
     now = now_utc()
 
-    # Find instance by code
+    # Find instance by code (with row lock to prevent race conditions)
     uv_result = await db.execute(
-        select(UserVoucher).where(UserVoucher.code == code)
+        select(UserVoucher).where(UserVoucher.code == code).with_for_update()
     )
     uv = uv_result.scalar_one_or_none()
     if not uv:
@@ -395,17 +395,19 @@ async def use_voucher(
     if req.store_id:
         uv.store_id = req.store_id
 
-    # Increment catalog used_count
+    # Increment catalog used_count (atomic update)
+    await db.execute(
+        update(Voucher).where(Voucher.id == uv.voucher_id).values(used_count=Voucher.used_count + 1)
+    )
+
+    # Fetch voucher for response data
     v_result = await db.execute(select(Voucher).where(Voucher.id == uv.voucher_id))
     voucher = v_result.scalar_one_or_none()
-    if voucher:
-        voucher.used_count += 1
 
     # Compute discount for response
     discount_type = uv.discount_type or (voucher.discount_type.value if voucher and hasattr(voucher.discount_type, 'value') else None)
     discount_value = to_float(uv.discount_value) if uv.discount_value else (to_float(voucher.discount_value) if voucher else 0)
 
-    await db.commit()
 
     return UseResult(
         success=True,

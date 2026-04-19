@@ -1,4 +1,5 @@
 import random
+import logging
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
@@ -22,6 +23,7 @@ from slowapi.util import get_remote_address
 # via app.state.limiter. We create it here and main.py will import and assign it.
 limiter = Limiter(key_func=get_remote_address)
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 _bearer = HTTPBearer()
 from app.schemas.auth import (
@@ -71,7 +73,7 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
     )
     db.add(otp)
     await db.flush()
-    print(f"[OTP] {req.phone} -> {code}")
+    logger.debug(f"OTP generated for {req.phone[:4]}****")
     return SendOTPResponse(message="OTP sent", phone=req.phone)
 
 
@@ -159,7 +161,8 @@ async def logout(
         payload = jose_jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         jti = payload.get("jti")
         exp = payload.get("exp")
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Token decode failed during logout: {e}")
         jti = None
         exp = None
 

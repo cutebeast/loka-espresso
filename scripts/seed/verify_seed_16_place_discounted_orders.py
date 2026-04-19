@@ -4,22 +4,25 @@ Purpose: Place orders using the claimed vouchers or rewards.
 Constraints: 1 discount type per order.
 """
 import os
+import sys
 import json
 import random
 import requests
 from datetime import datetime, timezone, timedelta
 
-# Configuration
-API_BASE = os.environ.get("API_BASE", "https://admin.loyaltysystem.uk/api/v1")
 SEED_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, SEED_DIR)
+from shared_config import API_BASE, load_state, save_state as shared_save_state, admin_token, re_auth_customer
+
 SEED_STATE_FILE = os.path.join(SEED_DIR, "seed_state.json")
 
-def load_state():
-    if not os.path.exists(SEED_STATE_FILE): return None
-    with open(SEED_STATE_FILE, "r") as f: return json.load(f)
-
 def save_state(state):
-    with open(SEED_STATE_FILE, "w") as f: json.dump(state, f, indent=2)
+    existing = load_state()
+    if existing and isinstance(existing, dict):
+        existing.update(state)
+        shared_save_state(None, existing)
+    else:
+        shared_save_state(None, state)
 
 def get_stores(token):
     resp = requests.get(f"{API_BASE}/stores", headers={"Authorization": f"Bearer {token}"}, timeout=10)

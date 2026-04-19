@@ -148,6 +148,41 @@ def create_acl_data():
             ''', (role_id, user_type_id))
         print(f"  ✓ Role-user type mappings created")
         
+        # Create role_permissions mappings
+        # Admin (1) and Brand Owner (2) get ALL permissions (1-23)
+        # HQ Staff (7) gets: View Dashboard, View Reports, View Orders, View Customers,
+        #   View Inventory, Manage Users, Manage Stores, Manage Menu, Manage Staff,
+        #   Manage Vouchers, Manage Rewards, Manage Marketing, Manage Loyalty, Manage Settings
+        # Manager (3) gets: View Dashboard, View Orders, Update Order Status, Process Orders,
+        #   View Inventory, Adjust Inventory, Manage Staff, Manage Tables, View Customers,
+        #   Manage Vouchers, Manage Rewards, Manage Marketing, Place Order
+        # Assistant Manager (4) gets same as Manager minus Manage Staff
+        # Staff (5) gets: View Dashboard, View Orders, Update Order Status, Process Orders,
+        #   View Inventory, Place Order, View Own Profile, Edit Own Profile
+        # Customer (6) gets: Place Order, View Own Profile, Edit Own Profile
+        role_permissions = [
+            (1, i) for i in range(1, 24)  # Admin: all 23 permissions
+        ] + [
+            (2, i) for i in range(1, 24)  # Brand Owner: all 23 permissions
+        ] + [
+            (7, p) for p in [1, 2, 3, 5, 6, 9, 10, 11, 12, 14, 17, 18, 19, 7]  # HQ Staff
+        ] + [
+            (3, p) for p in [5, 8, 12, 13, 14, 15, 18, 19, 20, 21, 9, 10, 17]  # Manager
+        ] + [
+            (4, p) for p in [8, 12, 13, 14, 15, 18, 19, 20, 21, 9, 10, 17]  # Asst Manager
+        ] + [
+            (5, p) for p in [8, 12, 14, 15, 19, 21, 22, 23]  # Staff
+        ] + [
+            (6, p) for p in [21, 22, 23]  # Customer
+        ]
+        for role_id, perm_id in role_permissions:
+            cur.execute('''
+                INSERT INTO role_permissions (role_id, permission_id)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+            ''', (role_id, perm_id))
+        print(f"  ✓ Role-permission mappings created ({len(role_permissions)} entries)")
+        
         conn.commit()
         return True
     except Exception as e:

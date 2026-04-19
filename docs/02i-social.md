@@ -77,6 +77,7 @@ Admin-sent broadcast notifications.
 | id | integer | NO | auto | PK |
 | title | varchar(255) | NO | | Broadcast title |
 | body | text | YES | | Message body |
+| status | varchar(20) | YES | 'draft' | Broadcast status (draft/sent) |
 | audience | varchar(50) | YES | all | Target: all, loyalty_members, staff |
 | store_id | integer | YES | | FK→stores.id (null=all) |
 | is_archived | boolean | NO | false | |

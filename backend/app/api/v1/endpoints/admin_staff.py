@@ -310,11 +310,7 @@ async def create_staff(
         await db.flush()
         user_id = new_user.id
 
-    # Create staff record at the URL-param store
-    try:
-        staff_role = StaffRole.barista
-    except Exception:
-        staff_role = StaffRole.barista
+    staff_role = StaffRole.barista
     obj = Staff(store_id=store_id, user_id=user_id, name=data.name, email=data.email,
                 phone=data.phone, role=staff_role, is_active=data.is_active, pin_code=data.pin_code)
     db.add(obj)

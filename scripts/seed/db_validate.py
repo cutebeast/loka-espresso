@@ -12,13 +12,28 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'backend'
 # Use psycopg2 for sync PostgreSQL access (validation only)
 import psycopg2
 
-# DB connection config from .env
+# Load .env file for DB credentials
+def _load_env():
+    env_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env')
+    env_vars = {}
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, val = line.split('=', 1)
+                    env_vars[key.strip()] = val.strip().strip('"').strip("'")
+    return env_vars
+
+_env = _load_env()
+
+# DB connection config — load from .env, fall back to env vars, then defaults
 DB_CONFIG = {
-    "host": "localhost",
-    "port": 5433,
-    "database": "fnb",
-    "user": "fnb",
-    "password": "Tmkh6HsdsOdzBEadYhJ6rafm6Tv-qlbMpuKfYtGyaQrR_MxGq1R317ctuz6zYF1K",
+    "host": os.getenv("DB_HOST", _env.get("DB_HOST", "localhost")),
+    "port": int(os.getenv("DB_PORT", _env.get("DB_PORT", "5433"))),
+    "database": os.getenv("DB_NAME", _env.get("DB_NAME", _env.get("POSTGRES_DB", "fnb"))),
+    "user": os.getenv("DB_USER", _env.get("DB_USER", _env.get("POSTGRES_USER", "fnb"))),
+    "password": os.getenv("DB_PASSWORD", _env.get("DB_PASSWORD", _env.get("POSTGRES_PASSWORD", ""))),
 }
 
 

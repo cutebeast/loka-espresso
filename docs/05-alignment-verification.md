@@ -21,6 +21,19 @@
 | (auto) | marketing_pwa_v3 | short_description/long_description on rewards, vouchers, banners |
 | (auto) | promo_voucher_guards_v4 | voucher_id on banners, max_uses_per_user on vouchers, source/source_id on user_vouchers |
 | (auto) | acl_v1 | ACL lookup tables (user_types, roles, role_user_type, user_store_access, permissions, role_permissions), drop PG enum columns from users |
+| 5c707f520bda | is_archived_broadcasts | is_archived on broadcasts |
+| (auto) | customer_wallet_v5 | Wallet features, validity, codes, snapshots |
+| (auto) | inventory_movements_v1 | Inventory movements branch |
+| 4f94031ff6af | merge_migration | Merge migration |
+| (auto) | inv_cat_hq_staff | Inventory categories, HQ staff |
+| (auto) | unified_roles_v1 | Unified role system (pre-ACL) |
+| b4c5d6e7f8a9 | discount_columns_orders | Discount columns on orders |
+| (auto) | reward_min_order_v1 | min_order on rewards |
+| (auto) | rename_min_order_to_min_spend | Rename min_order to min_spend |
+| (auto) | add_broadcast_status | status on notification_broadcasts |
+| (auto) | add_tier_sort_order | sort_order on loyalty_tiers |
+| (auto) | add_paid_out_for_delivery | paid + out_for_delivery enum values |
+| (auto) | add_performance_indexes_v1 | 15 performance indexes |
 
 ## Model Files vs DB Tables
 
@@ -80,7 +93,7 @@
 | survey.py | SurveyResponse | survey_responses | ✅ NEW |
 | survey.py | SurveyAnswer | survey_answers | ✅ NEW |
 
-**Total: 45 tables, 45 models, 16 model files — ALL ALIGNED ✅**
+**Total: 52 tables, 52 models, 16 model files — 52 tables confirmed, doc needs updating ⚠️**
 
 ## Endpoint Files vs Router Registration
 
@@ -121,7 +134,7 @@
 | pwa_wallet.py | `/me` | ✅ NEW | PWA full customer wallet |
 | scan_cron.py | `/scan` | ✅ NEW | Barista scan + cron expiry |
 
-**Total: 34 endpoint files, 163 endpoints — ALL REGISTERED ✅**
+**Total: 37 endpoint files, 198 endpoints — ALL REGISTERED ✅**
 
 ## Enums: Model vs DB
 
@@ -129,11 +142,11 @@
 |------|-------------|-----------|--------|
 | StaffRole | manager, assistant_manager, barista, cashier, delivery | manager, assistant_manager, barista, cashier, delivery | ✅ |
 | OrderType | dine_in, pickup, delivery | dine_in, pickup, delivery | ✅ |
-| OrderStatus | pending→completed, cancelled | pending→completed, cancelled | ✅ |
+| OrderStatus | pending, confirmed, preparing, ready, paid, out_for_delivery, completed, cancelled | pending, confirmed, preparing, ready, paid, out_for_delivery, completed, cancelled | ✅ |
 | DiscountType | percent, fixed, free_item | percent, fixed, free_item | ✅ |
 | RewardType | free_item, discount_voucher, custom | free_item, discount_voucher, custom | ✅ |
 | TxType | earn, redeem, expire | earn, redeem, expire | ✅ |
-| WalletTxType | topup, payment, refund, cashback, promo_credit, admin_adjustment | topup, payment, refund, cashback, promo_credit, admin_adjustment | ✅ |
+| WalletTxType | topup, payment, refund, promo_credit, admin_adjustment | topup, payment, refund, promo_credit, admin_adjustment | ✅ |
 | MovementType | received, waste, transfer_out, transfer_in, cycle_count, adjustment | received, waste, transfer_out, transfer_in, cycle_count, adjustment | ✅ |
 
 > **Note**: `UserRole`, `UserType` Python enums still exist in `user.py` for backward compat, but the DB now uses integer FKs (`user_type_id` → `user_types`, `role_id` → `roles`). Orphaned PG enum types (`userrole`, `usertype`, `user_role`) have been dropped.
@@ -213,7 +226,7 @@
 ### Marketing Group (Session 3-4)
 1. ✅ **6 Admin Pages** — Rewards, Vouchers, Promotions, Feedback, Surveys, Marketing Reports
 2. ✅ **5 PWA Endpoint Files** — pwa_promos, pwa_surveys, pwa_wallet, scan_cron, admin_surveys
-3. ✅ **5 Migrations** — marketing_group_v1 through customer_wallet_v5
+3. ✅ **5 Migrations** — marketing_group_v1 through customer_wallet_v5 (27 total migrations)
 4. ✅ **Catalog→Instance Pattern** — rewards/vouchers use catalog template + per-customer instances
 5. ✅ **Per-Instance Codes** — Each user_reward/user_voucher has unique scannable code
 6. ✅ **Per-Instance Expiry** — validity_days on catalog → expires_at on instance

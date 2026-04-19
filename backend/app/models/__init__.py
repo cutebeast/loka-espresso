@@ -12,6 +12,7 @@ from app.models.splash import AppConfig, SplashContent
 from app.models.staff import Staff, StaffShift, StaffRole, PinAttempt
 from app.models.admin_extras import Feedback, AuditLog, NotificationBroadcast, PromoBanner
 from app.models.marketing import CustomizationOption, MarketingCampaign, TableOccupancySnapshot
+from app.models.survey import Survey, SurveyQuestion, SurveyResponse, SurveyAnswer
 from app.models.acl import UserType as ACLUserType, Role, RoleUserType, UserStoreAccess, Permission, RolePermission
 
 __all__ = [
@@ -26,8 +27,9 @@ __all__ = [
     "Wallet", "WalletTransaction", "PaymentMethod", "WalletTxType",
     "Referral", "Favorite",
     "AppConfig", "SplashContent",
-    "Staff", "StaffShift", "StaffRole",
+    "Staff", "StaffShift", "StaffRole", "PinAttempt",
     "Feedback", "AuditLog", "NotificationBroadcast", "PromoBanner",
     "CustomizationOption", "MarketingCampaign", "TableOccupancySnapshot",
+    "Survey", "SurveyQuestion", "SurveyResponse", "SurveyAnswer",
     "ACLUserType", "Role", "RoleUserType", "UserStoreAccess", "Permission", "RolePermission",
 ]

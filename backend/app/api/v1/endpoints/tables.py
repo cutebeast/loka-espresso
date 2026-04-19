@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from app.core.database import get_db
 from app.core.security import get_current_user, can_access_store
 from app.models.store import Store, StoreTable
+from app.models.marketing import TableOccupancySnapshot
 from app.models.user import User
 from app.schemas.store import TableScanRequest
 
@@ -83,6 +84,25 @@ async def release_table(
 
     # Release the table
     table.is_occupied = False
+    await db.flush()
+
+    # Update occupancy snapshot
+    snap_result = await db.execute(
+        select(TableOccupancySnapshot).where(TableOccupancySnapshot.table_id == table_id)
+    )
+    snapshot = snap_result.scalar_one_or_none()
+    if snapshot:
+        snapshot.is_occupied = False
+        snapshot.current_order_id = None
+        snapshot.updated_at = datetime.now(timezone.utc)
+    else:
+        snapshot = TableOccupancySnapshot(
+            table_id=table_id,
+            store_id=table.store_id,
+            is_occupied=False,
+            current_order_id=None,
+        )
+        db.add(snapshot)
     await db.flush()
 
     return {

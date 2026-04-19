@@ -11,37 +11,37 @@ All passwords: `admin123` (unless noted — some customers use OTP only)
 | Email | User Type | Role | Store Access | Purpose |
 |-------|-----------|------|-------------|---------|
 | admin@loyaltysystem.uk | HQ Management | Admin | Global (all stores) | Full platform admin |
-| ahmad.taher@fnb.my | HQ Management | Brand Owner | Global (all stores) | Multi-store owner/operator |
-| priya.hq@fnb.my | HQ Management | HQ Staff | Global (HQ only) | HQ operations |
-| raj.hq@fnb.my | HQ Management | HQ Staff | Global (HQ only) | HQ operations |
+| hq_mgr_1@fnb.com | HQ Management | HQ Manager | Global (all stores) | HQ operations |
+| hq_mgr_2@fnb.com | HQ Management | HQ Manager | Global (all stores) | HQ operations |
+| hq_staff_1@fnb.com | HQ Management | HQ Staff | Global (HQ only) | HQ operations |
 
 ### Store Management
 
 | Email | Role | Store Access |
 |-------|------|-------------|
-| amirul@zus.my | Manager | KLCC |
-| siti.klcc@zus.my | Assistant Manager | KLCC |
-| lisa@zus.my | Manager | Pavilion |
-| raj.pavilion@zus.my | Assistant Manager | Pavilion |
-| farah@zus.my | Manager | Cheras |
-| david@zus.my | Manager | PJ |
-| mei@zus.my | Manager | Bangi |
+| mgr_klcc@fnb.com | Manager | KLCC |
+| astmgr_klcc@fnb.com | Assistant Manager | KLCC |
+| mgr_pavilion@fnb.com | Manager | Pavilion |
+| astmgr_pavilion@fnb.com | Assistant Manager | Pavilion |
+| mgr_cheras@fnb.com | Manager | Cheras |
+| mgr_pj@fnb.com | Manager | PJ |
+| mgr_bangi@fnb.com | Manager | Bangi |
 
 ### Store Staff
 
 | Email | Role | Store |
 |-------|------|-------|
-| weijie@zus.my | Barista | KLCC |
-| john@zus.my | Barista | KLCC |
-| kumar.klcc@zus.my | Cashier | KLCC |
-| siti.pavi@zus.my | Barista | Pavilion |
-| ali@zus.my | Delivery | Pavilion |
-| farah.b@zus.my | Barista | Cheras |
-| zayn@zus.my | Cashier | Cheras |
-| lin@zus.my | Barista | PJ |
-| aida@zus.my | Cashier | PJ |
-| oscar@zus.my | Barista | Bangi |
-| yuna@zus.my | Delivery | Bangi |
+| staff_klcc_1@fnb.com | Barista | KLCC |
+| staff_klcc_2@fnb.com | Barista | KLCC |
+| staff_klcc_3@fnb.com | Cashier | KLCC |
+| staff_pavilion_1@fnb.com | Barista | Pavilion |
+| staff_pavilion_2@fnb.com | Delivery | Pavilion |
+| staff_cheras_1@fnb.com | Barista | Cheras |
+| staff_cheras_2@fnb.com | Cashier | Cheras |
+| staff_pj_1@fnb.com | Barista | PJ |
+| staff_bangi_1@fnb.com | Barista | Bangi |
+| staff_bangi_2@fnb.com | Delivery | Bangi |
+| staff_bangi_3@fnb.com | Cashier | Bangi |
 
 ### Customers (for PWA testing)
 
@@ -54,11 +54,11 @@ All passwords: `admin123` (unless noted — some customers use OTP only)
 | ID | Name | Slug | Tables |
 |----|------|------|--------|
 | 0 | HQ (Headquarters) | hq | — |
-| 2 | ZUS Coffee KLCC | zus-klcc | 6 |
-| 3 | ZUS Coffee Pavilion | zus-pavilion | 6 |
-| 4 | ZUS Coffee Cheras | zus-cheras | 6 |
-| 5 | ZUS Coffee PJ | zus-pj | 5 |
-| 6 | ZUS Coffee Bangi | zus-bangi | 5 |
+| 2 | Loka Espresso KLCC | le-klcc | 6 |
+| 3 | Loka Espresso Pavilion | le-pavilion | 6 |
+| 4 | Loka Espresso Cheras | le-cheras | 6 |
+| 5 | Loka Espresso PJ | le-pj | 5 |
+| 6 | Loka Espresso Bangi | le-bangi | 5 |
 
 ## Seeded Marketing Data
 
@@ -69,7 +69,7 @@ All passwords: `admin123` (unless noted — some customers use OTP only)
 | RWD-FREE-LATTE | Free Caramel Latte | free_item | 150 | — | ✅ |
 | RWD-FREE-CROISSANT | Free Croissant | free_item | 120 | — | ✅ |
 | RWD-FREE-TIRAMISU | Free Tiramisu | free_item | 200 | — | ✅ |
-| RWD-FREE-TUMBLER | Free ZUS Tumbler | free_item | 500 | — | ✅ |
+| RWD-FREE-TUMBLER | Free Loka Tumbler | free_item | 500 | — | ✅ |
 | RWD-5OFF | RM5 Off Your Order | discount_voucher | 100 | RM15 | ✅ |
 | RWD-MYSTERY | Mystery Reward | custom | 250 | — | ✅ |
 | RWD-FREE-AMERICANO | Free Americano | free_item | 80 | — | ❌ |

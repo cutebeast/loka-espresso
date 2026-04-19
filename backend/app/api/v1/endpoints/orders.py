@@ -1,6 +1,7 @@
 import uuid
+import logging
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -9,6 +10,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user, require_role, require_hq_access, is_global_admin, is_hq, can_access_store
 from app.core.audit import log_action
 from app.core.utils import to_float
+from app.core.config import get_settings
 from app.models.user import User, UserTypeIDs, RoleIDs
 from app.models.order import Order, OrderStatusHistory, OrderType, OrderStatus, CartItem, OrderItem
 from app.models.menu import MenuItem
@@ -18,6 +20,8 @@ from app.models.voucher import UserVoucher
 from app.models.reward import UserReward
 from app.models.splash import AppConfig
 from app.schemas.order import OrderCreate, OrderOut, OrderStatusUpdate, OrderListOut
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -464,9 +468,8 @@ async def _send_order_to_pos(order: Order):
         }
         async with httpx.AsyncClient() as client:
             await client.post(pos_url, json=payload, timeout=5.0)
-    except Exception:
-        # POS integration is best-effort, do not fail the order if POS is down
-        pass
+    except Exception as e:
+        logger.warning(f"POS notification failed (best-effort): {e}")
 
 
 @router.post("/{order_id}/apply-voucher")
@@ -776,6 +779,7 @@ async def update_order_payment_status(
 async def delivery_provider_webhook(
     order_id: int,
     payload: dict,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -788,7 +792,11 @@ async def delivery_provider_webhook(
     
     Authentication: Uses API key in header (X-API-Key) - to be implemented per provider
     """
-    # TODO: Add API key validation here
+    # Validate API key from header
+    api_key = request.headers.get("X-API-Key", "")
+    _settings = get_settings()
+    if api_key != _settings.WEBHOOK_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
     
     # Get the order
     result = await db.execute(select(Order).where(Order.id == order_id))
@@ -813,7 +821,7 @@ async def delivery_provider_webhook(
         "picked_up": "out_for_delivery",
         "out_for_delivery": "out_for_delivery",
         "delivered": "completed",
-        "failed": "ready",  # Return to ready state if delivery fails
+        "failed": "ready",
         "cancelled": "ready",
     }
     
@@ -875,6 +883,7 @@ async def delivery_provider_webhook(
 async def external_pos_webhook(
     order_id: int,
     payload: dict,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -887,7 +896,11 @@ async def external_pos_webhook(
     
     For dine-in orders, the POS handles the kitchen workflow and payment.
     """
-    # TODO: Add API key validation here for POS authentication
+    # Validate API key from header
+    api_key = request.headers.get("X-API-Key", "")
+    _settings = get_settings()
+    if api_key != _settings.WEBHOOK_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
     
     # Get the order
     result = await db.execute(select(Order).where(Order.id == order_id))

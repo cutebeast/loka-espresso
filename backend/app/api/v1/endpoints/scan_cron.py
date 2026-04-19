@@ -77,7 +77,6 @@ async def scan_reward_code(
     if ur.expires_at and ensure_utc(ur.expires_at) < now:
         ur.status = "expired"
         await db.flush()
-        await db.commit()
         raise HTTPException(400, "Reward has expired")
 
     # Mark used
@@ -93,7 +92,6 @@ async def scan_reward_code(
     r_result = await db.execute(select(Reward).where(Reward.id == ur.reward_id))
     reward = r_result.scalar_one_or_none()
 
-    await db.commit()
 
     return ScanRewardResult(
         success=True,
@@ -136,7 +134,6 @@ async def scan_voucher_code(
     if uv.expires_at and ensure_utc(uv.expires_at) < now:
         uv.status = "expired"
         await db.flush()
-        await db.commit()
         raise HTTPException(400, "Voucher has expired")
 
     # Mark used
@@ -154,7 +151,6 @@ async def scan_voucher_code(
     if voucher:
         voucher.used_count += 1
 
-    await db.commit()
 
     return ScanRewardResult(
         success=True,
@@ -206,7 +202,6 @@ async def expire_items(
     )
     voucher_ids = v_result.scalars().all()
 
-    await db.commit()
 
     return CronResult(
         rewards_expired=len(reward_ids),

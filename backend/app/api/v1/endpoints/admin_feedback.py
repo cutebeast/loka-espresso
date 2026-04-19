@@ -151,7 +151,6 @@ async def reply_to_feedback(
     await log_action(db, action="REPLY_FEEDBACK", user_id=user.id, store_id=feedback.store_id, entity_type="feedback", entity_id=feedback_id, ip_address=ip)
     await db.flush()
     await db.refresh(feedback)
-    await db.commit()
     return {"message": "Reply saved", "id": feedback.id}
 
 
@@ -177,7 +176,6 @@ async def update_feedback_reply(
     await log_action(db, action="UPDATE_FEEDBACK_REPLY" if feedback.admin_reply else "DELETE_FEEDBACK_REPLY", user_id=user.id, store_id=feedback.store_id, entity_type="feedback", entity_id=feedback_id, ip_address=ip)
     await db.flush()
     await db.refresh(feedback)
-    await db.commit()
     return {"message": "Reply updated", "id": feedback.id}
 
 
@@ -195,5 +193,4 @@ async def create_feedback(
     db.add(obj)
     await db.flush()
     await db.refresh(obj)
-    await db.commit()
     return obj

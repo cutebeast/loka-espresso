@@ -192,7 +192,6 @@ async def redeem_reward(
     db.add(ur)
     await db.flush()
 
-    await db.commit()
 
     return RedeemResult(
         success=True,

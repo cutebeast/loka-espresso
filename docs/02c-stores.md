@@ -70,5 +70,5 @@ Denormalized real-time occupancy. Auto-updated by trigger.
 | Entity | Count | Details |
 |--------|-------|---------|
 | Stores | 6 | id=0 HQ (Headquarters), ids 2-6 physical stores |
-| Physical Stores | 5 | ZUS Coffee KLCC (id=2), ZUS Coffee Pavilion (id=3), ZUS Coffee Cheras (id=4), ZUS Coffee PJ (id=5), ZUS Coffee Bangi (id=6) |
-| Tables | ~29 | 5-6 tables per physical store + PICKUP counter |
+| Physical Stores | 5 | Loka Espresso KLCC (id=2, slug=le-klcc), Loka Espresso Pavilion (id=3, slug=le-pavilion), Loka Espresso Cheras (id=4, slug=le-cheras), Loka Espresso PJ (id=5, slug=le-pj), Loka Espresso Bangi (id=6, slug=le-bangi) |
+| Tables | ~28 | 4-5 tables + PICKUP counter per store × 5 stores |

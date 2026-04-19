@@ -73,7 +73,6 @@ async def create_campaign(
     db.add(campaign)
     await db.flush()
     await db.refresh(campaign)
-    await db.commit()
     return {"id": campaign.id, "name": campaign.name, "status": campaign.status}
 
 
@@ -92,7 +91,6 @@ async def update_campaign(
         if hasattr(campaign, k):
             setattr(campaign, k, v)
     await db.flush()
-    await db.commit()
     return {"message": "Campaign updated"}
 
 
@@ -108,5 +106,4 @@ async def delete_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
     campaign.status = "cancelled"
     await db.flush()
-    await db.commit()
     return {"message": "Campaign cancelled"}

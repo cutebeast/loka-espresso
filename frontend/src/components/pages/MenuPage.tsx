@@ -172,7 +172,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
     setSavingCat(true);
     setCatError('');
 
-    const slug = catSlug || catName.toLowerCase().replace(/\s+/g, '-');
+    const slug = catSlug || catName.toLowerCase().replaceAll(' ', '-');
 
     try {
       const res = editingCat
@@ -249,7 +249,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                 <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '4px 8px', borderRadius: 6, marginBottom: 8, fontSize: 12 }}>{catError}</div>
               )}
               <form onSubmit={handleCatSubmit}>
-                <input value={catName} onChange={e => { setCatName(e.target.value); if (!catSlug) setCatSlug(e.target.value.toLowerCase().replace(/\s+/g, '-')); }} required placeholder="Category name" style={{ marginBottom: 6, fontSize: 13 }} />
+                <input value={catName} onChange={e => { setCatName(e.target.value); if (!catSlug) setCatSlug(e.target.value.toLowerCase().replaceAll(' ', '-')); }} required placeholder="Category name" style={{ marginBottom: 6, fontSize: 13 }} />
                 <input value={catSlug} onChange={e => setCatSlug(e.target.value)} placeholder="slug (auto)" style={{ marginBottom: 6, fontSize: 13 }} />
                 <button type="submit" className="btn btn-sm btn-primary" disabled={savingCat} style={{ width: '100%', justifyContent: 'center' }}>
                   {savingCat ? '...' : editingCat ? 'Update' : 'Create'}
@@ -425,11 +425,11 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                   </div>
                 ))}
               </div>
-            </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

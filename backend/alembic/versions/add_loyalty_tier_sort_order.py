@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = 'add_tier_sort_order'
-down_revision = None
+down_revision = 'add_broadcast_status'
 branch_labels = None
 depends_on = None
 

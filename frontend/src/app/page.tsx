@@ -137,7 +137,7 @@ export default function MerchantDashboard() {
       const res = await apiFetch('/stores', token);
       if (res.ok) {
         const data = await res.json();
-        setStores(data);
+        setStores(Array.isArray(data) ? data : (data.stores || []));
       }
     } catch {}
   }, [token]);
@@ -148,7 +148,7 @@ export default function MerchantDashboard() {
       const res = await apiFetch('/admin/stores', token);
       if (res.ok) {
         const data = await res.json();
-        setStores(data);
+        setStores(Array.isArray(data) ? data : (data.stores || []));
       }
     } catch {}
   }

@@ -42,7 +42,7 @@
 | File | Last Updated | Status | Purpose |
 |------|--------------|--------|---------|
 | 01-architecture.md | 2026-04-18 | ✅ Current | System architecture overview |
-| 02-database-schema.md | 2026-04-18 | ✅ Updated | Database schema (46 tables) |
+| 02-database-schema.md | 2026-04-18 | ✅ Updated | Database schema (52 tables) |
 | 02a-acl.md | - | ✅ Current | Access control schema |
 | 02b-users.md | - | ✅ Current | User management |
 | 02c-stores.md | - | ✅ Current | Store management |
@@ -53,7 +53,7 @@
 | 02h-staff.md | - | ✅ Current | Staff management |
 | 02i-social.md | - | ✅ Current | Social features |
 | 02j-system.md | - | ✅ Current | System config |
-| 03-api-reference.md | 2026-04-19 | ✅ Updated | 195+ endpoints (added order confirmation, voucher apply, payment status) |
+| 03-api-reference.md | 2026-04-19 | ✅ Updated | 198 endpoints (added order confirmation, voucher apply, payment status) |
 | 04-testing-guide.md | 2026-04-19 | ✅ Updated | Testing guide with certified seeds 09-13 |
 | 05-alignment-verification.md | 2026-04-18 | ✅ Updated | Model alignment verified |
 | 06-improvements-applied.md | 2026-04-18 | ✅ Updated | All fixes documented |
@@ -125,22 +125,6 @@ All order placement and completion scripts now certified:
 
 ---
 
-## External Artifacts
-
-Located in `/root/` (outside docs folder):
-
-| File | Purpose |
-|------|---------|
-| `IMPLEMENTATION_PLAN.md` | Original implementation plan |
-| `TODO_LIST.md` | All items checked complete |
-| `VERIFICATION_REPORT.md` | Round 2 verification results |
-| `REMAINING_WORK.md` | Round 2 remaining items |
-| `FINAL_AUDIT_REPORT.md` | Round 3 final audit |
-| `DOCUMENTATION_UPDATES.md` | Summary of documentation changes |
-| `PROJECT_COMPLETION.md` | Project completion summary |
-
----
-
 ## System Status
 
 **Current State:** ✅ PRODUCTION READY
@@ -155,8 +139,8 @@ Located in `/root/` (outside docs folder):
 - 8/8 frontend native selects fixed
 - 2/2 layout issues resolved
 - 7/5 stats bars implemented (bonus)
-- 26/26 hardcoded colors migrated
-- 9/9 documentation files current
+- 27/27 hardcoded colors migrated
+- 20/20 documentation files current
 - 10/10 seed scripts certified (09-13 + helpers)
 - 2/2 order completion flows working (Flow A & B)
 

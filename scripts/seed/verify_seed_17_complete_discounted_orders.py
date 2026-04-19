@@ -3,17 +3,14 @@ SEED SCRIPT: verify_seed_17_complete_discounted_orders.py
 Purpose: Complete the discounted orders placed in step 16.
 """
 import os
+import sys
 import json
 import requests
 import time
-from shared_config import admin_token, api_patch, api_get
 
 SEED_DIR = os.path.dirname(os.path.abspath(__file__))
-SEED_STATE_FILE = os.path.join(SEED_DIR, "seed_state.json")
-
-def load_state():
-    if not os.path.exists(SEED_STATE_FILE): return None
-    with open(SEED_STATE_FILE, "r") as f: return json.load(f)
+sys.path.insert(0, SEED_DIR)
+from shared_config import admin_token, api_patch, api_get, load_state
 
 def run():
     print("\n" + "="*60)

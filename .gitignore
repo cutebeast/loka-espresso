@@ -9,3 +9,5 @@ dist/
 build/
 .DS_Store
 *.log
+seed_state*.json
+*.state.json

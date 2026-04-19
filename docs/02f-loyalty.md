@@ -50,6 +50,7 @@ Tier definitions with thresholds and benefits.
 | min_points | integer | NO | | Points threshold |
 | points_multiplier | numeric(3,2) | YES | 1.0 | Earn rate multiplier |
 | benefits | json | YES | | Tier benefit details |
+| sort_order | integer | YES | 0 | Display ordering (Bronze=0, Silver=1, Gold=2, Platinum=3) |
 
 **Unique:** name
 
@@ -155,5 +156,5 @@ Saved payment cards/methods.
 
 | Entity | Count | Source Script | Details |
 |--------|-------|---------------|---------|
-| Loyalty Tiers | 4 | `seed_05_config.py` | Bronze (0pts, 1.0x), Silver (500pts, 1.25x), Gold (1500pts, 1.5x), Platinum (3000pts, 2.0x) |
+| Loyalty Tiers | 4 | `seed_05_config.py` | Bronze (0pts, 1.0x), Silver (1000pts, 1.25x), Gold (3000pts, 1.5x), Platinum (5000pts, 2.0x) |
 | Rewards | 8 | `seed_06_rewards.py` | 6 active + 2 inactive (see full codes + min_spend in 02g-marketing.md) |

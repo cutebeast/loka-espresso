@@ -141,7 +141,6 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
           </tbody>
         </table>
       </div>
-      </div>
     </div>
   );
 }

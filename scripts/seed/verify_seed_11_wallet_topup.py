@@ -41,7 +41,7 @@ def _get_wallet_balance(token):
         resp = api_get("/me/wallet", token=token)
         if resp.status_code == 200:
             data = resp.json()
-            return float(data.get("cash_balance", 0))
+            return float(data.get("cash", {}).get("balance", 0))
     except Exception:
         pass
     return 0.0

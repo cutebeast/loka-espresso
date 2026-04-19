@@ -115,26 +115,26 @@ OTP codes for phone-based authentication.
 
 | Email | Store |
 |-------|-------|
-| `mgr_klcc@fnb.com` | ZUS Coffee KLCC (id=2) |
-| `astmgr_klcc@fnb.com` | ZUS Coffee KLCC (id=2) |
-| `mgr_pavilion@fnb.com` | ZUS Coffee Pavilion (id=3) |
-| `astmgr_pavilion@fnb.com` | ZUS Coffee Pavilion (id=3) |
-| `mgr_cheras@fnb.com` | ZUS Coffee Cheras (id=4) |
-| `mgr_pj@fnb.com` | ZUS Coffee PJ (id=5) |
-| `mgr_bangi@fnb.com` | ZUS Coffee Bangi (id=6) |
+| `mgr_klcc@fnb.com` | Loka Espresso KLCC (id=2) |
+| `astmgr_klcc@fnb.com` | Loka Espresso KLCC (id=2) |
+| `mgr_pavilion@fnb.com` | Loka Espresso Pavilion (id=3) |
+| `astmgr_pavilion@fnb.com` | Loka Espresso Pavilion (id=3) |
+| `mgr_cheras@fnb.com` | Loka Espresso Cheras (id=4) |
+| `mgr_pj@fnb.com` | Loka Espresso PJ (id=5) |
+| `mgr_bangi@fnb.com` | Loka Espresso Bangi (id=6) |
 
 ### Store Staff (seed_04)
 
 | Email | Store |
 |-------|-------|
-| `staff_klcc_1@fnb.com` | ZUS Coffee KLCC (id=2) |
-| `staff_klcc_2@fnb.com` | ZUS Coffee KLCC (id=2) |
-| `staff_klcc_3@fnb.com` | ZUS Coffee KLCC (id=2) |
-| `staff_pavilion_1@fnb.com` | ZUS Coffee Pavilion (id=3) |
-| `staff_pavilion_2@fnb.com` | ZUS Coffee Pavilion (id=3) |
-| `staff_cheras_1@fnb.com` | ZUS Coffee Cheras (id=4) |
-| `staff_cheras_2@fnb.com` | ZUS Coffee Cheras (id=4) |
-| `staff_pj_1@fnb.com` | ZUS Coffee PJ (id=5) |
-| `staff_bangi_1@fnb.com` | ZUS Coffee Bangi (id=6) |
-| `staff_bangi_2@fnb.com` | ZUS Coffee Bangi (id=6) |
-| `staff_bangi_3@fnb.com` | ZUS Coffee Bangi (id=6) |
+| `staff_klcc_1@fnb.com` | Loka Espresso KLCC (id=2) |
+| `staff_klcc_2@fnb.com` | Loka Espresso KLCC (id=2) |
+| `staff_klcc_3@fnb.com` | Loka Espresso KLCC (id=2) |
+| `staff_pavilion_1@fnb.com` | Loka Espresso Pavilion (id=3) |
+| `staff_pavilion_2@fnb.com` | Loka Espresso Pavilion (id=3) |
+| `staff_cheras_1@fnb.com` | Loka Espresso Cheras (id=4) |
+| `staff_cheras_2@fnb.com` | Loka Espresso Cheras (id=4) |
+| `staff_pj_1@fnb.com` | Loka Espresso PJ (id=5) |
+| `staff_bangi_1@fnb.com` | Loka Espresso Bangi (id=6) |
+| `staff_bangi_2@fnb.com` | Loka Espresso Bangi (id=6) |
+| `staff_bangi_3@fnb.com` | Loka Espresso Bangi (id=6) |

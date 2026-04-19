@@ -1,6 +1,6 @@
 # FNB Super-App — Backend API Reference
 
-> Last updated: 2026-04-18 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 189+ endpoints
+> Last updated: 2026-04-18 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 198 endpoints
 > OpenAPI docs: `https://admin.loyaltysystem.uk/docs`
 
 ## Rate Limiting
@@ -30,6 +30,7 @@ All authenticated endpoints require `Authorization: Bearer <JWT>` header.
 | POST | `/auth/logout` | Logout (blacklists JWT via JTI) |
 | POST | `/auth/device-token` | Register push notification token |
 | DELETE | `/auth/device-token` | Unregister push token |
+| GET | `/admin/otps` | admin | Admin OTP lookup |
 
 ---
 
@@ -65,7 +66,7 @@ ELSE
   allowed_stores = SELECT store_id FROM user_store_access WHERE user_id = :uid
 ```
 
-See `/root/acl-guide.md` for the full ACL specification.
+See `docs/02a-acl.md` for the full ACL specification.
 
 ---
 
@@ -186,6 +187,8 @@ See `/root/acl-guide.md` for the full ACL specification.
 | POST | `/admin/staff/{staff_id}/clock-in` | any (PIN-based) | Clock in (rate-limited) |
 | POST | `/admin/staff/{staff_id}/clock-out` | any (PIN-based) | Clock out |
 | GET | `/admin/stores/{store_id}/shifts` | manager, assistant_manager | View shifts |
+| POST | `/admin/hq-staff` | admin | Create HQ staff |
+| GET | `/admin/hq-staff` | admin | List HQ staff |
 
 ### Order Management
 
@@ -201,6 +204,10 @@ See `/root/acl-guide.md` for the full ACL specification.
 | POST | `/orders/{order_id}/cancel` | customer (own), admin, store_owner | Cancel order (**rolls back loyalty points**) |
 | POST | `/orders/{order_id}/reorder` | customer | Re-add items to cart |
 | GET | `/orders/tracking/{order_id}` | any user | Track order status (public tracking) |
+| POST | `/orders/{order_id}/delivery-webhook` | any user | Delivery provider webhook |
+| POST | `/orders/{order_id}/pos-webhook` | any user | External POS webhook |
+| POST | `/3rdparty_delivery/create` | any user | Create delivery job |
+| GET | `/3rdparty_delivery/{id}/status` | any user | Check delivery status |
 
 **Order Status Flows:**
 - **Flow A (Pickup/Delivery)**: `pending` → `paid` → `confirmed` → `preparing` → `ready` → `completed`
@@ -225,6 +232,7 @@ See `/root/acl-guide.md` for the full ACL specification.
 | GET | `/admin/customers/{user_id}/wallet-history` | admin | Wallet history |
 | POST | `/admin/customers/{user_id}/adjust-points` | admin | Manual points adjustment |
 | PUT | `/admin/customers/{user_id}` | admin | Update customer details |
+| DELETE | `/admin/customers/reset` | admin | Reset customer data |
 
 ### Reward Management (Admin)
 
@@ -324,6 +332,11 @@ See `/root/acl-guide.md` for the full ACL specification.
 | POST | `/payments/methods` | any user | Add payment method |
 | POST | `/payments/create-intent` | any user | Create payment intent (stub) |
 | POST | `/payments/confirm` | any user | Confirm payment (stub) |
+| POST | `/pg/charge` | any user | Create payment charge via Payment Gateway |
+| POST | `/pg/confirm` | any user | Confirm payment |
+| GET | `/pg/charge/{id}/status` | any user | Check charge status |
+| POST | `/wallet/webhook/pg-payment` | any user | PG payment webhook |
+| POST | `/wallet/webhook/order-payment` | any user | Order payment webhook |
 
 ### Cart
 

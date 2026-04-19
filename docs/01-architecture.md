@@ -127,7 +127,7 @@ Explicit `commit()` bypasses the rollback safety net. If an error occurs after t
 | Framework | Next.js 16 + TypeScript |
 | Styling | Tailwind CSS 4 |
 | Architecture | Single-page client components (no SSR routing) |
-| Merchant | 18 pages across 5 sidebar groups (Overview, Store Ops, Marketing, Analytics, System) |
+| Merchant | 20 pages, 18 in sidebar across 5 sidebar groups (Overview, Store Ops, Marketing, Analytics, System) |
 | Customer | Phase 3 — not yet rebuilt with new wallet API |
 
 ## Project Structure
@@ -138,7 +138,7 @@ Explicit `commit()` bypasses the rollback safety net. If an error occurs after t
 ├── backend/
 │   ├── .venv/                    # Python virtualenv (use for all commands)
 │   ├── alembic/
-│   │   ├── versions/             # 20 migration files (initial → ACL v1)
+│   │   ├── versions/             # 27 migration files (initial → ACL v1)
 │   │   ├── env.py
 │   │   └── script.py.mako
 │   ├── app/
@@ -148,17 +148,17 @@ Explicit `commit()` bypasses the rollback safety net. If an error occurs after t
 │   │   │   ├── database.py       # Async SQLAlchemy engine
 │   │   │   ├── security.py       # JWT + relational ACL system + token blacklist check
 │   │   │   └── audit.py          # log_action() helper
-│   │   ├── models/               # 18 model files, 50 tables (including 6 ACL tables)
+│   │   ├── models/               # 18 files (17 models + __init__.py), 52 tables (including 6 ACL tables)
 │   │   ├── schemas/              # Pydantic request/response schemas
 │   │   └── api/v1/
 │   │       ├── router.py         # Assembles all endpoint routers (36 routers)
-│   │       └── endpoints/        # 38 endpoint files, 170+ routes
+│   │       └── endpoints/        # 37 endpoint files, 198 routes
 │   └── seed_full.sql             # Comprehensive seed data (15 users, 8 staff)
 ├── frontend/                     # Merchant Dashboard (Next.js)
 │   └── src/
 │       ├── app/page.tsx          # Main SPA entry
 │       ├── components/
-│       │   ├── pages/            # 18 page components (5 groups)
+│       │   ├── pages/            # 20 pages, 18 in sidebar (5 groups)
 │       │   │   ├── DashboardPage.tsx
 │       │   │   ├── OrdersPage.tsx
 │       │   │   ├── MenuPage.tsx
@@ -169,14 +169,16 @@ Explicit `commit()` bypasses the rollback safety net. If an error occurs after t
 │       │   │   ├── VouchersPage.tsx       # Marketing group
 │       │   │   ├── PromotionsPage.tsx     # Marketing group
 │       │   │   ├── FeedbackPage.tsx       # Marketing group
-│       │   │   ├── SurveysPage.tsx        # Marketing group
 │       │   │   ├── MarketingReportsPage.tsx # Marketing group
 │       │   │   ├── SalesReportsPage.tsx
 │       │   │   ├── CustomersPage.tsx
+│       │   │   ├── CustomerDetailPage.tsx
+│       │   │   ├── InventoryLedgerPage.tsx
 │       │   │   ├── NotificationsPage.tsx
 │       │   │   ├── AuditLogPage.tsx
 │       │   │   ├── LoyaltyRulesPage.tsx
-│       │   │   └── StoreSettingsPage.tsx
+│       │   │   ├── StoreSettingsPage.tsx
+│       │   │   └── SettingsPage.tsx
 │       │   ├── charts.tsx        # SVG BarChart, DonutChart, SparkLine
 │       │   ├── LoginScreen.tsx
 │       │   ├── Sidebar.tsx
@@ -218,7 +220,7 @@ Located at `/root/fnb-super-app/.env`. Resolved via `env_file = "../.env"` from 
 
 ### Universal Menu Design
 
-The menu is **not per-store** — it lives on `store_id=0` (HQ) and is served to all physical stores identically. This mirrors real chains like Starbucks/ZUS where all locations share the same menu.
+The menu is **not per-store** — it lives on `store_id=0` (HQ) and is served to all physical stores identically. This mirrors real chains like Starbucks/Loka Espresso where all locations share the same menu.
 
 - Backend: `GET /stores/{id}/menu` proxies to `store_id=0` for categories and items
 - HQ store (id=0) is the menu holder — it has no physical tables or inventory
@@ -293,7 +295,7 @@ Cron runs              → user_rewards WHERE expires_at < now → status = "exp
 - **File Upload Validation**: 5MB max size, only JPEG/PNG/WebP/GIF MIME types allowed.
 - **Order Cancel Rollback**: Cancelling an order reverses loyalty points with a negative `LoyaltyTransaction`.
 - **Cross-Store Cart Guard**: Adding items from a different store returns 400.
-- **ACL**: Relational access control system with 6 lookup tables: `user_types`, `roles`, `role_user_type`, `user_store_access`, `permissions`, `role_permissions`. Users have `user_type_id` (FK) + `role_id` (FK). Store-scoped users are linked via `user_store_access` junction table. Admin/Brand Owner = global access. See `/root/acl-guide.md` for full spec.
+- **ACL**: Relational access control system with 6 lookup tables: `user_types`, `roles`, `role_user_type`, `user_store_access`, `permissions`, `role_permissions`. Users have `user_type_id` (FK) + `role_id` (FK). Store-scoped users are linked via `user_store_access` junction table. Admin/Brand Owner = global access. See `docs/02a-acl.md` for full spec.
 - **Repeat Customer Protection**: System guards against duplicate voucher claims, duplicate survey submissions, and duplicate reward redemptions.
 - **Audit Log Hooks**: All critical admin actions are logged.
 - **Token Blacklist Auto-Cleanup**: Background task runs every 24 hours, purging expired `token_blacklist` rows.

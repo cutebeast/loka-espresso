@@ -148,7 +148,7 @@ async def get_customer_wallet(
             code=uv.code,
             discount_type=uv.discount_type or (v.discount_type.value if v and hasattr(v.discount_type, 'value') else None),
             discount_value=to_float(uv.discount_value) if uv.discount_value else (to_float(v.discount_value) if v and v.discount_value else None),
-            min_spend=to_float(uv.min_spend) if uv.min_spend else (to_float(v.min_order) if v and v.min_order else None),
+            min_spend=to_float(uv.min_spend) if uv.min_spend else (to_float(v.min_spend) if v and v.min_spend else None),
             status=uv.status,
             source=uv.source,
             issued_at=uv.applied_at,

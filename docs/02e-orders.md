@@ -23,6 +23,11 @@ Main order table. HYBRID scope (user + store).
 | subtotal | numeric(10,2) | NO | | Before fees/discounts |
 | delivery_fee | numeric(10,2) | YES | 0 | Delivery charge |
 | discount | numeric(10,2) | YES | 0 | Discount amount |
+| voucher_discount | numeric(10,2) | NO | 0.0 | Voucher discount amount applied |
+| reward_discount | numeric(10,2) | NO | 0.0 | Reward discount amount applied |
+| loyalty_discount | numeric(10,2) | NO | 0.0 | Kept for DB compatibility, always 0 |
+| voucher_code | varchar(100) | YES | | Applied voucher code reference |
+| reward_redemption_code | varchar(100) | YES | | Applied reward redemption code |
 | total | numeric(10,2) | NO | | Final amount |
 | status | orderstatus | NO | pending | Current status |
 | pickup_time | timestamptz | YES | | Scheduled pickup time |

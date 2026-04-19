@@ -437,7 +437,6 @@ async def backfill_inventory_ledger(
     ip = get_client_ip(request)
     await log_action(db, action="BACKFILL_INVENTORY_LEDGER", user_id=user.id,
                      details={"items_backfilled": created, "total_items_found": len(items)}, ip_address=ip)
-    await db.commit()
     return {"message": "Inventory ledger backfill complete", "created": created, "total_items": len(items)}
 
 

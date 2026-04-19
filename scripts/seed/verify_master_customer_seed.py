@@ -15,12 +15,15 @@ from shared_config import print_header, load_state, save_state, admin_token, api
 
 
 STEPS = [
-    ("verify_seed_09_reset_customers.py", "Reset customer data (DB + state file)"),
-    ("verify_seed_10_register.py",        "Register customers via OTP (50 default)"),
-    ("verify_seed_11_wallet_topup.py",    "Top up wallets (RM 200 per customer)"),
-    ("verify_seed_12_place_orders.py",    "Place orders (40% pickup, 35% delivery, 25% dine_in)"),
-    ("verify_seed_19_delivery_flow.py",   "Simulate delivery lifecycle via mock API"),
-    ("verify_seed_20_dinein_flow.py",     "Verify dine-in table occupancy workflow"),
+    ("verify_seed_09_reset_customers.py",           "Reset customer data (DB + state file)"),
+    ("verify_seed_10_register.py",                   "Register customers via OTP (50 default)"),
+    ("verify_seed_11_wallet_topup.py",               "Top up wallets via Payment Gateway"),
+    ("verify_seed_12_place_orders_main.py",          "Place orders (pickup/delivery/dine_in)"),
+    ("verify_seed_13_order_completion.py",           "Complete orders (Flow A pickup/delivery + Flow B dine_in)"),
+    ("verify_seed_14_claim_vouchers.py",             "Claim vouchers from promo banners and surveys"),
+    ("verify_seed_15_redeem_rewards.py",             "Redeem rewards with loyalty points"),
+    ("verify_seed_16_place_discounted_orders.py",    "Place orders with voucher or reward discounts"),
+    ("verify_seed_17_complete_discounted_orders.py", "Complete discounted orders"),
 ]
 
 
@@ -61,10 +64,10 @@ def run_summary():
             gold   = sum(1 for c in all_customers if c.get("tier") == "gold")
             plat   = sum(1 for c in all_customers if c.get("tier") == "platinum")
             print(f"\n  TIER DISTRIBUTION (from API):")
-            print(f"    Platinum (>=3000 pts): {plat}")
-            print(f"    Gold     (>=1500 pts): {gold}")
-            print(f"    Silver   (>=500 pts):  {silver}")
-            print(f"    Bronze   (<500 pts):   {bronze}")
+            print(f"    Platinum (>=5000 pts): {plat}")
+            print(f"    Gold     (>=3000 pts): {gold}")
+            print(f"    Silver   (>=1000 pts):  {silver}")
+            print(f"    Bronze   (<1000 pts):   {bronze}")
             print(f"\n  TOP 10 CUSTOMERS BY POINTS:")
             for c in all_customers[:10]:
                 print(f"    {c.get('name', '?'):20s}  pts={c.get('points_balance', 0):5d}  tier={c.get('tier', '?'):10s}")
@@ -85,7 +88,7 @@ def main():
     args = parser.parse_args()
 
     print_header("FNB SUPER-APP — CUSTOMER SEED ORCHESTRATION")
-    print(f"\nRunning {len(STEPS)} customer seed steps (09-16)...")
+    print(f"\nRunning {len(STEPS)} customer seed steps (09-17)...")
     if args.skip_reset:
         print("  [NOTE] --skip-reset active: step 09 (reset) will be skipped")
     print()

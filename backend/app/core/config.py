@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 10080
     CORS_ORIGINS: str = ""
     UPLOAD_DIR: str = "/root/fnb-super-app/uploads"
+    WEBHOOK_API_KEY: str = "fnb-webhook-default-key"
 
     @property
     def cors_origins_list(self) -> list[str]:

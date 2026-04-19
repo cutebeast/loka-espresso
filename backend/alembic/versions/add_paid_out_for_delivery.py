@@ -12,7 +12,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = 'add_paid_out_for_delivery'
-down_revision = None
+down_revision = 'add_tier_sort_order'
 branch_labels = None
 depends_on = None
 

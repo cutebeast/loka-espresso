@@ -253,7 +253,6 @@ async def toggle_archive_broadcast(
     await log_action(db, action=action, user_id=user.id, entity_type="broadcast", entity_id=broadcast_id, details={"title": obj.title}, ip_address=ip)
     await db.flush()
     await db.refresh(obj)
-    await db.commit()
     return {"id": obj.id, "is_archived": obj.is_archived}
 
 
@@ -271,7 +270,6 @@ async def create_broadcast(
     await log_action(db, action="CREATE_BROADCAST", user_id=user.id, entity_type="broadcast", entity_id=obj.id, details={"title": obj.title, "audience": obj.audience, "status": obj.status}, ip_address=ip)
     await db.flush()
     await db.refresh(obj)
-    await db.commit()
     return obj
 
 
@@ -299,7 +297,6 @@ async def update_broadcast(
     await log_action(db, action="UPDATE_BROADCAST", user_id=user.id, entity_type="broadcast", entity_id=broadcast_id, details={"changes": changes}, ip_address=ip)
     await db.flush()
     await db.refresh(obj)
-    await db.commit()
     return {"id": obj.id, "title": obj.title, "status": obj.status}
 
 
@@ -320,7 +317,6 @@ async def delete_broadcast(
     await log_action(db, action="DELETE_BROADCAST", user_id=user.id, entity_type="broadcast", entity_id=broadcast_id, details={"title": obj.title}, ip_address=ip)
     await db.delete(obj)
     await db.flush()
-    await db.commit()
     return {"detail": "Broadcast deleted"}
 
 
@@ -344,7 +340,6 @@ async def send_broadcast(
     await log_action(db, action="SEND_BROADCAST", user_id=user.id, entity_type="broadcast", entity_id=broadcast_id, details={"title": obj.title}, ip_address=ip)
     await db.flush()
     await db.refresh(obj)
-    await db.commit()
     return {"id": obj.id, "status": obj.status, "sent_at": obj.sent_at.isoformat() if obj.sent_at else None}
 
 
@@ -406,7 +401,6 @@ async def create_banner(
     await log_action(db, action="CREATE_BANNER", user_id=user.id, entity_type="banner", entity_id=obj.id, details={"title": obj.title}, ip_address=ip)
     await db.flush()
     await db.refresh(obj)
-    await db.commit()
     return obj
 
 
@@ -429,7 +423,6 @@ async def update_banner(
     await log_action(db, action="UPDATE_BANNER", user_id=user.id, entity_type="banner", entity_id=banner_id, details={"changes": changes}, ip_address=ip)
     await db.flush()
     await db.refresh(obj)
-    await db.commit()
     return obj
 
 
@@ -448,7 +441,6 @@ async def delete_banner(
     await log_action(db, action="DELETE_BANNER", user_id=user.id, entity_type="banner", entity_id=banner_id, details={"title": obj.title}, ip_address=ip)
     await db.delete(obj)
     await db.flush()
-    await db.commit()
     return {"detail": "Banner deleted"}
 
 
@@ -479,7 +471,6 @@ async def create_loyalty_tier(
     await log_action(db, action="CREATE_LOYALTY_TIER", user_id=user.id, entity_type="loyalty_tier", entity_id=obj.id, details={"name": obj.name, "min_points": obj.min_points}, ip_address=ip)
     await db.flush()
     await db.refresh(obj)
-    await db.commit()
     return obj
 
 
@@ -502,7 +493,6 @@ async def update_loyalty_tier(
     await log_action(db, action="UPDATE_LOYALTY_TIER", user_id=user.id, entity_type="loyalty_tier", entity_id=tier_id, details={"changes": changes}, ip_address=ip)
     await db.flush()
     await db.refresh(obj)
-    await db.commit()
     return obj
 
 
@@ -521,7 +511,6 @@ async def delete_loyalty_tier(
     await log_action(db, action="DELETE_LOYALTY_TIER", user_id=user.id, entity_type="loyalty_tier", entity_id=tier_id, details={"name": obj.name}, ip_address=ip)
     await db.delete(obj)
     await db.flush()
-    await db.commit()
     return {"message": "Tier deleted", "id": tier_id}
 
 
@@ -614,7 +603,6 @@ async def full_system_reset(
         for seq in sequences:
             await db.execute(text(f"SELECT setval('{seq}', 1, false)"))
 
-        await db.commit()
 
         # No audit log for system reset — we wipe it anyway
 
@@ -674,7 +662,6 @@ async def init_hq_store(
     await db.execute(
         text("SELECT setval('stores_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM stores))")
     )
-    await db.commit()
 
     return {
         "message": "HQ store initialized",

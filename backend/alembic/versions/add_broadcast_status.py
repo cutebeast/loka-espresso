@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = 'add_broadcast_status'
-down_revision = None
+down_revision = 'rename_min_order_to_min_spend'
 branch_labels = None
 depends_on = None
 
