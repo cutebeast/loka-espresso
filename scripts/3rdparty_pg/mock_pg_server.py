@@ -52,6 +52,7 @@ class ChargeRequest(BaseModel):
     user_name: str
     callback_url: Optional[str] = None
     payment_method: Optional[PaymentMethod] = None
+    order_id: Optional[int] = None  # For order payments (vs wallet topup)
 
 
 class ConfirmRequest(BaseModel):
@@ -109,6 +110,29 @@ async def simulate_payment_processing(charge_id: str):
             except Exception as e:
                 print(f"[MOCK PG] Webhook call failed for {charge_id}: {e}")
         
+        # For order payments, also call the order payment webhook on completion
+        if new_status == "completed" and charge.get("order_id"):
+            try:
+                # Default FNB backend URL - can be overridden via env var
+                import os
+                fnb_base_url = os.environ.get("FNB_API_URL", "http://localhost:8000/api/v1")
+                order_webhook_url = f"{fnb_base_url}/wallet/webhook/order-payment"
+                
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(order_webhook_url, json={
+                        "charge_id": charge_id,
+                        "order_id": charge["order_id"],
+                        "status": new_status,
+                        "amount": charge["amount"],
+                        "currency": charge["currency"],
+                        "user_id": charge["user_id"],
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "note": note,
+                    }, timeout=5.0)
+                    print(f"[MOCK PG] Order payment webhook called for order {charge['order_id']}: {response.status_code}")
+            except Exception as e:
+                print(f"[MOCK PG] Order payment webhook call failed for {charge_id}: {e}")
+        
         print(f"[MOCK PG] {charge_id} status updated: {new_status}")
 
 
@@ -134,6 +158,7 @@ def create_charge(req: ChargeRequest, background_tasks: BackgroundTasks):
         "user_id": req.user_id,
         "user_email": req.user_email,
         "user_name": req.user_name,
+        "order_id": req.order_id,  # Store order_id for order payments
         "status": "pending",
         "payment_method": req.payment_method.model_dump() if req.payment_method else {"type": "card"},
         "checkout_url": f"/pg/checkout/{charge_id}",

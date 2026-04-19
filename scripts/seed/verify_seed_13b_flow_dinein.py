@@ -164,7 +164,7 @@ def initiate_payment(order, token):
             return None, "Could not fetch user details"
 
         # Call mock payment gateway
-        # First create a charge
+        # First create a charge with order_id so webhook can award loyalty points
         resp = requests.post(
             f"{MOCK_PG_URL}/pg/charge",
             json={
@@ -174,7 +174,7 @@ def initiate_payment(order, token):
                 "user_id": user_id,
                 "user_email": user.get("email", f"user{user_id}@example.com"),
                 "user_name": user.get("name", f"User {user_id}"),
-                "metadata": {"order_id": order_id, "user_id": user_id},
+                "order_id": order_id,  # Pass order_id for webhook to award loyalty points
             },
             timeout=10
         )
