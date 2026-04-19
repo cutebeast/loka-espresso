@@ -44,7 +44,8 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
     setLoading(true);
     try {
       const storeParam = selectedStore === 'all' ? '' : `?store_id=${selectedStore}`;
-      const range = fromDate && toDate ? `&from_date=${fromDate}&to_date=${toDate}` : '';
+      const joinChar = storeParam ? '&' : '?';
+      const range = fromDate && toDate ? `${joinChar}from_date=${fromDate}T00:00:00&to_date=${toDate}T23:59:59` : '';
       const [fbRes, statsRes] = await Promise.all([
         apiFetch(`/admin/feedback${storeParam}${range}`, token),
         apiFetch(`/admin/feedback/stats${storeParam}${range}`, token),

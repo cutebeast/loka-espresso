@@ -42,8 +42,8 @@ export default function CustomersPage({ token, stores, selectedStore, onStoreCha
       if (selectedStore !== 'all') params.set('store_id', selectedStore);
       if (search) params.set('search', search);
       if (tier) params.set('tier', tier);
-      if (fromDate) params.set('from_date', fromDate);
-      if (toDate) params.set('to_date', toDate);
+      if (fromDate) params.set('from_date', fromDate + 'T00:00:00');
+      if (toDate) params.set('to_date', toDate + 'T23:59:59');
       const res = await apiFetch(`/admin/customers?${params}`, token);
       if (res.ok) {
         const data = await res.json();

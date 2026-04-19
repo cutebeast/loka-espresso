@@ -157,8 +157,8 @@ export default function NotificationsPage({ token, refreshKey, onNewBroadcast }:
         page_size: '20',
         is_archived: String(notifTab === 'archived'),
       });
-      if (fromDate) params.set('from_date', fromDate);
-      if (toDate) params.set('to_date', toDate);
+      if (fromDate) params.set('from_date', fromDate + 'T00:00:00');
+      if (toDate) params.set('to_date', toDate + 'T23:59:59');
       const res = await apiFetch(`/admin/broadcasts?${params}`, token);
       if (res.ok) {
         const data = await res.json();

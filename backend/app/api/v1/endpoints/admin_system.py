@@ -668,3 +668,15 @@ async def init_hq_store(
         "store_id": 0,
         "name": "HQ (Headquarters)",
     }
+
+@router.get("/admin/audit-log-test")
+async def list_audit_log_test(
+    from_date: datetime | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    base_query = select(AuditLog)
+    if from_date is not None:
+        base_query = base_query.where(AuditLog.created_at >= from_date)
+    return await db.execute(base_query)

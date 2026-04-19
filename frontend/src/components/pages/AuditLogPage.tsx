@@ -48,7 +48,7 @@ export default function AuditLogPage({ stores, token }: AuditLogPageProps) {
     try {
       let url = `/admin/audit-log?page=${p}&page_size=${PAGE_SIZE}`;
       if (actionFilter) url += `&action=${encodeURIComponent(actionFilter)}`;
-      if (fromDate && toDate) url += `&from_date=${fromDate}&to_date=${toDate}`;
+      if (fromDate && toDate) url += `&from_date=${fromDate}T00:00:00&to_date=${toDate}T23:59:59`;
       const res = await apiFetch(url, token);
       if (res.ok) {
         const data: AuditLogResponse = await res.json();

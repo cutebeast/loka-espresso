@@ -224,6 +224,8 @@ export default function MerchantDashboard() {
       params.append('page_size', String(ordersPageSize));
       if (storeId) params.append('store_id', storeId);
       if (ordersStatus) params.append('status', ordersStatus);
+      if (ordersFromDate) params.append('from_date', ordersFromDate + 'T00:00:00');
+      if (ordersToDate) params.append('to_date', ordersToDate + 'T23:59:59');
       const res = await apiFetch(`/admin/orders?${params.toString()}`, token);
       if (res.ok) {
         const data = await res.json();
@@ -283,14 +285,7 @@ export default function MerchantDashboard() {
   }
 
   async function fetchAuditLog() {
-    setLoading(true);
-    try {
-      const res = await apiFetch('/admin/audit-log?page_size=50', token);
-      if (res.ok) {
-        const data = await res.json();
-        setAuditLog(Array.isArray(data) ? data : (data.entries || data.items || []));
-      }
-    } catch {} finally { setLoading(false); }
+    // Audit Log page now self-fetches with pagination
   }
 
   async function fetchLoyaltyTiers() {
