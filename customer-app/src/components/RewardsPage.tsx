@@ -7,14 +7,14 @@ export default function RewardsPage() {
 
   return (
     <div className="page-enter">
-      <h2 style={{ fontWeight: 700, margin: '12px 0' }}>ZUS Rewards</h2>
+      <h2 style={{ fontWeight: 700, margin: '12px 0' }}>Loka Rewards</h2>
       <div style={{ background: 'white', borderRadius: 24, padding: 18, marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <i className="fas fa-crown" style={{ fontSize: 32, color: '#FFB347' }}></i>
           <div><strong>{loyaltyTier}</strong><br />{loyaltyPoints} points</div>
         </div>
-        <div style={{ background: '#E2E8F0', height: 10, borderRadius: 20, margin: '14px 0' }}>
-          <div style={{ background: '#002F6C', width: `${Math.min((loyaltyPoints / 400) * 100, 100)}%`, height: 10, borderRadius: 20 }}></div>
+        <div style={{ background: '#E2E8E2', height: 10, borderRadius: 20, margin: '14px 0' }}>
+          <div style={{ background: '#384B16', width: `${Math.min((loyaltyPoints / 400) * 100, 100)}%`, height: 10, borderRadius: 20 }}></div>
         </div>
         <p style={{ fontSize: 14, color: '#64748B' }}>{Math.max(0, 400 - loyaltyPoints)} pts to Gold tier</p>
       </div>
@@ -37,7 +37,7 @@ export default function RewardsPage() {
         ))}
       </div>
       <div style={{ margin: '20px 0 12px' }}><h3 style={{ fontWeight: 700 }}>Referral Program</h3></div>
-      <div className="promo-card" style={{ background: '#1A2E4D' }}>
+      <div className="promo-card" style={{ background: '#2A3910' }}>
         <h4>Invite friends, get RM10</h4>
         <p style={{ fontSize: 14, marginTop: 4 }}>Share your love for coffee</p>
         <button className="btn-outline-light" style={{ marginTop: 12 }}>Share code</button>

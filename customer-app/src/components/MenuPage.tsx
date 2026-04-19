@@ -19,11 +19,11 @@ export default function MenuPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {filteredItems.filter(i => i.is_available).map(item => (
             <div key={item.id} className="product-card" onClick={() => openCustomize(item)}>
-              <div className="img-placeholder"><i className="fas fa-mug-hot" style={{ fontSize: 32, color: '#002F6C' }}></i></div>
+              <div className="img-placeholder"><i className="fas fa-mug-hot" style={{ fontSize: 32, color: '#384B16' }}></i></div>
               <h4 style={{ fontSize: 15, fontWeight: 700 }}>{item.name}</h4>
               <div style={{ fontSize: 13, color: '#65768A', marginBottom: 8 }}>{item.description}</div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontWeight: 700, color: '#002F6C' }}>RM {item.base_price.toFixed(2)}</span>
+                <span style={{ fontWeight: 700, color: '#384B16' }}>RM {item.base_price.toFixed(2)}</span>
                 <button className="add-btn" onClick={e => { e.stopPropagation(); addToCart(item); }}><i className="fas fa-plus"></i></button>
               </div>
             </div>

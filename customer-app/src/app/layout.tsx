@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ZUS Coffee",
-  description: "Coffee · Community · Culture",
+  title: "Loka Espresso",
+  description: "Artisan Coffee · Community · Culture",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "ZUS Coffee",
+    title: "Loka Espresso",
   },
 };
 

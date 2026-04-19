@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-navy: #002F6C;
-  --color-navy-light: #1E4A7A;
-  --color-navy-dark: #001B3D;
-  --color-gold: #FFD166;
+  --color-primary: #384B16;
+  --color-primary-light: #4A6A1D;
+  --color-primary-dark: #2A3910;
+  --color-accent: #85B085;
+  --color-accent-copper: #D18E38;
   --color-bg: #F5F7FA;
   --color-green: #059669;
   --color-orange: #EA580C;
@@ -44,7 +45,7 @@ body {
     border-radius: 32px;
     box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
     overflow: hidden;
-    border: 1px solid rgba(0,32,91,0.08);
+    border: 1px solid rgba(56, 75, 22, 0.08);
     height: 844px;
   }
 }
@@ -83,7 +84,7 @@ body {
   gap: 2px;
 }
 .nav-item i { font-size: 20px; }
-.nav-item.active { color: #002F6C; font-weight: 600; }
+.nav-item.active { color: #384B16; font-weight: 600; }
 
 .toggle-option {
   flex: 1;
@@ -97,9 +98,9 @@ body {
   transition: all 0.2s;
 }
 .toggle-option.active {
-  background: #002F6C;
+  background: #384B16;
   color: white;
-  box-shadow: 0 4px 8px rgba(0,47,108,0.2);
+  box-shadow: 0 4px 8px rgba(56, 75, 22, 0.2);
 }
 
 .chip {
@@ -112,7 +113,7 @@ body {
   cursor: pointer;
   white-space: nowrap;
 }
-.chip.active { background: #002F6C; color: white; }
+.chip.active { background: #384B16; color: white; }
 
 .product-card {
   background: white;
@@ -123,7 +124,7 @@ body {
   cursor: pointer;
 }
 .product-card .img-placeholder {
-  background: #D9E2EF;
+  background: #E8EFE8;
   height: 100px;
   border-radius: 16px;
   display: flex;
@@ -133,7 +134,7 @@ body {
 }
 
 .add-btn {
-  background: #002F6C;
+  background: #384B16;
   color: white;
   width: 32px;
   height: 32px;
@@ -171,7 +172,7 @@ body {
 }
 
 .btn-primary {
-  background: #002F6C;
+  background: #384B16;
   color: white;
   border: none;
   width: 100%;
@@ -193,7 +194,7 @@ body {
 }
 
 .promo-card {
-  background: linear-gradient(135deg, #002F6C 0%, #004b9a 100%);
+  background: linear-gradient(135deg, #384B16 0%, #4A6A1D 100%);
   border-radius: 24px;
   padding: 18px 20px;
   color: white;
@@ -203,7 +204,7 @@ body {
 .splash-screen {
   position: absolute;
   inset: 0;
-  background: #002F6C;
+  background: #384B16;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -231,7 +232,7 @@ input, select, textarea {
   width: 100%;
 }
 input:focus, select:focus {
-  border-color: #002F6C;
+  border-color: #384B16;
 }
 
 .page-enter { animation: fadeIn 0.15s ease-out; }

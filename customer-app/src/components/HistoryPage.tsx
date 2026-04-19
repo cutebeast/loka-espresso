@@ -8,12 +8,12 @@ export default function HistoryPage() {
   return (
     <div className="page-enter">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
-        <button onClick={() => setPage('profile')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#002F6C' }}><i className="fas fa-arrow-left"></i></button>
+        <button onClick={() => setPage('profile')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#384B16' }}><i className="fas fa-arrow-left"></i></button>
         <h3>Transaction History</h3>
       </div>
 
       <div style={{ background: 'white', borderRadius: 20, padding: 16, marginBottom: 16, border: '1px solid #ECF1F7' }}>
-        <h4 style={{ marginBottom: 12, color: '#002F6C' }}>⭐ Loyalty Points</h4>
+        <h4 style={{ marginBottom: 12, color: '#384B16' }}>⭐ Loyalty Points</h4>
         {loyaltyHistory.length === 0 ? (
           <p style={{ color: '#94A3B8', textAlign: 'center', padding: 20 }}>No loyalty history yet</p>
         ) : loyaltyHistory.map(t => (
@@ -30,7 +30,7 @@ export default function HistoryPage() {
       </div>
 
       <div style={{ background: 'white', borderRadius: 20, padding: 16, marginBottom: 16, border: '1px solid #ECF1F7' }}>
-        <h4 style={{ marginBottom: 12, color: '#002F6C' }}>💰 Wallet Transactions</h4>
+        <h4 style={{ marginBottom: 12, color: '#384B16' }}>💰 Wallet Transactions</h4>
         {walletHistory.length === 0 ? (
           <p style={{ color: '#94A3B8', textAlign: 'center', padding: 20 }}>No wallet transactions yet</p>
         ) : walletHistory.map(t => (

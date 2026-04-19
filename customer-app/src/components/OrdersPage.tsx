@@ -25,7 +25,7 @@ export default function OrdersPage() {
                 <p style={{ marginBottom: 16 }}><strong>Created:</strong> {new Date(o.created_at).toLocaleString()}</p>
                 {steps.map((s, idx) => (
                   <div key={s} style={{ display: 'flex', gap: 12, margin: '12px 0', alignItems: 'center' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 40, background: idx <= currentIdx ? '#002F6C' : '#EFF3F8', color: idx <= currentIdx ? 'white' : '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 40, background: idx <= currentIdx ? '#384B16' : '#EFF3F8', color: idx <= currentIdx ? 'white' : '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <i className={`fas ${idx <= currentIdx ? 'fa-check' : 'fa-circle'}`} style={{ fontSize: 14 }}></i>
                     </div>
                     <span style={{ textTransform: 'capitalize', fontWeight: idx <= currentIdx ? 600 : 400 }}>{s}</span>

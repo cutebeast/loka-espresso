@@ -20,7 +20,7 @@ export default function StoreLocator({ visible, onClose }: StoreLocatorProps) {
           <i className="fas fa-map-marked-alt" style={{ fontSize: 28, color: '#64748B' }}></i>
         </div>
         {stores.map(s => (
-          <div key={s.id} style={{ background: s.id === selectedStore?.id ? '#EFF6FF' : '#F4F7FB', borderRadius: 18, padding: 14, marginBottom: 8, cursor: 'pointer', border: s.id === selectedStore?.id ? '2px solid #002F6C' : 'none' }} onClick={() => { setSelectedStore(s); onClose(); }}>
+          <div key={s.id} style={{ background: s.id === selectedStore?.id ? '#F0F4F0' : '#F4F7FB', borderRadius: 18, padding: 14, marginBottom: 8, cursor: 'pointer', border: s.id === selectedStore?.id ? '2px solid #384B16' : 'none' }} onClick={() => { setSelectedStore(s); onClose(); }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span><strong>📍 {s.name}</strong></span>
               <span style={{ fontSize: 13, color: '#059669' }}>Open</span>

@@ -19,23 +19,23 @@ export default function HomePage() {
           <span>⭐ {loyaltyTier}</span>
           <span>{loyaltyPoints} pts</span>
         </div>
-        <div style={{ background: '#E2E8F0', height: 10, borderRadius: 20, margin: '14px 0' }}>
-          <div style={{ background: '#002F6C', width: `${Math.min((loyaltyPoints / 400) * 100, 100)}%`, height: 10, borderRadius: 20 }}></div>
+        <div style={{ background: '#E2E8E2', height: 10, borderRadius: 20, margin: '14px 0' }}>
+          <div style={{ background: '#384B16', width: `${Math.min((loyaltyPoints / 400) * 100, 100)}%`, height: 10, borderRadius: 20 }}></div>
         </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '20px 0 12px' }}>
         <h3 style={{ fontSize: 20, fontWeight: 700 }}>Popular</h3>
-        <span style={{ color: '#002F6C', fontWeight: 600, fontSize: 14, cursor: 'pointer' }} onClick={() => setPage('menu')}>See all →</span>
+        <span style={{ color: '#384B16', fontWeight: 600, fontSize: 14, cursor: 'pointer' }} onClick={() => setPage('menu')}>See all →</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         {menuItems.filter(i => i.is_available).slice(0, 4).map(item => (
           <div key={item.id} className="product-card" onClick={() => openCustomize(item)}>
-            <div className="img-placeholder"><i className="fas fa-mug-hot" style={{ fontSize: 32, color: '#002F6C' }}></i></div>
+            <div className="img-placeholder"><i className="fas fa-mug-hot" style={{ fontSize: 32, color: '#384B16' }}></i></div>
             <h4 style={{ fontSize: 15, fontWeight: 700 }}>{item.name}</h4>
             <div style={{ fontSize: 13, color: '#65768A', marginBottom: 8 }}>{item.description}</div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 700, color: '#002F6C' }}>RM {item.base_price.toFixed(2)}</span>
+              <span style={{ fontWeight: 700, color: '#384B16' }}>RM {item.base_price.toFixed(2)}</span>
               <button className="add-btn" onClick={e => { e.stopPropagation(); addToCart(item); }}><i className="fas fa-plus"></i></button>
             </div>
           </div>

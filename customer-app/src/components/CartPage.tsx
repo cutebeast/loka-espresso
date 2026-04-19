@@ -17,7 +17,7 @@ export default function CartPage() {
               <div style={{ width: 60, height: 60, background: '#EFF3F9', borderRadius: 16, flexShrink: 0 }}></div>
               <div style={{ flex: 1 }}>
                 <h4>{item.name}</h4>
-                <div style={{ color: '#002F6C', fontWeight: 600 }}>RM {item.price.toFixed(2)}</div>
+                <div style={{ color: '#384B16', fontWeight: 600 }}>RM {item.price.toFixed(2)}</div>
                 <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
                   <button style={{ background: 'none', border: '1px solid #DDE3E9', borderRadius: 20, width: 32, height: 32, cursor: 'pointer' }} onClick={() => updateCartQty(i, -1)}>-</button>
                   <span style={{ lineHeight: '32px', fontWeight: 600 }}>{item.quantity}</span>

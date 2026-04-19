@@ -33,9 +33,9 @@ export default function AppShell() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="app-frame">
           <div className="splash-screen">
-            <div style={{ fontSize: 48, fontWeight: 800, color: 'white', letterSpacing: 4, marginBottom: 24 }}>ZUS</div>
+            <div style={{ fontSize: 40, fontWeight: 800, color: 'white', letterSpacing: 2, marginBottom: 24 }}>Loka</div>
             <div className="spinner"></div>
-            <p style={{ color: 'rgba(255,255,255,0.8)', marginTop: 20 }}>Coffee · Community · Culture</p>
+            <p style={{ color: 'rgba(255,255,255,0.8)', marginTop: 20 }}>Artisan Coffee · Community · Culture</p>
           </div>
         </div>
       </div>
@@ -56,14 +56,14 @@ export default function AppShell() {
       <div className="app-frame">
         <div className="app-header">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F0F4FC', padding: '8px 14px', borderRadius: 40, cursor: 'pointer' }} onClick={() => setShowStoreLocator(true)}>
-              <i className="fas fa-map-pin" style={{ color: '#002F6C', fontSize: 14 }}></i>
-              <span style={{ fontWeight: 600, fontSize: 15, color: '#002F6C' }}>{selectedStore?.name || 'Select store'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F0F4F0', padding: '8px 14px', borderRadius: 40, cursor: 'pointer' }} onClick={() => setShowStoreLocator(true)}>
+              <i className="fas fa-map-pin" style={{ color: '#384B16', fontSize: 14 }}></i>
+              <span style={{ fontWeight: 600, fontSize: 15, color: '#384B16' }}>{selectedStore?.name || 'Select store'}</span>
               <i className="fas fa-chevron-down" style={{ fontSize: 12 }}></i>
             </div>
             <div style={{ display: 'flex', gap: 20 }}>
-              <i className="far fa-bell" style={{ fontSize: 22, color: '#002F6C', cursor: 'pointer' }}></i>
-              <i className="fas fa-qrcode" style={{ fontSize: 22, color: '#002F6C', cursor: 'pointer' }} onClick={() => {
+              <i className="far fa-bell" style={{ fontSize: 22, color: '#384B16', cursor: 'pointer' }}></i>
+              <i className="fas fa-qrcode" style={{ fontSize: 22, color: '#384B16', cursor: 'pointer' }} onClick={() => {
                 setModalTitle('Scan QR at table');
                 setModalContent(<div style={{ textAlign: 'center' }}><div style={{ background: '#eee', height: 200, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '20px 0' }}><i className="fas fa-camera" style={{ fontSize: 48 }}></i></div><p>Point camera at table QR code for dine-in</p></div>);
                 setShowModal(true);
@@ -71,7 +71,7 @@ export default function AppShell() {
             </div>
           </div>
           <div style={{ marginTop: 14 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#001B3D' }}>{getGreeting()}, {userName ? userName.split(' ')[0] : 'there'} 👋</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1B2023' }}>{getGreeting()}, {userName ? userName.split(' ')[0] : 'there'} 👋</h2>
             <p style={{ color: '#5E6873', fontSize: 15, marginTop: 4 }}>What&apos;s your coffee mood today?</p>
           </div>
           <div style={{ display: 'flex', marginTop: 14, background: '#F2F5F9', padding: 4, borderRadius: 50 }}>
