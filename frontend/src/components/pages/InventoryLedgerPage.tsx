@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { DateFilter, type DatePreset } from '@/components/ui/DateFilter';
-import { StoreSelector, FilterSelect, Pagination } from '@/components/ui';
+import { FilterSelect, Pagination } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantStore, InventoryMovement } from '@/lib/merchant-types';
 
@@ -66,24 +66,15 @@ export default function InventoryLedgerPage({ selectedStore, storeObj, token, st
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <StoreSelector
-            stores={physicalStores}
-            selectedStore={selectedStore === 'all' ? '' : selectedStore}
-            onChange={onStoreChange}
-            showAllOption={false}
-            placeholder="Select a store..."
+      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        {selectedStore !== 'all' && (
+          <DateFilter
+            preset={preset}
+            onChange={(p, from, to) => { setPreset(p); onDateChange(from, to); }}
+            fromDate={fromDate}
+            toDate={toDate}
           />
-          {selectedStore !== 'all' && (
-            <DateFilter
-              preset={preset}
-              onChange={(p, from, to) => { setPreset(p); onDateChange(from, to); }}
-              fromDate={fromDate}
-              toDate={toDate}
-            />
-          )}
-        </div>
+        )}
         {selectedStore !== 'all' && (
           <FilterSelect
             value={filterType}

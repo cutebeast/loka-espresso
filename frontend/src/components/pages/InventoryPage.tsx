@@ -193,7 +193,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
             placeholder="Select a store..."
           />
         </div>
-        {selectedStore !== 'all' && isHQ && (
+        {selectedStore !== 'all' && isHQ && activeTab === 'stock' && (
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn" onClick={openCreateCat}><i className="fas fa-folder-plus"></i> Add Category</button>
             <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Ingredient</button>
