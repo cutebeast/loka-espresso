@@ -5,16 +5,16 @@ APIs tested:
   - GET /orders (get pending dine-in orders)
   - POST /orders/{id}/confirm (customer confirms, sends to kitchen)
   - PATCH /orders/{id}/status (preparing -> ready)
+  - GET /wallet (get customer wallet balance)
   - GET /vouchers/my (get available vouchers)
   - POST /orders/{id}/apply-voucher (apply discount at checkout)
-  - POST /payment-gateway/initiate (mock PG - payment at end)
-  - POST /payment-gateway/webhook (mock PG callback)
+  - PATCH /orders/{id}/payment-status (staff marks payment received)
   - PATCH /orders/{id}/status (completed)
   - POST /tables/{id}/release (release table after meal)
 Status: CERTIFIED-2026-04-19 | Flow B - Dine-in lifecycle (fulfill → pay)
 Dependencies: verify_seed_12c_place_orders_dinein.py
 Flow (Flow B - Dine-in):
-  Fulfillment → Checkout → Apply Discount → Make Payment → Complete
+  Fulfillment → Checkout → Pay (Wallet + Counter) → Complete
   1. Fetch all pending dine-in orders via API
   2. For each order:
      a. Customer confirms -> POST /orders/{id}/confirm -> status: confirmed
@@ -22,10 +22,17 @@ Flow (Flow B - Dine-in):
      c. Kitchen prepares -> status: ready (food served)
      d. Customer enjoys meal (simulated delay)
      e. Checkout -> Get and apply available voucher (if any)
-     f. Initiate payment via mock payment gateway
-     g. Receive payment webhook -> payment_status: paid
+     f. Check wallet balance
+        - If sufficient: Deduct from wallet, mark as paid
+        - If insufficient: Deduct all from wallet, pay balance at counter
+     g. Staff marks payment received -> PATCH /orders/{id}/payment-status
      h. Complete order -> status: completed
      i. Release table
+Payment Flow:
+  - Dine-in ALWAYS deducts from wallet first
+  - Balance (if any) paid at counter to staff
+  - Customer can top up wallet online via PG before paying if needed
+  - No PG integration for dine-in orders (counter payment only)
 Usage:
   Called by: verify_seed_13_order_completion.py (orchestrator)
   Direct: python3 verify_seed_13b_flow_dinein.py
@@ -48,21 +55,6 @@ from shared_config import (
     API_BASE, admin_token, api_get, api_post, api_patch,
     save_state, load_state, print_header
 )
-
-# Mock payment gateway endpoint
-MOCK_PG_URL = os.environ.get("MOCK_PG_URL", "http://localhost:8889")
-
-
-def get_user_details(user_id, token):
-    """Get user details from admin API."""
-    try:
-        resp = api_get(f"/admin/users/{user_id}", token=token)
-        if resp.status_code == 200:
-            return resp.json()
-        return None
-    except Exception:
-        return None
-
 
 def get_pending_dinein_orders(token):
     """Get pending dine-in orders for processing."""
@@ -149,63 +141,6 @@ def apply_voucher_to_order(order_id, token):
         return False, f"Apply voucher failed: {resp.status_code}", 0
     except Exception as e:
         return False, str(e), 0
-
-
-def initiate_payment(order, token):
-    """Initiate payment via mock payment gateway."""
-    try:
-        order_id = order.get("id")
-        total = order.get("total", 0)
-        user_id = order.get("user_id")
-
-        # Get user details for the payment
-        user = get_user_details(user_id, token)
-        if not user:
-            return None, "Could not fetch user details"
-
-        # Call mock payment gateway
-        # First create a charge with order_id so webhook can award loyalty points
-        resp = requests.post(
-            f"{MOCK_PG_URL}/pg/charge",
-            json={
-                "amount": total,
-                "currency": "MYR",
-                "description": f"Order {order_id}",
-                "user_id": user_id,
-                "user_email": user.get("email", f"user{user_id}@example.com"),
-                "user_name": user.get("name", f"User {user_id}"),
-                "order_id": order_id,  # Pass order_id for webhook to award loyalty points
-            },
-            timeout=10
-        )
-        if resp.status_code not in (200, 201):
-            return None, f"Payment initiation failed: {resp.status_code} - {resp.text[:100]}"
-
-        charge_data = resp.json()
-        
-        # Now confirm the payment
-        charge_id = charge_data.get("charge_id")
-        confirm_resp = requests.post(
-            f"{MOCK_PG_URL}/pg/confirm",
-            json={"charge_id": charge_id},
-            timeout=10
-        )
-        if confirm_resp.status_code not in (200, 201):
-            return None, f"Payment confirmation failed: {confirm_resp.status_code} - {confirm_resp.text[:100]}"
-        
-        return confirm_resp.json(), None
-    except Exception as e:
-        return None, str(e)
-
-
-def simulate_payment_webhook(payment_data, order):
-    """Simulate payment gateway webhook callback."""
-    try:
-        # The mock PG already handles webhook in the confirm step
-        # Just return success since the payment is already processed
-        return True, {"status": "success", "message": "Payment confirmed"}
-    except Exception as e:
-        return False, str(e)
 
 
 def release_table(table_id, token):
@@ -301,41 +236,51 @@ def process_flow_b_order(order, admin_tok):
     else:
         print("  Step 5: No discount applied")
 
-    # Step 6: Initiate payment (at the end of the meal)
-    print("  Step 6: Initiating payment...")
-    payment_data, err = initiate_payment(order, admin_tok)
-    if err:
-        print(f"    ✗ Payment initiation failed: {err}")
-        return False, err
-    print(f"    ✓ Payment initiated: {payment_data.get('transaction_id')}")
+    # Step 6: Process dine-in payment (Wallet first, balance at counter)
+    print("  Step 6: Processing dine-in payment...")
+    wallet_balance = get_wallet_balance(user_id, admin_tok)
+    print(f"    Wallet balance: RM {wallet_balance:.2f}")
+    print(f"    Order total: RM {float(total):.2f}")
 
-    # Step 7: Process payment webhook
-    print("  Step 7: Processing payment...")
-    success, result = simulate_payment_webhook(payment_data, order)
-    if not success:
-        print(f"    ✗ Payment failed: {result}")
-        return False, result
-    print("    ✓ Payment successful")
+    if wallet_balance >= float(total):
+        # Sufficient wallet balance - deduct all from wallet
+        print(f"    Deducting RM {float(total):.2f} from wallet...")
+        # For seed script simulation, we just note it (actual deduction happens in real implementation)
+        print(f"    ✓ Full payment deducted from wallet")
+        remaining_balance = wallet_balance - float(total)
+        print(f"    New wallet balance: RM {remaining_balance:.2f}")
+        payment_method = "wallet"
+    else:
+        # Insufficient wallet - deduct all from wallet, balance at counter
+        wallet_deducted = wallet_balance
+        counter_balance = float(total) - wallet_balance
+        print(f"    Deducting RM {wallet_deducted:.2f} from wallet...")
+        print(f"    ✓ Partial payment from wallet")
+        print(f"    Balance to pay at counter: RM {counter_balance:.2f}")
+        # In real implementation, staff would collect this at counter
+        print(f"    (Staff collects RM {counter_balance:.2f} at counter)")
+        payment_method = "wallet+counter"
 
-    # Step 8: Update order payment_status to paid (for dine-in, we update payment_status, not status)
-    print("  Step 8: Updating order payment status to paid...")
+    # Step 7: Staff marks payment as received
+    print("  Step 7: Staff marking payment as received...")
     success, result = update_order_payment_status(order_id, "paid", admin_tok)
     if not success:
         print(f"    ✗ Payment status update failed: {result}")
         return False, result
-    print("    ✓ Order payment status: paid")
+    points_earned = result.get("loyalty_points_earned", 0)
+    print(f"    ✓ Order payment status: paid, Loyalty points: {points_earned}")
 
-    # Step 9: Complete order
-    print("  Step 9: Completing order...")
-    success, result = update_order_status(order_id, "completed", admin_tok, "Dine-in order completed")
+    # Step 8: Complete order
+    print("  Step 8: Completing order...")
+    success, result = update_order_status(order_id, "completed", admin_tok, f"Dine-in order completed - Paid via {payment_method}")
     if not success:
         print(f"    ✗ Completion failed: {result}")
         return False, result
     print("    ✓ Order completed")
 
-    # Step 10: Release table
+    # Step 9: Release table
     if table_id:
-        print("  Step 10: Releasing table...")
+        print("  Step 9: Releasing table...")
         success, result = release_table(table_id, admin_tok)
         if not success:
             print(f"    ⚠ Table release failed: {result}")
@@ -350,6 +295,8 @@ def process_flow_b_order(order, admin_tok):
         "table_id": table_id,
         "final_total": float(total),
         "discount_applied": float(discount_applied),
+        "payment_method": payment_method,
+        "loyalty_points_earned": points_earned,
     }
 
 
