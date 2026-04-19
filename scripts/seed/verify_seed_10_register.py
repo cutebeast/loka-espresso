@@ -133,7 +133,7 @@ def register_one_customer():
     }
 
 
-def run(n=10):
+def run(n=20):
     print_header(f"STEP 10: Register {n} Customers via OTP API")
     print("API calls: POST /auth/send-otp → POST /auth/verify-otp → POST /auth/register → GET /users/me")
     print()
@@ -187,5 +187,5 @@ def run(n=10):
 
 
 if __name__ == "__main__":
-    n = int(sys.argv[1]) if len(sys.argv) > 1 else 10
+    n = int(sys.argv[1]) if len(sys.argv) > 1 else 20
     run(n)

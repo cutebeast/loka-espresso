@@ -33,8 +33,9 @@ import random
 import requests
 from datetime import datetime, timezone
 
-# Configuration
-API_BASE = os.environ.get("API_BASE", "https://admin.loyaltysystem.uk/api/v1")
+SEED_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, SEED_DIR)
+from shared_config import API_BASE
 
 
 def get_stores(token):
@@ -223,8 +224,8 @@ def place_dinein_order(customer):
     # Step 5: Clear cart
     clear_cart(token)
     
-    # Step 6: Add random items to cart (2-5 items)
-    num_items = random.randint(2, 5)
+    # Step 6: Add random items to cart (1-5 items)
+    num_items = random.randint(1, 5)
     selected_items = random.sample(menu_items, min(num_items, len(menu_items)))
     
     for item in selected_items:

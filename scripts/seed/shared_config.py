@@ -47,6 +47,40 @@ STATE_FILE = os.path.join(SEED_DIR, "seed_state.json")
 # Store IDs available in the system (physical stores, not HQ)
 STORE_IDS = [2, 3, 4, 5, 6]
 
+# ── Date Generation Helpers ───────────────────────────────────────
+# For spreading orders over a date range (e.g., 60 days)
+import random
+from datetime import datetime, timezone, timedelta
+
+def rand_date_within_days(days_back=60, hours_forward=4):
+    """
+    Generate a random datetime within the last N days.
+    Used to spread order data over a historical period.
+
+    Args:
+        days_back: How many days back to go (default: 60)
+        hours_forward: Hours to add for pickup/delivery time (default: 4)
+
+    Returns:
+        datetime with timezone info
+    """
+    now = datetime.now(timezone.utc)
+    # Random date within the last 'days_back' days
+    random_days = random.randint(0, days_back)
+    random_hours = random.randint(0, 23)
+    random_minutes = random.randint(0, 59)
+
+    base_time = now - timedelta(days=random_days, hours=random_hours, minutes=random_minutes)
+    # Add forward hours for pickup/delivery time
+    return base_time + timedelta(hours=random.randint(1, hours_forward))
+
+def rand_past_date(days_back=60):
+    """Generate a random date in the past within specified days."""
+    now = datetime.now(timezone.utc)
+    random_days = random.randint(0, days_back)
+    random_hours = random.randint(0, 23)
+    return now - timedelta(days=random_days, hours=random_hours)
+
 def admin_token():
     """Get admin access token via API (cached for this process).
     On 429 rate limit, waits and retries once."""

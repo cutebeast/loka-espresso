@@ -30,8 +30,9 @@ import random
 import requests
 from datetime import datetime, timezone, timedelta
 
-# Configuration
-API_BASE = os.environ.get("API_BASE", "https://admin.loyaltysystem.uk/api/v1")
+SEED_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, SEED_DIR)
+from shared_config import API_BASE, rand_date_within_days
 
 
 def get_stores(token):
@@ -154,9 +155,8 @@ def place_pickup_order(customer):
     store_id = store["id"]
     store_name = store["name"]
     
-    # Generate pickup time (1-4 hours from now)
-    pickup_hours = random.randint(1, 4)
-    pickup_time = datetime.now(timezone.utc) + timedelta(hours=pickup_hours)
+    # Generate pickup time (spread over last 60 days, 1-4 hours forward)
+    pickup_time = rand_date_within_days(days_back=60, hours_forward=4)
     
     # Step 2: Get menu
     menu_items, err = get_menu(store_id, token)
@@ -168,8 +168,8 @@ def place_pickup_order(customer):
     # Step 3: Clear cart
     clear_cart(token)
     
-    # Step 4: Add random items to cart (2-5 items)
-    num_items = random.randint(2, 5)
+    # Step 4: Add random items to cart (1-5 items)
+    num_items = random.randint(1, 5)
     selected_items = random.sample(menu_items, min(num_items, len(menu_items)))
     
     for item in selected_items:

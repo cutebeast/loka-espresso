@@ -30,8 +30,9 @@ import random
 import requests
 from datetime import datetime, timezone
 
-# Configuration
-API_BASE = os.environ.get("API_BASE", "https://admin.loyaltysystem.uk/api/v1")
+SEED_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, SEED_DIR)
+from shared_config import API_BASE
 
 # Sample KL addresses for delivery (must be dict as API expects)
 SAMPLE_ADDRESSES = [
@@ -179,8 +180,8 @@ def place_delivery_order(customer):
     # Step 3: Clear cart
     clear_cart(token)
     
-    # Step 4: Add random items to cart (2-5 items)
-    num_items = random.randint(2, 5)
+    # Step 4: Add random items to cart (1-5 items)
+    num_items = random.randint(1, 5)
     selected_items = random.sample(menu_items, min(num_items, len(menu_items)))
     
     for item in selected_items:

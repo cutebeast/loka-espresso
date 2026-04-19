@@ -145,8 +145,8 @@ def run():
     print()
     
     # Parse arguments
-    num_customers = 10  # Default: all 10 customers
-    orders_per_customer = 1  # Default: 1 order per customer
+    num_customers = 20  # Default: all 20 customers
+    orders_per_customer = 5  # Default: 5 orders per customer
     
     if len(sys.argv) > 1:
         try:
