@@ -196,6 +196,21 @@ def update_order_status(order_id, new_status, token, note=None):
         return False, str(e)
 
 
+def update_order_payment_status(order_id, payment_status, token):
+    """Update order payment status via API (awards loyalty points)."""
+    try:
+        resp = api_patch(
+            f"/orders/{order_id}/payment-status",
+            token=token,
+            json={"payment_status": payment_status}
+        )
+        if resp.status_code not in (200, 201):
+            return False, f"Payment status update failed: {resp.status_code} - {resp.text[:100]}"
+        return True, resp.json()
+    except Exception as e:
+        return False, str(e)
+
+
 def create_delivery_job(order, token):
     """Create delivery job with 3rd party provider."""
     try:
@@ -297,13 +312,14 @@ def process_flow_a_order(order, admin_tok):
         return False, result
     print(f"    ✓ Payment confirmed: {result.get('status')}")
 
-    # Step 4: Update order status to paid (required before confirmed for Flow A)
-    print("  Step 4: Updating order status to paid...")
-    success, result = update_order_status(order_id, "paid", admin_tok, "Payment received via wallet")
+    # Step 4: Update order payment status to paid (awards loyalty points)
+    print("  Step 4: Updating order payment status to paid...")
+    success, result = update_order_payment_status(order_id, "paid", admin_tok)
     if not success:
-        print(f"    ✗ Status update to paid failed: {result}")
+        print(f"    ✗ Payment status update failed: {result}")
         return False, result
-    print("    ✓ Order status: paid")
+    points_earned = result.get("loyalty_points_earned", 0)
+    print(f"    ✓ Order payment status: paid, Loyalty points earned: {points_earned}")
 
     # Step 5: Status transition to confirmed
     print("  Step 5: Confirming order...")

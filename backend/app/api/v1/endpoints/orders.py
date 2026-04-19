@@ -16,6 +16,7 @@ from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction, LoyaltyTier
 from app.models.notification import Notification
 from app.models.voucher import UserVoucher
 from app.models.reward import UserReward
+from app.models.splash import AppConfig
 from app.schemas.order import OrderCreate, OrderOut, OrderStatusUpdate, OrderListOut
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -671,37 +672,90 @@ async def update_order_payment_status(
 
     old_payment_status = order.payment_status
     order.payment_status = payment_status
+    
+    # For Flow A (pickup/delivery), also update order status to "paid"
+    order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
+    if payment_status == "paid" and order_type in FLOW_A_TYPES:
+        order.status = OrderStatus.paid
 
     # If payment is marked as paid, award loyalty points
+    points_earned = 0
     if payment_status == "paid" and old_payment_status != "paid":
-        # Calculate loyalty points (1 point per RM 1 spent)
-        points = int(order.total)
-        if points > 0:
-            # Get or create loyalty account
-            la_result = await db.execute(
-                select(LoyaltyAccount).where(LoyaltyAccount.user_id == order.user_id)
+        # Get loyalty config
+        cfg_result = await db.execute(select(AppConfig).where(AppConfig.key == "loyalty_points_per_rmse"))
+        cfg_row = cfg_result.scalar_one_or_none()
+        earn_rate = int(cfg_row.value) if cfg_row else 1
+        
+        # Get customer's loyalty account
+        la_result = await db.execute(
+            select(LoyaltyAccount).where(LoyaltyAccount.user_id == order.user_id)
+        )
+        la = la_result.scalar_one_or_none()
+        
+        # Get tier multiplier
+        multiplier = 1.0
+        tier_name = "bronze"
+        if la:
+            tier_name = la.tier
+            tier_result = await db.execute(
+                select(LoyaltyTier).where(func.lower(LoyaltyTier.name) == la.tier.lower())
             )
-            la = la_result.scalar_one_or_none()
+            tier = tier_result.scalar_one_or_none()
+            if tier:
+                multiplier = float(tier.points_multiplier)
+        
+        # Calculate points: amount * earn_rate * multiplier
+        points = int(float(order.total) * earn_rate * multiplier)
+        
+        if points > 0:
             if la:
+                # Update existing loyalty account
                 la.points_balance += points
                 la.total_points_earned += points
-                
-                # Create loyalty transaction
-                lt = LoyaltyTransaction(
-                    user_id=order.user_id,
-                    order_id=order.id,
-                    store_id=order.store_id,
-                    points=points,
-                    type="earn",
-                    description=f"Points earned for order {order.order_number}",
+            else:
+                # Create new loyalty account
+                la = LoyaltyAccount(
+                    user_id=order.user_id, 
+                    points_balance=points, 
+                    tier=tier_name, 
+                    total_points_earned=points
                 )
-                db.add(lt)
-                order.loyalty_points_earned = points
+                db.add(la)
+            
+            # Create loyalty transaction
+            lt = LoyaltyTransaction(
+                user_id=order.user_id,
+                order_id=order.id,
+                store_id=order.store_id,
+                points=points,
+                type="earn",
+                description=f"Points earned for order {order.order_number}",
+            )
+            db.add(lt)
+            order.loyalty_points_earned = points
+            points_earned = points
+            
+            # Check for tier promotion
+            if la:
+                lifetime = la.total_points_earned
+                tier_result = await db.execute(
+                    select(LoyaltyTier).where(func.lower(LoyaltyTier.name) == la.tier.lower())
+                )
+                current_tier = tier_result.scalar_one_or_none()
+                current_tier_name = current_tier.name if current_tier else la.tier
+                
+                # Find new tier based on lifetime points
+                tier_promotion_result = await db.execute(
+                    select(LoyaltyTier).where(LoyaltyTier.min_points <= lifetime).order_by(LoyaltyTier.min_points.desc()).limit(1)
+                )
+                new_tier = tier_promotion_result.scalar_one_or_none()
+                if new_tier and new_tier.name != current_tier_name:
+                    la.tier = new_tier.name
 
     await db.flush()
     return {
         "message": f"Order payment status updated to {payment_status}",
         "order_id": order.id,
         "payment_status": payment_status,
-        "loyalty_points_earned": order.loyalty_points_earned if payment_status == "paid" else 0,
+        "loyalty_points_earned": points_earned,
     }

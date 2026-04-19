@@ -69,93 +69,72 @@
   "order_completion_results": {
     "flow_a": {
       "processed": 16,
-      "successful": 7,
-      "failed": 9,
+      "successful": 0,
+      "failed": 16,
       "orders": [
         {
           "order_id": 8819,
-          "error": "HTTPConnectionPool(host='localhost', port=8888): Max retries exceeded with url: /api/v1/deliveries (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7886dd007830>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8818,
-          "order_number": "ORD-C1962F81",
-          "order_type": "pickup",
-          "final_total": 74.5,
-          "delivery_id": null
+          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8817,
-          "error": "HTTPConnectionPool(host='localhost', port=8888): Max retries exceeded with url: /api/v1/deliveries (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7886dd024740>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8816,
-          "order_number": "ORD-A6A23595",
-          "order_type": "pickup",
-          "final_total": 83.3,
-          "delivery_id": null
+          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8814,
-          "error": "HTTPConnectionPool(host='localhost', port=8888): Max retries exceeded with url: /api/v1/deliveries (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7886dd007620>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8813,
-          "error": "HTTPConnectionPool(host='localhost', port=8888): Max retries exceeded with url: /api/v1/deliveries (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7886dd0246e0>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8812,
-          "order_number": "ORD-6AF75364",
-          "order_type": "pickup",
-          "final_total": 77.7,
-          "delivery_id": null
+          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8811,
-          "order_number": "ORD-B528A34E",
-          "order_type": "pickup",
-          "final_total": 118.4,
-          "delivery_id": null
+          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8810,
-          "error": "HTTPConnectionPool(host='localhost', port=8888): Max retries exceeded with url: /api/v1/deliveries (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7886dd025610>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8809,
-          "order_number": "ORD-5C5ED6CD",
-          "order_type": "pickup",
-          "final_total": 74.6,
-          "delivery_id": null
+          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8808,
-          "error": "HTTPConnectionPool(host='localhost', port=8888): Max retries exceeded with url: /api/v1/deliveries (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7886dd025df0>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8806,
-          "order_number": "ORD-749B25C4",
-          "order_type": "pickup",
-          "final_total": 34.7,
-          "delivery_id": null
+          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8803,
-          "error": "HTTPConnectionPool(host='localhost', port=8888): Max retries exceeded with url: /api/v1/deliveries (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7886dd006810>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8802,
-          "error": "HTTPConnectionPool(host='localhost', port=8888): Max retries exceeded with url: /api/v1/deliveries (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7886dd026bd0>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8801,
-          "order_number": "ORD-6E60DAEF",
-          "order_type": "pickup",
-          "final_total": 42.6,
-          "delivery_id": null
+          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
         },
         {
           "order_id": 8800,
-          "error": "HTTPConnectionPool(host='localhost', port=8888): Max retries exceeded with url: /api/v1/deliveries (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7886dd026de0>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
         }
       ]
     },
