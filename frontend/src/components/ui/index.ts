@@ -7,7 +7,7 @@ export { Input, TextArea } from './Input';
 export { Badge, StatusBadge } from './Badge';
 export { DateFilter, calcDateRange, type DatePreset } from './DateFilter';
 export { FilterBar } from './FilterBar';
-export { DataTable, type ColumnDef } from './DataTable';
+export { DataTable, DataTableExpandableRow, type ColumnDef } from './DataTable';
 export { BarChart, DonutChart, LineChart, SparkLine } from './Charts';
 export { PageHeader } from './PageHeader';
 export { KPICard, KPICards } from './KPICards';

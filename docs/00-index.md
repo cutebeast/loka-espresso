@@ -1,5 +1,5 @@
 # FNB Super App - Documentation Index
-**Last Updated:** 2026-04-19 | **Status:** Order Completion Flows Certified
+**Last Updated:** 2026-04-19 | **Status:** Admin Panel Complete - Ready for PWA Development
 
 ---
 
@@ -41,8 +41,8 @@
 
 | File | Last Updated | Status | Purpose |
 |------|--------------|--------|---------|
-| 01-architecture.md | 2026-04-18 | ✅ Current | System architecture overview |
-| 02-database-schema.md | 2026-04-18 | ✅ Updated | Database schema (52 tables) |
+| 01-architecture.md | 2026-04-19 | ✅ Current | System architecture overview |
+| 02-database-schema.md | 2026-04-19 | ✅ Updated | Database schema (52 tables) |
 | 02a-acl.md | - | ✅ Current | Access control schema |
 | 02b-users.md | - | ✅ Current | User management |
 | 02c-stores.md | - | ✅ Current | Store management |
@@ -51,46 +51,97 @@
 | 02f-loyalty.md | - | ✅ Current | Loyalty system |
 | 02g-marketing.md | - | ✅ Current | Marketing features |
 | 02h-staff.md | - | ✅ Current | Staff management |
-| 02i-social.md | - | ✅ Current | Social features |
+| 02i-social.md | 2026-04-19 | ✅ Updated | Referral system - INVITE FRIENDS planned |
 | 02j-system.md | - | ✅ Current | System config |
-| 03-api-reference.md | 2026-04-19 | ✅ Updated | 198 endpoints (added order confirmation, voucher apply, payment status) |
-| 04-testing-guide.md | 2026-04-19 | ✅ Updated | Testing guide with certified seeds 09-13 |
-| 05-alignment-verification.md | 2026-04-18 | ✅ Updated | Model alignment verified |
-| 06-improvements-applied.md | 2026-04-18 | ✅ Updated | All fixes documented |
-| 07-deployment-guide.md | 2026-04-18 | ✅ **NEW** | Production deployment |
-| 09-troubleshooting.md | 2026-04-18 | ✅ **NEW** | Troubleshooting guide |
-| ui-ux-guidelines.md | 2026-04-18 | ✅ Current | UI/UX standards |
+| 03-api-reference.md | 2026-04-19 | ✅ Updated | 198 endpoints |
+| 04-testing-guide.md | 2026-04-19 | ✅ Updated | All seed scripts certified |
+| 05-alignment-verification.md | 2026-04-19 | ✅ Updated | Model alignment verified |
+| 06-improvements-applied.md | 2026-04-19 | ✅ Updated | Latest UI fixes documented |
+| 07-deployment-guide.md | 2026-04-19 | ✅ Current | Production deployment |
+| 09-troubleshooting.md | 2026-04-19 | ✅ Current | Troubleshooting guide |
+| ui-ux-guidelines.md | 2026-04-19 | ✅ Current | UI/UX standards |
 
 ---
 
-## Key Documentation Updates (Session 6 - Order Completion)
+## Key Documentation Updates (Session 7 - UI Standardization & Final Review)
 
-### Updated Files
-- **03-api-reference.md** - Added new order endpoints (confirm, apply-voucher, payment-status)
-- **04-testing-guide.md** - Added Flow A/B testing examples, certified seed scripts 09-13
+### Frontend Fixes Applied
+1. **PromotionsPage.tsx** - Fixed duplicate "Survey Reports" tab
+2. **PromotionsPage.tsx** - Fixed duplicate Survey Reports view rendering
+3. **SurveyReportPage.tsx** - Updated to use standardized `Select`, `DataTableExpandableRow`, and `Pagination` components
+4. **CustomerDetailPage.tsx** - Updated Orders, Loyalty, Wallet tabs to use `DataTable` and `Pagination` components
+5. **New Component: DataTableExpandableRow** - Added to `/components/ui/DataTable.tsx` for expandable row functionality
 
-### Certified Seed Scripts (09-13)
-All order placement and completion scripts now certified:
-- **verify_seed_09_reset_customers.py** - Customer data reset
-- **verify_seed_10_register.py** - Customer registration via OTP
-- **verify_seed_11_wallet_topup.py** - Wallet topup via payment gateway
-- **verify_seed_12_place_orders_main.py** - Order placement orchestrator
-- **verify_seed_12a_place_orders_pickup.py** - Pickup orders
-- **verify_seed_12b_place_orders_delivery.py** - Delivery orders
-- **verify_seed_12c_place_orders_dinein.py** - Dine-in orders with QR scan
-- **verify_seed_13_order_completion.py** - Main completion orchestrator
-- **verify_seed_13a_flow_pickup_delivery.py** - Flow A (pay → fulfill)
-- **verify_seed_13b_flow_dinein.py** - Flow B (fulfill → pay)
+### Backend Verification
+- ✅ `/wallet/deduct` endpoint exists and working (POST /wallet/deduct)
+- ✅ Customer token resolution working in Flow A/B scripts
+- ✅ Wallet deduction API properly called in order completion flows
+- ✅ All seed scripts using correct tokens for voucher/wallet operations
 
-### New Backend APIs
-- `POST /orders/{id}/confirm` - Dine-in order confirmation
-- `POST /orders/{id}/apply-voucher` - Apply voucher to pending order
-- `PATCH /orders/{id}/payment-status` - Direct payment status update
-- `POST /tables/{id}/release` - Release table after dine-in
-- `GET /admin/users/{id}` - Admin user lookup
+---
 
-### Deprecated Files
-- **seed_full.sql** - Marked as deprecated (use Python seed scripts instead)
+## Post-PWA Development Roadmap
+
+### Phase 1: PWA Core (Current Next Phase)
+- Customer mobile app interface
+- OTP authentication flow
+- Menu browsing and ordering
+- Cart management
+- Wallet top-up via payment gateway
+
+### Phase 2: Invite Friends System (MUST DO after PWA)
+**Status:** Database ready, logic pending
+- Complete referral reward calculation
+- Add referrer reward tracking
+- Implement "INVITE FRIENDS" feature
+- Track successful referrals count
+
+**Required Changes:**
+- Add `referrer_reward_paid` to referrals table
+- Add `referred_user_order_count` to referrals table
+- Add `referral_count` and `referral_earnings` to users table
+- Implement reward distribution logic
+
+### Phase 3: Operational Enhancements (Good to Have)
+| Feature | Priority | Dependencies | Notes |
+|---------|----------|--------------|-------|
+| Push Notifications (Twilio) | Medium | PWA + Twilio account | Use Twilio for SMS + Push |
+| Device Token Management | Low | Push Notifications | Store FCM/APNS tokens |
+| Real-time Order Updates | Low | 3rd party delivery | WebSocket for live tracking |
+| Analytics Events Tracking | Low | Business needs | User behavior analytics |
+| Order Cancellation Reasons | Low | Easy to add | Capture why orders cancelled |
+| Order Instructions Table | Low | Easy to add | Dietary/special instructions |
+
+### Phase 4: Inventory Integration
+**Current Approach:** POS system sync at closing
+- ACL: Only Store Manager/Assistant with "Inventory" permission can update quantities
+- Inventory ledger tracks all changes
+- No auto-deduction (by design - POS owns inventory)
+
+---
+
+## System Status
+
+**Current State:** ✅ ADMIN PANEL COMPLETE
+
+**Admin Panel Completion:** 100%
+
+**Next Phase:** PWA Development
+
+**Last Audit:** 2026-04-19 (Final UI Standardization)
+
+**Verified:**
+- ✅ All frontend pages using standardized UI components
+- ✅ DataTable, Pagination, Select components unified
+- ✅ No duplicate Survey Reports tabs
+- ✅ CustomerDetailPage using proper components
+- ✅ SurveyReportPage using DataTableExpandableRow
+- ✅ Wallet deduction API confirmed working
+- ✅ Customer token flow confirmed working
+- ✅ All seed scripts certified (00-18)
+- ✅ Flow A & B order completion working
+- ✅ 198 API endpoints documented
+- ✅ 52 database tables aligned
 
 ---
 
@@ -123,27 +174,40 @@ All order placement and completion scripts now certified:
 ### "Are models aligned with the database?"
 → [05-alignment-verification.md](05-alignment-verification.md)
 
+### "What's planned after PWA?"
+→ See "Post-PWA Development Roadmap" section above
+
 ---
 
-## System Status
+## Important Notes for PWA Development
 
-**Current State:** ✅ PRODUCTION READY
+### Voucher vs Reward System
+- **Reward:** Customer exchanges loyalty points for reward
+  - Uses `reward_redemption_code` in orders
+  - Deducts points from loyalty account
+  - Creates `user_rewards` record
 
-**Completion:** 100%
+- **Voucher:** Customer claims through promotions/surveys
+  - Uses `voucher_code` in orders
+  - No points deducted
+  - Creates `user_vouchers` record
 
-**Last Audit:** 2026-04-19 (Order Completion Certification)
+### Order Flows
+- **Flow A (Pickup/Delivery):** `pending → paid → confirmed → preparing → ready → completed`
+  - Payment happens first
+  - Wallet deduction at checkout
 
-**Verified:**
-- 4/4 critical backend bugs fixed
-- 6/6 backend enhancements implemented
-- 8/8 frontend native selects fixed
-- 2/2 layout issues resolved
-- 7/5 stats bars implemented (bonus)
-- 27/27 hardcoded colors migrated
-- 20/20 documentation files current
-- 10/10 seed scripts certified (09-13 + helpers)
-- 2/2 order completion flows working (Flow A & B)
+- **Flow B (Dine-in):** `pending → confirmed → preparing → ready → paid → completed`
+  - Confirmation happens first
+  - Payment at end of meal
+
+### Authentication
+- Admin: Email/password login
+- Customers: OTP via phone
+- Staff: Email/password login
 
 ---
 
 **All documentation is up to date and reflects the current system state.**
+
+**Ready for PWA Development Phase.**

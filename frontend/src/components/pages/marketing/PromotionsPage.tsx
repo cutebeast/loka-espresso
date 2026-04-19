@@ -377,23 +377,6 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
             <i className="fas fa-chart-bar" style={{ marginRight: 8 }}></i>
             Survey Reports
           </button>
-          <button
-            onClick={() => setViewMode('reports')}
-            style={{
-              padding: '12px 20px',
-              border: 'none',
-              borderBottom: `2px solid ${currentTab === 'reports' ? THEME.primary : 'transparent'}`,
-              background: 'transparent',
-              color: currentTab === 'reports' ? THEME.primary : THEME.textMuted,
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            <i className="fas fa-chart-bar" style={{ marginRight: 8 }}></i>
-            Survey Reports
-          </button>
         </div>
       )}
 
@@ -517,11 +500,6 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
           token={token}
           onSwitchToPromotions={() => setViewMode('promotions')}
         />
-      )}
-
-      {/* ── SURVEY REPORTS VIEW ── */}
-      {viewMode === 'reports' && (
-        <SurveyReportPage token={token} />
       )}
 
       {/* ── SURVEY REPORTS VIEW ── */}

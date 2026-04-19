@@ -36,6 +36,8 @@ Referral tracking.
 **FKs:** referrer_id → users(id), invitee → users(id)
 **Unique:** code
 
+> **📝 Note**: The "Invite Friends" feature is planned for post-PWA development. Current schema supports basic referral tracking, but reward calculation and distribution logic is pending. See [08-post-pwa-roadmap.md](08-post-pwa-roadmap.md) for details.
+
 ### `feedback`
 Customer feedback. Company-wide (store_id is optional).
 

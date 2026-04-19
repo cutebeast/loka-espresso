@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import type { CustomerDetail, CustomerWalletTransaction, CustomerLoyaltyTransaction, MerchantOrder } from '@/lib/merchant-types';
 import { THEME } from '@/lib/theme';
+import { DataTable, Pagination, ColumnDef } from '@/components/ui';
 
 interface PaginatedResponse<T> {
   total: number;
@@ -122,24 +123,46 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
     { id: 'wallet', label: 'Wallet', icon: 'fas fa-wallet' },
   ];
 
-  function PaginationControls({ page, total, onPageChange }: { page: number; total: number; onPageChange: (p: number) => void }) {
-    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-    return (
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: `1px solid ${THEME.borderLight}`, marginTop: 12 }}>
-        <span style={{ fontSize: 13, color: THEME.textMuted }}>
-          {total > 0 ? `Page ${page} of ${totalPages} (${total} total)` : 'No results'}
-        </span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-            <i className="fas fa-chevron-left"></i> Prev
-          </button>
-          <button className="btn btn-sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
-            Next <i className="fas fa-chevron-right"></i>
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Column definitions for Orders table
+  const ordersColumns: ColumnDef<MerchantOrder>[] = [
+    { key: 'order_number', header: 'Order #' },
+    { key: 'order_type', header: 'Type', render: (o) => <span style={{ textTransform: 'capitalize' }}>{o.order_type?.replace('_', ' ')}</span> },
+    { key: 'total', header: 'Total', render: (o) => formatRM(o.total) },
+    { key: 'status', header: 'Status', render: (o) => (
+      <span className={`badge ${o.status === 'completed' ? 'badge-green' : o.status === 'cancelled' ? 'badge-red' : 'badge-yellow'}`}>
+        {o.status}
+      </span>
+    )},
+    { key: 'created_at', header: 'Date', render: (o) => new Date(o.created_at).toLocaleDateString() },
+  ];
+
+  // Column definitions for Loyalty table
+  const loyaltyColumns: ColumnDef<CustomerLoyaltyTransaction>[] = [
+    { key: 'created_at', header: 'Date', render: (t) => new Date(t.created_at).toLocaleDateString() },
+    { key: 'description', header: 'Description', render: (t) => t.description || t.type },
+    { key: 'type', header: 'Type', render: (t) => (
+      <span className={`badge ${t.type === 'earn' ? 'badge-green' : 'badge-red'}`}>{t.type}</span>
+    )},
+    { key: 'points', header: 'Points', render: (t) => (
+      <span style={{ color: t.type === 'earn' ? '#059669' : '#EF4444', fontWeight: 600 }}>
+        {t.type === 'earn' ? '+' : '-'}{Math.abs(t.points)} pts
+      </span>
+    )},
+  ];
+
+  // Column definitions for Wallet table
+  const walletColumns: ColumnDef<CustomerWalletTransaction>[] = [
+    { key: 'created_at', header: 'Date', render: (t) => new Date(t.created_at).toLocaleDateString() },
+    { key: 'description', header: 'Description', render: (t) => t.description || t.type },
+    { key: 'type', header: 'Type', render: (t) => (
+      <span className={`badge ${t.type === 'top_up' || t.type === 'refund' ? 'badge-green' : 'badge-red'}`}>{t.type}</span>
+    )},
+    { key: 'amount', header: 'Amount', render: (t) => (
+      <span style={{ color: t.type === 'top_up' || t.type === 'refund' ? '#059669' : '#EF4444', fontWeight: 600 }}>
+        {t.type === 'top_up' || t.type === 'refund' ? '+' : '-'}{formatRM(t.amount)}
+      </span>
+    )},
+  ];
 
   if (loading) {
     return (
@@ -254,27 +277,18 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
           <>
             {!orders ? (
               <div style={{ textAlign: 'center', padding: 20, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i></div>
-            ) : orders.items.length === 0 ? (
-              <p style={{ color: THEME.textMuted, textAlign: 'center', padding: 20 }}>No orders</p>
             ) : (
               <>
-                <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid #ECF1F7' }}>
-                  <table>
-                    <thead><tr><th>Order #</th><th>Type</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
-                    <tbody>
-                      {orders.items.map(o => (
-                        <tr key={o.id}>
-                          <td style={{ fontWeight: 500 }}>{o.order_number}</td>
-                          <td style={{ textTransform: 'capitalize' }}>{o.order_type?.replace('_', ' ')}</td>
-                          <td>{formatRM(o.total)}</td>
-                          <td><span className={`badge ${o.status === 'completed' ? 'badge-green' : o.status === 'cancelled' ? 'badge-red' : 'badge-yellow'}`}>{o.status}</span></td>
-                          <td>{new Date(o.created_at).toLocaleDateString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <PaginationControls page={ordersPage} total={orders.total} onPageChange={setOrdersPage} />
+                <DataTable
+                  data={orders.items}
+                  columns={ordersColumns}
+                  emptyMessage="No orders found"
+                />
+                <Pagination
+                  page={ordersPage}
+                  totalPages={Math.max(1, Math.ceil(orders.total / PAGE_SIZE))}
+                  onPageChange={setOrdersPage}
+                />
               </>
             )}
           </>
@@ -284,28 +298,18 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
           <>
             {!loyalty ? (
               <div style={{ textAlign: 'center', padding: 20, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i></div>
-            ) : loyalty.items.length === 0 ? (
-              <p style={{ color: THEME.textMuted, textAlign: 'center', padding: 20 }}>No loyalty transactions</p>
             ) : (
               <>
-                <div style={{ overflowX: 'auto', borderRadius: 12, border: `1px solid ${THEME.borderLight}` }}>
-                  <table>
-                    <thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Points</th></tr></thead>
-                    <tbody>
-                      {loyalty.items.map(t => (
-                        <tr key={t.id}>
-                          <td>{new Date(t.created_at).toLocaleDateString()}</td>
-                          <td>{t.description || t.type}</td>
-                          <td><span className={`badge ${t.type === 'earn' ? 'badge-green' : 'badge-red'}`}>{t.type}</span></td>
-                          <td style={{ color: t.type === 'earn' ? '#059669' : '#EF4444', fontWeight: 600 }}>
-                            {t.type === 'earn' ? '+' : '-'}{Math.abs(t.points)} pts
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <PaginationControls page={loyaltyPage} total={loyalty.total} onPageChange={setLoyaltyPage} />
+                <DataTable
+                  data={loyalty.items}
+                  columns={loyaltyColumns}
+                  emptyMessage="No loyalty transactions found"
+                />
+                <Pagination
+                  page={loyaltyPage}
+                  totalPages={Math.max(1, Math.ceil(loyalty.total / PAGE_SIZE))}
+                  onPageChange={setLoyaltyPage}
+                />
               </>
             )}
           </>
@@ -315,28 +319,18 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
           <>
             {!wallet ? (
               <div style={{ textAlign: 'center', padding: 20, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i></div>
-            ) : wallet.items.length === 0 ? (
-              <p style={{ color: THEME.textMuted, textAlign: 'center', padding: 20 }}>No wallet transactions</p>
             ) : (
               <>
-                <div style={{ overflowX: 'auto', borderRadius: 12, border: `1px solid ${THEME.borderLight}` }}>
-                  <table>
-                    <thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th></tr></thead>
-                    <tbody>
-                      {wallet.items.map(t => (
-                        <tr key={t.id}>
-                          <td>{new Date(t.created_at).toLocaleDateString()}</td>
-                          <td>{t.description || t.type}</td>
-                          <td><span className={`badge ${t.type === 'top_up' || t.type === 'refund' ? 'badge-green' : 'badge-red'}`}>{t.type}</span></td>
-                          <td style={{ color: t.type === 'top_up' || t.type === 'refund' ? '#059669' : '#EF4444', fontWeight: 600 }}>
-                            {t.type === 'top_up' || t.type === 'refund' ? '+' : '-'}{formatRM(t.amount)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <PaginationControls page={walletPage} total={wallet.total} onPageChange={setWalletPage} />
+                <DataTable
+                  data={wallet.items}
+                  columns={walletColumns}
+                  emptyMessage="No wallet transactions found"
+                />
+                <Pagination
+                  page={walletPage}
+                  totalPages={Math.max(1, Math.ceil(wallet.total / PAGE_SIZE))}
+                  onPageChange={setWalletPage}
+                />
               </>
             )}
           </>
