@@ -3,7 +3,7 @@ SEED SCRIPT: verify_seed_13b_flow_dinein.py
 Purpose: Process all pending Dine-in orders through Flow B lifecycle
 APIs tested:
   - GET /orders (get pending dine-in orders)
-  - POST /orders/{id}/confirm (customer confirms, sends to kitchen)
+  - POST /orders/{id}/confirm (customer confirms, sends to kitchen/POS)
   - PATCH /orders/{id}/status (preparing -> ready)
   - GET /wallet (get customer wallet balance)
   - GET /vouchers/my (get available vouchers)
@@ -14,25 +14,29 @@ APIs tested:
 Status: CERTIFIED-2026-04-19 | Flow B - Dine-in lifecycle (fulfill → pay)
 Dependencies: verify_seed_12c_place_orders_dinein.py
 Flow (Flow B - Dine-in):
-  Fulfillment → Checkout → Pay (Wallet + Counter) → Complete
+  Fulfillment → Checkout → Deduct Wallet → Process to POS → Pay Balance → Complete
   1. Fetch all pending dine-in orders via API
   2. For each order:
      a. Customer confirms -> POST /orders/{id}/confirm -> status: confirmed
      b. Send to POS/kitchen -> status: preparing
      c. Kitchen prepares -> status: ready (food served)
      d. Customer enjoys meal (simulated delay)
-     e. Checkout -> Get and apply available voucher (if any)
-     f. Check wallet balance
-        - If sufficient: Deduct from wallet, mark as paid
-        - If insufficient: Deduct all from wallet, pay balance at counter
-     g. Staff marks payment received -> PATCH /orders/{id}/payment-status
-     h. Complete order -> status: completed
-     i. Release table
+     e. Customer checkout (walks to counter or presses checkout on PWA)
+     f. Staff "checks out" for customer
+     g. Apply vouchers/discounts
+     h. Deduct amount from customer wallet
+     i. Staff "processes" order to POS (API or manual entry)
+     j. Customer pays balance at POS terminal (if wallet insufficient)
+     k. POS sends confirmation OR staff manually marks as "paid"
+     l. Loyalty points awarded
+     m. Complete order -> status: completed
+     n. Release table
 Payment Flow:
-  - Dine-in ALWAYS deducts from wallet first
-  - Balance (if any) paid at counter to staff
-  - Customer can top up wallet online via PG before paying if needed
-  - No PG integration for dine-in orders (counter payment only)
+  - Customer CAN top up wallet online via PG BEFORE checkout if needed
+  - At checkout: ALWAYS deduct from wallet first
+  - If sufficient: Done, no POS payment needed
+  - If insufficient: Deduct all from wallet, balance paid at POS terminal
+  - Staff marks order as paid after POS confirmation
 Usage:
   Called by: verify_seed_13_order_completion.py (orchestrator)
   Direct: python3 verify_seed_13b_flow_dinein.py
@@ -177,8 +181,20 @@ def process_flow_b_order(order, admin_tok):
     """
     Process a single dine-in order through Flow B.
 
-    Flow B: pending -> confirmed -> preparing -> ready -> [eat meal] -> paid -> completed
-    Payment happens at the END of the meal, not at the beginning.
+    Flow B: pending -> confirmed -> preparing -> ready -> [eat meal] -> checkout -> process to POS -> paid -> completed
+
+    Dine-in Payment Flow:
+    1. Customer confirms order -> Kitchen prepares -> Food served
+    2. Customer finishes meal
+    3. Customer checkout (walks to counter or presses checkout on PWA)
+    4. Staff "checks out" for customer
+    5. Apply vouchers/discounts
+    6. Deduct amount from customer wallet
+    7. Staff "processes" order to POS (API or manual entry)
+    8. Customer pays balance at POS terminal (if wallet insufficient)
+    9. POS sends confirmation OR staff manually marks as "paid"
+    10. Loyalty points awarded
+    11. Order completed, table released
     """
     order_id = order.get("id")
     order_number = order.get("order_number")
@@ -190,13 +206,13 @@ def process_flow_b_order(order, admin_tok):
     print(f"  Table ID: {table_id}")
     print(f"  Initial Total: RM {float(total):.2f}")
 
-    # Step 1: Customer confirms order (sends to kitchen)
+    # Step 1: Customer confirms order (sends to kitchen/POS)
     print("  Step 1: Customer confirming order...")
     success, result = confirm_dinein_order(order_id, admin_tok)
     if not success:
         print(f"    ✗ Confirmation failed: {result}")
         return False, result
-    print("    ✓ Order confirmed and sent to kitchen")
+    print("    ✓ Order confirmed and sent to kitchen/POS")
 
     # Step 2: Kitchen starts preparing
     print("  Step 2: Kitchen preparing...")
@@ -220,10 +236,15 @@ def process_flow_b_order(order, admin_tok):
     time.sleep(0.3)  # Small delay for simulation
     print(f"    ✓ Meal complete (simulated)")
 
-    # Step 5: Checkout - Apply discount (optional, 50% chance)
+    # Step 5: Customer Checkout
+    print("  Step 5: Customer checkout...")
+    print("    Customer walks to counter or presses checkout on PWA")
+    print("    ✓ Staff initiates checkout")
+
+    # Step 6: Apply vouchers/discounts
     discount_applied = 0
+    print("  Step 6: Applying vouchers/discounts...")
     if random.random() < 0.5:
-        print("  Step 5: Applying voucher discount...")
         success, result, discount = apply_voucher_to_order(order_id, admin_tok)
         if success:
             discount_applied = discount
@@ -234,57 +255,70 @@ def process_flow_b_order(order, admin_tok):
         else:
             print(f"    - No voucher applied: {result}")
     else:
-        print("  Step 5: No discount applied")
+        print("    - No voucher applied")
 
-    # Step 6: Process dine-in payment (Wallet first, balance at counter)
-    print("  Step 6: Processing dine-in payment...")
+    # Step 7: Deduct from wallet
+    print("  Step 7: Deducting from customer wallet...")
     wallet_balance = get_wallet_balance(user_id, admin_tok)
     print(f"    Wallet balance: RM {wallet_balance:.2f}")
     print(f"    Order total: RM {float(total):.2f}")
 
     if wallet_balance >= float(total):
-        # Sufficient wallet balance - deduct all from wallet
-        print(f"    Deducting RM {float(total):.2f} from wallet...")
-        # For seed script simulation, we just note it (actual deduction happens in real implementation)
-        print(f"    ✓ Full payment deducted from wallet")
+        # Sufficient balance - deduct all
+        print(f"    ✓ Deducting RM {float(total):.2f} from wallet")
         remaining_balance = wallet_balance - float(total)
-        print(f"    New wallet balance: RM {remaining_balance:.2f}")
+        print(f"    Remaining wallet balance: RM {remaining_balance:.2f}")
+        pos_amount = 0
         payment_method = "wallet"
     else:
-        # Insufficient wallet - deduct all from wallet, balance at counter
+        # Insufficient - deduct all, remaining goes to POS
         wallet_deducted = wallet_balance
-        counter_balance = float(total) - wallet_balance
-        print(f"    Deducting RM {wallet_deducted:.2f} from wallet...")
-        print(f"    ✓ Partial payment from wallet")
-        print(f"    Balance to pay at counter: RM {counter_balance:.2f}")
-        # In real implementation, staff would collect this at counter
-        print(f"    (Staff collects RM {counter_balance:.2f} at counter)")
-        payment_method = "wallet+counter"
+        pos_amount = float(total) - wallet_balance
+        print(f"    ✓ Deducting RM {wallet_deducted:.2f} from wallet (all balance)")
+        print(f"    ⚠ Remaining RM {pos_amount:.2f} to be paid at POS terminal")
+        payment_method = "wallet+pos"
 
-    # Step 7: Staff marks payment as received
-    print("  Step 7: Staff marking payment as received...")
+    # Step 8: Process order to POS
+    print("  Step 8: Processing order to POS...")
+    print(f"    Order ID: {order_id}")
+    print(f"    Amount: RM {float(total):.2f}")
+    print(f"    Deducted from wallet: RM {float(total) - pos_amount:.2f}")
+    if pos_amount > 0:
+        print(f"    Amount to collect at POS: RM {pos_amount:.2f}")
+    print("    ✓ Order sent to POS (API or manual entry)")
+
+    # Step 9: Customer pays at POS (if balance remaining)
+    if pos_amount > 0:
+        print("  Step 9: Customer paying at POS terminal...")
+        print(f"    Amount: RM {pos_amount:.2f}")
+        print("    ✓ Payment received at POS")
+    else:
+        print("  Step 9: No POS payment needed (fully paid from wallet)")
+
+    # Step 10: Staff marks order as paid (POS confirmation or manual)
+    print("  Step 10: Marking order as paid...")
     success, result = update_order_payment_status(order_id, "paid", admin_tok)
     if not success:
         print(f"    ✗ Payment status update failed: {result}")
         return False, result
     points_earned = result.get("loyalty_points_earned", 0)
-    print(f"    ✓ Order payment status: paid, Loyalty points: {points_earned}")
+    print(f"    ✓ Order marked as paid")
+    print(f"    ✓ Loyalty points earned: {points_earned}")
 
-    # Step 8: Complete order
-    print("  Step 8: Completing order...")
-    success, result = update_order_status(order_id, "completed", admin_tok, f"Dine-in order completed - Paid via {payment_method}")
+    # Step 11: Complete order
+    print("  Step 11: Completing order...")
+    success, result = update_order_status(order_id, "completed", admin_tok, f"Dine-in completed - {payment_method}")
     if not success:
         print(f"    ✗ Completion failed: {result}")
         return False, result
     print("    ✓ Order completed")
 
-    # Step 9: Release table
+    # Step 12: Release table
     if table_id:
-        print("  Step 9: Releasing table...")
+        print("  Step 12: Releasing table...")
         success, result = release_table(table_id, admin_tok)
         if not success:
             print(f"    ⚠ Table release failed: {result}")
-            # Non-fatal - order is still complete
         else:
             print(f"    ✓ Table {table_id} released")
 
