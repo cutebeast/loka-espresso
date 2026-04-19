@@ -147,10 +147,14 @@ def run():
     print("  STEP 16: Place Discounted Orders (3 per customer)")
     print("="*60 + "\n")
 
-    state = load_state()
-    if not state:
-        print("[ERROR] No state found.")
+    # Load full state from file
+    import json, os
+    SEED_STATE_FILE = os.path.join(SEED_DIR, "seed_state.json")
+    if not os.path.exists(SEED_STATE_FILE):
+        print("[ERROR] No state file found.")
         return
+    with open(SEED_STATE_FILE) as f:
+        state = json.load(f)
 
     customers = state.get("customers", [])
     redeemed_rewards = {r["user_id"]: r["rewards"] for r in state.get("redeemed_rewards", [])}
@@ -180,7 +184,8 @@ def run():
 
     # Save to state
     state["discounted_orders"] = discounted_orders
-    save_state(state)
+    with open(SEED_STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2)
     
     print("\n[SUMMARY]")
     print(f"  Total successful: {success_count}")
