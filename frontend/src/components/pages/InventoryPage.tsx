@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { StoreSelector, Select, DateFilter, Pagination } from '@/components/ui';
+import { StoreSelector, Select, FilterSelect, DateFilter, Pagination } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantInventoryItem, MerchantInventoryCategory, MerchantStore } from '@/lib/merchant-types';
 
@@ -570,9 +570,9 @@ function InventoryLedgerView({ storeId, token, stores }: { storeId: string; toke
           fromDate={fromDate}
           toDate={toDate}
         />
-        <Select
+        <FilterSelect
           value={movementType}
-          onChange={(val) => setMovementType(val)}
+          onChange={setMovementType}
           options={[
             { value: '', label: 'All Movements' },
             { value: 'received', label: 'Received' },
@@ -582,6 +582,8 @@ function InventoryLedgerView({ storeId, token, stores }: { storeId: string; toke
             { value: 'cycle_count', label: 'Cycle Count' },
             { value: 'adjustment', label: 'Adjustment' },
           ]}
+          icon="fa-filter"
+          placeholder="All Movements"
         />
       </div>
 
