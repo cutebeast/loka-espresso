@@ -97,6 +97,18 @@ def confirm_dinein_order(order_id, token):
         return False, str(e)
 
 
+def get_wallet_balance(user_id, token):
+    """Get customer's wallet balance."""
+    try:
+        resp = api_get("/wallet", token=token)
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("balance", 0)
+        return 0
+    except Exception:
+        return 0
+
+
 def update_order_status(order_id, new_status, token, note=None):
     """Update order status via API."""
     try:

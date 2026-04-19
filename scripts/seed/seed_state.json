@@ -1,187 +1,247 @@
 {
   "customers": [
     {
-      "user_id": 2135,
-      "name": "Zara Wong",
-      "email": "zara.wong.43d00a@test.my",
-      "phone": "+60116fc52b9",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTM1IiwiZXhwIjoxNzc3MTc3ODA5LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiMzYzNmI1NTktNDYwYy00ZGI2LWFjNmMtMjhjMmQxZTA2NjZlIn0.ge-ygM7Yt6jsuaiqEvkg81nh0M0I4w2sFOuXLaahIg8",
-      "address": "91, Jalan Cheras, 55000 Kuala Lumpur",
+      "user_id": 2140,
+      "name": "Zara Ho",
+      "email": "zara.ho.95282c@test.my",
+      "phone": "+60115b74467",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQwIiwiZXhwIjoxNzc3MTg4NTM1LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiZjFlZGQ3YjktNGUwYS00YjhiLWE4NzAtOWVhOWUwMjVlMGZiIn0.gWuU8TOJ2o7D4r_BR-Of8Btqzz4aUCP55mnRtDOb-Nw",
+      "address": "98, Jalan Bukit Bintang, 55000 Kuala Lumpur",
       "topups_done": true,
       "topup_count": 1,
       "total_topup": 0.0,
-      "topup_amount": 100,
-      "pg_charge_id": "CHG-5E105E616BB4"
+      "topup_amount": 400,
+      "pg_charge_id": "CHG-3F096095C102"
     },
     {
-      "user_id": 2136,
-      "name": "Wei Sim",
-      "email": "wei.sim.6d4455@test.my",
-      "phone": "+601185506a7",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTM2IiwiZXhwIjoxNzc3MTc3ODExLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiM2Y0MTcwMjUtYTdkYS00ZTgyLTk3NWItNmE4YzFlODEyZWZlIn0.Wsy4PaNGBi9D-k2bxgglRaO6DyDuzfTbzrMj1DqZ2Qc",
-      "address": "176, Jalan Sultan, 55000 Kuala Lumpur",
+      "user_id": 2141,
+      "name": "Jade Wong",
+      "email": "jade.wong.969d9a@test.my",
+      "phone": "+60119a362e1",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQxIiwiZXhwIjoxNzc3MTg4NTM2LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiY2UxYzIwYzQtZDg0MC00ZjI5LWE1ODEtZGVjMWZlYjQyZDU0In0.P_piMB2phqtybPm2C606yB-RP_0z4YRT5CkuExz9vD4",
+      "address": "90, Jalan Ampang, 55000 Kuala Lumpur",
+      "topups_done": true,
+      "topup_count": 1,
+      "total_topup": 0.0,
+      "topup_amount": 450,
+      "pg_charge_id": "CHG-E5779A9FC495"
+    },
+    {
+      "user_id": 2142,
+      "name": "Kai Yap",
+      "email": "kai.yap.23362f@test.my",
+      "phone": "+6011783b739",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQyIiwiZXhwIjoxNzc3MTg4NTM3LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiYjMwYmNkODgtNGE1MC00MGQ2LTlkNjEtZTFkODExYWMzY2YyIn0.ZhbbAbFLZzopp7L9aH06s1DYRoIX_ciUD-BoDxZ2S7o",
+      "address": "98, Jalan Alor, 55000 Kuala Lumpur",
+      "topups_done": true,
+      "topup_count": 1,
+      "total_topup": 0.0,
+      "topup_amount": 250,
+      "pg_charge_id": "CHG-C4D1383DA852"
+    },
+    {
+      "user_id": 2143,
+      "name": "Sofia Teo",
+      "email": "sofia.teo.daf6a7@test.my",
+      "phone": "+6011bc6c87a",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQzIiwiZXhwIjoxNzc3MTg4NTM4LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiYmEyNGRjNzAtMGMxMi00ZDY1LTgyMzQtZGNiNDRkYzJjOTM0In0.kqjFemE3iz1-jES-ovCo7Hv3ybxljpvi3LwzYoAngis",
+      "address": "191, Jalan Bukit Bintang, 55000 Kuala Lumpur",
       "topups_done": true,
       "topup_count": 1,
       "total_topup": 0.0,
       "topup_amount": 350,
-      "pg_charge_id": "CHG-DBDEB73B065A"
+      "pg_charge_id": "CHG-A2105CCF42FF"
     },
     {
-      "user_id": 2137,
-      "name": "Isla Yap",
-      "email": "isla.yap.e5b516@test.my",
-      "phone": "+601164c66b1",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTM3IiwiZXhwIjoxNzc3MTc3ODEzLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiYjNjZmQyMGYtODVkYS00NjIwLWJhOTUtMDA3ODQ0YzdjOWQ1In0.eZ1iAgrLNeSkC1mKw9nC3gb6Egdry6MpT7OxTAcUAhs",
-      "address": "93, Jalan Ampang, 55000 Kuala Lumpur",
+      "user_id": 2144,
+      "name": "Ahmad Chua",
+      "email": "ahmad.chua.843bf5@test.my",
+      "phone": "+6011b87d123",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQ0IiwiZXhwIjoxNzc3MTg4NTQwLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiODhhZDNmMWQtNzI5MS00OWRmLThlNTEtNzEwODA5YTMwNzdmIn0.J1Coiy9gO1Oik7M8HDSWNES9bCy46cErZ086paGoMGg",
+      "address": "70, Jalan Alor, 55000 Kuala Lumpur",
       "topups_done": true,
       "topup_count": 1,
       "total_topup": 0.0,
-      "topup_amount": 500,
-      "pg_charge_id": "CHG-9C24A8DB40F3"
+      "topup_amount": 400,
+      "pg_charge_id": "CHG-E7BC44454001"
     },
     {
-      "user_id": 2138,
-      "name": "Luna Chen",
-      "email": "luna.chen.0fdd0b@test.my",
-      "phone": "+6011d73cc0a",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTM4IiwiZXhwIjoxNzc3MTc3ODE1LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiZGFhZmMwNzEtZDEyYi00MGY3LWI5MmMtMmVkYmI3YTJmMDBkIn0.64FSVILBnk7VR_S1J7CKZSQHWCPh6CIZXlsnUPm80V0",
-      "address": "78, Jalan Sultan, 55000 Kuala Lumpur",
-      "topups_done": true,
-      "topup_count": 1,
-      "total_topup": 0.0,
-      "topup_amount": 350,
-      "pg_charge_id": "CHG-73357365DEE7"
-    },
-    {
-      "user_id": 2139,
-      "name": "Sarah Ang",
-      "email": "sarah.ang.44574a@test.my",
-      "phone": "+601171faf3f",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTM5IiwiZXhwIjoxNzc3MTc3ODE3LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiZmFkNGQ4NWEtNjRkMS00YmRmLWFlZGQtOGY2Y2RhMWE1ZGUxIn0.ogTHEN4QmyFLoUuczDANRurw3dIovKqMac5nghnonlo",
-      "address": "121, Jalan Alor, 55000 Kuala Lumpur",
+      "user_id": 2145,
+      "name": "Jade Chua",
+      "email": "jade.chua.bb7b46@test.my",
+      "phone": "+6011f8179e2",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQ1IiwiZXhwIjoxNzc3MTg4NTQxLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiYzFhNTU1MmEtNTZlNS00MDBjLTg3OTUtNTE1NDQ3ZmJlNWRjIn0.nx0o15HrO_Uk0nj2pDn023vLeuFM5ANf2nBHHihnVuk",
+      "address": "27, Jalan Ampang, 55000 Kuala Lumpur",
       "topups_done": true,
       "topup_count": 1,
       "total_topup": 0.0,
       "topup_amount": 100,
-      "pg_charge_id": "CHG-12AA6E9D828C"
+      "pg_charge_id": "CHG-5DD22D6C053A"
+    },
+    {
+      "user_id": 2146,
+      "name": "Nina Lim",
+      "email": "nina.lim.9c957e@test.my",
+      "phone": "+6011cfdcc62",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQ2IiwiZXhwIjoxNzc3MTg4NTQyLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiMTBjMjZhYTktMjFjNS00NDM2LWE1OTctZTAyZDQ5N2NiZWZhIn0.0m6mhARJFp7lEvZNbOVNxmUNBjrZT8zFTplX_OQDrZ8",
+      "address": "85, Jalan Sultan, 55000 Kuala Lumpur",
+      "topups_done": true,
+      "topup_count": 1,
+      "total_topup": 0.0,
+      "topup_amount": 400,
+      "pg_charge_id": "CHG-10970E3AB907"
+    },
+    {
+      "user_id": 2147,
+      "name": "Mia Yap",
+      "email": "mia.yap.581df4@test.my",
+      "phone": "+6011acad15d",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQ3IiwiZXhwIjoxNzc3MTg4NTQzLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiZGRlZjVhMzItZGVkZi00OTlhLWEwMTgtYTUwZjk0NzdlMjE0In0.R0EUEy5YE399BsXLbQEf2gl_PcuBjsW3GgL6im4ibQU",
+      "address": "121, Jalan Ampang, 55000 Kuala Lumpur",
+      "topups_done": true,
+      "topup_count": 1,
+      "total_topup": 0.0,
+      "topup_amount": 100,
+      "pg_charge_id": "CHG-4EEA01603DFF"
+    },
+    {
+      "user_id": 2148,
+      "name": "Dan Goh",
+      "email": "dan.goh.25e2f0@test.my",
+      "phone": "+6011dcf7714",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQ4IiwiZXhwIjoxNzc3MTg4NTQ1LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiZjg0MmY4ODAtMGIzOC00NWRkLWE5MGYtNWRjMjY2NWMxZWM2In0.yNRSCKFrANzvxS_qjgifM_pebXfJKt3m-XqZUvkvIuk",
+      "address": "181, Jalan Bukit Bintang, 55000 Kuala Lumpur",
+      "topups_done": true,
+      "topup_count": 1,
+      "total_topup": 0.0,
+      "topup_amount": 150,
+      "pg_charge_id": "CHG-81FC2BE4CB41"
+    },
+    {
+      "user_id": 2149,
+      "name": "Wei Tan",
+      "email": "wei.tan.497323@test.my",
+      "phone": "+6011254394c",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQ5IiwiZXhwIjoxNzc3MTg4NTQ2LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiMmU5MmRhMDEtODMyOC00OGMzLTkwZTAtMDkyNWNhMDUxMmY3In0.YyyWpd0kvUGALVFmjcPcXtqmtSd-sUk4k9ZEu0QvRtM",
+      "address": "199, Jalan Cheras, 55000 Kuala Lumpur",
+      "topups_done": true,
+      "topup_count": 1,
+      "total_topup": 0.0,
+      "topup_amount": 150,
+      "pg_charge_id": "CHG-C82E7B107D03"
     }
   ],
   "order_completion_results": {
     "flow_a": {
-      "processed": 16,
+      "processed": 0,
       "successful": 0,
-      "failed": 16,
-      "orders": [
-        {
-          "order_id": 8819,
-          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8818,
-          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8817,
-          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8816,
-          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8814,
-          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8813,
-          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8812,
-          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8811,
-          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8810,
-          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8809,
-          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8808,
-          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8806,
-          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8803,
-          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8802,
-          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8801,
-          "error": "Status update failed: 400 - {\"detail\":\"pickup orders must be paid before confirmation. Current status: pending\"}"
-        },
-        {
-          "order_id": 8800,
-          "error": "Status update failed: 400 - {\"detail\":\"delivery orders must be paid before confirmation. Current status: pending\"}"
-        }
-      ]
+      "failed": 0,
+      "orders": []
     },
     "flow_b": {
-      "processed": 5,
-      "successful": 5,
+      "processed": 10,
+      "successful": 10,
       "failed": 0,
       "orders": [
         {
-          "order_id": 8820,
-          "order_number": "ORD-A3A15670",
+          "order_id": 8847,
+          "order_number": "ORD-74717233",
           "order_type": "dine_in",
-          "table_id": 144,
-          "final_total": 131.3,
-          "discount_applied": 0.0
+          "table_id": 155,
+          "final_total": 128.5,
+          "discount_applied": 0.0,
+          "payment_method": "wallet+pos",
+          "loyalty_points_earned": 128
         },
         {
-          "order_id": 8815,
-          "order_number": "ORD-495BE06D",
+          "order_id": 8844,
+          "order_number": "ORD-FFAD1F49",
+          "order_type": "dine_in",
+          "table_id": 167,
+          "final_total": 58.5,
+          "discount_applied": 0.0,
+          "payment_method": "wallet+pos",
+          "loyalty_points_earned": 58
+        },
+        {
+          "order_id": 8839,
+          "order_number": "ORD-F0189FDB",
+          "order_type": "dine_in",
+          "table_id": 160,
+          "final_total": 49.7,
+          "discount_applied": 0.0,
+          "payment_method": "wallet+pos",
+          "loyalty_points_earned": 49
+        },
+        {
+          "order_id": 8836,
+          "order_number": "ORD-F836B346",
+          "order_type": "dine_in",
+          "table_id": 167,
+          "final_total": 69.6,
+          "discount_applied": 0.0,
+          "payment_method": "wallet+pos",
+          "loyalty_points_earned": 69
+        },
+        {
+          "order_id": 8833,
+          "order_number": "ORD-48CE6A7F",
+          "order_type": "dine_in",
+          "table_id": 150,
+          "final_total": 84.2,
+          "discount_applied": 0.0,
+          "payment_method": "wallet+pos",
+          "loyalty_points_earned": 84
+        },
+        {
+          "order_id": 8832,
+          "order_number": "ORD-C7CBF57C",
+          "order_type": "dine_in",
+          "table_id": 157,
+          "final_total": 121.4,
+          "discount_applied": 0.0,
+          "payment_method": "wallet+pos",
+          "loyalty_points_earned": 121
+        },
+        {
+          "order_id": 8829,
+          "order_number": "ORD-9F7A046C",
           "order_type": "dine_in",
           "table_id": 162,
-          "final_total": 140.5,
-          "discount_applied": 0.0
+          "final_total": 144.7,
+          "discount_applied": 0.0,
+          "payment_method": "wallet+pos",
+          "loyalty_points_earned": 144
         },
         {
-          "order_id": 8807,
-          "order_number": "ORD-336BCC92",
-          "order_type": "dine_in",
-          "table_id": 151,
-          "final_total": 189.3,
-          "discount_applied": 0.0
-        },
-        {
-          "order_id": 8805,
-          "order_number": "ORD-08ED8387",
-          "order_type": "dine_in",
-          "table_id": 156,
-          "final_total": 51.6,
-          "discount_applied": 0.0
-        },
-        {
-          "order_id": 8804,
-          "order_number": "ORD-2520CC06",
+          "order_id": 8823,
+          "order_number": "ORD-2055916A",
           "order_type": "dine_in",
           "table_id": 153,
-          "final_total": 170.5,
-          "discount_applied": 0.0
+          "final_total": 59.5,
+          "discount_applied": 0.0,
+          "payment_method": "wallet+pos",
+          "loyalty_points_earned": 59
+        },
+        {
+          "order_id": 8822,
+          "order_number": "ORD-BDFAB7E2",
+          "order_type": "dine_in",
+          "table_id": 150,
+          "final_total": 145.3,
+          "discount_applied": 0.0,
+          "payment_method": "wallet+pos",
+          "loyalty_points_earned": 145
+        },
+        {
+          "order_id": 8821,
+          "order_number": "ORD-80EE491E",
+          "order_type": "dine_in",
+          "table_id": 141,
+          "final_total": 58.5,
+          "discount_applied": 0.0,
+          "payment_method": "wallet+pos",
+          "loyalty_points_earned": 58
         }
       ]
     }
