@@ -35,7 +35,7 @@ from datetime import datetime, timezone
 
 SEED_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SEED_DIR)
-from shared_config import API_BASE
+from shared_config import API_BASE, rand_date_within_days
 
 
 def get_stores(token):
@@ -145,17 +145,20 @@ def add_to_cart(store_id, item_id, quantity, token):
         return False, str(e)
 
 
-def place_order(store_id, table_id, token):
+def place_order(store_id, table_id, token, created_at=None):
     """Place dine-in order."""
     try:
+        payload = {
+            "order_type": "dine_in",
+            "store_id": store_id,
+            "table_id": table_id,
+        }
+        if created_at:
+            payload["created_at"] = created_at.isoformat()
         resp = requests.post(
             f"{API_BASE}/orders",
             headers={"Authorization": f"Bearer {token}"},
-            json={
-                "order_type": "dine_in",
-                "store_id": store_id,
-                "table_id": table_id,
-            },
+            json=payload,
             timeout=10
         )
         if resp.status_code not in (200, 201):
@@ -234,8 +237,9 @@ def place_dinein_order(customer):
         if not success:
             return {"success": False, "error": f"Cart add failed for {item['name']}: {err}"}
     
-    # Step 7: Place order
-    order, err = place_order(store_id, table_id, token)
+    # Step 7: Place order with date spreading
+    order_date = rand_date_within_days(days_back=60, hours_forward=4)
+    order, err = place_order(store_id, table_id, token, created_at=order_date)
     if err:
         return {"success": False, "error": f"Order failed: {err}"}
     

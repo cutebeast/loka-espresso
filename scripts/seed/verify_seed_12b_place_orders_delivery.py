@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 
 SEED_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SEED_DIR)
-from shared_config import API_BASE
+from shared_config import API_BASE, rand_date_within_days
 
 # Sample KL addresses for delivery (must be dict as API expects)
 SAMPLE_ADDRESSES = [
@@ -116,17 +116,20 @@ def add_to_cart(store_id, item_id, quantity, token):
         return False, str(e)
 
 
-def place_order(store_id, delivery_address, token):
+def place_order(store_id, delivery_address, token, created_at=None):
     """Place delivery order."""
     try:
+        payload = {
+            "order_type": "delivery",
+            "store_id": store_id,
+            "delivery_address": delivery_address,
+        }
+        if created_at:
+            payload["created_at"] = created_at.isoformat()
         resp = requests.post(
             f"{API_BASE}/orders",
             headers={"Authorization": f"Bearer {token}"},
-            json={
-                "order_type": "delivery",
-                "store_id": store_id,
-                "delivery_address": delivery_address,
-            },
+            json=payload,
             timeout=10
         )
         if resp.status_code not in (200, 201):
@@ -190,8 +193,9 @@ def place_delivery_order(customer):
         if not success:
             return {"success": False, "error": f"Cart add failed for {item['name']}: {err}"}
     
-    # Step 5: Place order
-    order, err = place_order(store_id, delivery_address, token)
+    # Step 5: Place order with date spreading
+    order_date = rand_date_within_days(days_back=60, hours_forward=4)
+    order, err = place_order(store_id, delivery_address, token, created_at=order_date)
     if err:
         return {"success": False, "error": f"Order failed: {err}"}
     
