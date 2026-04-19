@@ -657,14 +657,21 @@ async def update_order_payment_status(
     """
     Update order payment_status directly.
     This is used for Flow B (dine-in) where payment happens at the end of the meal.
+    Can be triggered by:
+    - Admin/HQ staff
+    - Store staff with access to the order's store
+    - External POS system (via webhook)
     """
-    if not (is_global_admin(user) or is_hq(user)):
-        raise HTTPException(status_code=403, detail="Only admins can update payment status")
-
+    # Check if user has permission to update this order's payment
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Check access - admin, hq, or store staff with access to this store
+    has_access = is_global_admin(user) or is_hq(user) or await can_access_store(user, order.store_id, db)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="No access to update payment for this order")
 
     payment_status = req.get("payment_status")
     if not payment_status:
@@ -758,4 +765,232 @@ async def update_order_payment_status(
         "order_id": order.id,
         "payment_status": payment_status,
         "loyalty_points_earned": points_earned,
+    }
+
+
+# ============================================================================
+# DELIVERY PROVIDER WEBHOOK
+# ============================================================================
+
+@router.post("/{order_id}/delivery-webhook")
+async def delivery_provider_webhook(
+    order_id: int,
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Webhook endpoint for 3rd party Delivery Provider to notify of delivery status.
+    This is called by the delivery provider when:
+    - Driver picks up order (status: picked_up)
+    - Order is out for delivery (status: out_for_delivery)
+    - Delivery is completed (status: delivered)
+    - Delivery fails (status: failed)
+    
+    Authentication: Uses API key in header (X-API-Key) - to be implemented per provider
+    """
+    # TODO: Add API key validation here
+    
+    # Get the order
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Only delivery orders can use this webhook
+    order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
+    if order_type != "delivery":
+        raise HTTPException(status_code=400, detail="This webhook is only for delivery orders")
+    
+    delivery_status = payload.get("status")
+    delivery_id = payload.get("delivery_id")
+    driver_info = payload.get("driver", {})
+    
+    if not delivery_status:
+        raise HTTPException(status_code=400, detail="status is required")
+    
+    # Map delivery provider status to order status
+    status_mapping = {
+        "picked_up": "out_for_delivery",
+        "out_for_delivery": "out_for_delivery",
+        "delivered": "completed",
+        "failed": "ready",  # Return to ready state if delivery fails
+        "cancelled": "ready",
+    }
+    
+    new_status = status_mapping.get(delivery_status)
+    if not new_status:
+        return {
+            "message": f"Status '{delivery_status}' received but no action taken",
+            "order_id": order_id,
+        }
+    
+    # Update order status
+    old_status = order.status.value if hasattr(order.status, 'value') else str(order.status)
+    
+    # Validate transition
+    if new_status != old_status:
+        order.status = new_status
+        
+        # Add status history
+        history = OrderStatusHistory(
+            order_id=order.id,
+            status=new_status,
+            note=f"Delivery webhook: {delivery_status} (Driver: {driver_info.get('name', 'Unknown')})",
+        )
+        db.add(history)
+        
+        # Send notification to customer
+        if delivery_status == "delivered":
+            notif = Notification(
+                user_id=order.user_id,
+                title="Order Delivered",
+                body=f"Your order {order.order_number} has been delivered!",
+                type="order",
+            )
+            db.add(notif)
+        elif delivery_status == "out_for_delivery":
+            notif = Notification(
+                user_id=order.user_id,
+                title="Out for Delivery",
+                body=f"Your order {order.order_number} is on the way!",
+                type="order",
+            )
+            db.add(notif)
+    
+    await db.flush()
+    
+    return {
+        "message": f"Delivery status updated to {delivery_status}",
+        "order_id": order_id,
+        "order_status": new_status,
+        "delivery_id": delivery_id,
+    }
+
+
+# ============================================================================
+# EXTERNAL POS WEBHOOK
+# ============================================================================
+
+@router.post("/{order_id}/pos-webhook")
+async def external_pos_webhook(
+    order_id: int,
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Webhook endpoint for External POS system to notify of order status and payment.
+    This is called by the external POS when:
+    - Order is confirmed at POS (status: confirmed)
+    - Kitchen starts preparing (status: preparing)
+    - Food is ready (status: ready)
+    - Payment is received (payment_status: paid)
+    
+    For dine-in orders, the POS handles the kitchen workflow and payment.
+    """
+    # TODO: Add API key validation here for POS authentication
+    
+    # Get the order
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    pos_status = payload.get("status")
+    payment_status = payload.get("payment_status")
+    pos_order_id = payload.get("pos_order_id")
+    
+    updated_fields = []
+    
+    # Handle status update from POS
+    if pos_status:
+        valid_statuses = ["confirmed", "preparing", "ready", "completed", "cancelled"]
+        if pos_status in valid_statuses:
+            old_status = order.status.value if hasattr(order.status, 'value') else str(order.status)
+            if pos_status != old_status:
+                order.status = pos_status
+                updated_fields.append(f"status: {pos_status}")
+                
+                # Add status history
+                history = OrderStatusHistory(
+                    order_id=order.id,
+                    status=pos_status,
+                    note=f"POS webhook update (POS Order: {pos_order_id})",
+                )
+                db.add(history)
+    
+    # Handle payment status update from POS
+    if payment_status == "paid" and order.payment_status != "paid":
+        order.payment_status = "paid"
+        updated_fields.append("payment_status: paid")
+        
+        # Award loyalty points (same logic as payment-status endpoint)
+        cfg_result = await db.execute(select(AppConfig).where(AppConfig.key == "loyalty_points_per_rmse"))
+        cfg_row = cfg_result.scalar_one_or_none()
+        earn_rate = int(cfg_row.value) if cfg_row else 1
+        
+        la_result = await db.execute(
+            select(LoyaltyAccount).where(LoyaltyAccount.user_id == order.user_id)
+        )
+        la = la_result.scalar_one_or_none()
+        
+        multiplier = 1.0
+        tier_name = "bronze"
+        if la:
+            tier_name = la.tier
+            tier_result = await db.execute(
+                select(LoyaltyTier).where(func.lower(LoyaltyTier.name) == la.tier.lower())
+            )
+            tier = tier_result.scalar_one_or_none()
+            if tier:
+                multiplier = float(tier.points_multiplier)
+        
+        points = int(float(order.total) * earn_rate * multiplier)
+        
+        if points > 0:
+            if la:
+                la.points_balance += points
+                la.total_points_earned += points
+            else:
+                la = LoyaltyAccount(
+                    user_id=order.user_id,
+                    points_balance=points,
+                    tier=tier_name,
+                    total_points_earned=points
+                )
+                db.add(la)
+            
+            lt = LoyaltyTransaction(
+                user_id=order.user_id,
+                order_id=order.id,
+                store_id=order.store_id,
+                points=points,
+                type="earn",
+                description=f"Points earned for order {order.order_number} (via POS)",
+            )
+            db.add(lt)
+            order.loyalty_points_earned = points
+            updated_fields.append(f"loyalty_points: {points}")
+            
+            # Check for tier promotion
+            if la:
+                lifetime = la.total_points_earned
+                tier_result = await db.execute(
+                    select(LoyaltyTier).where(func.lower(LoyaltyTier.name) == la.tier.lower())
+                )
+                current_tier = tier_result.scalar_one_or_none()
+                current_tier_name = current_tier.name if current_tier else la.tier
+                
+                tier_promotion_result = await db.execute(
+                    select(LoyaltyTier).where(LoyaltyTier.min_points <= lifetime).order_by(LoyaltyTier.min_points.desc()).limit(1)
+                )
+                new_tier = tier_promotion_result.scalar_one_or_none()
+                if new_tier and new_tier.name != current_tier_name:
+                    la.tier = new_tier.name
+    
+    await db.flush()
+    
+    return {
+        "message": "POS webhook processed",
+        "order_id": order_id,
+        "updates": updated_fields,
     }
