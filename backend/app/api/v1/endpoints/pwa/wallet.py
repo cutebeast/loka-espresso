@@ -116,7 +116,7 @@ async def deduct_wallet(req: WalletDeduct, user: User = Depends(get_current_user
     await db.execute(
         text("""
             INSERT INTO wallet_transactions (wallet_id, user_id, amount, type, description, balance_after, created_at)
-            VALUES (:wid, :uid, :amt, 'deduction', :desc, :bal_after, NOW())
+            VALUES (:wid, :uid, :amt, 'payment', :desc, :bal_after, NOW())
         """),
         {"wid": wallet.id, "uid": user.id, "amt": req.amount,
          "desc": req.description, "bal_after": new_balance}
