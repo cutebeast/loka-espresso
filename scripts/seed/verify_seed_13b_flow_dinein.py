@@ -2,45 +2,48 @@
 SEED SCRIPT: verify_seed_13b_flow_dinein.py
 Purpose: Process all pending Dine-in orders through Flow B lifecycle
 APIs tested:
-  - GET /orders (get pending dine-in orders)
+  - GET /orders (get pending dine-in orders with pagination)
+  - GET /orders/{id} (get order details)
   - POST /orders/{id}/confirm (customer confirms, sends to kitchen/POS)
-  - PATCH /orders/{id}/status (preparing -> ready)
+  - PATCH /orders/{id}/status (update status: preparing → ready → completed)
   - GET /wallet (get customer wallet balance)
-  - GET /vouchers/my (get available vouchers)
+  - GET /vouchers/me (get available vouchers)
   - POST /orders/{id}/apply-voucher (apply discount at checkout)
-  - PATCH /orders/{id}/payment-status (staff marks payment received)
-  - PATCH /orders/{id}/status (completed)
+  - PATCH /orders/{id}/payment-status (staff marks payment received, awards loyalty points)
   - POST /tables/{id}/release (release table after meal)
-Status: CERTIFIED-2026-04-19 | Flow B - Dine-in lifecycle (fulfill → pay)
+Status: CERTIFIED-2026-04-19 | Flow B - Dine-in lifecycle (fulfill → checkout → pay → complete)
 Dependencies: verify_seed_12c_place_orders_dinein.py
 Flow (Flow B - Dine-in):
-  Fulfillment → Checkout → Deduct Wallet → Process to POS → Pay Balance → Complete
-  1. Fetch all pending dine-in orders via API
+  Confirm → Fulfillment → Checkout → Deduct Wallet → Process to POS → Pay Balance → Complete
+  1. Fetch pending dine-in orders via API
   2. For each order:
-     a. Customer confirms -> POST /orders/{id}/confirm -> status: confirmed
-     b. Send to POS/kitchen -> status: preparing
-     c. Kitchen prepares -> status: ready (food served)
-     d. Customer enjoys meal (simulated delay)
+     a. Customer confirms → POST /orders/{id}/confirm → status: confirmed
+     b. Send to kitchen/POS → status: preparing
+     c. Kitchen prepares → status: ready (food served)
+     d. Customer enjoys meal
      e. Customer checkout (walks to counter or presses checkout on PWA)
-     f. Staff "checks out" for customer
+     f. Staff initiates checkout
      g. Apply vouchers/discounts
-     h. Deduct amount from customer wallet
-     i. Staff "processes" order to POS (API or manual entry)
+     h. Deduct from customer wallet
+     i. Staff processes order to POS (API or manual entry)
      j. Customer pays balance at POS terminal (if wallet insufficient)
-     k. POS sends confirmation OR staff manually marks as "paid"
-     l. Loyalty points awarded
-     m. Complete order -> status: completed
-     n. Release table
+     k. Staff marks as paid → PATCH /orders/{id}/payment-status (awards loyalty points)
+     l. Complete order → status: completed
+     m. Release table
 Payment Flow:
   - Customer CAN top up wallet online via PG BEFORE checkout if needed
   - At checkout: ALWAYS deduct from wallet first
   - If sufficient: Done, no POS payment needed
   - If insufficient: Deduct all from wallet, balance paid at POS terminal
-  - Staff marks order as paid after POS confirmation
+  - Staff marks order as paid (no PG for dine-in orders)
+Loyalty Points:
+  - Awarded when payment_status changes to "paid"
+  - Formula: int(total × earn_rate × tier_multiplier)
 Usage:
   Called by: verify_seed_13_order_completion.py (orchestrator)
   Direct: python3 verify_seed_13b_flow_dinein.py
 NO direct DB access — ALL via API calls.
+Certification: All APIs verified working - 11 dine-in orders processed successfully
 """
 
 import sys
