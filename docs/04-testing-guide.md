@@ -1,6 +1,6 @@
 # FNB Super-App — Test Credentials & Verification Guide
 
-> Last updated: 2026-04-19 (session 5) | Base Seed Steps 00-08 Complete | Customer Journey Seeds 09-13 Certified | Order Completion Flows A/B Implemented
+> Last updated: 2026-04-19 (session 5) | Base Seed Steps 00-08 Complete | Customer Journey Seeds 09-17 Certified | Order Completion Flows A/B Implemented
 
 ## Test Accounts
 
@@ -287,6 +287,26 @@ curl -s -X POST -H "Authorization: Bearer $CT" -H "Content-Type: application/jso
 # Expected: { "message": "Voucher applied successfully", "discount_applied": 15.50, "new_total": 139.50 }
 ```
 
+### 19. Claim Vouchers and Redeem Rewards
+```bash
+# Claim vouchers from surveys
+cd /root/fnb-super-app/scripts/seed
+python3 verify_seed_14_claim_vouchers.py
+
+# Redeem rewards using loyalty points
+python3 verify_seed_15_redeem_rewards.py
+```
+
+### 20. Place and Complete Discounted Orders
+```bash
+# Place orders applying one discount per order (checks strict 1 discount constraint)
+cd /root/fnb-super-app/scripts/seed
+python3 verify_seed_16_place_discounted_orders.py
+
+# Complete the discounted orders
+python3 verify_seed_17_complete_discounted_orders.py
+```
+
 ## Common API Base URLs
 
 | Purpose | URL |
@@ -318,7 +338,7 @@ docker exec -it fnb-db psql -U fnb -d fnb  # Database direct access
 7. **Customer PWA** at app.loyaltysystem.uk is Phase 2 version — needs rebuild for new wallet API
 8. **seed_08 not fully idempotent** — promotions seed creates duplicate surveys/banners on re-run without reset. Run `seed_00_full_reset.py` first for clean state.
 9. **seed_full.sql is DEPRECATED** — Uses old `role` string column instead of `role_id` integer FK. Use Python seed scripts instead.
-10. **Customer Journey Seeds (09-13)** — Available for full end-to-end testing (register, wallet topup, place orders, order completion with Flow A/B). See scripts/seed/ directory.
+10. **Customer Journey Seeds (09-17)** — Available for full end-to-end testing (register, wallet topup, place orders, order completion with Flow A/B, claiming/redeeming discounts). See scripts/seed/ directory.
 11. **Order Completion Flows** — Two distinct flows implemented: Flow A (Pickup/Delivery: pay → fulfill) and Flow B (Dine-in: fulfill → pay). Orchestrated via verify_seed_13_order_completion.py.
 
 ## Phase History
@@ -330,6 +350,6 @@ docker exec -it fnb-db psql -U fnb -d fnb  # Database direct access
 | Pre-Phase 3 | ✅ Complete | Cross-store validation, audit log hooks, timezone-aware datetimes |
 | Marketing | ✅ Complete | 6 admin pages, 5 new PWA endpoint files, 5 migrations, customer wallet infrastructure (catalog→instance pattern, per-instance codes, expiry, scan, cron) |
 | Base Seed | ✅ Complete | 9 seed scripts (00-08): full reset, stores, universal menu, inventory, staff, config, rewards, vouchers, surveys + banners |
-| Customer Journey | ✅ Complete | 5 certified seed scripts (09-13): customer registration, wallet topup, place orders, order completion with Flow A/B orchestration |
+| Customer Journey | ✅ Complete | 9 certified seed scripts (09-17): registration, wallet topup, order placement/completion (Flow A/B), claiming vouchers, redeeming rewards, and discounted orders |
 | Order Flows | ✅ Complete | Two distinct completion flows: Flow A (Pickup/Delivery: pay→fulfill) and Flow B (Dine-in: fulfill→pay), voucher application, table release |
 | Phase 3 | 🔲 Pending | Customer PWA rebuild, Stripe, Twilio, WhatsApp, FCM |

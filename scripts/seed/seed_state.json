@@ -245,5 +245,259 @@
         }
       ]
     }
-  }
+  },
+  "claimed_vouchers": [
+    {
+      "user_id": 2140,
+      "name": "Zara Ho",
+      "vouchers": [
+        {
+          "source": "survey",
+          "source_name": "Customer Satisfaction Survey",
+          "voucher_code": "SURVEY-REWARD-5-95B634F9"
+        }
+      ]
+    },
+    {
+      "user_id": 2141,
+      "name": "Jade Wong",
+      "vouchers": [
+        {
+          "source": "survey",
+          "source_name": "Store Experience Review",
+          "voucher_code": "SURVEY-REWARD-COFFEE-E38B3D3E"
+        }
+      ]
+    },
+    {
+      "user_id": 2142,
+      "name": "Kai Yap",
+      "vouchers": [
+        {
+          "source": "survey",
+          "source_name": "Customer Satisfaction Survey",
+          "voucher_code": "SURVEY-REWARD-5-CB0C59D5"
+        }
+      ]
+    },
+    {
+      "user_id": 2143,
+      "name": "Sofia Teo",
+      "vouchers": [
+        {
+          "source": "survey",
+          "source_name": "Customer Satisfaction Survey",
+          "voucher_code": "SURVEY-REWARD-5-0DE31CD1"
+        }
+      ]
+    },
+    {
+      "user_id": 2144,
+      "name": "Ahmad Chua",
+      "vouchers": [
+        {
+          "source": "survey",
+          "source_name": "Store Experience Review",
+          "voucher_code": "SURVEY-REWARD-COFFEE-608853FA"
+        }
+      ]
+    },
+    {
+      "user_id": 2145,
+      "name": "Jade Chua",
+      "vouchers": [
+        {
+          "source": "survey",
+          "source_name": "Store Experience Review",
+          "voucher_code": "SURVEY-REWARD-COFFEE-E1D59D2B"
+        }
+      ]
+    },
+    {
+      "user_id": 2146,
+      "name": "Nina Lim",
+      "vouchers": [
+        {
+          "source": "survey",
+          "source_name": "Customer Satisfaction Survey",
+          "voucher_code": "SURVEY-REWARD-5-2437060B"
+        }
+      ]
+    },
+    {
+      "user_id": 2147,
+      "name": "Mia Yap",
+      "vouchers": [
+        {
+          "source": "survey",
+          "source_name": "Customer Satisfaction Survey",
+          "voucher_code": "SURVEY-REWARD-5-1866148F"
+        }
+      ]
+    },
+    {
+      "user_id": 2148,
+      "name": "Dan Goh",
+      "vouchers": [
+        {
+          "source": "survey",
+          "source_name": "Store Experience Review",
+          "voucher_code": "SURVEY-REWARD-COFFEE-8C005460"
+        }
+      ]
+    },
+    {
+      "user_id": 2149,
+      "name": "Wei Tan",
+      "vouchers": [
+        {
+          "source": "survey",
+          "source_name": "Customer Satisfaction Survey",
+          "voucher_code": "SURVEY-REWARD-5-1F23B201"
+        }
+      ]
+    }
+  ],
+  "redeemed_rewards": [
+    {
+      "user_id": 2140,
+      "name": "Zara Ho",
+      "rewards": [
+        {
+          "reward_id": 102,
+          "name": "RM5 Off Your Order",
+          "redemption_code": "RWD-102-8E7A2FF7",
+          "points_cost": 100
+        },
+        {
+          "reward_id": 99,
+          "name": "Free Croissant",
+          "redemption_code": "RWD-99-66DC0AB9",
+          "points_cost": 120
+        }
+      ]
+    },
+    {
+      "user_id": 2142,
+      "name": "Kai Yap",
+      "rewards": [
+        {
+          "reward_id": 98,
+          "name": "Free Caramel Latte",
+          "redemption_code": "RWD-98-F36FA656",
+          "points_cost": 150
+        }
+      ]
+    },
+    {
+      "user_id": 2144,
+      "name": "Ahmad Chua",
+      "rewards": [
+        {
+          "reward_id": 99,
+          "name": "Free Croissant",
+          "redemption_code": "RWD-99-86AE60E3",
+          "points_cost": 120
+        },
+        {
+          "reward_id": 102,
+          "name": "RM5 Off Your Order",
+          "redemption_code": "RWD-102-42AF5A56",
+          "points_cost": 100
+        }
+      ]
+    },
+    {
+      "user_id": 2146,
+      "name": "Nina Lim",
+      "rewards": [
+        {
+          "reward_id": 99,
+          "name": "Free Croissant",
+          "redemption_code": "RWD-99-CB42BB23",
+          "points_cost": 120
+        }
+      ]
+    },
+    {
+      "user_id": 2147,
+      "name": "Mia Yap",
+      "rewards": [
+        {
+          "reward_id": 98,
+          "name": "Free Caramel Latte",
+          "redemption_code": "RWD-98-4B1B6C6D",
+          "points_cost": 150
+        }
+      ]
+    },
+    {
+      "user_id": 2148,
+      "name": "Dan Goh",
+      "rewards": [
+        {
+          "reward_id": 103,
+          "name": "Mystery Reward",
+          "redemption_code": "RWD-103-ED0E844B",
+          "points_cost": 250
+        }
+      ]
+    }
+  ],
+  "discounted_orders": [
+    {
+      "order_id": 8851,
+      "order_number": "ORD-15ECA916",
+      "user_id": 2140,
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQwIiwiZXhwIjoxNzc3MTg4NTM1LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiZjFlZGQ3YjktNGUwYS00YjhiLWE4NzAtOWVhOWUwMjVlMGZiIn0.gWuU8TOJ2o7D4r_BR-Of8Btqzz4aUCP55mnRtDOb-Nw",
+      "store_id": 3,
+      "order_type": "pickup",
+      "discount_used": "Reward: Free Croissant (RWD-99-66DC0AB9)"
+    },
+    {
+      "order_id": 8852,
+      "order_number": "ORD-7396EF88",
+      "user_id": 2142,
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQyIiwiZXhwIjoxNzc3MTg4NTM3LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiYjMwYmNkODgtNGE1MC00MGQ2LTlkNjEtZTFkODExYWMzY2YyIn0.ZhbbAbFLZzopp7L9aH06s1DYRoIX_ciUD-BoDxZ2S7o",
+      "store_id": 4,
+      "order_type": "pickup",
+      "discount_used": "Reward: Free Caramel Latte (RWD-98-F36FA656)"
+    },
+    {
+      "order_id": 8853,
+      "order_number": "ORD-D8DF5518",
+      "user_id": 2144,
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQ0IiwiZXhwIjoxNzc3MTg4NTQwLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiODhhZDNmMWQtNzI5MS00OWRmLThlNTEtNzEwODA5YTMwNzdmIn0.J1Coiy9gO1Oik7M8HDSWNES9bCy46cErZ086paGoMGg",
+      "store_id": 6,
+      "order_type": "pickup",
+      "discount_used": "Reward: Free Croissant (RWD-99-86AE60E3)"
+    },
+    {
+      "order_id": 8854,
+      "order_number": "ORD-AE05FFB7",
+      "user_id": 2146,
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQ2IiwiZXhwIjoxNzc3MTg4NTQyLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiMTBjMjZhYTktMjFjNS00NDM2LWE1OTctZTAyZDQ5N2NiZWZhIn0.0m6mhARJFp7lEvZNbOVNxmUNBjrZT8zFTplX_OQDrZ8",
+      "store_id": 4,
+      "order_type": "pickup",
+      "discount_used": "Reward: Free Croissant (RWD-99-CB42BB23)"
+    },
+    {
+      "order_id": 8855,
+      "order_number": "ORD-57127A4D",
+      "user_id": 2147,
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQ3IiwiZXhwIjoxNzc3MTg4NTQzLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiZGRlZjVhMzItZGVkZi00OTlhLWEwMTgtYTUwZjk0NzdlMjE0In0.R0EUEy5YE399BsXLbQEf2gl_PcuBjsW3GgL6im4ibQU",
+      "store_id": 5,
+      "order_type": "pickup",
+      "discount_used": "Reward: Free Caramel Latte (RWD-98-4B1B6C6D)"
+    },
+    {
+      "order_id": 8856,
+      "order_number": "ORD-C3F4706B",
+      "user_id": 2148,
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMTQ4IiwiZXhwIjoxNzc3MTg4NTQ1LCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiZjg0MmY4ODAtMGIzOC00NWRkLWE5MGYtNWRjMjY2NWMxZWM2In0.yNRSCKFrANzvxS_qjgifM_pebXfJKt3m-XqZUvkvIuk",
+      "store_id": 2,
+      "order_type": "pickup",
+      "discount_used": "Reward: Mystery Reward (RWD-103-ED0E844B)"
+    }
+  ]
 }
