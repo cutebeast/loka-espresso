@@ -1,171 +1,237 @@
 """
 SEED SCRIPT: verify_seed_12a_place_orders_pickup.py
-Purpose: Place PICKUP orders only for customers (1-5 orders per customer)
-         Orders placed in pending status (NO payment, NO completion)
-         ~30% voucher, ~70% no discount
-APIs tested: GET /stores/0/menu (global), POST /orders, POST /cart/items
-Status: CERTIFIED-2026-04-18 | Pickup orders only
-Dependencies: verify_seed_11_wallet_topup.py (customers need topped-up wallets)
-Flow: For each customer, place 1-5 pickup orders spread over 2 months
-      1. Get customer from state
-      2. Pick random store
-      3. Set pickup time (now + 1-4 hours)
-      4. Apply voucher if available (~30%)
-      5. Place order via helper
-Idempotency: Skips if orders already placed for customer
+Purpose: Place PICKUP order for a single customer (self-contained, no helpers)
+APIs tested: 
+  - GET /stores (get all stores)
+  - GET /stores/{id}/menu (get menu)
+  - DELETE /cart (clear cart)
+  - POST /cart/items (add items to cart)
+  - POST /orders (place order with pickup_time)
+Status: PENDING VERIFICATION
+Dependencies: verify_seed_10_register.py, verify_seed_11_wallet_topup.py
+Flow:
+  1. Fetch stores from API
+  2. Customer selects store and pickup time
+  3. Customer selects 2-5 random items from menu
+  4. Clear cart
+  5. Add items to cart
+  6. Place pickup order
+Usage:
+  echo '{"user_id": 1, "name": "Test", "token": "xxx"}' | python3 verify_seed_12a_place_orders_pickup.py
+  OR
+  python3 verify_seed_12a_place_orders_pickup.py '{"user_id": 1, "name": "Test", "token": "xxx"}'
 NO direct DB inserts — ALL via API calls.
 """
 
 import sys
 import os
+import json
 import random
-import time
+import requests
 from datetime import datetime, timezone, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-SEED_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, SEED_DIR)
-
-from shared_config import (
-    api_get, load_state, save_state, print_header, STORE_IDS,
-)
-from helper_seed_place_order import get_global_menu_items, place_order_for_customer
+# Configuration
+API_BASE = os.environ.get("API_BASE", "https://admin.loyaltysystem.uk/api/v1")
 
 
-def get_customer_vouchers(customer):
+def get_stores(token):
+    """Get all stores from API."""
+    try:
+        resp = requests.get(
+            f"{API_BASE}/stores",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10
+        )
+        if resp.status_code != 200:
+            return [], f"GET /stores failed: {resp.status_code}"
+        return resp.json(), None
+    except Exception as e:
+        return [], str(e)
+
+
+def get_menu(store_id, token):
+    """Get menu items for a store."""
+    try:
+        resp = requests.get(
+            f"{API_BASE}/stores/{store_id}/menu",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10
+        )
+        if resp.status_code != 200:
+            return [], f"GET /stores/{store_id}/menu failed: {resp.status_code}"
+        
+        items = []
+        for cat in resp.json().get("categories", []):
+            for item in cat.get("items", []):
+                if item.get("is_available", True):
+                    items.append({
+                        "item_id": item["id"],
+                        "name": item["name"],
+                        "base_price": item.get("base_price", 0),
+                    })
+        return items, None
+    except Exception as e:
+        return [], str(e)
+
+
+def clear_cart(token):
+    """Clear customer's cart."""
+    try:
+        resp = requests.delete(
+            f"{API_BASE}/cart",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10
+        )
+        return resp.status_code in (200, 204)
+    except Exception:
+        return False
+
+
+def add_to_cart(store_id, item_id, quantity, token):
+    """Add item to cart."""
+    try:
+        resp = requests.post(
+            f"{API_BASE}/cart/items",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"store_id": store_id, "item_id": item_id, "quantity": quantity},
+            timeout=10
+        )
+        if resp.status_code not in (200, 201):
+            return False, f"{resp.status_code} {resp.text[:100]}"
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+def place_order(store_id, pickup_time, token):
+    """Place pickup order."""
+    try:
+        resp = requests.post(
+            f"{API_BASE}/orders",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "order_type": "pickup",
+                "store_id": store_id,
+                "pickup_time": pickup_time.isoformat(),
+            },
+            timeout=10
+        )
+        if resp.status_code not in (200, 201):
+            return None, f"{resp.status_code} {resp.text[:100]}"
+        return resp.json(), None
+    except Exception as e:
+        return None, str(e)
+
+
+def place_pickup_order(customer):
+    """
+    Place a pickup order for a customer.
+    
+    Args:
+        customer: dict with user_id, name, token
+    
+    Returns:
+        dict with order details or error
+    """
     token = customer.get("token")
     if not token:
-        return []
-    resp = api_get("/vouchers/me", token=token)
-    if resp.status_code == 200:
-        vouchers = resp.json()
-        return [v["code"] for v in vouchers if v.get("status") == "available" and v.get("code")]
-    return []
-
-
-def place_pickup_orders_for_customer(args):
-    customer, menu_items, orders_count = args
-    results = []
-    errors = []
-    now = datetime.now(timezone.utc)
-    two_months_ago = now - timedelta(days=60)
-
-    available_vouchers = get_customer_vouchers(customer)
-
-    for i in range(orders_count):
-        days_ago = two_months_ago + timedelta(days=(i / orders_count) * 60)
-        pickup_time = days_ago + timedelta(hours=random.randint(1, 4))
-        
-        fulfillment_store = random.choice(STORE_IDS)
-        
-        rand = random.random()
-        voucher_code = None
-        
-        if rand < 0.30 and available_vouchers:
-            voucher_code = random.choice(available_vouchers)
-
-        order_id, total, points_earned, order_data = place_order_for_customer(
-            customer=customer,
-            menu_items=menu_items,
-            fulfillment_store_id=fulfillment_store,
-            order_type="pickup",
-            pickup_time=pickup_time,
-            created_at=days_ago,
-            voucher_code=voucher_code,
-            pay_and_complete=False,
-        )
-
-        if order_id:
-            results.append({
-                "order_id": order_id,
-                "user_id": customer.get("user_id"),
-                "store_id": fulfillment_store,
-                "order_type": "pickup",
-                "total": total,
-                "pickup_time": pickup_time.isoformat(),
-                "discount_type": "voucher" if voucher_code else "none",
-                "voucher_code": voucher_code,
-            })
-        else:
-            errors.append(f"Pickup order {i+1} failed: order_id={order_id}")
-
-        time.sleep(0.05)
-
-    customer_total = sum(r.get("total", 0) for r in results)
-    voucher_orders = sum(1 for r in results if r.get("discount_type") == "voucher")
-    no_discount = sum(1 for r in results if r.get("discount_type") == "none")
-
+        return {"success": False, "error": "No token"}
+    
+    # Step 1: Fetch stores from API
+    stores, err = get_stores(token)
+    if err:
+        return {"success": False, "error": f"Failed to fetch stores: {err}"}
+    if not stores:
+        return {"success": False, "error": "No stores found"}
+    
+    # Filter for physical stores (skip HQ with id=0)
+    physical_stores = [s for s in stores if s.get("id") != 0]
+    if not physical_stores:
+        return {"success": False, "error": "No physical stores found"}
+    
+    # Select random store
+    store = random.choice(physical_stores)
+    store_id = store["id"]
+    store_name = store["name"]
+    
+    # Generate pickup time (1-4 hours from now)
+    pickup_hours = random.randint(1, 4)
+    pickup_time = datetime.now(timezone.utc) + timedelta(hours=pickup_hours)
+    
+    # Step 2: Get menu
+    menu_items, err = get_menu(store_id, token)
+    if err:
+        return {"success": False, "error": f"Menu fetch failed: {err}"}
+    if not menu_items:
+        return {"success": False, "error": "No menu items found"}
+    
+    # Step 3: Clear cart
+    clear_cart(token)
+    
+    # Step 4: Add random items to cart (2-5 items)
+    num_items = random.randint(2, 5)
+    selected_items = random.sample(menu_items, min(num_items, len(menu_items)))
+    
+    for item in selected_items:
+        quantity = random.randint(1, 2)
+        success, err = add_to_cart(store_id, item["item_id"], quantity, token)
+        if not success:
+            return {"success": False, "error": f"Cart add failed for {item['name']}: {err}"}
+    
+    # Step 5: Place order
+    order, err = place_order(store_id, pickup_time, token)
+    if err:
+        return {"success": False, "error": f"Order failed: {err}"}
+    
     return {
-        **customer,
-        "orders_placed": len(results),
-        "total_spent": round(customer_total, 2),
-        "voucher_orders": voucher_orders,
-        "no_discount_orders": no_discount,
-        "pickup_orders": len(results),
-        "orders": results,
-        "errors": errors,
+        "success": True,
+        "order_id": order.get("id"),
+        "order_number": order.get("order_number"),
+        "order_type": "pickup",
+        "store_id": store_id,
+        "store_name": store_name,
+        "pickup_time": pickup_time.isoformat(),
+        "items_count": len(selected_items),
+        "subtotal": order.get("subtotal", 0),
     }
 
 
 def run():
-    print_header("STEP 12a: Place PICKUP Orders (1-5 per customer, 2-month spread)")
-    print("  Pickup orders only - NO payment or completion")
-    print("  ~30% voucher, ~70% no discount")
+    """Main function - run with customer data passed via argv or stdin."""
     print()
-
-    customers = load_state("customers")
-    if not customers:
-        print("[ERROR] No customers found. Run verify_seed_10_register.py first.")
-        return []
-
-    print("[*] Fetching global menu from HQ (store_id=0)...")
-    menu_items = get_global_menu_items()
-    if not menu_items:
-        print("[ERROR] Failed to fetch global menu items.")
-        return []
-    print(f"    Got {len(menu_items)} menu items")
+    print("=" * 60)
+    print("  STEP 12a: Place PICKUP Order")
+    print("=" * 60)
     print()
-
-    customer_args = []
-    for c in customers:
-        orders_count = random.randint(1, 5)
-        customer_args.append((c, menu_items, orders_count))
-
-    print(f"[*] Placing pickup orders for {len(customers)} customers in parallel...")
-    all_results = []
-    completed = 0
-
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(place_pickup_orders_for_customer, args): args[0]["user_id"] for args in customer_args}
-
-        for future in as_completed(futures):
-            user_id = futures[future]
-            completed += 1
-            try:
-                result = future.result()
-                all_results.append(result)
-                error_str = f" [{len(result.get('errors', []))} ERRORS]" if result.get('errors') else ""
-                print(f"  [{completed}/{len(customers)}] {result['name']} (ID={user_id}): {result['orders_placed']} pickup orders, "
-                      f"RM {result['total_spent']:.2f}{error_str}")
-            except Exception as e:
-                print(f"  [{completed}/{len(customers)}] user_id={user_id}: FAILED - {e}")
-
-    save_state("customers", all_results)
-    pickup_orders = [r for c in all_results for r in c.get("orders", [])]
-    save_state("pickup_orders", pickup_orders)
-
-    total_orders = sum(c.get("orders_placed", 0) for c in all_results)
-    total_spent = sum(c.get("total_spent", 0) for c in all_results)
-    total_voucher = sum(c.get("voucher_orders", 0) for c in all_results)
-    total_no_disc = sum(c.get("no_discount_orders", 0) for c in all_results)
-
+    
+    # Read customer data
+    if len(sys.argv) > 1:
+        customer = json.loads(sys.argv[1])
+    else:
+        customer = json.loads(sys.stdin.read())
+    
+    print(f"Customer: {customer.get('name')} (ID={customer.get('user_id')})")
+    print(f"Order Type: PICKUP")
     print()
-    print(f"[SUMMARY] {total_orders} pickup orders placed by {len(customers)} customers")
-    print(f"  Total spent: RM {total_spent:.2f}")
-    print(f"  Discount breakdown: {total_voucher} voucher, {total_no_disc} no discount")
-    print(f"  All orders PLACED and PENDING payment (no points awarded yet)")
-
-    return all_results
+    
+    # Place order
+    result = place_pickup_order(customer)
+    
+    if result["success"]:
+        print(f"✓ Order placed!")
+        print(f"  Order #{result['order_number']} (ID={result['order_id']})")
+        print(f"  Store: {result['store_name']}")
+        print(f"  Items: {result['items_count']}")
+        print(f"  Pickup: {result['pickup_time'][:16]}")
+        print(f"  Total: RM {result['subtotal']:.2f}")
+        
+        # Output JSON for orchestrator
+        print("\n--- RESULT ---")
+        print(json.dumps(result))
+        sys.exit(0)
+    else:
+        print(f"✗ Failed: {result['error']}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
