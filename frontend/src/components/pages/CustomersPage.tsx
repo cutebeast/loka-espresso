@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
-import { FilterSelect, StoreSelector, DateFilter, calcDateRange, type DatePreset } from '@/components/ui';
+import { FilterSelect, StoreSelector, DateFilter, calcDateRange, type DatePreset, Pagination } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { CustomerItem } from '@/lib/merchant-types';
 
@@ -252,89 +252,7 @@ export default function CustomersPage({ token, stores, selectedStore, onStoreCha
         </div>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: 12,
-          marginTop: 20,
-          padding: '12px',
-          background: THEME.bgCard,
-          borderRadius: THEME.radius.md,
-          border: `1px solid ${THEME.border}`,
-        }}>
-          <button
-            className="btn btn-sm"
-            disabled={page <= 1 || loading}
-            onClick={() => fetchCustomers(page - 1)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: THEME.radius.md,
-              border: `1px solid ${THEME.border}`,
-              background: page <= 1 ? THEME.bgMuted : THEME.bgCard,
-              color: page <= 1 ? THEME.textMuted : THEME.textPrimary,
-              cursor: page <= 1 ? 'not-allowed' : 'pointer',
-              opacity: page <= 1 ? 0.6 : 1,
-            }}
-          >
-            <i className="fas fa-chevron-left"></i> Previous
-          </button>
-
-          <div style={{ display: 'flex', gap: 4 }}>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              // Show pages around current page
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (page <= 3) {
-                pageNum = i + 1;
-              } else if (page >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = page - 2 + i;
-              }
-
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => fetchCustomers(pageNum)}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: THEME.radius.md,
-                    border: `1px solid ${page === pageNum ? THEME.primary : THEME.border}`,
-                    background: page === pageNum ? THEME.primary : THEME.bgCard,
-                    color: page === pageNum ? THEME.textLight : THEME.textPrimary,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            className="btn btn-sm"
-            disabled={page >= totalPages || loading}
-            onClick={() => fetchCustomers(page + 1)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: THEME.radius.md,
-              border: `1px solid ${THEME.border}`,
-              background: page >= totalPages ? THEME.bgMuted : THEME.bgCard,
-              color: page >= totalPages ? THEME.textMuted : THEME.textPrimary,
-              cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-              opacity: page >= totalPages ? 0.6 : 1,
-            }}
-          >
-            Next <i className="fas fa-chevron-right"></i>
-          </button>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} onPageChange={fetchCustomers} loading={loading} />
     </div>
   );
 }

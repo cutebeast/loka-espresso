@@ -10,3 +10,4 @@ export { DataTable, type ColumnDef } from './DataTable';
 export { BarChart, DonutChart, LineChart, SparkLine } from './Charts';
 export { PageHeader } from './PageHeader';
 export { KPICard, KPICards } from './KPICards';
+export { Pagination } from './Pagination';

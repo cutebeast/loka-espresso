@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { StoreSelector, Select, DateFilter } from '@/components/ui';
+import { StoreSelector, Select, DateFilter, Pagination } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantInventoryItem, MerchantInventoryCategory, MerchantStore } from '@/lib/merchant-types';
 
@@ -680,56 +680,7 @@ function InventoryLedgerView({ storeId, token, stores }: { storeId: string; toke
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: 12,
-          marginTop: 20,
-          padding: '12px',
-          background: THEME.bgCard,
-          borderRadius: THEME.radius.md,
-          border: `1px solid ${THEME.border}`,
-        }}>
-          <button
-            className="btn btn-sm"
-            disabled={page <= 1 || loading}
-            onClick={() => fetchLedger(page - 1)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: THEME.radius.md,
-              border: `1px solid ${THEME.border}`,
-              background: page <= 1 ? THEME.bgMuted : THEME.bgCard,
-              color: page <= 1 ? THEME.textMuted : THEME.textPrimary,
-              cursor: page <= 1 ? 'not-allowed' : 'pointer',
-              opacity: page <= 1 ? 0.6 : 1,
-            }}
-          >
-            <i className="fas fa-chevron-left"></i> Previous
-          </button>
-          <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-            Page {page} of {totalPages}
-          </div>
-          <button
-            className="btn btn-sm"
-            disabled={page >= totalPages || loading}
-            onClick={() => fetchLedger(page + 1)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: THEME.radius.md,
-              border: `1px solid ${THEME.border}`,
-              background: page >= totalPages ? THEME.bgMuted : THEME.bgCard,
-              color: page >= totalPages ? THEME.textMuted : THEME.textPrimary,
-              cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-              opacity: page >= totalPages ? 0.6 : 1,
-            }}
-          >
-            Next <i className="fas fa-chevron-right"></i>
-          </button>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} onPageChange={fetchLedger} loading={loading} />
     </div>
   );
 }
