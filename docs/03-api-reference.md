@@ -1,6 +1,6 @@
 # FNB Super-App — Backend API Reference
 
-> Last updated: 2026-04-18 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 198 endpoints
+> Last updated: 2026-04-19 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 202 endpoints
 > OpenAPI docs: `https://admin.loyaltysystem.uk/docs`
 
 ## Rate Limiting
@@ -30,7 +30,8 @@ All authenticated endpoints require `Authorization: Bearer <JWT>` header.
 | POST | `/auth/logout` | Logout (blacklists JWT via JTI) |
 | POST | `/auth/device-token` | Register push notification token |
 | DELETE | `/auth/device-token` | Unregister push token |
-| GET | `/admin/otps` | admin | Admin OTP lookup |
+| POST | `/auth/change-password` | any user | Change own password |
+| GET | `/admin/system/otps` | admin | Admin OTP lookup |
 
 ---
 
@@ -78,7 +79,6 @@ See `docs/02a-acl.md` for the full ACL specification.
 |--------|------|-----|-------------|
 | GET | `/admin/dashboard` | admin, store_owner | Dashboard KPIs + chart data. Params: `store_id`, `from_date`, `to_date`, `chart_mode` (day/month/quarter/year) |
 | GET | `/admin/orders` | admin, store_owner | Paginated order list. Params: `page`, `page_size`, `status`, `store_id`, `search` |
-| GET | `/admin/orders` | admin, store_owner | All orders (paginated, filterable by store/status) |
 | GET | `/admin/export` | admin, store_owner | Export data as CSV/JSON |
 
 ### Store CRUD
@@ -93,9 +93,9 @@ See `docs/02a-acl.md` for the full ACL specification.
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
 | GET | `/stores/{store_id}/categories` | public | List categories |
-| POST | `/admin/stores/{store_id}/categories` | require_store_access | Create category |
-| PUT | `/admin/stores/{store_id}/categories/{cat_id}` | require_store_access | Update category |
-| DELETE | `/admin/stores/{store_id}/categories/{cat_id}` | require_store_access | Soft-delete category |
+| POST | `/admin/stores/{store_id}/categories` | require_hq_access | Create category |
+| PUT | `/admin/stores/{store_id}/categories/{cat_id}` | require_hq_access | Update category |
+| DELETE | `/admin/stores/{store_id}/categories/{cat_id}` | require_hq_access | Soft-delete category |
 
 ### Menu Item CRUD (PER-STORE)
 
@@ -106,18 +106,18 @@ See `docs/02a-acl.md` for the full ACL specification.
 | GET | `/stores/{store_id}/items/popular` | public | Popular items |
 | GET | `/stores/{store_id}/items/{item_id}/customizations` | public | List customization options |
 | GET | `/stores/{store_id}/menu` | public | Full menu (categories + items tree) |
-| POST | `/admin/stores/{store_id}/items` | require_store_access | Create item |
-| PUT | `/admin/stores/{store_id}/items/{item_id}` | require_store_access | Update item |
-| DELETE | `/admin/stores/{store_id}/items/{item_id}` | require_store_access | **Soft-delete** |
+| POST | `/admin/stores/{store_id}/items` | require_hq_access | Create item |
+| PUT | `/admin/stores/{store_id}/items/{item_id}` | require_hq_access | Update item |
+| DELETE | `/admin/stores/{store_id}/items/{item_id}` | require_hq_access | **Soft-delete** |
 
 ### Customization Options (PER-ITEM, PER-STORE)
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_store_access | List customization options |
-| POST | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_store_access | Create customization option |
-| PUT | `/admin/stores/{store_id}/customizations/{option_id}` | require_store_access | Update customization option |
-| DELETE | `/admin/stores/{store_id}/customizations/{option_id}` | require_store_access | Deactivate customization option |
+| GET | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_hq_access | List customization options |
+| POST | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_hq_access | Create customization option |
+| PUT | `/admin/stores/{store_id}/customizations/{option_id}` | require_hq_access | Update customization option |
+| DELETE | `/admin/stores/{store_id}/customizations/{option_id}` | require_hq_access | Deactivate customization option |
 
 ### Table CRUD (PER-STORE)
 
@@ -130,17 +130,19 @@ See `docs/02a-acl.md` for the full ACL specification.
 | POST | `/tables/scan` | customer | Scan QR → get table info |
 | GET | `/tables/{table_id}` | public | Get table details |
 | PATCH | `/admin/stores/{store_id}/tables/{table_id}/occupancy` | require_store_access | Override table occupancy |
+| POST | `/tables/{table_id}/release` | admin, store_owner, staff | Release table after dine-in order completed |
 
 ### Inventory (PER-STORE)
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
 | GET | `/stores/{store_id}/inventory` | require_store_access | List inventory |
-| POST | `/stores/{store_id}/inventory` | require_store_access | Add inventory item |
+| POST | `/stores/{store_id}/inventory` | require_hq_access | Add inventory item |
 | PUT | `/stores/{store_id}/inventory/{item_id}` | require_store_access | Update inventory |
 | DELETE | `/stores/{store_id}/inventory/{item_id}` | require_store_access | Delete inventory |
 | GET | `/stores/{store_id}/inventory/low-stock` | require_store_access | Low stock alerts |
 | GET | `/stores/{store_id}/inventory-ledger` | require_store_access | **Paginated** inventory movement history. Params: `page`, `page_size`, `from_date`, `to_date`, `movement_type` (received/waste/transfer_out/transfer_in/cycle_count/adjustment) |
+| GET | `/stores/{store_id}/inventory/{item_id}/ledger` | require_store_access | Item-specific ledger history |
 | POST | `/stores/{store_id}/inventory/{item_id}/adjust` | require_store_access | Record stock adjustment |
 | PATCH | `/stores/{store_id}/inventory/{item_id}/toggle` | require_store_access | Toggle inventory item active status |
 
@@ -181,14 +183,15 @@ See `docs/02a-acl.md` for the full ACL specification.
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
 | GET | `/admin/stores/{store_id}/staff` | manager, assistant_manager | List staff at store |
-| POST | `/admin/stores/{store_id}/staff` | admin | Create staff member |
+| POST | `/admin/stores/{store_id}/staff` | require_hq_access | Create staff member |
 | PUT | `/admin/staff/{staff_id}` | admin | Update staff |
 | DELETE | `/admin/staff/{staff_id}` | admin | Deactivate staff |
 | POST | `/admin/staff/{staff_id}/clock-in` | any (PIN-based) | Clock in (rate-limited) |
 | POST | `/admin/staff/{staff_id}/clock-out` | any (PIN-based) | Clock out |
+| POST | `/admin/staff/{staff_id}/reset-password` | admin | Reset staff password |
 | GET | `/admin/stores/{store_id}/shifts` | manager, assistant_manager | View shifts |
-| POST | `/admin/hq-staff` | admin | Create HQ staff |
-| GET | `/admin/hq-staff` | admin | List HQ staff |
+| POST | `/admin/hq-staff` | require_hq_access | Create HQ staff |
+| GET | `/admin/hq-staff` | require_hq_access | List HQ staff |
 
 ### Order Management
 
@@ -298,9 +301,11 @@ See `docs/02a-acl.md` for the full ACL specification.
 
 ### PWA Customer Wallet
 
+> **Note**: The wallet endpoint uses `/wallet` path (not `/me/wallet`). The `pwa_wallet.py` router handles customer wallet operations.
+
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/me/wallet` | customer, admin | **Full wallet** — returns rewards (user_rewards where available), vouchers (user_vouchers where available), cash (wallets.balance), and loyalty_points (loyalty_accounts.points_balance) |
+| GET | `/wallet` | customer, admin | **Full wallet** — returns rewards (user_rewards where available), vouchers (user_vouchers where available), cash (wallets.balance), and loyalty_points (loyalty_accounts.points_balance) |
 
 ### Barista Scan & Cron
 
@@ -327,6 +332,7 @@ See `docs/02a-acl.md` for the full ACL specification.
 |--------|------|-----|-------------|
 | GET | `/wallet` | any user | Get wallet balance |
 | POST | `/wallet/topup` | any user | Top up wallet (stub) |
+| POST | `/wallet/deduct` | any user | **Deduct from wallet** — Used for order payments. Body: `{amount: float, description: string}` |
 | GET | `/wallet/transactions` | any user | Wallet transaction history |
 | GET | `/payments/methods` | any user | List saved payment methods |
 | POST | `/payments/methods` | any user | Add payment method |

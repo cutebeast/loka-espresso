@@ -1,6 +1,6 @@
 # FNB Super-App — Database Schema
 
-> Last updated: 2026-04-18 | PostgreSQL 16 | Database: `fnb` | 52 tables | 85+ FKs | 1 trigger
+> Last updated: 2026-04-19 | PostgreSQL 16 | Database: `fnb` | 52 tables | 85+ FKs | 1 trigger
 
 ## Enums
 
@@ -13,6 +13,8 @@
 | `rewardtype` | `free_item`, `discount_voucher`, `custom` | `rewards.reward_type` |
 | `txtype` | `earn`, `redeem`, `expire` | `loyalty_transactions.type` |
 | `wallettxtype` | `topup`, `payment`, `refund`, `promo_credit`, `admin_adjustment` | `wallet_transactions.type` |
+
+> **Note**: Enums match the actual database implementation. No `cashback` value exists in the current schema.
 | `movement_type` | `received`, `waste`, `transfer_out`, `transfer_in`, `cycle_count`, `adjustment` | `inventory_movements.movement_type` |
 
 ## Triggers
