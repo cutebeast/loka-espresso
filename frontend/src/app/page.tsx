@@ -31,7 +31,6 @@ import OrdersPage from '@/components/pages/OrdersPage';
 import MenuPage from '@/components/pages/MenuPage';
 import TablesPage from '@/components/pages/TablesPage';
 import InventoryPage from '@/components/pages/InventoryPage';
-import InventoryLedgerPage from '@/components/pages/InventoryLedgerPage';
 import StaffPage from '@/components/pages/StaffPage';
 import CustomersPage from '@/components/pages/CustomersPage';
 import CustomerDetailPage from '@/components/pages/CustomerDetailPage';
@@ -102,8 +101,6 @@ export default function MerchantDashboard() {
   const [dateRange, setDateRange] = useState<{ from: string; to: string }>(getDefaultDateRange());
   const [ordersFromDate, setOrdersFromDate] = useState('');
   const [ordersToDate, setOrdersToDate] = useState('');
-  const [inventoryFromDate, setInventoryFromDate] = useState('');
-  const [inventoryToDate, setInventoryToDate] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('fnb_token');
@@ -321,7 +318,6 @@ export default function MerchantDashboard() {
     orders: 'Orders',
     menu: 'Menu Management',
     inventory: 'Inventory',
-    inventoryledger: 'Inventory Ledger',
     tables: 'Tables',
     staff: 'Staff',
     rewards: 'Rewards',
@@ -330,14 +326,14 @@ export default function MerchantDashboard() {
     feedback: 'Feedback',
     surveys: 'Surveys',
     reports: 'Sales Reports',
-    marketingreports: 'Marketing Reports',
+    marketingreports: 'Marketing ROI',
     customers: 'Customers',
-    notifications: 'Notifications',
-    auditlog: 'Audit Log',
+    notifications: 'Push Notifications',
     loyaltyrules: 'Loyalty Rules',
+    auditlog: 'Audit Log',
     store: 'Store Settings',
-    settings: 'Settings',
-    customerDetail: 'Customer Detail',
+    settings: 'App Settings',
+    customerDetail: 'Customer Profile',
   };
 
   return (
@@ -455,19 +451,6 @@ export default function MerchantDashboard() {
                   userType={currentUserType}
                   stores={stores}
                   onStoreChange={setSelectedStore}
-                />
-              )}
-
-              {page === 'inventoryledger' && (
-                <InventoryLedgerPage
-                  selectedStore={selectedStore}
-                  storeObj={storeObj}
-                  token={token}
-                  stores={stores}
-                  onStoreChange={setSelectedStore}
-                  fromDate={inventoryFromDate}
-                  toDate={inventoryToDate}
-                  onDateChange={(from, to) => { setInventoryFromDate(from); setInventoryToDate(to); }}
                 />
               )}
 
