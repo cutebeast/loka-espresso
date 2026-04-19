@@ -58,7 +58,8 @@ sys.path.insert(0, SEED_DIR)
 
 from shared_config import (
     API_BASE, admin_token, api_get, api_post, api_patch,
-    save_state, load_state, print_header
+    save_state, load_state, print_header,
+    get_customer_token_for_user, refresh_customer_token
 )
 
 # Mock 3rd party service endpoints
@@ -352,13 +353,19 @@ def process_flow_a_order(order, admin_tok):
     total = order.get("total", 0)
     user_id = order.get("user_id")
 
+    # Resolve customer token from state (for voucher/wallet operations)
+    customer_token = get_customer_token_for_user(user_id)
+    if not customer_token:
+        print(f"    ⚠ No customer token found for user_id={user_id}, using admin token")
+        customer_token = admin_tok
+
     print(f"\n  Processing {order_type.upper()} order #{order_number} (ID={order_id})")
     print(f"  Total: RM {float(total):.2f}")
 
     # Step 1: Checkout - Apply discount (optional, 50% chance)
     if random.random() < 0.5:
         print("  Step 1: Applying voucher discount...")
-        success, result, discount = apply_voucher_to_order(order_id, admin_tok)
+        success, result, discount = apply_voucher_to_order(order_id, customer_token)
         if success:
             new_total = result.get("new_total", total)
             print(f"    ✓ Voucher applied: RM {float(discount):.2f} off")
@@ -371,15 +378,24 @@ def process_flow_a_order(order, admin_tok):
 
     # Step 2: Check wallet balance and pay
     print("  Step 2: Checking wallet balance...")
-    wallet_balance = get_wallet_balance(user_id, admin_tok)
+    wallet_balance = get_wallet_balance(user_id, customer_token)
     print(f"    Current wallet balance: RM {wallet_balance:.2f}")
     print(f"    Order total: RM {float(total):.2f}")
 
     if wallet_balance >= float(total):
-        # Sufficient balance - deduct from wallet
+        # Sufficient balance - deduct from wallet via API
         print(f"    ✓ Sufficient balance. Deducting RM {float(total):.2f} from wallet...")
-        # In real implementation, wallet deduction happens here
-        print(f"    ✓ Payment deducted from wallet")
+        deduct_resp = api_post(
+            "/wallet/deduct",
+            token=customer_token,
+            json={"amount": float(total), "description": f"Order {order_number} payment"}
+        )
+        if deduct_resp.status_code in (200, 201):
+            new_bal = deduct_resp.json().get("new_balance", "?")
+            print(f"    ✓ Payment deducted from wallet. New balance: RM {new_bal:.2f}")
+        else:
+            print(f"    ⚠ Wallet deduction API call failed ({deduct_resp.status_code}): {deduct_resp.text[:100]}")
+            print(f"    Continuing with payment status update...")
     else:
         # Insufficient balance - top up first
         shortfall = float(total) - wallet_balance
@@ -399,7 +415,19 @@ def process_flow_a_order(order, admin_tok):
         new_balance = wallet_balance + topup_amount
         print(f"    New wallet balance: RM {new_balance:.2f}")
         print(f"    Deducting RM {float(total):.2f} from wallet...")
-        print(f"    ✓ Payment deducted from wallet")
+
+        # Actually deduct via API
+        deduct_resp = api_post(
+            "/wallet/deduct",
+            token=customer_token,
+            json={"amount": float(total), "description": f"Order {order_number} payment"}
+        )
+        if deduct_resp.status_code in (200, 201):
+            new_bal = deduct_resp.json().get("new_balance", "?")
+            print(f"    ✓ Payment deducted from wallet. New balance: RM {new_bal:.2f}")
+        else:
+            print(f"    ⚠ Wallet deduction API call failed ({deduct_resp.status_code}): {deduct_resp.text[:100]}")
+            print(f"    Continuing with payment status update...")
 
     # Step 3: Update order payment status to paid (awards loyalty points)
     print("  Step 3: Marking order as paid...")

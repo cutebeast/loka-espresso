@@ -77,6 +77,55 @@ async def topup_wallet(req: WalletTopup, user: User = Depends(get_current_user),
         raise
 
 
+class WalletDeduct(BaseModel):
+    amount: float
+    description: str = "Wallet deduction"
+
+
+@router.post("/deduct")
+async def deduct_wallet(req: WalletDeduct, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Deduct amount from customer wallet. Used for order payments."""
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    wallet = await _get_or_create_wallet(user.id, db)
+
+    # Check sufficient balance
+    if float(wallet.balance) < req.amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient balance. Available: {to_float(wallet.balance)}, Required: {req.amount}"
+        )
+
+    # Deduct atomically using RETURNING
+    result = await db.execute(
+        text("""
+            UPDATE wallets
+            SET balance = balance - :amt
+            WHERE id = :wid
+            RETURNING balance
+        """),
+        {"amt": req.amount, "wid": wallet.id}
+    )
+    row = result.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    new_balance = row[0]
+
+    # Record transaction
+    await db.execute(
+        text("""
+            INSERT INTO wallet_transactions (wallet_id, user_id, amount, type, description, balance_after, created_at)
+            VALUES (:wid, :uid, :amt, 'deduction', :desc, :bal_after, NOW())
+        """),
+        {"wid": wallet.id, "uid": user.id, "amt": req.amount,
+         "desc": req.description, "bal_after": new_balance}
+    )
+    await db.flush()
+
+    return {"message": "Deduction successful", "new_balance": to_float(new_balance)}
+
+
 @router.get("/transactions", response_model=list[WalletTransactionOut])
 async def wallet_transactions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     wallet = await _get_or_create_wallet(user.id, db)

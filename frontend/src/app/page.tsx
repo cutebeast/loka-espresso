@@ -26,25 +26,25 @@ import {
   AddBroadcastForm,
   AddCustomizationForm,
 } from '@/components/Modals';
-import DashboardPage from '@/components/pages/DashboardPage';
-import OrdersPage from '@/components/pages/OrdersPage';
-import MenuPage from '@/components/pages/MenuPage';
-import TablesPage from '@/components/pages/TablesPage';
-import InventoryPage from '@/components/pages/InventoryPage';
-import StaffPage from '@/components/pages/StaffPage';
-import CustomersPage from '@/components/pages/CustomersPage';
-import CustomerDetailPage from '@/components/pages/CustomerDetailPage';
-import StoreSettingsPage from '@/components/pages/StoreSettingsPage';
-import LoyaltyRulesPage from '@/components/pages/LoyaltyRulesPage';
-import AuditLogPage from '@/components/pages/AuditLogPage';
-import NotificationsPage from '@/components/pages/NotificationsPage';
-import RewardsPage from '@/components/pages/RewardsPage';
-import VouchersPage from '@/components/pages/VouchersPage';
-import PromotionsPage from '@/components/pages/PromotionsPage';
-import FeedbackPage from '@/components/pages/FeedbackPage';
-import MarketingReportsPage from '@/components/pages/MarketingReportsPage';
-import SalesReportsPage from '@/components/pages/SalesReportsPage';
-import SettingsPage from '@/components/pages/SettingsPage';
+import DashboardPage from '@/components/pages/overview/DashboardPage';
+import OrdersPage from '@/components/pages/overview/OrdersPage';
+import MenuPage from '@/components/pages/store-ops/MenuPage';
+import TablesPage from '@/components/pages/store-ops/TablesPage';
+import InventoryPage from '@/components/pages/store-ops/InventoryPage';
+import StaffPage from '@/components/pages/store-ops/StaffPage';
+import CustomersPage from '@/components/pages/marketing/CustomersPage';
+import CustomerDetailPage from '@/components/pages/system/CustomerDetailPage';
+import StoreSettingsPage from '@/components/pages/system/StoreSettingsPage';
+import LoyaltyRulesPage from '@/components/pages/system/LoyaltyRulesPage';
+import AuditLogPage from '@/components/pages/system/AuditLogPage';
+import NotificationsPage from '@/components/pages/marketing/NotificationsPage';
+import RewardsPage from '@/components/pages/marketing/RewardsPage';
+import VouchersPage from '@/components/pages/marketing/VouchersPage';
+import PromotionsPage from '@/components/pages/marketing/PromotionsPage';
+import FeedbackPage from '@/components/pages/marketing/FeedbackPage';
+import MarketingReportsPage from '@/components/pages/analytics/MarketingReportsPage';
+import SalesReportsPage from '@/components/pages/analytics/SalesReportsPage';
+import SettingsPage from '@/components/pages/system/SettingsPage';
 
 export default function MerchantDashboard() {
   const [token, setToken] = useState('');
@@ -324,7 +324,6 @@ export default function MerchantDashboard() {
     vouchers: 'Vouchers',
     promotions: 'Promotions',
     feedback: 'Feedback',
-    surveys: 'Surveys',
     reports: 'Sales Reports',
     marketingreports: 'Marketing ROI',
     customers: 'Customers',

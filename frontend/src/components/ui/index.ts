@@ -2,6 +2,7 @@ export { Button } from './Button';
 export { Card, StatCard } from './Card';
 export { Select, FilterSelect, StoreSelector, StatusSelector, PillSelect } from './Select';
 export { Modal, ConfirmModal } from './Modal';
+export { Drawer } from './Drawer';
 export { Input, TextArea } from './Input';
 export { Badge, StatusBadge } from './Badge';
 export { DateFilter, calcDateRange, type DatePreset } from './DateFilter';

@@ -60,7 +60,8 @@ sys.path.insert(0, SEED_DIR)
 
 from shared_config import (
     API_BASE, admin_token, api_get, api_post, api_patch,
-    save_state, load_state, print_header
+    save_state, load_state, print_header,
+    get_customer_token_for_user, refresh_customer_token
 )
 
 def get_pending_dinein_orders(token):
@@ -217,6 +218,12 @@ def process_flow_b_order(order, admin_tok):
     total = order.get("total", 0)
     user_id = order.get("user_id")
 
+    # Resolve customer token from state (for voucher/wallet operations)
+    customer_token = get_customer_token_for_user(user_id)
+    if not customer_token:
+        print(f"    ⚠ No customer token found for user_id={user_id}, using admin token")
+        customer_token = admin_tok
+
     print(f"\n  Processing DINE-IN order #{order_number} (ID={order_id})")
     print(f"  Table ID: {table_id}")
     print(f"  Initial Total: RM {float(total):.2f}")
@@ -256,11 +263,11 @@ def process_flow_b_order(order, admin_tok):
     print("    Customer walks to counter or presses checkout on PWA")
     print("    ✓ Staff initiates checkout")
 
-    # Step 6: Apply vouchers/discounts
+    # Step 6: Apply vouchers/discounts (using customer token)
     discount_applied = 0
     print("  Step 6: Applying vouchers/discounts...")
     if random.random() < 0.5:
-        success, result, discount = apply_voucher_to_order(order_id, admin_tok)
+        success, result, discount = apply_voucher_to_order(order_id, customer_token)
         if success:
             discount_applied = discount
             print(f"    ✓ Voucher applied: RM {float(discount):.2f} off")
@@ -272,24 +279,43 @@ def process_flow_b_order(order, admin_tok):
     else:
         print("    - No voucher applied")
 
-    # Step 7: Deduct from wallet
+    # Step 7: Deduct from wallet (using customer token + actual API call)
     print("  Step 7: Deducting from customer wallet...")
-    wallet_balance = get_wallet_balance(user_id, admin_tok)
+    wallet_balance = get_wallet_balance(user_id, customer_token)
     print(f"    Wallet balance: RM {wallet_balance:.2f}")
     print(f"    Order total: RM {float(total):.2f}")
 
     if wallet_balance >= float(total):
-        # Sufficient balance - deduct all
+        # Sufficient balance - deduct all via API
         print(f"    ✓ Deducting RM {float(total):.2f} from wallet")
+        deduct_resp = api_post(
+            "/wallet/deduct",
+            token=customer_token,
+            json={"amount": float(total), "description": f"Dine-in order {order_number}"}
+        )
+        if deduct_resp.status_code in (200, 201):
+            new_bal = deduct_resp.json().get("new_balance", wallet_balance - float(total))
+            print(f"    ✓ Wallet deduction successful. New balance: RM {new_bal:.2f}")
+        else:
+            print(f"    ⚠ Wallet deduction API call failed ({deduct_resp.status_code}): {deduct_resp.text[:100]}")
         remaining_balance = wallet_balance - float(total)
         print(f"    Remaining wallet balance: RM {remaining_balance:.2f}")
         pos_amount = 0
         payment_method = "wallet"
     else:
-        # Insufficient - deduct all, remaining goes to POS
+        # Insufficient - deduct all via API, remaining goes to POS
         wallet_deducted = wallet_balance
         pos_amount = float(total) - wallet_balance
         print(f"    ✓ Deducting RM {wallet_deducted:.2f} from wallet (all balance)")
+        deduct_resp = api_post(
+            "/wallet/deduct",
+            token=customer_token,
+            json={"amount": wallet_deducted, "description": f"Dine-in order {order_number} (partial)"}
+        )
+        if deduct_resp.status_code in (200, 201):
+            print(f"    ✓ Wallet deduction successful")
+        else:
+            print(f"    ⚠ Wallet deduction API call failed ({deduct_resp.status_code}): {deduct_resp.text[:100]}")
         print(f"    ⚠ Remaining RM {pos_amount:.2f} to be paid at POS terminal")
         payment_method = "wallet+pos"
 

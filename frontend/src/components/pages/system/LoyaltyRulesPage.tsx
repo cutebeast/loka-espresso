@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import type { MerchantLoyaltyTier } from '@/lib/merchant-types';
+import { Modal, DataTable, type ColumnDef, Input } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 
 interface LoyaltyRulesPageProps {
@@ -64,19 +65,13 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
       )}
 
       {editingTier && (
-        <div className="modal-overlay" onClick={() => setEditingTier(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3>Edit: {editingTier.name}</h3>
-              <button className="btn btn-sm" onClick={() => setEditingTier(null)}><i className="fas fa-times"></i></button>
-            </div>
-            <TierForm
-              token={token}
-              existingTier={editingTier}
-              onClose={() => { setEditingTier(null); onRefresh(); }}
-            />
-          </div>
-        </div>
+        <Modal isOpen={!!editingTier} onClose={() => setEditingTier(null)} title={`Edit: ${editingTier.name}`}>
+          <TierForm
+            token={token}
+            existingTier={editingTier}
+            onClose={() => { setEditingTier(null); onRefresh(); }}
+          />
+        </Modal>
       )}
 
       <div style={{
@@ -96,51 +91,44 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
         </div>
 
         <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: `1px solid ${THEME.border}`, borderTop: 'none' }}>
-          <table>
-          <thead>
-            <tr><th>Tier Name</th><th>Min Points</th><th>Points Multiplier</th><th>Sort Order</th><th>Benefits</th><th>Actions</th></tr>
-          </thead>
-          <tbody>
-            {tiers.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', color: THEME.success, padding: 40 }}>No loyalty tiers configured</td></tr>
-            ) : tiers.map(tier => (
-              <tr key={tier.id}>
-                <td style={{ fontWeight: 600, textTransform: 'capitalize' }}>{tier.name}</td>
-                <td>{tier.min_points.toLocaleString()} pts</td>
-                <td><span className="badge badge-blue">{tier.points_multiplier}x</span></td>
-                <td>
-                  <input
-                    type="number"
-                    min="0"
-                    value={tier.sort_order}
-                    style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: `1px solid ${THEME.accentLight}`, textAlign: 'center', fontSize: 13 }}
-                    onChange={async (e) => {
-                      const val = parseInt(e.target.value) || 0;
-                      await apiFetch(`/admin/loyalty-tiers/${tier.id}`, token, {
-                        method: 'PUT',
-                        body: JSON.stringify({ sort_order: val }),
-                      });
+          <DataTable<MerchantLoyaltyTier>
+            data={tiers}
+            columns={[
+              { key: 'name', header: 'Tier Name', render: (t) => <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{t.name}</span> },
+              { key: 'min_points', header: 'Min Points', render: (t) => `${t.min_points.toLocaleString()} pts` },
+              { key: 'points_multiplier', header: 'Points Multiplier', render: (t) => <span className="badge badge-blue">{t.points_multiplier}x</span> },
+              { key: 'sort_order', header: 'Sort Order', render: (t) => (
+                <input
+                  type="number"
+                  min="0"
+                  value={t.sort_order}
+                  style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: `1px solid ${THEME.accentLight}`, textAlign: 'center', fontSize: 13 }}
+                  onChange={async (e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    await apiFetch(`/admin/loyalty-tiers/${t.id}`, token, {
+                      method: 'PUT',
+                      body: JSON.stringify({ sort_order: val }),
+                    });
+                    onRefresh();
+                  }}
+                />
+              )},
+              { key: 'benefits', header: 'Benefits', render: (t) => <BenefitsBadges benefits={t.benefits} /> },
+              { key: 'actions', header: 'Actions', render: (t) => (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn btn-sm" onClick={() => setEditingTier(t)}><i className="fas fa-edit"></i> Edit</button>
+                  <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={async () => {
+                    if (confirm(`Delete tier "${t.name}"? This cannot be undone.`)) {
+                      await apiFetch(`/admin/loyalty-tiers/${t.id}`, token, { method: 'DELETE' });
                       onRefresh();
-                    }}
-                  />
-                </td>
-                <td><BenefitsBadges benefits={tier.benefits} /></td>
-                <td>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn btn-sm" onClick={() => setEditingTier(tier)}><i className="fas fa-edit"></i> Edit</button>
-                    <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={async () => {
-                      if (confirm(`Delete tier "${tier.name}"? This cannot be undone.`)) {
-                        await apiFetch(`/admin/loyalty-tiers/${tier.id}`, token, { method: 'DELETE' });
-                        onRefresh();
-                      }
-                    }}><i className="fas fa-trash"></i></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                    }
+                  }}><i className="fas fa-trash"></i></button>
+                </div>
+              )},
+            ]}
+            emptyMessage="No loyalty tiers configured"
+          />
+        </div>
     </div>
   );
 }
@@ -220,26 +208,15 @@ function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
 
       {/* ── Basic Info ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <Input label="Tier Name *" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Diamond" />
+        <Input label="Min Points *" type="number" value={minPoints} onChange={e => setMinPoints(e.target.value)} required placeholder="e.g. 10000" />
+        <Input label="Points Multiplier" type="number" step="0.1" value={multiplier} onChange={e => setMultiplier(e.target.value)} />
         <div>
-          <label style={labelStyle}>Tier Name *</label>
-          <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Diamond" />
-        </div>
-        <div>
-          <label style={labelStyle}>Min Points *</label>
-          <input type="number" value={minPoints} onChange={e => setMinPoints(e.target.value)} required placeholder="e.g. 10000" />
-        </div>
-        <div>
-          <label style={labelStyle}>Points Multiplier</label>
-          <input type="number" step="0.1" value={multiplier} onChange={e => setMultiplier(e.target.value)} />
-        </div>
-        <div>
-          <label style={labelStyle}>Sort Order</label>
-          <input type="number" min="0" value={sortOrder} onChange={e => setSortOrder(e.target.value)} placeholder="0" />
+          <Input label="Sort Order" type="number" min="0" value={sortOrder} onChange={e => setSortOrder(e.target.value)} placeholder="0" />
           <div style={hintStyle}>Lower values appear first</div>
         </div>
       </div>
 
-      {/* ── Benefits ── */}
       <div style={{ border: `1px solid ${THEME.accentLight}`, borderRadius: 14, padding: 16, marginBottom: 16 }}>
         <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14, color: THEME.primary }}>
           <i className="fas fa-gift" style={{ marginRight: 6 }}></i> Tier Benefits
@@ -247,21 +224,18 @@ function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
-            <label style={labelStyle}>Discount (%)</label>
-            <input type="number" min="0" max="100" value={discount} onChange={e => setDiscount(e.target.value)} placeholder="0" />
+            <Input label="Discount (%)" type="number" min="0" max="100" value={discount} onChange={e => setDiscount(e.target.value)} placeholder="0" />
             <div style={hintStyle}>Percentage off all orders</div>
           </div>
           <div>
-            <label style={labelStyle}>Free Deliveries / Month</label>
-            <input type="number" min="0" value={freeDelivery} onChange={e => setFreeDelivery(e.target.value)} placeholder="0" />
+            <Input label="Free Deliveries / Month" type="number" min="0" value={freeDelivery} onChange={e => setFreeDelivery(e.target.value)} placeholder="0" />
             <div style={hintStyle}>Number of free deliveries each month</div>
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
-            <label style={labelStyle}>Birthday Reward</label>
-            <input value={birthdayReward} onChange={e => setBirthdayReward(e.target.value)} placeholder="e.g. Free drink" />
+            <Input label="Birthday Reward" value={birthdayReward} onChange={e => setBirthdayReward(e.target.value)} placeholder="e.g. Free drink" />
             <div style={hintStyle}>Special reward on customer's birthday</div>
           </div>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingTop: 6 }}>

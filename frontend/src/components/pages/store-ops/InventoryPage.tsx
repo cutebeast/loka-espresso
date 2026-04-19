@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/merchant-api';
 import { StoreSelector, Select, FilterSelect, DateFilter, Pagination } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantInventoryItem, MerchantInventoryCategory, MerchantStore } from '@/lib/merchant-types';
-import InventoryLedgerPage from '@/components/pages/InventoryLedgerPage';
+import InventoryLedgerPage from '@/components/pages/store-ops/InventoryLedgerPage';
 
 interface InventoryPageProps {
   inventory: MerchantInventoryItem[];

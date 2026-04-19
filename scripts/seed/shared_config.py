@@ -312,3 +312,150 @@ def get_available_tables(store_id: int):
     """Get available (non-occupied) tables for a store."""
     tables = get_store_tables(store_id)
     return [t for t in tables if t.get("is_active") and not t.get("is_occupied")]
+
+
+# ── Customer Token Resolution ───────────────────────────────────────
+# Resolves a user_id to the customer's JWT token from seed_state.json.
+# Used by flow scripts to apply vouchers and check wallet balance with
+# the correct customer-scoped token instead of the admin token.
+
+def get_customer_token_for_user(user_id):
+    """Look up the customer token for a given user_id from seed_state.json.
+    Returns the JWT token string, or None if not found."""
+    customers = load_state("customers")
+    if not customers:
+        return None
+    for c in customers:
+        if c.get("user_id") == user_id:
+            token = c.get("token")
+            if token:
+                return token
+    return None
+
+
+# ── Customer Token Refresh ──────────────────────────────────────────
+# Handles 401 responses by re-authenticating the customer via OTP.
+# Updates the token in seed_state.json so subsequent calls succeed.
+
+def refresh_customer_token(user_id):
+    """Re-authenticate a customer by user_id. Updates token in state file.
+    Returns new token or None on failure."""
+    customers = load_state("customers")
+    if not customers:
+        return None
+    for c in customers:
+        if c.get("user_id") == user_id:
+            updated, new_token = re_auth_customer(c)
+            if new_token:
+                # Update state file
+                for i, existing in enumerate(customers):
+                    if existing.get("user_id") == user_id:
+                        customers[i] = updated
+                        break
+                save_state("customers", customers)
+                return new_token
+    return None
+
+
+def api_get_with_refresh(path, token=None, params=None, user_id=None):
+    """GET with automatic 401 retry via customer token refresh."""
+    import requests
+    h = {"Authorization": f"Bearer {token}"} if token else {}
+    resp = requests.get(f"{API_BASE}{path}", headers=h, params=params, timeout=10)
+    if resp.status_code == 401 and user_id:
+        new_token = refresh_customer_token(user_id)
+        if new_token:
+            h = {"Authorization": f"Bearer {new_token}"}
+            resp = requests.get(f"{API_BASE}{path}", headers=h, params=params, timeout=10)
+    return resp
+
+
+def api_post_with_refresh(path, token=None, json=None, user_id=None):
+    """POST with automatic 401 retry via customer token refresh."""
+    import requests
+    h = {"Authorization": f"Bearer {token}"} if token else {}
+    resp = requests.post(f"{API_BASE}{path}", headers=h, json=json, timeout=10)
+    if resp.status_code == 401 and user_id:
+        new_token = refresh_customer_token(user_id)
+        if new_token:
+            h = {"Authorization": f"Bearer {new_token}"}
+            resp = requests.post(f"{API_BASE}{path}", headers=h, json=json, timeout=10)
+    return resp
+
+
+# ── Mock Service Health Check ───────────────────────────────────────
+# Verifies all required mock services are running before seed steps begin.
+
+MOCK_SERVICES = {
+    "Mock Payment Gateway": os.environ.get("MOCK_PG_URL", "http://localhost:8889"),
+    "Mock Delivery Server": os.environ.get("MOCK_DELIVERY_URL", "http://localhost:8888"),
+}
+
+def check_mock_services():
+    """Check that all required mock services are responding.
+    Returns (all_healthy, details_dict)."""
+    import requests
+    details = {}
+    all_healthy = True
+    for name, url in MOCK_SERVICES.items():
+        try:
+            resp = requests.get(f"{url}/health", timeout=3)
+            if resp.status_code == 200:
+                details[name] = "OK"
+            else:
+                details[name] = f"UNHEALTHY (status {resp.status_code})"
+                all_healthy = False
+        except Exception as e:
+            details[name] = f"UNREACHABLE ({e})"
+            all_healthy = False
+    return all_healthy, details
+
+
+# ── State Rebuild from API ──────────────────────────────────────────
+# Rebuilds seed_state.json from live API data to prevent state file drift.
+
+def rebuild_state_from_api():
+    """Query the API and rebuild seed_state.json with fresh data.
+    Returns True on success, False on failure."""
+    tok = admin_token()
+    state = {}
+
+    # Rebuild customers from admin API
+    try:
+        resp = api_get("/admin/customers?page_size=200", token=tok)
+        if resp.status_code == 200:
+            data = resp.json()
+            customers = data.get("customers", []) if isinstance(data, dict) else data
+            state["customers"] = customers
+            print(f"  Rebuilt customers state: {len(customers)} customers from API")
+    except Exception as e:
+        print(f"  Warning: Could not rebuild customers state: {e}")
+
+    # Rebuild staff from admin API
+    try:
+        resp = api_get("/admin/staff?page_size=200", token=tok)
+        if resp.status_code == 200:
+            data = resp.json()
+            staff = data.get("staff", []) if isinstance(data, dict) else data
+            state["staff"] = staff
+            print(f"  Rebuilt staff state: {len(staff)} staff from API")
+    except Exception as e:
+        print(f"  Warning: Could not rebuild staff state: {e}")
+
+    # Rebuild completed orders
+    try:
+        resp = api_get("/admin/orders?status=completed&page_size=500", token=tok)
+        if resp.status_code == 200:
+            data = resp.json()
+            orders = data.get("orders", []) if isinstance(data, dict) else data
+            state["completed_orders"] = orders
+            print(f"  Rebuilt completed_orders state: {len(orders)} orders from API")
+    except Exception as e:
+        print(f"  Warning: Could not rebuild completed_orders state: {e}")
+
+    # Write rebuilt state
+    import json
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2, default=str)
+    print(f"  State file rebuilt: {STATE_FILE}")
+    return True

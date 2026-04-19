@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { Select, Pagination } from '@/components/ui';
+import { Select, Pagination, Drawer } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 
 interface RewardsPageProps {
@@ -23,6 +23,7 @@ export default function RewardsPage({ token }: RewardsPageProps) {
   // View mode: 'list' or 'form'
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
   const [editingReward, setEditingReward] = useState<any | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fetchRewards = useCallback(async (p: number) => {
     setLoading(true);
@@ -44,14 +45,17 @@ export default function RewardsPage({ token }: RewardsPageProps) {
   function openCreate() {
     setEditingReward(null);
     setViewMode('form');
+    setDrawerOpen(true);
   }
 
   function openEdit(reward: any) {
     setEditingReward(reward);
     setViewMode('form');
+    setDrawerOpen(true);
   }
 
   function closeForm() {
+    setDrawerOpen(false);
     setViewMode('list');
     setEditingReward(null);
     fetchRewards(page);
@@ -75,12 +79,15 @@ export default function RewardsPage({ token }: RewardsPageProps) {
     } catch {}
   }
 
-  if (viewMode === 'form') {
-    return <RewardFormPage token={token} existingReward={editingReward} onBack={closeForm} />;
-  }
+  const drawerTitle = editingReward ? 'Edit Reward' : 'New Reward';
 
   return (
     <div>
+      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} width={560}>
+        {viewMode === 'form' && (
+          <RewardFormPage token={token} existingReward={editingReward} onBack={closeForm} />
+        )}
+      </Drawer>
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
         <button className="btn btn-primary" onClick={openCreate}>
           <i className="fas fa-plus"></i> New Reward
@@ -263,13 +270,6 @@ function RewardFormPage({ token, existingReward, onBack }: { token: string; exis
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <button className="btn btn-sm" onClick={onBack}>
-          <i className="fas fa-arrow-left"></i> Back to Rewards
-        </button>
-        <h3 style={{ margin: 0 }}>{isEdit ? 'Edit Reward' : 'New Reward'}</h3>
-      </div>
-
       <div className="card">
         {error && (
           <div style={{ background: '#FEE2E2', color: '#A83232', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>

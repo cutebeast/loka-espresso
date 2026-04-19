@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { DateFilter, FilterSelect, Pagination, type DatePreset, calcDateRange } from '@/components/ui';
+import { DateFilter, FilterSelect, DataTable, type ColumnDef, Pagination, type DatePreset, calcDateRange } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantAuditEntry, MerchantStore } from '@/lib/merchant-types';
 
@@ -70,9 +70,39 @@ export default function AuditLogPage({ stores, token }: AuditLogPageProps) {
 
   useEffect(() => { setPage(1); fetchPage(1); }, [actionFilter]);
 
+  const columns: ColumnDef<MerchantAuditEntry>[] = [
+    { key: 'timestamp', header: 'Timestamp', render: (entry) => (
+      <span style={{ fontSize: 13, whiteSpace: 'nowrap', color: THEME.textPrimary }}>
+        {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '-'}
+      </span>
+    )},
+    { key: 'user_email', header: 'Who', render: (entry) => (
+      <span style={{ fontWeight: 500, color: THEME.textPrimary }}>{entry.user_email || 'System'}</span>
+    )},
+    { key: 'action', header: 'Action', render: (entry) => (
+      <span className="badge badge-blue" style={{ textTransform: 'none', fontFamily: 'monospace', fontSize: 11 }}>{entry.action}</span>
+    )},
+    { key: 'ip_address', header: 'IP', render: (entry) => (
+      <span style={{ fontSize: 12, color: THEME.textMuted, fontFamily: 'monospace' }}>
+        {entry.ip_address && entry.ip_address !== '-' ? entry.ip_address : <span style={{ color: THEME.borderLight }}>—</span>}
+      </span>
+    )},
+    { key: 'store_id', header: 'Location', render: (entry) => {
+      const storeName = entry.store_id
+        ? (stores.find(s => s.id === entry.store_id)?.name || `Store ${entry.store_id}`)
+        : 'All Stores';
+      return <span style={{ fontSize: 13, color: THEME.textMuted }}>{storeName}</span>;
+    }},
+    { key: 'status', header: 'Status', render: (entry) => (
+      <span className={`badge ${
+        entry.status === 'success' ? 'badge-green' :
+        entry.status === 'failed' ? 'badge-red' : 'badge-yellow'
+      }`}>{entry.status}</span>
+    )},
+  ];
+
   return (
     <div>
-      {/* Filter Bar - Date and Action filter on left */}
       <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <DateFilter
           preset={preset}
@@ -94,7 +124,6 @@ export default function AuditLogPage({ stores, token }: AuditLogPageProps) {
         )}
       </div>
 
-      {/* Stats Bar */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -114,62 +143,12 @@ export default function AuditLogPage({ stores, token }: AuditLogPageProps) {
         </div>
       </div>
 
-      {loading && entries.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: THEME.textMuted }}>
-          <i className="fas fa-spinner fa-spin"></i> Loading...
-        </div>
-      ) : entries.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-          <i className="fas fa-history" style={{ fontSize: 40, marginBottom: 16 }}></i>
-          <p>No audit log entries</p>
-        </div>
-      ) : (
-        <div style={{
-          overflowX: 'auto',
-          borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
-          background: THEME.bgCard,
-          border: `1px solid ${THEME.border}`,
-          borderTop: 'none',
-        }}>
-          <table>
-            <thead>
-              <tr><th>Timestamp</th><th>Who</th><th>Action</th><th>IP</th><th>Location</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              {entries.map(entry => {
-                const storeName = entry.store_id
-                  ? (stores.find(s => s.id === entry.store_id)?.name || `Store ${entry.store_id}`)
-                  : 'All Stores';
-                return (
-                  <tr key={entry.id}>
-                    <td style={{ fontSize: 13, whiteSpace: 'nowrap', color: THEME.textPrimary }}>
-                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '-'}
-                    </td>
-                    <td style={{ fontWeight: 500, color: THEME.textPrimary }}>{entry.user_email || 'System'}</td>
-                    <td>
-                      <span className="badge badge-blue" style={{ textTransform: 'none', fontFamily: 'monospace', fontSize: 11 }}>
-                        {entry.action}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: 12, color: THEME.textMuted, fontFamily: 'monospace' }}>
-                      {entry.ip_address && entry.ip_address !== '-' ? entry.ip_address : <span style={{ color: THEME.borderLight }}>—</span>}
-                    </td>
-                    <td style={{ fontSize: 13, color: THEME.textMuted }}>{storeName}</td>
-                    <td>
-                      <span className={`badge ${
-                        entry.status === 'success' ? 'badge-green' :
-                        entry.status === 'failed' ? 'badge-red' : 'badge-yellow'
-                      }`}>
-                        {entry.status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        data={entries}
+        columns={columns}
+        loading={loading && entries.length === 0}
+        emptyMessage="No audit log entries"
+      />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={fetchPage} loading={loading} />
 

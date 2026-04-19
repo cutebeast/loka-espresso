@@ -18,7 +18,7 @@ from sqlalchemy import text
 settings = get_settings()
 
 # Import the shared limiter from auth module — all @limiter.limit decorators reference this instance
-from app.api.v1.endpoints.auth import limiter
+from app.api.v1.endpoints.common.auth import limiter
 
 # Import new middleware
 from app.core.middleware import (

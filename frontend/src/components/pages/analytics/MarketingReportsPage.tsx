@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { apiFetch } from '@/lib/merchant-api'
-import { DonutChart, StoreSelector, DateFilter, calcDateRange, type DatePreset } from '@/components/ui'
+import { DonutChart, StoreSelector, DateFilter, Modal, DataTable, type ColumnDef, calcDateRange, type DatePreset } from '@/components/ui'
 import { THEME } from '@/lib/theme'
 
 interface MarketingReportsPageProps {
@@ -60,22 +60,6 @@ function BarRow({ label, value, max, color, right }: {
       </div>
       <div style={{ height: 6, background: '#F9F7F3', borderRadius: 10 }}>
         <div style={{ height: 6, background: color, borderRadius: 10, width: `${p}%`, transition: 'width 0.3s' }} />
-      </div>
-    </div>
-  )
-}
-
-function Modal({ title, onClose, children }: {
-  title: string; onClose: () => void; children: React.ReactNode
-}) {
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ margin: 0 }}>{title}</h3>
-          <button className="btn btn-sm" onClick={onClose}><i className="fas fa-times"></i></button>
-        </div>
-        {children}
       </div>
     </div>
   )
@@ -440,101 +424,88 @@ export default function MarketingReportsPage({ token, stores }: MarketingReports
           MODALS
           ═══════════════════════════════════════ */}
 
-      {showRedemptionsModal && (
-        <Modal title="All Reward Redemptions" onClose={() => setShowRedemptionsModal(false)}>
-          <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-            {topRedeemed.map(([name, count], i) => {
-              const total = data.rewards.total_redemptions || 1
-              return (
-                <div key={name} style={{
-                  marginBottom: 14, paddingBottom: 14,
-                  borderBottom: i < topRedeemed.length - 1 ? '1px solid #F9F7F3' : 'none',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600, color: THEME.textPrimary }}>
-                      <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[i % COLORS.length], marginRight: 8 }} />
-                      {name}
-                    </span>
-                    <span style={{ fontWeight: 600, color: THEME.textPrimary }}>{count}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ flex: 1, height: 8, background: THEME.borderLight, borderRadius: 10 }}>
-                      <div style={{ height: 8, background: COLORS[i % COLORS.length], borderRadius: 10, width: `${(count / total) * 100}%` }} />
-                    </div>
-                    <span style={{ fontSize: 12, color: THEME.textMuted, minWidth: 40, textAlign: 'right' }}>
-                      {((count / total) * 100).toFixed(1)}%
-                    </span>
-                  </div>
+      <Modal isOpen={showRedemptionsModal} onClose={() => setShowRedemptionsModal(false)} title="All Reward Redemptions" size="lg">
+        <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          {topRedeemed.map(([name, count], i) => {
+            const total = data.rewards.total_redemptions || 1
+            return (
+              <div key={name} style={{
+                marginBottom: 14, paddingBottom: 14,
+                borderBottom: i < topRedeemed.length - 1 ? '1px solid #F9F7F3' : 'none',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
+                  <span style={{ fontWeight: 600, color: THEME.textPrimary }}>
+                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[i % COLORS.length], marginRight: 8 }} />
+                    {name}
+                  </span>
+                  <span style={{ fontWeight: 600, color: THEME.textPrimary }}>{count}</span>
                 </div>
-              )
-            })}
-          </div>
-        </Modal>
-      )}
-
-      {showVoucherUsageModal && (
-        <Modal title="All Voucher Usage" onClose={() => setShowVoucherUsageModal(false)}>
-          <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-            {topUsed.map(([code, count], i) => {
-              const total = data.vouchers.total_usages || 1
-              return (
-                <div key={code} style={{
-                  marginBottom: 14, paddingBottom: 14,
-                  borderBottom: i < topUsed.length - 1 ? '1px solid #F9F7F3' : 'none',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600, fontFamily: 'monospace', color: THEME.textPrimary }}>
-                      <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[(i + 2) % COLORS.length], marginRight: 8 }} />
-                      {code}
-                    </span>
-                    <span style={{ fontWeight: 600, color: THEME.textPrimary }}>{count}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: 1, height: 8, background: THEME.borderLight, borderRadius: 10 }}>
+                    <div style={{ height: 8, background: COLORS[i % COLORS.length], borderRadius: 10, width: `${(count / total) * 100}%` }} />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ flex: 1, height: 8, background: THEME.borderLight, borderRadius: 10 }}>
-                      <div style={{ height: 8, background: COLORS[(i + 2) % COLORS.length], borderRadius: 10, width: `${(count / total) * 100}%` }} />
-                    </div>
-                    <span style={{ fontSize: 12, color: THEME.textMuted, minWidth: 40, textAlign: 'right' }}>
-                      {((count / total) * 100).toFixed(1)}%
-                    </span>
-                  </div>
+                  <span style={{ fontSize: 12, color: THEME.textMuted, minWidth: 40, textAlign: 'right' }}>
+                    {((count / total) * 100).toFixed(1)}%
+                  </span>
                 </div>
-              )
-            })}
-          </div>
-        </Modal>
-      )}
+              </div>
+            )
+          })}
+        </div>
+      </Modal>
 
-      {showFeedbackStoreModal && (
-        <Modal title="Feedback by Store" onClose={() => setShowFeedbackStoreModal(false)}>
-          <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-              <thead>
-                <tr style={{ borderBottom: `2px solid ${THEME.borderLight}` }}>
-                  <th style={{ textAlign: 'left', padding: '8px 4px', color: THEME.textMuted, fontWeight: 600 }}>Store</th>
-                  <th style={{ textAlign: 'right', padding: '8px 4px', color: THEME.textMuted, fontWeight: 600 }}>Reviews</th>
-                  <th style={{ textAlign: 'right', padding: '8px 4px', color: THEME.textMuted, fontWeight: 600 }}>Avg Rating</th>
-                </tr>
-              </thead>
-              <tbody>
-                {feedbackByStore.map(([name, info], i) => (
-                  <tr key={name} style={{ borderBottom: `1px solid ${THEME.borderLight}` }}>
-                    <td style={{ padding: '10px 4px' }}>
-                      <span style={{ fontWeight: 500, color: THEME.textPrimary }}>
-                        <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[i % COLORS.length], marginRight: 8 }} />
-                        {name}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right', padding: '10px 4px', fontWeight: 500 }}>{info.count}</td>
-                    <td style={{ textAlign: 'right', padding: '10px 4px', fontWeight: 600, color: ratingColor(info.avg_rating) }}>
-                      {info.avg_rating.toFixed(1)} ★
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Modal>
-      )}
+      <Modal isOpen={showVoucherUsageModal} onClose={() => setShowVoucherUsageModal(false)} title="All Voucher Usage" size="lg">
+        <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          {topUsed.map(([code, count], i) => {
+            const total = data.vouchers.total_usages || 1
+            return (
+              <div key={code} style={{
+                marginBottom: 14, paddingBottom: 14,
+                borderBottom: i < topUsed.length - 1 ? '1px solid #F9F7F3' : 'none',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
+                  <span style={{ fontWeight: 600, fontFamily: 'monospace', color: THEME.textPrimary }}>
+                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[(i + 2) % COLORS.length], marginRight: 8 }} />
+                    {code}
+                  </span>
+                  <span style={{ fontWeight: 600, color: THEME.textPrimary }}>{count}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: 1, height: 8, background: THEME.borderLight, borderRadius: 10 }}>
+                    <div style={{ height: 8, background: COLORS[(i + 2) % COLORS.length], borderRadius: 10, width: `${(count / total) * 100}%` }} />
+                  </div>
+                  <span style={{ fontSize: 12, color: THEME.textMuted, minWidth: 40, textAlign: 'right' }}>
+                    {((count / total) * 100).toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </Modal>
+
+      <Modal isOpen={showFeedbackStoreModal} onClose={() => setShowFeedbackStoreModal(false)} title="Feedback by Store" size="lg">
+        <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          <DataTable<{ label: string; count: number; avg_rating: number }>
+            data={feedbackByStore.map(([name, info]) => ({ label: name, count: info.count, avg_rating: info.avg_rating }))}
+            columns={[
+              { key: 'label', header: 'Store', render: (row) => {
+                const idx = feedbackByStore.findIndex(([n]) => n === row.label);
+                return (
+                <span style={{ fontWeight: 500, color: THEME.textPrimary }}>
+                  <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[idx % COLORS.length], marginRight: 8 }} />
+                  {row.label}
+                </span>
+              );}},
+              { key: 'count', header: 'Reviews', render: (row) => <span style={{ fontWeight: 500 }}>{row.count}</span> },
+              { key: 'avg_rating', header: 'Avg Rating', render: (row) => (
+                <span style={{ fontWeight: 600, color: ratingColor(row.avg_rating) }}>{row.avg_rating.toFixed(1)} ★</span>
+              )},
+            ]}
+            emptyMessage="No feedback data"
+          />
+        </div>
+      </Modal>
     </div>
   )
 }

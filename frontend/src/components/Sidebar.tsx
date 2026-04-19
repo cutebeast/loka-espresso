@@ -9,13 +9,15 @@ import { THEME } from '@/lib/theme';
 // Page visibility by user_type_id
 const PAGE_VISIBILITY: Record<number, Set<string>> = {
   1: new Set([
-    'dashboard', 'orders', 'menu', 'inventory', 'tables', 'staff',
-    'rewards', 'vouchers', 'promotions', 'feedback',
-    'reports', 'marketingreports', 'customers',
-    'notifications', 'auditlog', 'loyaltyrules', 'store', 'settings',
+    'dashboard', 'orders',
+    'menu', 'inventory', 'tables', 'staff',
+    'customers', 'rewards', 'vouchers', 'promotions', 'notifications', 'feedback',
+    'reports', 'marketingreports',
+    'store', 'settings', 'loyaltyrules', 'auditlog',
   ]),
   2: new Set([
-    'dashboard', 'orders', 'menu', 'inventory', 'tables',
+    'dashboard', 'orders',
+    'menu', 'inventory', 'tables',
     'reports',
   ]),
   3: new Set(['orders']),
@@ -26,29 +28,29 @@ const navGroups = [
     { id: 'dashboard' as PageId, icon: 'fa-chart-pie', label: 'Dashboard' },
     { id: 'orders' as PageId, icon: 'fa-clipboard-list', label: 'Orders' },
   ]},
-  { label: 'Store Ops', icon: 'fa-store', items: [
-    { id: 'menu' as PageId, icon: 'fa-mug-hot', label: 'Menu' },
+  { label: 'Store Operations', icon: 'fa-store', items: [
+    { id: 'menu' as PageId, icon: 'fa-mug-hot', label: 'Menu Management' },
     { id: 'inventory' as PageId, icon: 'fa-boxes-stacked', label: 'Inventory', hasSubmenu: true },
     { id: 'tables' as PageId, icon: 'fa-chair', label: 'Tables' },
     { id: 'staff' as PageId, icon: 'fa-user-tie', label: 'Staff' },
   ]},
-  { label: 'Marketing', icon: 'fa-bullhorn', items: [
+  { label: 'CRM & Marketing', icon: 'fa-bullhorn', items: [
+    { id: 'customers' as PageId, icon: 'fa-users', label: 'Customers' },
     { id: 'rewards' as PageId, icon: 'fa-gift', label: 'Rewards' },
     { id: 'vouchers' as PageId, icon: 'fa-ticket', label: 'Vouchers' },
     { id: 'promotions' as PageId, icon: 'fa-bullhorn', label: 'Promotions' },
+    { id: 'notifications' as PageId, icon: 'fa-bell', label: 'Push Notifications' },
     { id: 'feedback' as PageId, icon: 'fa-star', label: 'Feedback' },
   ]},
   { label: 'Analytics', icon: 'fa-chart-bar', items: [
     { id: 'reports' as PageId, icon: 'fa-chart-line', label: 'Sales Reports' },
-    { id: 'marketingreports' as PageId, icon: 'fa-bullseye', label: 'Marketing Reports' },
-    { id: 'customers' as PageId, icon: 'fa-users', label: 'Customers' },
+    { id: 'marketingreports' as PageId, icon: 'fa-bullseye', label: 'Marketing ROI' },
   ]},
-  { label: 'System', icon: 'fa-cog', items: [
-    { id: 'notifications' as PageId, icon: 'fa-bell', label: 'Notifications' },
-    { id: 'auditlog' as PageId, icon: 'fa-history', label: 'Audit Log' },
-    { id: 'loyaltyrules' as PageId, icon: 'fa-medal', label: 'Loyalty Rules' },
+  { label: 'System & Config', icon: 'fa-cog', items: [
     { id: 'store' as PageId, icon: 'fa-store-alt', label: 'Store Settings' },
-    { id: 'settings' as PageId, icon: 'fa-cog', label: 'Settings' },
+    { id: 'settings' as PageId, icon: 'fa-cog', label: 'App Settings' },
+    { id: 'loyaltyrules' as PageId, icon: 'fa-medal', label: 'Loyalty Rules' },
+    { id: 'auditlog' as PageId, icon: 'fa-history', label: 'Audit Log' },
   ]},
 ];
 
@@ -137,7 +139,7 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
         height: '100vh',
         overflowY: 'auto',
         overflowX: 'hidden',
-        zIndex: 50,
+        zIndex: 150,
         transition: 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease',
         transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
       }}>
@@ -223,7 +225,7 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
             cursor: 'pointer',
             color: THEME.primary,
             fontSize: 10,
-            zIndex: 60,
+            zIndex: 160,
             boxShadow: THEME.shadow.md,
             transition: 'all 0.3s ease',
             transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',

@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
-import { Select, Pagination } from '@/components/ui';
+import { Select, Pagination, Drawer } from '@/components/ui';
 import SurveysPage from './SurveysPage';
+import SurveyReportPage from './SurveyReportPage';
 
 interface PromotionsPageProps {
   token: string;
@@ -49,7 +50,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
   const [bannerLoading, setBannerLoading] = useState(false);
 
   // View mode: which sub-view is active
-  const [viewMode, setViewMode] = useState<'promotions' | 'banner-form' | 'surveys' | 'survey-form'>('promotions');
+  const [viewMode, setViewMode] = useState<'promotions' | 'banner-form' | 'surveys' | 'survey-form' | 'reports'>('promotions');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<BannerForm>(emptyForm);
   const [error, setError] = useState('');
@@ -57,6 +58,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [surveys, setSurveys] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const PAGE_SIZE = 20;
 
@@ -96,6 +98,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
     setForm(emptyForm);
     setError('');
     setViewMode('banner-form');
+    setDrawerOpen(true);
   };
 
   const openEdit = (banner: any) => {
@@ -116,9 +119,11 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
     });
     setError('');
     setViewMode('banner-form');
+    setDrawerOpen(true);
   };
 
   const closeForm = () => {
+    setDrawerOpen(false);
     setViewMode('promotions');
     setEditingId(null);
     setError('');
@@ -203,60 +208,14 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
   };
 
   // Determine current tab from viewMode for the tab bar highlight
-  const currentTab = (viewMode === 'promotions' || viewMode === 'banner-form') ? 'promotions' : 'surveys';
+  const currentTab = (viewMode === 'promotions' || viewMode === 'banner-form') ? 'promotions' : (viewMode === 'reports' ? 'reports' : 'surveys');
+  const drawerTitle = editingId ? 'Edit Banner' : 'New Banner';
 
   return (
     <div>
-      {/* Tab bar — only show on list views */}
-      {(viewMode === 'promotions' || viewMode === 'surveys') && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: `1px solid ${THEME.border}` }}>
-          <button
-            onClick={() => setViewMode('promotions')}
-            style={{
-              padding: '12px 20px',
-              border: 'none',
-              borderBottom: `2px solid ${currentTab === 'promotions' ? THEME.primary : 'transparent'}`,
-              background: 'transparent',
-              color: currentTab === 'promotions' ? THEME.primary : THEME.textMuted,
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            <i className="fas fa-bullhorn" style={{ marginRight: 8 }}></i>
-            Promotions
-          </button>
-          <button
-            onClick={() => setViewMode('surveys')}
-            style={{
-              padding: '12px 20px',
-              border: 'none',
-              borderBottom: `2px solid ${currentTab === 'surveys' ? THEME.primary : 'transparent'}`,
-              background: 'transparent',
-              color: currentTab === 'surveys' ? THEME.primary : THEME.textMuted,
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            <i className="fas fa-list-check" style={{ marginRight: 8 }}></i>
-            Surveys
-          </button>
-        </div>
-      )}
-
-      {/* ── BANNER FORM VIEW ── */}
-      {viewMode === 'banner-form' && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            <button className="btn btn-sm" onClick={closeForm}>
-              <i className="fas fa-arrow-left"></i> Back to Promotions
-            </button>
-            <h3 style={{ margin: 0 }}>{editingId ? 'Edit Banner' : 'New Banner'}</h3>
-          </div>
-
+      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} width={560}>
+        {/* BANNER FORM */}
+        {viewMode === 'banner-form' && (
           <div className="card">
             {error && (
               <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
@@ -362,7 +321,80 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
               </div>
             </form>
           </div>
-        </>
+        )}
+      </Drawer>
+      {/* Tab bar — only show on list views */}
+      {(viewMode === 'promotions' || viewMode === 'surveys') && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: `1px solid ${THEME.border}` }}>
+          <button
+            onClick={() => setViewMode('promotions')}
+            style={{
+              padding: '12px 20px',
+              border: 'none',
+              borderBottom: `2px solid ${currentTab === 'promotions' ? THEME.primary : 'transparent'}`,
+              background: 'transparent',
+              color: currentTab === 'promotions' ? THEME.primary : THEME.textMuted,
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            <i className="fas fa-bullhorn" style={{ marginRight: 8 }}></i>
+            Promotions
+          </button>
+          <button
+            onClick={() => setViewMode('surveys')}
+            style={{
+              padding: '12px 20px',
+              border: 'none',
+              borderBottom: `2px solid ${currentTab === 'surveys' ? THEME.primary : 'transparent'}`,
+              background: 'transparent',
+              color: currentTab === 'surveys' ? THEME.primary : THEME.textMuted,
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            <i className="fas fa-list-check" style={{ marginRight: 8 }}></i>
+            Surveys
+          </button>
+          <button
+            onClick={() => setViewMode('reports')}
+            style={{
+              padding: '12px 20px',
+              border: 'none',
+              borderBottom: `2px solid ${currentTab === 'reports' ? THEME.primary : 'transparent'}`,
+              background: 'transparent',
+              color: currentTab === 'reports' ? THEME.primary : THEME.textMuted,
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            <i className="fas fa-chart-bar" style={{ marginRight: 8 }}></i>
+            Survey Reports
+          </button>
+          <button
+            onClick={() => setViewMode('reports')}
+            style={{
+              padding: '12px 20px',
+              border: 'none',
+              borderBottom: `2px solid ${currentTab === 'reports' ? THEME.primary : 'transparent'}`,
+              background: 'transparent',
+              color: currentTab === 'reports' ? THEME.primary : THEME.textMuted,
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            <i className="fas fa-chart-bar" style={{ marginRight: 8 }}></i>
+            Survey Reports
+          </button>
+        </div>
       )}
 
       {/* ── PROMOTIONS LIST VIEW ── */}
@@ -485,6 +517,16 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
           token={token}
           onSwitchToPromotions={() => setViewMode('promotions')}
         />
+      )}
+
+      {/* ── SURVEY REPORTS VIEW ── */}
+      {viewMode === 'reports' && (
+        <SurveyReportPage token={token} />
+      )}
+
+      {/* ── SURVEY REPORTS VIEW ── */}
+      {viewMode === 'reports' && (
+        <SurveyReportPage token={token} />
       )}
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
-import { Select, Pagination } from '@/components/ui';
+import { Select, Pagination, Drawer } from '@/components/ui';
 
 interface VouchersPageProps {
   token: string;
@@ -50,6 +50,7 @@ export default function VouchersPage({ token }: VouchersPageProps) {
 
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
   const [editingVoucher, setEditingVoucher] = useState<any | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fetchVouchers = useCallback(async (p: number) => {
     setLoading(true);
@@ -71,14 +72,17 @@ export default function VouchersPage({ token }: VouchersPageProps) {
   function openCreate() {
     setEditingVoucher(null);
     setViewMode('form');
+    setDrawerOpen(true);
   }
 
   function openEdit(v: any) {
     setEditingVoucher(v);
     setViewMode('form');
+    setDrawerOpen(true);
   }
 
   function closeForm() {
+    setDrawerOpen(false);
     setViewMode('list');
     setEditingVoucher(null);
     fetchVouchers(page);
@@ -110,12 +114,15 @@ export default function VouchersPage({ token }: VouchersPageProps) {
     return v.max_uses != null ? `${used}/${v.max_uses}` : `${used}/∞`;
   }
 
-  if (viewMode === 'form') {
-    return <VoucherFormPage token={token} existingVoucher={editingVoucher} onBack={closeForm} />;
-  }
+  const drawerTitle = editingVoucher ? 'Edit Voucher' : 'New Voucher';
 
   return (
     <div>
+      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} width={560}>
+        {viewMode === 'form' && (
+          <VoucherFormPage token={token} existingVoucher={editingVoucher} onBack={closeForm} />
+        )}
+      </Drawer>
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
         <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Voucher</button>
       </div>
@@ -287,11 +294,6 @@ function VoucherFormPage({ token, existingVoucher, onBack }: { token: string; ex
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <button className="btn btn-sm" onClick={onBack}><i className="fas fa-arrow-left"></i> Back to Vouchers</button>
-        <h3 style={{ margin: 0 }}>{isEdit ? 'Edit Voucher' : 'New Voucher'}</h3>
-      </div>
-
       <div className="card">
         {error && (
           <div style={{ background: '#FEE2E2', color: '#A83232', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>

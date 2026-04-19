@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { DateFilter, type DatePreset, calcDateRange } from '@/components/ui/DateFilter';
-import { BarChart } from '@/components/ui';
+import { BarChart, Modal, TextArea } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 
 interface FeedbackPageProps {
@@ -216,39 +216,31 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
         </div>
       )}
 
-      {showModal && modalFeedback && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ color: THEME.primary }}>{isEdit ? 'Edit Reply' : 'Reply to Feedback'}</h3>
-              <button className="btn btn-sm" onClick={() => setShowModal(false)}>
-                <i className="fas fa-times"></i>
-              </button>
+      <Modal isOpen={showModal && !!modalFeedback} onClose={() => setShowModal(false)} title={isEdit ? 'Edit Reply' : 'Reply to Feedback'} footer={
+        <>
+          <button className="btn" onClick={() => setShowModal(false)}>Cancel</button>
+          <button className="btn btn-primary" onClick={submitReply} disabled={submitting || !replyText.trim()}>
+            {submitting ? 'Submitting...' : isEdit ? 'Update Reply' : 'Submit Reply'}
+          </button>
+        </>
+      }>
+        {modalFeedback && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <strong style={{ color: THEME.primary }}>{modalFeedback.customer_name}</strong>
+              {renderStars(modalFeedback.rating)}
             </div>
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <strong style={{ color: THEME.primary }}>{modalFeedback.customer_name}</strong>
-                {renderStars(modalFeedback.rating)}
-              </div>
-              <p style={{ fontSize: 14, color: THEME.success, marginBottom: 12 }}>{modalFeedback.comment}</p>
-              <textarea
-                className="input"
-                rows={4}
-                placeholder="Write your reply..."
-                value={replyText}
-                onChange={e => setReplyText(e.target.value)}
-                style={{ width: '100%', resize: 'vertical' }}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button className="btn" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={submitReply} disabled={submitting || !replyText.trim()}>
-                {submitting ? 'Submitting...' : isEdit ? 'Update Reply' : 'Submit Reply'}
-              </button>
-            </div>
+            <p style={{ fontSize: 14, color: THEME.success, marginBottom: 12 }}>{modalFeedback.comment}</p>
+            <TextArea
+              rows={4}
+              placeholder="Write your reply..."
+              value={replyText}
+              onChange={e => setReplyText(e.target.value)}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { StoreSelector, Select, Pagination } from '@/components/ui';
+import { StoreSelector, Select, DataTable, type ColumnDef, Pagination, Drawer, Input } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantStaffMember, MerchantStore } from '@/lib/merchant-types';
 
@@ -61,6 +61,7 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
   // View mode
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
   const [editingStaff, setEditingStaff] = useState<MerchantStaffMember | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<string | number | null>(null);
   const [tempPassword, setTempPassword] = useState<{ name: string; email: string; password: string } | null>(null);
@@ -135,6 +136,7 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
     setSelectedStoreIds(isHQ ? [] : [parseInt(selectedStore)]);
     setError('');
     setViewMode('form');
+    setDrawerOpen(true);
   }
 
   function openEdit(s: MerchantStaffMember) {
@@ -151,9 +153,11 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
     setSelectedStoreIds(assigns.map(a => a.store_id).filter(id => id > 0));
     setError('');
     setViewMode('form');
+    setDrawerOpen(true);
   }
 
   function closeForm() {
+    setDrawerOpen(false);
     setViewMode('list');
     setEditingStaff(null);
     setError('');
@@ -260,12 +264,12 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
     return <span className="badge badge-gray">{label}</span>;
   }
 
+  const drawerTitle = editingStaff ? `Edit: ${editingStaff.name}` : 'New Staff';
   const availableRoles = ROLES_BY_TYPE[userTypeId] || [];
 
-  // ── FORM VIEW ──
-  if (viewMode === 'form') {
-    return (
-      <div>
+  return (
+    <div>
+      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} width={560}>
         {/* Store picker modal */}
         {showStoreModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowStoreModal(false)}>
@@ -299,15 +303,6 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <button className="btn btn-sm" onClick={closeForm}>
-            <i className="fas fa-arrow-left"></i> Back to Staff
-          </button>
-          <h3 style={{ margin: 0 }}>
-            {editingStaff ? `Edit: ${editingStaff.name}` : 'New Staff'}
-          </h3>
-        </div>
-
         <div className="card">
           {error && (
             <div style={{ background: '#FEE2E2', color: '#A83232', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
@@ -317,8 +312,7 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div>
-                <label style={labelStyle}>Name *</label>
-                <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Ahmad bin Ali" />
+                <Input label="Name *" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Ahmad bin Ali" />
                 <div style={hintStyle}>Full name of the staff member</div>
               </div>
               <div>
@@ -354,13 +348,11 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
                 <div style={hintStyle}>Click to select which stores this staff can access</div>
               </div>
               <div>
-                <label style={labelStyle}>Email <span style={{ fontWeight: 400, color: THEME.textMuted }}>(optional)</span></label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="e.g. ahmad@zus.com" />
+                <Input label="Email (optional)" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="e.g. ahmad@zus.com" />
                 <div style={hintStyle}>Adding email auto-creates a login account</div>
               </div>
               <div>
-                <label style={labelStyle}>PIN Code <span style={{ fontWeight: 400, color: THEME.textMuted }}>(optional)</span></label>
-                <input value={pinCode} onChange={e => setPinCode(e.target.value)} placeholder="4-6 digit PIN" maxLength={6} />
+                <Input label="PIN Code (optional)" value={pinCode} onChange={e => setPinCode(e.target.value)} placeholder="4-6 digit PIN" maxLength={6} />
                 <div style={hintStyle}>{editingStaff ? 'Leave blank to keep current' : 'For POS clock-in'}</div>
               </div>
             </div>
@@ -375,13 +367,9 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
             </div>
           </form>
         </div>
-      </div>
-    );
-  }
+      </Drawer>
 
-  // ── LIST VIEW ──
-  return (
-    <div>
+      {/* LIST VIEW */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <StoreSelector
@@ -449,89 +437,52 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
         </div>
       </div>
 
-      {loading && staffList.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>
-      ) : staffList.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-          <i className="fas fa-user-tie" style={{ fontSize: 40, marginBottom: 16 }}></i>
-          <p>{isHQ ? 'No HQ staff yet.' : 'No staff members yet.'}</p>
-        </div>
-      ) : (
-        <div style={{
-          overflowX: 'auto',
-          borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
-          background: THEME.bgCard,
-          border: `1px solid ${THEME.border}`,
-          borderTop: 'none',
-        }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>User Type</th>
-                <th>Role</th>
-                <th>Stores</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staffList.map(s => {
-                const assignments = s.store_assignments || [];
-                const realAssignments = assignments.filter(a => a.store_id > 0);
-                const rowKey = s.id ?? `user-${s.user_id}`;
-                return (
-                  <tr key={rowKey}>
-                    <td style={{ fontWeight: 500 }}>{s.name}</td>
-                    <td>{renderUserTypeBadge(s)}</td>
-                    <td><span className="badge badge-blue">{getDisplayRole(s)}</span></td>
-                    <td style={{ fontSize: 13, maxWidth: 200 }}>
-                      {realAssignments.length > 0 ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                          {realAssignments.map(a => (
-                            <span key={a.store_id} className="badge badge-gray" style={{ fontSize: 10 }}>{a.store_name}</span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ color: THEME.textMuted }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ fontSize: 13 }}>
-                      {s.email ? (
-                        <span>{s.email} <span className="badge badge-green" style={{ marginLeft: 6, fontSize: 10 }}>Has Login</span></span>
-                      ) : (
-                        <span style={{ color: THEME.textMuted }}>No login</span>
-                      )}
-                    </td>
-                    <td>{s.phone || '—'}</td>
-                    <td>
-                      <button onClick={() => toggleActive(s)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
-                        <span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? 'Active' : 'Inactive'}</span>
-                      </button>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-sm" onClick={() => openEdit(s)} title="Edit"><i className="fas fa-edit"></i></button>
-                        <button className="btn btn-sm" onClick={() => s.email ? handleResetPassword(s) : setError('Add an email to enable login access.')} title={s.email ? 'Reset password' : 'No login'}><i className="fas fa-key" style={{ color: s.email ? undefined : THEME.accentLight }}></i></button>
-                        {confirmDelete === rowKey ? (
-                          <>
-                            <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(s.id!)}>Confirm</button>
-                            <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
-                          </>
-                        ) : (
-                          <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(rowKey)} title="Deactivate"><i className="fas fa-trash"></i></button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable<MerchantStaffMember>
+        data={staffList}
+        columns={[
+          { key: 'name', header: 'Name', render: (s) => <span style={{ fontWeight: 500 }}>{s.name}</span> },
+          { key: 'user_type_id', header: 'User Type', render: (s) => renderUserTypeBadge(s) },
+          { key: 'role', header: 'Role', render: (s) => <span className="badge badge-blue">{getDisplayRole(s)}</span> },
+          { key: 'store_assignments', header: 'Stores', render: (s) => {
+            const realAssignments = (s.store_assignments || []).filter(a => a.store_id > 0);
+            return realAssignments.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {realAssignments.map(a => (
+                  <span key={a.store_id} className="badge badge-gray" style={{ fontSize: 10 }}>{a.store_name}</span>
+                ))}
+              </div>
+            ) : <span style={{ color: THEME.textMuted }}>—</span>;
+          }},
+          { key: 'email', header: 'Email', render: (s) => s.email ? (
+            <span>{s.email} <span className="badge badge-green" style={{ marginLeft: 6, fontSize: 10 }}>Has Login</span></span>
+          ) : <span style={{ color: THEME.textMuted }}>No login</span> },
+          { key: 'phone', header: 'Phone', render: (s) => s.phone || '—' },
+          { key: 'is_active', header: 'Status', render: (s) => (
+            <button onClick={() => toggleActive(s)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
+              <span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? 'Active' : 'Inactive'}</span>
+            </button>
+          )},
+          { key: 'actions', header: 'Actions', render: (s) => {
+            const rowKey = s.id ?? `user-${s.user_id}`;
+            return (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button className="btn btn-sm" onClick={() => openEdit(s)} title="Edit"><i className="fas fa-edit"></i></button>
+                <button className="btn btn-sm" onClick={() => s.email ? handleResetPassword(s) : setError('Add an email to enable login access.')} title={s.email ? 'Reset password' : 'No login'}><i className="fas fa-key" style={{ color: s.email ? undefined : THEME.accentLight }}></i></button>
+                {confirmDelete === rowKey ? (
+                  <>
+                    <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(s.id!)}>Confirm</button>
+                    <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
+                  </>
+                ) : (
+                  <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(rowKey)} title="Deactivate"><i className="fas fa-trash"></i></button>
+                )}
+              </div>
+            );
+          }},
+        ]}
+        loading={loading && staffList.length === 0}
+        emptyMessage={isHQ ? 'No HQ staff yet.' : 'No staff members yet.'}
+      />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={fetchStaff} loading={loading} />
     </div>

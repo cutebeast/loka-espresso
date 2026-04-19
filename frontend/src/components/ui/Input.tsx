@@ -1,6 +1,6 @@
 'use client';
 
-import { InputHTMLAttributes, ReactNode } from 'react';
+import { InputHTMLAttributes, TextareaHTMLAttributes, ReactNode } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -83,7 +83,7 @@ export function Input({
   );
 }
 
-interface TextAreaProps extends InputHTMLAttributes<HTMLTextAreaElement> {
+interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
 }

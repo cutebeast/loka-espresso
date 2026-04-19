@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
-import { FilterSelect, StoreSelector, DateFilter, calcDateRange, type DatePreset, Pagination } from '@/components/ui';
+import { FilterSelect, StoreSelector, DateFilter, DataTable, type ColumnDef, calcDateRange, type DatePreset, Pagination } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { CustomerItem } from '@/lib/merchant-types';
 
@@ -188,69 +188,34 @@ export default function CustomersPage({ token, stores, selectedStore, onStoreCha
         </div>
       </div>
 
-      {loading && customers.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: THEME.textMuted }}>
-          <i className="fas fa-spinner fa-spin"></i> Loading...
-        </div>
-      ) : customers.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-          <i className="fas fa-users" style={{ fontSize: 40, marginBottom: 16 }}></i>
-          <p>{search || tier ? 'No customers match your filters' : 'No customers found'}</p>
-        </div>
-      ) : (
-        <div style={{
-          overflowX: 'auto',
-          borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
-          background: THEME.bgCard,
-          border: `1px solid ${THEME.border}`,
-          borderTop: 'none',
-        }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Tier</th>
-                <th>Points</th>
-                <th>Orders</th>
-                <th>Total Spent</th>
-                <th>Joined</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map(c => (
-                <tr key={c.id}>
-                  <td style={{ fontWeight: 500, color: THEME.textPrimary }}>{c.name || '-'}</td>
-                  <td style={{ color: THEME.textPrimary }}>{c.phone || '-'}</td>
-                  <td style={{ color: THEME.textPrimary }}>{c.email || '-'}</td>
-                  <td>
-                    <span className={`badge ${
-                      c.tier === 'platinum' ? 'badge-purple' :
-                      c.tier === 'gold' ? 'badge-yellow' :
-                      c.tier === 'silver' ? 'badge-gray' : 'badge-gray'
-                    }`}>
-                      {c.tier ? c.tier.charAt(0).toUpperCase() + c.tier.slice(1) : 'Standard'}
-                    </span>
-                  </td>
-                  <td style={{ color: THEME.textPrimary }}>{c.points_balance?.toLocaleString() || 0} pts</td>
-                  <td style={{ color: THEME.textPrimary }}>{c.total_orders}</td>
-                  <td style={{ color: THEME.textPrimary }}>{formatRM(c.total_spent || 0)}</td>
-                  <td style={{ color: THEME.textMuted, fontSize: 12 }}>
-                    {c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}
-                  </td>
-                  <td>
-                    <button className="btn btn-sm" onClick={() => onEditCustomer(c.id)}>
-                      <i className="fas fa-eye"></i> View
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable<CustomerItem>
+        data={customers}
+        columns={[
+          { key: 'name', header: 'Name', render: (c) => <span style={{ fontWeight: 500, color: THEME.textPrimary }}>{c.name || '-'}</span> },
+          { key: 'phone', header: 'Phone', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.phone || '-'}</span> },
+          { key: 'email', header: 'Email', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.email || '-'}</span> },
+          { key: 'tier', header: 'Tier', render: (c) => (
+            <span className={`badge ${
+              c.tier === 'platinum' ? 'badge-purple' :
+              c.tier === 'gold' ? 'badge-yellow' :
+              c.tier === 'silver' ? 'badge-gray' : 'badge-gray'
+            }`}>
+              {c.tier ? c.tier.charAt(0).toUpperCase() + c.tier.slice(1) : 'Standard'}
+            </span>
+          )},
+          { key: 'points_balance', header: 'Points', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.points_balance?.toLocaleString() || 0} pts</span> },
+          { key: 'total_orders', header: 'Orders', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.total_orders}</span> },
+          { key: 'total_spent', header: 'Total Spent', render: (c) => <span style={{ color: THEME.textPrimary }}>{formatRM(c.total_spent || 0)}</span> },
+          { key: 'created_at', header: 'Joined', render: (c) => <span style={{ color: THEME.textMuted, fontSize: 12 }}>{c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}</span> },
+          { key: 'actions', header: 'Actions', render: (c) => (
+            <button className="btn btn-sm" onClick={() => onEditCustomer(c.id)}>
+              <i className="fas fa-eye"></i> View
+            </button>
+          )},
+        ]}
+        loading={loading && customers.length === 0}
+        emptyMessage={search || tier ? 'No customers match your filters' : 'No customers found'}
+      />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={fetchCustomers} loading={loading} />
     </div>
