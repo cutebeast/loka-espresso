@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
-import { Select } from '@/components/ui';
+import { Select, Pagination } from '@/components/ui';
 
 interface PromotionsPageProps {
   token: string;
@@ -668,17 +668,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
             </table>
           </div>
 
-          {bannerTotalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 20 }}>
-                <button className="btn btn-sm" disabled={bannerPage <= 1 || bannerLoading} onClick={() => fetchBanners(bannerPage - 1)}>
-                  <i className="fas fa-chevron-left"></i> Prev
-                </button>
-                <span style={{ fontSize: 13, color: THEME.success }}>Page {bannerPage} of {bannerTotalPages} &nbsp;·&nbsp; {bannerTotal} banners</span>
-              <button className="btn btn-sm" disabled={bannerPage >= bannerTotalPages || bannerLoading} onClick={() => fetchBanners(bannerPage + 1)}>
-                Next <i className="fas fa-chevron-right"></i>
-              </button>
-            </div>
-          )}
+          <Pagination page={bannerPage} totalPages={bannerTotalPages} onPageChange={fetchBanners} loading={bannerLoading} />
         </>
       )}
 
@@ -858,17 +848,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
           </>
           )}
 
-          {surveyTotalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 20 }}>
-                <button className="btn btn-sm" disabled={surveyPage <= 1 || surveyLoading} onClick={() => fetchSurveyList(surveyPage - 1)}>
-                  <i className="fas fa-chevron-left"></i> Prev
-                </button>
-                <span style={{ fontSize: 13, color: THEME.success }}>Page {surveyPage} of {surveyTotalPages} &nbsp;·&nbsp; {surveyTotal} surveys</span>
-              <button className="btn btn-sm" disabled={surveyPage >= surveyTotalPages || surveyLoading} onClick={() => fetchSurveyList(surveyPage + 1)}>
-                Next <i className="fas fa-chevron-right"></i>
-              </button>
-            </div>
-          )}
+          <Pagination page={surveyPage} totalPages={surveyTotalPages} onPageChange={fetchSurveyList} loading={surveyLoading} />
         </>
       )}
     </div>
