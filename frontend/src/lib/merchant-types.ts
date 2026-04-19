@@ -62,6 +62,15 @@ export interface MerchantVoucher {
   is_active: boolean;
 }
 
+export interface MerchantInventoryCategory {
+  id: number;
+  store_id: number;
+  name: string;
+  slug: string | null;
+  display_order: number;
+  is_active: boolean;
+}
+
 export interface MerchantInventoryItem {
   id: number;
   name: string;
@@ -69,7 +78,8 @@ export interface MerchantInventoryItem {
   unit: string;
   reorder_level: number;
   is_active: boolean;
-  category: string | null;
+  category_id: number | null;
+  category_name: string | null;
 }
 
 export interface InventoryMovement {
@@ -103,19 +113,37 @@ export interface MerchantOrder {
 
 export interface MerchantDashboardData {
   total_orders: number;
+  active_orders: number;
   total_revenue: number;
   total_customers: number;
   orders_today: number;
   revenue_today: number;
   orders_by_type: Record<string, number>;
+  monthly?: Record<string, { orders: number; revenue: number }>;
+}
+
+export interface StoreAssignment {
+  store_id: number;
+  store_name: string;
 }
 
 export interface MerchantStaffMember {
-  id: number;
+  id: number | null;
   name: string;
-  role: string;
+  role: string;                // legacy staff table role (barista, manager, etc.)
   phone: string;
   is_active: boolean;
+  user_type_id?: number | null;  // FK to user_types lookup (1=HQ, 2=Store Mgmt, 3=Store, 4=Customer)
+  role_id?: number | null;       // FK to roles lookup (1=Admin, 2=Brand Owner, 3=Manager, etc.)
+  user_type?: string | null;     // resolved name: "HQ Management", "Store Management", "Store"
+  user_role?: string | null;     // resolved name: "Admin", "Manager", "Staff", etc.
+  email?: string | null;
+  store_id?: number | null;
+  user_id?: number | null;
+  store_name?: string | null;
+  store_assignments?: StoreAssignment[];  // all stores this user is assigned to via user_store_access
+  created_at?: string | null;
+  temp_password?: string;
 }
 
 export interface MerchantBanner {
@@ -138,6 +166,7 @@ export interface MerchantBroadcast {
   sent_count: number;
   open_count: number;
   is_archived: boolean;
+  status: string;
   created_at: string | null;
 }
 
@@ -183,6 +212,7 @@ export interface MerchantLoyaltyTier {
   min_points: number;
   points_multiplier: number;
   benefits: Record<string, unknown> | null;
+  sort_order: number;
 }
 
 export interface CustomerItem {
@@ -191,9 +221,10 @@ export interface CustomerItem {
   phone: string;
   email: string;
   tier: string;
-  points: number;
+  points_balance: number;
   total_orders: number;
   total_spent: number;
+  created_at?: string;
 }
 
 export interface CustomerDetail {
@@ -202,7 +233,7 @@ export interface CustomerDetail {
   phone: string;
   email: string;
   tier: string;
-  points: number;
+  points_balance: number;
   wallet_balance: number;
   total_orders: number;
   total_spent: number;
@@ -225,4 +256,4 @@ export interface CustomerLoyaltyTransaction {
   created_at: string;
 }
 
-export type PageId = 'dashboard' | 'orders' | 'menu' | 'inventory' | 'inventoryledger' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'feedback' | 'surveys' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store';
+export type PageId = 'dashboard' | 'orders' | 'menu' | 'inventory' | 'inventoryledger' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'feedback' | 'surveys' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store' | 'settings' | 'customerDetail';

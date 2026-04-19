@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "@/styles/theme.css";
 
 export const metadata: Metadata = {
-  title: "ZUS Merchant Dashboard",
-  description: "Merchant management portal for FNB Super-App",
+  title: "Loka Espresso - Merchant Dashboard",
+  description: "Merchant management portal for Loka Espresso",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
       </head>
-      <body>{children}</body>
+      <body style={{ backgroundColor: '#f5f5f0' }}>{children}</body>
     </html>
   );
 }

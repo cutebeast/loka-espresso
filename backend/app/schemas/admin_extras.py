@@ -7,9 +7,13 @@ class StaffCreate(BaseModel):
     name: str
     email: Optional[str] = None
     phone: Optional[str] = None
-    role: str = "barista"
+    role: Optional[str] = None
+    user_type_id: Optional[int] = None  # FK to user_types table
+    role_id: Optional[int] = None       # FK to roles table
     pin_code: Optional[str] = None
     is_active: bool = True
+    store_id: Optional[int] = None
+    store_ids: Optional[List[int]] = None  # Multi-store assignment via user_store_access
 
 
 class StaffUpdate(BaseModel):
@@ -17,18 +21,24 @@ class StaffUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     role: Optional[str] = None
+    user_type_id: Optional[int] = None  # Update user's user_type_id
+    role_id: Optional[int] = None       # Update user's role_id
     pin_code: Optional[str] = None
     is_active: Optional[bool] = None
+    store_id: Optional[int] = None
+    store_ids: Optional[List[int]] = None  # Multi-store assignment via user_store_access
 
 
 class StaffOut(BaseModel):
     id: int
-    store_id: int
+    store_id: Optional[int] = None
     user_id: Optional[int] = None
     name: str
     email: Optional[str] = None
     phone: Optional[str] = None
-    role: str
+    role: str  # staff table role (legacy StaffRole)
+    user_type: Optional[str] = None  # from users table
+    user_role: Optional[str] = None  # from users table
     is_active: bool
     created_at: Optional[datetime] = None
 
@@ -106,6 +116,7 @@ class BroadcastCreate(BaseModel):
     audience: str = "all"
     store_id: Optional[int] = None
     scheduled_at: Optional[datetime] = None
+    status: str = "draft"
 
 
 class BroadcastOut(BaseModel):
@@ -119,6 +130,7 @@ class BroadcastOut(BaseModel):
     sent_count: int
     open_count: int
     is_archived: bool = False
+    status: str = "draft"
     created_at: Optional[datetime] = None
 
     class Config:
@@ -186,6 +198,7 @@ class LoyaltyTierOut(BaseModel):
     min_points: int
     points_multiplier: Optional[float] = 1.0
     benefits: Optional[dict] = None
+    sort_order: int = 0
 
     class Config:
         from_attributes = True
@@ -195,6 +208,7 @@ class LoyaltyTierUpdate(BaseModel):
     min_points: Optional[int] = None
     points_multiplier: Optional[float] = None
     benefits: Optional[dict] = None
+    sort_order: Optional[int] = None
 
 
 class LoyaltyTierCreate(BaseModel):
@@ -202,3 +216,4 @@ class LoyaltyTierCreate(BaseModel):
     min_points: int
     points_multiplier: float = 1.0
     benefits: Optional[dict] = None
+    sort_order: int = 0

@@ -2,15 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { apiFetch } from '@/lib/merchant-api'
-import { DonutChart } from '@/components/charts'
+import { DonutChart, StoreSelector, DateFilter, calcDateRange, type DatePreset } from '@/components/ui'
+import { THEME } from '@/lib/theme'
 
 interface MarketingReportsPageProps {
   token: string
   stores: any[]
-  selectedStore: string
 }
-
-type DatePreset = '7D' | '30D' | 'MTD' | 'LAST_MONTH'
 
 interface TopItems { [key: string]: number }
 interface StoreFeedback { count: number; avg_rating: number }
@@ -36,44 +34,15 @@ interface MarketingData {
 
 /* ── Helpers ── */
 
-function calcRange(preset: DatePreset): { from: string; to: string } {
-  const now = new Date()
-  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-  let from: Date
-  switch (preset) {
-    case '7D':
-      from = new Date(to); from.setDate(from.getDate() - 6); from.setHours(0, 0, 0, 0); break
-    case '30D':
-      from = new Date(to); from.setDate(from.getDate() - 29); from.setHours(0, 0, 0, 0); break
-    case 'MTD':
-      from = new Date(now.getFullYear(), now.getMonth(), 1); break
-    case 'LAST_MONTH': {
-      const lm = new Date(now.getFullYear(), now.getMonth(), 0)
-      from = new Date(lm.getFullYear(), lm.getMonth(), 1)
-      to.setTime(lm.getTime()); to.setHours(23, 59, 59, 0); break
-    }
-    default:
-      from = new Date(to); from.setDate(from.getDate() - 29); from.setHours(0, 0, 0, 0)
-  }
-  return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] }
-}
-
 function ratingColor(r: number): string {
-  return r >= 4 ? '#22C55E' : r >= 3 ? '#F59E0B' : '#EF4444'
+  return r >= 4 ? '#4A7A59' : r >= 3 ? '#D99A29' : '#A83232'
 }
 
-const COLORS = ['#002F6C', '#059669', '#EA580C', '#7C3AED', '#DB2777', '#0891B2', '#4F46E5', '#DC2626', '#65A30D', '#CA8A04']
+const COLORS = ['#2C1E16', '#4A7A59', '#B85D19', '#7C3AED', '#DB2777', '#0891B2', '#4F46E5', '#DC2626', '#65A30D', '#CA8A04']
 const TIER_COLORS: Record<string, string> = {
-  bronze: '#CD7F32', silver: '#94A3B8', gold: '#EAB308', platinum: '#3B82F6', diamond: '#06B6D4',
+  bronze: '#CD7F32', silver: THEME.textSecondary, gold: '#EAB308', platinum: '#3B82F6', diamond: '#06B6D4',
 }
 const TIER_ORDER = ['platinum', 'gold', 'silver', 'bronze']
-
-const PRESETS: { label: string; value: DatePreset }[] = [
-  { label: '7D', value: '7D' },
-  { label: '30D', value: '30D' },
-  { label: 'MTD', value: 'MTD' },
-  { label: 'Last Month', value: 'LAST_MONTH' },
-]
 
 const PREVIEW_COUNT = 3
 
@@ -86,10 +55,10 @@ function BarRow({ label, value, max, color, right }: {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
-        <span style={{ fontWeight: 500, color: '#334155' }}>{label}</span>
-        {right || <span style={{ color: '#64748B', fontWeight: 600 }}>{value}</span>}
+        <span style={{ fontWeight: 500, color: THEME.textPrimary }}>{label}</span>
+        {right || <span style={{ color: THEME.textSecondary, fontWeight: 600 }}>{value}</span>}
       </div>
-      <div style={{ height: 6, background: '#F1F5F9', borderRadius: 10 }}>
+      <div style={{ height: 6, background: '#F9F7F3', borderRadius: 10 }}>
         <div style={{ height: 6, background: color, borderRadius: 10, width: `${p}%`, transition: 'width 0.3s' }} />
       </div>
     </div>
@@ -117,7 +86,7 @@ function RankingList({ items, maxVal, colorOffset, totalLabel, onShowAll }: {
   totalLabel: string; onShowAll?: () => void
 }) {
   if (items.length === 0) {
-    return <div style={{ color: '#94A3B8', textAlign: 'center', padding: 30, fontSize: 13 }}>No data in this period</div>
+    return <div style={{ color: THEME.textSecondary, textAlign: 'center', padding: 30, fontSize: 13 }}>No data in this period</div>
   }
   const preview = items.slice(0, PREVIEW_COUNT)
   return (
@@ -125,14 +94,14 @@ function RankingList({ items, maxVal, colorOffset, totalLabel, onShowAll }: {
       {preview.map(([name, count], i) => (
         <BarRow key={name} label={name} value={count} max={maxVal}
           color={COLORS[(i + colorOffset) % COLORS.length]}
-          right={<span style={{ color: '#64748B', fontWeight: 600 }}>{count}</span>}
+          right={<span style={{ color: THEME.textSecondary, fontWeight: 600 }}>{count}</span>}
         />
       ))}
       <div style={{
-        marginTop: 10, paddingTop: 10, borderTop: '1px solid #F1F5F9',
+        marginTop: 10, paddingTop: 10, borderTop: '1px solid #F9F7F3',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13,
       }}>
-        <span style={{ color: '#64748B' }}>{totalLabel}</span>
+        <span style={{ color: THEME.textSecondary }}>{totalLabel}</span>
         {items.length > PREVIEW_COUNT && onShowAll && (
           <button className="btn btn-sm" onClick={onShowAll}>
             <i className="fas fa-expand"></i> View All ({items.length})
@@ -145,8 +114,11 @@ function RankingList({ items, maxVal, colorOffset, totalLabel, onShowAll }: {
 
 /* ── Main Component ── */
 
-export default function MarketingReportsPage({ token, stores, selectedStore }: MarketingReportsPageProps) {
-  const [preset, setPreset] = useState<DatePreset>('30D')
+export default function MarketingReportsPage({ token, stores }: MarketingReportsPageProps) {
+  const [preset, setPreset] = useState<DatePreset>('MTD')
+  const [localStore, setLocalStore] = useState<string>('all')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
   const [data, setData] = useState<MarketingData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -155,23 +127,25 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
   const [showVoucherUsageModal, setShowVoucherUsageModal] = useState(false)
   const [showFeedbackStoreModal, setShowFeedbackStoreModal] = useState(false)
 
-  const isAllStores = selectedStore === 'all'
-  const storeObj = stores.find((s: any) => String(s.id) === selectedStore)
-  const storeLabel = isAllStores ? 'All Stores' : storeObj?.name || `Store ${selectedStore}`
+  const isAllStores = localStore === 'all'
+  const storeObj = stores.find((s: any) => String(s.id) === localStore)
+  const storeLabel = isAllStores ? 'All Stores' : storeObj?.name || `Store ${localStore}`
+
+  const effectiveRange = fromDate && toDate ? { from: fromDate, to: toDate } : calcDateRange(preset)
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const { from, to } = calcRange(preset)
-      let url = `/admin/reports/marketing?from_date=${from}&to_date=${to}`
-      if (!isAllStores) url += `&store_id=${selectedStore}`
+      const { from, to } = effectiveRange
+      let url = `/admin/reports/marketing?from_date=${from}T00:00:00&to_date=${to}T23:59:59`
+      if (!isAllStores) url += `&store_id=${localStore}`
       const res = await apiFetch(url, token)
       if (!res.ok) throw new Error('Failed to fetch marketing data')
       setData(await res.json())
     } catch (err: any) {
       setError(err.message || 'Failed to load data')
     } finally { setLoading(false) }
-  }, [token, preset, selectedStore, isAllStores])
+  }, [token, effectiveRange.from, effectiveRange.to, localStore, isAllStores])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -185,8 +159,7 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
   if (loading && !data) {
     return (
       <div>
-        <h3 style={{ margin: '0 0 20px' }}>Marketing Reports</h3>
-        <div style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
+        <div style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
           <i className="fas fa-spinner fa-spin" style={{ fontSize: 24 }}></i>
           <p style={{ marginTop: 12 }}>Loading...</p>
         </div>
@@ -197,8 +170,7 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
   if (error) {
     return (
       <div>
-        <h3 style={{ margin: '0 0 16px' }}>Marketing Reports</h3>
-        <div className="card" style={{ textAlign: 'center', padding: 40, color: '#EF4444' }}>
+        <div className="card" style={{ textAlign: 'center', padding: 40, color: THEME.error }}>
           <i className="fas fa-exclamation-circle" style={{ fontSize: 24 }}></i>
           <p>{error}</p>
           <button className="btn btn-primary" onClick={fetchData} style={{ marginTop: 8 }}>Retry</button>
@@ -211,34 +183,53 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
 
   return (
     <div>
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <h3 style={{ margin: 0 }}>Marketing Reports</h3>
-          <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
-            {data.period.from} — {data.period.to}
-          </div>
+      {/* Filter Bar - Store and Date on left */}
+      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        <StoreSelector
+          stores={stores.filter((s: any) => s.is_active && s.id !== 0).map((s: any) => ({ id: String(s.id), name: s.name }))}
+          selectedStore={localStore}
+          onChange={setLocalStore}
+        />
+        <DateFilter
+          preset={preset}
+          onChange={(p, from, to) => { setPreset(p); setFromDate(from); setToDate(to); }}
+          fromDate={fromDate}
+          toDate={toDate}
+        />
+      </div>
+
+      {/* Stats Bar */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '12px 16px',
+        background: THEME.bgMuted,
+        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
+        border: `1px solid ${THEME.border}`,
+        borderBottom: 'none',
+      }}>
+        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
+          <i className="fas fa-bullhorn" style={{ marginRight: 8, color: THEME.primary }}></i>
+          <strong style={{ color: THEME.textPrimary }}>{effectiveRange.from}</strong> — <strong style={{ color: THEME.textPrimary }}>{effectiveRange.to}</strong>
+          <span style={{ marginLeft: 12, color: THEME.textMuted }}>({storeLabel})</span>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {PRESETS.map(p => (
-            <button key={p.value} onClick={() => setPreset(p.value)}
-              className={`btn btn-sm ${preset === p.value ? 'btn-primary' : ''}`}
-            >{p.label}</button>
-          ))}
+        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+          Marketing Report
         </div>
       </div>
 
       {/* ═══════════════════════════════════════
           ROW 1: KPI + Top Rewards + Top Vouchers
           ═══════════════════════════════════════ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24, marginTop: 20 }}>
 
         <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ color: '#64748B', fontSize: 13 }}>Total Redemptions</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#6366F1' }}>
+          <div style={{ color: THEME.textMuted, fontSize: 13 }}>Total Redemptions</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: THEME.warning }}>
             {data.rewards.total_redemptions + data.vouchers.total_usages}
           </div>
-          <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
+          <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 4 }}>
             {data.rewards.total_redemptions} reward · {data.vouchers.total_usages} voucher
           </div>
         </div>
@@ -284,20 +275,20 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
               <span style={{ fontSize: 40, fontWeight: 700, color: ratingColor(data.feedback.average_rating) }}>
                 {data.feedback.average_rating.toFixed(1)}
               </span>
-              <span style={{ color: '#F59E0B', fontSize: 22, marginLeft: 4 }}>★</span>
+              <span style={{ color: THEME.warning, fontSize: 22, marginLeft: 4 }}>★</span>
             </div>
             <div style={{ display: 'grid', gap: 8, textAlign: 'left', fontSize: 13 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748B' }}>Total</span>
+                <span style={{ color: THEME.textMuted }}>Total</span>
                 <span style={{ fontWeight: 600 }}>{data.feedback.total}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748B' }}>Resolved</span>
-                <span style={{ fontWeight: 600, color: '#22C55E' }}>{data.feedback.resolved}</span>
+                <span style={{ color: THEME.textMuted }}>Resolved</span>
+                <span style={{ fontWeight: 600, color: THEME.accent }}>{data.feedback.resolved}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748B' }}>Unreplied</span>
-                <span style={{ fontWeight: 600, color: data.feedback.unreplied > 0 ? '#EF4444' : '#22C55E' }}>
+                <span style={{ color: THEME.textMuted }}>Unreplied</span>
+                <span style={{ fontWeight: 600, color: data.feedback.unreplied > 0 ? THEME.error : THEME.accent }}>
                   {data.feedback.unreplied}
                 </span>
               </div>
@@ -329,7 +320,7 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
                 <div key={name} style={{
                   marginBottom: i < Math.min(feedbackByStore.length, PREVIEW_COUNT) - 1 ? 12 : 0,
                   paddingBottom: i < Math.min(feedbackByStore.length, PREVIEW_COUNT) - 1 ? 12 : 0,
-                  borderBottom: i < Math.min(feedbackByStore.length, PREVIEW_COUNT) - 1 ? '1px solid #F1F5F9' : 'none',
+                  borderBottom: i < Math.min(feedbackByStore.length, PREVIEW_COUNT) - 1 ? '1px solid #F9F7F3' : 'none',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
                     <span style={{ fontWeight: 500 }}>
@@ -340,7 +331,7 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
                       {info.avg_rating.toFixed(1)} ★
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: '#94A3B8' }}>{info.count} reviews</div>
+                  <div style={{ fontSize: 12, color: THEME.textMuted }}>{info.count} reviews</div>
                 </div>
               ))}
             </div>
@@ -356,11 +347,11 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
 
           <div className="card" style={{ textAlign: 'center' }}>
             <h4 style={{ fontSize: 14, marginBottom: 16 }}>Loyalty Members</h4>
-            <div style={{ fontSize: 36, fontWeight: 700, color: '#002F6C' }}>{data.loyalty.total_members}</div>
-            <div style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>total members</div>
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #F1F5F9' }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: THEME.textPrimary }}>{data.loyalty.total_members}</div>
+            <div style={{ fontSize: 13, color: THEME.textMuted, marginTop: 4 }}>total members</div>
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${THEME.borderLight}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                <span style={{ color: '#64748B' }}>Avg Points/Member</span>
+                <span style={{ color: THEME.textMuted }}>Avg Points/Member</span>
                 <span style={{ fontWeight: 600 }}>
                   {data.loyalty.total_members > 0
                     ? Math.round(data.loyalty.points_issued / data.loyalty.total_members).toLocaleString()
@@ -368,7 +359,7 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: '#64748B' }}>Redemption Rate</span>
+                <span style={{ color: THEME.textMuted }}>Redemption Rate</span>
                 <span style={{ fontWeight: 600 }}>
                   {data.loyalty.points_issued > 0
                     ? ((data.loyalty.points_redeemed / data.loyalty.points_issued) * 100).toFixed(0)
@@ -397,7 +388,7 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
                 return (
                   <span key={tier} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, padding: '3px 8px',
-                    background: '#F8FAFC', borderRadius: 6, color: '#334155',
+                    background: THEME.borderLight, borderRadius: 6, color: THEME.textPrimary,
                   }}>
                     <span style={{ width: 8, height: 8, borderRadius: 2, background: TIER_COLORS[tier], display: 'inline-block' }} />
                     {tier}: {count}
@@ -412,31 +403,31 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
             <div style={{ display: 'grid', gap: 16 }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span style={{ color: '#64748B' }}>Issued</span>
-                  <span style={{ fontWeight: 600, color: '#6366F1' }}>{data.loyalty.points_issued.toLocaleString()}</span>
+                  <span style={{ color: THEME.textMuted }}>Issued</span>
+                  <span style={{ fontWeight: 600, color: THEME.warning }}>{data.loyalty.points_issued.toLocaleString()}</span>
                 </div>
-                <div style={{ height: 8, background: '#F1F5F9', borderRadius: 10 }}>
-                  <div style={{ height: 8, background: '#6366F1', borderRadius: 10, width: '100%' }} />
+                <div style={{ height: 8, background: THEME.borderLight, borderRadius: 10 }}>
+                  <div style={{ height: 8, background: THEME.warning, borderRadius: 10, width: '100%' }} />
                 </div>
               </div>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span style={{ color: '#64748B' }}>Redeemed</span>
-                  <span style={{ fontWeight: 600, color: '#F59E0B' }}>{data.loyalty.points_redeemed.toLocaleString()}</span>
+                  <span style={{ color: THEME.textMuted }}>Redeemed</span>
+                  <span style={{ fontWeight: 600, color: THEME.warning }}>{data.loyalty.points_redeemed.toLocaleString()}</span>
                 </div>
-                <div style={{ height: 8, background: '#F1F5F9', borderRadius: 10 }}>
+                <div style={{ height: 8, background: THEME.borderLight, borderRadius: 10 }}>
                   <div style={{
-                    height: 8, background: '#F59E0B', borderRadius: 10,
+                    height: 8, background: THEME.warning, borderRadius: 10,
                     width: `${data.loyalty.points_issued > 0 ? (data.loyalty.points_redeemed / data.loyalty.points_issued) * 100 : 0}%`,
                   }} />
                 </div>
               </div>
               <div style={{
-                padding: '10px 12px', background: '#F0F9FF', borderRadius: 10,
+                padding: '10px 12px', background: THEME.borderLight, borderRadius: 10,
                 fontSize: 13, display: 'flex', justifyContent: 'space-between',
               }}>
-                <span style={{ color: '#0369A1' }}>Net Outstanding</span>
-                <span style={{ fontWeight: 700, color: '#002F6C' }}>
+                <span style={{ color: THEME.textMuted }}>Net Outstanding</span>
+                <span style={{ fontWeight: 700, color: THEME.textPrimary }}>
                   {(data.loyalty.points_issued - data.loyalty.points_redeemed).toLocaleString()} pts
                 </span>
               </div>
@@ -457,20 +448,20 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
               return (
                 <div key={name} style={{
                   marginBottom: 14, paddingBottom: 14,
-                  borderBottom: i < topRedeemed.length - 1 ? '1px solid #F1F5F9' : 'none',
+                  borderBottom: i < topRedeemed.length - 1 ? '1px solid #F9F7F3' : 'none',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600, color: '#334155' }}>
+                    <span style={{ fontWeight: 600, color: THEME.textPrimary }}>
                       <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[i % COLORS.length], marginRight: 8 }} />
                       {name}
                     </span>
-                    <span style={{ fontWeight: 600, color: '#0F172A' }}>{count}</span>
+                    <span style={{ fontWeight: 600, color: THEME.textPrimary }}>{count}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ flex: 1, height: 8, background: '#F1F5F9', borderRadius: 10 }}>
+                    <div style={{ flex: 1, height: 8, background: THEME.borderLight, borderRadius: 10 }}>
                       <div style={{ height: 8, background: COLORS[i % COLORS.length], borderRadius: 10, width: `${(count / total) * 100}%` }} />
                     </div>
-                    <span style={{ fontSize: 12, color: '#64748B', minWidth: 40, textAlign: 'right' }}>
+                    <span style={{ fontSize: 12, color: THEME.textMuted, minWidth: 40, textAlign: 'right' }}>
                       {((count / total) * 100).toFixed(1)}%
                     </span>
                   </div>
@@ -489,20 +480,20 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
               return (
                 <div key={code} style={{
                   marginBottom: 14, paddingBottom: 14,
-                  borderBottom: i < topUsed.length - 1 ? '1px solid #F1F5F9' : 'none',
+                  borderBottom: i < topUsed.length - 1 ? '1px solid #F9F7F3' : 'none',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600, fontFamily: 'monospace', color: '#334155' }}>
+                    <span style={{ fontWeight: 600, fontFamily: 'monospace', color: THEME.textPrimary }}>
                       <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[(i + 2) % COLORS.length], marginRight: 8 }} />
                       {code}
                     </span>
-                    <span style={{ fontWeight: 600, color: '#0F172A' }}>{count}</span>
+                    <span style={{ fontWeight: 600, color: THEME.textPrimary }}>{count}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ flex: 1, height: 8, background: '#F1F5F9', borderRadius: 10 }}>
+                    <div style={{ flex: 1, height: 8, background: THEME.borderLight, borderRadius: 10 }}>
                       <div style={{ height: 8, background: COLORS[(i + 2) % COLORS.length], borderRadius: 10, width: `${(count / total) * 100}%` }} />
                     </div>
-                    <span style={{ fontSize: 12, color: '#64748B', minWidth: 40, textAlign: 'right' }}>
+                    <span style={{ fontSize: 12, color: THEME.textMuted, minWidth: 40, textAlign: 'right' }}>
                       {((count / total) * 100).toFixed(1)}%
                     </span>
                   </div>
@@ -518,17 +509,17 @@ export default function MarketingReportsPage({ token, stores, selectedStore }: M
           <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
-                  <th style={{ textAlign: 'left', padding: '8px 4px', color: '#64748B', fontWeight: 600 }}>Store</th>
-                  <th style={{ textAlign: 'right', padding: '8px 4px', color: '#64748B', fontWeight: 600 }}>Reviews</th>
-                  <th style={{ textAlign: 'right', padding: '8px 4px', color: '#64748B', fontWeight: 600 }}>Avg Rating</th>
+                <tr style={{ borderBottom: `2px solid ${THEME.borderLight}` }}>
+                  <th style={{ textAlign: 'left', padding: '8px 4px', color: THEME.textMuted, fontWeight: 600 }}>Store</th>
+                  <th style={{ textAlign: 'right', padding: '8px 4px', color: THEME.textMuted, fontWeight: 600 }}>Reviews</th>
+                  <th style={{ textAlign: 'right', padding: '8px 4px', color: THEME.textMuted, fontWeight: 600 }}>Avg Rating</th>
                 </tr>
               </thead>
               <tbody>
                 {feedbackByStore.map(([name, info], i) => (
-                  <tr key={name} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                  <tr key={name} style={{ borderBottom: `1px solid ${THEME.borderLight}` }}>
                     <td style={{ padding: '10px 4px' }}>
-                      <span style={{ fontWeight: 500, color: '#334155' }}>
+                      <span style={{ fontWeight: 500, color: THEME.textPrimary }}>
                         <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[i % COLORS.length], marginRight: 8 }} />
                         {name}
                       </span>

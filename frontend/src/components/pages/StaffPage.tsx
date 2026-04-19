@@ -1,136 +1,240 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
+import { StoreSelector, Select } from '@/components/ui';
+import { THEME } from '@/lib/theme';
 import type { MerchantStaffMember, MerchantStore } from '@/lib/merchant-types';
 
 interface StaffPageProps {
-  staff: MerchantStaffMember[];
   selectedStore: string;
   storeObj: MerchantStore | undefined;
   token: string;
-  onRefresh: () => void;
+  stores: MerchantStore[];
+  onStoreChange: (storeId: string) => void;
 }
 
-const ROLES = [
-  { value: 'manager', label: 'Manager' },
-  { value: 'assistant_manager', label: 'Assistant Manager' },
-  { value: 'barista', label: 'Barista' },
-  { value: 'cashier', label: 'Cashier' },
-  { value: 'delivery', label: 'Delivery' },
-  { value: 'hq_management', label: 'HQ Management' },
+// ACL Lookup: user_type_id → label
+const USER_TYPES = [
+  { id: 1, label: 'HQ Management' },
+  { id: 2, label: 'Store Management' },
+  { id: 3, label: 'Store' },
 ];
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: '#94A3B8', marginTop: 2 };
+// ACL Lookup: user_type_id → role_id options
+const ROLES_BY_TYPE: Record<number, { id: number; label: string }[]> = {
+  1: [
+    { id: 1, label: 'Admin' },
+    { id: 2, label: 'Brand Owner' },
+    { id: 7, label: 'HQ Staff' },
+  ],
+  2: [
+    { id: 3, label: 'Manager' },
+    { id: 4, label: 'Assistant Manager' },
+  ],
+  3: [
+    { id: 5, label: 'Staff' },
+  ],
+};
 
-export default function StaffPage({ staff, selectedStore, storeObj, token, onRefresh }: StaffPageProps) {
-  const [showForm, setShowForm] = useState(false);
+// Display colors by user_type_id
+const USER_TYPE_COLORS: Record<number, { bg: string; text: string }> = {
+  1: { bg: '#EEF2FF', text: '#4338CA' },
+  2: { bg: '#FFEDD5', text: '#C2410C' },
+  3: { bg: '#F0FDF4', text: '#166534' },
+};
+
+const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.textPrimary };
+const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.textMuted, marginTop: 2 };
+const PAGE_SIZE = 20;
+
+export default function StaffPage({ selectedStore, storeObj, token, stores, onStoreChange }: StaffPageProps) {
+  const isHQ = selectedStore === 'all';
+
+  // Staff list state
+  const [staffList, setStaffList] = useState<MerchantStaffMember[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // View mode
+  const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
   const [editingStaff, setEditingStaff] = useState<MerchantStaffMember | null>(null);
   const [error, setError] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | number | null>(null);
   const [tempPassword, setTempPassword] = useState<{ name: string; email: string; password: string } | null>(null);
   const [resetPasswordResult, setResetPasswordResult] = useState<{ name: string; email: string; password: string } | null>(null);
 
-  // Form fields
+  // Form fields (ACL integer-based)
   const [name, setName] = useState('');
-  const [role, setRole] = useState('barista');
+  const [userTypeId, setUserTypeId] = useState(1);
+  const [roleId, setRoleId] = useState(1);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Store picker modal
+  const [showStoreModal, setShowStoreModal] = useState(false);
+
+  // Real stores only (id > 0), exclude HQ
+  const realStores = stores.filter(s => String(s.id) !== '0');
+
+  // ── Fetch staff with pagination ──
+  const fetchStaff = useCallback(async (p: number) => {
+    setLoading(true);
+    try {
+      const endpoint = isHQ
+        ? `/admin/hq-staff?page=${p}&page_size=${PAGE_SIZE}`
+        : `/admin/stores/${selectedStore}/staff?page=${p}&page_size=${PAGE_SIZE}`;
+      const res = await apiFetch(endpoint, token);
+      if (res.ok) {
+        const data = await res.json();
+        setStaffList(Array.isArray(data) ? data : (data.staff || []));
+        setTotal(data.total || 0);
+        setTotalPages(data.total_pages || 1);
+        setPage(p);
+      }
+    } catch {
+      setStaffList([]);
+    } finally { setLoading(false); }
+  }, [token, isHQ, selectedStore]);
+
+  useEffect(() => { fetchStaff(1); }, [fetchStaff]);
+
+  // Re-fetch page 1 when store changes
+  useEffect(() => {
+    setViewMode('list');
+    setEditingStaff(null);
+    setError('');
+    setConfirmDelete(null);
+    setTempPassword(null);
+    setResetPasswordResult(null);
+  }, [selectedStore]);
+
+  function handleUserTypeChange(newTypeId: number) {
+    setUserTypeId(newTypeId);
+    const roles = ROLES_BY_TYPE[newTypeId];
+    if (roles && roles.length > 0) setRoleId(roles[0].id);
+  }
 
   function openCreate() {
     setEditingStaff(null);
     setName('');
-    setRole('barista');
-    setPhone('');
-    setEmail('');
-    setPinCode('');
-    setIsActive(true);
+    if (isHQ) {
+      setUserTypeId(1);
+      setRoleId(1);
+    } else {
+      setUserTypeId(3);
+      setRoleId(5);
+    }
+    setPhone(''); setEmail(''); setPinCode(''); setIsActive(true);
+    setSelectedStoreIds(isHQ ? [] : [parseInt(selectedStore)]);
     setError('');
-    setShowForm(true);
+    setViewMode('form');
   }
 
   function openEdit(s: MerchantStaffMember) {
     setEditingStaff(s);
     setName(s.name);
-    setRole(s.role);
+    setUserTypeId(s.user_type_id ?? 3);
+    setRoleId(s.role_id ?? 5);
     setPhone(s.phone || '');
-    setEmail((s as any).email || '');
+    setEmail(s.email || '');
     setPinCode('');
     setIsActive(s.is_active);
+    // Pre-populate store assignments (exclude HQ store 0)
+    const assigns = s.store_assignments || [];
+    setSelectedStoreIds(assigns.map(a => a.store_id).filter(id => id > 0));
     setError('');
-    setShowForm(true);
+    setViewMode('form');
   }
 
   function closeForm() {
-    setShowForm(false);
+    setViewMode('list');
     setEditingStaff(null);
     setError('');
+    fetchStaff(page);
+  }
+
+  function getDisplayRole(s: MerchantStaffMember): string {
+    return s.user_role || s.role;
+  }
+
+  function getDisplayUserType(s: MerchantStaffMember): string {
+    if (s.user_type) return s.user_type;
+    if (s.user_type_id) {
+      const found = USER_TYPES.find(t => t.id === s.user_type_id);
+      if (found) return found.label;
+    }
+    return 'Store';
+  }
+
+  function toggleStoreCheckbox(storeId: number) {
+    setSelectedStoreIds(prev =>
+      prev.includes(storeId) ? prev.filter(id => id !== storeId) : [...prev, storeId]
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setError('');
+    setSaving(true); setError('');
 
-    const payload: any = { name, role, phone, is_active: isActive };
+    const payload: any = {
+      name,
+      user_type_id: userTypeId,
+      role_id: roleId,
+      phone,
+      is_active: isActive,
+      store_ids: isHQ ? selectedStoreIds : [parseInt(selectedStore), ...selectedStoreIds.filter(id => id !== parseInt(selectedStore))],
+    };
     if (email) payload.email = email;
     if (pinCode) payload.pin_code = pinCode;
 
     try {
-      const res = editingStaff
-        ? await apiFetch(`/admin/staff/${editingStaff.id}`, token, { method: 'PUT', body: JSON.stringify(payload) })
-        : await apiFetch(`/admin/stores/${selectedStore}/staff`, token, { method: 'POST', body: JSON.stringify(payload) });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.detail || `Failed (${res.status})`);
-        return;
+      if (isHQ && !editingStaff) {
+        const res = await apiFetch('/admin/hq-staff', token, { method: 'POST', body: JSON.stringify(payload) });
+        if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
+        const data = await res.json();
+        setViewMode('list');
+        setEditingStaff(null);
+        if (data.temp_password && email) setTempPassword({ name, email, password: data.temp_password });
+        fetchStaff(1);
+      } else if (editingStaff) {
+        if (isHQ) payload.store_ids = selectedStoreIds;
+        const res = await apiFetch(`/admin/staff/${editingStaff.id}`, token, { method: 'PUT', body: JSON.stringify(payload) });
+        if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
+        closeForm();
+      } else {
+        const res = await apiFetch(`/admin/stores/${selectedStore}/staff`, token, { method: 'POST', body: JSON.stringify(payload) });
+        if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
+        const data = await res.json();
+        setViewMode('list');
+        setEditingStaff(null);
+        fetchStaff(1);
+        if (data.temp_password && email) setTempPassword({ name, email, password: data.temp_password });
       }
-      const data = await res.json().catch(() => ({}));
-      closeForm();
-      onRefresh();
-
-      // Show temp password if new staff was created with email
-      if (!editingStaff && data.temp_password && email) {
-        setTempPassword({ name, email, password: data.temp_password });
-      }
-    } catch (err: any) {
-      setError(err.message || 'Network error');
-    } finally { setSaving(false); }
+    } catch (err: any) { setError(err.message || 'Network error'); } finally { setSaving(false); }
   }
 
   async function toggleActive(s: MerchantStaffMember) {
     setError('');
     try {
-      const res = await apiFetch(`/admin/staff/${s.id}`, token, {
-        method: 'PUT',
-        body: JSON.stringify({ is_active: !s.is_active }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.detail || 'Failed to toggle');
-        return;
-      }
-      onRefresh();
-    } catch (err: any) {
-      setError(err.message || 'Network error');
-    }
+      const res = await apiFetch(`/admin/staff/${s.id}`, token, { method: 'PUT', body: JSON.stringify({ is_active: !s.is_active }) });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Failed to toggle'); return; }
+      fetchStaff(page);
+    } catch (err: any) { setError(err.message || 'Network error'); }
   }
 
   async function handleDelete(id: number) {
     try {
       const res = await apiFetch(`/admin/staff/${id}`, token, { method: 'DELETE' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.detail || 'Delete failed');
-        return;
-      }
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Delete failed'); return; }
       setConfirmDelete(null);
-      onRefresh();
+      fetchStaff(page);
     } catch { setError('Network error'); }
   }
 
@@ -138,36 +242,160 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
     setError('');
     try {
       const res = await apiFetch(`/admin/staff/${s.id}/reset-password`, token, { method: 'POST' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.detail || 'Reset failed');
-        return;
-      }
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Reset failed'); return; }
       const data = await res.json();
       setResetPasswordResult({ name: s.name, email: data.email, password: data.temp_password });
-    } catch (err: any) {
-      setError(err.message || 'Network error');
-    }
+    } catch (err: any) { setError(err.message || 'Network error'); }
   }
 
-  if (selectedStore === 'all') {
+  const pageTitle = isHQ ? 'Staff Management' : `Staff · ${storeObj?.name}`;
+
+  function renderUserTypeBadge(s: MerchantStaffMember) {
+    const utId = s.user_type_id ?? 3;
+    const colors = USER_TYPE_COLORS[utId];
+    const label = getDisplayUserType(s);
+    if (colors) {
+      return <span style={{ background: colors.bg, color: colors.text, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{label}</span>;
+    }
+    return <span className="badge badge-gray">{label}</span>;
+  }
+
+  const availableRoles = ROLES_BY_TYPE[userTypeId] || [];
+
+  // ── FORM VIEW ──
+  if (viewMode === 'form') {
     return (
-      <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-        <i className="fas fa-user-tie" style={{ fontSize: 40, marginBottom: 16 }}></i>
-        <p>Select a specific store to manage staff</p>
+      <div>
+        {/* Store picker modal */}
+        {showStoreModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowStoreModal(false)}>
+            <div style={{ background: 'white', borderRadius: 16, padding: 24, width: 400, maxHeight: '80vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h4 style={{ margin: 0 }}>Assign to Stores</h4>
+                <button className="btn btn-sm" onClick={() => setShowStoreModal(false)}><i className="fas fa-times"></i></button>
+              </div>
+              <div style={{ ...hintStyle, marginBottom: 12 }}>Select which stores this staff member should have access to.</div>
+              {realStores.map(s => (
+                <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', marginBottom: 4, background: selectedStoreIds.includes(s.id) ? THEME.bgMuted : 'white', border: `1px solid ${selectedStoreIds.includes(s.id) ? THEME.accentLight : THEME.accentLight}` }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedStoreIds.includes(s.id)}
+                    onChange={() => toggleStoreCheckbox(s.id)}
+                    style={{ width: 16, height: 16 }}
+                  />
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>{s.name}</span>
+                </label>
+              ))}
+              {realStores.length === 0 && (
+                <div style={{ textAlign: 'center', color: THEME.primaryLight, padding: 20 }}>No stores available</div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+                <button className="btn" onClick={() => setShowStoreModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => setShowStoreModal(false)}>
+                  Done ({selectedStoreIds.length} selected)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <button className="btn btn-sm" onClick={closeForm}>
+            <i className="fas fa-arrow-left"></i> Back to Staff
+          </button>
+          <h3 style={{ margin: 0 }}>
+            {editingStaff ? `Edit: ${editingStaff.name}` : 'New Staff'}
+          </h3>
+        </div>
+
+        <div className="card">
+          {error && (
+            <div style={{ background: '#FEE2E2', color: '#A83232', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+              <i className="fas fa-exclamation-circle"></i> {error}
+            </div>
+          )}
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>Name *</label>
+                <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Ahmad bin Ali" />
+                <div style={hintStyle}>Full name of the staff member</div>
+              </div>
+              <div>
+                <label style={labelStyle}>User Type *</label>
+                <Select
+                  value={String(userTypeId)}
+                  onChange={(val) => handleUserTypeChange(parseInt(val))}
+                  options={USER_TYPES.map(t => ({ value: String(t.id), label: t.label }))}
+                />
+                <div style={hintStyle}>Determines dashboard access level</div>
+              </div>
+              <div>
+                <label style={labelStyle}>Role *</label>
+                <Select
+                  value={String(roleId)}
+                  onChange={(val) => setRoleId(parseInt(val))}
+                  options={availableRoles.map(r => ({ value: String(r.id), label: r.label }))}
+                />
+                <div style={hintStyle}>Specific position within the type</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>Store Assignments</label>
+                <button type="button" className="btn" onClick={() => setShowStoreModal(true)} style={{ width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>
+                    {selectedStoreIds.length === 0 ? 'No stores assigned' :
+                      selectedStoreIds.length === 1 ? realStores.find(s => s.id === selectedStoreIds[0])?.name || `${selectedStoreIds.length} store`
+                        : `${selectedStoreIds.length} stores selected`}
+                  </span>
+                  <i className="fas fa-store" style={{ color: THEME.textMuted }}></i>
+                </button>
+                <div style={hintStyle}>Click to select which stores this staff can access</div>
+              </div>
+              <div>
+                <label style={labelStyle}>Email <span style={{ fontWeight: 400, color: THEME.textMuted }}>(optional)</span></label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="e.g. ahmad@zus.com" />
+                <div style={hintStyle}>Adding email auto-creates a login account</div>
+              </div>
+              <div>
+                <label style={labelStyle}>PIN Code <span style={{ fontWeight: 400, color: THEME.textMuted }}>(optional)</span></label>
+                <input value={pinCode} onChange={e => setPinCode(e.target.value)} placeholder="4-6 digit PIN" maxLength={6} />
+                <div style={hintStyle}>{editingStaff ? 'Leave blank to keep current' : 'For POS clock-in'}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+              <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingStaff ? 'Update' : 'Create'}</button>
+              <button type="button" className="btn" onClick={closeForm}>Cancel</button>
+              <div style={{ flex: 1 }} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} style={{ width: 16, height: 16 }} />
+                Active
+              </label>
+            </div>
+          </form>
+        </div>
       </div>
     );
   }
 
+  // ── LIST VIEW ──
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3 style={{ margin: 0 }}>Staff &middot; {storeObj?.name}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <StoreSelector
+            stores={stores.filter(s => String(s.id) !== '0')}
+            selectedStore={selectedStore}
+            onChange={onStoreChange}
+            allLabel="All Stores (HQ view)"
+          />
+        </div>
         <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Staff</button>
       </div>
 
-      {error && !showForm && (
-        <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+      {error && (
+        <div style={{ background: '#FEE2E2', color: '#A83232', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           <i className="fas fa-exclamation-circle"></i> {error}
         </div>
       )}
@@ -180,7 +408,6 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
               <div style={{ marginTop: 6, fontFamily: 'monospace', fontSize: 14, background: 'white', padding: '6px 10px', borderRadius: 6, display: 'inline-block' }}>
                 Email: {tempPassword.email} &nbsp;|&nbsp; Password: <strong>{tempPassword.password}</strong>
               </div>
-              <div style={{ marginTop: 4, opacity: 0.8 }}>Share these credentials with {tempPassword.name}. They can log in at admin.loyaltysystem.uk</div>
             </div>
             <button className="btn btn-sm" onClick={() => setTempPassword(null)}><i className="fas fa-times"></i></button>
           </div>
@@ -188,7 +415,7 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
       )}
 
       {resetPasswordResult && (
-        <div style={{ background: '#EFF6FF', color: '#1E40AF', padding: '12px 16px', borderRadius: 12, marginBottom: 12, fontSize: 13, border: '1px solid #BFDBFE' }}>
+        <div style={{ background: THEME.bgMuted, color: THEME.success, padding: '12px 16px', borderRadius: 12, marginBottom: 12, fontSize: 13, border: `1px solid ${THEME.accentLight}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <strong><i className="fas fa-key"></i> Password reset for {resetPasswordResult.name}</strong>
@@ -201,125 +428,194 @@ export default function StaffPage({ staff, selectedStore, storeObj, token, onRef
         </div>
       )}
 
-      {showForm && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h4 style={{ margin: 0 }}>{editingStaff ? 'Edit Staff' : 'New Staff'}</h4>
-            <button className="btn btn-sm" onClick={closeForm}><i className="fas fa-times"></i></button>
-          </div>
+      {/* Stats Bar */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '12px 16px',
+        background: THEME.bgMuted,
+        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
+        border: `1px solid ${THEME.border}`,
+        borderBottom: 'none',
+        marginTop: 20,
+      }}>
+        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
+          <i className="fas fa-user-tie" style={{ marginRight: 8, color: THEME.primary }}></i>
+          Showing <strong style={{ color: THEME.textPrimary }}>{staffList.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> staff
+        </div>
+        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+          Page {page} of {totalPages}
+        </div>
+      </div>
 
-          {error && (
-            <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
-              <i className="fas fa-exclamation-circle"></i> {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={labelStyle}>Name *</label>
-                <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Ahmad bin Ali" />
-                <div style={hintStyle}>Full name of the staff member</div>
-              </div>
-              <div>
-                <label style={labelStyle}>Role *</label>
-                <select value={role} onChange={e => setRole(e.target.value)}>
-                  {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-                <div style={hintStyle}>Determines access level and permissions</div>
-              </div>
-              <div>
-                <label style={labelStyle}>Phone *</label>
-                <input value={phone} onChange={e => setPhone(e.target.value)} required placeholder="e.g. +60 12-345 6789" />
-                <div style={hintStyle}>Contact number for this staff member</div>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={labelStyle}>Email <span style={{ fontWeight: 400, color: '#94A3B8' }}>(optional)</span></label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="e.g. ahmad@zus.com" />
-                <div style={hintStyle}>Adding email auto-creates a login account for this staff member</div>
-              </div>
-              <div>
-                <label style={labelStyle}>PIN Code <span style={{ fontWeight: 400, color: '#94A3B8' }}>(optional)</span></label>
-                <input value={pinCode} onChange={e => setPinCode(e.target.value)} placeholder="4-6 digit PIN" maxLength={6} />
-                <div style={hintStyle}>{editingStaff ? 'Leave blank to keep current PIN' : 'Used for clock-in at POS terminal'}</div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? 'Saving...' : editingStaff ? 'Update' : 'Create'}
-              </button>
-              <button type="button" className="btn" onClick={closeForm}>Cancel</button>
-              <div style={{ flex: 1 }} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} style={{ width: 16, height: 16 }} />
-                Active
-              </label>
-            </div>
-          </form>
+      {loading && staffList.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>
+      ) : staffList.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
+          <i className="fas fa-user-tie" style={{ fontSize: 40, marginBottom: 16 }}></i>
+          <p>{isHQ ? 'No HQ staff yet.' : 'No staff members yet.'}</p>
+        </div>
+      ) : (
+        <div style={{
+          overflowX: 'auto',
+          borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
+          background: THEME.bgCard,
+          border: `1px solid ${THEME.border}`,
+          borderTop: 'none',
+        }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>User Type</th>
+                <th>Role</th>
+                <th>Stores</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staffList.map(s => {
+                const assignments = s.store_assignments || [];
+                const realAssignments = assignments.filter(a => a.store_id > 0);
+                const rowKey = s.id ?? `user-${s.user_id}`;
+                return (
+                  <tr key={rowKey}>
+                    <td style={{ fontWeight: 500 }}>{s.name}</td>
+                    <td>{renderUserTypeBadge(s)}</td>
+                    <td><span className="badge badge-blue">{getDisplayRole(s)}</span></td>
+                    <td style={{ fontSize: 13, maxWidth: 200 }}>
+                      {realAssignments.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {realAssignments.map(a => (
+                            <span key={a.store_id} className="badge badge-gray" style={{ fontSize: 10 }}>{a.store_name}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ color: THEME.textMuted }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: 13 }}>
+                      {s.email ? (
+                        <span>{s.email} <span className="badge badge-green" style={{ marginLeft: 6, fontSize: 10 }}>Has Login</span></span>
+                      ) : (
+                        <span style={{ color: THEME.textMuted }}>No login</span>
+                      )}
+                    </td>
+                    <td>{s.phone || '—'}</td>
+                    <td>
+                      <button onClick={() => toggleActive(s)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
+                        <span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? 'Active' : 'Inactive'}</span>
+                      </button>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-sm" onClick={() => openEdit(s)} title="Edit"><i className="fas fa-edit"></i></button>
+                        <button className="btn btn-sm" onClick={() => s.email ? handleResetPassword(s) : setError('Add an email to enable login access.')} title={s.email ? 'Reset password' : 'No login'}><i className="fas fa-key" style={{ color: s.email ? undefined : THEME.accentLight }}></i></button>
+                        {confirmDelete === rowKey ? (
+                          <>
+                            <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(s.id!)}>Confirm</button>
+                            <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
+                          </>
+                        ) : (
+                          <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(rowKey)} title="Deactivate"><i className="fas fa-trash"></i></button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
-      <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-        <table>
-          <thead>
-            <tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Status</th><th>Actions</th></tr>
-          </thead>
-          <tbody>
-            {staff.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>
-                <i className="fas fa-user-tie" style={{ fontSize: 40, display: 'block', marginBottom: 12 }}></i>
-                No staff members yet. Add your first team member.
-              </td></tr>
-            ) : staff.map(s => (
-              <tr key={s.id}>
-                <td style={{ fontWeight: 500 }}>{s.name}</td>
-                <td>
-                  <span className="badge badge-blue">
-                    {ROLES.find(r => r.value === s.role)?.label || s.role}
-                  </span>
-                </td>
-                <td style={{ fontSize: 13 }}>
-                  {(s as any).email ? (
-                    <span>{(s as any).email}
-                      <span className="badge badge-green" style={{ marginLeft: 6, fontSize: 10 }}>Has Login</span>
-                    </span>
-                  ) : (
-                    <span style={{ color: '#94A3B8' }}>No login
-                      <span className="badge badge-gray" style={{ marginLeft: 6, fontSize: 10 }}>No Email</span>
-                    </span>
-                  )}
-                </td>
-                <td>{s.phone || '—'}</td>
-                <td>
-                  <button onClick={() => toggleActive(s)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
-                    <span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>
-                      {s.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </button>
-                </td>
-                <td>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn btn-sm" onClick={() => openEdit(s)} title="Edit"><i className="fas fa-edit"></i></button>
-                    <button className="btn btn-sm" onClick={() => (s as any).email ? handleResetPassword(s) : setError('Add an email to this staff member first to enable login access.')} title={(s as any).email ? 'Reset password' : 'No login — add email first'}><i className="fas fa-key" style={{ color: (s as any).email ? undefined : '#CBD5E1' }}></i></button>
-                    {confirmDelete === s.id ? (
-                      <>
-                        <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(s.id)}>Confirm</button>
-                        <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
-                      </>
-                    ) : (
-                      <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(s.id)} title="Deactivate"><i className="fas fa-trash"></i></button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 12,
+          marginTop: 20,
+          padding: '12px',
+          background: THEME.bgCard,
+          borderRadius: THEME.radius.md,
+          border: `1px solid ${THEME.border}`,
+        }}>
+          <button
+            className="btn btn-sm"
+            disabled={page <= 1 || loading}
+            onClick={() => fetchStaff(page - 1)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: THEME.radius.md,
+              border: `1px solid ${THEME.border}`,
+              background: page <= 1 ? THEME.bgMuted : THEME.bgCard,
+              color: page <= 1 ? THEME.textMuted : THEME.textPrimary,
+              cursor: page <= 1 ? 'not-allowed' : 'pointer',
+              opacity: page <= 1 ? 0.6 : 1,
+            }}
+          >
+            <i className="fas fa-chevron-left"></i> Previous
+          </button>
+
+          <div style={{ display: 'flex', gap: 4 }}>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              // Show pages around current page
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (page <= 3) {
+                pageNum = i + 1;
+              } else if (page >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
+
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => fetchStaff(pageNum)}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: THEME.radius.md,
+                    border: `1px solid ${page === pageNum ? THEME.primary : THEME.border}`,
+                    background: page === pageNum ? THEME.primary : THEME.bgCard,
+                    color: page === pageNum ? THEME.textLight : THEME.textPrimary,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            className="btn btn-sm"
+            disabled={page >= totalPages || loading}
+            onClick={() => fetchStaff(page + 1)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: THEME.radius.md,
+              border: `1px solid ${THEME.border}`,
+              background: page >= totalPages ? THEME.bgMuted : THEME.bgCard,
+              color: page >= totalPages ? THEME.textMuted : THEME.textPrimary,
+              cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+              opacity: page >= totalPages ? 0.6 : 1,
+            }}
+          >
+            Next <i className="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

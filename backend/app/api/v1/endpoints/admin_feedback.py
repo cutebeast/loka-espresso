@@ -1,11 +1,13 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_role
+from app.core.security import get_current_user, require_hq_access
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User, UserRole
+from app.core.sanitization import sanitize_text_field
+from app.models.user import User
 from app.models.admin_extras import Feedback
 from app.models.store import Store
 from app.schemas.admin_extras import FeedbackCreate, FeedbackOut, FeedbackReply
@@ -16,18 +18,26 @@ router = APIRouter()
 @router.get("/admin/feedback")
 async def list_feedback(
     store_id: int | None = None,
-    page: int = 1,
-    page_size: int = 50,
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_hq_access()),
 ):
-    query = (
-        select(Feedback, User.name.label("user_name"))
-        .join(User, User.id == Feedback.user_id, isouter=True)
-    )
+    base = select(Feedback, User.name.label("user_name")).join(User, User.id == Feedback.user_id, isouter=True)
     if store_id is not None:
-        query = query.where(Feedback.store_id == store_id)
-    query = query.order_by(desc(Feedback.created_at)).offset((page - 1) * page_size).limit(page_size)
+        base = base.where(Feedback.store_id == store_id)
+    if from_date is not None:
+        base = base.where(Feedback.created_at >= from_date)
+    if to_date is not None:
+        base = base.where(Feedback.created_at <= to_date)
+
+    count_result = await db.execute(select(func.count()).select_from(Feedback))
+    total = count_result.scalar() or 0
+    total_pages = (total + page_size - 1) // page_size
+
+    query = base.order_by(desc(Feedback.created_at)).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)
     rows = result.all()
     items = []
@@ -56,7 +66,13 @@ async def list_feedback(
         for i in items:
             if i["store_id"] and i["store_id"] in store_map:
                 i["store_name"] = store_map[i["store_id"]]
-    return items
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+    }
 
 
 # NOTE: /stats MUST be defined BEFORE /{feedback_id} to avoid route conflict
@@ -64,7 +80,7 @@ async def list_feedback(
 async def feedback_stats(
     store_id: int | None = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_hq_access()),
 ):
     query = select(Feedback)
     if store_id is not None:
@@ -92,7 +108,7 @@ async def feedback_stats(
 async def get_feedback(
     feedback_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_hq_access()),
 ):
     result = await db.execute(
         select(Feedback, User.name.label("user_name"))
@@ -101,7 +117,7 @@ async def get_feedback(
     )
     row = result.first()
     if not row:
-        raise HTTPException(404)
+        raise HTTPException(status_code=404, detail="Feedback not found")
     feedback, user_name = row
     return {
         "id": feedback.id,
@@ -122,13 +138,14 @@ async def reply_to_feedback(
     request: Request,
     data: FeedbackReply,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_hq_access()),
 ):
     result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
     feedback = result.scalar_one_or_none()
     if not feedback:
-        raise HTTPException(404)
-    feedback.admin_reply = data.admin_reply
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    # Sanitize admin reply to prevent XSS
+    feedback.admin_reply = sanitize_text_field(data.admin_reply, max_length=2000)
     feedback.is_resolved = True
     ip = get_client_ip(request)
     await log_action(db, action="REPLY_FEEDBACK", user_id=user.id, store_id=feedback.store_id, entity_type="feedback", entity_id=feedback_id, ip_address=ip)
@@ -144,7 +161,7 @@ async def update_feedback_reply(
     request: Request,
     data: FeedbackReply,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_hq_access()),
 ):
     result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
     feedback = result.scalar_one_or_none()
@@ -170,7 +187,11 @@ async def create_feedback(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    obj = Feedback(user_id=user.id, **data.model_dump())
+    # Sanitize user input to prevent XSS
+    sanitized_data = data.model_dump()
+    sanitized_data["comment"] = sanitize_text_field(sanitized_data.get("comment"), max_length=2000)
+    
+    obj = Feedback(user_id=user.id, **sanitized_data)
     db.add(obj)
     await db.flush()
     await db.refresh(obj)

@@ -8,11 +8,11 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import (
     create_access_token, create_refresh_token, verify_password,
-    hash_password, get_current_user,
+    hash_password, get_current_user, now_utc, ensure_utc,
 )
 from app.core.config import get_settings
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User, OTPSession, DeviceToken, UserRole, TokenBlacklist
+from app.models.user import User, OTPSession, DeviceToken, TokenBlacklist, UserTypeIDs, RoleIDs
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt as jose_jwt
 from slowapi import Limiter
@@ -34,8 +34,35 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/send-otp", response_model=SendOTPResponse)
-@limiter.limit("5/minute")
 async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Depends(get_db)):
+    # Manual rate limiting: read otp_rate_limit from app_config
+    # If set to 0, rate limiting is disabled
+    from app.models.splash import AppConfig
+    cfg_result = await db.execute(select(AppConfig).where(AppConfig.key == "otp_rate_limit"))
+    cfg = cfg_result.scalar_one_or_none()
+    if cfg and cfg.value and cfg.value != "0":
+        # Rate limiting enabled — check limit
+        try:
+            limit_val = int(cfg.value)
+        except (ValueError, TypeError):
+            limit_val = 5
+        from app.core.security import get_remote_address
+        client_ip = get_remote_address(request)
+        # Simple in-memory rate limiting per IP (for this process)
+        if not hasattr(send_otp, "_rate_cache"):
+            send_otp._rate_cache = {}
+        now = datetime.now(timezone.utc)
+        if client_ip not in send_otp._rate_cache:
+            send_otp._rate_cache[client_ip] = []
+        # Remove entries older than 1 minute
+        send_otp._rate_cache[client_ip] = [
+            t for t in send_otp._rate_cache[client_ip]
+            if (now - t).total_seconds() < 60
+        ]
+        if len(send_otp._rate_cache[client_ip]) >= limit_val:
+            raise HTTPException(status_code=429, detail="Too many OTP requests. Please try again later.")
+        send_otp._rate_cache[client_ip].append(now)
+
     code = f"{random.randint(0, 999999):06d}"
     otp = OTPSession(
         phone=req.phone,
@@ -58,14 +85,14 @@ async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
     otp = result.scalar_one_or_none()
     if not otp or otp.code != req.code:
         raise HTTPException(status_code=400, detail="Invalid OTP")
-    if otp.expires_at < datetime.now(timezone.utc):
+    if ensure_utc(otp.expires_at) < now_utc():
         raise HTTPException(status_code=400, detail="OTP expired")
     otp.verified = True
 
     result = await db.execute(select(User).where(User.phone == req.phone))
     user = result.scalar_one_or_none()
     if not user:
-        user = User(phone=req.phone, role=UserRole.customer)
+        user = User(phone=req.phone, user_type_id=UserTypeIDs.CUSTOMER, role_id=RoleIDs.CUSTOMER)
         db.add(user)
         await db.flush()
 
@@ -75,7 +102,6 @@ async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/register", response_model=UserOut)
-@limiter.limit("5/minute")
 async def register(request: Request, req: RegisterRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if req.name:
         user.name = req.name
@@ -97,10 +123,8 @@ async def login_password(request: Request, req: LoginPasswordRequest, db: AsyncS
         # Log failed login attempt
         if user:
             await log_action(db, action="LOGIN_FAILED", user_id=user.id, entity_type="user", details={"email": req.email}, status="failed", ip_address=get_client_ip(request))
-        await db.commit()
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    await log_action(db, action="LOGIN", user_id=user.id, entity_type="user", entity_id=user.id, details={"email": req.email, "role": user.role.value if hasattr(user.role, 'value') else str(user.role)}, ip_address=get_client_ip(request))
-    await db.commit()
+    await log_action(db, action="LOGIN", user_id=user.id, entity_type="user", entity_id=user.id, details={"email": req.email, "role_id": user.role_id}, ip_address=get_client_ip(request))
     access = create_access_token({"sub": str(user.id)})
     refresh = create_refresh_token({"sub": str(user.id)})
     return TokenResponse(access_token=access, refresh_token=refresh)
@@ -147,8 +171,6 @@ async def logout(
             expires_at=dt.fromtimestamp(exp, tz=timezone.utc),
         )
         db.add(blacklisted)
-        await db.flush()
-        await db.commit()
 
     return {"message": "Logged out"}
 

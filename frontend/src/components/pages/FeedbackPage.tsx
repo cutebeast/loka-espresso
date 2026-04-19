@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
+import { DateFilter, type DatePreset, calcDateRange } from '@/components/ui/DateFilter';
+import { BarChart } from '@/components/ui';
+import { THEME } from '@/lib/theme';
 
 interface FeedbackPageProps {
   token: string;
@@ -33,14 +36,18 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
   const [replyText, setReplyText] = useState('');
   const [isEdit, setIsEdit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [preset, setPreset] = useState<DatePreset>('MTD');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const storeParam = selectedStore === 'all' ? '' : `?store_id=${selectedStore}`;
+      const range = fromDate && toDate ? `&from_date=${fromDate}&to_date=${toDate}` : '';
       const [fbRes, statsRes] = await Promise.all([
-        apiFetch(`/admin/feedback${storeParam}`, token),
-        apiFetch(`/admin/feedback/stats${storeParam}`, token),
+        apiFetch(`/admin/feedback${storeParam}${range}`, token),
+        apiFetch(`/admin/feedback/stats${storeParam}${range}`, token),
       ]);
       if (fbRes.ok) {
         const fbData = await fbRes.json();
@@ -54,7 +61,13 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
     } finally {
       setLoading(false);
     }
-  }, [token, selectedStore]);
+  }, [token, selectedStore, fromDate, toDate]);
+
+  useEffect(() => {
+    const range = calcDateRange(preset);
+    setFromDate(range.from);
+    setToDate(range.to);
+  }, [preset]);
 
   useEffect(() => {
     fetchData();
@@ -62,7 +75,7 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
 
   function renderStars(rating: number) {
     return (
-      <span style={{ color: '#F59E0B', fontSize: 16 }}>
+      <span style={{ color: THEME.warning, fontSize: 16 }}>
         {'★'.repeat(rating) + '☆'.repeat(5 - rating)}
       </span>
     );
@@ -117,53 +130,51 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
   const distribution = stats?.rating_distribution ?? {};
   const maxDistCount = Math.max(...Object.values(distribution), 1);
 
+  const ratingData = [5, 4, 3, 2, 1].map(star => ({
+    label: `${star}★`,
+    value: distribution[star] ?? 0,
+  })).filter(d => d.value > 0);
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3>Feedback Management</h3>
-        <span style={{ fontSize: 13, color: '#64748B' }}>
-          {selectedStore === 'all' ? 'All Stores' : 'Filtered by selected store'}
-        </span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <DateFilter
+          preset={preset}
+          onChange={(p, from, to) => { setPreset(p); setFromDate(from); setToDate(to); }}
+          fromDate={fromDate}
+          toDate={toDate}
+        />
       </div>
 
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 16, marginBottom: 24 }}>
           <div className="card" style={{ textAlign: 'center' }}>
-            <div style={{ color: '#64748B', fontSize: 14, marginBottom: 8 }}>Average Rating</div>
-            <div style={{ fontSize: 36, fontWeight: 700, color: '#002F6C' }}>
+            <div style={{ color: THEME.success, fontSize: 14, marginBottom: 8 }}>Average Rating</div>
+            <div style={{ fontSize: 36, fontWeight: 700, color: THEME.primary }}>
               {Number(stats.average_rating ?? 0).toFixed(1)}
             </div>
             <div style={{ marginTop: 4 }}>{renderStars(Math.round(stats.average_rating ?? 0))}</div>
           </div>
           <div className="card" style={{ textAlign: 'center' }}>
-            <div style={{ color: '#64748B', fontSize: 14, marginBottom: 8 }}>Total Reviews</div>
-            <div style={{ fontSize: 36, fontWeight: 700, color: '#002F6C' }}>{stats.total_reviews ?? 0}</div>
+            <div style={{ color: THEME.success, fontSize: 14, marginBottom: 8 }}>Total Reviews</div>
+            <div style={{ fontSize: 36, fontWeight: 700, color: THEME.primary }}>{stats.total_reviews ?? 0}</div>
           </div>
           <div className="card">
-            <div style={{ color: '#64748B', fontSize: 14, marginBottom: 12 }}>Rating Distribution</div>
-            {[5, 4, 3, 2, 1].map(star => {
-              const count = distribution[star] ?? 0;
-              const pct = maxDistCount > 0 ? (count / maxDistCount) * 100 : 0;
-              return (
-                <div key={star} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ width: 50, fontSize: 13, color: '#F59E0B' }}>
-                    {star} ★
-                  </span>
-                  <div style={{ flex: 1, height: 8, background: '#ECF1F7', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: '#F59E0B', borderRadius: 4 }} />
-                  </div>
-                  <span style={{ width: 30, fontSize: 13, color: '#64748B', textAlign: 'right' }}>{count}</span>
-                </div>
-              );
-            })}
+            <div style={{ color: THEME.success, fontSize: 14, marginBottom: 12 }}>Rating Distribution</div>
+            <BarChart
+              data={ratingData}
+              orientation="horizontal"
+              formatValue={(v) => String(v)}
+              height={120}
+            />
           </div>
         </div>
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>Loading feedback...</div>
+        <div style={{ textAlign: 'center', padding: 40, color: THEME.success }}>Loading feedback...</div>
       ) : feedbackList.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>
+        <div className="card" style={{ textAlign: 'center', color: THEME.success, padding: 40 }}>
           No feedback yet
         </div>
       ) : (
@@ -172,11 +183,11 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
             <div key={fb.id} className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <strong style={{ fontSize: 16 }}>{fb.customer_name}</strong>
-                    {renderStars(fb.rating)}
-                  </div>
-                  <div style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <strong style={{ fontSize: 16, color: THEME.primary }}>{fb.customer_name}</strong>
+                      {renderStars(fb.rating)}
+                    </div>
+                    <div style={{ fontSize: 13, color: THEME.success, marginTop: 2 }}>
                     {fb.store_name} · {new Date(fb.created_at).toLocaleDateString()}
                   </div>
                 </div>
@@ -187,16 +198,16 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
                   {fb.reply && (
                     <>
                       <button className="btn btn-sm" onClick={() => openEditModal(fb)}>Edit Reply</button>
-                      <button className="btn btn-sm" style={{ background: '#EF4444', color: '#fff' }} onClick={() => deleteReply(fb)}>Delete Reply</button>
+                      <button className="btn btn-sm" style={{ background: '#A83232', color: '#fff' }} onClick={() => deleteReply(fb)}>Delete Reply</button>
                     </>
                   )}
                 </div>
               </div>
-              <p style={{ margin: '8px 0', color: '#334155' }}>{fb.comment}</p>
+              <p style={{ margin: '8px 0', color: THEME.primary }}>{fb.comment}</p>
               {fb.reply && (
-                <div style={{ background: '#F0F9FF', borderRadius: 12, borderLeft: '3px solid #002F6C', padding: '12px 16px', marginTop: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#002F6C', marginBottom: 4 }}>Merchant Reply</div>
-                  <div style={{ fontSize: 14, color: '#334155' }}>{fb.reply}</div>
+                <div style={{ background: THEME.bgMuted, borderRadius: 12, borderLeft: `3px solid ${THEME.primary}`, padding: '12px 16px', marginTop: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: THEME.primary, marginBottom: 4 }}>Merchant Reply</div>
+                  <div style={{ fontSize: 14, color: THEME.primary }}>{fb.reply}</div>
                 </div>
               )}
             </div>
@@ -208,17 +219,17 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3>{isEdit ? 'Edit Reply' : 'Reply to Feedback'}</h3>
+              <h3 style={{ color: THEME.primary }}>{isEdit ? 'Edit Reply' : 'Reply to Feedback'}</h3>
               <button className="btn btn-sm" onClick={() => setShowModal(false)}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <strong>{modalFeedback.customer_name}</strong>
+                <strong style={{ color: THEME.primary }}>{modalFeedback.customer_name}</strong>
                 {renderStars(modalFeedback.rating)}
               </div>
-              <p style={{ fontSize: 14, color: '#64748B', marginBottom: 12 }}>{modalFeedback.comment}</p>
+              <p style={{ fontSize: 14, color: THEME.success, marginBottom: 12 }}>{modalFeedback.comment}</p>
               <textarea
                 className="input"
                 rows={4}

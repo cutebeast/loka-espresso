@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.core.security import require_role, get_current_user
 from app.core.config import get_settings
-from app.models.user import User
+from app.models.user import User, RoleIDs
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
 
@@ -29,7 +29,7 @@ def _save_upload(content: bytes, filename: str | None, folder: str, settings) ->
 @router.post("/image")
 async def upload_image(
     file: UploadFile = File(...),
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
 ):
     settings = get_settings()
     if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
@@ -43,7 +43,7 @@ async def upload_image(
 @router.post("/marketing-image")
 async def upload_marketing_image(
     file: UploadFile = File(...),
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
 ):
     settings = get_settings()
     if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:

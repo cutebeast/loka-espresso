@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
+from app.core.security import now_utc
+from app.core.utils import to_float
 from app.models.voucher import Voucher
 from app.models.admin_extras import PromoBanner
 from pydantic import BaseModel
@@ -33,7 +35,7 @@ class PromoItemOut(BaseModel):
 @router.get("", response_model=list[PromoItemOut])
 async def list_promos(db: AsyncSession = Depends(get_db)):
     """Returns active promo banners + active vouchers as a unified promotions list."""
-    now = datetime.now(timezone.utc)
+    now = now_utc()
     results = []
 
     # Active promo banners
@@ -69,7 +71,7 @@ async def list_promos(db: AsyncSession = Depends(get_db)):
             title=v.description or f"Use code {v.code}",
             code=v.code,
             discount_type=v.discount_type.value if hasattr(v.discount_type, 'value') else str(v.discount_type),
-            discount_value=float(v.discount_value) if v.discount_value else None,
+            discount_value=to_float(v.discount_value) if v.discount_value else None,
             start_date=v.valid_from,
             end_date=v.valid_until,
         ))

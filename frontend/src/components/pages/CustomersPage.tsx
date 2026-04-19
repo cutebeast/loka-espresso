@@ -1,136 +1,210 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
-import type { CustomerItem, CustomerDetail, CustomerWalletTransaction, CustomerLoyaltyTransaction, MerchantOrder } from '@/lib/merchant-types';
+import { FilterSelect, StoreSelector, DateFilter, calcDateRange, type DatePreset } from '@/components/ui';
+import { THEME } from '@/lib/theme';
+import type { CustomerItem } from '@/lib/merchant-types';
 
 interface CustomersPageProps {
   token: string;
+  stores: any[];
   selectedStore: string;
+  onStoreChange?: (storeId: string) => void;
+  onEditCustomer: (customerId: number) => void;
 }
 
-export default function CustomersPage({ token, selectedStore }: CustomersPageProps) {
+const PAGE_SIZE = 50;
+
+export default function CustomersPage({ token, stores, selectedStore, onStoreChange, onEditCustomer }: CustomersPageProps) {
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerDetail | null>(null);
-  const [customerOrders, setCustomerOrders] = useState<MerchantOrder[]>([]);
-  const [loyaltyHistory, setLoyaltyHistory] = useState<CustomerLoyaltyTransaction[]>([]);
-  const [walletHistory, setWalletHistory] = useState<CustomerWalletTransaction[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editSaving, setEditSaving] = useState(false);
-  const [editError, setEditError] = useState('');
+  const [tier, setTier] = useState('');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [preset, setPreset] = useState<DatePreset>('MTD');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
-  useEffect(() => {
-    if (!token) return;
+  const fetchCustomers = useCallback(async (p: number) => {
     setLoading(true);
-    const params = selectedStore !== 'all' ? `?store_id=${selectedStore}` : '';
-    apiFetch(`/admin/customers${params}`, token)
-      .then(res => res.json())
-      .then(data => {
-        const list = Array.isArray(data) ? data : (data.customers || []);
-        setCustomers(list);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [token, selectedStore]);
-
-  async function openCustomerDetail(customerId: number) {
-    setDetailLoading(true);
-    setSelectedCustomer(null);
-    setEditingCustomer(false);
     try {
-      const [detailRes, ordersRes, loyaltyRes, walletRes] = await Promise.all([
-        apiFetch(`/admin/customers/${customerId}`, token),
-        apiFetch(`/admin/customers/${customerId}/orders`, token),
-        apiFetch(`/admin/customers/${customerId}/loyalty-history`, token),
-        apiFetch(`/admin/customers/${customerId}/wallet-history`, token),
-      ]);
-      if (detailRes.ok) {
-        const detail = await detailRes.json();
-        setSelectedCustomer(detail);
-        setEditName(detail.name || '');
-        setEditPhone(detail.phone || '');
-        setEditEmail(detail.email || '');
-      }
-      if (ordersRes.ok) {
-        const data = await ordersRes.json();
-        setCustomerOrders(Array.isArray(data) ? data : (data.orders || []));
-      }
-      if (loyaltyRes.ok) {
-        const data = await loyaltyRes.json();
-        setLoyaltyHistory(Array.isArray(data) ? data : (data.history || []));
-      }
-      if (walletRes.ok) {
-        const data = await walletRes.json();
-        setWalletHistory(Array.isArray(data) ? data : (data.transactions || []));
-      }
-    } catch {} finally { setDetailLoading(false); }
-  }
-
-  async function handleEditSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!selectedCustomer) return;
-    setEditSaving(true);
-    setEditError('');
-    try {
-      const res = await apiFetch(`/admin/customers/${selectedCustomer.id}`, token, {
-        method: 'PUT',
-        body: JSON.stringify({ name: editName, phone: editPhone, email: editEmail }),
+      const params = new URLSearchParams({
+        page: String(p),
+        page_size: String(PAGE_SIZE),
+        sort_by: sortBy,
+        sort_dir: sortDir,
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setEditError(data.detail || `Failed (${res.status})`);
-        return;
+      if (selectedStore !== 'all') params.set('store_id', selectedStore);
+      if (search) params.set('search', search);
+      if (tier) params.set('tier', tier);
+      if (fromDate) params.set('from_date', fromDate);
+      if (toDate) params.set('to_date', toDate);
+      const res = await apiFetch(`/admin/customers?${params}`, token);
+      if (res.ok) {
+        const data = await res.json();
+        setCustomers(data.customers || []);
+        setTotal(data.total || 0);
+        setTotalPages(data.total_pages || 1);
+        setPage(p);
       }
-      // Refresh detail
-      setEditingCustomer(false);
-      await openCustomerDetail(selectedCustomer.id);
-      // Refresh list
-      const params = selectedStore !== 'all' ? `?store_id=${selectedStore}` : '';
-      const listRes = await apiFetch(`/admin/customers${params}`, token);
-      if (listRes.ok) {
-        const data = await listRes.json();
-        setCustomers(Array.isArray(data) ? data : (data.customers || []));
-      }
-    } catch { setEditError('Network error'); } finally { setEditSaving(false); }
-  }
+    } catch {} finally { setLoading(false); }
+  }, [token, selectedStore, search, tier, sortBy, sortDir, fromDate, toDate]);
 
-  const filtered = customers.filter(c => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      c.name?.toLowerCase().includes(q) ||
-      c.email?.toLowerCase().includes(q) ||
-      c.phone?.toLowerCase().includes(q)
-    );
-  });
+  useEffect(() => { fetchCustomers(1); }, [fetchCustomers]);
+
+  const tierOptions = [
+    { value: '', label: 'All Tiers' },
+    { value: 'bronze', label: 'Bronze' },
+    { value: 'silver', label: 'Silver' },
+    { value: 'gold', label: 'Gold' },
+    { value: 'platinum', label: 'Platinum' },
+  ];
+
+  const sortOptions = [
+    { value: 'created_at', label: 'Join Date' },
+    { value: 'name', label: 'Name' },
+    { value: 'points_balance', label: 'Points' },
+    { value: 'total_spent', label: 'Total Spent' },
+  ];
 
   return (
     <div>
-      <h3 style={{ marginBottom: 20 }}>All Customers</h3>
-      <div style={{ marginBottom: 16 }}>
-        <input
-          placeholder="Search by name, email, or phone..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ width: '100%', maxWidth: 400 }}
-        />
+      {/* Filter Bar - Store and Date on left, action buttons on right */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {onStoreChange && (
+            <StoreSelector
+              stores={stores.filter((s: any) => s.id !== 0).map((s: any) => ({ id: String(s.id), name: s.name }))}
+              selectedStore={selectedStore}
+              onChange={onStoreChange}
+            />
+          )}
+          <DateFilter
+            preset={preset}
+            onChange={(p, from, to) => { setPreset(p); setFromDate(from); setToDate(to); setPage(1); }}
+            fromDate={fromDate}
+            toDate={toDate}
+          />
+          <FilterSelect
+            value={tier}
+            onChange={(val) => { setTier(val); setPage(1); }}
+            options={tierOptions}
+            icon="fa-crown"
+            placeholder="All Tiers"
+          />
+          <FilterSelect
+            value={sortBy}
+            onChange={(val) => { setSortBy(val); setPage(1); }}
+            options={sortOptions}
+            icon="fa-sort"
+            placeholder="Sort By"
+          />
+          <button
+            className="btn btn-sm"
+            onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
+            title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 40,
+              border: `1px solid ${THEME.borderLight}`,
+              background: 'white',
+              color: THEME.textPrimary,
+              cursor: 'pointer',
+            }}
+          >
+            <i className={`fas fa-arrow-${sortDir === 'asc' ? 'up' : 'down'}`}></i>
+          </button>
+          {(search || tier || fromDate || toDate) && (
+            <button
+              className="btn btn-sm"
+              onClick={() => { setSearch(''); setTier(''); setPage(1); setPreset('MTD'); setFromDate(''); setToDate(''); }}
+              title="Clear filters"
+              style={{
+                padding: '8px 12px',
+                borderRadius: 40,
+                border: `1px solid ${THEME.borderLight}`,
+                background: 'white',
+                color: '#A83232',
+                cursor: 'pointer',
+              }}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          )}
+        </div>
+
+        {/* Search on right side */}
+        <div style={{
+          position: 'relative',
+          background: 'white',
+          padding: '8px 14px',
+          borderRadius: 40,
+          border: `1px solid ${THEME.borderLight}`,
+          boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+          flex: '1',
+          minWidth: 200,
+          maxWidth: 280,
+        }}>
+          <i className="fas fa-search" style={{ color: THEME.textMuted, fontSize: 12, position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }}></i>
+          <input
+            placeholder="Search name, email, phone..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              fontSize: 14,
+              color: THEME.textPrimary,
+              outline: 'none',
+              width: '100%',
+              paddingLeft: 24,
+            }}
+          />
+        </div>
       </div>
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#64748B' }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>
-      ) : filtered.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
+      {/* Stats Bar */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '12px 16px',
+        background: THEME.bgMuted,
+        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
+        border: `1px solid ${THEME.border}`,
+        borderBottom: 'none',
+      }}>
+        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
+          <i className="fas fa-users" style={{ marginRight: 8, color: THEME.primary }}></i>
+          Showing <strong style={{ color: THEME.textPrimary }}>{customers.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> customers
+        </div>
+        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+          Page {page} of {totalPages}
+        </div>
+      </div>
+
+      {loading && customers.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: THEME.textMuted }}>
+          <i className="fas fa-spinner fa-spin"></i> Loading...
+        </div>
+      ) : customers.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
           <i className="fas fa-users" style={{ fontSize: 40, marginBottom: 16 }}></i>
-          <p>{search ? 'No customers match your search' : 'No customers found'}</p>
+          <p>{search || tier ? 'No customers match your filters' : 'No customers found'}</p>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
+        <div style={{
+          overflowX: 'auto',
+          borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
+          background: THEME.bgCard,
+          border: `1px solid ${THEME.border}`,
+          borderTop: 'none',
+        }}>
           <table>
             <thead>
               <tr>
@@ -139,20 +213,38 @@ export default function CustomersPage({ token, selectedStore }: CustomersPagePro
                 <th>Email</th>
                 <th>Tier</th>
                 <th>Points</th>
-                <th>Total Orders</th>
+                <th>Orders</th>
                 <th>Total Spent</th>
+                <th>Joined</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => (
-                <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => openCustomerDetail(c.id)}>
-                  <td style={{ fontWeight: 500 }}>{c.name || '-'}</td>
-                  <td>{c.phone || '-'}</td>
-                  <td>{c.email || '-'}</td>
-                  <td><span className="badge badge-blue">{c.tier || 'Standard'}</span></td>
-                  <td>{c.points} pts</td>
-                  <td>{c.total_orders}</td>
-                  <td>{formatRM(c.total_spent)}</td>
+              {customers.map(c => (
+                <tr key={c.id}>
+                  <td style={{ fontWeight: 500, color: THEME.textPrimary }}>{c.name || '-'}</td>
+                  <td style={{ color: THEME.textPrimary }}>{c.phone || '-'}</td>
+                  <td style={{ color: THEME.textPrimary }}>{c.email || '-'}</td>
+                  <td>
+                    <span className={`badge ${
+                      c.tier === 'platinum' ? 'badge-purple' :
+                      c.tier === 'gold' ? 'badge-yellow' :
+                      c.tier === 'silver' ? 'badge-gray' : 'badge-gray'
+                    }`}>
+                      {c.tier ? c.tier.charAt(0).toUpperCase() + c.tier.slice(1) : 'Standard'}
+                    </span>
+                  </td>
+                  <td style={{ color: THEME.textPrimary }}>{c.points_balance?.toLocaleString() || 0} pts</td>
+                  <td style={{ color: THEME.textPrimary }}>{c.total_orders}</td>
+                  <td style={{ color: THEME.textPrimary }}>{formatRM(c.total_spent || 0)}</td>
+                  <td style={{ color: THEME.textMuted, fontSize: 12 }}>
+                    {c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}
+                  </td>
+                  <td>
+                    <button className="btn btn-sm" onClick={() => onEditCustomer(c.id)}>
+                      <i className="fas fa-eye"></i> View
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -160,139 +252,89 @@ export default function CustomersPage({ token, selectedStore }: CustomersPagePro
         </div>
       )}
 
-      {selectedCustomer && (
-        <div className="modal-overlay" onClick={() => { setSelectedCustomer(null); setEditingCustomer(false); }}>
-          <div className="modal" style={{ maxWidth: 700 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3>Customer Detail</h3>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {!editingCustomer && (
-                  <button className="btn btn-sm" onClick={() => setEditingCustomer(true)}><i className="fas fa-edit"></i> Edit</button>
-                )}
-                <button className="btn btn-sm" onClick={() => { setSelectedCustomer(null); setEditingCustomer(false); }}><i className="fas fa-times"></i></button>
-              </div>
-            </div>
-            {detailLoading ? (
-              <div style={{ textAlign: 'center', padding: 40, color: '#64748B' }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>
-            ) : (
-              <>
-                {/* ── Profile & Balances ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-                  <div className="card">
-                    <h4 style={{ marginBottom: 12 }}>Profile</h4>
-                    {editingCustomer ? (
-                      <form onSubmit={handleEditSubmit}>
-                        {editError && (
-                          <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
-                            <i className="fas fa-exclamation-circle"></i> {editError}
-                          </div>
-                        )}
-                        <div style={{ marginBottom: 10 }}>
-                          <label style={labelStyle}>Name</label>
-                          <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Customer name" />
-                        </div>
-                        <div style={{ marginBottom: 10 }}>
-                          <label style={labelStyle}>Phone</label>
-                          <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="+60 12-345 6789" />
-                          <div style={hintStyle}>Used for passwordless login. Changing this will change how the customer logs in.</div>
-                        </div>
-                        <div style={{ marginBottom: 10 }}>
-                          <label style={labelStyle}>Email</label>
-                          <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="customer@email.com" />
-                          <div style={hintStyle}>Recovery channel — used to verify identity if phone is lost.</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button type="submit" className="btn btn-primary" disabled={editSaving}>{editSaving ? 'Saving...' : 'Save Changes'}</button>
-                          <button type="button" className="btn" onClick={() => setEditingCustomer(false)}>Cancel</button>
-                        </div>
-                      </form>
-                    ) : (
-                      <>
-                        <p><strong>Name:</strong> {selectedCustomer.name || '-'}</p>
-                        <p><strong>Phone:</strong> {selectedCustomer.phone || '-'}</p>
-                        <p><strong>Email:</strong> {selectedCustomer.email || (
-                          <span style={{ color: '#D97706', fontWeight: 500 }}>Not set — recommend adding for account recovery</span>
-                        )}</p>
-                        <p><strong>Tier:</strong> <span className="badge badge-blue">{selectedCustomer.tier || 'Standard'}</span></p>
-                        <p><strong>Joined:</strong> {selectedCustomer.created_at ? new Date(selectedCustomer.created_at).toLocaleDateString() : '-'}</p>
-                      </>
-                    )}
-                  </div>
-                  <div className="card">
-                    <h4 style={{ marginBottom: 12 }}>Balances</h4>
-                    <p><strong>Loyalty Points:</strong> {selectedCustomer.points} pts</p>
-                    <p><strong>Wallet Balance:</strong> {formatRM(selectedCustomer.wallet_balance || 0)}</p>
-                    <p><strong>Total Orders:</strong> {selectedCustomer.total_orders}</p>
-                    <p><strong>Total Spent:</strong> {formatRM(selectedCustomer.total_spent)}</p>
-                  </div>
-                </div>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 12,
+          marginTop: 20,
+          padding: '12px',
+          background: THEME.bgCard,
+          borderRadius: THEME.radius.md,
+          border: `1px solid ${THEME.border}`,
+        }}>
+          <button
+            className="btn btn-sm"
+            disabled={page <= 1 || loading}
+            onClick={() => fetchCustomers(page - 1)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: THEME.radius.md,
+              border: `1px solid ${THEME.border}`,
+              background: page <= 1 ? THEME.bgMuted : THEME.bgCard,
+              color: page <= 1 ? THEME.textMuted : THEME.textPrimary,
+              cursor: page <= 1 ? 'not-allowed' : 'pointer',
+              opacity: page <= 1 ? 0.6 : 1,
+            }}
+          >
+            <i className="fas fa-chevron-left"></i> Previous
+          </button>
 
-                {/* ── Recent Orders ── */}
-                <div style={{ marginBottom: 20 }}>
-                  <h4 style={{ marginBottom: 12 }}>Recent Orders</h4>
-                  {customerOrders.length === 0 ? (
-                    <p style={{ color: '#94A3B8' }}>No orders</p>
-                  ) : (
-                    <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid #ECF1F7' }}>
-                      <table>
-                        <thead><tr><th>Order #</th><th>Type</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
-                        <tbody>
-                          {customerOrders.slice(0, 10).map(o => (
-                            <tr key={o.id}>
-                              <td style={{ fontWeight: 500 }}>{o.order_number}</td>
-                              <td style={{ textTransform: 'capitalize' }}>{o.order_type?.replace('_', ' ')}</td>
-                              <td>{formatRM(o.total)}</td>
-                              <td><span className={`badge ${o.status === 'completed' ? 'badge-green' : o.status === 'cancelled' ? 'badge-red' : 'badge-yellow'}`}>{o.status}</span></td>
-                              <td>{new Date(o.created_at).toLocaleDateString()}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              // Show pages around current page
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (page <= 3) {
+                pageNum = i + 1;
+              } else if (page >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
 
-                {/* ── Loyalty & Wallet History ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div className="card">
-                    <h4 style={{ marginBottom: 12 }}>Loyalty History</h4>
-                    {loyaltyHistory.length === 0 ? (
-                      <p style={{ color: '#94A3B8' }}>No loyalty transactions</p>
-                    ) : (
-                      loyaltyHistory.slice(0, 10).map(t => (
-                        <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #EDF2F8', fontSize: 13 }}>
-                          <span>{t.description || t.type}</span>
-                          <span style={{ color: t.type === 'earn' ? '#059669' : '#EF4444', fontWeight: 600 }}>
-                            {t.type === 'earn' ? '+' : '-'}{t.points} pts
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <div className="card">
-                    <h4 style={{ marginBottom: 12 }}>Wallet History</h4>
-                    {walletHistory.length === 0 ? (
-                      <p style={{ color: '#94A3B8' }}>No wallet transactions</p>
-                    ) : (
-                      walletHistory.slice(0, 10).map(t => (
-                        <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #EDF2F8', fontSize: 13 }}>
-                          <span>{t.description || t.type}</span>
-                          <span style={{ color: t.type === 'top_up' || t.type === 'refund' ? '#059669' : '#EF4444', fontWeight: 600 }}>
-                            {t.type === 'top_up' || t.type === 'refund' ? '+' : '-'}{formatRM(t.amount)}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => fetchCustomers(pageNum)}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: THEME.radius.md,
+                    border: `1px solid ${page === pageNum ? THEME.primary : THEME.border}`,
+                    background: page === pageNum ? THEME.primary : THEME.bgCard,
+                    color: page === pageNum ? THEME.textLight : THEME.textPrimary,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
           </div>
+
+          <button
+            className="btn btn-sm"
+            disabled={page >= totalPages || loading}
+            onClick={() => fetchCustomers(page + 1)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: THEME.radius.md,
+              border: `1px solid ${THEME.border}`,
+              background: page >= totalPages ? THEME.bgMuted : THEME.bgCard,
+              color: page >= totalPages ? THEME.textMuted : THEME.textPrimary,
+              cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+              opacity: page >= totalPages ? 0.6 : 1,
+            }}
+          >
+            Next <i className="fas fa-chevron-right"></i>
+          </button>
         </div>
       )}
     </div>
   );
 }
-
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: '#94A3B8', marginTop: 2 };

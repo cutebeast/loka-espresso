@@ -155,7 +155,7 @@ export function AddVoucherForm({ token, onClose }: { token: string; onClose: () 
   const [description, setDescription] = useState('');
   const [discountType, setDiscountType] = useState('fixed');
   const [discountValue, setDiscountValue] = useState('');
-  const [minOrder, setMinOrder] = useState('0');
+  const [minSpend, setMinSpend] = useState('0');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
@@ -168,7 +168,7 @@ export function AddVoucherForm({ token, onClose }: { token: string; onClose: () 
           code: code.toUpperCase(), description,
           discount_type: discountType,
           discount_value: parseFloat(discountValue),
-          min_order: parseFloat(minOrder),
+          min_order: parseFloat(minSpend),
           is_active: true,
         }),
       });
@@ -200,8 +200,8 @@ export function AddVoucherForm({ token, onClose }: { token: string; onClose: () 
         </div>
       </div>
       <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Min Order (RM)</label>
-        <input type="number" step="0.01" value={minOrder} onChange={e => setMinOrder(e.target.value)} />
+        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Min Spend (RM)</label>
+        <input type="number" step="0.01" value={minSpend} onChange={e => setMinSpend(e.target.value)} />
       </div>
       <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
         {saving ? 'Creating...' : 'Create Voucher'}
@@ -299,15 +299,21 @@ export function AddBroadcastForm({ token, onClose }: { token: string; onClose: (
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [targetAudience, setTargetAudience] = useState('all');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload: Record<string, string> = { title, body: message, audience: targetAudience };
+      if (scheduledDate && scheduledTime) {
+        payload.scheduled_at = `${scheduledDate}T${scheduledTime}:00`;
+      }
       await apiFetch('/admin/broadcasts', token, {
         method: 'POST',
-        body: JSON.stringify({ title, body: message, audience: targetAudience }),
+        body: JSON.stringify(payload),
       });
       onClose();
     } catch {} finally { setSaving(false); }
@@ -332,8 +338,36 @@ export function AddBroadcastForm({ token, onClose }: { token: string; onClose: (
           <option value="inactive">Inactive Users</option>
         </select>
       </div>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+          Schedule (optional)
+        </label>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="date"
+            value={scheduledDate}
+            onChange={e => setScheduledDate(e.target.value)}
+            min={new Date().toISOString().slice(0, 10)}
+            style={{ width: 150, padding: '6px 10px', borderRadius: 8, border: '1px solid #DDE3E9', fontSize: 13 }}
+          />
+          <input
+            type="time"
+            value={scheduledTime}
+            onChange={e => setScheduledTime(e.target.value)}
+            style={{ width: 110, padding: '6px 10px', borderRadius: 8, border: '1px solid #DDE3E9', fontSize: 13 }}
+          />
+          {(scheduledDate || scheduledTime) && (
+            <button type="button" className="btn btn-sm" onClick={() => { setScheduledDate(''); setScheduledTime(''); }} title="Clear schedule">
+              <i className="fas fa-times"></i>
+            </button>
+          )}
+        </div>
+        <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+          Leave empty to save as draft (no schedule)
+        </div>
+      </div>
       <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
-        {saving ? 'Sending...' : 'Send Broadcast'}
+        {saving ? 'Saving...' : 'Save Broadcast'}
       </button>
     </form>
   );

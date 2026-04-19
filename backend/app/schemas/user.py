@@ -36,7 +36,10 @@ class UserOut(BaseModel):
     phone: Optional[str] = None
     name: Optional[str] = None
     email: Optional[str] = None
-    role: str
+    user_type_id: int
+    role_id: int
+    user_type: Optional[str] = None  # Resolved name from user_types table
+    role: Optional[str] = None       # Resolved name from roles table
     avatar_url: Optional[str] = None
     referral_code: Optional[str] = None
     created_at: Optional[datetime] = None

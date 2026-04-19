@@ -1,24 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List
 
 from app.core.database import get_db
-from app.core.security import require_role
+from app.core.security import require_hq_access
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.models.survey import Survey, SurveyQuestion, SurveyResponse
 from app.schemas.survey import SurveyCreate, SurveyUpdate, SurveyOut, SurveyListItem, SurveyQuestionOut
 
 router = APIRouter(prefix="/admin/surveys", tags=["Admin Surveys"])
 
 
-@router.get("", response_model=List[SurveyListItem])
+@router.get("")
 async def list_surveys(
-    user: User = Depends(require_role(UserRole.admin)),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Survey).order_by(Survey.created_at.desc()))
+    count_q = select(func.count()).select_from(Survey)
+    total_result = await db.execute(count_q)
+    total = total_result.scalar() or 0
+
+    result = await db.execute(
+        select(Survey).order_by(Survey.created_at.desc())
+        .offset((page - 1) * page_size).limit(page_size)
+    )
     surveys = result.scalars().all()
     items = []
     for s in surveys:
@@ -31,13 +40,19 @@ async def list_surveys(
             reward_voucher_id=s.reward_voucher_id,
             created_at=s.created_at,
         ))
-    return items
+    return {
+        "surveys": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size),
+    }
 
 
 @router.get("/{survey_id}", response_model=SurveyOut)
 async def get_survey(
     survey_id: int,
-    user: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Survey).where(Survey.id == survey_id))
@@ -62,7 +77,7 @@ async def get_survey(
 async def create_survey(
     data: SurveyCreate,
     request: Request,
-    user: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     if data.questions and len(data.questions) > 5:
@@ -88,7 +103,6 @@ async def create_survey(
     await db.flush()
     ip = get_client_ip(request)
     await log_action(db, action="CREATE_SURVEY", user_id=user.id, entity_type="survey", entity_id=survey.id, details={"title": survey.title}, ip_address=ip)
-    await db.commit()
     return SurveyOut(
         id=survey.id, title=survey.title, description=survey.description,
         reward_voucher_id=survey.reward_voucher_id, is_active=survey.is_active,
@@ -106,7 +120,7 @@ async def update_survey(
     survey_id: int,
     data: SurveyUpdate,
     request: Request,
-    user: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Survey).where(Survey.id == survey_id))
@@ -144,7 +158,6 @@ async def update_survey(
     questions = q_result.scalars().all()
     ip = get_client_ip(request)
     await log_action(db, action="UPDATE_SURVEY", user_id=user.id, entity_type="survey", entity_id=survey_id, details={"title": survey.title}, ip_address=ip)
-    await db.commit()
     return SurveyOut(
         id=survey.id, title=survey.title, description=survey.description,
         reward_voucher_id=survey.reward_voucher_id, is_active=survey.is_active,
@@ -161,7 +174,7 @@ async def update_survey(
 async def delete_survey(
     survey_id: int,
     request: Request,
-    user: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Survey).where(Survey.id == survey_id))
@@ -171,5 +184,4 @@ async def delete_survey(
     ip = get_client_ip(request)
     await log_action(db, action="DELETE_SURVEY", user_id=user.id, entity_type="survey", entity_id=survey_id, details={"title": survey.title}, ip_address=ip)
     await db.delete(survey)
-    await db.commit()
     return {"message": "Survey deleted"}

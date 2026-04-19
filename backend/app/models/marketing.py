@@ -1,6 +1,9 @@
-from datetime import timezone, datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, DECIMAL
-from sqlalchemy.orm import relationship
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Optional, List
+from sqlalchemy import String, Boolean, DateTime, Text, Integer, ForeignKey, DECIMAL
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
 
@@ -10,15 +13,15 @@ class CustomizationOption(Base):
     """
     __tablename__ = "customization_options"
 
-    id = Column(Integer, primary_key=True, index=True)
-    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False, index=True)
-    name = Column(String(100), nullable=False)
-    price_adjustment = Column(DECIMAL(10, 2), default=0, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
-    display_order = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    menu_item_id: Mapped[int] = mapped_column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    price_adjustment: Mapped[float] = mapped_column(DECIMAL(10, 2), default=0, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    display_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    menu_item = relationship("MenuItem")
+    menu_item: Mapped[MenuItem] = relationship("MenuItem")
 
 
 class MarketingCampaign(Base):
@@ -27,34 +30,34 @@ class MarketingCampaign(Base):
     """
     __tablename__ = "marketing_campaigns"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-    channel = Column(String(30), default="push", nullable=False)  # push, sms, email
-    subject = Column(String(500), nullable=True)
-    body = Column(Text, nullable=True)
-    image_url = Column(String(500), nullable=True)
-    cta_url = Column(String(500), nullable=True)
-    audience = Column(String(50), default="all", nullable=False)  # all, loyalty_members, new_users, etc.
-    store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)  # null = all stores
-    status = Column(String(30), default="draft", nullable=False)  # draft, scheduled, sending, sent, failed
-    provider = Column(String(50), nullable=True)  # twilio, signal, fcm, etc.
-    provider_campaign_id = Column(String(255), nullable=True)
-    scheduled_at = Column(DateTime(timezone=True), nullable=True)
-    sent_at = Column(DateTime(timezone=True), nullable=True)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-    total_recipients = Column(Integer, default=0)
-    sent_count = Column(Integer, default=0)
-    delivered_count = Column(Integer, default=0)
-    opened_count = Column(Integer, default=0)
-    clicked_count = Column(Integer, default=0)
-    failed_count = Column(Integer, default=0)
-    cost = Column(DECIMAL(10, 2), nullable=True)
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    channel: Mapped[str] = mapped_column(String(30), default="push", nullable=False)
+    subject: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    cta_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    audience: Mapped[str] = mapped_column(String(50), default="all", nullable=False)
+    store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="draft", nullable=False)
+    provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    provider_campaign_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    scheduled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    total_recipients: Mapped[int] = mapped_column(Integer, default=0)
+    sent_count: Mapped[int] = mapped_column(Integer, default=0)
+    delivered_count: Mapped[int] = mapped_column(Integer, default=0)
+    opened_count: Mapped[int] = mapped_column(Integer, default=0)
+    clicked_count: Mapped[int] = mapped_column(Integer, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)
+    cost: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 2), nullable=True)
+    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    store = relationship("Store")
-    creator = relationship("User")
+    store: Mapped[Optional[Store]] = relationship("Store")
+    creator: Mapped[Optional[User]] = relationship("User")
 
 
 class TableOccupancySnapshot(Base):
@@ -63,12 +66,12 @@ class TableOccupancySnapshot(Base):
     """
     __tablename__ = "table_occupancy_snapshot"
 
-    table_id = Column(Integer, ForeignKey("store_tables.id", ondelete="CASCADE"), primary_key=True)
-    store_id = Column(Integer, ForeignKey("stores.id"), nullable=False)
-    is_occupied = Column(Boolean, default=False, nullable=False)
-    current_order_id = Column(Integer, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    table_id: Mapped[int] = mapped_column(Integer, ForeignKey("store_tables.id", ondelete="CASCADE"), primary_key=True)
+    store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id"), nullable=False)
+    is_occupied: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    current_order_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    table = relationship("StoreTable")
-    store = relationship("Store")
-    current_order = relationship("Order")
+    table: Mapped[StoreTable] = relationship("StoreTable")
+    store: Mapped[Store] = relationship("Store")
+    current_order: Mapped[Optional[Order]] = relationship("Order")

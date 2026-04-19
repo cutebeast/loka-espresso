@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Sequence
+from typing import Optional
 import uuid
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.models.user import UserTypeIDs, RoleIDs
 
 settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -22,6 +23,25 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
+
+
+def now_utc() -> datetime:
+    """Return current UTC time as timezone-aware datetime.
+    
+    DB stores DateTime(timezone=True) as naive timestamps. When comparing
+    DB datetimes against datetime.now(timezone.utc), we must ensure both
+    are timezone-aware to avoid TypeError.
+    """
+    return datetime.now(timezone.utc)
+
+
+def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Ensure a datetime is timezone-aware (UTC). If naive, add UTC timezone."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -39,7 +59,6 @@ def create_refresh_token(data: dict) -> str:
 
 
 async def _is_token_blacklisted(jti: str, db: AsyncSession) -> bool:
-    """Check if a JTI is in the blacklist."""
     from app.models.user import TokenBlacklist
     result = await db.execute(select(TokenBlacklist).where(TokenBlacklist.jti == jti))
     return result.scalar_one_or_none() is not None
@@ -61,7 +80,6 @@ async def get_current_user(
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-    # Check token blacklist
     if jti and await _is_token_blacklisted(jti, db):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
 
@@ -73,162 +91,153 @@ async def get_current_user(
     return user
 
 
-def require_role(*roles: str):
-    """Check that the authenticated user has one of the given UserRole values.
-    
-    Usage: `user: User = Depends(require_role("admin", "store_owner"))`
-    """
-    async def role_checker(user=Depends(get_current_user)):
-        if user.role not in roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+# ---------------------------------------------------------------------------
+# ACL HELPERS
+# ---------------------------------------------------------------------------
+
+def is_global_admin(user) -> bool:
+    """Admin or Brand Owner — sees all stores, full access."""
+    return user.role_id in (RoleIDs.ADMIN, RoleIDs.BRAND_OWNER)
+
+
+def is_hq(user) -> bool:
+    """Any HQ Management user (Admin, Brand Owner, HQ Staff)."""
+    return user.user_type_id == UserTypeIDs.HQ_MANAGEMENT
+
+
+def is_dashboard_user(user) -> bool:
+    """Any non-customer user who can access the admin dashboard."""
+    return user.user_type_id != UserTypeIDs.CUSTOMER
+
+
+async def user_has_permission(user, permission_name: str, db: AsyncSession) -> bool:
+    """Check if the user's role has a specific permission."""
+    from app.models.acl import RolePermission, Permission
+    result = await db.execute(
+        select(RolePermission).join(Permission).where(
+            RolePermission.role_id == user.role_id,
+            Permission.name == permission_name,
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def get_allowed_store_ids(user, db: AsyncSession) -> list[int]:
+    """Get list of store IDs the user can access.
+    Admin/Brand Owner = all active stores.
+    Others = stores from user_store_access."""
+    from app.models.store import Store
+    from app.models.acl import UserStoreAccess
+
+    if is_global_admin(user):
+        result = await db.execute(select(Store.id).where(Store.is_active == True))
+        return [row[0] for row in result.all()]
+
+    result = await db.execute(
+        select(UserStoreAccess.store_id).where(UserStoreAccess.user_id == user.id)
+    )
+    return [row[0] for row in result.all()]
+
+
+async def can_access_store(user, store_id: int, db: AsyncSession) -> bool:
+    """Check if user can access a specific store."""
+    if is_global_admin(user):
+        return True
+    from app.models.acl import UserStoreAccess
+    result = await db.execute(
+        select(UserStoreAccess).where(
+            UserStoreAccess.user_id == user.id,
+            UserStoreAccess.store_id == store_id,
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+# ---------------------------------------------------------------------------
+# DEPENDENCY: require_permission
+# ---------------------------------------------------------------------------
+
+def require_permission(permission_name: str):
+    """Dependency: user must have the given permission via role_permissions."""
+    async def checker(
+        user=Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ):
+        if not await user_has_permission(user, permission_name, db):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Permission '{permission_name}' required")
         return user
+    return checker
+
+
+# ---------------------------------------------------------------------------
+# DEPENDENCY: require_role (by role ID)
+# ---------------------------------------------------------------------------
+
+def require_role(*role_ids: int):
+    """Check that the user has one of the given role IDs.
+    If UserTypeIDs.CUSTOMER is matched by user_type_id, also allows for PWA endpoints."""
+    async def role_checker(user=Depends(get_current_user)):
+        if user.role_id in role_ids:
+            return user
+        # Allow global admins through any role check
+        if is_global_admin(user):
+            return user
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
     return role_checker
 
 
 # ---------------------------------------------------------------------------
-# ACL Helpers for store-scoped staff access
+# DEPENDENCY: require_dashboard_access
 # ---------------------------------------------------------------------------
 
-# Predefined role groups for common permission levels
-MANAGEMENT_ROLES = {"manager", "assistant_manager"}
-ALL_STAFF_ROLES = {"manager", "assistant_manager", "barista", "cashier", "delivery"}
+def require_dashboard_access():
+    """Dependency: user must have dashboard access (not a customer)."""
+    async def checker(user=Depends(get_current_user)):
+        if not is_dashboard_user(user):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Dashboard access required")
+        return user
+    return checker
 
 
-async def get_staff_record(
-    user_id: int,
-    store_id: int,
-    db: AsyncSession,
-):
-    """Look up an active Staff record for a user at a specific store.
-    Returns the Staff object or None.
-    """
-    from app.models.staff import Staff
-    result = await db.execute(
-        select(Staff).where(
-            Staff.user_id == user_id,
-            Staff.store_id == store_id,
-            Staff.is_active == True,
-        )
-    )
-    return result.scalar_one_or_none()
+# ---------------------------------------------------------------------------
+# DEPENDENCY: require_hq_access
+# ---------------------------------------------------------------------------
 
+def require_hq_access():
+    """Dependency: only HQ Management users (admin, brand_owner, HQ staff)."""
+    async def checker(user=Depends(get_current_user)):
+        if not is_hq(user):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="HQ Management access required")
+        return user
+    return checker
+
+
+# ---------------------------------------------------------------------------
+# DEPENDENCY: require_store_access — uses user_store_access
+# ---------------------------------------------------------------------------
 
 def require_store_access(
     store_id_param: str = "store_id",
-    *,
-    allowed_staff_roles: Optional[set[str]] = None,
 ):
     """Dependency that grants access if:
-    1. User is admin → always allowed
-    2. User is store_owner → always allowed (for any store)
-    3. User has an active Staff record at the specified store with a matching role
-    
-    Returns the authenticated User object.
-    
-    Usage:
-        # Full management access (manager + assistant_manager)
-        user: User = Depends(require_store_access("store_id"))
-        
-        # All staff can view orders
-        user: User = Depends(require_store_access("store_id", allowed_staff_roles=ALL_STAFF_ROLES))
-        
-        # Only managers can manage staff
-        user: User = Depends(require_store_access("store_id", allowed_staff_roles={"manager"}))
+    1. Global admin/brand_owner → always allowed
+    2. Others → must have user_store_access record for that store
     """
-    if allowed_staff_roles is None:
-        allowed_staff_roles = MANAGEMENT_ROLES
-
     async def access_checker(
         request: Request,
         user=Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ):
-        from app.models.user import UserRole
-        
-        # Admin always passes
-        if user.role == UserRole.admin:
+        if is_global_admin(user):
             return user
-        
-        # Store owner always passes
-        if user.role == UserRole.store_owner:
-            return user
-        
-        # Check staff record
+
         store_id = request.path_params.get(store_id_param)
         if store_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Store ID required for staff access",
-            )
-        
-        staff = await get_staff_record(user.id, int(store_id), db)
-        if staff is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No staff record found for this store",
-            )
-        
-        staff_role = staff.role.value if hasattr(staff.role, 'value') else str(staff.role)
-        if staff_role not in allowed_staff_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Staff role '{staff_role}' not authorized for this action",
-            )
-        
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Store ID required")
+
+        if not await can_access_store(user, int(store_id), db):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this store")
+
         return user
-    
-    return access_checker
 
-
-def require_store_access_with_staff(
-    store_id_param: str = "store_id",
-    *,
-    allowed_staff_roles: Optional[set[str]] = None,
-):
-    """Same as require_store_access but also returns the Staff record (or None for admin/store_owner).
-    
-    Returns a dict: {"user": User, "staff": Staff | None}
-    """
-    if allowed_staff_roles is None:
-        allowed_staff_roles = MANAGEMENT_ROLES
-
-    async def access_checker(
-        request: Request,
-        user=Depends(get_current_user),
-        db: AsyncSession = Depends(get_db),
-    ):
-        from app.models.user import UserRole
-        
-        # Admin always passes, no staff record needed
-        if user.role == UserRole.admin:
-            return {"user": user, "staff": None}
-        
-        # Store owner always passes, no staff record needed
-        if user.role == UserRole.store_owner:
-            return {"user": user, "staff": None}
-        
-        # Check staff record
-        store_id = request.path_params.get(store_id_param)
-        if store_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Store ID required for staff access",
-            )
-        
-        staff = await get_staff_record(user.id, int(store_id), db)
-        if staff is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No staff record found for this store",
-            )
-        
-        staff_role = staff.role.value if hasattr(staff.role, 'value') else str(staff.role)
-        if staff_role not in allowed_staff_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Staff role '{staff_role}' not authorized for this action",
-            )
-        
-        return {"user": user, "staff": staff}
-    
     return access_checker

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
+import { Select } from '@/components/ui';
+import { THEME } from '@/lib/theme';
 
 interface SurveyQuestion {
   id?: number;
@@ -197,8 +199,7 @@ export default function SurveysPage({ token }: SurveysPageProps) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3 style={{ margin: 0 }}>Surveys</h3>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
         <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Survey</button>
       </div>
 
@@ -229,12 +230,7 @@ export default function SurveysPage({ token }: SurveysPageProps) {
               </div>
               <div>
                 <label style={labelStyle}>Reward Voucher</label>
-                <select value={rewardVoucherId} onChange={e => setRewardVoucherId(e.target.value)}>
-                  <option value="">— None —</option>
-                  {vouchers.map(v => (
-                    <option key={v.id} value={String(v.id)}>{v.title || v.code}</option>
-                  ))}
-                </select>
+                <Select value={rewardVoucherId} onChange={(val) => setRewardVoucherId(val)} options={[{ value: '', label: '— None —' }, ...vouchers.map(v => ({ value: String(v.id), label: v.title || v.code }))]} />
               </div>
             </div>
 
@@ -257,7 +253,7 @@ export default function SurveysPage({ token }: SurveysPageProps) {
               {questions.map((q, i) => (
                 <div key={i} style={{ background: '#F8FAFC', borderRadius: 10, padding: 12, marginBottom: 8, border: '1px solid #ECF1F7' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Q{i + 1}</span>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: THEME.textSecondary }}>Q{i + 1}</span>
                     {questions.length > 1 && (
                       <button type="button" className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => removeQuestion(i)}>
                         <i className="fas fa-trash"></i>
@@ -266,12 +262,7 @@ export default function SurveysPage({ token }: SurveysPageProps) {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8, marginBottom: 8 }}>
                     <input value={q.question_text} onChange={e => updateQuestion(i, 'question_text', e.target.value)} placeholder="Question text" required />
-                    <select value={q.question_type} onChange={e => updateQuestion(i, 'question_type', e.target.value)}>
-                      <option value="text">Text</option>
-                      <option value="single_choice">Single Choice</option>
-                      <option value="rating">Rating</option>
-                      <option value="dropdown">Dropdown</option>
-                    </select>
+                    <Select value={q.question_type} onChange={(val) => updateQuestion(i, 'question_type', val)} options={[{ value: 'text', label: 'Text' }, { value: 'single_choice', label: 'Single Choice' }, { value: 'rating', label: 'Rating' }, { value: 'dropdown', label: 'Dropdown' }]} />
                   </div>
                   {(q.question_type === 'single_choice' || q.question_type === 'dropdown') && (
                     <div style={{ marginBottom: 8 }}>
@@ -304,8 +295,25 @@ export default function SurveysPage({ token }: SurveysPageProps) {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8' }}>Loading surveys...</div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-          <table>
+        <>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 16px',
+            background: THEME.bgMuted,
+            borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
+            border: `1px solid ${THEME.border}`,
+            borderBottom: 'none',
+          }}>
+            <div style={{ fontSize: 14, color: THEME.textSecondary }}>
+              <i className="fas fa-clipboard-list" style={{ marginRight: 8, color: THEME.primary }}></i>
+              Showing <strong style={{ color: THEME.textPrimary }}>{surveys.length}</strong> surveys
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: `1px solid ${THEME.border}`, borderTop: 'none' }}>
+            <table>
             <thead>
               <tr><th>Title</th><th>Questions</th><th>Responses</th><th>Reward Voucher</th><th>Status</th><th>Actions</th></tr>
             </thead>
@@ -319,7 +327,7 @@ export default function SurveysPage({ token }: SurveysPageProps) {
                 <tr key={survey.id}>
                   <td>
                     <div style={{ fontWeight: 600 }}>{survey.title}</div>
-                    {survey.description && <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{survey.description}</div>}
+                    {survey.description && <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 2 }}>{survey.description}</div>}
                   </td>
                   <td><span className="badge badge-blue">{survey.questions?.length ?? 0}</span></td>
                   <td>{survey.response_count ?? 0}</td>
@@ -353,9 +361,10 @@ export default function SurveysPage({ token }: SurveysPageProps) {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' };
+const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.textSecondary };

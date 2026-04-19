@@ -13,6 +13,8 @@ from app.api.v1.endpoints.pwa_promos import router as pwa_promos_router
 from app.api.v1.endpoints.pwa_surveys import router as pwa_surveys_router
 from app.api.v1.endpoints.pwa_wallet import router as pwa_wallet_router
 from app.api.v1.endpoints.scan_cron import router as scan_cron_router
+from app.api.v1.endpoints.checkout import router as checkout_router
+from app.api.v1.endpoints.order_tracking import router as order_tracking_router
 
 api_router = APIRouter()
 
@@ -50,3 +52,5 @@ api_router.include_router(pwa_promos_router)
 api_router.include_router(pwa_surveys_router)
 api_router.include_router(pwa_wallet_router)
 api_router.include_router(scan_cron_router)
+api_router.include_router(checkout_router)
+api_router.include_router(order_tracking_router)

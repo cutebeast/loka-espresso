@@ -12,8 +12,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from app.core.database import get_db
-from app.core.security import require_role
-from app.models.user import User, UserRole
+from app.core.security import require_role, now_utc, ensure_utc
+from app.models.user import User, RoleIDs
 from app.models.admin_extras import PromoBanner
 from app.models.voucher import Voucher, UserVoucher
 
@@ -82,7 +82,7 @@ async def _grant_voucher(
     v_result = await db.execute(select(Voucher).where(Voucher.id == voucher_id))
     voucher = v_result.scalar_one_or_none()
 
-    now = datetime.now(timezone.utc)
+    now = now_utc()
     validity_days = voucher.validity_days if voucher and voucher.validity_days else 30
 
     # Generate unique per-instance code
@@ -98,7 +98,7 @@ async def _grant_voucher(
         expires_at=now + timedelta(days=validity_days),
         discount_type=voucher.discount_type.value if voucher and hasattr(voucher.discount_type, 'value') else (str(voucher.discount_type) if voucher else None),
         discount_value=voucher.discount_value if voucher else None,
-        min_spend=voucher.min_order if voucher else None,
+        min_spend=voucher.min_spend if voucher else None,
     )
     db.add(uv)
     await db.flush()
@@ -164,7 +164,7 @@ async def list_active_banners(
     db: AsyncSession = Depends(get_db),
 ):
     """List all active promo banners for PWA (public, no auth required)."""
-    now = datetime.now(timezone.utc)
+    now = now_utc()
     result = await db.execute(
         select(PromoBanner).where(
             PromoBanner.is_active == True,
@@ -174,9 +174,9 @@ async def list_active_banners(
     # Filter by date in Python (handle null dates)
     out = []
     for b in banners:
-        if b.start_date and b.start_date > now:
+        if b.start_date and ensure_utc(b.start_date) > now:
             continue
-        if b.end_date and b.end_date < now:
+        if b.end_date and ensure_utc(b.end_date) < now:
             continue
         out.append(b)
     return out
@@ -195,7 +195,7 @@ async def get_banner_detail(banner_id: int, db: AsyncSession = Depends(get_db)):
 @router.get("/{banner_id}/status", response_model=PromoStatusOut)
 async def get_banner_status(
     banner_id: int,
-    user: User = Depends(require_role(UserRole.customer, UserRole.admin)),
+    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Check the current user's interaction status with a promo banner.
@@ -275,7 +275,7 @@ async def get_banner_status(
 @router.post("/{banner_id}/claim", response_model=ClaimResult)
 async def claim_promo_voucher(
     banner_id: int,
-    user: User = Depends(require_role(UserRole.customer, UserRole.admin)),
+    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Claim voucher from a "detail" type promotion.
@@ -294,10 +294,10 @@ async def claim_promo_voucher(
         raise HTTPException(404, "Promotion not found")
 
     # Check date range
-    now = datetime.now(timezone.utc)
-    if banner.start_date and banner.start_date > now:
+    now = now_utc()
+    if banner.start_date and ensure_utc(banner.start_date) > now:
         raise HTTPException(400, "Promotion has not started yet")
-    if banner.end_date and banner.end_date < now:
+    if banner.end_date and ensure_utc(banner.end_date) < now:
         raise HTTPException(400, "Promotion has ended")
 
     # Must be "detail" type
@@ -335,7 +335,6 @@ async def claim_promo_voucher(
     v = await db.execute(select(Voucher).where(Voucher.id == banner.voucher_id))
     voucher = v.scalar_one_or_none()
 
-    await db.commit()
 
     return ClaimResult(
         success=True,

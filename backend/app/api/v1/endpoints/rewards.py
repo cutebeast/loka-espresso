@@ -8,13 +8,13 @@ import secrets
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from pydantic import BaseModel
 from typing import Optional, List
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_role
-from app.models.user import User, UserRole
+from app.core.security import get_current_user, require_role, now_utc
+from app.models.user import User, RoleIDs
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.reward import Reward, UserReward
 
@@ -104,7 +104,7 @@ async def get_reward_detail(reward_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("/{reward_id}/redeem", response_model=RedeemResult)
 async def redeem_reward(
     reward_id: int,
-    user: User = Depends(require_role(UserRole.customer, UserRole.admin)),
+    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -146,7 +146,7 @@ async def redeem_reward(
     redemption_code = f"RWD-{reward.id}-{secrets.token_hex(4).upper()}"
 
     # Compute expiry
-    now = datetime.now(timezone.utc)
+    now = now_utc()
     validity_days = reward.validity_days or 30
     expires_at = now + timedelta(days=validity_days)
 
@@ -159,8 +159,12 @@ async def redeem_reward(
         "reward_type": reward.reward_type.value if hasattr(reward.reward_type, 'value') else str(reward.reward_type),
     }
 
-    # Deduct points
-    la.points_balance -= reward.points_cost
+    # Deduct points (atomic SQL UPDATE to prevent race conditions)
+    await db.execute(
+        update(LoyaltyAccount)
+        .where(LoyaltyAccount.user_id == user.id)
+        .values(points_balance=LoyaltyAccount.points_balance - reward.points_cost)
+    )
 
     # Increment redeemed count
     reward.total_redeemed += 1

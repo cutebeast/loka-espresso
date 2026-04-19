@@ -5,7 +5,8 @@ from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.core.security import require_role
-from app.models.user import User
+from app.core.utils import to_float
+from app.models.user import User, RoleIDs
 from app.models.marketing import MarketingCampaign
 
 router = APIRouter(prefix="/admin/marketing", tags=["Admin Marketing"])
@@ -17,7 +18,7 @@ async def list_campaigns(
     channel: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     q = select(MarketingCampaign)
@@ -54,7 +55,7 @@ async def list_campaigns(
                 "opened_count": c.opened_count,
                 "clicked_count": c.clicked_count,
                 "failed_count": c.failed_count,
-                "cost": float(c.cost) if c.cost else None,
+                "cost": to_float(c.cost) if c.cost else None,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
             }
             for c in campaigns
@@ -65,7 +66,7 @@ async def list_campaigns(
 @router.post("/campaigns", status_code=201)
 async def create_campaign(
     req: dict,
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     campaign = MarketingCampaign(created_by=user.id, **{k: v for k, v in req.items() if hasattr(MarketingCampaign, k)})
@@ -80,7 +81,7 @@ async def create_campaign(
 async def update_campaign(
     campaign_id: int,
     req: dict,
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(MarketingCampaign).where(MarketingCampaign.id == campaign_id))
@@ -98,7 +99,7 @@ async def update_campaign(
 @router.delete("/campaigns/{campaign_id}")
 async def delete_campaign(
     campaign_id: int,
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(MarketingCampaign).where(MarketingCampaign.id == campaign_id))

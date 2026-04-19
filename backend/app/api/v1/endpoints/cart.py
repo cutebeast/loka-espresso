@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.utils import to_float
 from app.models.user import User
 from app.models.order import CartItem
 from app.models.menu import MenuItem
@@ -36,7 +37,7 @@ async def _validate_customization_options(
                 detail=f"Customization option {oid} not found or not available for this item",
             )
     return [
-        {"id": c.id, "name": c.name, "price_adjustment": float(c.price_adjustment)}
+        {"id": c.id, "name": c.name, "price_adjustment": to_float(c.price_adjustment)}
         for c in found
     ]
 
@@ -60,7 +61,7 @@ async def get_cart(user: User = Depends(get_current_user), db: AsyncSession = De
         mi = ir.scalar_one_or_none()
         name = mi.name if mi else "Unknown"
         # Include customization price adjustments in subtotal
-        base = float(ci.unit_price)
+        base = to_float(ci.unit_price)
         custom_total = 0.0
         if ci.customizations and isinstance(ci.customizations, dict):
             for opt in ci.customizations.get("options", []):
@@ -71,7 +72,7 @@ async def get_cart(user: User = Depends(get_current_user), db: AsyncSession = De
             item_id=ci.item_id, quantity=ci.quantity,
             customizations=ci.customizations,
             customization_option_ids=ci.customization_option_ids,
-            unit_price=float(ci.unit_price),
+            unit_price=to_float(ci.unit_price),
             item_name=name, created_at=ci.created_at,
         ))
     return CartOut(store_id=store_id, store_name=store_name, items=cart_items, subtotal=round(subtotal, 2))
@@ -118,7 +119,7 @@ async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user
             item_id=existing_cart.item_id, quantity=existing_cart.quantity,
             customizations=existing_cart.customizations,
             customization_option_ids=existing_cart.customization_option_ids,
-            unit_price=float(existing_cart.unit_price),
+            unit_price=to_float(existing_cart.unit_price),
             item_name=menu_item.name, created_at=existing_cart.created_at,
         )
 
@@ -135,7 +136,7 @@ async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user
         item_id=ci.item_id, quantity=ci.quantity,
         customizations=ci.customizations,
         customization_option_ids=ci.customization_option_ids,
-        unit_price=float(ci.unit_price),
+        unit_price=to_float(ci.unit_price),
         item_name=menu_item.name, created_at=ci.created_at,
     )
 
@@ -166,7 +167,7 @@ async def update_cart_item(item_id: int, req: CartItemUpdate, user: User = Depen
         item_id=ci.item_id, quantity=ci.quantity,
         customizations=ci.customizations,
         customization_option_ids=ci.customization_option_ids,
-        unit_price=float(ci.unit_price),
+        unit_price=to_float(ci.unit_price),
         item_name=menu_item.name if menu_item else "Unknown", created_at=ci.created_at,
     )
 

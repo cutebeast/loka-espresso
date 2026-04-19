@@ -1,79 +1,87 @@
-from datetime import timezone, datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, DECIMAL, JSON
-from sqlalchemy.orm import relationship
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Optional, List, TYPE_CHECKING
+from sqlalchemy import String, Boolean, DateTime, Text, Integer, ForeignKey, DECIMAL, JSON
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.store import Store
 
 
 class Feedback(Base):
     __tablename__ = "feedback"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
-    store_id = Column(Integer, ForeignKey("stores.id"), nullable=False, index=True)
-    order_id = Column(Integer, ForeignKey("orders.id"), nullable=True, index=True)
-    rating = Column(Integer, nullable=False)  # 1-5
-    comment = Column(Text, nullable=True)
-    tags = Column(JSON, nullable=True)  # e.g. ["slow_service", "great_coffee"]
-    is_resolved = Column(Boolean, default=False, nullable=False)
-    admin_reply = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id"), nullable=False, index=True)
+    order_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("orders.id"), nullable=True, index=True)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tags: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    admin_reply: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    store = relationship("Store")
-    user = relationship("User")
+    store: Mapped["Store"] = relationship("Store")
+    user: Mapped[Optional["User"]] = relationship("User")
 
 
 class AuditLog(Base):
     __tablename__ = "audit_log"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
-    store_id = Column(Integer, ForeignKey("stores.id"), nullable=True, index=True)
-    action = Column(String(100), nullable=False, index=True)  # LOGIN, LOGOUT, CREATE_ORDER, etc.
-    entity_type = Column(String(100), nullable=True)  # order, voucher, menu_item, etc.
-    entity_id = Column(Integer, nullable=True)
-    details = Column(JSON, nullable=True)
-    ip_address = Column(String(45), nullable=True)
-    status = Column(String(20), default="success")  # success, failed
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id"), nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    entity_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    entity_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    details: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="success")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
-    user = relationship("User")
-    store = relationship("Store")
+    user: Mapped[Optional["User"]] = relationship("User")
+    store: Mapped[Optional["Store"]] = relationship("Store")
 
 
 class NotificationBroadcast(Base):
     __tablename__ = "notification_broadcasts"
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=False)
-    body = Column(Text, nullable=True)
-    audience = Column(String(50), default="all")  # all, loyalty_members, staff
-    store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)  # null = all stores
-    scheduled_at = Column(DateTime(timezone=True), nullable=True)
-    sent_at = Column(DateTime(timezone=True), nullable=True)
-    sent_count = Column(Integer, default=0)
-    open_count = Column(Integer, default=0)
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    is_archived = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    audience: Mapped[str] = mapped_column(String(50), default="all")
+    store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id"), nullable=True)
+    scheduled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_count: Mapped[int] = mapped_column(Integer, default=0)
+    open_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="draft")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class PromoBanner(Base):
     __tablename__ = "promo_banners"
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=False)
-    short_description = Column(String(255), nullable=True)
-    image_url = Column(String(500), nullable=True)
-    position = Column(Integer, default=0)  # Display order
-    store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)  # null = all stores
-    start_date = Column(DateTime(timezone=True), nullable=True)
-    end_date = Column(DateTime(timezone=True), nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-    terms = Column(JSON, nullable=True)
-    how_to_redeem = Column(Text, nullable=True)
-    survey_id = Column(Integer, ForeignKey("surveys.id"), nullable=True)
-    voucher_id = Column(Integer, ForeignKey("vouchers.id"), nullable=True)
-    long_description = Column(Text, nullable=True)
-    action_type = Column(String(20), default="detail", nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    short_description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id"), nullable=True)
+    start_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    terms: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    how_to_redeem: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    survey_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("surveys.id"), nullable=True)
+    voucher_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vouchers.id"), nullable=True)
+    long_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    action_type: Mapped[Optional[str]] = mapped_column(String(20), default="detail", nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

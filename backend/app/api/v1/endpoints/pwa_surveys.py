@@ -10,8 +10,9 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from app.core.database import get_db
-from app.core.security import require_role
-from app.models.user import User, UserRole
+from app.core.security import require_role, now_utc, ensure_utc
+from app.core.sanitization import sanitize_text_field
+from app.models.user import User, RoleIDs
 from app.models.survey import Survey, SurveyQuestion, SurveyResponse, SurveyAnswer
 from app.models.voucher import Voucher, UserVoucher
 
@@ -108,7 +109,7 @@ async def get_survey_for_pwa(
 async def submit_survey(
     survey_id: int,
     data: SurveySubmitIn,
-    user: User = Depends(require_role(UserRole.customer, UserRole.admin)),
+    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit survey answers. Auto-grants voucher if:
@@ -166,12 +167,12 @@ async def submit_survey(
     db.add(response)
     await db.flush()
 
-    # Create answers
+    # Create answers (with XSS sanitization)
     for ans in data.answers:
         answer = SurveyAnswer(
             response_id=response.id,
             question_id=ans.question_id,
-            answer_text=ans.answer_text,
+            answer_text=sanitize_text_field(ans.answer_text, max_length=1000),
         )
         db.add(answer)
 
@@ -211,7 +212,7 @@ async def submit_survey(
                 import secrets
                 from datetime import timedelta, timezone
 
-                now = datetime.now(timezone.utc)
+                now = now_utc()
                 validity_days = voucher.validity_days or 30
                 instance_code = f"{voucher.code}-{secrets.token_hex(4).upper()}"
 
@@ -225,7 +226,7 @@ async def submit_survey(
                     expires_at=now + timedelta(days=validity_days),
                     discount_type=voucher.discount_type.value if hasattr(voucher.discount_type, 'value') else str(voucher.discount_type),
                     discount_value=voucher.discount_value,
-                    min_spend=voucher.min_order,
+                    min_spend=voucher.min_spend,
                 )
                 db.add(uv)
                 response.rewarded = True
@@ -233,7 +234,6 @@ async def submit_survey(
                 voucher_code = instance_code
                 voucher_title = voucher.title
 
-    await db.commit()
 
     return SurveySubmitResult(
         success=True,

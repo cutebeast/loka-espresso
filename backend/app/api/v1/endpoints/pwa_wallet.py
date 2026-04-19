@@ -10,8 +10,9 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from app.core.database import get_db
-from app.core.security import require_role
-from app.models.user import User, UserRole
+from app.core.security import require_role, now_utc, ensure_utc
+from app.core.utils import to_float
+from app.models.user import User, RoleIDs
 from app.models.reward import UserReward, Reward
 from app.models.voucher import UserVoucher, Voucher
 from app.models.wallet import Wallet
@@ -81,7 +82,7 @@ class CustomerWalletOut(BaseModel):
 
 @router.get("/wallet", response_model=CustomerWalletOut)
 async def get_customer_wallet(
-    user: User = Depends(require_role(UserRole.customer, UserRole.admin)),
+    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -91,7 +92,7 @@ async def get_customer_wallet(
     - Cash balance
     - Loyalty points
     """
-    now = datetime.now(timezone.utc)
+    now = now_utc()
 
     # ── Rewards ──────────────────────────────────────────────────────────
     ur_query = (
@@ -100,7 +101,7 @@ async def get_customer_wallet(
         .where(
             UserReward.user_id == user.id,
             UserReward.status == "available",
-            (UserReward.expires_at == None) | (UserReward.expires_at > now),
+            (UserReward.expires_at == None) | (UserReward.expires_at > ensure_utc(now)),
         )
         .order_by(UserReward.expires_at.asc())
     )
@@ -130,7 +131,7 @@ async def get_customer_wallet(
         .where(
             UserVoucher.user_id == user.id,
             UserVoucher.status == "available",
-            (UserVoucher.expires_at == None) | (UserVoucher.expires_at > now),
+            (UserVoucher.expires_at == None) | (UserVoucher.expires_at > ensure_utc(now)),
         )
         .order_by(UserVoucher.expires_at.asc())
     )
@@ -146,8 +147,8 @@ async def get_customer_wallet(
             voucher_image_url=v.image_url if v else None,
             code=uv.code,
             discount_type=uv.discount_type or (v.discount_type.value if v and hasattr(v.discount_type, 'value') else None),
-            discount_value=float(uv.discount_value) if uv.discount_value else (float(v.discount_value) if v and v.discount_value else None),
-            min_spend=float(uv.min_spend) if uv.min_spend else (float(v.min_order) if v and v.min_order else None),
+            discount_value=to_float(uv.discount_value) if uv.discount_value else (to_float(v.discount_value) if v and v.discount_value else None),
+            min_spend=to_float(uv.min_spend) if uv.min_spend else (to_float(v.min_order) if v and v.min_order else None),
             status=uv.status,
             source=uv.source,
             issued_at=uv.applied_at,
@@ -160,7 +161,7 @@ async def get_customer_wallet(
     w_result = await db.execute(select(Wallet).where(Wallet.user_id == user.id))
     wallet = w_result.scalar_one_or_none()
     if wallet:
-        cash_out = WalletCashOut(balance=float(wallet.balance), currency=wallet.currency)
+        cash_out = WalletCashOut(balance=to_float(wallet.balance), currency=wallet.currency)
 
     # ── Loyalty Points ───────────────────────────────────────────────────
     from app.models.user import User  # loyalty_accounts imported via model

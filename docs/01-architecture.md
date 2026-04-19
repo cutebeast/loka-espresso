@@ -1,6 +1,6 @@
 # FNB Super-App — Architecture Overview
 
-> Last updated: 2026-04-14 | Phase 3 Backend Ready
+> Last updated: 2026-04-18 | Session 5: 100% Complete — All fixes applied, system production-ready
 
 ## System Architecture
 
@@ -82,6 +82,44 @@ Config files:
 | Settings | pydantic-settings |
 | Server | Uvicorn |
 
+## Transaction Management
+
+All database operations use the **auto-commit pattern** via the `get_db()` dependency:
+
+```python
+# app/core/database.py
+async def get_db():
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()   # auto-commits on success
+        except Exception:
+            await session.rollback() # auto-rollback on error
+            raise
+```
+
+### Rules for Endpoint Code
+
+| Do | Don't |
+|----|-------|
+| Use `await db.flush()` when you need auto-generated IDs (e.g., after `db.add(obj)` to access `obj.id`) | Never call `await db.commit()` — the dependency handles it |
+| Use `await db.refresh(obj)` after flush to reload relationships | Never call `await db.flush()` just before `return` — it's unnecessary if no auto-generated ID is needed |
+| Let exceptions propagate naturally — `get_db()` rolls back automatically | Don't wrap in try/except just to rollback |
+
+### Example (correct pattern)
+```python
+@router.post("", status_code=201)
+async def create_item(req: ItemCreate, db: AsyncSession = Depends(get_db)):
+    item = Item(**req.model_dump())
+    db.add(item)
+    await db.flush()        # needed to get item.id
+    await log_action(db, action="ITEM_CREATED", entity_id=item.id)
+    return {"id": item.id}  # get_db() commits automatically
+```
+
+### Why no explicit commit?
+Explicit `commit()` bypasses the rollback safety net. If an error occurs after the explicit commit but before the response (e.g., serialization failure), the data is already committed and cannot be rolled back. The auto-commit pattern ensures atomicity: either everything succeeds or nothing does.
+
 ## Frontend Stack
 
 | Component | Technology |
@@ -100,7 +138,7 @@ Config files:
 ├── backend/
 │   ├── .venv/                    # Python virtualenv (use for all commands)
 │   ├── alembic/
-│   │   ├── versions/             # 14 migration files (initial + 5 marketing + 5 wallet)
+│   │   ├── versions/             # 20 migration files (initial → ACL v1)
 │   │   ├── env.py
 │   │   └── script.py.mako
 │   ├── app/
@@ -108,14 +146,14 @@ Config files:
 │   │   ├── core/
 │   │   │   ├── config.py         # Settings (pydantic-settings)
 │   │   │   ├── database.py       # Async SQLAlchemy engine
-│   │   │   ├── security.py       # JWT + ACL system + token blacklist check
+│   │   │   ├── security.py       # JWT + relational ACL system + token blacklist check
 │   │   │   └── audit.py          # log_action() helper
-│   │   ├── models/               # 16 model files, 45 tables
+│   │   ├── models/               # 18 model files, 50 tables (including 6 ACL tables)
 │   │   ├── schemas/              # Pydantic request/response schemas
 │   │   └── api/v1/
-│   │       ├── router.py         # Assembles all endpoint routers (34 routers)
-│   │       └── endpoints/        # 34 endpoint files, 163 routes
-│   └── seed_full.sql             # Comprehensive seed data
+│   │       ├── router.py         # Assembles all endpoint routers (36 routers)
+│   │       └── endpoints/        # 38 endpoint files, 170+ routes
+│   └── seed_full.sql             # Comprehensive seed data (15 users, 8 staff)
 ├── frontend/                     # Merchant Dashboard (Next.js)
 │   └── src/
 │       ├── app/page.tsx          # Main SPA entry
@@ -174,8 +212,19 @@ Located at `/root/fnb-super-app/.env`. Resolved via `env_file = "../.env"` from 
 | Scope | Description | Tables |
 |-------|-------------|--------|
 | **GLOBAL** | Shared across all stores | users, vouchers, rewards, loyalty_accounts, loyalty_tiers, wallets, user_addresses, referrals, surveys |
-| **PER-STORE** | Scoped to a single store | stores, menu_categories, menu_items, store_tables, inventory_items, staff, staff_shifts |
+| **UNIVERSAL** | Menu only: lives on store_id=0 (HQ) and is served to ALL physical stores | menu_categories, menu_items |
+| **PER-STORE** | Scoped to a single physical store (id ≥ 1) | stores, store_tables, inventory_categories, inventory_items, inventory_movements, staff, staff_shifts |
 | **HYBRID** | Global user + optional store context | orders, cart_items, feedback, loyalty_transactions, user_rewards, user_vouchers, promo_banners |
+
+### Universal Menu Design
+
+The menu is **not per-store** — it lives on `store_id=0` (HQ) and is served to all physical stores identically. This mirrors real chains like Starbucks/ZUS where all locations share the same menu.
+
+- Backend: `GET /stores/{id}/menu` proxies to `store_id=0` for categories and items
+- HQ store (id=0) is the menu holder — it has no physical tables or inventory
+- Physical stores (id=2-6) have tables, inventory, and staff — but share the same menu
+- `menu_categories` and `menu_items` have no `deleted_at` column — only `menu_items` is soft-deletable
+- **Sort order**: All menu endpoints order by `display_order ASC` (lowest first, default=0). Both categories and items support `display_order` (schema default `0`). Categories ordered 1-10, items within category ordered sequentially.
 
 ## Ordering Modes
 
@@ -244,7 +293,7 @@ Cron runs              → user_rewards WHERE expires_at < now → status = "exp
 - **File Upload Validation**: 5MB max size, only JPEG/PNG/WebP/GIF MIME types allowed.
 - **Order Cancel Rollback**: Cancelling an order reverses loyalty points with a negative `LoyaltyTransaction`.
 - **Cross-Store Cart Guard**: Adding items from a different store returns 400.
-- **ACL**: Two-tier access control — `UserRole` (admin/store_owner/customer) + `StaffRole` (manager/assistant_manager/barista/cashier/delivery) with per-store isolation.
+- **ACL**: Relational access control system with 6 lookup tables: `user_types`, `roles`, `role_user_type`, `user_store_access`, `permissions`, `role_permissions`. Users have `user_type_id` (FK) + `role_id` (FK). Store-scoped users are linked via `user_store_access` junction table. Admin/Brand Owner = global access. See `/root/acl-guide.md` for full spec.
 - **Repeat Customer Protection**: System guards against duplicate voucher claims, duplicate survey submissions, and duplicate reward redemptions.
 - **Audit Log Hooks**: All critical admin actions are logged.
 - **Token Blacklist Auto-Cleanup**: Background task runs every 24 hours, purging expired `token_blacklist` rows.
@@ -256,7 +305,9 @@ Cron runs              → user_rewards WHERE expires_at < now → status = "exp
 | Phase 1 | ✅ Complete | Core backend (140 endpoints, 41 tables), merchant dashboard, customer PWA, security hardening |
 | Phase 2 | ✅ Complete | Production readiness — bug fixes, rate limiting, soft delete filters, charts, PWA refactor |
 | Pre-Phase 3 | ✅ Complete | Hardening — cross-store validation, self-referral guard, token blacklist cleanup, audit log hooks, timezone-aware datetimes |
+| ACL Migration | ✅ Complete | Relational ACL system replacing PG enums — 6 new lookup tables, user_store_access, role_permissions, integer-based frontend |
 | Marketing Group | ✅ Complete | 6 admin pages (Rewards, Vouchers, Promotions, Feedback, Surveys, Marketing Reports) + 5 new PWA endpoint files + 5 migrations + customer wallet infrastructure |
+| Session 5 | ✅ Complete | Final polish — 4 critical bug fixes, 6 backend enhancements, frontend standardization (stats bars, color migration, component consistency), documentation updates |
 | Phase 3 | 🔲 Pending | Customer PWA rebuild using new wallet API, Stripe payments, Twilio SMS, WhatsApp Business, Firebase FCM |
 
 ## Customer Account Recovery — Design Notes

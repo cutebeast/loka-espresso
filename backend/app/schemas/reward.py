@@ -11,6 +11,7 @@ class RewardOut(BaseModel):
     reward_type: str
     item_id: Optional[int] = None
     discount_value: Optional[float] = None
+    min_spend: Optional[float] = 0
     image_url: Optional[str] = None
     stock_limit: Optional[int] = None
     total_redeemed: int = 0
@@ -33,6 +34,7 @@ class RewardCreate(BaseModel):
     reward_type: str = "custom"
     item_id: Optional[int] = None
     discount_value: Optional[float] = None
+    min_spend: Optional[float] = 0
     image_url: Optional[str] = None
     stock_limit: Optional[int] = None
     code: Optional[str] = None
@@ -50,6 +52,7 @@ class RewardUpdate(BaseModel):
     reward_type: Optional[str] = None
     item_id: Optional[int] = None
     discount_value: Optional[float] = None
+    min_spend: Optional[float] = None
     image_url: Optional[str] = None
     stock_limit: Optional[int] = None
     is_active: Optional[bool] = None

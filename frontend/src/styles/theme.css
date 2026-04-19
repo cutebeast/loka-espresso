@@ -1,0 +1,78 @@
+/* CSS Variables - Centralized Theme System
+ * 
+ * To change theme for a different client, just update these variables.
+ * Current theme: Coffee Shop (Dark Olive + Sage + Mustard)
+ * Palette: #384B16, #85B085, #E4EAEF, #D18E38, #57280D, #1B2023
+ */
+
+:root {
+  /* Primary Brand Colors */
+  --color-primary: #384b16;        /* Dark Olive Green */
+  --color-primary-dark: #2a3a10;   /* Darker Olive */
+  --color-primary-light: #4a5f20;  /* Lighter Olive */
+  
+  /* Accent Colors */
+  --color-accent: #85b085;         /* Muted Sage Green */
+  --color-accent-light: #a0c0a0;   /* Light Sage */
+  --color-accent-copper: #d18e38;  /* Mustard/Ochre */
+  --color-accent-brown: #57280d;   /* Dark Chocolate Brown */
+  
+  /* Background Colors */
+  --color-bg-page: #e4eaef;        /* Pale Icy Grey/White */
+  --color-bg-card: #ffffff;        /* Pure White */
+  --color-bg-muted: #d4dce5;       /* Light Icy Gray */
+  --color-bg-dark: #1b2023;        /* Dark Charcoal */
+  
+  /* Border Colors */
+  --color-border: #c4ced8;         /* Icy Border */
+  --color-border-light: #d4dce5;   /* Light Border */
+  --color-border-dark: #94a0b0;    /* Dark Border */
+  
+  /* Text Colors */
+  --color-text-primary: #1b2023;   /* Dark Charcoal/Black */
+  --color-text-secondary: #3a4a5a; /* Dark Slate */
+  --color-text-muted: #6a7a8a;     /* Medium Gray */
+  --color-text-light: #ffffff;     /* White */
+  --color-text-copper: #d18e38;    /* Mustard accent text */
+  
+  /* Status Colors */
+  --color-success: #384b16;        /* Olive Success */
+  --color-warning: #d18e38;        /* Mustard Warning */
+  --color-error: #8b2e2e;          /* Muted Red */
+  --color-info: #5a8a9a;           /* Slate Blue */
+  
+  /* Sidebar Specific */
+  --sidebar-bg: linear-gradient(180deg, #384b16 0%, #2a3a10 100%);
+  --sidebar-text: #b8c8d0;
+  --sidebar-text-muted: #8a9aa5;
+  --sidebar-accent: #85b085;
+  --sidebar-border: rgba(255,255,255,0.1);
+  
+  /* Shadow */
+  --shadow-sm: 0 2px 4px rgba(27, 32, 35, 0.05);
+  --shadow-md: 0 4px 12px rgba(27, 32, 35, 0.08);
+  --shadow-lg: 0 8px 24px rgba(27, 32, 35, 0.12);
+  
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 40px;
+  --radius-full: 9999px;
+  
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+}
+
+/* Dark mode support (optional) */
+[data-theme="dark"] {
+  --color-bg-page: #1b2023;
+  --color-bg-card: #2a3a35;
+  --color-text-primary: #e4eaef;
+  --color-text-secondary: #b8c8d0;
+  --color-border: #3a4a50;
+}

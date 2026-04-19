@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import type { MerchantCategory, MerchantMenuItem, MerchantStore } from '@/lib/merchant-types';
+import { Select } from '@/components/ui';
+import { THEME } from '@/lib/theme';
 
 interface MenuPageProps {
   categories: MerchantCategory[];
@@ -14,12 +16,16 @@ interface MenuPageProps {
   token: string;
   onRefresh: () => void;
   onCustomizeItem: (item: MerchantMenuItem) => void;
+  userRole?: string;
+  userType?: number;
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: '#94A3B8', marginTop: 2 };
+const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primary };
+const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.success, marginTop: 2 };
 
-export default function MenuPage({ categories, menuItems, selectedCategory, setSelectedCategory, selectedStore, storeObj, token, onRefresh, onCustomizeItem }: MenuPageProps) {
+export default function MenuPage({ categories, menuItems, selectedCategory, setSelectedCategory, selectedStore, storeObj, token, onRefresh, onCustomizeItem, userType = 1 }: MenuPageProps) {
+  const isHQ = userType === 1;
+  const menuStoreId = '0'; // Universal menu lives on store_id=0 (HQ)
   // Item form
   const [showItemForm, setShowItemForm] = useState(false);
   const [editingItem, setEditingItem] = useState<MerchantMenuItem | null>(null);
@@ -92,8 +98,8 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
 
     try {
       const res = editingItem
-        ? await apiFetch(`/admin/stores/${selectedStore}/items/${editingItem.id}`, token, { method: 'PUT', body: JSON.stringify(payload) })
-        : await apiFetch(`/admin/stores/${selectedStore}/items`, token, { method: 'POST', body: JSON.stringify(payload) });
+        ? await apiFetch(`/admin/stores/${menuStoreId}/items/${editingItem.id}`, token, { method: 'PUT', body: JSON.stringify(payload) })
+        : await apiFetch(`/admin/stores/${menuStoreId}/items`, token, { method: 'POST', body: JSON.stringify(payload) });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -110,7 +116,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
   async function toggleItemAvailable(item: MerchantMenuItem) {
     setItemError('');
     try {
-      const res = await apiFetch(`/admin/stores/${selectedStore}/items/${item.id}`, token, {
+      const res = await apiFetch(`/admin/stores/${menuStoreId}/items/${item.id}`, token, {
         method: 'PUT',
         body: JSON.stringify({ is_available: !item.is_available }),
       });
@@ -127,7 +133,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
 
   async function deleteItem(id: number) {
     try {
-      const res = await apiFetch(`/admin/stores/${selectedStore}/items/${id}`, token, { method: 'DELETE' });
+      const res = await apiFetch(`/admin/stores/${menuStoreId}/items/${id}`, token, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setItemError(data.detail || 'Delete failed');
@@ -170,11 +176,11 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
 
     try {
       const res = editingCat
-        ? await apiFetch(`/admin/stores/${selectedStore}/categories/${editingCat.id}`, token, {
+        ? await apiFetch(`/admin/stores/${menuStoreId}/categories/${editingCat.id}`, token, {
             method: 'PUT',
             body: JSON.stringify({ name: catName, slug, display_order: editingCat.display_order }),
           })
-        : await apiFetch(`/admin/stores/${selectedStore}/categories`, token, {
+        : await apiFetch(`/admin/stores/${menuStoreId}/categories`, token, {
             method: 'POST',
             body: JSON.stringify({ name: catName, slug, display_order: 0, is_active: true }),
           });
@@ -193,7 +199,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
 
   async function deleteCat(id: number) {
     try {
-      const res = await apiFetch(`/admin/stores/${selectedStore}/categories/${id}`, token, { method: 'DELETE' });
+      const res = await apiFetch(`/admin/stores/${menuStoreId}/categories/${id}`, token, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setCatError(data.detail || 'Delete failed');
@@ -205,22 +211,22 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
   }
 
   if (selectedStore === 'all') {
-    return (
-      <div className="card" style={{ textAlign: 'center', padding: 60, color: '#64748B' }}>
-        <i className="fas fa-store" style={{ fontSize: 40, marginBottom: 16 }}></i>
-        <p>Select a specific store to manage its menu</p>
-      </div>
-    );
+    // Menu is universal — always load from store_id=0, no store selection needed
   }
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3 style={{ margin: 0 }}>Menu &middot; {storeObj?.name}</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn" onClick={openCreateCat}><i className="fas fa-folder-plus"></i> Add Category</button>
-          <button className="btn btn-primary" onClick={openCreateItem}><i className="fas fa-plus"></i> New Item</button>
-        </div>
+        <h3 style={{ margin: 0 }}>Menu &middot; Universal (All Stores)</h3>
+        {isHQ && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn" onClick={openCreateCat}><i className="fas fa-folder-plus"></i> Add Category</button>
+            <button className="btn btn-primary" onClick={openCreateItem}><i className="fas fa-plus"></i> New Item</button>
+          </div>
+        )}
+        {!isHQ && (
+          <span style={{ color: THEME.success, fontSize: 13 }}><i className="fas fa-eye"></i> View only — contact admin to make changes</span>
+        )}
       </div>
 
       {itemError && (
@@ -233,8 +239,8 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
         {/* Categories sidebar */}
         <div>
           {/* Category inline form */}
-          {showCatForm && (
-            <div style={{ background: '#F0F7FF', borderRadius: 12, padding: 12, marginBottom: 12, border: '1px solid #BFD7F7' }}>
+          {showCatForm && isHQ && (
+            <div style={{ background: THEME.bgMuted, borderRadius: 12, padding: 12, marginBottom: 12, border: `1px solid ${THEME.accentLight}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <strong style={{ fontSize: 13 }}>{editingCat ? 'Edit Category' : 'New Category'}</strong>
                 <button className="btn btn-sm" onClick={closeCatForm} style={{ padding: '2px 6px' }}><i className="fas fa-times"></i></button>
@@ -270,9 +276,9 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '8px 12px', borderRadius: 10, cursor: 'pointer',
-                        background: selectedCategory === c.id ? '#EFF6FF' : 'transparent',
+                        background: selectedCategory === c.id ? THEME.bgMuted : 'transparent',
                         fontWeight: selectedCategory === c.id ? 600 : 400,
-                        color: c.is_active ? (selectedCategory === c.id ? '#002F6C' : '#334155') : '#94A3B8',
+                        color: c.is_active ? (selectedCategory === c.id ? THEME.primary : THEME.primary) : THEME.success,
                         marginBottom: 4, opacity: c.is_active ? 1 : 0.6,
                       }}
                     >
@@ -281,8 +287,12 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                         {!c.is_active && <span style={{ fontSize: 10, marginLeft: 6, color: '#EF4444' }}>Inactive</span>}
                       </span>
                       <div style={{ display: 'flex', gap: 2 }}>
-                        <button onClick={(e) => { e.stopPropagation(); openEditCat(c); }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748B', fontSize: 11, padding: '2px 4px' }}><i className="fas fa-edit"></i></button>
-                        <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteCat(c.id); }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', fontSize: 11, padding: '2px 4px' }}><i className="fas fa-trash"></i></button>
+                        {isHQ && (
+                          <>
+                            <button onClick={(e) => { e.stopPropagation(); openEditCat(c); }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: THEME.success, fontSize: 11, padding: '2px 4px' }}><i className="fas fa-edit"></i></button>
+                            <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteCat(c.id); }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', fontSize: 11, padding: '2px 4px' }}><i className="fas fa-trash"></i></button>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
@@ -295,7 +305,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
         {/* Items section */}
         <div>
           {/* Item inline form */}
-          {showItemForm && (
+          {showItemForm && isHQ && (
             <div className="card" style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <h4 style={{ margin: 0 }}>{editingItem ? 'Edit Item' : 'New Item'}</h4>
@@ -325,13 +335,11 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                   <div>
                     <label style={labelStyle}>Category *</label>
-                    <select value={itemCatId} onChange={e => setItemCatId(Number(e.target.value))}>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    <Select value={String(itemCatId)} onChange={(val) => setItemCatId(Number(val))} options={categories.map(c => ({ value: String(c.id), label: c.name }))} />
                     <div style={hintStyle}>Which category this item belongs to</div>
                   </div>
                   <div>
-                    <label style={labelStyle}>Description <span style={{ fontWeight: 400, color: '#94A3B8' }}>(optional)</span></label>
+                    <label style={labelStyle}>Description <span style={{ fontWeight: 400, color: THEME.success }}>(optional)</span></label>
                     <input value={itemDesc} onChange={e => setItemDesc(e.target.value)} placeholder="e.g. Double shot espresso with milk" />
                     <div style={hintStyle}>Shown below the item name</div>
                   </div>
@@ -352,22 +360,38 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
             </div>
           )}
 
-          <div className="card">
-            <h4 style={{ marginBottom: 16 }}>Items ({filteredItems.length})</h4>
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 16px',
+              background: THEME.bgMuted,
+              borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
+              border: `1px solid ${THEME.border}`,
+              borderBottom: 'none',
+            }}>
+              <div style={{ fontSize: 14, color: THEME.textSecondary }}>
+                <i className="fas fa-mug-hot" style={{ marginRight: 8, color: THEME.primary }}></i>
+                Showing <strong style={{ color: THEME.textPrimary }}>{filteredItems.length}</strong> items
+              </div>
+            </div>
+            <div style={{ padding: '0 16px' }}>
+            <h4 style={{ marginBottom: 16, marginTop: 16 }}>Items ({filteredItems.length})</h4>
             {filteredItems.length === 0 ? (
-              <div style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>
+              <div style={{ textAlign: 'center', color: THEME.success, padding: 40 }}>
                 <i className="fas fa-mug-hot" style={{ fontSize: 32, display: 'block', marginBottom: 12 }}></i>
                 No items in this category. Add your first menu item.
               </div>
             ) : (
               <div style={{ display: 'grid', gap: 0 }}>
                 {filteredItems.map(item => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #EDF2F8', opacity: item.is_available ? 1 : 0.5 }}>
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: `1px solid ${THEME.accentLight}`, opacity: item.is_available ? 1 : 0.5 }}>
                     <div style={{ flex: 1 }}>
                       <strong>{item.name}</strong>
-                      <span style={{ marginLeft: 12, color: '#059669', fontWeight: 600 }}>{formatRM(item.base_price)}</span>
+                      <span style={{ marginLeft: 12, color: THEME.primary, fontWeight: 600 }}>{formatRM(item.base_price)}</span>
                       {!item.is_available && <span style={{ marginLeft: 8, fontSize: 11, color: '#EF4444', fontWeight: 500 }}>Hidden</span>}
-                      {item.description && <p style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>{item.description}</p>}
+                      {item.description && <p style={{ fontSize: 13, color: THEME.success, marginTop: 2 }}>{item.description}</p>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {confirmDeleteItem === item.id ? (
@@ -375,7 +399,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                           <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white', fontSize: 11 }} onClick={() => deleteItem(item.id)}>Delete</button>
                           <button className="btn btn-sm" style={{ fontSize: 11 }} onClick={() => setConfirmDeleteItem(null)}>Cancel</button>
                         </>
-                      ) : (
+                      ) : isHQ ? (
                         <>
                           <button className="btn btn-sm" onClick={() => onCustomizeItem(item)} title="Manage add-ons">
                             <i className="fas fa-sliders-h"></i> Options
@@ -392,12 +416,17 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                             </span>
                           </button>
                         </>
+                      ) : (
+                        <span className={`badge ${item.is_available ? 'badge-green' : 'badge-gray'}`}>
+                          {item.is_available ? 'Available' : 'Hidden'}
+                        </span>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
-            )}
+            </div>
+            </div>
           </div>
         </div>
       </div>

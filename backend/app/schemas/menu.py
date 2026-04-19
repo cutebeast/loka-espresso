@@ -59,6 +59,24 @@ class MenuItemUpdate(BaseModel):
     display_order: Optional[int] = None
 
 
+class InventoryCategoryOut(BaseModel):
+    id: int
+    store_id: int
+    name: str
+    slug: Optional[str] = None
+    display_order: int = 0
+    is_active: bool = True
+
+    class Config:
+        from_attributes = True
+
+
+class InventoryCategoryCreate(BaseModel):
+    name: str
+    slug: Optional[str] = None
+    display_order: int = 0
+
+
 class InventoryItemOut(BaseModel):
     id: int
     store_id: int
@@ -67,7 +85,8 @@ class InventoryItemOut(BaseModel):
     unit: Optional[str] = None
     reorder_level: float
     is_active: bool = True
-    category: Optional[str] = None
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -78,7 +97,7 @@ class InventoryItemCreate(BaseModel):
     current_stock: float = 0
     unit: Optional[str] = None
     reorder_level: float = 0
-    category: Optional[str] = None
+    category_id: Optional[int] = None
 
 
 class InventoryItemUpdate(BaseModel):
@@ -86,7 +105,7 @@ class InventoryItemUpdate(BaseModel):
     current_stock: Optional[float] = None
     unit: Optional[str] = None
     reorder_level: Optional[float] = None
-    category: Optional[str] = None
+    category_id: Optional[int] = None
     is_active: Optional[bool] = None
 
 

@@ -1,48 +1,110 @@
 # FNB Super-App — Test Credentials & Verification Guide
 
-> Last updated: 2026-04-14 | Marketing Group + Wallet Infrastructure Complete
+> Last updated: 2026-04-18 (session 4) | Base Seed Steps 00-08 Complete | Customer Journey Seeds 09-18 Available
 
 ## Test Accounts
 
 All passwords: `admin123` (unless noted — some customers use OTP only)
 
-### Admin & Store Owner
+### Admin & HQ Staff
 
-| Email | UserRole | StaffRole | Store Access | Purpose |
-|-------|----------|-----------|-------------|---------|
-| admin@loyaltysystem.uk | admin | — | ALL stores | Full platform admin |
-| store.owner@zus.my | store_owner | manager | Stores 1 + 2 | Multi-store owner/operator |
+| Email | User Type | Role | Store Access | Purpose |
+|-------|-----------|------|-------------|---------|
+| admin@loyaltysystem.uk | HQ Management | Admin | Global (all stores) | Full platform admin |
+| ahmad.taher@fnb.my | HQ Management | Brand Owner | Global (all stores) | Multi-store owner/operator |
+| priya.hq@fnb.my | HQ Management | HQ Staff | Global (HQ only) | HQ operations |
+| raj.hq@fnb.my | HQ Management | HQ Staff | Global (HQ only) | HQ operations |
+
+### Store Management
+
+| Email | Role | Store Access |
+|-------|------|-------------|
+| amirul@zus.my | Manager | KLCC |
+| siti.klcc@zus.my | Assistant Manager | KLCC |
+| lisa@zus.my | Manager | Pavilion |
+| raj.pavilion@zus.my | Assistant Manager | Pavilion |
+| farah@zus.my | Manager | Cheras |
+| david@zus.my | Manager | PJ |
+| mei@zus.my | Manager | Bangi |
+
+### Store Staff
+
+| Email | Role | Store |
+|-------|------|-------|
+| weijie@zus.my | Barista | KLCC |
+| john@zus.my | Barista | KLCC |
+| kumar.klcc@zus.my | Cashier | KLCC |
+| siti.pavi@zus.my | Barista | Pavilion |
+| ali@zus.my | Delivery | Pavilion |
+| farah.b@zus.my | Barista | Cheras |
+| zayn@zus.my | Cashier | Cheras |
+| lin@zus.my | Barista | PJ |
+| aida@zus.my | Cashier | PJ |
+| oscar@zus.my | Barista | Bangi |
+| yuna@zus.my | Delivery | Bangi |
 
 ### Customers (for PWA testing)
 
-| Email | Password | Name | Loyalty Points | Wallet |
-|-------|----------|------|---------------|--------|
-| sarah.wong@email.my | password123 | Sarah Wong | 820 | RM120.50 |
-| raj.kumar@email.my | password123 | Raj Kumar | — | — |
-| mei.lim@email.my | password123 | Mei Lim | — | — |
-| aida.rahman@email.my | password123 | Aida Rahman | — | — |
-
-### Managers
-
-| Email | UserRole | StaffRole | Store Access |
-|-------|----------|-----------|-------------|
-| raj.manager@zus.my | customer | manager | Store 2 only |
-| lisa.manager@zus.my | customer | manager | Store 3 only |
-
-### Staff
-
-| Email | StaffRole | Store | Purpose |
-|-------|-----------|-------|---------|
-| siti@zus.my | assistant_manager | Store 2 | ACL test |
-| priya.dashboard@zus.my | barista | Store 1 | ACL: BLOCKED from management |
+| Email | Name |
+|-------|------|
+| ahmad.taher@email.my | Ahmad Taher |
 
 ## Store Data
 
-| ID | Name | Slug | Tables | Menu Items |
-|----|------|------|--------|------------|
-| 1 | ZUS Coffee KLCC | zus-klcc | 10 | ~14 |
-| 2 | ZUS Coffee KLCC Park | klcc-park | 10 | ~5 |
-| 3 | ZUS Coffee Cheras | zus-cheras | 5 | 3 |
+| ID | Name | Slug | Tables |
+|----|------|------|--------|
+| 0 | HQ (Headquarters) | hq | — |
+| 2 | ZUS Coffee KLCC | zus-klcc | 6 |
+| 3 | ZUS Coffee Pavilion | zus-pavilion | 6 |
+| 4 | ZUS Coffee Cheras | zus-cheras | 6 |
+| 5 | ZUS Coffee PJ | zus-pj | 5 |
+| 6 | ZUS Coffee Bangi | zus-bangi | 5 |
+
+## Seeded Marketing Data
+
+### Rewards (seed_06 — 8 total)
+
+| Code | Name | Type | Points | Min Spend | Active |
+|------|------|------|--------|-----------|--------|
+| RWD-FREE-LATTE | Free Caramel Latte | free_item | 150 | — | ✅ |
+| RWD-FREE-CROISSANT | Free Croissant | free_item | 120 | — | ✅ |
+| RWD-FREE-TIRAMISU | Free Tiramisu | free_item | 200 | — | ✅ |
+| RWD-FREE-TUMBLER | Free ZUS Tumbler | free_item | 500 | — | ✅ |
+| RWD-5OFF | RM5 Off Your Order | discount_voucher | 100 | RM15 | ✅ |
+| RWD-MYSTERY | Mystery Reward | custom | 250 | — | ✅ |
+| RWD-FREE-AMERICANO | Free Americano | free_item | 80 | — | ❌ |
+| RWD-10OFF | RM10 Off | discount_voucher | 300 | RM20 | ❌ |
+
+### Vouchers (seed_07 + seed_08 — 8 total)
+
+| Code | Type | Value | Min Spend | Valid Until | Source |
+|------|------|-------|-----------|-------------|--------|
+| WELCOME10 | percent | 10% | RM25 | 2027-01-01 | seed_07 |
+| SAVE5RM | fixed | RM5 | RM20 | 2027-06-30 | seed_07 |
+| FREECOFFEE | free_item | up to RM15 | RM30 | 2027-03-15 | seed_07 |
+| EXPIRED20 | percent | 20% | RM15 | 2025-01-01 | seed_07 (expired) |
+| OLDSAVE | fixed | RM8 | RM25 | 2025-06-01 | seed_07 (expired) |
+| SURVEY-REWARD-5 | fixed | RM5 | — | 2028-12-31 | seed_08 |
+| SURVEY-REWARD-10PCT | percent | 10% | — | 2028-12-31 | seed_08 |
+| SURVEY-REWARD-COFFEE | free_item | up to RM15 | — | 2028-12-31 | seed_08 |
+
+### Surveys (seed_08 — 3 total)
+
+| # | Title | Questions | Reward |
+|---|-------|-----------|--------|
+| 1 | Customer Satisfaction Survey | 4 (rating, single_choice, text, rating) | SURVEY-REWARD-5 |
+| 2 | New Menu Feedback | 3 (rating, single_choice, dropdown) | SURVEY-REWARD-10PCT |
+| 3 | Store Experience Review | 3 (rating, text, single_choice) | SURVEY-REWARD-COFFEE |
+
+### Promo Banners (seed_08 — 5 total)
+
+| # | Title | Action | End Date |
+|---|-------|--------|----------|
+| 1 | Take Our Survey & Get RM5 Off | survey → Survey 1 | 2027-06-30 |
+| 2 | New Menu — Vote & Save 10% | survey → Survey 2 | 2027-06-30 |
+| 3 | Store Review — Free Coffee! | survey → Survey 3 | 2027-06-30 |
+| 4 | Summer Promo (Expired) | detail → FREECOFFEE | 2025-01-01 |
+| 5 | Holiday Deal (Expired) | detail → SAVE5RM | 2025-06-01 |
 
 ## Verification Tests
 
@@ -219,6 +281,9 @@ docker exec -it fnb-db psql -U fnb -d fnb  # Database direct access
 5. **Payment intents** are stubbed — no Stripe integration yet
 6. **Customer users** have real password hashes — can log in with password123
 7. **Customer PWA** at app.loyaltysystem.uk is Phase 2 version — needs rebuild for new wallet API
+8. **seed_08 not fully idempotent** — promotions seed creates duplicate surveys/banners on re-run without reset. Run `seed_00_full_reset.py` first for clean state.
+9. **seed_full.sql is DEPRECATED** — Uses old `role` string column instead of `role_id` integer FK. Use Python seed scripts instead.
+10. **Customer Journey Seeds (09-18)** — Available for full end-to-end testing (register, wallet topup, place orders, apply discounts, fulfillment, complete, claim vouchers, redeem rewards). See scripts/seed/ directory.
 
 ## Phase History
 
@@ -228,4 +293,6 @@ docker exec -it fnb-db psql -U fnb -d fnb  # Database direct access
 | Phase 2 | ✅ Complete | Production readiness, rate limiting, charts, PWA refactor |
 | Pre-Phase 3 | ✅ Complete | Cross-store validation, audit log hooks, timezone-aware datetimes |
 | Marketing | ✅ Complete | 6 admin pages, 5 new PWA endpoint files, 5 migrations, customer wallet infrastructure (catalog→instance pattern, per-instance codes, expiry, scan, cron) |
+| Base Seed | ✅ Complete | 9 seed scripts (00-08): full reset, stores, universal menu, inventory, staff, config, rewards, vouchers, surveys + banners |
+| Customer Journey | ✅ Complete | 10 seed scripts (09-18): customer registration, wallet topup, place orders, apply discounts, fulfillment, order completion, claim vouchers, redeem rewards |
 | Phase 3 | 🔲 Pending | Customer PWA rebuild, Stripe, Twilio, WhatsApp, FCM |

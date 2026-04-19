@@ -9,7 +9,7 @@ class VoucherOut(BaseModel):
     description: Optional[str] = None
     discount_type: str
     discount_value: float
-    min_order: float = 0
+    min_spend: float = 0
     max_uses: Optional[int] = None
     max_uses_per_user: Optional[int] = 1
     used_count: int = 0
@@ -37,7 +37,7 @@ class VoucherCreate(BaseModel):
     description: Optional[str] = None
     discount_type: str = "percent"
     discount_value: float
-    min_order: float = 0
+    min_spend: float = 0
     max_uses: Optional[int] = None
     max_uses_per_user: Optional[int] = 1
     valid_from: Optional[datetime] = None
@@ -59,7 +59,7 @@ class VoucherUpdate(BaseModel):
     description: Optional[str] = None
     discount_type: Optional[str] = None
     discount_value: Optional[float] = None
-    min_order: Optional[float] = None
+    min_spend: Optional[float] = None
     max_uses: Optional[int] = None
     max_uses_per_user: Optional[int] = None
     valid_from: Optional[datetime] = None

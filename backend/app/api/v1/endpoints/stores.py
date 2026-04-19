@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_role, require_store_access
+from app.core.security import get_current_user, require_role, require_store_access, now_utc
+from app.core.utils import to_float
 from app.models.user import User
 from app.models.store import Store, StoreTable
 from app.models.menu import MenuCategory, MenuItem
@@ -30,8 +31,8 @@ async def list_stores(
     for s in stores:
         d = StoreOut.model_validate(s)
         if lat is not None and lng is not None and s.lat and s.lng:
-            d.lat = float(s.lat)
-            d.lng = float(s.lng)
+            d.lat = to_float(s.lat)
+            d.lng = to_float(s.lng)
         out.append(d)
     return out
 
@@ -45,22 +46,32 @@ async def get_store(store_id: int, db: AsyncSession = Depends(get_db)):
     return store
 
 
+UNIVERSAL_MENU_STORE_ID = 0
+
+
 @router.get("/{store_id}/menu")
 async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Store).where(Store.id == store_id))
     store = result.scalar_one_or_none()
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
+
+    # Universal menu: always serve from HQ (store_id=0)
+    # This ensures all stores show the same menu — like real Starbucks/ZUS
     cat_result = await db.execute(
         select(MenuCategory)
-        .where(MenuCategory.store_id == store_id, MenuCategory.is_active == True)
+        .where(MenuCategory.store_id == UNIVERSAL_MENU_STORE_ID, MenuCategory.is_active == True)
         .order_by(MenuCategory.display_order)
     )
     categories = []
     for cat in cat_result.scalars().all():
         item_result = await db.execute(
             select(MenuItem)
-            .where(MenuItem.category_id == cat.id, MenuItem.is_available == True)
+            .where(
+                MenuItem.store_id == UNIVERSAL_MENU_STORE_ID,
+                MenuItem.category_id == cat.id,
+                MenuItem.is_available == True,
+            )
             .order_by(MenuItem.display_order)
         )
         items = item_result.scalars().all()
@@ -68,15 +79,17 @@ async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
             "id": cat.id,
             "name": cat.name,
             "slug": cat.slug,
+            "display_order": cat.display_order,
             "items": [
                 {
                     "id": i.id,
                     "name": i.name,
                     "description": i.description,
-                    "base_price": float(i.base_price),
+                    "base_price": to_float(i.base_price),
                     "image_url": i.image_url,
                     "customization_options": i.customization_options,
                     "is_available": i.is_available,
+                    "display_order": i.display_order,
                 }
                 for i in items
             ],
@@ -103,7 +116,7 @@ async def get_pickup_slots(
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
     lead = store.pickup_lead_minutes or 15
-    now = datetime.now(timezone.utc)
+    now = now_utc()
     target = now
     if date:
         try:
@@ -127,7 +140,7 @@ async def get_pickup_slots(
 async def update_store(
     store_id: int,
     req: StoreUpdate,
-    user: User = Depends(require_store_access("store_id", allowed_staff_roles={"manager"})),
+    user: User = Depends(require_store_access("store_id")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Store).where(Store.id == store_id))

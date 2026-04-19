@@ -1,6 +1,6 @@
 # FNB Super-App — Backend API Reference
 
-> Last updated: 2026-04-14 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 163 endpoints
+> Last updated: 2026-04-18 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 189+ endpoints
 > OpenAPI docs: `https://admin.loyaltysystem.uk/docs`
 
 ## Rate Limiting
@@ -37,24 +37,35 @@ All authenticated endpoints require `Authorization: Bearer <JWT>` header.
 
 ### How It Works
 
-The system uses a two-tier access control:
+Relational access control using integer-based IDs with 6 lookup tables:
 
-1. **UserRole** (on `users` table): `admin`, `store_owner`, `customer`
-2. **StaffRole** (on `staff` table): `manager`, `assistant_manager`, `barista`, `cashier`, `delivery`
+| Lookup Table | Purpose |
+|-------------|---------|
+| `user_types` | 4 tiers: HQ Management (1), Store Management (2), Store (3), Customer (4) |
+| `roles` | 7 roles: Admin (1), Brand Owner (2), Manager (3), Asst Manager (4), Staff (5), Customer (6), HQ Staff (7) |
+| `role_user_type` | Valid role↔user_type combinations |
+| `user_store_access` | Per-user store assignments (Admin/Brand Owner = global, no records needed) |
+| `permissions` | 23 granular permissions with resource+action |
+| `role_permissions` | 83 role↔permission mappings |
 
-### Access Control Patterns
+### Access Control Functions
 
-| Pattern | Who Gets Access | Implementation |
-|---------|----------------|----------------|
-| `require_role("admin")` | Admin only | System-level configs |
-| `require_role("admin", "store_owner")` | Admin + store owners | Dashboard, reports, scan endpoints |
-| `require_role("customer", "admin")` | Customer + admin | PWA wallet, redeem, survey submit |
-| `require_store_access("store_id")` | Admin, store_owner, manager, assistant_manager at that store | Menu, tables, inventory CRUD |
+| Function | Who Gets Access | Used For |
+|----------|----------------|----------|
+| `require_role(RoleIDs.ADMIN)` | Admin only (id=1) | System-level configs, rewards, vouchers |
+| `require_hq_access()` | Admin, Brand Owner, HQ Staff | Dashboard, reports, store CRUD |
+| `require_store_access()` | HQ roles + users with `user_store_access` record for that store | Menu, tables, inventory CRUD |
 | `get_current_user` | Any authenticated user | Customer-facing features |
 
-### Multi-Store Manager Support
+### Store Access Logic
+```
+IF user.role_id IN (1, 2) THEN -- Admin/Brand Owner
+  allowed_stores = ALL active stores
+ELSE
+  allowed_stores = SELECT store_id FROM user_store_access WHERE user_id = :uid
+```
 
-A single user can manage multiple stores by having multiple staff records. The `require_store_access` dependency checks for a matching staff record at the **specific** store in the URL path. No cross-store leakage.
+See `/root/acl-guide.md` for the full ACL specification.
 
 ---
 
@@ -64,7 +75,8 @@ A single user can manage multiple stores by having multiple staff records. The `
 
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
-| GET | `/admin/dashboard` | admin, store_owner | Stats: total_orders, revenue, customers, orders_by_type |
+| GET | `/admin/dashboard` | admin, store_owner | Dashboard KPIs + chart data. Params: `store_id`, `from_date`, `to_date`, `chart_mode` (day/month/quarter/year) |
+| GET | `/admin/orders` | admin, store_owner | Paginated order list. Params: `page`, `page_size`, `status`, `store_id`, `search` |
 | GET | `/admin/orders` | admin, store_owner | All orders (paginated, filterable by store/status) |
 | GET | `/admin/export` | admin, store_owner | Export data as CSV/JSON |
 
@@ -127,6 +139,41 @@ A single user can manage multiple stores by having multiple staff records. The `
 | PUT | `/stores/{store_id}/inventory/{item_id}` | require_store_access | Update inventory |
 | DELETE | `/stores/{store_id}/inventory/{item_id}` | require_store_access | Delete inventory |
 | GET | `/stores/{store_id}/inventory/low-stock` | require_store_access | Low stock alerts |
+| GET | `/stores/{store_id}/inventory-ledger` | require_store_access | **Paginated** inventory movement history. Params: `page`, `page_size`, `from_date`, `to_date`, `movement_type` (received/waste/transfer_out/transfer_in/cycle_count/adjustment) |
+| POST | `/stores/{store_id}/inventory/{item_id}/adjust` | require_store_access | Record stock adjustment |
+| PATCH | `/stores/{store_id}/inventory/{item_id}/toggle` | require_store_access | Toggle inventory item active status |
+
+### Inventory Categories (PER-STORE)
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| GET | `/stores/{store_id}/inventory-categories` | require_store_access | List inventory categories |
+| POST | `/stores/{store_id}/inventory-categories` | admin | Create inventory category |
+| PUT | `/stores/{store_id}/inventory-categories/{cat_id}` | admin | Update inventory category |
+| DELETE | `/stores/{store_id}/inventory-categories/{cat_id}` | admin | Deactivate inventory category |
+
+#### Inventory Ledger Response
+```json
+{
+  "entries": [
+    {
+      "id": 1,
+      "inventory_item_id": 42,
+      "inventory_item_name": "Coffee Beans - Brazil Santos",
+      "movement_type": "received",
+      "quantity": 50,
+      "balance_after": 75,
+      "note": "Supplier delivery",
+      "created_by_name": "John Doe",
+      "created_at": "2026-04-18T10:30:00Z"
+    }
+  ],
+  "total": 150,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 8
+}
+```
 
 ### Staff Management (PER-STORE)
 
@@ -150,6 +197,14 @@ A single user can manage multiple stores by having multiple staff records. The `
 | PATCH | `/orders/{order_id}/status` | admin, store_owner, staff at order's store | Update order status |
 | POST | `/orders/{order_id}/cancel` | customer (own), admin, store_owner | Cancel order (**rolls back loyalty points**) |
 | POST | `/orders/{order_id}/reorder` | customer | Re-add items to cart |
+| GET | `/orders/tracking/{order_id}` | any user | Track order status (public tracking) |
+
+### Checkout
+
+| Method | Path | ACL | Description |
+|--------|------|-----|-------------|
+| POST | `/checkout` | customer | Process checkout with payment |
+| POST | `/checkout/validate` | customer | Validate checkout before payment |
 
 ### Customer Management
 
@@ -331,6 +386,9 @@ A single user can manage multiple stores by having multiple staff records. The `
 | PUT | `/admin/config` | admin | Update app config |
 | POST | `/upload/image` | admin, store_owner | Upload image file (5MB max, JPEG/PNG/WebP/GIF) |
 | POST | `/upload/marketing-image` | admin | Upload marketing image |
+| POST | `/admin/system/init-hq` | admin | Initialize HQ store (id=0) |
+| DELETE | `/admin/system/reset` | admin | Reset all data (preserves ACL) |
+| POST | `/admin/system/backfill-inventory-ledger` | admin | Backfill missing ledger entries |
 
 ### User Profile
 

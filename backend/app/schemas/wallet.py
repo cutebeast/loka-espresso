@@ -16,6 +16,7 @@ class WalletOut(BaseModel):
 class WalletTopup(BaseModel):
     amount: float
     description: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 
 class WalletTransactionOut(BaseModel):

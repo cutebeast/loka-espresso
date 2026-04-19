@@ -1,3 +1,10 @@
+-- ⚠️ DEPRECATED: This seed file uses the old `role` string column.
+-- The database schema has been updated to use `role_id` and `user_type_id` integer FKs.
+-- Please use the Python seed scripts in /scripts/seed/ instead:
+--   - verify_master_base_seed.py (steps 00-08)
+--   - verify_master_customer_seed.py (steps 09-18)
+-- Last updated: 2026-04-18
+
 BEGIN;
 
 TRUNCATE TABLE

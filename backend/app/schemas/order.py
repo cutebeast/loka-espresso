@@ -1,22 +1,7 @@
-import enum
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-
-
-class OrderType(str, enum.Enum):
-    dine_in = "dine_in"
-    pickup = "pickup"
-    delivery = "delivery"
-
-
-class OrderStatus(str, enum.Enum):
-    pending = "pending"
-    confirmed = "confirmed"
-    preparing = "preparing"
-    ready = "ready"
-    completed = "completed"
-    cancelled = "cancelled"
+from app.models.order import OrderType, OrderStatus
 
 
 class OrderCreate(BaseModel):
@@ -28,12 +13,15 @@ class OrderCreate(BaseModel):
     notes: Optional[str] = None
     payment_method: Optional[str] = None
     voucher_code: Optional[str] = None
+    reward_redemption_code: Optional[str] = None
     delivery_provider: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
     note: Optional[str] = None
+    completed_at: Optional[datetime] = None
 
 
 class OrderItemOut(BaseModel):
@@ -61,6 +49,12 @@ class OrderOut(BaseModel):
     subtotal: float
     delivery_fee: float = 0
     discount: float = 0
+    # Single discount at checkout (voucher OR reward):
+    voucher_discount: float = 0.0
+    reward_discount: float = 0.0
+    loyalty_discount: float = 0.0
+    voucher_code: Optional[str] = None
+    reward_redemption_code: Optional[str] = None
     total: float
     status: OrderStatus
     pickup_time: Optional[datetime] = None

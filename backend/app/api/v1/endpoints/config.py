@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.security import require_role
-from app.models.user import User
+from app.models.user import User, RoleIDs
 from app.models.splash import AppConfig
 from app.schemas.admin import AppConfigOut, AppConfigUpdate
 
@@ -40,7 +40,7 @@ async def get_config(db: AsyncSession = Depends(get_db)):
 async def update_config(
     key: str,
     req: AppConfigUpdate,
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(AppConfig).where(AppConfig.key == key))

@@ -1,6 +1,6 @@
 # FNB Super-App — Alignment Verification
 
-> Last updated: 2026-04-14 | Marketing Group + Wallet Infrastructure Complete
+> Last updated: 2026-04-18 | Session 5: All fixes complete, 100% aligned
 > Purpose: Ensure models ↔ DB ↔ endpoints are aligned
 
 ## Migration History
@@ -20,9 +20,18 @@
 | (auto) | marketing_terms_v2 | terms/how_to_redeem on rewards, vouchers, banners |
 | (auto) | marketing_pwa_v3 | short_description/long_description on rewards, vouchers, banners |
 | (auto) | promo_voucher_guards_v4 | voucher_id on banners, max_uses_per_user on vouchers, source/source_id on user_vouchers |
-| (auto) | customer_wallet_v5 | Full wallet gap fix: 17 columns across 5 tables, data backfill |
+| (auto) | acl_v1 | ACL lookup tables (user_types, roles, role_user_type, user_store_access, permissions, role_permissions), drop PG enum columns from users |
 
 ## Model Files vs DB Tables
+
+| Model File | Models | DB Table | Status |
+|------------|--------|----------|--------|
+| acl.py | UserType | user_types | ✅ NEW (ACL) |
+| acl.py | Role | roles | ✅ NEW (ACL) |
+| acl.py | RoleUserType | role_user_type | ✅ NEW (ACL) |
+| acl.py | UserStoreAccess | user_store_access | ✅ NEW (ACL) |
+| acl.py | Permission | permissions | ✅ NEW (ACL) |
+| acl.py | RolePermission | role_permissions | ✅ NEW (ACL) |
 
 | Model File | Models | DB Table | Status |
 |------------|--------|----------|--------|
@@ -118,7 +127,6 @@
 
 | Enum | Model Values | DB Values | Status |
 |------|-------------|-----------|--------|
-| UserRole | customer, store_owner, admin | customer, store_owner, admin | ✅ |
 | StaffRole | manager, assistant_manager, barista, cashier, delivery | manager, assistant_manager, barista, cashier, delivery | ✅ |
 | OrderType | dine_in, pickup, delivery | dine_in, pickup, delivery | ✅ |
 | OrderStatus | pending→completed, cancelled | pending→completed, cancelled | ✅ |
@@ -126,6 +134,9 @@
 | RewardType | free_item, discount_voucher, custom | free_item, discount_voucher, custom | ✅ |
 | TxType | earn, redeem, expire | earn, redeem, expire | ✅ |
 | WalletTxType | topup, payment, refund, cashback, promo_credit, admin_adjustment | topup, payment, refund, cashback, promo_credit, admin_adjustment | ✅ |
+| MovementType | received, waste, transfer_out, transfer_in, cycle_count, adjustment | received, waste, transfer_out, transfer_in, cycle_count, adjustment | ✅ |
+
+> **Note**: `UserRole`, `UserType` Python enums still exist in `user.py` for backward compat, but the DB now uses integer FKs (`user_type_id` → `user_types`, `role_id` → `roles`). Orphaned PG enum types (`userrole`, `usertype`, `user_role`) have been dropped.
 
 **ALL ENUMS ALIGNED ✅**
 
@@ -222,6 +233,20 @@
 6. ✅ Timezone-Aware Datetimes
 7. ✅ Feedback Stats API
 8. ✅ Reports Date Range Presets
+
+### ACL Migration (Session 15-16)
+1. ✅ 6 new ACL lookup tables replacing PG enum columns
+2. ✅ 30 `require_role()` calls converted from strings to `RoleIDs` constants
+3. ✅ Frontend rewritten for integer-based ACL (StaffPage, Sidebar, MenuPage, InventoryPage)
+4. ✅ All 19 API endpoint groups tested and passing
+5. ✅ Orphaned PG enums dropped (`userrole`, `usertype`, `user_role`)
+
+### Transaction Consistency (Session 17)
+1. ✅ Removed all explicit `await db.commit()` from 22 endpoint files
+2. ✅ Standardized on auto-commit via `get_db()` dependency
+3. ✅ Fixed voucher unique constraint bug on update (skip unchanged `code` field)
+4. ✅ 25/25 API endpoints tested and passing
+5. ✅ Documentation updated with transaction pattern rules
 
 ### Phase 2 Features
 1. ✅ Soft delete filters

@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import type { MerchantLoyaltyTier } from '@/lib/merchant-types';
+import { THEME } from '@/lib/theme';
 
 interface LoyaltyRulesPageProps {
   tiers: MerchantLoyaltyTier[];
@@ -12,7 +13,7 @@ interface LoyaltyRulesPageProps {
 
 // Human-readable benefits display
 function BenefitsBadges({ benefits }: { benefits: Record<string, unknown> | null }) {
-  if (!benefits) return <span style={{ color: '#94A3B8' }}>No benefits</span>;
+  if (!benefits) return <span style={{ color: THEME.success }}>No benefits</span>;
 
   const b = benefits as Record<string, any>;
   const chips: string[] = [];
@@ -31,12 +32,12 @@ function BenefitsBadges({ benefits }: { benefits: Record<string, unknown> | null
     }
   }
 
-  if (chips.length === 0) return <span style={{ color: '#94A3B8' }}>No benefits</span>;
+  if (chips.length === 0) return <span style={{ color: THEME.success }}>No benefits</span>;
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
       {chips.map((chip, i) => (
-        <span key={i} style={{ background: '#EFF6FF', color: '#1E40AF', fontSize: 11, padding: '2px 8px', borderRadius: 6, whiteSpace: 'nowrap' }}>{chip}</span>
+        <span key={i} style={{ background: THEME.bgMuted, color: THEME.primary, fontSize: 11, padding: '2px 8px', borderRadius: 6, whiteSpace: 'nowrap' }}>{chip}</span>
       ))}
     </div>
   );
@@ -48,8 +49,7 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3>Loyalty Tiers</h3>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
         <button className="btn btn-primary" onClick={() => setShowAdd(true)}><i className="fas fa-plus"></i> Add Tier</button>
       </div>
 
@@ -79,19 +79,51 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
         </div>
       )}
 
-      <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: '1px solid #ECF1F7' }}>
-        <table>
+      <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 16px',
+          background: THEME.bgMuted,
+          borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
+          border: `1px solid ${THEME.border}`,
+          borderBottom: 'none',
+        }}>
+          <div style={{ fontSize: 14, color: THEME.textSecondary }}>
+            <i className="fas fa-layer-group" style={{ marginRight: 8, color: THEME.primary }}></i>
+            Showing <strong style={{ color: THEME.textPrimary }}>{tiers.length}</strong> loyalty tiers
+          </div>
+        </div>
+
+        <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: `1px solid ${THEME.border}`, borderTop: 'none' }}>
+          <table>
           <thead>
-            <tr><th>Tier Name</th><th>Min Points</th><th>Points Multiplier</th><th>Benefits</th><th>Actions</th></tr>
+            <tr><th>Tier Name</th><th>Min Points</th><th>Points Multiplier</th><th>Sort Order</th><th>Benefits</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {tiers.length === 0 ? (
-              <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94A3B8', padding: 40 }}>No loyalty tiers configured</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: 'center', color: THEME.success, padding: 40 }}>No loyalty tiers configured</td></tr>
             ) : tiers.map(tier => (
               <tr key={tier.id}>
                 <td style={{ fontWeight: 600, textTransform: 'capitalize' }}>{tier.name}</td>
                 <td>{tier.min_points.toLocaleString()} pts</td>
                 <td><span className="badge badge-blue">{tier.points_multiplier}x</span></td>
+                <td>
+                  <input
+                    type="number"
+                    min="0"
+                    value={tier.sort_order}
+                    style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: `1px solid ${THEME.accentLight}`, textAlign: 'center', fontSize: 13 }}
+                    onChange={async (e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      await apiFetch(`/admin/loyalty-tiers/${tier.id}`, token, {
+                        method: 'PUT',
+                        body: JSON.stringify({ sort_order: val }),
+                      });
+                      onRefresh();
+                    }}
+                  />
+                </td>
                 <td><BenefitsBadges benefits={tier.benefits} /></td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -108,6 +140,7 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   );
@@ -128,6 +161,7 @@ function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
   const [name, setName] = useState(existingTier?.name || '');
   const [minPoints, setMinPoints] = useState(String(existingTier?.min_points ?? ''));
   const [multiplier, setMultiplier] = useState(String(existingTier?.points_multiplier ?? '1.0'));
+  const [sortOrder, setSortOrder] = useState(String(existingTier?.sort_order ?? '0'));
   const [discount, setDiscount] = useState(String(b?.discount ?? '0'));
   const [freeDelivery, setFreeDelivery] = useState(String(b?.free_delivery_per_month ?? '0'));
   const [priorityQueue, setPriorityQueue] = useState(!!b?.priority_queue);
@@ -153,6 +187,7 @@ function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
         min_points: parseInt(minPoints) || 0,
         points_multiplier: parseFloat(multiplier) || 1.0,
         benefits,
+        sort_order: parseInt(sortOrder) || 0,
       };
 
       const url = isEdit
@@ -185,7 +220,7 @@ function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
       )}
 
       {/* ── Basic Info ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         <div>
           <label style={labelStyle}>Tier Name *</label>
           <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Diamond" />
@@ -198,11 +233,16 @@ function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
           <label style={labelStyle}>Points Multiplier</label>
           <input type="number" step="0.1" value={multiplier} onChange={e => setMultiplier(e.target.value)} />
         </div>
+        <div>
+          <label style={labelStyle}>Sort Order</label>
+          <input type="number" min="0" value={sortOrder} onChange={e => setSortOrder(e.target.value)} placeholder="0" />
+          <div style={hintStyle}>Lower values appear first</div>
+        </div>
       </div>
 
       {/* ── Benefits ── */}
-      <div style={{ border: '1px solid #E9ECF2', borderRadius: 14, padding: 16, marginBottom: 16 }}>
-        <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14, color: '#002F6C' }}>
+      <div style={{ border: `1px solid ${THEME.accentLight}`, borderRadius: 14, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14, color: THEME.primary }}>
           <i className="fas fa-gift" style={{ marginRight: 6 }}></i> Tier Benefits
         </div>
 
@@ -248,5 +288,5 @@ function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
   );
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: '#94A3B8', marginTop: 2 };
+const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primary };
+const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.success, marginTop: 2 };

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import require_role
+from app.core.security import require_role, require_hq_access, now_utc
 from app.models.user import User
 from app.models.splash import SplashContent
 from app.schemas.splash import SplashOut, SplashUpdate
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/splash", tags=["Splash"])
 
 @router.get("")
 async def get_splash(db: AsyncSession = Depends(get_db)):
-    now = datetime.now(timezone.utc)
+    now = now_utc()
     result = await db.execute(
         select(SplashContent).where(
             SplashContent.is_active == True,
@@ -47,7 +47,7 @@ async def get_splash(db: AsyncSession = Depends(get_db)):
 @router.put("")
 async def update_splash(
     req: SplashUpdate,
-    user: User = Depends(require_role("admin", "store_owner")),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(SplashContent).order_by(SplashContent.id.desc()).limit(1))

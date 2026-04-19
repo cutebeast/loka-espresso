@@ -4,8 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 
 from app.core.database import get_db
-from app.core.security import require_role
-from app.models.user import User
+from app.core.security import require_role, require_hq_access
+from app.core.utils import to_float
+from app.models.user import User, RoleIDs
 from app.models.order import Order, OrderStatus
 from app.models.loyalty import LoyaltyTransaction, LoyaltyAccount
 from app.models.menu import InventoryItem
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/admin/reports", tags=["Admin Reports"])
 async def revenue_report(
     from_date: datetime = Query(...), to_date: datetime = Query(...),
     store_id: int = Query(None), group_by: str = Query("day"),
-    user: User = Depends(require_role("admin", "store_owner")),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     q = select(Order).where(Order.created_at >= from_date, Order.created_at <= to_date, Order.status != OrderStatus.cancelled)
@@ -29,26 +30,26 @@ async def revenue_report(
         q = q.where(Order.store_id == store_id)
     result = await db.execute(q)
     orders = result.scalars().all()
-    total = sum(float(o.total) for o in orders)
+    total = sum(to_float(o.total) for o in orders)
     by_type = {}
     by_store = {}
     by_day = {}
     for o in orders:
         ot = o.order_type.value if hasattr(o.order_type, 'value') else str(o.order_type)
-        by_type[ot] = by_type.get(ot, 0) + float(o.total)
-        by_store[o.store_id] = by_store.get(o.store_id, 0) + float(o.total)
+        by_type[ot] = by_type.get(ot, 0) + to_float(o.total)
+        by_store[o.store_id] = by_store.get(o.store_id, 0) + to_float(o.total)
         if group_by == "month":
             key = o.created_at.strftime("%Y-%m") if o.created_at else "unknown"
         else:
             key = o.created_at.date().isoformat() if o.created_at else "unknown"
-        by_day[key] = by_day.get(key, 0) + float(o.total)
+        by_day[key] = by_day.get(key, 0) + to_float(o.total)
     return {"total": round(total, 2), "by_type": by_type, "by_store": by_store, "by_day": by_day}
 
 
 @router.get("/loyalty")
 async def loyalty_report(
     from_date: datetime = Query(...), to_date: datetime = Query(...),
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     q = select(LoyaltyTransaction).where(LoyaltyTransaction.created_at >= from_date, LoyaltyTransaction.created_at <= to_date)
@@ -63,13 +64,13 @@ async def loyalty_report(
 @router.get("/inventory")
 async def inventory_report(
     store_id: int = Query(...),
-    user: User = Depends(require_role("admin", "store_owner")),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(InventoryItem).where(InventoryItem.store_id == store_id))
     items = result.scalars().all()
-    low_stock = [{"name": i.name, "current": float(i.current_stock), "reorder": float(i.reorder_level)} for i in items if i.current_stock <= i.reorder_level]
-    return {"total_items": len(items), "low_stock": low_stock, "items": [{"name": i.name, "stock": float(i.current_stock), "unit": i.unit} for i in items]}
+    low_stock = [{"name": i.name, "current": to_float(i.current_stock), "reorder": to_float(i.reorder_level)} for i in items if i.current_stock <= i.reorder_level]
+    return {"total_items": len(items), "low_stock": low_stock, "items": [{"name": i.name, "stock": to_float(i.current_stock), "unit": i.unit} for i in items]}
 
 
 @router.get("/marketing")
@@ -77,7 +78,7 @@ async def marketing_report(
     from_date: datetime = Query(...),
     to_date: datetime = Query(...),
     store_id: int = Query(None),
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     # --- Rewards (ALL active, even zero redemptions — zeros are marketing data) ---
@@ -127,7 +128,7 @@ async def marketing_report(
     if store_id:
         fb_query = fb_query.where(Feedback.store_id == store_id)
     fb_result = await db.execute(fb_query)
-    all_feedback = fb_result.result().scalars().all() if hasattr(fb_result, 'result') else fb_result.scalars().all()
+    all_feedback = fb_result.scalars().all()
     total_feedback = len(all_feedback)
     avg_rating = sum(f.rating for f in all_feedback) / total_feedback if total_feedback > 0 else 0
     resolved = len([f for f in all_feedback if f.is_resolved])
@@ -167,7 +168,7 @@ async def marketing_report(
     tx_result = await db.execute(tx_query)
     txns = tx_result.scalars().all()
     points_issued = sum(t.points for t in txns if t.type == "earn")
-    points_redeemed = sum(t.points for t in txns if t.type == "redeem")
+    points_redeemed = sum(-t.points for t in txns if t.type == "redeem")
 
     return {
         "period": {"from": from_date.isoformat(), "to": to_date.isoformat()},

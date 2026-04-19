@@ -12,8 +12,8 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.core.database import get_db
-from app.core.security import require_role
-from app.models.user import User, UserRole
+from app.core.security import require_role, require_hq_access, now_utc, ensure_utc
+from app.models.user import User
 from app.models.reward import UserReward, Reward
 from app.models.voucher import UserVoucher, Voucher
 
@@ -51,14 +51,14 @@ class CronResult(BaseModel):
 async def scan_reward_code(
     code: str,
     req: ScanRequest,
-    user: User = Depends(require_role(UserRole.admin, UserRole.store_owner)),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Barista scans reward redemption code (e.g. RWD-1-4438FE).
     Marks the reward as used, links order if provided.
     """
-    now = datetime.now(timezone.utc)
+    now = now_utc()
 
     # Find by redemption code
     result = await db.execute(
@@ -74,7 +74,7 @@ async def scan_reward_code(
         raise HTTPException(400, "Reward has expired")
     if ur.status == "cancelled":
         raise HTTPException(400, "Reward was cancelled")
-    if ur.expires_at and ur.expires_at < now:
+    if ur.expires_at and ensure_utc(ur.expires_at) < now:
         ur.status = "expired"
         await db.flush()
         await db.commit()
@@ -113,14 +113,14 @@ async def scan_reward_code(
 async def scan_voucher_code(
     code: str,
     req: ScanRequest,
-    user: User = Depends(require_role(UserRole.admin, UserRole.store_owner)),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Barista scans voucher per-instance code (e.g. WELCOME10-A3F2B1).
     Marks as used, increments catalog used_count.
     """
-    now = datetime.now(timezone.utc)
+    now = now_utc()
 
     result = await db.execute(
         select(UserVoucher).where(UserVoucher.code == code)
@@ -133,7 +133,7 @@ async def scan_voucher_code(
         raise HTTPException(400, "Voucher already used")
     if uv.status == "expired":
         raise HTTPException(400, "Voucher has expired")
-    if uv.expires_at and uv.expires_at < now:
+    if uv.expires_at and ensure_utc(uv.expires_at) < now:
         uv.status = "expired"
         await db.flush()
         await db.commit()
@@ -171,14 +171,14 @@ async def scan_voucher_code(
 
 @router.post("/cron/expire", response_model=CronResult)
 async def expire_items(
-    user: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Mark all 'available' rewards and vouchers past their expires_at as 'expired'.
     Called by admin or scheduled cron.
     """
-    now = datetime.now(timezone.utc)
+    now = now_utc()
 
     # Expire rewards
     r_result = await db.execute(
@@ -186,7 +186,7 @@ async def expire_items(
         .where(
             UserReward.status == "available",
             UserReward.expires_at != None,
-            UserReward.expires_at < now,
+            UserReward.expires_at < ensure_utc(now),
         )
         .values(status="expired")
         .returning(UserReward.id)
@@ -199,7 +199,7 @@ async def expire_items(
         .where(
             UserVoucher.status == "available",
             UserVoucher.expires_at != None,
-            UserVoucher.expires_at < now,
+            UserVoucher.expires_at < ensure_utc(now),
         )
         .values(status="expired")
         .returning(UserVoucher.id)
