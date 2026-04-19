@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from datetime import datetime, timezone
 
 from app.core.database import get_db
+from app.core.security import get_current_user, can_access_store
 from app.models.store import Store, StoreTable
+from app.models.user import User
 from app.schemas.store import TableScanRequest
 
 router = APIRouter(prefix="/tables", tags=["Tables"])
@@ -46,4 +49,46 @@ async def get_table(table_id: int, db: AsyncSession = Depends(get_db)):
         "table_number": table.table_number,
         "capacity": table.capacity,
         "qr_code_url": table.qr_code_url,
+    }
+
+
+@router.post("/{table_id}/release")
+async def release_table(
+    table_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Release a table after dine-in order is completed.
+    Only accessible by store staff/admin or the customer who occupied it.
+    """
+    result = await db.execute(select(StoreTable).where(StoreTable.id == table_id))
+    table = result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+
+    # Check access - user must have access to the store
+    has_access = await can_access_store(user, table.store_id, db)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="No access to this table")
+
+    # Check if table is occupied
+    if not table.is_occupied:
+        return {
+            "message": "Table is already available",
+            "table_id": table.id,
+            "table_number": table.table_number,
+            "is_occupied": False,
+        }
+
+    # Release the table
+    table.is_occupied = False
+    await db.flush()
+
+    return {
+        "message": "Table released successfully",
+        "table_id": table.id,
+        "table_number": table.table_number,
+        "is_occupied": False,
+        "released_at": datetime.now(timezone.utc).isoformat(),
     }

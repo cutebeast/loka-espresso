@@ -192,12 +192,20 @@ See `/root/acl-guide.md` for the full ACL specification.
 | Method | Path | ACL | Description |
 |--------|------|-----|-------------|
 | POST | `/orders` | customer | Create order from cart |
-| GET | `/orders` | customer | List own orders |
+| GET | `/orders` | customer | List own orders (admin sees all) |
 | GET | `/orders/{order_id}` | customer (own), admin, store_owner, staff | Get order details + timeline |
 | PATCH | `/orders/{order_id}/status` | admin, store_owner, staff at order's store | Update order status |
+| PATCH | `/orders/{order_id}/payment-status` | admin | Update payment status directly (for dine-in flow) |
+| POST | `/orders/{order_id}/confirm` | customer (own) | Confirm dine-in order (sends to kitchen) |
+| POST | `/orders/{order_id}/apply-voucher` | customer (own) | Apply voucher to pending order |
 | POST | `/orders/{order_id}/cancel` | customer (own), admin, store_owner | Cancel order (**rolls back loyalty points**) |
 | POST | `/orders/{order_id}/reorder` | customer | Re-add items to cart |
 | GET | `/orders/tracking/{order_id}` | any user | Track order status (public tracking) |
+
+**Order Status Flows:**
+- **Flow A (Pickup/Delivery)**: `pending` → `paid` → `confirmed` → `preparing` → `ready` → `completed`
+- **Flow B (Dine-in)**: `pending` → `confirmed` → `preparing` → `ready` → (payment) → `completed`
+- **Delivery adds**: `ready` → `out_for_delivery` → `completed`
 
 ### Checkout
 

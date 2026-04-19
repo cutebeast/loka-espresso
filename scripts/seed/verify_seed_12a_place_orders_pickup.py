@@ -7,7 +7,7 @@ APIs tested:
   - DELETE /cart (clear cart)
   - POST /cart/items (add items to cart)
   - POST /orders (place order with pickup_time)
-Status: PENDING VERIFICATION
+Status: CERTIFIED-2026-04-19 | Pickup order placement
 Dependencies: verify_seed_10_register.py, verify_seed_11_wallet_topup.py
 Flow:
   1. Fetch stores from API

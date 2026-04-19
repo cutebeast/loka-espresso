@@ -9,7 +9,7 @@ APIs tested:
   - DELETE /cart (clear cart)
   - POST /cart/items (add items to cart)
   - POST /orders (place order with table_id)
-Status: PENDING VERIFICATION
+Status: CERTIFIED-2026-04-19 | Dine-in order placement with QR scan
 Dependencies: verify_seed_10_register.py, verify_seed_11_wallet_topup.py
 Flow:
   1. Fetch stores from API

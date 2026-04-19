@@ -1,5 +1,5 @@
 # FNB Super App - Documentation Index
-**Last Updated:** 2026-04-18 | **Status:** All Documentation Current
+**Last Updated:** 2026-04-19 | **Status:** Order Completion Flows Certified
 
 ---
 
@@ -53,8 +53,8 @@
 | 02h-staff.md | - | ✅ Current | Staff management |
 | 02i-social.md | - | ✅ Current | Social features |
 | 02j-system.md | - | ✅ Current | System config |
-| 03-api-reference.md | 2026-04-18 | ✅ Updated | 189+ endpoints |
-| 04-testing-guide.md | 2026-04-18 | ✅ Updated | Testing guide with seeds |
+| 03-api-reference.md | 2026-04-19 | ✅ Updated | 195+ endpoints (added order confirmation, voucher apply, payment status) |
+| 04-testing-guide.md | 2026-04-19 | ✅ Updated | Testing guide with certified seeds 09-13 |
 | 05-alignment-verification.md | 2026-04-18 | ✅ Updated | Model alignment verified |
 | 06-improvements-applied.md | 2026-04-18 | ✅ Updated | All fixes documented |
 | 07-deployment-guide.md | 2026-04-18 | ✅ **NEW** | Production deployment |
@@ -63,19 +63,31 @@
 
 ---
 
-## Key Documentation Updates (Session 5)
+## Key Documentation Updates (Session 6 - Order Completion)
 
 ### Updated Files
-- **01-architecture.md** - Added Session 5 completion status
-- **02-database-schema.md** - Fixed table count (52 → 46)
-- **03-api-reference.md** - Added missing endpoints (checkout, tracking, system endpoints)
-- **04-testing-guide.md** - Added seed_full.sql deprecation notice
-- **05-alignment-verification.md** - Updated completion status
-- **06-improvements-applied.md** - Added Session 5 section with all fixes
+- **03-api-reference.md** - Added new order endpoints (confirm, apply-voucher, payment-status)
+- **04-testing-guide.md** - Added Flow A/B testing examples, certified seed scripts 09-13
 
-### New Files
-- **07-deployment-guide.md** - Complete production deployment guide
-- **09-troubleshooting.md** - Comprehensive troubleshooting guide
+### Certified Seed Scripts (09-13)
+All order placement and completion scripts now certified:
+- **verify_seed_09_reset_customers.py** - Customer data reset
+- **verify_seed_10_register.py** - Customer registration via OTP
+- **verify_seed_11_wallet_topup.py** - Wallet topup via payment gateway
+- **verify_seed_12_place_orders_main.py** - Order placement orchestrator
+- **verify_seed_12a_place_orders_pickup.py** - Pickup orders
+- **verify_seed_12b_place_orders_delivery.py** - Delivery orders
+- **verify_seed_12c_place_orders_dinein.py** - Dine-in orders with QR scan
+- **verify_seed_13_order_completion.py** - Main completion orchestrator
+- **verify_seed_13a_flow_pickup_delivery.py** - Flow A (pay → fulfill)
+- **verify_seed_13b_flow_dinein.py** - Flow B (fulfill → pay)
+
+### New Backend APIs
+- `POST /orders/{id}/confirm` - Dine-in order confirmation
+- `POST /orders/{id}/apply-voucher` - Apply voucher to pending order
+- `PATCH /orders/{id}/payment-status` - Direct payment status update
+- `POST /tables/{id}/release` - Release table after dine-in
+- `GET /admin/users/{id}` - Admin user lookup
 
 ### Deprecated Files
 - **seed_full.sql** - Marked as deprecated (use Python seed scripts instead)
@@ -135,7 +147,7 @@ Located in `/root/` (outside docs folder):
 
 **Completion:** 100%
 
-**Last Audit:** 2026-04-18 (Round 3)
+**Last Audit:** 2026-04-19 (Order Completion Certification)
 
 **Verified:**
 - 4/4 critical backend bugs fixed
@@ -145,6 +157,8 @@ Located in `/root/` (outside docs folder):
 - 7/5 stats bars implemented (bonus)
 - 26/26 hardcoded colors migrated
 - 9/9 documentation files current
+- 10/10 seed scripts certified (09-13 + helpers)
+- 2/2 order completion flows working (Flow A & B)
 
 ---
 

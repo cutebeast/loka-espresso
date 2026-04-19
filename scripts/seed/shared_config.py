@@ -1,7 +1,7 @@
 """
 Shared configuration for all seed scripts.
 NO direct DB access - all data flows through API calls only.
-Last updated: 2026-04-18 | ENHANCED - Staff auth, QR scan, and table helpers added
+Last updated: 2026-04-19 | REFACTORED - Unified Flow A/B lifecycle
 
 IMPORTANT: Order of execution for customer seeding:
 00-09: Base system seeds (stores, menu, inventory, staff, config, rewards, vouchers, promotions)
@@ -10,9 +10,24 @@ IMPORTANT: Order of execution for customer seeding:
 12a: Place PICKUP orders
 12b: Place DELIVERY orders (requires 3rdparty_delivery/mock_delivery_server.py)
 12c: Place DINE-IN orders (tests QR scan and table assignment)
-13: Complete DELIVERY orders via mock 3rd party API
-14: Complete DINE-IN orders via manual staff workflow (OR run 15 instead)
-15: Complete DINE-IN orders via POS integration (OR run 14 instead)
+13: Order Completion Orchestrator (routes to Flow A or B based on order type)
+    ├─ Flow A (Pickup/Delivery): Checkout → Apply Voucher → Pay → Fulfill → Complete
+    └─ Flow B (Dine-in):        Confirm → Fulfill → Checkout → Apply Voucher → Pay → Complete
+
+Flow A (Pickup/Delivery):  pending → paid → confirmed → preparing → ready → completed
+                           (delivery adds: out_for_delivery)
+Flow B (Dine-in):          pending → confirmed → preparing → ready → paid → completed
+                           (payment at END of meal)
+
+APIs Used by Flow Scripts:
+  - GET /orders (fetch pending orders)
+  - GET /vouchers/me (get available vouchers)
+  - POST /orders/{id}/apply-voucher (apply discount)
+  - POST /orders/{id}/confirm (dine-in confirmation)
+  - PATCH /orders/{id}/status (status transitions)
+  - POST /tables/{id}/release (release table after dine-in)
+  - POST /payment-gateway/initiate (mock payment)
+  - POST /payment-gateway/webhook (payment callback)
 """
 import os
 

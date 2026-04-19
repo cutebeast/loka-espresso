@@ -7,7 +7,7 @@ APIs tested:
   - DELETE /cart (clear cart)
   - POST /cart/items (add items to cart)
   - POST /orders (place order with delivery_address)
-Status: PENDING VERIFICATION
+Status: CERTIFIED-2026-04-19 | Delivery order placement
 Dependencies: verify_seed_10_register.py, verify_seed_11_wallet_topup.py
 Flow:
   1. Fetch stores from API
@@ -233,7 +233,8 @@ def run():
         print(f"  Order #{result['order_number']} (ID={result['order_id']})")
         print(f"  Store: {result['store_name']}")
         print(f"  Items: {result['items_count']}")
-        print(f"  Delivery: {result['delivery_address'][:40]}...")
+        addr_str = result['delivery_address'].get('address', str(result['delivery_address']))
+        print(f"  Delivery: {addr_str[:40]}...")
         print(f"  Total: RM {result['subtotal']:.2f}")
         
         # Output JSON for orchestrator

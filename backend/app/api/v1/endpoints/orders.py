@@ -20,14 +20,21 @@ from app.schemas.order import OrderCreate, OrderOut, OrderStatusUpdate, OrderLis
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
+# Valid status transitions by order type
+# Flow A (Pickup & Delivery): pending -> paid -> confirmed -> preparing -> ready -> (out_for_delivery) -> completed
+# Flow B (Dine-in): pending -> confirmed -> preparing -> ready -> completed (payment happens at the end)
 VALID_TRANSITIONS = {
-    "pending": ["paid", "cancelled"],
+    "pending": ["paid", "confirmed", "cancelled"],
     "paid": ["confirmed", "cancelled"],
     "confirmed": ["preparing", "cancelled"],
     "preparing": ["ready", "cancelled"],
     "ready": ["out_for_delivery", "completed", "cancelled"],
     "out_for_delivery": ["completed", "cancelled"],
 }
+
+# Flow-specific validation rules
+FLOW_A_TYPES = {"pickup", "delivery"}  # Pay first, then confirm
+FLOW_B_TYPES = {"dine_in"}  # Confirm first, pay at the end
 
 
 @router.post("", response_model=OrderOut, status_code=201)
@@ -228,12 +235,20 @@ async def create_order(
 async def list_orders(
     page: int = 1, page_size: int = 20,
     store_id: int | None = None,
+    status: str | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(Order).where(Order.user_id == user.id).order_by(Order.created_at.desc())
+    # Admins can see all orders, regular users only see their own
+    if is_global_admin(user) or is_hq(user):
+        q = select(Order).order_by(Order.created_at.desc())
+    else:
+        q = select(Order).where(Order.user_id == user.id).order_by(Order.created_at.desc())
+    
     if store_id:
         q = q.where(Order.store_id == store_id)
+    if status:
+        q = q.where(Order.status == status)
     total_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = total_result.scalar() or 0
     result = await db.execute(q.offset((page - 1) * page_size).limit(page_size))
@@ -366,6 +381,191 @@ async def cancel_order(order_id: int, user: User = Depends(get_current_user), db
     return {"message": "Order cancelled", "loyalty_reversed": order.payment_status == "paid"}
 
 
+@router.post("/{order_id}/confirm")
+async def confirm_order(
+    order_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Confirm a dine-in order to send it to the kitchen/POS.
+    This is used in Flow B (dine-in) where confirmation happens BEFORE payment.
+    Flow A (pickup/delivery) orders must be paid first and will auto-confirm.
+    """
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Only order owner or authorized staff can confirm
+    if order.user_id != user.id and not await can_access_store(user, order.store_id, db):
+        raise HTTPException(status_code=403, detail="Cannot confirm this order")
+
+    # Only dine-in orders can use this endpoint
+    order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
+    if order_type not in FLOW_B_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Order confirmation endpoint is only for dine-in orders. {order_type} orders must be paid first."
+        )
+
+    # Must be in pending status to confirm
+    if order.status != OrderStatus.pending:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot confirm order in status: {order.status}. Must be pending."
+        )
+
+    # Update status to confirmed
+    order.status = OrderStatus.confirmed
+    history = OrderStatusHistory(
+        order_id=order.id,
+        status=OrderStatus.confirmed,
+        note="Order confirmed by customer - sent to kitchen"
+    )
+    db.add(history)
+
+    # Send to external POS
+    await _send_order_to_pos(order)
+
+    # Notify customer
+    notif = Notification(
+        user_id=order.user_id,
+        title="Order Confirmed",
+        body=f"Your order {order.order_number} has been sent to the kitchen!",
+        type="order",
+    )
+    db.add(notif)
+    await db.flush()
+
+    return {
+        "message": "Order confirmed and sent to kitchen",
+        "order_id": order.id,
+        "order_number": order.order_number,
+        "status": order.status.value,
+    }
+
+
+async def _send_order_to_pos(order: Order):
+    """Send order to external POS system (mock integration)."""
+    try:
+        import httpx
+        pos_url = "http://localhost:8081/api/v1/orders"
+        payload = {
+            "order_id": order.id,
+            "order_number": order.order_number,
+            "store_id": order.store_id,
+            "table_id": order.table_id,
+            "order_type": order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type),
+            "items": order.items,
+            "total": float(order.total),
+            "notes": order.notes,
+        }
+        async with httpx.AsyncClient() as client:
+            await client.post(pos_url, json=payload, timeout=5.0)
+    except Exception:
+        # POS integration is best-effort, do not fail the order if POS is down
+        pass
+
+
+@router.post("/{order_id}/apply-voucher")
+async def apply_voucher_to_order(
+    order_id: int,
+    req: dict,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Apply a voucher to an existing order (before payment).
+    This is used in checkout flow for orders that haven't been paid yet.
+    """
+    voucher_code = req.get("voucher_code")
+    if not voucher_code:
+        raise HTTPException(status_code=400, detail="voucher_code is required")
+
+    # Get the order
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Verify user owns the order
+    if order.user_id != user.id and not is_global_admin(user):
+        raise HTTPException(status_code=403, detail="Cannot modify this order")
+
+    # Only pending orders can have vouchers applied
+    if order.status != OrderStatus.pending:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot apply voucher to order in status: {order.status}. Must be pending."
+        )
+
+    # Check if voucher already applied
+    if order.voucher_code or order.voucher_discount > 0:
+        raise HTTPException(status_code=400, detail="Voucher already applied to this order")
+
+    # Find and validate the voucher
+    now = datetime.now(timezone.utc)
+    uv_result = await db.execute(
+        select(UserVoucher).where(
+            UserVoucher.code == voucher_code,
+            UserVoucher.user_id == user.id,
+        )
+    )
+    uv = uv_result.scalar_one_or_none()
+
+    if not uv:
+        raise HTTPException(status_code=404, detail="Voucher not found")
+
+    if uv.status != "available":
+        raise HTTPException(status_code=400, detail=f"Voucher is {uv.status}")
+
+    if uv.expires_at and uv.expires_at.replace(tzinfo=timezone.utc) < now:
+        raise HTTPException(status_code=400, detail="Voucher has expired")
+
+    # Calculate discount
+    subtotal = to_float(order.subtotal)
+    delivery_fee = to_float(order.delivery_fee)
+    min_spend = to_float(uv.min_spend) if uv.min_spend else 0
+
+    if min_spend and subtotal < min_spend:
+        raise HTTPException(status_code=400, detail=f"Minimum spend RM{min_spend:.0f} required")
+
+    discount_type = uv.discount_type
+    discount_value = to_float(uv.discount_value) if uv.discount_value else 0
+
+    voucher_discount = 0.0
+    if discount_type == "percent":
+        voucher_discount = round(subtotal * discount_value / 100, 2)
+    elif discount_type in ("fixed", "free_item"):
+        voucher_discount = discount_value
+
+    # Cap discount at subtotal + delivery_fee
+    voucher_discount = min(voucher_discount, subtotal + delivery_fee)
+
+    # Update order
+    order.voucher_code = voucher_code
+    order.voucher_discount = voucher_discount
+    order.discount = round(voucher_discount + to_float(order.reward_discount), 2)
+    order.total = round(subtotal + delivery_fee - order.discount, 2)
+
+    # Mark voucher as used
+    uv.status = "used"
+    uv.used_at = now
+    uv.order_id = order.id
+
+    await db.flush()
+
+    return {
+        "message": "Voucher applied successfully",
+        "voucher_code": voucher_code,
+        "discount_type": discount_type,
+        "discount_value": discount_value,
+        "discount_applied": voucher_discount,
+        "new_total": to_float(order.total),
+    }
+
+
 @router.patch("/{order_id}/status")
 async def update_order_status(
     order_id: int, req: OrderStatusUpdate,
@@ -396,6 +596,31 @@ async def update_order_status(
             detail=f"Invalid transition: {old_status} -> {new_status}. Valid: {valid_next}"
         )
 
+    order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
+
+    # Flow-specific validations for status transitions
+    if new_status == "confirmed":
+        if order_type in FLOW_A_TYPES and old_status != "paid":
+            # Flow A: pickup/delivery must be paid before confirmed
+            raise HTTPException(
+                status_code=400,
+                detail=f"{order_type} orders must be paid before confirmation. Current status: {old_status}"
+            )
+        elif order_type in FLOW_B_TYPES and old_status != "pending":
+            # Flow B: dine-in must use confirm endpoint from pending
+            raise HTTPException(
+                status_code=400,
+                detail="Dine-in orders must use POST /orders/{id}/confirm from pending status"
+            )
+
+    # Flow B: dine-in can only be completed if payment_status is paid
+    if new_status == "completed" and order_type in FLOW_B_TYPES:
+        if order.payment_status != "paid":
+            raise HTTPException(
+                status_code=400,
+                detail="Dine-in order cannot be completed until payment is made"
+            )
+
     order.status = req.status
     history = OrderStatusHistory(order_id=order.id, status=req.status, note=req.note)
     if req.completed_at:
@@ -418,4 +643,65 @@ async def update_order_status(
         },
         "new_total": to_float(order.total),
         "loyalty_points_earned": order.loyalty_points_earned,
+    }
+
+
+@router.patch("/{order_id}/payment-status")
+async def update_order_payment_status(
+    order_id: int,
+    req: dict,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update order payment_status directly.
+    This is used for Flow B (dine-in) where payment happens at the end of the meal.
+    """
+    if not (is_global_admin(user) or is_hq(user)):
+        raise HTTPException(status_code=403, detail="Only admins can update payment status")
+
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    payment_status = req.get("payment_status")
+    if not payment_status:
+        raise HTTPException(status_code=400, detail="payment_status is required")
+
+    old_payment_status = order.payment_status
+    order.payment_status = payment_status
+
+    # If payment is marked as paid, award loyalty points
+    if payment_status == "paid" and old_payment_status != "paid":
+        # Calculate loyalty points (1 point per RM 1 spent)
+        points = int(order.total)
+        if points > 0:
+            # Get or create loyalty account
+            la_result = await db.execute(
+                select(LoyaltyAccount).where(LoyaltyAccount.user_id == order.user_id)
+            )
+            la = la_result.scalar_one_or_none()
+            if la:
+                la.points_balance += points
+                la.total_points_earned += points
+                
+                # Create loyalty transaction
+                lt = LoyaltyTransaction(
+                    user_id=order.user_id,
+                    order_id=order.id,
+                    store_id=order.store_id,
+                    points=points,
+                    type="earn",
+                    description=f"Points earned for order {order.order_number}",
+                )
+                db.add(lt)
+                order.loyalty_points_earned = points
+
+    await db.flush()
+    return {
+        "message": f"Order payment status updated to {payment_status}",
+        "order_id": order.id,
+        "payment_status": payment_status,
+        "loyalty_points_earned": order.loyalty_points_earned if payment_status == "paid" else 0,
     }

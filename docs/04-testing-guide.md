@@ -1,6 +1,6 @@
 # FNB Super-App — Test Credentials & Verification Guide
 
-> Last updated: 2026-04-18 (session 4) | Base Seed Steps 00-08 Complete | Customer Journey Seeds 09-18 Available
+> Last updated: 2026-04-19 (session 5) | Base Seed Steps 00-08 Complete | Customer Journey Seeds 09-13 Certified | Order Completion Flows A/B Implemented
 
 ## Test Accounts
 
@@ -252,6 +252,41 @@ curl -s "http://localhost:8000/api/v1/admin/reports/marketing?from_date=2026-01-
 # Expected: { tier_distribution, points_issued, points_redeemed, reward_redemptions, voucher_usage }
 ```
 
+### 16. Order Completion Flows
+```bash
+# Run full customer journey (register → wallet topup → place orders → complete orders)
+cd /root/fnb-super-app/scripts/seed
+python3 verify_seed_10_register.py 5        # Register 5 customers
+python3 verify_seed_11_wallet_topup.py      # Top up wallets
+python3 verify_seed_12_place_orders_main.py 5 2  # Place 2 orders per customer
+python3 verify_seed_13_order_completion.py  # Complete all pending orders
+
+# Expected: Orders processed through appropriate flow:
+#   - Pickup/Delivery: pending → paid → confirmed → preparing → ready → completed
+#   - Dine-in: pending → confirmed → preparing → ready → payment → completed
+```
+
+### 17. Dine-in Order Confirmation
+```bash
+# Customer confirms dine-in order (sends to kitchen)
+CT=$(curl -s http://localhost:8000/api/v1/auth/login-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"customer@example.com","password":"password123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+
+curl -s -X POST -H "Authorization: Bearer $CT" \
+  http://localhost:8000/api/v1/orders/123/confirm
+# Expected: { "message": "Order confirmed and sent to kitchen", "status": "confirmed" }
+```
+
+### 18. Apply Voucher to Order
+```bash
+# Apply voucher to pending order (checkout flow)
+curl -s -X POST -H "Authorization: Bearer $CT" -H "Content-Type: application/json" \
+  http://localhost:8000/api/v1/orders/123/apply-voucher \
+  -d '{"voucher_code": "WELCOME10-A1B2C3"}'
+# Expected: { "message": "Voucher applied successfully", "discount_applied": 15.50, "new_total": 139.50 }
+```
+
 ## Common API Base URLs
 
 | Purpose | URL |
@@ -283,7 +318,8 @@ docker exec -it fnb-db psql -U fnb -d fnb  # Database direct access
 7. **Customer PWA** at app.loyaltysystem.uk is Phase 2 version — needs rebuild for new wallet API
 8. **seed_08 not fully idempotent** — promotions seed creates duplicate surveys/banners on re-run without reset. Run `seed_00_full_reset.py` first for clean state.
 9. **seed_full.sql is DEPRECATED** — Uses old `role` string column instead of `role_id` integer FK. Use Python seed scripts instead.
-10. **Customer Journey Seeds (09-18)** — Available for full end-to-end testing (register, wallet topup, place orders, apply discounts, fulfillment, complete, claim vouchers, redeem rewards). See scripts/seed/ directory.
+10. **Customer Journey Seeds (09-13)** — Available for full end-to-end testing (register, wallet topup, place orders, order completion with Flow A/B). See scripts/seed/ directory.
+11. **Order Completion Flows** — Two distinct flows implemented: Flow A (Pickup/Delivery: pay → fulfill) and Flow B (Dine-in: fulfill → pay). Orchestrated via verify_seed_13_order_completion.py.
 
 ## Phase History
 
@@ -294,5 +330,6 @@ docker exec -it fnb-db psql -U fnb -d fnb  # Database direct access
 | Pre-Phase 3 | ✅ Complete | Cross-store validation, audit log hooks, timezone-aware datetimes |
 | Marketing | ✅ Complete | 6 admin pages, 5 new PWA endpoint files, 5 migrations, customer wallet infrastructure (catalog→instance pattern, per-instance codes, expiry, scan, cron) |
 | Base Seed | ✅ Complete | 9 seed scripts (00-08): full reset, stores, universal menu, inventory, staff, config, rewards, vouchers, surveys + banners |
-| Customer Journey | ✅ Complete | 10 seed scripts (09-18): customer registration, wallet topup, place orders, apply discounts, fulfillment, order completion, claim vouchers, redeem rewards |
+| Customer Journey | ✅ Complete | 5 certified seed scripts (09-13): customer registration, wallet topup, place orders, order completion with Flow A/B orchestration |
+| Order Flows | ✅ Complete | Two distinct completion flows: Flow A (Pickup/Delivery: pay→fulfill) and Flow B (Dine-in: fulfill→pay), voucher application, table release |
 | Phase 3 | 🔲 Pending | Customer PWA rebuild, Stripe, Twilio, WhatsApp, FCM |

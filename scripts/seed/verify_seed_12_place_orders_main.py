@@ -2,7 +2,7 @@
 SEED SCRIPT: verify_seed_12_place_orders_main.py
 Purpose: Orchestrator that randomly places orders for customers (pickup/delivery/dine-in)
 APIs tested: Calls 12a, 12b, 12c scripts based on random selection
-Status: PENDING VERIFICATION
+Status: CERTIFIED-2026-04-19 | Order placement orchestrator - distributes across pickup/delivery/dine-in
 Dependencies: verify_seed_10_register.py, verify_seed_11_wallet_topup.py
               verify_seed_12a_place_orders_pickup.py
               verify_seed_12b_place_orders_delivery.py

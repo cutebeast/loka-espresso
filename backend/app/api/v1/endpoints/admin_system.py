@@ -51,6 +51,44 @@ async def lookup_otp(
 
 
 # ---------------------------------------------------------------------------
+# User Lookup (for admin/seed scripts)
+# ---------------------------------------------------------------------------
+
+@router.get("/admin/users/{user_id}")
+async def get_user_by_id(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_hq_access()),
+):
+    """Admin-only endpoint to retrieve user details by ID."""
+    from app.models.acl import UserType as ACLUserType, Role
+    result = await db.execute(
+        select(User, ACLUserType.name, Role.name)
+        .outerjoin(ACLUserType, User.user_type_id == ACLUserType.id)
+        .outerjoin(Role, User.role_id == Role.id)
+        .where(User.id == user_id)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+    user, ut_name, role_name = row
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "phone": user.phone,
+        "user_type_id": user.user_type_id,
+        "role_id": user.role_id,
+        "user_type": ut_name,
+        "role": role_name,
+        "avatar_url": user.avatar_url,
+        "referral_code": user.referral_code,
+        "is_active": user.is_active,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Audit Log
 # ---------------------------------------------------------------------------
 
