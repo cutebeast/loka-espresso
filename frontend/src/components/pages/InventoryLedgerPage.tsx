@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { DateFilter, type DatePreset } from '@/components/ui/DateFilter';
-import { StoreSelector, FilterSelect } from '@/components/ui';
+import { StoreSelector, FilterSelect, Pagination } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantStore, InventoryMovement } from '@/lib/merchant-types';
 
@@ -32,23 +32,35 @@ export default function InventoryLedgerPage({ selectedStore, storeObj, token, st
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('');
   const [preset, setPreset] = useState<DatePreset>('MTD');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => { if (selectedStore !== 'all') fetchLedger(); }, [selectedStore, token, filterType]);
-
-  async function fetchLedger() {
+  const fetchLedger = useCallback(async (p: number) => {
+    if (selectedStore === 'all') return;
     setLoading(true);
     try {
-      const url = filterType
-        ? `/stores/${selectedStore}/inventory-ledger?movement_type=${filterType}&limit=200`
-        : `/stores/${selectedStore}/inventory-ledger?limit=200`;
+      const params = new URLSearchParams({
+        page: String(p),
+        page_size: '20',
+      });
+      if (filterType) params.append('movement_type', filterType);
+      if (fromDate) params.append('from_date', fromDate + 'T00:00:00');
+      if (toDate) params.append('to_date', toDate + 'T23:59:59');
+
+      const url = `/stores/${selectedStore}/inventory-ledger?${params.toString()}`;
       const res = await apiFetch(url, token);
       if (res.ok) {
         const data = await res.json();
-        // Handle both array response and object with entries property
         setMovements(Array.isArray(data) ? data : (data.entries || []));
+        setTotal(data.total || data.length || 0);
+        setTotalPages(data.total_pages || 1);
+        setPage(p);
       }
     } catch {} finally { setLoading(false); }
-  }
+  }, [selectedStore, token, filterType, fromDate, toDate]);
+
+  useEffect(() => { fetchLedger(1); }, [fetchLedger]);
 
   const physicalStores = (stores || []).filter(s => String(s.id) !== '0');
 
@@ -114,7 +126,10 @@ export default function InventoryLedgerPage({ selectedStore, storeObj, token, st
       }}>
         <div style={{ fontSize: 14, color: THEME.textSecondary }}>
           <i className="fas fa-clock-rotate-left" style={{ marginRight: 8, color: THEME.primary }}></i>
-          Showing <strong style={{ color: THEME.textPrimary }}>{movements.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{movements.length}</strong> movements
+          Showing <strong style={{ color: THEME.textPrimary }}>{movements.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> movements
+        </div>
+        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+          Page {page} of {totalPages}
         </div>
       </div>
 
@@ -168,6 +183,8 @@ export default function InventoryLedgerPage({ selectedStore, storeObj, token, st
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={fetchLedger} loading={loading} />
       </>)}
     </div>
   );

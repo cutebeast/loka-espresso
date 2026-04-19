@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/merchant-api';
 import { StoreSelector, Select, FilterSelect, DateFilter, Pagination } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantInventoryItem, MerchantInventoryCategory, MerchantStore } from '@/lib/merchant-types';
+import InventoryLedgerPage from '@/components/pages/InventoryLedgerPage';
 
 interface InventoryPageProps {
   inventory: MerchantInventoryItem[];
@@ -65,6 +66,8 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
   const [adjNote, setAdjNote] = useState('');
   const [adjFile, setAdjFile] = useState<File | null>(null);
   const [savingAdj, setSavingAdj] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   // Fetch categories
   useEffect(() => {
@@ -252,7 +255,16 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
       )}
 
       {activeTab === 'ledger' ? (
-        <InventoryLedgerView storeId={selectedStore} token={token} stores={stores} />
+      <InventoryLedgerPage
+        selectedStore={selectedStore}
+        storeObj={undefined}
+        token={token}
+        stores={stores}
+        onStoreChange={onStoreChange || (() => {})}
+        fromDate={fromDate}
+        toDate={toDate}
+        onDateChange={(from, to) => { setFromDate(from); setToDate(to); }}
+      />
       ) : (
 
       <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 24 }}>
@@ -496,193 +508,6 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
       </div>
       )}
     </>)}
-    </div>
-  );
-}
-
-// Sub-component for Ledger view
-function InventoryLedgerView({ storeId, token, stores }: { storeId: string; token: string; stores: MerchantStore[] }) {
-  const [entries, setEntries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [movementType, setMovementType] = useState('');
-
-  const fetchLedger = async (p: number = 1) => {
-    if (!storeId || storeId === 'all') return;
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      params.append('page', String(p));
-      params.append('page_size', String(pageSize));
-      if (fromDate) params.append('from_date', fromDate + 'T00:00:00');
-      if (toDate) params.append('to_date', toDate + 'T23:59:59');
-      if (movementType) params.append('movement_type', movementType);
-      
-      const res = await apiFetch(`/stores/${storeId}/inventory-ledger?${params.toString()}`, token);
-      if (res.ok) {
-        const data = await res.json();
-        setEntries(data.entries || []);
-        setTotal(data.total || 0);
-        setTotalPages(data.total_pages || 1);
-        setPage(data.page || 1);
-      } else {
-        setError('Failed to load ledger data');
-        setEntries([]);
-      }
-    } catch (err) {
-      setError('Error loading ledger data');
-      setEntries([]);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (storeId && storeId !== 'all') {
-      fetchLedger(1);
-    }
-  }, [storeId, fromDate, toDate, movementType]);
-
-  const storeObj = (stores || []).find(s => String(s.id) === storeId);
-
-  if (storeId === 'all') {
-    return (
-      <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-        <i className="fas fa-store" style={{ fontSize: 48, marginBottom: 16 }}></i>
-        <p style={{ fontSize: 16 }}>Select a store to view its inventory ledger</p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {/* Filter Bar */}
-      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <DateFilter
-          preset="MTD"
-          onChange={(p, from, to) => { setFromDate(from); setToDate(to); }}
-          fromDate={fromDate}
-          toDate={toDate}
-        />
-        <FilterSelect
-          value={movementType}
-          onChange={setMovementType}
-          options={[
-            { value: '', label: 'All Movements' },
-            { value: 'received', label: 'Received' },
-            { value: 'waste', label: 'Waste' },
-            { value: 'transfer_out', label: 'Transfer Out' },
-            { value: 'transfer_in', label: 'Transfer In' },
-            { value: 'cycle_count', label: 'Cycle Count' },
-            { value: 'adjustment', label: 'Adjustment' },
-          ]}
-          icon="fa-filter"
-          placeholder="All Movements"
-        />
-      </div>
-
-      {error && (
-        <div className="card" style={{ textAlign: 'center', padding: 40, color: '#991B1B', marginBottom: 20 }}>
-          <i className="fas fa-exclamation-circle" style={{ fontSize: 40, marginBottom: 16 }}></i>
-          <p>{error}</p>
-          <button className="btn btn-primary" onClick={() => fetchLedger(page)} style={{ marginTop: 12 }}>
-            <i className="fas fa-refresh"></i> Retry
-          </button>
-        </div>
-      )}
-
-      {/* Stats Bar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-clock-rotate-left" style={{ marginRight: 8, color: THEME.primary }}></i>
-          Showing <strong style={{ color: THEME.textPrimary }}>{entries.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> movements
-        </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
-          Page {page} of {totalPages}
-        </div>
-      </div>
-
-      <div style={{
-        overflowX: 'auto',
-        borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
-        background: THEME.bgCard,
-        border: `1px solid ${THEME.border}`,
-        borderTop: 'none',
-      }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Item</th>
-              <th>Movement</th>
-              <th>Qty</th>
-              <th>Balance</th>
-              <th>Note</th>
-              <th>By</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: THEME.textMuted }}>
-                <i className="fas fa-spinner fa-spin"></i> Loading...
-              </td></tr>
-            ) : entries.length === 0 ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', color: THEME.textMuted, padding: 40 }}>
-                <i className="fas fa-clock-rotate-left" style={{ fontSize: 40, display: 'block', marginBottom: 12 }}></i>
-                No inventory movements recorded yet for {storeObj?.name || 'this store'}.
-              </td></tr>
-            ) : entries.map((e) => {
-              const isDeduction = ['waste', 'transfer_out'].includes(e.movement_type);
-              return (
-                <tr key={e.id}>
-                  <td style={{ fontSize: 13, whiteSpace: 'nowrap', color: THEME.textPrimary }}>
-                    {e.created_at ? new Date(e.created_at).toLocaleString() : '-'}
-                  </td>
-                  <td style={{ fontWeight: 500, color: THEME.textPrimary }}>
-                    {e.inventory_item_name || e.item_name || `#${e.inventory_item_id}`}
-                  </td>
-                  <td>
-                    <span className={`badge ${
-                      e.movement_type === 'received' || e.movement_type === 'transfer_in' ? 'badge-green' :
-                      e.movement_type === 'waste' || e.movement_type === 'transfer_out' ? 'badge-red' :
-                      'badge-blue'
-                    }`} style={{ textTransform: 'capitalize' }}>
-                      {e.movement_type ? String(e.movement_type).replace('_', ' ') : '-'}
-                    </span>
-                  </td>
-                  <td style={{ fontWeight: 600, color: isDeduction ? THEME.error : THEME.accent }}>
-                    {isDeduction ? '-' : '+'}{e.quantity}
-                  </td>
-                  <td><strong>{e.balance_after}</strong></td>
-                  <td style={{ fontSize: 13, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: THEME.textMuted }}>
-                    {e.note || '-'}
-                  </td>
-                  <td style={{ fontSize: 13, color: THEME.textMuted }}>
-                    {e.created_by_name || (e.created_by ? `User #${e.created_by}` : '-')}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <Pagination page={page} totalPages={totalPages} onPageChange={fetchLedger} loading={loading} />
     </div>
   );
 }
