@@ -1,88 +1,392 @@
 @import "tailwindcss";
 
+/* ============================================
+   LOKA ESPRESSO - PWA DESIGN SYSTEM
+   Tailwind v4 with Custom Properties
+   ============================================ */
+
 @theme inline {
+  /* Brand Colors - Dark Olive Theme */
   --color-primary: #384B16;
   --color-primary-dark: #2A3910;
   --color-primary-light: #4A6A1D;
+  --color-primary-50: #F5F7F0;
+  --color-primary-100: #E8EDE0;
+  --color-primary-200: #D1DBC1;
+  
+  /* Accent Colors */
   --color-accent: #85B085;
   --color-accent-copper: #D18E38;
   --color-accent-brown: #57280D;
   --color-accent-brown-light: #7A4A2E;
   --color-accent-red: #C75050;
   --color-accent-blue: #4A607A;
+  
+  /* Background Colors */
   --color-bg: #E4EAEF;
-  --color-bg-light: #E4EAEF;
+  --color-bg-light: #F5F7FA;
   --color-bg-muted: #D4DCE5;
   --color-bg-card: #FFFFFF;
   --color-bg-dark: #1B2023;
+  
+  /* Text Colors */
   --color-text-primary: #1B2023;
   --color-text-secondary: #3A4A5A;
   --color-text-muted: #6A7A8A;
   --color-text-light: #FFFFFF;
+  
+  /* Border Colors */
   --color-border: #C4CED8;
   --color-border-light: #D4DCE5;
+  
+  /* Semantic Colors */
   --color-success: #85B085;
+  --color-success-light: #E8F5E9;
   --color-warning: #D18E38;
+  --color-warning-light: #FFF3E0;
   --color-danger: #C75050;
+  --color-danger-light: #FFEBEE;
   --color-info: #4A607A;
+  --color-info-light: #E3F2FD;
+  
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-nav: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* ============================================
+   BASE STYLES
+   ============================================ */
 
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #E4EAEF;
-  color: #1B2023;
-  min-height: 100vh;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-.app-frame {
-  max-width: 430px;
-  width: 100%;
+body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  overflow: hidden; /* Prevent body scroll, handle in app */
+}
+
+/* ============================================
+   APP CONTAINER
+   Mobile-first responsive design
+   ============================================ */
+
+.app-container {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+  background: var(--color-bg-light);
   position: relative;
   display: flex;
   flex-direction: column;
-  margin: 0 auto;
-  background: #E4EAEF;
+  overflow: hidden;
 }
 
+/* Desktop: Show phone frame */
 @media (min-width: 768px) {
   body {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 16px;
+    padding: 20px;
+    background: linear-gradient(135deg, #D4DCE5 0%, #E4EAEF 100%);
   }
-  .app-frame {
-    border-radius: 32px;
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
-    overflow: hidden;
-    border: 1px solid rgba(56, 75, 22, 0.08);
+  
+  .app-container {
     height: 844px;
+    max-height: 90vh;
+    border-radius: 40px;
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.25),
+      0 0 0 1px rgba(56, 75, 22, 0.1);
+    overflow: hidden;
+  }
+  
+  /* Notch simulation for desktop preview */
+  .app-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 150px;
+    height: 30px;
+    background: var(--color-bg-dark);
+    border-radius: 0 0 20px 20px;
+    z-index: 100;
   }
 }
 
-.scrollbar-hide {
+/* ============================================
+   SAFE AREA SUPPORT
+   For iOS notch and home indicator
+   ============================================ */
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-x {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* ============================================
+   SCROLL CONTAINERS
+   Smooth scrolling with iOS momentum
+   ============================================ */
+
+.scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* iOS momentum scroll */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  white-space: nowrap;
 }
-.scrollbar-hide::-webkit-scrollbar {
+
+.scroll-x::-webkit-scrollbar {
   display: none;
 }
 
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+
 input, select, textarea {
-  outline: none;
-  border: 1.5px solid #C4CED8;
-  border-radius: 40px;
-  padding: 14px 18px;
-  font-size: 16px;
-  width: 100%;
-  background: #FFFFFF;
-  transition: border-color 0.2s;
+  font-family: inherit;
+  font-size: 16px; /* Prevent iOS zoom on focus */
+  -webkit-appearance: none;
+  appearance: none;
 }
-input:focus, select:focus {
-  border-color: #384B16;
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+}
+
+/* ============================================
+   BUTTON RESET
+   ============================================ */
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ============================================
+   TOUCH TARGETS
+   Minimum 44px for accessibility
+   ============================================ */
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Gradient backgrounds */
+.gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+}
+
+.gradient-card {
+  background: linear-gradient(145deg, var(--color-primary) 0%, #4A5D24 100%);
+}
+
+/* Glassmorphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+/* ============================================
+   LOADING SKELETON
+   ============================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-muted) 25%,
+    var(--color-bg-light) 50%,
+    var(--color-bg-muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================
+   SELECTION STYLES
+   ============================================ */
+
+::selection {
+  background: var(--color-primary-200);
+  color: var(--color-text-primary);
+}
+
+/* ============================================
+   FOCUS STYLES
+   Accessibility
+   ============================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   DISABLED STATES
+   ============================================ */
+
+.disabled, [disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ============================================
+   PAGE TRANSITIONS
+   ============================================ */
+
+.page-enter {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.page-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: opacity 0.3s, transform 0.3s;
 }

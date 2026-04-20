@@ -145,7 +145,6 @@ export default function HomePage() {
   };
 
   const recentOrders = orders.slice(0, 3);
-
   const activeBanner = banners[0];
 
   const statusVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
@@ -162,111 +161,121 @@ export default function HomePage() {
       variants={container}
       initial="hidden"
       animate="show"
-      className="px-4 pt-4 pb-6"
+      className="px-4 pt-4 pb-24"
     >
+      {/* Greeting */}
       <motion.div variants={staggerItem} className="mb-5">
-        <h1 className="text-xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-gray-900">
           {getGreeting()}, {firstName}
         </h1>
         <p className="text-sm text-gray-500 mt-0.5">{formatDate()}</p>
       </motion.div>
 
+      {/* Balance Card */}
       <motion.div variants={staggerItem} className="mb-5">
-        <div className="bg-gradient-to-r from-[#384B16] to-[#5a7a2e] rounded-2xl p-4 text-white shadow-lg">
+        <div className="gradient-card rounded-3xl p-5 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Wallet size={16} className="opacity-80" />
-                <span className="text-xs font-medium opacity-80">Balance</span>
+                <Wallet size={18} className="opacity-80" />
+                <span className="text-sm font-medium opacity-80">Balance</span>
               </div>
-              <p className="text-2xl font-bold">{formatPrice(balance)}</p>
+              <p className="text-3xl font-bold">{formatPrice(balance)}</p>
             </div>
             <div className="text-right">
               <div className="flex items-center gap-1.5 justify-end mb-1">
-                <Crown size={14} className="opacity-80" />
-                <span className="text-xs font-medium opacity-80">{tier}</span>
+                <Crown size={16} className="opacity-80" />
+                <span className="text-sm font-medium opacity-80">{tier}</span>
               </div>
-              <p className="text-lg font-semibold">{points} pts</p>
+              <p className="text-xl font-semibold">{points.toLocaleString()} pts</p>
             </div>
           </div>
-          <div className="mt-3 flex justify-end">
+          <div className="mt-4 flex gap-3">
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setPage('wallet')}
-              className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-4 py-1.5 rounded-full transition-colors"
+              className="flex-1 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
             >
               Top Up
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setPage('rewards')}
+              className="flex-1 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+            >
+              Rewards
             </motion.button>
           </div>
         </div>
       </motion.div>
 
+      {/* Order Mode Toggle */}
       <motion.div variants={staggerItem} className="mb-5">
-        <div className="flex bg-gray-100 rounded-xl p-1">
+        <div className="flex bg-gray-100 rounded-2xl p-1">
           {ORDER_MODE_OPTIONS.map(({ mode, label, icon: Icon }) => (
             <button
               key={mode}
               onClick={() => setOrderMode(mode)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all ${
                 orderMode === mode
-                  ? 'bg-[#384B16] text-white shadow-sm'
-                  : 'text-gray-500'
+                  ? 'bg-white text-primary shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              <Icon size={15} />
+              <Icon size={16} />
               {label}
             </button>
           ))}
         </div>
       </motion.div>
 
-      <motion.div variants={staggerItem} className="mb-5">
+      {/* Promo Banner */}
+      <motion.div variants={staggerItem} className="mb-6">
         {loadingBanners ? (
-          <div className="h-28 bg-gray-100 rounded-2xl animate-pulse" />
+          <div className="h-32 bg-gray-100 rounded-3xl animate-pulse" />
         ) : activeBanner ? (
-          <div className="bg-gradient-to-br from-[#384B16] to-[#6b8f3a] rounded-2xl p-5 text-white shadow-md">
-            <h3 className="text-base font-bold">{activeBanner.title}</h3>
+          <div className="gradient-card rounded-3xl p-5 text-white shadow-md">
+            <h3 className="text-lg font-bold">{activeBanner.title}</h3>
             {activeBanner.subtitle && (
               <p className="text-sm opacity-80 mt-1">{activeBanner.subtitle}</p>
             )}
-            {activeBanner.action_url && (
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setPage('menu')}
-                className="mt-3 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-4 py-1.5 rounded-full transition-colors inline-flex items-center gap-1"
-              >
-                Order Now
-                <ChevronRight size={14} />
-              </motion.button>
-            )}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setPage('menu')}
+              className="mt-4 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors inline-flex items-center gap-1"
+            >
+              Order Now
+              <ChevronRight size={16} />
+            </motion.button>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-[#384B16] to-[#6b8f3a] rounded-2xl p-5 text-white shadow-md">
-            <h3 className="text-base font-bold">Welcome to Loka Espresso</h3>
+          <div className="gradient-card rounded-3xl p-5 text-white shadow-md">
+            <h3 className="text-lg font-bold">Welcome to Loka Espresso</h3>
             <p className="text-sm opacity-80 mt-1">
               Enjoy handcrafted coffee at your fingertips
             </p>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setPage('menu')}
-              className="mt-3 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-4 py-1.5 rounded-full transition-colors inline-flex items-center gap-1"
+              className="mt-4 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors inline-flex items-center gap-1"
             >
               Browse Menu
-              <ChevronRight size={14} />
+              <ChevronRight size={16} />
             </motion.button>
           </div>
         )}
       </motion.div>
 
+      {/* Popular Items */}
       <motion.div variants={staggerItem} className="mb-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-gray-900">Popular Items</h2>
+          <h2 className="text-lg font-bold text-gray-900">Popular Items</h2>
           <button
             onClick={() => setPage('menu')}
-            className="text-[#384B16] text-sm font-semibold flex items-center gap-0.5"
+            className="text-primary text-sm font-semibold flex items-center gap-0.5 hover:text-primary-dark"
           >
             See all
-            <ChevronRight size={15} />
+            <ChevronRight size={16} />
           </button>
         </div>
       </motion.div>
@@ -277,45 +286,47 @@ export default function HomePage() {
               <ProductCardSkeleton key={i} />
             ))
           : popularItems.map((item) => (
-              <div
+              <motion.div
                 key={item.id}
-                className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col"
+                whileTap={{ scale: 0.98 }}
+                className="bg-white rounded-2xl p-3 shadow-card border border-gray-100 flex flex-col"
               >
-                <div className="bg-[#384B16]/10 rounded-xl h-24 flex items-center justify-center mb-3">
-                  <Coffee size={28} className="text-[#384B16]/50" />
+                <div className="bg-primary/5 rounded-xl h-28 flex items-center justify-center mb-3">
+                  <Coffee size={32} className="text-primary/40" />
                 </div>
-                <p className="text-sm font-semibold text-gray-900 leading-tight">
+                <p className="text-sm font-semibold text-gray-900 leading-tight line-clamp-1">
                   {item.name}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-snug">
-                  {truncate(item.description, 48)}
+                <p className="text-xs text-gray-500 mt-0.5 leading-snug line-clamp-2">
+                  {truncate(item.description, 40)}
                 </p>
-                <div className="flex items-center justify-between mt-auto pt-2.5">
-                  <span className="text-sm font-bold text-[#384B16]">
+                <div className="flex items-center justify-between mt-auto pt-3">
+                  <span className="text-sm font-bold text-primary">
                     {formatPrice(item.base_price)}
                   </span>
                   <motion.button
                     whileTap={{ scale: 0.85 }}
                     onClick={() => handleAddToCart(item)}
-                    className="w-8 h-8 bg-[#384B16] rounded-full flex items-center justify-center text-white shadow-sm"
+                    className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white shadow-md touch-target"
                   >
-                    <Plus size={16} />
+                    <Plus size={18} />
                   </motion.button>
                 </div>
-              </div>
+              </motion.div>
             ))}
       </motion.div>
 
+      {/* Recent Orders */}
       {(loadingOrders || recentOrders.length > 0) && (
         <motion.div variants={staggerItem}>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold text-gray-900">Recent Orders</h2>
+            <h2 className="text-lg font-bold text-gray-900">Recent Orders</h2>
             <button
               onClick={() => setPage('orders')}
-              className="text-[#384B16] text-sm font-semibold flex items-center gap-0.5"
+              className="text-primary text-sm font-semibold flex items-center gap-0.5 hover:text-primary-dark"
             >
               View All
-              <ChevronRight size={15} />
+              <ChevronRight size={16} />
             </button>
           </div>
 
@@ -324,7 +335,7 @@ export default function HomePage() {
               {Array.from({ length: 2 }).map((_, i) => (
                 <div
                   key={i}
-                  className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 animate-pulse"
+                  className="bg-white rounded-2xl p-4 shadow-card border border-gray-100 animate-pulse"
                 >
                   <div className="h-4 bg-gray-100 rounded w-24 mb-3" />
                   <div className="h-3 bg-gray-100 rounded w-16" />
@@ -338,7 +349,7 @@ export default function HomePage() {
                   key={order.id}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setPage('orders')}
-                  className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left"
+                  className="w-full bg-white rounded-2xl p-4 shadow-card border border-gray-100 text-left"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -354,7 +365,7 @@ export default function HomePage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span
-                        className={`inline-flex items-center font-medium rounded-full px-2.5 py-0.5 text-xs ${
+                        className={`inline-flex items-center font-medium rounded-full px-2.5 py-1 text-xs ${
                           statusVariant(order.status) === 'success'
                             ? 'bg-green-100 text-green-700'
                             : statusVariant(order.status) === 'warning'
@@ -380,14 +391,15 @@ export default function HomePage() {
         </motion.div>
       )}
 
+      {/* Store Selection Alert */}
       {!selectedStore && (
         <motion.div variants={staggerItem} className="mt-5">
           <button
             onClick={() => setPage('home')}
-            className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3 text-left"
+            className="w-full bg-warning-light border border-warning/20 rounded-2xl p-4 flex items-center gap-3 text-left"
           >
-            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
-              <MapPin size={18} className="text-amber-600" />
+            <div className="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center shrink-0">
+              <MapPin size={18} className="text-warning" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900">Select a store</p>

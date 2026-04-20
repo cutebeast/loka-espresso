@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Coffee, Plus, X, Minus, ShoppingCart } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
 import type { Category, MenuItem, CustomizationOption } from '@/lib/api';
-import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 
 const container = {
@@ -176,10 +175,11 @@ export default function MenuPage() {
   if (!selectedStore) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6">
-        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-          <Coffee size={28} className="text-primary/50" />
+        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+          <Coffee size={32} className="text-primary/50" />
         </div>
-        <p className="text-gray-500 font-medium text-center">Select a store to view menu</p>
+        <p className="text-gray-500 font-medium text-center text-lg">Select a store to view menu</p>
+        <p className="text-sm text-gray-400 mt-2">Choose a location from the header</p>
       </div>
     );
   }
@@ -189,8 +189,9 @@ export default function MenuPage() {
       variants={container}
       initial="hidden"
       animate="show"
-      className="px-4 pt-4 pb-6"
+      className="px-4 pt-4 pb-24"
     >
+      {/* Search Bar */}
       <motion.div variants={staggerItem} className="mb-4">
         <div className="relative">
           <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -199,12 +200,12 @@ export default function MenuPage() {
             placeholder="Search menu..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-10 py-3 bg-white rounded-full border-2 border-transparent focus:border-primary transition-colors text-sm"
+            className="w-full pl-12 pr-10 py-3.5 bg-white rounded-2xl border-2 border-gray-100 focus:border-primary focus:bg-white transition-all text-base shadow-sm"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
             >
               <X size={18} />
             </button>
@@ -212,14 +213,15 @@ export default function MenuPage() {
         </div>
       </motion.div>
 
+      {/* Category Pills */}
       <motion.div variants={staggerItem} className="mb-5">
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scroll-x">
           <button
             onClick={() => setSelectedCategoryId(null)}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+            className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
               selectedCategoryId === null
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-white text-gray-600 border border-gray-200'
+                ? 'bg-primary text-white shadow-md'
+                : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
             }`}
           >
             All
@@ -228,10 +230,10 @@ export default function MenuPage() {
             <button
               key={c.id}
               onClick={() => setSelectedCategoryId(c.id)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+              className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
                 selectedCategoryId === c.id
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'bg-white text-gray-600 border border-gray-200'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
               }`}
             >
               {c.name}
@@ -240,23 +242,24 @@ export default function MenuPage() {
         </div>
       </motion.div>
 
+      {/* Menu Grid */}
       <motion.div variants={staggerItem}>
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 animate-pulse">
-                <div className="bg-gray-100 rounded-xl h-24 mb-3" />
+              <div key={i} className="bg-white rounded-2xl p-3 shadow-card border border-gray-100 animate-pulse">
+                <div className="bg-gray-100 rounded-xl h-28 mb-3" />
                 <div className="h-4 bg-gray-100 rounded w-3/4 mb-2" />
                 <div className="h-3 bg-gray-100 rounded w-full" />
               </div>
             ))}
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search size={24} className="text-gray-400" />
+          <div className="text-center py-16">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search size={28} className="text-gray-400" />
             </div>
-            <p className="text-gray-500 font-medium">No items found</p>
+            <p className="text-gray-500 font-medium text-lg">No items found</p>
             <p className="text-sm text-gray-400 mt-1">
               {searchQuery ? 'Try a different search term' : 'No menu items available'}
             </p>
@@ -268,14 +271,14 @@ export default function MenuPage() {
                 key={item.id}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => openDetail(item)}
-                className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col cursor-pointer active:shadow-md transition-shadow"
+                className="bg-white rounded-2xl p-3 shadow-card border border-gray-100 flex flex-col cursor-pointer active:shadow-md transition-shadow"
               >
-                <div className="bg-green-50 rounded-xl h-24 flex items-center justify-center mb-3">
-                  <Coffee size={28} className="text-primary/40" />
+                <div className="bg-primary/5 rounded-xl h-28 flex items-center justify-center mb-3">
+                  <Coffee size={32} className="text-primary/40" />
                 </div>
-                <p className="text-sm font-bold text-gray-900 truncate">{item.name}</p>
-                <p className="text-xs text-text-muted mt-0.5 line-clamp-2 leading-snug">{item.description}</p>
-                <div className="flex items-center justify-between mt-auto pt-2.5">
+                <p className="text-sm font-bold text-gray-900 line-clamp-1">{item.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-snug">{item.description}</p>
+                <div className="flex items-center justify-between mt-auto pt-3">
                   <span className="text-sm font-bold text-primary">{formatPrice(item.base_price)}</span>
                   <motion.button
                     whileTap={{ scale: 0.85 }}
@@ -292,9 +295,9 @@ export default function MenuPage() {
                         item.store_id ?? selectedStore.id,
                       );
                     }}
-                    className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white shadow-sm"
+                    className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white shadow-md touch-target"
                   >
-                    <Plus size={16} />
+                    <Plus size={18} />
                   </motion.button>
                 </div>
               </motion.div>
@@ -303,86 +306,120 @@ export default function MenuPage() {
         )}
       </motion.div>
 
-      <Modal isOpen={!!detailItem} onClose={closeDetail} title={detailItem?.name}>
+      {/* Item Detail Modal */}
+      <AnimatePresence>
         {detailItem && (
-          <div className="flex flex-col gap-5">
-            <div>
-              <p className="text-sm text-gray-500 leading-relaxed">{detailItem.description}</p>
-              <p className="text-lg font-bold text-primary mt-2">{formatPrice(detailItem.base_price)}</p>
-            </div>
-
-            {loadingOptions ? (
-              <div className="space-y-3">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse" />
-                ))}
-              </div>
-            ) : Object.keys(groupedOptions).length > 0 ? (
-              <div className="space-y-4">
-                {Object.entries(groupedOptions).map(([type, options]) => (
-                  <div key={type}>
-                    <p className="text-sm font-semibold text-gray-900 capitalize mb-2">{type}</p>
-                    <div className="space-y-2">
-                      {options.map((opt) => {
-                        const isSelected = customizations.some((o) => o.id === opt.id);
-                        return (
-                          <button
-                            key={opt.id}
-                            onClick={() => toggleOption(opt)}
-                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all ${
-                              isSelected
-                                ? 'bg-primary/10 border-2 border-primary text-primary font-medium'
-                                : 'bg-gray-50 border-2 border-transparent text-gray-700'
-                            }`}
-                          >
-                            <span>{opt.name}</span>
-                            {opt.price_adjustment > 0 && (
-                              <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-gray-500'}`}>
-                                +{formatPrice(opt.price_adjustment)}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            <div className="flex items-center justify-between py-2">
-              <p className="text-sm font-semibold text-gray-700">Quantity</p>
-              <div className="flex items-center gap-4">
-                <motion.button
-                  whileTap={{ scale: 0.85 }}
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="w-9 h-9 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-colors"
-                >
-                  <Minus size={16} />
-                </motion.button>
-                <span className="text-lg font-bold text-gray-900 w-8 text-center">{quantity}</span>
-                <motion.button
-                  whileTap={{ scale: 0.85 }}
-                  onClick={() => setQuantity((q) => q + 1)}
-                  className="w-9 h-9 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-colors"
-                >
-                  <Plus size={16} />
-                </motion.button>
-              </div>
-            </div>
-
-            <Button
-              variant="primary"
-              size="lg"
-              className="w-full"
-              onClick={handleAddToCart}
-              leftIcon={<ShoppingCart size={18} />}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center"
+            onClick={closeDetail}
+          >
+            <div className="absolute inset-0 bg-black/50" />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative bg-white w-full max-w-[430px] rounded-t-3xl max-h-[85vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
             >
-              Add to cart - {formatPrice(totalPrice * quantity)}
-            </Button>
-          </div>
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+                <h2 className="text-lg font-bold text-gray-900">{detailItem.name}</h2>
+                <button
+                  onClick={closeDetail}
+                  className="p-2 rounded-full hover:bg-gray-100 touch-target"
+                >
+                  <X size={20} className="text-gray-500" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-5 scroll-container">
+                <p className="text-sm text-gray-500 leading-relaxed">{detailItem.description}</p>
+                <p className="text-xl font-bold text-primary mt-3">{formatPrice(detailItem.base_price)}</p>
+
+                {/* Customizations */}
+                {loadingOptions ? (
+                  <div className="space-y-3 mt-5">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+                    ))}
+                  </div>
+                ) : Object.keys(groupedOptions).length > 0 ? (
+                  <div className="space-y-5 mt-5">
+                    {Object.entries(groupedOptions).map(([type, options]) => (
+                      <div key={type}>
+                        <p className="text-sm font-semibold text-gray-900 capitalize mb-3">{type}</p>
+                        <div className="space-y-2">
+                          {options.map((opt) => {
+                            const isSelected = customizations.some((o) => o.id === opt.id);
+                            return (
+                              <button
+                                key={opt.id}
+                                onClick={() => toggleOption(opt)}
+                                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm transition-all ${
+                                  isSelected
+                                    ? 'bg-primary/10 border-2 border-primary text-primary font-medium'
+                                    : 'bg-gray-50 border-2 border-transparent text-gray-700 hover:bg-gray-100'
+                                }`}
+                              >
+                                <span>{opt.name}</span>
+                                {opt.price_adjustment > 0 && (
+                                  <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-gray-500'}`}>
+                                    +{formatPrice(opt.price_adjustment)}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {/* Quantity */}
+                <div className="flex items-center justify-between py-4 mt-4">
+                  <p className="text-sm font-semibold text-gray-700">Quantity</p>
+                  <div className="flex items-center gap-4">
+                    <motion.button
+                      whileTap={{ scale: 0.85 }}
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      className="w-10 h-10 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-colors touch-target"
+                    >
+                      <Minus size={18} />
+                    </motion.button>
+                    <span className="text-lg font-bold text-gray-900 w-8 text-center">{quantity}</span>
+                    <motion.button
+                      whileTap={{ scale: 0.85 }}
+                      onClick={() => setQuantity((q) => q + 1)}
+                      className="w-10 h-10 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-colors touch-target"
+                    >
+                      <Plus size={18} />
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Add to Cart Button */}
+              <div className="p-5 border-t border-gray-100 safe-area-bottom">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleAddToCart}
+                  leftIcon={<ShoppingCart size={20} />}
+                >
+                  Add to cart - {formatPrice(totalPrice * quantity)}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
-      </Modal>
+      </AnimatePresence>
     </motion.div>
   );
 }

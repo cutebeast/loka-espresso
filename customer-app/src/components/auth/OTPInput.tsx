@@ -108,124 +108,133 @@ export function OTPInput({ phone, onSubmit, onResend, onBack }: OTPInputProps) {
     }
   };
 
+  // Format phone for display
+  const displayPhone = phone.replace(/(\+\d{2})(\d{2})(\d{3})(\d{4})/, '$1 $2 $3 $4');
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
-      className="flex flex-col min-h-full px-6 py-8"
-    >
+    <div className="w-full">
+      {/* Back Button */}
       <motion.button
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.1 }}
         onClick={onBack}
-        className="self-start p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors mb-4"
+        className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors mb-6"
       >
-        <ChevronLeft className="w-6 h-6 text-gray-600" />
+        <ChevronLeft className="w-6 h-6 text-white" />
       </motion.button>
 
-      <div className="flex-1">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="text-center mb-10"
-        >
-          <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <ShieldCheck className="w-10 h-10 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Verify Phone</h1>
-          <p className="text-gray-500">
-            We sent a code to <span className="font-medium text-gray-700">{phone}</span>
-          </p>
-        </motion.div>
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="text-center mb-10"
+      >
+        <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <ShieldCheck className="w-10 h-10 text-white" />
+        </div>
+        <h1 className="text-3xl font-bold text-white mb-3">Verify Phone</h1>
+        <p className="text-white/70">
+          Enter the 6-digit code sent to<br />
+          <span className="font-semibold text-white">{displayPhone}</span>
+        </p>
+      </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="flex justify-center gap-3 mb-6"
-          onPaste={handlePaste}
-        >
-          {otp.map((digit, index) => (
-            <input
-              key={index}
-              ref={(el) => { inputRefs.current[index] = el; }}
-              type="text"
-              inputMode="numeric"
-              value={digit}
-              onChange={(e) => handleChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              className={`
-                w-12 h-14 text-center text-2xl font-bold rounded-2xl border-2 transition-all
-                ${error ? 'border-red-500 bg-red-50' : digit ? 'border-primary bg-primary/5' : 'border-gray-200 focus:border-primary'}
-                outline-none
-              `}
-              maxLength={1}
-            />
-          ))}
-        </motion.div>
+      {/* OTP Input */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="flex justify-center gap-2 mb-6"
+        onPaste={handlePaste}
+      >
+        {otp.map((digit, index) => (
+          <input
+            key={index}
+            ref={(el) => { inputRefs.current[index] = el; }}
+            type="text"
+            inputMode="numeric"
+            value={digit}
+            onChange={(e) => handleChange(index, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(index, e)}
+            className={`
+              w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 transition-all duration-200
+              ${error 
+                ? 'border-red-400 bg-red-500/10 text-red-300' 
+                : digit 
+                  ? 'border-white/50 bg-white/15 text-white' 
+                  : 'border-white/20 bg-white/10 text-white focus:border-white/40'
+              }
+              outline-none
+            `}
+            maxLength={1}
+          />
+        ))}
+      </motion.div>
 
-        {error && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center text-sm text-red-500 mb-4"
-          >
-            {error}
-          </motion.p>
-        )}
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-        >
-          <Button
-            onClick={() => handleVerify()}
-            className="w-full"
-            size="lg"
-            disabled={isLoading || otp.some((d) => !d)}
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              'Verify'
-            )}
-          </Button>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center mt-8"
-        >
-          <p className="text-gray-400 text-sm">
-            Didn&apos;t receive the code?{' '}
-            <button
-              onClick={handleResend}
-              disabled={resendTimer > 0}
-              className={`font-medium ${
-                resendTimer > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-primary hover:underline'
-              }`}
-            >
-              {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
-            </button>
-          </p>
-        </motion.div>
-
+      {/* Error Message */}
+      {error && (
         <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="text-center text-xs text-gray-400 mt-6"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center text-sm text-red-300 mb-4"
         >
-          Demo: check backend logs for OTP code
+          {error}
         </motion.p>
-      </div>
-    </motion.div>
+      )}
+
+      {/* Verify Button */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <Button
+          onClick={() => handleVerify()}
+          className="w-full mt-4"
+          size="lg"
+          disabled={isLoading || otp.some((d) => !d)}
+        >
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            'Verify'
+          )}
+        </Button>
+      </motion.div>
+
+      {/* Resend */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="text-center mt-8"
+      >
+        <p className="text-white/50 text-sm">
+          Didn&apos;t receive the code?{' '}
+          <button
+            onClick={handleResend}
+            disabled={resendTimer > 0}
+            className={`font-medium transition-colors ${
+              resendTimer > 0 
+                ? 'text-white/30 cursor-not-allowed' 
+                : 'text-white hover:text-white/80'
+            }`}
+          >
+            {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend'}
+          </button>
+        </p>
+      </motion.div>
+
+      {/* Demo Note */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="text-center text-xs text-white/30 mt-6"
+      >
+        Demo: Use code 111111
+      </motion.p>
+    </div>
   );
 }

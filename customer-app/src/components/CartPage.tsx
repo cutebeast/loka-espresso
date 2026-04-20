@@ -30,8 +30,9 @@ export default function CartPage() {
   const balance = useWalletStore((s) => s.balance);
 
   const subtotal = getTotal();
-  const deliveryFee = orderMode === 'delivery' ? 3.0 : 0.0;
-  const total = subtotal + deliveryFee;
+  const deliveryFee = orderMode === 'delivery' ? 5.0 : 0.0;
+  const tax = subtotal * 0.06; // 6% tax
+  const total = subtotal + deliveryFee + tax;
   const itemCount = getItemCount();
 
   if (items.length === 0) {
@@ -39,17 +40,18 @@ export default function CartPage() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center py-20 px-6"
+        className="flex flex-col items-center justify-center py-24 px-6"
       >
-        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-5">
-          <ShoppingBag size={36} className="text-gray-300" />
+        <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+          <ShoppingBag size={40} className="text-gray-300" />
         </div>
-        <p className="text-gray-900 font-bold text-lg mb-1">Your cart is empty</p>
-        <p className="text-gray-400 text-sm mb-6 text-center">Looks like you haven&apos;t added anything yet</p>
+        <p className="text-gray-900 font-bold text-xl mb-2">Your cart is empty</p>
+        <p className="text-gray-400 text-sm mb-8 text-center">Looks like you haven&apos;t added anything yet</p>
         <Button
           variant="primary"
+          size="lg"
           onClick={() => setPage('menu')}
-          rightIcon={<ArrowRight size={16} />}
+          rightIcon={<ArrowRight size={18} />}
         >
           Browse Menu
         </Button>
@@ -62,23 +64,26 @@ export default function CartPage() {
       variants={container}
       initial="hidden"
       animate="show"
-      className="px-4 pt-4 pb-6"
+      className="px-4 pt-4 pb-24"
     >
-      <motion.div variants={staggerItem} className="flex items-center justify-between mb-5">
+      {/* Header */}
+      <motion.div variants={staggerItem} className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-gray-900">Your Cart</h1>
-          <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-0.5 rounded-full">
-            {itemCount}
+          <h1 className="text-2xl font-bold text-gray-900">Your Cart</h1>
+          <span className="bg-primary/10 text-primary text-sm font-bold px-3 py-1 rounded-full">
+            {itemCount} items
           </span>
         </div>
         <button
           onClick={clearCart}
-          className="text-xs text-red-500 font-semibold hover:text-red-600 transition-colors"
+          className="text-sm text-danger font-semibold hover:text-danger/80 transition-colors flex items-center gap-1"
         >
-          Clear all
+          <Trash2 size={16} />
+          Clear
         </button>
       </motion.div>
 
+      {/* Cart Items */}
       <motion.div variants={staggerItem} className="space-y-3 mb-6">
         <AnimatePresence>
           {items.map((item, index) => {
@@ -94,42 +99,42 @@ export default function CartPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20, height: 0, marginBottom: 0 }}
                 transition={{ duration: 0.25 }}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
+                className="bg-white rounded-2xl p-4 shadow-card border border-gray-100"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{item.name}</p>
+                    <p className="text-base font-bold text-gray-900 truncate">{item.name}</p>
                     {customizationText && (
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">{customizationText}</p>
+                      <p className="text-xs text-gray-400 mt-1 truncate">{customizationText}</p>
                     )}
-                    <p className="text-sm font-bold text-primary mt-1">{formatPrice(item.price)}</p>
+                    <p className="text-sm font-bold text-primary mt-2">{formatPrice(item.price)}</p>
                   </div>
                   <button
                     onClick={() => removeItem(index)}
-                    className="p-2 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                    className="p-2 rounded-full hover:bg-danger/10 text-gray-400 hover:text-danger transition-colors touch-target"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                  <div className="flex items-center gap-4">
                     <motion.button
                       whileTap={{ scale: 0.85 }}
                       onClick={() => updateQuantity(index, item.quantity - 1)}
-                      className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-primary hover:text-primary transition-colors"
+                      className="w-9 h-9 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-500 hover:border-primary hover:text-primary transition-colors touch-target"
                     >
-                      <Minus size={14} />
+                      <Minus size={16} />
                     </motion.button>
-                    <span className="text-sm font-bold text-gray-900 w-6 text-center">{item.quantity}</span>
+                    <span className="text-base font-bold text-gray-900 w-8 text-center">{item.quantity}</span>
                     <motion.button
                       whileTap={{ scale: 0.85 }}
                       onClick={() => updateQuantity(index, item.quantity + 1)}
-                      className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-primary hover:text-primary transition-colors"
+                      className="w-9 h-9 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-500 hover:border-primary hover:text-primary transition-colors touch-target"
                     >
-                      <Plus size={14} />
+                      <Plus size={16} />
                     </motion.button>
                   </div>
-                  <span className="text-sm font-bold text-gray-900">
+                  <span className="text-base font-bold text-gray-900">
                     {formatPrice(item.price * item.quantity)}
                   </span>
                 </div>
@@ -139,51 +144,66 @@ export default function CartPage() {
         </AnimatePresence>
       </motion.div>
 
-      <motion.div variants={staggerItem} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-5">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-gray-500">Subtotal</span>
-          <span className="text-sm font-medium text-gray-900">{formatPrice(subtotal)}</span>
+      {/* Order Summary */}
+      <motion.div variants={staggerItem} className="bg-white rounded-2xl p-5 shadow-card border border-gray-100 mb-5">
+        <h2 className="text-base font-bold text-gray-900 mb-4">Order Summary</h2>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Subtotal</span>
+            <span className="text-sm font-medium text-gray-900">{formatPrice(subtotal)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Tax (6%)</span>
+            <span className="text-sm font-medium text-gray-900">{formatPrice(tax)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Delivery fee</span>
+            <span className="text-sm font-medium text-gray-900">
+              {deliveryFee > 0 ? formatPrice(deliveryFee) : 'Free'}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-gray-500">Delivery fee</span>
-          <span className="text-sm font-medium text-gray-900">
-            {deliveryFee > 0 ? formatPrice(deliveryFee) : 'Free'}
-          </span>
-        </div>
-        <div className="border-t border-gray-100 pt-3">
+        <div className="border-t border-gray-100 mt-4 pt-4">
           <div className="flex items-center justify-between">
             <span className="text-base font-bold text-gray-900">Total</span>
-            <span className="text-lg font-bold text-primary">{formatPrice(total)}</span>
+            <span className="text-xl font-bold text-primary">{formatPrice(total)}</span>
           </div>
         </div>
       </motion.div>
 
+      {/* Wallet Balance */}
+      {balance > 0 && (
+        <motion.div
+          variants={staggerItem}
+          className="bg-primary/5 rounded-2xl p-4 flex items-center gap-3 mb-5"
+        >
+          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+            <Wallet size={22} className="text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-gray-500">Wallet balance</p>
+            <p className="text-base font-bold text-primary">{formatPrice(balance)}</p>
+          </div>
+          {balance >= total && (
+            <span className="text-xs text-success font-medium bg-success/10 px-2 py-1 rounded-full">
+              Sufficient
+            </span>
+          )}
+        </motion.div>
+      )}
+
+      {/* Checkout Button */}
       <motion.div variants={staggerItem}>
         <Button
           variant="primary"
           size="lg"
           className="w-full"
           onClick={() => setPage('checkout')}
-          rightIcon={<ArrowRight size={18} />}
+          rightIcon={<ArrowRight size={20} />}
         >
-          Proceed to Checkout - {formatPrice(total)}
+          Checkout • {formatPrice(total)}
         </Button>
       </motion.div>
-
-      {balance > 0 && (
-        <motion.div
-          variants={staggerItem}
-          className="mt-4 bg-primary/5 rounded-2xl p-4 flex items-center gap-3"
-        >
-          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
-            <Wallet size={18} className="text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-xs text-gray-500">Wallet balance</p>
-            <p className="text-sm font-bold text-primary">{formatPrice(balance)}</p>
-          </div>
-        </motion.div>
-      )}
     </motion.div>
   );
 }

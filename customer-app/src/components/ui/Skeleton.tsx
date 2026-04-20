@@ -8,7 +8,7 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ className = '', variant = 'rect', width, height }: SkeletonProps) {
-  const baseClass = 'animate-pulse bg-gray-200';
+  const baseClass = 'skeleton';
   
   const variants = {
     rect: 'rounded-xl',
@@ -30,7 +30,7 @@ export function Skeleton({ className = '', variant = 'rect', width, height }: Sk
 
 export function CardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-2xl p-4 shadow-card border border-gray-100">
       <Skeleton variant="rect" className="h-32 w-full mb-4" />
       <Skeleton variant="text" className="w-3/4 mb-2" />
       <Skeleton variant="text" className="w-1/2" />
@@ -40,13 +40,30 @@ export function CardSkeleton() {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
-      <Skeleton variant="rect" className="h-24 w-full mb-3" />
+    <div className="bg-white rounded-2xl p-3 shadow-card border border-gray-100">
+      <Skeleton variant="rect" className="h-28 w-full mb-3" />
       <Skeleton variant="text" className="w-3/4 mb-2" />
       <Skeleton variant="text" className="w-1/2 mb-3" />
       <div className="flex justify-between items-center">
         <Skeleton variant="text" className="w-16" />
-        <Skeleton variant="circular" className="w-8 h-8" />
+        <Skeleton variant="circular" className="w-9 h-9" />
+      </div>
+    </div>
+  );
+}
+
+export function OrderCardSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-card border border-gray-100">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <Skeleton variant="text" className="w-24 mb-2" />
+          <Skeleton variant="text" className="w-16" />
+        </div>
+        <div className="flex items-center gap-3">
+          <Skeleton variant="rect" className="w-16 h-6 rounded-full" />
+          <Skeleton variant="text" className="w-14" />
+        </div>
       </div>
     </div>
   );
