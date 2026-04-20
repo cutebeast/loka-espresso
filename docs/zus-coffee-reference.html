@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+  <title>ZUS Coffee · App Prototype</title>
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #F5F7FA;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: #0B1E3A;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Mobile frame simulation */
+    .app-shell {
+      max-width: 390px;
+      width: 100%;
+      background: #FFFFFF;
+      height: 780px;
+      border-radius: 44px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      border: 1px solid rgba(30, 79, 138, 0.1);
+    }
+
+    /* Status bar / header */
+    .status-bar {
+      padding: 14px 20px 6px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+      font-size: 14px;
+      color: #0B1E3A;
+      background: white;
+    }
+
+    .app-header {
+      padding: 8px 20px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #EDF2F7;
+    }
+
+    .greeting h2 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #0A1E3C;
+    }
+
+    .greeting p {
+      font-size: 13px;
+      color: #5E718D;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 18px;
+    }
+
+    .header-actions i {
+      font-size: 20px;
+      color: #1E4F8A;
+      background: #F0F6FF;
+      padding: 8px;
+      border-radius: 50%;
+    }
+
+    /* main scrollable area */
+    .app-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 18px 8px;
+      scrollbar-width: none;
+    }
+
+    .app-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Page containers (simulate multiple pages) */
+    .page {
+      display: block;
+    }
+
+    .page.hidden {
+      display: none;
+    }
+
+    /* Cards & components */
+    .balance-card {
+      background: linear-gradient(145deg, #0A1E3C 0%, #1E4F8A 100%);
+      border-radius: 24px;
+      padding: 20px 20px;
+      color: white;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 20px rgba(10, 30, 60, 0.12);
+    }
+
+    .balance-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .balance-label {
+      font-weight: 500;
+      opacity: 0.8;
+      font-size: 14px;
+    }
+
+    .balance-amount {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .action-chip {
+      background: rgba(255,255,255,0.15);
+      padding: 10px 18px;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 13px;
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin: 20px 0 12px;
+    }
+
+    .section-title h3 {
+      font-weight: 700;
+      font-size: 18px;
+      color: #0A1E3C;
+    }
+
+    .section-title span {
+      color: #1E4F8A;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* horizontal scroll */
+    .scroll-x {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scrollbar-width: none;
+    }
+
+    .scroll-x::-webkit-scrollbar { display: none; }
+
+    .featured-item {
+      min-width: 140px;
+      background: #F9FBFE;
+      border-radius: 20px;
+      padding: 14px 10px;
+      border: 1px solid #E9F0FA;
+    }
+
+    .item-img {
+      width: 60px;
+      height: 60px;
+      background: #E3EEFA;
+      border-radius: 30px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+    }
+
+    .menu-category {
+      margin-bottom: 24px;
+    }
+
+    .menu-item-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid #EDF2F7;
+    }
+
+    .menu-info h4 {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .menu-price {
+      font-weight: 700;
+      color: #1E4F8A;
+    }
+
+    .add-btn {
+      background: #1E4F8A;
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(30,79,138,0.2);
+    }
+
+    /* Cart items */
+    .cart-item {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 18px;
+      align-items: center;
+    }
+
+    .cart-details {
+      flex: 1;
+    }
+
+    .qty-control {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 6px;
+    }
+
+    /* Bottom navigation */
+    .bottom-nav {
+      background: white;
+      padding: 8px 16px 12px;
+      display: flex;
+      justify-content: space-around;
+      border-top: 1px solid #EDF2F7;
+      box-shadow: 0 -4px 10px rgba(0,0,0,0.02);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #8A99AE;
+      font-size: 12px;
+      transition: 0.1s;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .nav-item i {
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    .nav-item.active {
+      color: #1E4F8A;
+    }
+
+    /* Order tracker */
+    .order-card {
+      background: white;
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      border: 1px solid #E9F0FA;
+    }
+
+    .status-badge {
+      background: #FFF3E3;
+      color: #B85B14;
+      padding: 4px 12px;
+      border-radius: 30px;
+      font-weight: 600;
+      font-size: 12px;
+      display: inline-block;
+    }
+
+    .progress-track {
+      display: flex;
+      justify-content: space-between;
+      margin: 20px 0 10px;
+    }
+
+    .step {
+      text-align: center;
+      flex: 1;
+    }
+
+    .step .dot {
+      width: 12px;
+      height: 12px;
+      background: #D0DDEB;
+      border-radius: 50%;
+      margin: 0 auto 6px;
+    }
+
+    .step.active .dot {
+      background: #1E4F8A;
+      box-shadow: 0 0 0 4px rgba(30,79,138,0.15);
+    }
+
+    .step.completed .dot {
+      background: #1E4F8A;
+    }
+
+    .profile-row {
+      display: flex;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid #EDF2F7;
+    }
+
+    .profile-icon {
+      width: 48px;
+      height: 48px;
+      background: #E9F0FA;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 16px;
+      color: #1E4F8A;
+      font-size: 20px;
+    }
+
+    .btn {
+      background: #1E4F8A;
+      border: none;
+      color: white;
+      padding: 16px 20px;
+      border-radius: 60px;
+      font-weight: 700;
+      font-size: 16px;
+      width: 100%;
+      margin: 10px 0 20px;
+    }
+
+    .search-bar {
+      background: #F4F8FD;
+      border-radius: 40px;
+      padding: 14px 20px;
+      display: flex;
+      gap: 10px;
+      color: #5E718D;
+      margin-bottom: 20px;
+    }
+
+    /* badge */
+    .badge {
+      background: #E74C3C;
+      color: white;
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+
+    /* utility */
+    .mt-2 { margin-top: 8px; }
+    .text-muted { color: #64748B; font-size: 13px; }
+    .fw-600 { font-weight: 600; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Status -->
+  <div class="status-bar">
+    <span>9:41</span>
+    <span><i class="fas fa-signal"></i>  <i class="fas fa-wifi"></i>  <i class="fas fa-battery-full"></i></span>
+  </div>
+
+  <!-- Header (dynamic with page) -->
+  <div id="appHeaderContainer" class="app-header">
+    <!-- will be filled by js -->
+  </div>
+
+  <!-- Main Content: all pages -->
+  <div class="app-content" id="appContent">
+    <!-- HOME PAGE -->
+    <div id="pageHome" class="page">
+      <div class="balance-card">
+        <div class="balance-row">
+          <span class="balance-label"><i class="fas fa-wallet"></i> ZUS Balance</span>
+          <span class="balance-label">Top Up <i class="fas fa-chevron-right"></i></span>
+        </div>
+        <div class="balance-row mt-2">
+          <span class="balance-amount">RM 28.50</span>
+          <span class="badge">ZUS Points: 2,450</span>
+        </div>
+        <div class="quick-actions">
+          <span class="action-chip"><i class="fas fa-gift"></i> Rewards</span>
+          <span class="action-chip"><i class="fas fa-ticket-alt"></i> Vouchers</span>
+          <span class="action-chip"><i class="fas fa-qrcode"></i> Scan</span>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <i class="fas fa-search"></i> <span>Search drinks, food, or outlets...</span>
+      </div>
+
+      <div class="section-title">
+        <h3>Today's Specials</h3>
+        <span>See All <i class="fas fa-arrow-right"></i></span>
+      </div>
+      <div class="scroll-x">
+        <div class="featured-item">
+          <div class="item-img">🥥</div>
+          <h4>CEO Latte</h4>
+          <p class="text-muted">RM 9.90</p>
+        </div>
+        <div class="featured-item">
+          <div class="item-img">🧋</div>
+          <h4>Java Chip</h4>
+          <p class="text-muted">RM 13.90</p>
+        </div>
+        <div class="featured-item">
+          <div class="item-img">🍯</div>
+          <h4>Spanish Latte</h4>
+          <p class="text-muted">RM 10.90</p>
+        </div>
+        <div class="featured-item">
+          <div class="item-img">🌿</div>
+          <h4>Pandan Latte</h4>
+          <p class="text-muted">RM 11.90</p>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <h3>Your recent orders</h3>
+        <span>Reorder <i class="fas fa-redo-alt"></i></span>
+      </div>
+      <div style="background: #F9FBFE; border-radius: 20px; padding: 14px;">
+        <div style="display: flex; gap: 12px;">
+          <i class="fas fa-coffee" style="color: #1E4F8A;"></i> 
+          <span>CEO Latte · Iced · Less Sugar</span>
+          <span style="margin-left: auto;">RM 9.90</span>
+        </div>
+        <div style="display: flex; gap: 12px; margin-top: 12px;">
+          <i class="fas fa-mug-hot"></i>
+          <span>Americano · Hot</span>
+          <span style="margin-left: auto;">RM 8.50</span>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <h3>ZUS Missions</h3>
+      </div>
+      <div class="order-card" style="padding: 16px;">
+        <span class="status-badge">🔥 5 orders to next reward</span>
+        <div style="margin-top: 12px; background: #E9F0FA; height: 6px; border-radius: 6px;"><div style="width: 40%; background: #1E4F8A; height: 6px; border-radius: 6px;"></div></div>
+        <p class="text-muted mt-2">Earn 2x points on all orders today</p>
+      </div>
+    </div>
+
+    <!-- MENU PAGE -->
+    <div id="pageMenu" class="page hidden">
+      <div class="search-bar">
+        <i class="fas fa-search"></i> <span>Find your favorite coffee</span>
+      </div>
+      <!-- categories -->
+      <div class="scroll-x" style="margin-bottom: 20px;">
+        <span class="action-chip" style="background: #1E4F8A; color:white;">All</span>
+        <span class="action-chip">☕ Coffee</span>
+        <span class="action-chip">🧊 Frappé</span>
+        <span class="action-chip">🥤 Non-Coffee</span>
+        <span class="action-chip">🥐 Pastry</span>
+      </div>
+
+      <div class="menu-category">
+        <h3 style="margin-bottom: 10px;">Signature Lattes</h3>
+        <div class="menu-item-row">
+          <div class="menu-info"><h4>CEO Latte</h4><p class="text-muted">Coconut creamy latte</p></div>
+          <div class="menu-price">RM 9.90</div>
+          <div class="add-btn"><i class="fas fa-plus"></i></div>
+        </div>
+        <div class="menu-item-row">
+          <div class="menu-info"><h4>Spanish Latte</h4><p class="text-muted">Condensed milk + espresso</p></div>
+          <div class="menu-price">RM 10.90</div>
+          <div class="add-btn"><i class="fas fa-plus"></i></div>
+        </div>
+        <div class="menu-item-row">
+          <div class="menu-info"><h4>Butterscotch Latte</h4><p class="text-muted">Sweet buttery caramel</p></div>
+          <div class="menu-price">RM 11.90</div>
+          <div class="add-btn"><i class="fas fa-plus"></i></div>
+        </div>
+      </div>
+
+      <div class="menu-category">
+        <h3 style="margin-bottom: 10px;">Classic Coffee</h3>
+        <div class="menu-item-row">
+          <div class="menu-info"><h4>Americano</h4><p class="text-muted">Espresso + water</p></div>
+          <div class="menu-price">RM 8.50</div>
+          <div class="add-btn"><i class="fas fa-plus"></i></div>
+        </div>
+        <div class="menu-item-row">
+          <div class="menu-info"><h4>Cappuccino</h4><p class="text-muted">Foamy classic</p></div>
+          <div class="menu-price">RM 9.50</div>
+          <div class="add-btn"><i class="fas fa-plus"></i></div>
+        </div>
+        <div class="menu-item-row">
+          <div class="menu-info"><h4>Latte</h4><p class="text-muted">Smooth steamed milk</p></div>
+          <div class="menu-price">RM 9.50</div>
+          <div class="add-btn"><i class="fas fa-plus"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CART PAGE -->
+    <div id="pageCart" class="page hidden">
+      <div class="section-title">
+        <h3>Your Cart (3 items)</h3>
+        <span>Clear</span>
+      </div>
+
+      <div class="cart-item">
+        <div class="item-img" style="width: 56px; height:56px;">🥥</div>
+        <div class="cart-details">
+          <div style="display: flex; justify-content: space-between;"><h4>CEO Latte</h4><span class="fw-600">RM 9.90</span></div>
+          <p class="text-muted">Iced · Less sugar · Oat milk</p>
+          <div class="qty-control">
+            <i class="fas fa-minus-circle" style="color:#1E4F8A;"></i> <span>1</span> <i class="fas fa-plus-circle" style="color:#1E4F8A;"></i>
+          </div>
+        </div>
+      </div>
+      <div class="cart-item">
+        <div class="item-img" style="width: 56px; height:56px;">🧋</div>
+        <div class="cart-details">
+          <div style="display: flex; justify-content: space-between;"><h4>Java Chip Frappé</h4><span>RM 13.90</span></div>
+          <p class="text-muted">Regular · Whipped cream</p>
+          <div class="qty-control"><i class="fas fa-minus-circle"></i> <span>1</span> <i class="fas fa-plus-circle"></i></div>
+        </div>
+      </div>
+      <div class="cart-item">
+        <div class="item-img" style="width: 56px; height:56px;">🥐</div>
+        <div class="cart-details">
+          <div style="display: flex; justify-content: space-between;"><h4>Butter Croissant</h4><span>RM 6.50</span></div>
+          <p class="text-muted">Warmed</p>
+          <div class="qty-control"><i class="fas fa-minus-circle"></i> <span>2</span> <i class="fas fa-plus-circle"></i></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 24px; background: #F4F8FD; border-radius: 20px; padding: 18px;">
+        <div style="display: flex; justify-content: space-between;"><span>Subtotal</span><span>RM 36.80</span></div>
+        <div style="display: flex; justify-content: space-between; margin: 10px 0;"><span>Delivery fee</span><span>RM 4.00</span></div>
+        <div style="display: flex; justify-content: space-between; font-weight: 700;"><span>Total</span><span>RM 40.80</span></div>
+      </div>
+      <button class="btn">Checkout · Pickup at ZUS TTDI</button>
+      <p class="text-muted" style="text-align:center;">Apply voucher <i class="fas fa-tag"></i></p>
+    </div>
+
+    <!-- ORDERS PAGE (tracker + history) -->
+    <div id="pageOrders" class="page hidden">
+      <div class="section-title">
+        <h3>Active order</h3>
+      </div>
+      <div class="order-card">
+        <div style="display: flex; justify-content: space-between;">
+          <span class="status-badge"><i class="fas fa-motorcycle"></i> Preparing</span>
+          <span class="text-muted">#ZUS-2024</span>
+        </div>
+        <div style="margin: 16px 0;">
+          <p class="fw-600">CEO Latte, Java Chip</p>
+          <p class="text-muted">ZUS TTDI · Pickup 12:15 PM</p>
+        </div>
+        <div class="progress-track">
+          <div class="step completed"><div class="dot"></div><span style="font-size:10px;">Ordered</span></div>
+          <div class="step active"><div class="dot"></div><span style="font-size:10px;">Preparing</span></div>
+          <div class="step"><div class="dot"></div><span style="font-size:10px;">Ready</span></div>
+          <div class="step"><div class="dot"></div><span style="font-size:10px;">Complete</span></div>
+        </div>
+        <button class="btn" style="padding:12px; margin:5px 0;">Track order</button>
+      </div>
+
+      <div class="section-title">
+        <h3>Past orders</h3>
+      </div>
+      <div class="order-card">
+        <div><span class="fw-600">Yesterday, 3:20 PM</span><span style="float:right;">RM 14.30</span></div>
+        <p class="text-muted">Americano, Croissant · Delivered</p>
+        <span style="color:#1E4F8A;"><i class="fas fa-redo-alt"></i> Reorder</span>
+      </div>
+      <div class="order-card">
+        <div><span class="fw-600">Feb 28, 9:30 AM</span><span style="float:right;">RM 9.90</span></div>
+        <p class="text-muted">CEO Latte · Pickup</p>
+        <span style="color:#1E4F8A;"><i class="fas fa-redo-alt"></i> Reorder</span>
+      </div>
+    </div>
+
+    <!-- PROFILE PAGE -->
+    <div id="pageProfile" class="page hidden">
+      <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 24px;">
+        <div style="background:#0A1E3C; width:64px; height:64px; border-radius: 32px; display: flex; align-items: center; justify-content: center; color:white; font-size: 28px;">A</div>
+        <div><h3>Alex Chen</h3><p class="text-muted"><i class="fas fa-envelope"></i> alex.chen@email.com</p></div>
+      </div>
+
+      <div class="balance-card" style="padding: 18px;">
+        <div>ZUS Points: 2,450 ⭐</div>
+        <div style="margin-top: 8px;"><i class="fas fa-gem"></i> Gold Member</div>
+      </div>
+
+      <div class="profile-row">
+        <div class="profile-icon"><i class="fas fa-user"></i></div><span>Account details</span><i class="fas fa-chevron-right" style="margin-left: auto;"></i>
+      </div>
+      <div class="profile-row">
+        <div class="profile-icon"><i class="fas fa-credit-card"></i></div><span>Payment methods</span><i class="fas fa-chevron-right" style="margin-left: auto;"></i>
+      </div>
+      <div class="profile-row">
+        <div class="profile-icon"><i class="fas fa-map-pin"></i></div><span>Saved addresses</span><i class="fas fa-chevron-right" style="margin-left: auto;"></i>
+      </div>
+      <div class="profile-row">
+        <div class="profile-icon"><i class="fas fa-bell"></i></div><span>Notifications</span><i class="fas fa-chevron-right" style="margin-left: auto;"></i>
+      </div>
+      <div class="profile-row">
+        <div class="profile-icon"><i class="fas fa-headset"></i></div><span>Help & Support</span><i class="fas fa-chevron-right" style="margin-left: auto;"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation (like the app) -->
+  <div class="bottom-nav">
+    <div class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></div>
+    <div class="nav-item" data-page="menu"><i class="fas fa-search"></i><span>Menu</span></div>
+    <div class="nav-item" data-page="cart"><i class="fas fa-shopping-bag"></i><span>Cart</span></div>
+    <div class="nav-item" data-page="orders"><i class="fas fa-receipt"></i><span>Orders</span></div>
+    <div class="nav-item" data-page="profile"><i class="fas fa-user"></i><span>Profile</span></div>
+  </div>
+</div>
+
+<script>
+  (function(){
+    const pages = {
+      home: document.getElementById('pageHome'),
+      menu: document.getElementById('pageMenu'),
+      cart: document.getElementById('pageCart'),
+      orders: document.getElementById('pageOrders'),
+      profile: document.getElementById('pageProfile')
+    };
+
+    const navItems = document.querySelectorAll('.nav-item');
+    const headerContainer = document.getElementById('appHeaderContainer');
+
+    function setActivePage(pageId) {
+      // hide all
+      Object.values(pages).forEach(p => p.classList.add('hidden'));
+      pages[pageId].classList.remove('hidden');
+
+      // update nav active
+      navItems.forEach(item => {
+        item.classList.remove('active');
+        if(item.dataset.page === pageId) item.classList.add('active');
+      });
+
+      // Update header dynamically (like app)
+      let headerHtml = '';
+      if (pageId === 'home') {
+        headerHtml = `<div class="greeting"><h2>Good morning, Alex</h2><p><i class="fas fa-map-pin"></i> ZUS TTDI · 1.2km away <i class="fas fa-chevron-down"></i></p></div>
+                      <div class="header-actions"><i class="far fa-bell"></i><i class="far fa-heart"></i></div>`;
+      } else if (pageId === 'menu') {
+        headerHtml = `<div class="greeting"><h2>Menu</h2><p>Freshly handcrafted</p></div>
+                      <div class="header-actions"><i class="fas fa-sliders-h"></i><i class="far fa-heart"></i></div>`;
+      } else if (pageId === 'cart') {
+        headerHtml = `<div class="greeting"><h2>My Cart</h2><p>Pickup · ASAP</p></div>
+                      <div class="header-actions"><i class="far fa-trash-alt"></i></div>`;
+      } else if (pageId === 'orders') {
+        headerHtml = `<div class="greeting"><h2>Orders</h2><p>Track & reorder</p></div>
+                      <div class="header-actions"><i class="far fa-clock"></i></div>`;
+      } else {
+        headerHtml = `<div class="greeting"><h2>Profile</h2><p>Manage your account</p></div>
+                      <div class="header-actions"><i class="fas fa-cog"></i></div>`;
+      }
+      headerContainer.innerHTML = headerHtml;
+    }
+
+    // navigation click
+    navItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        const page = item.dataset.page;
+        setActivePage(page);
+      });
+    });
+
+    // Start on home
+    setActivePage('home');
+
+    // make cart/order interactive buttons functional (demo)
+    document.querySelectorAll('.add-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        alert('➕ Item added to cart (ZUS App demo)');
+      });
+    });
+
+    // Checkout button
+    const checkoutBtn = document.querySelector('#pageCart .btn');
+    if(checkoutBtn) checkoutBtn.addEventListener('click', ()=> alert('🧾 Proceeding to checkout · ZUS Coffee'));
+
+    // order track
+    const trackBtn = document.querySelector('#pageOrders .btn');
+    if(trackBtn) trackBtn.addEventListener('click', ()=> alert('📍 Your order is being prepared at ZUS TTDI'));
+
+    console.log('⚡ ZUS Coffee App · all pages prototype (Home, Menu, Cart, Orders, Profile)');
+  })();
+</script>
+</body>
+</html>
