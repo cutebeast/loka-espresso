@@ -1,0 +1,14 @@
+{
+  "name": "Loka Espresso",
+  "short_name": "Loka",
+  "description": "Artisan Coffee · Community · Culture",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FCFAF7",
+  "theme_color": "#384B16",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,8 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useApp } from '../lib/app-context';
-import { PageId } from '../lib/api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Home,
+  Coffee,
+  Crown,
+  ShoppingBag,
+  User,
+  Bell,
+  QrCode,
+  ChevronDown,
+  MapPin,
+  Check,
+  X,
+} from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
+import { useUIStore } from '@/stores/uiStore';
+import { useCartStore } from '@/stores/cartStore';
+import { useWalletStore } from '@/stores/walletStore';
+import api from '@/lib/api';
+import type { PageId, Store } from '@/lib/api';
+import { SplashScreen } from '@/components/auth/SplashScreen';
+import { PhoneInput } from '@/components/auth/PhoneInput';
+import { OTPInput } from '@/components/auth/OTPInput';
+import { ProfileSetup } from '@/components/auth/ProfileSetup';
 import HomePage from './HomePage';
 import MenuPage from './MenuPage';
 import RewardsPage from './RewardsPage';
@@ -10,112 +32,446 @@ import CartPage from './CartPage';
 import OrdersPage from './OrdersPage';
 import ProfilePage from './ProfilePage';
 import HistoryPage from './HistoryPage';
-import LoginModal from './LoginModal';
-import StoreLocator from './StoreLocator';
+
+type AuthStep = 'splash' | 'phone' | 'otp' | 'profile' | 'done';
+
+const pageTransition = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+  transition: { duration: 0.25 },
+};
+
+const navItems: { id: PageId; label: string; icon: typeof Home }[] = [
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'menu', label: 'Menu', icon: Coffee },
+  { id: 'rewards', label: 'Rewards', icon: Crown },
+  { id: 'cart', label: 'Cart', icon: ShoppingBag },
+  { id: 'profile', label: 'Profile', icon: User },
+];
 
 export default function AppShell() {
-  const {
-    selectedStore, orderMode, setOrderMode, userName,
-    page, setPage, getGreeting, showModal, setShowModal,
-    modalContent, modalTitle, cart, setModalTitle, setModalContent,
-  } = useApp();
+  const { token, user, isAuthenticated, isNewUser, phone, setToken, setUser, setIsNewUser, setPhone, logout } = useAuthStore();
+  const { page, selectedStore, stores, toast, setPage, setSelectedStore, setStores, showToast, hideToast, setIsLoading } = useUIStore();
+  const getItemCount = useCartStore((s) => s.getItemCount);
+  const { setBalance, setPoints, setTier } = useWalletStore();
 
-  const [showSplash, setShowSplash] = useState(true);
-  const [showStoreLocator, setShowStoreLocator] = useState(false);
+  const [authStep, setAuthStep] = useState<AuthStep>('splash');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [showStoreModal, setShowStoreModal] = useState(false);
+  const [loadingAuth, setLoadingAuth] = useState(false);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cartCount = getItemCount();
 
   useEffect(() => {
-    const t = setTimeout(() => setShowSplash(false), 2000);
-    return () => clearTimeout(t);
-  }, []);
+    if (toast) {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => hideToast(), 3000);
+    }
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, [toast, hideToast]);
 
-  if (showSplash) {
+  const loadAppData = useCallback(async () => {
+    try {
+      const [profileRes, loyaltyRes, walletRes, storesRes] = await Promise.allSettled([
+        api.get('/users/me'),
+        api.get('/loyalty/balance'),
+        api.get('/wallet'),
+        api.get('/stores'),
+      ]);
+
+      if (profileRes.status === 'fulfilled') {
+        setUser(profileRes.value.data);
+      }
+
+      if (loyaltyRes.status === 'fulfilled') {
+        const d = loyaltyRes.value.data;
+        if (d?.points_balance != null) setPoints(d.points_balance);
+        if (d?.tier) setTier(d.tier);
+      }
+
+      if (walletRes.status === 'fulfilled') {
+        const d = walletRes.value.data;
+        if (d?.balance != null) setBalance(d.balance);
+      }
+
+      if (storesRes.status === 'fulfilled') {
+        const list: Store[] = storesRes.value.data;
+        setStores(list);
+        if (!selectedStore && list.length > 0) {
+          setSelectedStore(list[0]);
+        }
+      }
+    } catch {
+      showToast('Failed to load app data', 'error');
+    }
+  }, [setUser, setPoints, setTier, setBalance, setStores, setSelectedStore, selectedStore, showToast]);
+
+  useEffect(() => {
+    if (isAuthenticated && token && authStep === 'done') {
+      loadAppData();
+    }
+  }, [isAuthenticated, token, authStep, loadAppData]);
+
+  useEffect(() => {
+    if (!token) {
+      setAuthStep('splash');
+      return;
+    }
+
+    const validate = async () => {
+      setIsLoading(true);
+      try {
+        const res = await api.get('/users/me');
+        setUser(res.data);
+        setAuthStep('done');
+      } catch {
+        logout();
+        setAuthStep('splash');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    validate();
+  }, [logout, setIsLoading, setUser, token]);
+
+  const handleSplashFinish = useCallback(() => {
+    if (token && isAuthenticated) {
+      setAuthStep('done');
+    } else {
+      setAuthStep('phone');
+    }
+  }, [token, isAuthenticated]);
+
+  const normalizePhone = (raw: string): string => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    if (raw.startsWith('+')) {
+      if (digits.startsWith('60')) return '+' + digits;
+      if (digits.startsWith('01')) return '+6' + digits;
+      return '+' + digits;
+    }
+    if (digits.startsWith('60')) return '+' + digits;
+    if (digits.startsWith('01')) return '+6' + digits;
+    if (digits.startsWith('1')) return '+60' + digits;
+    return '+60' + digits;
+  };
+
+  const handlePhoneSubmit = useCallback(async (phoneValue: string) => {
+    setLoadingAuth(true);
+    try {
+      const normalized = normalizePhone(phoneValue);
+      await api.post('/auth/send-otp', { phone: normalized });
+      setPhoneNumber(normalized);
+      setPhone(normalized);
+      setAuthStep('otp');
+    } catch {
+      showToast('Failed to send OTP. Please try again.', 'error');
+    } finally {
+      setLoadingAuth(false);
+    }
+  }, [setPhone, showToast]);
+
+  const handleOTPSubmit = useCallback(async (code: string) => {
+    setLoadingAuth(true);
+    try {
+      const res = await api.post('/auth/verify-otp', { phone: phoneNumber, code });
+      const { access_token, is_new_user } = res.data;
+      setToken(access_token);
+      if (is_new_user) {
+        setIsNewUser(true);
+        setAuthStep('profile');
+      } else {
+        setIsNewUser(false);
+        setAuthStep('done');
+      }
+    } catch {
+      showToast('Invalid OTP. Please try again.', 'error');
+    } finally {
+      setLoadingAuth(false);
+    }
+  }, [phoneNumber, setToken, setIsNewUser, showToast]);
+
+  const handleResendOTP = useCallback(async () => {
+    try {
+      await api.post('/auth/send-otp', { phone: phoneNumber });
+      showToast('OTP resent successfully', 'success');
+    } catch {
+      showToast('Failed to resend OTP', 'error');
+    }
+  }, [phoneNumber, showToast]);
+
+  const handleProfileSubmit = useCallback(async (data: { name: string; email?: string }) => {
+    setLoadingAuth(true);
+    try {
+      await api.post('/auth/register', { name: data.name, email: data.email }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setIsNewUser(false);
+      setAuthStep('done');
+      showToast('Welcome to Loka Espresso!', 'success');
+    } catch {
+      showToast('Failed to save profile. Please try again.', 'error');
+    } finally {
+      setLoadingAuth(false);
+    }
+  }, [token, setIsNewUser, showToast]);
+
+  const handleProfileSkip = useCallback(() => {
+    setIsNewUser(false);
+    setAuthStep('done');
+  }, [setIsNewUser]);
+
+  if (authStep === 'splash') {
+    return <SplashScreen onFinish={handleSplashFinish} />;
+  }
+
+  if (authStep !== 'done') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="app-frame">
-          <div className="splash-screen">
-            <div style={{ fontSize: 40, fontWeight: 800, color: 'white', letterSpacing: 2, marginBottom: 24 }}>Loka</div>
-            <div className="spinner"></div>
-            <p style={{ color: 'rgba(255,255,255,0.8)', marginTop: 20 }}>Artisan Coffee · Community · Culture</p>
-          </div>
+      <div className="min-h-screen bg-[#384B16] flex items-center justify-center">
+        <div className="w-full max-w-[430px] px-6">
+          <AnimatePresence mode="wait">
+            {authStep === 'phone' && (
+              <motion.div key="phone" {...pageTransition}>
+                <PhoneInput onSubmit={handlePhoneSubmit} />
+              </motion.div>
+            )}
+            {authStep === 'otp' && (
+              <motion.div key="otp" {...pageTransition}>
+                <OTPInput
+                  phone={phoneNumber}
+                  onSubmit={handleOTPSubmit}
+                  onResend={handleResendOTP}
+                  onBack={() => setAuthStep('phone')}
+                />
+              </motion.div>
+            )}
+            {authStep === 'profile' && (
+              <motion.div key="profile" {...pageTransition}>
+                <ProfileSetup
+                  phone={phoneNumber}
+                  onSubmit={handleProfileSubmit}
+                  onSkip={handleProfileSkip}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {loadingAuth && (
+            <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl px-8 py-6 shadow-xl">
+                <div className="w-8 h-8 border-3 border-[#384B16] border-t-transparent rounded-full animate-spin mx-auto" />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  const navItems: Array<{ id: PageId; icon: string; label: string }> = [
-    { id: 'home', icon: 'fa-home', label: 'Home' },
-    { id: 'menu', icon: 'fa-mug-saucer', label: 'Menu' },
-    { id: 'rewards', icon: 'fa-crown', label: 'Rewards' },
-    { id: 'cart', icon: 'fa-shopping-bag', label: 'Cart' },
-    { id: 'orders', icon: 'fa-receipt', label: 'Orders' },
-    { id: 'profile', icon: 'fa-user', label: 'Profile' },
-  ];
+  const handleNavClick = (id: PageId) => {
+    if (id === page) return;
+    setPage(id);
+  };
+
+  const renderPage = () => {
+    switch (page) {
+      case 'home':
+        return <HomePage />;
+      case 'menu':
+        return <MenuPage />;
+      case 'rewards':
+        return <RewardsPage />;
+      case 'cart':
+        return <CartPage />;
+      case 'checkout':
+        return <CartPage />;
+      case 'orders':
+        return <OrdersPage />;
+      case 'order-detail':
+        return <OrdersPage />;
+      case 'profile':
+        return <ProfilePage />;
+      case 'wallet':
+        return <ProfilePage />;
+      case 'history':
+        return <HistoryPage />;
+      default:
+        return <HomePage />;
+    }
+  };
+
+  const toastColorMap = {
+    success: 'bg-green-600',
+    error: 'bg-red-600',
+    info: 'bg-blue-600',
+  };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="app-frame">
-        <div className="app-header">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F0F4F0', padding: '8px 14px', borderRadius: 40, cursor: 'pointer' }} onClick={() => setShowStoreLocator(true)}>
-              <i className="fas fa-map-pin" style={{ color: '#384B16', fontSize: 14 }}></i>
-              <span style={{ fontWeight: 600, fontSize: 15, color: '#384B16' }}>{selectedStore?.name || 'Select store'}</span>
-              <i className="fas fa-chevron-down" style={{ fontSize: 12 }}></i>
-            </div>
-            <div style={{ display: 'flex', gap: 20 }}>
-              <i className="far fa-bell" style={{ fontSize: 22, color: '#384B16', cursor: 'pointer' }}></i>
-              <i className="fas fa-qrcode" style={{ fontSize: 22, color: '#384B16', cursor: 'pointer' }} onClick={() => {
-                setModalTitle('Scan QR at table');
-                setModalContent(<div style={{ textAlign: 'center' }}><div style={{ background: '#eee', height: 200, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '20px 0' }}><i className="fas fa-camera" style={{ fontSize: 48 }}></i></div><p>Point camera at table QR code for dine-in</p></div>);
-                setShowModal(true);
-              }}></i>
-            </div>
-          </div>
-          <div style={{ marginTop: 14 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1B2023' }}>{getGreeting()}, {userName ? userName.split(' ')[0] : 'there'} 👋</h2>
-            <p style={{ color: '#5E6873', fontSize: 15, marginTop: 4 }}>What&apos;s your coffee mood today?</p>
-          </div>
-          <div style={{ display: 'flex', marginTop: 14, background: '#F2F5F9', padding: 4, borderRadius: 50 }}>
-            <div className={`toggle-option ${orderMode === 'pickup' ? 'active' : ''}`} onClick={() => setOrderMode('pickup')}>Pickup</div>
-            <div className={`toggle-option ${orderMode === 'delivery' ? 'active' : ''}`} onClick={() => setOrderMode('delivery')}>Delivery</div>
-          </div>
-        </div>
-
-        <div className="app-content">
-          {page === 'home' && <HomePage />}
-          {page === 'menu' && <MenuPage />}
-          {page === 'rewards' && <RewardsPage />}
-          {page === 'cart' && <CartPage />}
-          {page === 'orders' && <OrdersPage />}
-          {page === 'profile' && <ProfilePage />}
-          {page === 'history' && <HistoryPage />}
-        </div>
-
-        <div className="bottom-nav">
-          {navItems.map(n => (
-            <div key={n.id} className={`nav-item ${page === n.id ? 'active' : ''}`} onClick={() => setPage(n.id)}>
-              <i className={`fas ${n.icon}`}></i>
-              <span>{n.label}</span>
-              {n.id === 'cart' && cart.length > 0 && (
-                <span style={{ position: 'absolute', top: -4, right: -4, background: '#EF4444', color: 'white', fontSize: 10, width: 16, height: 16, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{cart.reduce((s, c) => s + c.quantity, 0)}</span>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <LoginModal />
-        <StoreLocator visible={showStoreLocator} onClose={() => setShowStoreLocator(false)} />
-
-        {showModal && (
-          <div className="modal-overlay" onClick={() => setShowModal(false)}>
-            <div className="modal-sheet" onClick={e => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3>{modalTitle}</h3>
-                <button style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }} onClick={() => setShowModal(false)}>✕</button>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="app-frame w-full max-w-[430px] min-h-screen bg-gray-50 flex flex-col relative overflow-hidden">
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: -60 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -60 }}
+              className={`absolute top-0 left-0 right-0 z-50 px-4 pt-3 pb-4 ${toastColorMap[toast.type]}`}
+            >
+              <div className="flex items-center justify-between text-white">
+                <span className="text-sm font-medium flex-1">{toast.message}</span>
+                <button onClick={hideToast} className="ml-3 p-1 rounded-full hover:bg-white/20">
+                  <X size={16} />
+                </button>
               </div>
-              {modalContent}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <header className="sticky top-0 z-40 bg-[#384B16] text-white px-4 pt-3 pb-3">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setShowStoreModal(true)}
+              className="flex items-center gap-2 bg-white/15 rounded-full px-3 py-1.5 max-w-[200px]"
+            >
+              <MapPin size={14} className="shrink-0" />
+              <span className="text-xs font-medium truncate">
+                {selectedStore?.name || 'Select store'}
+              </span>
+              <ChevronDown size={14} className="shrink-0" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                <QrCode size={20} />
+              </button>
+              <button className="p-2 rounded-full hover:bg-white/10 transition-colors relative">
+                <Bell size={20} />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              </button>
             </div>
           </div>
-        )}
+        </header>
+
+        <main className="flex-1 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={page}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              {renderPage()}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+
+        <nav className="sticky bottom-0 z-40 bg-white border-t border-gray-200 safe-area-bottom">
+          <div className="flex items-center justify-around h-16 px-2">
+            {navItems.map(({ id, label, icon: Icon }) => {
+              const isActive = page === id || (id === 'home' && page === 'order-detail') || (id === 'cart' && page === 'checkout');
+              return (
+                <button
+                  key={id}
+                  onClick={() => handleNavClick(id)}
+                  className={`flex flex-col items-center justify-center gap-0.5 w-16 h-full transition-colors relative ${
+                    isActive ? 'text-[#384B16]' : 'text-gray-400'
+                  }`}
+                >
+                  <div className="relative">
+                    <Icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+                    {id === 'cart' && cartCount > 0 && (
+                      <span className="absolute -top-2 -right-3 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                        {cartCount > 99 ? '99+' : cartCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                    {label}
+                  </span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="nav-indicator"
+                      className="absolute -top-px left-3 right-3 h-0.5 bg-[#384B16] rounded-full"
+                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        <AnimatePresence>
+          {showStoreModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end justify-center"
+              onClick={() => setShowStoreModal(false)}
+            >
+              <div className="absolute inset-0 bg-black/40" />
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="relative bg-white w-full max-w-[430px] rounded-t-3xl max-h-[70vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+                  <h2 className="text-lg font-bold text-gray-900">Select Store</h2>
+                  <button
+                    onClick={() => setShowStoreModal(false)}
+                    className="p-2 rounded-full hover:bg-gray-100"
+                  >
+                    <X size={20} className="text-gray-500" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {stores.length === 0 && (
+                    <p className="text-center text-gray-400 py-8">No stores available</p>
+                  )}
+                  {stores.map((store) => (
+                    <button
+                      key={store.id}
+                      onClick={() => {
+                        setSelectedStore(store);
+                        setShowStoreModal(false);
+                        showToast(`Switched to ${store.name}`, 'success');
+                      }}
+                      className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${
+                        selectedStore?.id === store.id
+                          ? 'border-[#384B16] bg-[#384B16]/5'
+                          : 'border-gray-100 bg-white hover:border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-900 truncate">
+                              {store.name}
+                            </span>
+                            {selectedStore?.id === store.id && (
+                              <Check size={16} className="text-[#384B16] shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500 mt-0.5 truncate">{store.address}</p>
+                        </div>
+                        <MapPin size={16} className="text-gray-400 shrink-0 ml-2 mt-0.5" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

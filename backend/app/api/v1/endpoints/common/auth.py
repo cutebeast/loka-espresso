@@ -79,17 +79,35 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
 
 @router.post("/verify-otp", response_model=TokenResponse)
 async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(OTPSession)
-        .where(OTPSession.phone == req.phone, OTPSession.verified == False)
-        .order_by(OTPSession.created_at.desc())
-    )
-    otp = result.scalar_one_or_none()
-    if not otp or otp.code != req.code:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    if ensure_utc(otp.expires_at) < now_utc():
-        raise HTTPException(status_code=400, detail="OTP expired")
-    otp.verified = True
+    bypass_enabled = False
+    bypass_code = None
+    try:
+        from app.models.splash import AppConfig
+        cfg_result = await db.execute(select(AppConfig).where(AppConfig.key == "otp_bypass_enabled"))
+        cfg = cfg_result.scalar_one_or_none()
+        if cfg and cfg.value and cfg.value.strip().lower() == 'true':
+            bypass_enabled = True
+        cfg_result = await db.execute(select(AppConfig).where(AppConfig.key == "otp_bypass_code"))
+        cfg = cfg_result.scalar_one_or_none()
+        if cfg and cfg.value:
+            bypass_code = cfg.value.strip()
+    except Exception:
+        pass
+
+    if bypass_enabled and bypass_code and req.code == bypass_code:
+        logger.info(f"OTP bypass used for {req.phone[:4]}****")
+    else:
+        result = await db.execute(
+            select(OTPSession)
+            .where(OTPSession.phone == req.phone, OTPSession.verified == False)
+            .order_by(OTPSession.created_at.desc())
+        )
+        otp = result.scalar_one_or_none()
+        if not otp or otp.code != req.code:
+            raise HTTPException(status_code=400, detail="Invalid OTP")
+        if ensure_utc(otp.expires_at) < now_utc():
+            raise HTTPException(status_code=400, detail="OTP expired")
+        otp.verified = True
 
     result = await db.execute(select(User).where(User.phone == req.phone))
     user = result.scalar_one_or_none()

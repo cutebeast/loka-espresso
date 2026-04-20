@@ -45,6 +45,7 @@ import FeedbackPage from '@/components/pages/marketing/FeedbackPage';
 import MarketingReportsPage from '@/components/pages/analytics/MarketingReportsPage';
 import SalesReportsPage from '@/components/pages/analytics/SalesReportsPage';
 import SettingsPage from '@/components/pages/system/SettingsPage';
+import PWASettingsPage from '@/components/pages/system/PWASettingsPage';
 
 export default function MerchantDashboard() {
   const [token, setToken] = useState('');
@@ -332,6 +333,7 @@ export default function MerchantDashboard() {
     auditlog: 'Audit Log',
     store: 'Store Settings',
     settings: 'App Settings',
+    pwa: 'PWA Settings',
     customerDetail: 'Customer Profile',
   };
 
@@ -529,6 +531,10 @@ export default function MerchantDashboard() {
 
             {page === 'settings' && (
               <SettingsPage token={token} />
+            )}
+
+            {page === 'pwa' && (
+              <PWASettingsPage token={token} />
             )}
             </div>
           </ErrorBoundary>

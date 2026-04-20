@@ -1,71 +1,250 @@
 'use client';
 
-import { useApp } from '../lib/app-context';
+import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Crown,
+  Star,
+  Wallet,
+  History,
+  MapPin,
+  CreditCard,
+  Bell,
+  Info,
+  LogOut,
+  ChevronRight,
+} from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
+import { useWalletStore } from '@/stores/walletStore';
+import { useCartStore } from '@/stores/cartStore';
+import { useUIStore } from '@/stores/uiStore';
+import { Button, Modal } from '@/components/ui';
+import api from '@/lib/api';
+
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
+};
+
+const staggerItem = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+};
+
+function formatPrice(val: number): string {
+  return `RM ${val.toFixed(2)}`;
+}
+
+function getNextTier(tier: string): string | null {
+  const tiers = ['Bronze', 'Silver', 'Gold', 'Platinum'];
+  const idx = tiers.indexOf(tier);
+  if (idx < 0 || idx >= tiers.length - 1) return null;
+  return tiers[idx + 1];
+}
+
+function getTierProgress(tier: string, points: number): number {
+  const thresholds: Record<string, number> = { Bronze: 0, Silver: 500, Gold: 1000, Platinum: 1500 };
+  const current = thresholds[tier] ?? 0;
+  const nextTier = getNextTier(tier);
+  if (!nextTier) return 100;
+  const next = thresholds[nextTier] ?? current + 500;
+  const range = next - current;
+  return Math.min(100, Math.max(0, ((points - current) / range) * 100));
+}
+
+const MENU_ITEMS = [
+  { id: 'history', icon: History, label: 'Transaction History' },
+  { id: 'addresses', icon: MapPin, label: 'Delivery Addresses' },
+  { id: 'payments', icon: CreditCard, label: 'Payment Methods' },
+  { id: 'notifications', icon: Bell, label: 'Notifications', toggle: true },
+  { id: 'about', icon: Info, label: 'About Loka' },
+];
 
 export default function ProfilePage() {
-  const {
-    userName, userEmail, userPhone, loyaltyTier, loyaltyPoints,
-    walletBalance, setPage, setModalTitle, setModalContent, setShowModal,
-    setToken, setShowLogin,
-  } = useApp();
+  const { user, setUser, logout } = useAuthStore();
+  const { balance, points, tier, setBalance, setPoints, setTier } = useWalletStore();
+  const { setPage, showToast } = useUIStore();
+  const clearCart = useCartStore((s) => s.clearCart);
+
+  const [showLogout, setShowLogout] = useState(false);
+  const [notifications, setNotifications] = useState(true);
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const [userRes, walletRes, loyaltyRes] = await Promise.all([
+        api.get('/users/me'),
+        api.get('/wallet'),
+        api.get('/loyalty/balance'),
+      ]);
+      setUser(userRes.data);
+      setBalance(walletRes.data?.balance ?? balance);
+      setPoints(loyaltyRes.data?.points_balance ?? loyaltyRes.data?.points ?? points);
+      setTier(loyaltyRes.data?.tier ?? tier);
+    } catch {
+      // keep existing store values
+    }
+  }, [balance, points, tier, setBalance, setPoints, setTier, setUser]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  const handleMenuClick = (id: string) => {
+    switch (id) {
+      case 'history':
+        setPage('history');
+        break;
+      case 'addresses':
+      case 'payments':
+        showToast('Coming soon', 'info');
+        break;
+      case 'notifications':
+        setNotifications((prev) => !prev);
+        break;
+      case 'about':
+        showToast('Loka Espresso v1.0', 'info');
+        break;
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    clearCart();
+    setShowLogout(false);
+  };
+
+  const initials = user?.name?.charAt(0)?.toUpperCase() || 'U';
+  const nextTier = getNextTier(tier);
+  const progress = getTierProgress(tier, points);
 
   return (
-    <div className="page-enter">
-      <div style={{ display: 'flex', gap: 16, margin: '16px 0' }}>
-        <div style={{ width: 64, height: 64, background: '#384B16', borderRadius: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 28, fontWeight: 700, flexShrink: 0 }}>
-          {userName ? userName[0].toUpperCase() : '?'}
-        </div>
-        <div><h3>{userName || 'Guest'}</h3><p style={{ color: '#64748B' }}>{userEmail || userPhone}</p></div>
-      </div>
-
-      <div style={{ background: 'linear-gradient(135deg, #384B16, #4A6A1D)', borderRadius: 20, padding: 20, marginBottom: 16, color: 'white' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontSize: 14, opacity: 0.8 }}>⭐ {loyaltyTier}</span>
-          <span style={{ fontSize: 24, fontWeight: 700 }}>{loyaltyPoints} pts</span>
-        </div>
-        <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 10, height: 6 }}>
-          <div style={{ background: 'white', width: `${Math.min((loyaltyPoints / 400) * 100, 100)}%`, height: 6, borderRadius: 10 }}></div>
-        </div>
-        <p style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{Math.max(0, 400 - loyaltyPoints)} pts to next tier</p>
-      </div>
-
-      <div style={{ background: 'white', borderRadius: 20, padding: 20, marginBottom: 16, border: '1px solid #ECF1F7' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <p style={{ fontSize: 13, color: '#64748B' }}>Wallet Balance</p>
-            <p style={{ fontSize: 28, fontWeight: 700, color: '#384B16' }}>RM {walletBalance.toFixed(2)}</p>
+    <motion.div variants={container} initial="hidden" animate="show" className="px-4 pt-4 pb-6">
+      <motion.div variants={staggerItem} className="mb-6">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mb-3">
+            <span className="text-2xl font-bold text-white">{initials}</span>
           </div>
-          <i className="fas fa-wallet" style={{ fontSize: 32, color: '#384B16', opacity: 0.3 }}></i>
+          <h2 className="text-lg font-bold text-gray-900">{user?.name || 'Guest'}</h2>
+          <p className="text-sm text-gray-500">{user?.email || ''}</p>
         </div>
-      </div>
+      </motion.div>
 
-      <div style={{ background: 'white', borderRadius: 24, padding: '8px 0' }}>
-        <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0F3F8', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={() => setPage('history')}>
-          <span><i className="fas fa-clock-rotate-left" style={{ marginRight: 14, color: '#384B16' }}></i> Transaction History</span>
-          <i className="fas fa-chevron-right" style={{ color: '#94A3B8', fontSize: 12 }}></i>
+      <motion.div variants={staggerItem} className="mb-4">
+        <div className="bg-gradient-to-r from-[#384B16] to-[#6b8f3a] rounded-2xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Crown size={16} className="opacity-90" />
+              <span className="text-sm font-semibold">{tier} Member</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Star size={14} className="text-yellow-300" />
+              <span className="text-sm font-bold">{points} pts</span>
+            </div>
+          </div>
+          {nextTier && (
+            <div>
+              <div className="flex justify-between text-xs opacity-70 mb-1">
+                <span>{tier}</span>
+                <span>{nextTier}</span>
+              </div>
+              <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                  className="h-full bg-yellow-300 rounded-full"
+                />
+              </div>
+            </div>
+          )}
         </div>
-        <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0F3F8', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={() => {
-          setModalTitle('Delivery Addresses');
-          setModalContent(<p style={{ color: '#64748B' }}>Manage your delivery addresses here.</p>);
-          setShowModal(true);
-        }}>
-          <span><i className="fas fa-map-marker-alt" style={{ marginRight: 14, color: '#384B16' }}></i> Addresses</span>
-          <i className="fas fa-chevron-right" style={{ color: '#94A3B8', fontSize: 12 }}></i>
+      </motion.div>
+
+      <motion.div variants={staggerItem} className="mb-4">
+        <button
+          onClick={() => setPage('wallet')}
+          className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3 text-left"
+        >
+          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+            <Wallet size={18} className="text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-gray-500">Wallet Balance</p>
+            <p className="text-lg font-bold text-gray-900">{formatPrice(balance)}</p>
+          </div>
+          <span className="text-xs font-semibold text-primary">View Wallet</span>
+          <ChevronRight size={16} className="text-gray-400" />
+        </button>
+      </motion.div>
+
+      <motion.div variants={staggerItem} className="mb-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {MENU_ITEMS.map((item, i) => {
+            const Icon = item.icon;
+            const isLast = i === MENU_ITEMS.length - 1;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleMenuClick(item.id)}
+                className={`w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50 transition-colors ${
+                  !isLast ? 'border-b border-gray-100' : ''
+                }`}
+              >
+                <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center">
+                  <Icon size={16} className="text-gray-600" />
+                </div>
+                <span className="flex-1 text-sm font-medium text-gray-900">{item.label}</span>
+                {item.toggle ? (
+                  <div
+                    className={`w-10 h-6 rounded-full transition-colors flex items-center px-0.5 ${
+                      notifications ? 'bg-primary justify-end' : 'bg-gray-300 justify-start'
+                    }`}
+                  >
+                    <div className="w-5 h-5 bg-white rounded-full shadow-sm" />
+                  </div>
+                ) : (
+                  <ChevronRight size={16} className="text-gray-400" />
+                )}
+              </button>
+            );
+          })}
         </div>
-        <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0F3F8', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={() => {
-          setModalTitle('Payment Methods');
-          setModalContent(<p style={{ color: '#64748B' }}>Manage your payment methods here.</p>);
-          setShowModal(true);
-        }}>
-          <span><i className="fas fa-credit-card" style={{ marginRight: 14, color: '#384B16' }}></i> Payment methods</span>
-          <i className="fas fa-chevron-right" style={{ color: '#94A3B8', fontSize: 12 }}></i>
+      </motion.div>
+
+      <motion.div variants={staggerItem}>
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-full text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+          onClick={() => setShowLogout(true)}
+          leftIcon={<LogOut size={18} />}
+        >
+          Sign Out
+        </Button>
+      </motion.div>
+
+      <Modal
+        isOpen={showLogout}
+        onClose={() => setShowLogout(false)}
+        title="Sign Out"
+        variant="center"
+      >
+        <p className="text-sm text-gray-500 mb-5">
+          Are you sure you want to sign out?
+        </p>
+        <div className="flex gap-3">
+          <Button variant="ghost" className="flex-1" onClick={() => setShowLogout(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            className="flex-1 bg-red-500 hover:bg-red-600"
+            onClick={handleLogout}
+          >
+            Sign Out
+          </Button>
         </div>
-        <div style={{ padding: '18px 20px', cursor: 'pointer' }}>
-          <span><i className="fas fa-bell" style={{ marginRight: 14, color: '#384B16' }}></i> Push notifications</span>
-          <span style={{ float: 'right', color: '#10B981', fontWeight: 600 }}>ON</span>
-        </div>
-      </div>
-      <button style={{ marginTop: 20, width: '100%', padding: 16, borderRadius: 40, border: '1px solid #DDE3E9', background: 'white', fontWeight: 600, cursor: 'pointer', fontSize: 16 }} onClick={() => { setToken(''); localStorage.removeItem('fnb_customer_token'); setShowLogin(true); }}>Sign out</button>
-    </div>
+      </Modal>
+    </motion.div>
   );
 }

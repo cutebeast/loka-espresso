@@ -13,7 +13,7 @@ const PAGE_VISIBILITY: Record<number, Set<string>> = {
     'menu', 'inventory', 'tables', 'staff',
     'customers', 'rewards', 'vouchers', 'promotions', 'notifications', 'feedback',
     'reports', 'marketingreports',
-    'store', 'settings', 'loyaltyrules', 'auditlog',
+    'store', 'settings', 'pwa', 'loyaltyrules', 'auditlog',
   ]),
   2: new Set([
     'dashboard', 'orders',
@@ -49,6 +49,7 @@ const navGroups = [
   { label: 'System & Config', icon: 'fa-cog', items: [
     { id: 'store' as PageId, icon: 'fa-store-alt', label: 'Store Settings' },
     { id: 'settings' as PageId, icon: 'fa-cog', label: 'App Settings' },
+    { id: 'pwa' as PageId, icon: 'fa-mobile-alt', label: 'PWA Settings' },
     { id: 'loyaltyrules' as PageId, icon: 'fa-medal', label: 'Loyalty Rules' },
     { id: 'auditlog' as PageId, icon: 'fa-history', label: 'Audit Log' },
   ]},
