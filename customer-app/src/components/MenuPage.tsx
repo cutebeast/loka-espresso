@@ -56,21 +56,19 @@ export default function MenuPage() {
   const [loadingOptions, setLoadingOptions] = useState(false);
 
   const loadMenu = useCallback(async () => {
-    if (!selectedStore) {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
+      // Load global menu (not store-specific)
       const [catRes, itemsRes] = await Promise.all([
-        api.get(`/stores/${selectedStore.id}/categories`),
-        api.get(`/stores/${selectedStore.id}/items`),
+        api.get('/categories'),
+        api.get('/items'),
       ]);
       setCategories(Array.isArray(catRes.data) ? catRes.data : []);
       setMenuItems(Array.isArray(itemsRes.data) ? itemsRes.data : []);
     } catch {
       try {
-        const menuRes = await api.get(`/stores/${selectedStore.id}/menu`);
+        // Fallback: try global menu endpoint
+        const menuRes = await api.get('/menu');
         const data = menuRes.data;
         const cats = Array.isArray(data) ? data : (data?.categories ?? []);
         const allCategories: Category[] = [];
@@ -90,25 +88,25 @@ export default function MenuPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedStore, setCategories, setMenuItems]);
+  }, [setCategories, setMenuItems]);
 
   useEffect(() => {
     loadMenu();
   }, [loadMenu]);
 
   const loadCustomizations = useCallback(async (item: MenuItem) => {
-    if (!selectedStore) return;
     setLoadingOptions(true);
     setCustomizations([]);
     try {
-      const res = await api.get(`/stores/${selectedStore.id}/items/${item.id}/customizations`);
+      // Try global endpoint first, fallback to item's customizations
+      const res = await api.get(`/items/${item.id}/customizations`);
       setAvailableOptions(res.data ?? []);
     } catch {
       setAvailableOptions(item.customization_options ?? []);
     } finally {
       setLoadingOptions(false);
     }
-  }, [selectedStore]);
+  }, []);
 
   const openDetail = useCallback((item: MenuItem) => {
     setDetailItem(item);
@@ -140,7 +138,8 @@ export default function MenuPage() {
 
   const handleAddToCart = useCallback(() => {
     if (!detailItem) return;
-    const storeId = detailItem.store_id ?? selectedStore?.id ?? 0;
+    // Menu is global, but orders still need a store - use selected store
+    const storeId = selectedStore?.id ?? 1; // Default to store 1 if none selected
     addItem(
       {
         menu_item_id: detailItem.id,
@@ -171,18 +170,6 @@ export default function MenuPage() {
     acc[type].push(opt);
     return acc;
   }, {});
-
-  if (!selectedStore) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 px-6">
-        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-          <Coffee size={32} className="text-primary/50" />
-        </div>
-        <p className="text-gray-500 font-medium text-center text-lg">Select a store to view menu</p>
-        <p className="text-sm text-gray-400 mt-2">Choose a location from the header</p>
-      </div>
-    );
-  }
 
   return (
     <motion.div
@@ -292,7 +279,7 @@ export default function MenuPage() {
                           quantity: 1,
                           customizations: {},
                         },
-                        item.store_id ?? selectedStore.id,
+                        selectedStore?.id ?? 1,
                       );
                     }}
                     className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white shadow-md touch-target"
