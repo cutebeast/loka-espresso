@@ -99,7 +99,8 @@ def _normalize_tier_name(tier: str | None) -> str | None:
 
 
 def _is_customer_profile_complete(name: str | None, email: str | None, phone_verified: bool) -> bool:
-    return bool(phone_verified and (name or "").strip() and (email or "").strip())
+    """Profile is complete when phone is verified and name is set. Email is optional."""
+    return bool(phone_verified and (name or "").strip())
 
 
 def _effective_customer_tier(loyalty_tier: str | None, total_points_earned: int | None, *, profile_complete: bool) -> str | None:
@@ -651,7 +652,7 @@ async def approve_customer_profile(
         "phone_verified": target.phone_verified,
         "is_active": target.is_active,
         "is_profile_complete": profile_complete,
-        "note": "Profile is still missing name/email. Customer can update their profile from the app." if not profile_complete else None,
+        "note": "Profile is still missing name. Customer can update their profile from the app." if not profile_complete else None,
     }
 
 

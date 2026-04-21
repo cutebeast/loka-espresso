@@ -459,7 +459,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
                   )}</p>
                   <p style={{ marginBottom: 8 }}><strong>Tier:</strong> <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'Pending Profile'}</span></p>
                   <p style={{ marginBottom: 8 }}><strong>Phone Verified:</strong> {detail.phone_verified ? <span style={{ color: '#059669' }}>Yes</span> : <span style={{ color: '#EF4444' }}>No</span>}</p>
-                  <p style={{ marginBottom: 12 }}><strong>Profile Complete:</strong> {detail.is_profile_complete ? <span style={{ color: '#059669' }}>Yes</span> : <span style={{ color: '#D97706' }}>No (name and email still required)</span>}</p>
+                  <p style={{ marginBottom: 12 }}><strong>Profile Complete:</strong> {detail.is_profile_complete ? <span style={{ color: '#059669' }}>Yes</span> : <span style={{ color: '#D97706' }}>No (name still required)</span>}</p>
                   <p style={{ marginBottom: 12 }}><strong>Joined:</strong> {detail.created_at ? new Date(detail.created_at).toLocaleDateString() : '-'}</p>
                   <button className="btn btn-sm" onClick={() => setEditingCustomer(true)}>
                     <i className="fas fa-edit"></i> Edit Profile
@@ -494,8 +494,8 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
                   <i className="fas fa-info-circle" style={{ marginRight: 6 }}></i>Phone Verified — Profile Incomplete
                 </div>
                 <div style={{ fontSize: 12, color: '#1E3A8A', marginBottom: 8 }}>
-                  This customer&apos;s phone is verified but profile is incomplete (name/email missing).
-                  Use <strong>Edit Profile</strong> on the Profile tab to set their name and email.
+                  This customer&apos;s phone is verified but profile is incomplete (name missing).
+                  Use <strong>Edit Profile</strong> on the Profile tab to set their name.
                 </div>
               </div>
             )}
