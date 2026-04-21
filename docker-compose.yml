@@ -17,6 +17,49 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fnb-backend
+    restart: unless-stopped
+    user: root
+    command: sh -c "chown -R appuser:appuser /app/uploads && exec su appuser -c 'uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2'"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://fnb:${DB_PASSWORD}@db:5432/fnb
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "3002:8000"
+    volumes:
+      - fnb-uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fnb-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+
+  customer-app:
+    build:
+      context: ./customer-app
+      dockerfile: Dockerfile
+    container_name: fnb-customer-app
+    restart: unless-stopped
+    ports:
+      - "3003:3001"
+    depends_on:
+      - backend
+
 volumes:
   fnb-db-data:
     name: fnb-db-data

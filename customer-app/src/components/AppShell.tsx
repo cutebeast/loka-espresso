@@ -24,19 +24,8 @@ import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useConfigStore } from '@/stores/configStore';
 
-// Brand tokens (inline-style fallback)
-const LOKA = {
-  primary: '#384B16',
-  primaryDark: '#2A3910',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  textPrimary: '#1B2023',
-  textMuted: '#6A7A8A',
-  border: '#D4DCE5',
-  borderSubtle: '#E4EAEF',
-  bgLight: '#E4EAEF',
-  surface: '#F5F7FA',
-} as const;
+import { LOKA } from '@/lib/tokens';
+import { normalizePhone } from '@/lib/phone';
 import api from '@/lib/api';
 import { autoDetectStore, getDistanceToStore, getStoresWithDistance } from '@/lib/geolocation';
 import type { PageId, Store as StoreType } from '@/lib/api';
@@ -354,30 +343,6 @@ export default function AppShell() {
     if (token && isAuthenticated) setAuthStep('done');
     else setAuthStep('phone');
   }, [token, isAuthenticated]);
-
-  const normalizePhone = (raw: string): string => {
-    const digits = raw.replace(/[^0-9]/g, '');
-    // Handle Malaysian numbers - normalize to +60XXXXXXXXX format
-    // Remove leading 0 after country code if present
-    if (digits.startsWith('600')) {
-      // +600102905388 → +60102905388
-      return '+60' + digits.slice(3);
-    }
-    if (digits.startsWith('60')) {
-      // 60102905388 or +60102905388 → +60102905388
-      return '+' + digits;
-    }
-    if (digits.startsWith('01')) {
-      // 0102905388 → +60102905388
-      return '+6' + digits;
-    }
-    if (digits.startsWith('1')) {
-      // 102905388 → +60102905388
-      return '+60' + digits;
-    }
-    // Fallback: assume needs +60 prefix
-    return '+60' + digits;
-  };
 
   const handlePhoneSubmit = useCallback(async (phoneValue: string) => {
     setLoadingAuth(true);
@@ -878,19 +843,23 @@ export default function AppShell() {
           setShowQRScanner(false);
           let storeSlug = '';
           let tableId = 0;
+          let qrToken = '';
           try {
             if (result.startsWith('http')) {
               const url = new URL(result);
               storeSlug = url.searchParams.get('store') || '';
               tableId = parseInt(url.searchParams.get('table') || '0', 10);
+              qrToken = url.searchParams.get('t') || '';
             } else if (result.startsWith('loka://')) {
               const url = new URL(result.replace('loka://', 'https://loka.app/'));
               storeSlug = url.searchParams.get('store') || '';
               tableId = parseInt(url.searchParams.get('table') || '0', 10);
+              qrToken = url.searchParams.get('t') || '';
             } else {
               const parsed = JSON.parse(result);
               storeSlug = parsed.store_slug || parsed.storeSlug || '';
               tableId = parsed.table_id || parsed.tableId || 0;
+              qrToken = parsed.t || parsed.qr_token || '';
             }
           } catch {
             showToast('Invalid QR code format', 'error');
@@ -901,7 +870,7 @@ export default function AppShell() {
             return;
           }
           try {
-            const res = await api.post('/tables/scan', { store_slug: storeSlug, table_id: tableId });
+            const res = await api.post('/tables/scan', { store_slug: storeSlug, table_id: tableId, qr_token: qrToken });
             const data = res.data;
             const { setOrderMode, setDineInSession, setSelectedStore } = useUIStore.getState();
             const { setStoreId } = useCartStore.getState();

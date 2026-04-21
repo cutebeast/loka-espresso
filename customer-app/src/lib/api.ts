@@ -23,18 +23,73 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+function getStoredRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('loka-auth');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.state?.refreshToken ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function getStoredUser() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('loka-auth');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.state?.user ?? null;
+  } catch {
+    return null;
+  }
+}
+
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
       try {
-        const { useAuthStore } = await import('@/stores/authStore');
-        useAuthStore.getState().logout();
-      } catch {
-        localStorage.removeItem('loka-auth');
-        localStorage.removeItem('loka-cart');
+        const refreshToken = getStoredRefreshToken();
+        if (refreshToken) {
+          const response = await axios.post(`${API_BASE}/auth/refresh`, {
+            refresh_token: refreshToken,
+          });
+
+          if (response.data?.access_token) {
+            const newToken = response.data.access_token;
+            const newRefresh = response.data.refresh_token || response.data.refreshToken;
+
+            localStorage.setItem('loka-auth', JSON.stringify({
+              state: {
+                token: newToken,
+                refreshToken: newRefresh || refreshToken,
+                user: getStoredUser(),
+              },
+              version: 0,
+            }));
+
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return api(originalRequest);
+          }
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+      }
+
+      localStorage.removeItem('loka-auth');
+      localStorage.removeItem('loka-cart');
+      if (typeof window !== 'undefined') {
+        window.location.reload();
       }
     }
+
     return Promise.reject(error);
   }
 );

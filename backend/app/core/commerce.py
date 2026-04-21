@@ -5,7 +5,7 @@ from math import atan2, cos, radians, sin, sqrt
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.utils import to_float
@@ -130,16 +130,28 @@ async def get_or_create_wallet(user_id: int, db: AsyncSession) -> Wallet:
 
 
 async def debit_wallet(db: AsyncSession, user_id: int, amount: float, description: str) -> tuple[Wallet, float]:
+    """Atomically debit the wallet using SQL to prevent race conditions."""
     wallet = await get_or_create_wallet(user_id, db)
-    current_balance = to_float(wallet.balance)
-    if current_balance < amount:
+    await db.flush()
+
+    stmt = (
+        sa_update(Wallet)
+        .where(Wallet.user_id == user_id, Wallet.balance >= amount)
+        .values(balance=func.round(Wallet.balance - amount, 2))
+        .returning(Wallet.id, Wallet.balance)
+    )
+    result = await db.execute(stmt)
+    row = result.fetchone()
+
+    if row is None:
+        await db.refresh(wallet)
+        current = to_float(wallet.balance)
         raise HTTPException(
             status_code=400,
-            detail=f"Insufficient wallet balance. Have RM {current_balance:.2f}, need RM {amount:.2f}",
+            detail=f"Insufficient wallet balance. Have RM {current:.2f}, need RM {amount:.2f}",
         )
 
-    new_balance = round(current_balance - amount, 2)
-    wallet.balance = new_balance
+    new_balance = to_float(row.balance)
     tx = WalletTransaction(
         wallet_id=wallet.id,
         user_id=user_id,
@@ -153,9 +165,20 @@ async def debit_wallet(db: AsyncSession, user_id: int, amount: float, descriptio
 
 
 async def credit_wallet(db: AsyncSession, user_id: int, amount: float, description: str) -> tuple[Wallet, float]:
+    """Atomically credit the wallet using SQL to prevent race conditions."""
     wallet = await get_or_create_wallet(user_id, db)
-    new_balance = round(to_float(wallet.balance) + amount, 2)
-    wallet.balance = new_balance
+    await db.flush()
+
+    stmt = (
+        sa_update(Wallet)
+        .where(Wallet.user_id == user_id)
+        .values(balance=func.round(Wallet.balance + amount, 2))
+        .returning(Wallet.id, Wallet.balance)
+    )
+    result = await db.execute(stmt)
+    row = result.fetchone()
+
+    new_balance = to_float(row.balance)
     tx = WalletTransaction(
         wallet_id=wallet.id,
         user_id=user_id,
@@ -192,8 +215,16 @@ async def award_loyalty_for_paid_order(db: AsyncSession, order: Order) -> int:
         return 0
 
     if account:
-        account.points_balance += points
-        account.total_points_earned += points
+        stmt = (
+            sa_update(LoyaltyAccount)
+            .where(LoyaltyAccount.id == account.id)
+            .values(
+                points_balance=func.round(LoyaltyAccount.points_balance + points, 0),
+                total_points_earned=func.round(LoyaltyAccount.total_points_earned + points, 0),
+            )
+        )
+        await db.execute(stmt)
+        await db.refresh(account)
     else:
         account = LoyaltyAccount(
             user_id=order.user_id,

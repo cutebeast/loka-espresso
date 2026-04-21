@@ -47,7 +47,6 @@ async def list_vouchers_admin(
 @router.post("", status_code=201, response_model=VoucherOut)
 async def create_voucher(request: Request, req: VoucherCreate, user: User = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
     payload = req.model_dump()
-    payload["image_url"] = None
     voucher = Voucher(**payload)
     db.add(voucher)
     await db.flush()
@@ -64,7 +63,6 @@ async def update_voucher(voucher_id: int, request: Request, req: VoucherUpdate, 
     if not voucher:
         raise HTTPException(status_code=404, detail="Voucher not found")
     updates = req.model_dump(exclude_unset=True)
-    updates.pop("image_url", None)
     # Skip code if unchanged to avoid unique constraint violation
     if "code" in updates and updates["code"] == voucher.code:
         del updates["code"]

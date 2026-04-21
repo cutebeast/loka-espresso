@@ -75,14 +75,16 @@ def _get_store_by_slug(slug, token):
     return None
 
 
-def _get_table_count(store_id, token):
-    """Get table count using GET /stores/{id} API."""
-    resp = api_get(f"/stores/{store_id}", token=token)
+ def _get_table_count(store_id, token):
+    """Get table count using GET /stores/{id}/tables API."""
+    resp = api_get(f"/stores/{store_id}/tables", token=token)
     if resp.status_code != 200:
         return 0
     data = resp.json()
-    tables = data.get("tables", [])
-    return len(tables)
+    # Response is a list of table objects
+    if isinstance(data, list):
+        return len(data)
+    return len(data.get("tables", []))
 
 
 def run():

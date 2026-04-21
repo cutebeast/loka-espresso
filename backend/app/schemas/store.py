@@ -44,6 +44,7 @@ class StoreCreate(BaseModel):
     image_url: Optional[str] = None
     opening_hours: Optional[dict] = None
     pickup_lead_minutes: int = 15
+    delivery_radius_km: Optional[float] = None
 
 
 class StoreTableOut(BaseModel):
@@ -51,8 +52,10 @@ class StoreTableOut(BaseModel):
     store_id: int
     table_number: str
     qr_code_url: Optional[str] = None
+    qr_generated_at: Optional[datetime] = None
     capacity: int = 4
     is_active: bool = True
+    is_occupied: bool = False
 
     class Config:
         from_attributes = True
@@ -72,6 +75,7 @@ class TableUpdate(BaseModel):
 class TableScanRequest(BaseModel):
     store_slug: str
     table_id: int
+    qr_token: str | None = None
 
 
 class PickupSlotOut(BaseModel):

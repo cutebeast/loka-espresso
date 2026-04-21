@@ -192,7 +192,13 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
               return (
                 <button
                   key={r.id}
-                  onClick={() => handleSelectReward(r.redemption_code, r.reward_snapshot ? JSON.parse(r.reward_snapshot).discount_value || 0 : 0)}
+                  onClick={() => {
+                    let discountValue = 0;
+                    if (r.reward_snapshot) {
+                      try { discountValue = JSON.parse(r.reward_snapshot).discount_value || 0; } catch { discountValue = 0; }
+                    }
+                    handleSelectReward(r.redemption_code, discountValue);
+                  }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                     borderRadius: 12, border: isSelected ? `2px solid ${LOKA.success}` : `1px solid ${LOKA.borderSubtle}`,
@@ -209,7 +215,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                   </div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: LOKA.textPrimary }}>{r.reward_name}</p>
-                    <p style={{ fontSize: 11, color: LOKA.textMuted }}>{r.reward_snapshot ? JSON.parse(r.reward_snapshot).description : 'Reward'}</p>
+                    <p style={{ fontSize: 11, color: LOKA.textMuted }}>{(() => { try { return r.reward_snapshot ? JSON.parse(r.reward_snapshot).description : 'Reward'; } catch { return 'Reward'; } })()}</p>
                   </div>
                   <Gift size={14} color={LOKA.copper} />
                 </button>

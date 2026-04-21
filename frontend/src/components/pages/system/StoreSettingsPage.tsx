@@ -95,22 +95,35 @@ function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }
   const [slug, setSlug] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [pickupLead, setPickupLead] = useState('15');
+  const [lat, setLat] = useState('');
+  const [lng, setLng] = useState('');
+  const [deliveryRadius, setDeliveryRadius] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [openingHours, setOpeningHours] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload: Record<string, unknown> = {
+        name,
+        slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        address,
+        phone,
+        pickup_lead_minutes: parseInt(pickupLead) || 15,
+      };
+      if (lat) payload.lat = parseFloat(lat);
+      if (lng) payload.lng = parseFloat(lng);
+      if (deliveryRadius) payload.delivery_radius_km = parseFloat(deliveryRadius);
+      if (imageUrl) payload.image_url = imageUrl;
+      if (openingHours) {
+        try { payload.opening_hours = JSON.parse(openingHours); } catch { /* ignore */ }
+      }
       await apiFetch('/admin/stores', token, {
         method: 'POST',
-        body: JSON.stringify({
-          name,
-          slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          address,
-          phone,
-          is_active: true,
-          pickup_lead_minutes: 15,
-        }),
+        body: JSON.stringify(payload),
       });
       onClose();
     } catch {} finally { setSaving(false); }
@@ -135,9 +148,38 @@ function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }
             <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Address</label>
             <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} style={{ outline: 'none', border: `1px solid ${THEME.accentLight}`, borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%' }} />
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Phone</label>
+              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+60 3-XXXX XXXX" />
+            </div>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Pickup Lead Time (min)</label>
+              <input type="number" value={pickupLead} onChange={e => setPickupLead(e.target.value)} min={0} />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Latitude</label>
+              <input type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} placeholder="e.g. 3.1390" />
+            </div>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Longitude</label>
+              <input type="number" step="any" value={lng} onChange={e => setLng(e.target.value)} placeholder="e.g. 101.6869" />
+            </div>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Delivery Radius (km)</label>
+              <input type="number" step="any" value={deliveryRadius} onChange={e => setDeliveryRadius(e.target.value)} placeholder="e.g. 5.0" />
+            </div>
+          </div>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Phone</label>
-            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+60 3-XXXX XXXX" />
+            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Image URL</label>
+            <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Opening Hours (JSON)</label>
+            <textarea value={openingHours} onChange={e => setOpeningHours(e.target.value)} rows={3} placeholder={'{\n  "mon": "08:00-22:00"\n}'} style={{ outline: 'none', border: `1px solid ${THEME.accentLight}`, borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%', fontFamily: 'monospace' }} />
+            <div style={hintStyle}>JSON object with day keys. Leave empty to skip.</div>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Creating...' : 'Create Store'}</button>
@@ -155,6 +197,11 @@ function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token:
   const [address, setAddress] = useState(store.address || '');
   const [phone, setPhone] = useState(store.phone || '');
   const [pickupLead, setPickupLead] = useState(String(store.pickup_lead_minutes || 15));
+  const [lat, setLat] = useState(store.lat != null ? String(store.lat) : '');
+  const [lng, setLng] = useState(store.lng != null ? String(store.lng) : '');
+  const [deliveryRadius, setDeliveryRadius] = useState(store.delivery_radius_km != null ? String(store.delivery_radius_km) : '');
+  const [imageUrl, setImageUrl] = useState(store.image_url || '');
+  const [openingHours, setOpeningHours] = useState<string>(store.opening_hours ? JSON.stringify(store.opening_hours, null, 2) : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -163,14 +210,22 @@ function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token:
     setSaving(true);
     setError('');
     try {
+      const payload: Record<string, unknown> = {
+        name,
+        address,
+        phone,
+        pickup_lead_minutes: parseInt(pickupLead) || 15,
+      };
+      if (lat) payload.lat = parseFloat(lat);
+      if (lng) payload.lng = parseFloat(lng);
+      if (deliveryRadius) payload.delivery_radius_km = parseFloat(deliveryRadius);
+      if (imageUrl) payload.image_url = imageUrl;
+      if (openingHours) {
+        try { payload.opening_hours = JSON.parse(openingHours); } catch { /* ignore invalid JSON */ }
+      }
       const res = await apiFetch(`/admin/stores/${store.id}`, token, {
         method: 'PUT',
-        body: JSON.stringify({
-          name,
-          address,
-          phone,
-          pickup_lead_minutes: parseInt(pickupLead) || 15,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -217,6 +272,29 @@ function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token:
               <input type="number" value={pickupLead} onChange={e => setPickupLead(e.target.value)} min={0} />
               <div style={hintStyle}>How far in advance customers must order for pickup</div>
             </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={labelStyle}>Latitude</label>
+              <input type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} placeholder="e.g. 3.1390" />
+            </div>
+            <div>
+              <label style={labelStyle}>Longitude</label>
+              <input type="number" step="any" value={lng} onChange={e => setLng(e.target.value)} placeholder="e.g. 101.6869" />
+            </div>
+            <div>
+              <label style={labelStyle}>Delivery Radius (km)</label>
+              <input type="number" step="any" value={deliveryRadius} onChange={e => setDeliveryRadius(e.target.value)} placeholder="e.g. 5.0" />
+            </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>Image URL</label>
+            <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>Opening Hours (JSON)</label>
+            <textarea value={openingHours} onChange={e => setOpeningHours(e.target.value)} rows={3} placeholder={'{\n  "mon": "08:00-22:00",\n  "tue": "08:00-22:00"\n}'} style={{ outline: 'none', border: `1px solid ${THEME.accentLight}`, borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%', fontFamily: 'monospace' }} />
+            <div style={hintStyle}>JSON object with day keys, e.g. {"{"}"mon": "08:00-22:00"{"}"}. Leave empty to clear.</div>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>

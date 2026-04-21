@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 
-const API = '/api/v1';
+const API = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -79,6 +79,10 @@ export async function apiFetch(path: string, token: string, options?: RequestIni
   if (response.status === 401) {
     clearMerchantTokens();
     notifyMerchantAuthExpired();
+  }
+  if (!response.ok && response.status !== 401) {
+    const errorBody = await response.text().catch(() => '');
+    console.error(`API error ${response.status} on ${path}:`, errorBody);
   }
   return response;
 }

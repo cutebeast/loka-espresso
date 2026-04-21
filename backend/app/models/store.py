@@ -38,6 +38,8 @@ class StoreTable(Base):
     store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id"), nullable=False, index=True)
     table_number: Mapped[str] = mapped_column(String(20), nullable=False)
     qr_code_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    qr_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    qr_generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     capacity: Mapped[int] = mapped_column(Integer, default=4)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_occupied: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

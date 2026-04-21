@@ -9,17 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.2.2",
     "axios": "^1.15.1",
-    "date-fns": "^4.1.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
     "next": "16.2.3",
     "qr-scanner": "^1.4.2",
-    "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-hook-form": "^7.72.1",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
   },

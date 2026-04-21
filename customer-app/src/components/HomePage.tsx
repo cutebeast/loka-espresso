@@ -21,31 +21,7 @@ import api from '@/lib/api';
 import type { MenuItem, PromoBanner, InformationCard, CustomizationOption } from '@/lib/api';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 
-// --- Brand tokens (inline-style fallback). ---
-const LOKA = {
-  primary: '#384B16',
-  primaryDark: '#2A3910',
-  primaryDeep: '#1F2C0B',
-  copper: '#D18E38',
-  copperLight: '#E5A559',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  copperMid: 'rgba(209,142,56,0.25)',
-  cream: '#F3EEE5',
-  brown: '#57280D',
-  textPrimary: '#1B2023',
-  textSecondary: '#3A4A5A',
-  textMuted: '#6A7A8A',
-  border: '#D4DCE5',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  bg: '#E4EAEF',
-  white: '#FFFFFF',
-} as const;
-
-function formatPrice(val: number | string): string {
-  const parsed = Number(val);
-  return `RM ${(Number.isFinite(parsed) ? parsed : 0).toFixed(2)}`;
-}
+import { LOKA, formatPrice } from '@/lib/tokens';
 
 export default function HomePage() {
   const { setPage, showToast } = useUIStore();

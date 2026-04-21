@@ -198,6 +198,61 @@ journalctl -u fnb-backend -n 100
 
 ---
 
+## Settings Not Persisting (Data Lost After Refresh)
+
+### Symptoms
+
+- Admin saves App Settings (e.g., Min Order for Delivery), sees success, but after page refresh the value reverts.
+- Any CRUD operation (store update, menu item edit, voucher save, etc.) appears to succeed but is lost on refresh.
+- Audit log entries are missing for actions that appeared to succeed.
+
+### Root Cause
+
+The `get_db()` dependency in `backend/app/core/database.py` **must always call `await session.commit()`** after the endpoint handler returns.
+
+A bug was introduced (Session 9) where `get_db()` conditionally committed based on `session.new or session.dirty or session.deleted`. This broke because:
+
+1. Most write endpoints call `await db.flush()` to sync changes to the DB transaction
+2. After `flush()`, SQLAlchemy removes objects from `session.dirty` (they're no longer "dirty")
+3. The guard saw empty sets → skipped commit → transaction rolled back on session close
+4. The API response showed the saved value (read from flushed-but-uncommitted transaction), but after refresh the data was gone
+
+### Fix
+
+`database.py` should look like this:
+
+```python
+async def get_db():
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()  # Always commit
+        except Exception:
+            await session.rollback()
+            raise
+```
+
+**Never** gate the commit on `session.new/dirty/deleted` — `flush()` clears those sets.
+
+### Verify
+
+```bash
+# Check current get_db implementation
+grep -A 8 "async def get_db" /root/fnb-super-app/backend/app/core/database.py
+
+# Quick test: save a config value and verify persistence
+curl -X PUT http://localhost:8765/api/v1/admin/config \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"key": "min_order_delivery", "value": "25.00"}'
+
+# Verify it persisted
+curl http://localhost:8765/api/v1/admin/config \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
 ## Quick Commands
 
 ```bash

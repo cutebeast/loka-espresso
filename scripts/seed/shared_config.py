@@ -506,14 +506,31 @@ def rebuild_state_from_api():
     except Exception as e:
         print(f"  Warning: Could not rebuild customers state: {e}")
 
-    # Rebuild staff from admin API
+    # Rebuild staff from admin API (no aggregate endpoint; query HQ + per-store)
     try:
-        resp = api_get("/admin/staff?page_size=200", token=tok)
+        all_staff = []
+        resp = api_get("/admin/hq-staff", token=tok)
         if resp.status_code == 200:
             data = resp.json()
-            staff = data.get("staff", []) if isinstance(data, dict) else data
-            state["staff"] = staff
-            print(f"  Rebuilt staff state: {len(staff)} staff from API")
+            hq = data.get("staff", []) if isinstance(data, dict) else data
+            all_staff.extend(hq)
+
+        stores_resp = api_get("/admin/stores", token=tok)
+        if stores_resp.status_code == 200:
+            sdata = stores_resp.json()
+            stores = sdata.get("stores", []) if isinstance(sdata, dict) else sdata
+            for store in stores:
+                sid = store.get("id")
+                if sid is None:
+                    continue
+                sr = api_get(f"/admin/stores/{sid}/staff", token=tok)
+                if sr.status_code == 200:
+                    sd = sr.json()
+                    store_staff = sd.get("staff", []) if isinstance(sd, dict) else sd
+                    all_staff.extend(store_staff)
+
+        state["staff"] = all_staff
+        print(f"  Rebuilt staff state: {len(all_staff)} staff from API")
     except Exception as e:
         print(f"  Warning: Could not rebuild staff state: {e}")
 

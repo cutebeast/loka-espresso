@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timezone
+import hmac
 
 from app.core.database import get_db
 from app.core.security import get_current_user, can_access_store
@@ -14,7 +15,16 @@ router = APIRouter(prefix="/tables", tags=["Tables"])
 
 
 @router.post("/scan")
-async def scan_qr(req: TableScanRequest, db: AsyncSession = Depends(get_db)):
+async def scan_qr(
+    req: TableScanRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Scan a table QR code. Requires authentication.
+    
+    Validates the QR token to prevent replay attacks with old/shared QR codes.
+    Rejects tables that have no token set (should not happen in production).
+    """
     result = await db.execute(select(Store).where(Store.slug == req.store_slug, Store.is_active == True))
     store = result.scalar_one_or_none()
     if not store:
@@ -25,6 +35,21 @@ async def scan_qr(req: TableScanRequest, db: AsyncSession = Depends(get_db)):
     table = table_result.scalar_one_or_none()
     if not table:
         raise HTTPException(status_code=404, detail="Table not found")
+
+    # Reject tables that have not had a QR code generated yet
+    if not table.qr_token:
+        raise HTTPException(
+            status_code=403,
+            detail="This table is not active. Please ask staff for assistance."
+        )
+
+    # Validate QR token — constant-time comparison to prevent timing attacks
+    if not req.qr_token or not hmac.compare_digest(req.qr_token, table.qr_token):
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid or expired QR code. Please scan the QR code on the table."
+        )
+
     return {
         "store_id": store.id,
         "store_name": store.name,
@@ -37,6 +62,7 @@ async def scan_qr(req: TableScanRequest, db: AsyncSession = Depends(get_db)):
 
 @router.get("/{table_id}")
 async def get_table(table_id: int, db: AsyncSession = Depends(get_db)):
+    """Public table info — intentionally excludes qr_code_url and qr_token."""
     result = await db.execute(select(StoreTable).where(StoreTable.id == table_id))
     table = result.scalar_one_or_none()
     if not table:
@@ -49,7 +75,8 @@ async def get_table(table_id: int, db: AsyncSession = Depends(get_db)):
         "store_name": store.name if store else None,
         "table_number": table.table_number,
         "capacity": table.capacity,
-        "qr_code_url": table.qr_code_url,
+        "is_active": table.is_active,
+        "is_occupied": table.is_occupied,
     }
 
 

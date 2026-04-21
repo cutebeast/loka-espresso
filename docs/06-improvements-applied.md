@@ -675,6 +675,206 @@ Current project status should be read from:
 
 ---
 
+## Session 9: Production Readiness Hardening (2026-04-21)
+
+Comprehensive production readiness fixes based on a deep audit of all three projects (backend, frontend, customer PWA) and root infrastructure.
+
+### Backend Fixes
+
+#### CRITICAL
+
+| # | Item | File | Description |
+|---|------|------|-------------|
+| 1 | **Missing `slowapi` dependency** | `requirements.txt` | Added `slowapi==0.1.9`. Was imported in `auth.py` and `main.py` but missing from requirements — caused `ImportError` on fresh install. |
+| 2 | **Wallet race condition** | `app/core/commerce.py` | `debit_wallet()` and `credit_wallet()` now use atomic `UPDATE ... SET balance = balance ± :amt RETURNING` instead of non-atomic read-check-write. Prevents concurrent requests from overdrawing. |
+| 3 | **Loyalty points race condition** | `app/core/commerce.py` | `award_loyalty_for_paid_order()` now uses atomic `UPDATE ... SET points_balance = points_balance + :pts` instead of `account.points_balance += points`. |
+| 4 | **Broken import in auth** | `common/auth.py` | Removed non-existent `from app.core.security import get_remote_address`. Replaced with `request.client.host`. |
+| 5 | **Zero test coverage** | All projects | CI pipeline added (`.github/workflows/ci.yml`) ready for when tests are written. |
+
+#### HIGH
+
+| # | Item | File | Description |
+|---|------|------|-------------|
+| 6 | **JWT expiry too long** | `app/core/config.py`, `.env` | Changed from `10080` min (7 days) → `30` min. Reduces window for stolen token exploitation. |
+| 7 | **Default webhook key** | `app/core/config.py` | `WEBHOOK_API_KEY` default changed from hardcoded `"fnb-webhook-default-key"` → `""`. Fails loudly if not configured. |
+| 8 | **OTP bypass in env** | `.env` | `OTP_BYPASS_ALLOWED` changed from `true` → `false`. Production-safe by default. |
+| 9 | **Config relative path** | `app/core/config.py` | `.env` path now resolved via `Path(__file__).resolve().parents[3] / ".env"` instead of fragile `"../.env"`. |
+| 10 | **Global exception handler** | `app/main.py` | Added `@app.exception_handler(Exception)` returning `{"detail": "Internal server error"}` without leaking stack traces. |
+| 11 | **Health endpoints** | `app/main.py` | `/health` and `/ready` now use raw `engine.connect()` instead of `get_db()` session, avoiding unnecessary transaction overhead. |
+| 12 | **Startup security warnings** | `app/main.py` | Warns if `WEBHOOK_API_KEY` not set or `OTP_BYPASS_ALLOWED` enabled. |
+| 13 | **Unused dependencies removed** | `requirements.txt` | Removed `redis`, `prometheus-client`, `structlog` (declared but never imported). Added `python-dotenv==1.1.0`. |
+
+#### N+1 Query Fixes
+
+| # | Endpoint | File | Fix |
+|---|----------|------|-----|
+| 14 | `GET /admin/stores/{id}/menu` | `admin/stores.py` | Single `IN_()` query for all items + Python grouping by `category_id` instead of per-category query loop. |
+| 15 | `GET /cart` | `pwa/cart.py` | Single `IN_()` query for all menu item names instead of per-cart-item lookup. |
+| 16 | `GET /admin/audit-log` | `admin/admin_system.py` | Single `IN_()` query for all user emails instead of per-log-entry lookup. |
+| 17 | `GET /admin/dashboard` | `admin/admin.py` | SQL `func.count()`, `func.sum()`, `case()`, `GROUP BY`, `func.date_trunc()` instead of loading all orders into Python. |
+| 18 | `GET /admin/customers` | `admin/admin_customers.py` | SQL `ORDER BY`, `OFFSET/LIMIT`, `COUNT` with tier `CASE` expression instead of Python sort/slice. |
+
+#### SQL Injection Fixes
+
+| # | Endpoint | File | Fix |
+|---|----------|------|-----|
+| 19 | `DELETE /admin/system/reset` | `admin/admin_system.py` | Table names validated against `_ALLOWED_RESET_TABLES` whitelist before `DELETE FROM` interpolation. |
+| 20 | `DELETE /admin/customers/reset` | `admin/admin_customers.py` | Same whitelist approach for customer data reset. |
+
+#### Other Backend Changes
+
+| # | Item | File | Description |
+|---|------|------|-------------|
+| 21 | Permissions-Policy | `app/core/middleware.py` | Changed to `geolocation=(self), camera=(self)` to allow PWA QR scanner and store detection. |
+| 22 | Session auto-commit | `app/core/database.py` | **Reverted to always-commit.** See "Database Session Management" note below. |
+
+### Database Session Management — Critical Note
+
+The `get_db()` dependency in `app/core/database.py` **must always call `await session.commit()`** after the endpoint handler returns. An earlier attempt to optimize by checking `if session.new or session.dirty or session.deleted` before committing broke all write endpoints:
+
+**Why the optimization failed:**
+1. Most write endpoints call `await db.flush()` to sync changes to the DB transaction and get auto-generated IDs
+2. After `flush()`, SQLAlchemy removes objects from `session.dirty` — they're no longer "dirty" because they've been written to the transaction
+3. The guard then saw empty sets → skipped `commit()` → transaction was rolled back when the session closed
+4. The API response still showed the saved value (read from the flushed-but-uncommitted transaction), but after refresh the data was gone
+
+**Impact of the bug:** All 27 endpoint files with `db.flush()` and 21+ endpoints that modify ORM objects without flush were affected. This included App Settings (AppConfig saves), all Store/Menu/Category CRUD, Voucher/Reward updates, Staff management, Order operations, Wallet operations, and all audit log entries.
+
+**Correct pattern:**
+```python
+async def get_db():
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()  # Always commit — no-op for read-only sessions
+        except Exception:
+            await session.rollback()
+            raise
+```
+
+A `COMMIT` on a read-only session is a no-op (just releases the transaction), so there is no performance penalty for always committing.
+
+### Frontend Admin Dashboard Fixes
+
+| # | Item | File | Description |
+|---|------|------|-------------|
+| 23 | **Code splitting** | `src/app/page.tsx` | 18 secondary page components converted to `dynamic(() => import(...), { ssr: false })`. Only DashboardPage and OrdersPage remain statically imported. |
+| 24 | **ErrorBoundary wrapper** | `src/app/page.tsx` | Main render wrapped in existing `<ErrorBoundary>`. |
+| 25 | **AbortController** | `src/app/page.tsx` | Data-fetching `useEffect` creates `AbortController` with cleanup to prevent stale fetch overwrites. |
+| 26 | **Silent catch blocks** | `src/app/page.tsx` | All 7+ `catch {}` blocks now log errors via `console.error()`. |
+| 27 | **API base URL** | `src/lib/merchant-api.tsx` | Uses `process.env.NEXT_PUBLIC_API_URL` env var instead of hardcoded `/api/v1`. |
+| 28 | **API error logging** | `src/lib/merchant-api.tsx` | Non-OK responses are logged with status code and body. |
+| 29 | **CDN crossOrigin** | `src/app/layout.tsx` | Font Awesome and Google Fonts `<link>` tags now use `crossOrigin="anonymous"`. |
+| 30 | **Security headers** | `next.config.ts` | X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, CSP, Referrer-Policy. |
+| 31 | **Standalone output** | `next.config.ts` | Added `output: 'standalone'` for Docker builds. |
+| 32 | **Unused deps removed** | `package.json` | Removed `chart.js` and `react-chartjs-2` (136KB dead weight — project uses custom SVG charts). |
+| 33 | **Admin context** | `src/lib/admin-context.tsx` | New `AdminProvider` context and `useAdmin()` hook for future state management refactoring. |
+
+### Customer PWA Fixes
+
+| # | Item | File | Description |
+|---|------|------|-------------|
+| 34 | **Token refresh** | `src/lib/api.ts` | 401 interceptor now attempts `POST /auth/refresh` using stored refresh token before logging out. Added `getStoredRefreshToken()` and `getStoredUser()` helpers reading from Zustand persist format. |
+| 35 | **ErrorBoundary** | `src/components/ui/ErrorBoundary.tsx` | New class-based error boundary with branded fallback UI and "Try Again" button. Exported from `ui/index.ts`. |
+| 36 | **AppShell protection** | `src/app/page.tsx` | `<AppShell />` wrapped in `<ErrorBoundary>` — prevents white-screen on render errors. |
+| 37 | **Cart sync diff-based** | `src/lib/cartSync.ts` | Replaced delete-all-then-add pattern with diff-based approach: reads current server cart, deletes only removed items, updates changed quantities, adds new items. No longer loses cart on partial failure. |
+| 38 | **Centralized tokens** | `AppShell.tsx`, `HomePage.tsx`, `MenuPage.tsx`, `CartPage.tsx` | Replaced duplicated `LOKA` color constants with `import { LOKA, formatPrice } from '@/lib/tokens'`. Added `copperMid` to tokens. |
+| 39 | **Safe JSON.parse** | `checkout/VoucherRewardSelector.tsx` | `JSON.parse(r.reward_snapshot)` wrapped in try/catch with fallback `{}`. |
+| 40 | **Phone normalization** | `src/lib/phone.ts` | Extracted shared `normalizePhone()` function. Used in both `AppShell.tsx` and `PhoneInput.tsx`. |
+| 41 | **Service worker registration** | `ServiceWorkerRegistrar.tsx`, `layout.tsx` | Moved from `dangerouslySetInnerHTML` inline script to proper `'use client'` component with `useEffect`. |
+| 42 | **Security headers** | `next.config.ts` | X-Content-Type-Options, X-Frame-Options, HSTS, X-XSS-Protection, Referrer-Policy. |
+| 43 | **Standalone output** | `next.config.ts` | Added `output: 'standalone'` for Docker builds. |
+| 44 | **Unused deps removed** | `package.json` | Removed `react-hook-form`, `@hookform/resolvers`, `date-fns`, `qrcode.react`. |
+
+### Root Infrastructure
+
+| # | Item | File | Description |
+|---|------|------|-------------|
+| 45 | **Backend Dockerfile** | `backend/Dockerfile` | Python 3.12-slim, non-root user, uvicorn with 2 workers. |
+| 46 | **Frontend Dockerfile** | `frontend/Dockerfile` | Node 20-alpine multi-stage build with standalone output, port 3000. |
+| 47 | **Customer Dockerfile** | `customer-app/Dockerfile` | Node 20-alpine multi-stage build with standalone output, port 3001. |
+| 48 | **.dockerignore files** | All 3 projects | Prevents copying `node_modules`, `.env`, `.git` into Docker images. |
+| 49 | **docker-compose.yml** | Root | Full stack: PostgreSQL + Backend + Frontend + Customer App with health checks, named volumes, and service dependencies. |
+| 50 | **CI/CD pipeline** | `.github/workflows/ci.yml` | 4-job GitHub Actions workflow: backend lint/test, frontend lint/build, customer-app lint/build, Docker image build on main push. |
+| 51 | **.env.example** | Root | Updated with `JWT_EXPIRE_MINUTES=30`, `WEBHOOK_API_KEY`, Docker hostname in `DATABASE_URL`. |
+| 52 | **.env secured** | Root | `JWT_EXPIRE_MINUTES=30`, `OTP_BYPASS_ALLOWED=false`, `WEBHOOK_API_KEY` set. |
+
+### Files Changed Summary
+
+```
+ .env.example                                       |  20 +-
+ backend/Dockerfile                                 | NEW
+ backend/.dockerignore                              | NEW
+ backend/app/api/v1/endpoints/admin/admin.py        | 135 ++--
+ backend/app/api/v1/endpoints/admin/admin_customers.py | 132 ++--
+ backend/app/api/v1/endpoints/admin/admin_system.py |  49 +-
+ backend/app/api/v1/endpoints/admin/stores.py       |  25 +-
+ backend/app/api/v1/endpoints/common/auth.py        |   3 +-
+ backend/app/api/v1/endpoints/pwa/cart.py           |  14 +-
+ backend/app/core/commerce.py                       |  51 +-
+ backend/app/core/config.py                         |  11 +-
+ backend/app/core/database.py                       |   3 +-
+ backend/app/core/middleware.py                     |   2 +-
+ backend/app/main.py                                |  48 +-
+ backend/requirements.txt                           |   5 +-
+ customer-app/Dockerfile                            | NEW
+ customer-app/.dockerignore                         | NEW
+ customer-app/next.config.ts                        |  18 +
+ customer-app/package.json                          |   4 -
+ customer-app/src/app/layout.tsx                    |  30 +-
+ customer-app/src/app/page.tsx                      |   7 +-
+ customer-app/src/components/AppShell.tsx           |  39 +-
+ customer-app/src/components/CartPage.tsx           |  21 +-
+ customer-app/src/components/HomePage.tsx           |  26 +-
+ customer-app/src/components/MenuPage.tsx           |  16 +-
+ customer-app/src/components/ServiceWorkerRegistrar.tsx | NEW
+ customer-app/src/components/auth/PhoneInput.tsx    |  10 +-
+ customer-app/src/components/checkout/VoucherRewardSelector.tsx | 10 +-
+ customer-app/src/components/ui/ErrorBoundary.tsx   | NEW
+ customer-app/src/components/ui/index.ts            |   3 +-
+ customer-app/src/lib/api.ts                        |  67 +-
+ customer-app/src/lib/cartSync.ts                   |  72 ++-
+ customer-app/src/lib/phone.ts                      | NEW
+ customer-app/src/lib/tokens.ts                     |   1 +
+ docker-compose.yml                                 |  41 ++
+ frontend/Dockerfile                                | NEW
+ frontend/.dockerignore                             | NEW
+ frontend/next.config.ts                            |  22 +-
+ frontend/package.json                              |   2 -
+ frontend/src/app/layout.tsx                        |   4 +-
+ frontend/src/app/page.tsx                          |  67 +-
+ frontend/src/lib/admin-context.tsx                 | NEW
+ frontend/src/lib/merchant-api.tsx                  |   6 +-
+ .github/workflows/ci.yml                          | NEW
+ .env                                               |   5 +-
+```
+
+### 3rd Party Integrations — On Hold
+
+The following integrations are intentionally deferred per project decision:
+
+| Integration | Status | Notes |
+|---|-----------|--------|-------|
+| Payment Gateway (PG) | On hold | Currently using mock PG server for wallet top-up |
+| Twilio (SMS/OTP) | On hold | Currently using stub OTP provider |
+| Delivery Services | On hold | Currently using mock delivery server |
+| External POS | On hold | Currently using mock POS server |
+
+### Remaining Recommendations
+
+These items were identified in the audit but are not yet implemented:
+
+| # | Priority | Item | Notes |
+|---|----------|------|-------|
+| 1 | HIGH | Add test suites | Zero test coverage across all 3 projects. CI pipeline is ready. |
+| 2 | HIGH | Implement URL-based routing | Both frontend and PWA use client-side state routing instead of Next.js file-based routing. |
+| 3 | MEDIUM | Move JWT tokens to httpOnly cookies | Currently in localStorage, vulnerable to XSS. Requires backend set-cookie changes. |
+| 4 | MEDIUM | Add offline data sync for PWA | No IndexedDB or offline queue for API calls. |
+| 5 | MEDIUM | Decompose monolithic components | Frontend `page.tsx` (765 lines) and PWA `AppShell.tsx` (942 lines) need splitting. |
+| 6 | LOW | Implement proper PWA offline mode | Only shell is cached; all data requires network. |
+
+---
+
 ## Post-PWA Roadmap Items
 
 ### Invite Friends System (MUST DO after PWA)

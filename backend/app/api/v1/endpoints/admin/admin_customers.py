@@ -1,7 +1,7 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, or_, distinct, text, update
+from sqlalchemy import select, func, desc, or_, distinct, text, update, case, and_, literal
 
 from app.core.database import get_db
 from app.core.security import require_hq_access
@@ -63,6 +63,15 @@ _CUSTOMER_RESET_TABLES = [
     # 22. users (customers only): depends on users (self-ref: referred_by)
     "users",
 ]
+
+_ALLOWED_CUSTOMER_RESET_TABLES = {
+    "loyalty_transactions", "user_vouchers", "user_rewards", "cart_items",
+    "order_items", "order_status_history", "payments", "feedback", "orders",
+    "wallet_transactions", "wallets", "loyalty_accounts", "user_addresses",
+    "device_tokens", "notifications", "favorites", "referrals",
+    "payment_methods", "survey_responses", "audit_log", "token_blacklist",
+    "users", "wallet_transactions", "wallets",
+}
 
 router = APIRouter(prefix="/admin", tags=["Admin — Customers"])
 
@@ -131,6 +140,23 @@ async def list_customers(
         order_stats_query = order_stats_query.where(Order.created_at <= to_date)
     order_stats_subquery = order_stats_query.subquery()
 
+    normalized_tier_filter = _normalize_tier_name(tier)
+
+    profile_complete_expr = and_(
+        User.phone_verified == True,
+        func.coalesce(func.trim(User.name), '') != '',
+        func.coalesce(func.trim(User.email), '') != '',
+    )
+
+    effective_tier_case = case(
+        (~profile_complete_expr, None),
+        (func.coalesce(func.trim(func.lower(LoyaltyAccount.tier)), '') != '', func.trim(func.lower(LoyaltyAccount.tier))),
+        (func.coalesce(LoyaltyAccount.total_points_earned, 0) >= 3000, literal('platinum')),
+        (func.coalesce(LoyaltyAccount.total_points_earned, 0) >= 1500, literal('gold')),
+        (func.coalesce(LoyaltyAccount.total_points_earned, 0) >= 500, literal('silver')),
+        else_=literal('bronze'),
+    )
+
     data_query = (
         select(
             User.id,
@@ -144,6 +170,7 @@ async def list_customers(
             LoyaltyAccount.total_points_earned,
             func.coalesce(order_stats_subquery.c.total_orders, 0).label("total_orders"),
             func.coalesce(order_stats_subquery.c.total_spent, 0).label("total_spent"),
+            effective_tier_case.label("effective_tier"),
         )
         .join(LoyaltyAccount, LoyaltyAccount.user_id == User.id, isouter=True)
         .join(order_stats_subquery, order_stats_subquery.c.user_id == User.id, isouter=True)
@@ -156,57 +183,54 @@ async def list_customers(
             User.email.ilike(f"%{search}%"),
             User.phone.ilike(f"%{search}%"),
         ))
+
+    if normalized_tier_filter:
+        data_query = data_query.where(effective_tier_case == normalized_tier_filter)
+
+    sort_map = {
+        'name': User.name,
+        'created_at': User.created_at,
+        'points_balance': LoyaltyAccount.points_balance,
+        'total_spent': order_stats_subquery.c.total_spent,
+    }
+    sort_col = sort_map[sort_by]
+    if sort_dir == 'desc':
+        data_query = data_query.order_by(desc(sort_col))
+    else:
+        data_query = data_query.order_by(sort_col)
+
+    count_q = select(func.count()).select_from(data_query.subquery())
+    count_result = await db.execute(count_q)
+    total = count_result.scalar() or 0
+
+    data_query = data_query.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(data_query)
     rows = result.all()
 
-    normalized_tier_filter = _normalize_tier_name(tier)
     customers = []
     for row in rows:
         profile_complete = _is_customer_profile_complete(row.name, row.email, bool(row.phone_verified))
-        effective_tier = _effective_customer_tier(
-            row.tier,
-            row.total_points_earned,
-            profile_complete=profile_complete,
-        )
-        if normalized_tier_filter and effective_tier != normalized_tier_filter:
-            continue
+        customers.append({
+            "id": row.id,
+            "name": row.name,
+            "email": row.email,
+            "phone": row.phone,
+            "tier": row.effective_tier,
+            "points_balance": int(row.points_balance or 0),
+            "total_points_earned": int(row.total_points_earned or 0),
+            "total_orders": int(row.total_orders or 0),
+            "total_spent": to_float(row.total_spent),
+            "created_at": row.created_at,
+            "is_profile_complete": profile_complete,
+            "phone_verified": bool(row.phone_verified),
+        })
 
-        customers.append(
-            {
-                "id": row.id,
-                "name": row.name,
-                "email": row.email,
-                "phone": row.phone,
-                "tier": effective_tier,
-                "points_balance": int(row.points_balance or 0),
-                "total_points_earned": int(row.total_points_earned or 0),
-                "total_orders": int(row.total_orders or 0),
-                "total_spent": to_float(row.total_spent),
-                "created_at": row.created_at,
-                "is_profile_complete": profile_complete,
-                "phone_verified": bool(row.phone_verified),
-            }
-        )
-
-    reverse = sort_dir == "desc"
-    if sort_by == "name":
-        customers.sort(key=lambda c: (c["name"] or "").lower(), reverse=reverse)
-    elif sort_by == "points_balance":
-        customers.sort(key=lambda c: c["points_balance"], reverse=reverse)
-    elif sort_by == "total_spent":
-        customers.sort(key=lambda c: c["total_spent"], reverse=reverse)
-    else:
-        customers.sort(key=lambda c: c["created_at"] or datetime.min, reverse=reverse)
-
-    total = len(customers)
-    start = (page - 1) * page_size
-    end = start + page_size
     return {
         "total": total,
         "page": page,
         "page_size": page_size,
         "total_pages": max(1, (total + page_size - 1) // page_size),
-        "customers": customers[start:end],
+        "customers": customers,
     }
 
 
@@ -516,29 +540,31 @@ async def reset_all_customers(
     # Use SAVEPOINTs so each failed DELETE doesn't abort the whole transaction
     deleted_counts = {}
 
-    for table in _CUSTOMER_RESET_TABLES:
-        savepoint_name = f"sp_{table}"
+    for table_name in _CUSTOMER_RESET_TABLES:
+        if table_name not in _ALLOWED_CUSTOMER_RESET_TABLES:
+            raise HTTPException(status_code=400, detail=f"Invalid table name: {table_name}")
+        savepoint_name = f"sp_{table_name}"
         try:
             # Rollback to savepoint if one exists from a failed prior iteration
             await db.execute(text(f"SAVEPOINT {savepoint_name}"))
 
-            if table == "users":
+            if table_name == "users":
                 # Only delete users with customer role
                 await db.execute(
-                    text(f"DELETE FROM {table} WHERE role_id = :role_id"),
+                    text(f"DELETE FROM {table_name} WHERE role_id = :role_id"),
                     {"role_id": CUSTOMER_ROLE_ID}
                 )
-            elif table == "referrals":
+            elif table_name == "referrals":
                 # referrals has both referrer_id and invitee_id
                 await db.execute(
                     text(f"""
-                        DELETE FROM {table} 
+                        DELETE FROM {table_name} 
                         WHERE referrer_id IN (SELECT id FROM users WHERE role_id = :role_id)
                            OR invitee_id IN (SELECT id FROM users WHERE role_id = :role_id)
                     """),
                     {"role_id": CUSTOMER_ROLE_ID}
                 )
-            elif table == "order_items":
+            elif table_name == "order_items":
                 # order_items has order_id FK (no user_id)
                 await db.execute(
                     text("""
@@ -550,11 +576,11 @@ async def reset_all_customers(
                     """),
                     {"role_id": CUSTOMER_ROLE_ID}
                 )
-            elif table in ("order_status_history", "payments"):
+            elif table_name in ("order_status_history", "payments"):
                 # These have order_id FK (no user_id)
                 await db.execute(
                     text(f"""
-                        DELETE FROM {table}
+                        DELETE FROM {table_name}
                         WHERE order_id IN (
                             SELECT id FROM orders
                             WHERE user_id IN (SELECT id FROM users WHERE role_id = :role_id)
@@ -562,7 +588,7 @@ async def reset_all_customers(
                     """),
                     {"role_id": CUSTOMER_ROLE_ID}
                 )
-            elif table == "feedback":
+            elif table_name == "feedback":
                 # feedback has both user_id AND order_id — use order_id path to catch all
                 await db.execute(
                     text("""
@@ -574,7 +600,7 @@ async def reset_all_customers(
                     """),
                     {"role_id": CUSTOMER_ROLE_ID}
                 )
-            elif table == "audit_log":
+            elif table_name == "audit_log":
                 # audit_log has nullable user_id AND store_id — use user_id for customers
                 await db.execute(
                     text("""
@@ -587,12 +613,12 @@ async def reset_all_customers(
                 # All other tables have user_id column
                 await db.execute(
                     text(f"""
-                        DELETE FROM {table}
+                        DELETE FROM {table_name}
                         WHERE user_id IN (SELECT id FROM users WHERE role_id = :role_id)
                     """),
                     {"role_id": CUSTOMER_ROLE_ID}
                 )
-            deleted_counts[table] = "ok"
+            deleted_counts[table_name] = "ok"
         except Exception as e:
             # Release savepoint to allow continued execution after error
             await db.execute(text(f"RELEASE SAVEPOINT {savepoint_name}"))

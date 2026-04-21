@@ -54,13 +54,19 @@ async def get_cart(user: User = Depends(get_current_user), db: AsyncSession = De
     s = sr.scalar_one_or_none()
     if s:
         store_name = s.name
+    item_ids = [ci.item_id for ci in items]
+    if item_ids:
+        menu_items_result = await db.execute(
+            select(MenuItem.id, MenuItem.name).where(MenuItem.id.in_(item_ids))
+        )
+        menu_item_map = {mi.id: mi.name for mi in menu_items_result.all()}
+    else:
+        menu_item_map = {}
+
     subtotal = 0.0
     cart_items = []
     for ci in items:
-        ir = await db.execute(select(MenuItem).where(MenuItem.id == ci.item_id))
-        mi = ir.scalar_one_or_none()
-        name = mi.name if mi else "Unknown"
-        # Include customization price adjustments in subtotal
+        name = menu_item_map.get(ci.item_id, "Unknown")
         base = to_float(ci.unit_price)
         custom_total = 0.0
         if ci.customizations and isinstance(ci.customizations, dict):

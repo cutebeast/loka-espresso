@@ -16,7 +16,7 @@ interface InfoCard {
   long_description: string | null;
   icon: string | null;
   image_url: string | null;
-  action_url: string | null;
+  content_type: string | null;
   is_active: boolean;
   position: number;
   start_date: string | null;
@@ -29,7 +29,7 @@ interface InfoCardForm {
   long_description: string;
   icon: string;
   image_url: string;
-  action_url: string;
+  content_type: string;
   start_date: string;
   end_date: string;
   is_active: boolean;
@@ -42,7 +42,7 @@ const emptyForm: InfoCardForm = {
   long_description: '',
   icon: 'info',
   image_url: '',
-  action_url: '',
+  content_type: 'promotion',
   start_date: '',
   end_date: '',
   is_active: true,
@@ -57,6 +57,13 @@ const iconOptions = [
   { value: 'heart', label: 'Heart' },
   { value: 'bell', label: 'Bell' },
   { value: 'megaphone', label: 'Megaphone' },
+];
+
+const contentTypeOptions = [
+  { value: 'promotion', label: 'Promotion' },
+  { value: 'information', label: 'Information' },
+  { value: 'pop_up', label: 'Pop-Up Banner' },
+  { value: 'system', label: 'System' },
 ];
 
 export default function InformationPage({ token }: InformationPageProps) {
@@ -106,7 +113,7 @@ export default function InformationPage({ token }: InformationPageProps) {
       long_description: card.long_description || '',
       icon: card.icon || 'info',
       image_url: card.image_url || '',
-      action_url: card.action_url || '',
+      content_type: card.content_type || 'promotion',
       start_date: card.start_date ? card.start_date.slice(0, 16) : '',
       end_date: card.end_date ? card.end_date.slice(0, 16) : '',
       is_active: card.is_active ?? true,
@@ -133,7 +140,7 @@ export default function InformationPage({ token }: InformationPageProps) {
       long_description: form.long_description || null,
       icon: form.icon || null,
       image_url: form.image_url || null,
-      action_url: form.action_url || null,
+      content_type: form.content_type || 'promotion',
       start_date: form.start_date || null,
       end_date: form.end_date || null,
       is_active: form.is_active,
@@ -253,8 +260,10 @@ export default function InformationPage({ token }: InformationPageProps) {
             </div>
 
             <div style={{ marginTop: 12 }}>
-              <label style={labelStyle}>Action URL <span style={{ color: THEME.success, fontWeight: 400 }}>(optional link)</span></label>
-              <input type="text" value={form.action_url} onChange={(e) => setField('action_url', e.target.value)} placeholder="https://... or /path" />
+              <label style={labelStyle}>Content Type</label>
+              <select value={form.content_type} onChange={(e) => setField('content_type', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 12, border: `1px solid ${THEME.accentLight}`, fontSize: 14 }}>
+                {contentTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>

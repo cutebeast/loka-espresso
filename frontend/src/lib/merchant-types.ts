@@ -7,6 +7,10 @@ export interface MerchantStore {
   opening_hours: Record<string, string>;
   pickup_lead_minutes: number;
   is_active: boolean;
+  lat: number | null;
+  lng: number | null;
+  image_url: string | null;
+  delivery_radius_km: number | null;
 }
 
 export interface MerchantCategory {
@@ -32,10 +36,13 @@ export interface MerchantMenuItem {
 
 export interface MerchantTableItem {
   id: number;
+  store_id: number;
   table_number: string;
-  qr_code_url: string;
+  qr_code_url: string | null;
+  qr_generated_at: string | null;
   capacity: number;
   is_active: boolean;
+  is_occupied: boolean;
 }
 
 export interface MerchantReward {

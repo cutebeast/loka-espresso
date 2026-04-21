@@ -18,8 +18,34 @@ from app.models.store import Store, StoreTable
 from app.models.marketing import CustomizationOption, TableOccupancySnapshot
 from app.schemas.store import StoreCreate, TableCreate, TableUpdate
 from app.schemas.menu import CategoryCreate, MenuItemCreate
+import secrets
+import io
+import qrcode
+from fastapi.responses import StreamingResponse
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
+
+def _generate_qr_token() -> str:
+    """Generate a cryptographically secure token for QR code validation."""
+    return secrets.token_urlsafe(32)
+
+
+def _generate_qr_image_url(slug: str, table_id: int, token: str) -> str:
+    """Build the QR target URL with store slug, table ID, and security token."""
+    return f"https://app.loyaltysystem.uk?store={slug}&table={table_id}&t={token}"
+
+
+def _make_qr_png(data: str, size: int = 10) -> io.BytesIO:
+    """Generate a QR code PNG image in memory."""
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=size, border=2)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#2D3B2D", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
 
 
 @router.get("/dashboard")
@@ -40,94 +66,109 @@ async def dashboard(
     """
     
     now = datetime.now()
-    
-    # Query 1: Filtered orders for KPI metrics (date range + store)
-    filtered_q = select(Order).where(Order.status != OrderStatus.cancelled)
-    if store_id:
-        filtered_q = filtered_q.where(Order.store_id == store_id)
-    if from_date:
-        filtered_q = filtered_q.where(Order.created_at >= from_date)
-    if to_date:
-        filtered_q = filtered_q.where(Order.created_at <= to_date)
-    
-    result = await db.execute(filtered_q)
-    filtered_orders = result.scalars().all()
-    
-    # Separate completed vs in-progress from filtered orders
-    filtered_completed = [o for o in filtered_orders if o.status == OrderStatus.completed]
-    active_orders = [o for o in filtered_orders if o.status != OrderStatus.completed]
 
-    total_orders = len(filtered_completed)
-    total_revenue = sum(to_float(o.total) for o in filtered_completed)
-    active_count = len(active_orders)
+    base_filters = [Order.status != OrderStatus.cancelled]
+    if store_id:
+        base_filters.append(Order.store_id == store_id)
+    if from_date:
+        base_filters.append(Order.created_at >= from_date)
+    if to_date:
+        base_filters.append(Order.created_at <= to_date)
+
+    kpi_result = await db.execute(
+        select(
+            func.count(case((Order.status == OrderStatus.completed, Order.id))).label("total_orders"),
+            func.coalesce(func.sum(case((Order.status == OrderStatus.completed, Order.total))), 0).label("total_revenue"),
+            func.count(case((Order.status != OrderStatus.completed, Order.id))).label("active_count"),
+        ).where(*base_filters)
+    )
+    kpi_row = kpi_result.fetchone()
+    total_orders = kpi_row.total_orders
+    total_revenue = float(kpi_row.total_revenue)
+    active_count = kpi_row.active_count
+
     customer_count_result = await db.execute(
         select(func.count(User.id)).where(User.role_id == RoleIDs.CUSTOMER)
     )
     total_customers = customer_count_result.scalar() or 0
 
-    # When a date filter is applied, show data for the ENTIRE filtered period
-    # When no filter, show today's data as default
     if from_date and to_date:
         orders_today = total_orders
         revenue_today = total_revenue
     else:
         today = now.date()
-        today_completed = [o for o in filtered_completed if o.created_at and o.created_at.date() == today]
-        orders_today = len(today_completed)
-        revenue_today = sum(to_float(o.total) for o in today_completed)
+        today_start = datetime.combine(today, datetime.min.time())
+        today_end = datetime.combine(today, datetime.max.time())
+        today_filters = [
+            Order.status == OrderStatus.completed,
+            Order.created_at >= today_start,
+            Order.created_at <= today_end,
+        ]
+        if store_id:
+            today_filters.append(Order.store_id == store_id)
+        today_result = await db.execute(
+            select(
+                func.count(Order.id).label("orders_today"),
+                func.coalesce(func.sum(Order.total), 0).label("revenue_today"),
+            ).where(*today_filters)
+        )
+        today_row = today_result.fetchone()
+        orders_today = today_row.orders_today
+        revenue_today = float(today_row.revenue_today)
 
+    type_filters = [Order.status == OrderStatus.completed]
+    if store_id:
+        type_filters.append(Order.store_id == store_id)
+    if from_date:
+        type_filters.append(Order.created_at >= from_date)
+    if to_date:
+        type_filters.append(Order.created_at <= to_date)
+    type_result = await db.execute(
+        select(Order.order_type, func.count(Order.id).label("cnt"))
+        .where(*type_filters)
+        .group_by(Order.order_type)
+    )
     orders_by_type = {}
-    for o in filtered_completed:
-        ot = o.order_type.value if hasattr(o.order_type, 'value') else str(o.order_type)
-        orders_by_type[ot] = orders_by_type.get(ot, 0) + 1
+    for row in type_result.all():
+        ot = row.order_type.value if hasattr(row.order_type, 'value') else str(row.order_type)
+        orders_by_type[ot] = row.cnt
 
-    # Query 2: Chart data based on chart_mode
-    # Determine the date range for chart data based on mode
     chart_from_date = None
     if chart_mode == "day":
-        # For day mode (TODAY): fetch last 7 days including today
         chart_from_date = now - timedelta(days=6)
         chart_from_date = chart_from_date.replace(hour=0, minute=0, second=0, microsecond=0)
     elif chart_mode == "month":
-        # For month mode (MTD): fetch last 6 months
         chart_from_date = now - timedelta(days=180)
     elif chart_mode == "quarter":
-        # For quarter mode (QTD): fetch current year
         chart_from_date = datetime(now.year, 1, 1)
     elif chart_mode == "year":
-        # For year mode (YTD): fetch last 6 years
         chart_from_date = datetime(now.year - 5, 1, 1)
-    
-    # Fetch chart data
-    chart_q = select(Order).where(Order.status == OrderStatus.completed)
-    if store_id:
-        chart_q = chart_q.where(Order.store_id == store_id)
-    if chart_from_date:
-        chart_q = chart_q.where(Order.created_at >= chart_from_date)
-    
-    result = await db.execute(chart_q)
-    chart_orders = result.scalars().all()
-    
-    # Process chart data based on mode
+
     chart_data = {}
-    if chart_mode == "day":
-        # Daily data for last 7 days
-        for o in chart_orders:
-            if o.created_at:
-                day_key = o.created_at.strftime("%Y-%m-%d")
-                if day_key not in chart_data:
-                    chart_data[day_key] = {"orders": 0, "revenue": 0.0}
-                chart_data[day_key]["orders"] += 1
-                chart_data[day_key]["revenue"] += to_float(o.total)
-    else:
-        # Monthly data for month/quarter/year modes
-        for o in chart_orders:
-            if o.created_at:
-                month_key = o.created_at.strftime("%Y-%m")
-                if month_key not in chart_data:
-                    chart_data[month_key] = {"orders": 0, "revenue": 0.0}
-                chart_data[month_key]["orders"] += 1
-                chart_data[month_key]["revenue"] += to_float(o.total)
+    if chart_mode:
+        chart_filters = [Order.status == OrderStatus.completed]
+        if store_id:
+            chart_filters.append(Order.store_id == store_id)
+        if chart_from_date:
+            chart_filters.append(Order.created_at >= chart_from_date)
+
+        if chart_mode == "day":
+            trunc = func.date_trunc("day", Order.created_at)
+        else:
+            trunc = func.date_trunc("month", Order.created_at)
+
+        chart_result = await db.execute(
+            select(
+                trunc.label("period"),
+                func.count(Order.id).label("orders"),
+                func.coalesce(func.sum(Order.total), 0).label("revenue"),
+            )
+            .where(*chart_filters)
+            .group_by(trunc)
+        )
+        for row in chart_result.all():
+            key = row.period.strftime("%Y-%m-%d") if chart_mode == "day" else row.period.strftime("%Y-%m")
+            chart_data[key] = {"orders": row.orders, "revenue": float(row.revenue)}
 
     return {
         "total_orders": total_orders,
@@ -482,13 +523,16 @@ async def create_table(
     table = StoreTable(store_id=store_id, table_number=req.table_number, capacity=req.capacity)
     db.add(table)
     await db.flush()
-    result = await db.execute(select(Store).where(Store.id == store_id))
-    store = result.scalar_one_or_none()
-    slug = store.slug if store else str(store_id)
-    table.qr_code_url = f"https://app.loyaltysystem.uk?store={slug}&table={table.id}"
     ip = get_client_ip(request)
     await log_action(db, action="CREATE_TABLE", user_id=user.id, store_id=store_id, entity_type="store_table", entity_id=table.id, details={"table_number": table.table_number}, ip_address=ip)
-    return {"id": table.id, "table_number": table.table_number, "qr_code_url": table.qr_code_url}
+    return {
+        "id": table.id,
+        "table_number": table.table_number,
+        "capacity": table.capacity,
+        "qr_code_url": None,
+        "qr_generated_at": None,
+        "message": "Table created. Generate QR code to activate for dine-in.",
+    }
 
 
 @router.put("/stores/{store_id}/tables/{table_id}")
@@ -540,6 +584,58 @@ async def delete_table(
     ip = get_client_ip(request)
     await log_action(db, action="DELETE_TABLE", user_id=user.id, store_id=store_id, entity_type="store_table", entity_id=table_id, details={"table_number": table.table_number}, ip_address=ip)
     return {"deleted": True, "id": table_id}
+
+
+@router.get("/stores/{store_id}/tables/{table_id}/qr-image")
+async def get_table_qr_image(
+    store_id: int, table_id: int,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Serve the QR code as a PNG image for display/download."""
+    result = await db.execute(select(StoreTable).where(StoreTable.id == table_id, StoreTable.store_id == store_id))
+    table = result.scalar_one_or_none()
+    if not table or not table.qr_code_url:
+        raise HTTPException(404, "Table or QR code not found")
+    buf = _make_qr_png(table.qr_code_url)
+    return StreamingResponse(buf, media_type="image/png", headers={
+        "Content-Disposition": f'inline; filename="table-{table.table_number}-qr.png"',
+    })
+
+
+@router.post("/stores/{store_id}/tables/{table_id}/generate-qr")
+async def generate_table_qr(
+    store_id: int, table_id: int,
+    request: Request,
+    user: User = Depends(require_store_access("store_id")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Regenerate QR code with a new security token. Old QR codes become invalid."""
+    result = await db.execute(select(StoreTable).where(StoreTable.id == table_id, StoreTable.store_id == store_id))
+    table = result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(404, "Table not found")
+
+    store_result = await db.execute(select(Store).where(Store.id == store_id))
+    store = store_result.scalar_one_or_none()
+    slug = store.slug if store else str(store_id)
+
+    # Generate new token — invalidates all previous QR codes
+    new_token = _generate_qr_token()
+    table.qr_token = new_token
+    table.qr_code_url = _generate_qr_image_url(slug, table.id, new_token)
+    table.qr_generated_at = datetime.now(timezone.utc)
+
+    ip = get_client_ip(request)
+    await log_action(db, action="GENERATE_QR", user_id=user.id, store_id=store_id, entity_type="store_table", entity_id=table_id, details={"table_number": table.table_number}, ip_address=ip)
+
+    return {
+        "id": table.id,
+        "table_number": table.table_number,
+        "qr_code_url": table.qr_code_url,
+        "qr_generated_at": table.qr_generated_at,
+        "message": "QR code generated. Print and place on the table.",
+    }
 
 
 # ---------------------------------------------------------------------------

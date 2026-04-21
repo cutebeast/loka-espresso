@@ -8,26 +8,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useConfigStore } from '@/stores/configStore';
 import { Modal } from '@/components/ui/Modal';
 
-const LOKA = {
-  primary: '#384B16',
-  primaryDark: '#2A3910',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  cream: '#F3EEE5',
-  brown: '#57280D',
-  textPrimary: '#1B2023',
-  textSecondary: '#3A4A5A',
-  textMuted: '#6A7A8A',
-  border: '#D4DCE5',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  bg: '#E4EAEF',
-  white: '#FFFFFF',
-} as const;
-
-function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
-}
+import { LOKA, formatPrice } from '@/lib/tokens';
 
 interface CustomizationStructure {
   options?: Array<{ id: number; name: string; price_adjustment: number }>;

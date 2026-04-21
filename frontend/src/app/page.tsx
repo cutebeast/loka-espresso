@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { apiFetch, clearMerchantTokens } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import type {
@@ -28,25 +29,26 @@ import {
 } from '@/components/Modals';
 import DashboardPage from '@/components/pages/overview/DashboardPage';
 import OrdersPage from '@/components/pages/overview/OrdersPage';
-import MenuPage from '@/components/pages/store-ops/MenuPage';
-import TablesPage from '@/components/pages/store-ops/TablesPage';
-import InventoryPage from '@/components/pages/store-ops/InventoryPage';
-import StaffPage from '@/components/pages/store-ops/StaffPage';
-import CustomersPage from '@/components/pages/marketing/CustomersPage';
-import CustomerDetailPage from '@/components/pages/system/CustomerDetailPage';
-import StoreSettingsPage from '@/components/pages/system/StoreSettingsPage';
-import LoyaltyRulesPage from '@/components/pages/system/LoyaltyRulesPage';
-import AuditLogPage from '@/components/pages/system/AuditLogPage';
-import NotificationsPage from '@/components/pages/marketing/NotificationsPage';
-import RewardsPage from '@/components/pages/marketing/RewardsPage';
-import VouchersPage from '@/components/pages/marketing/VouchersPage';
-import PromotionsPage from '@/components/pages/marketing/PromotionsPage';
-import InformationPage from '@/components/pages/marketing/InformationPage';
-import FeedbackPage from '@/components/pages/marketing/FeedbackPage';
-import MarketingReportsPage from '@/components/pages/analytics/MarketingReportsPage';
-import SalesReportsPage from '@/components/pages/analytics/SalesReportsPage';
-import SettingsPage from '@/components/pages/system/SettingsPage';
-import PWASettingsPage from '@/components/pages/system/PWASettingsPage';
+
+const MenuPage = dynamic(() => import('@/components/pages/store-ops/MenuPage'), { ssr: false });
+const TablesPage = dynamic(() => import('@/components/pages/store-ops/TablesPage'), { ssr: false });
+const InventoryPage = dynamic(() => import('@/components/pages/store-ops/InventoryPage'), { ssr: false });
+const StaffPage = dynamic(() => import('@/components/pages/store-ops/StaffPage'), { ssr: false });
+const RewardsPage = dynamic(() => import('@/components/pages/marketing/RewardsPage'), { ssr: false });
+const VouchersPage = dynamic(() => import('@/components/pages/marketing/VouchersPage'), { ssr: false });
+const CustomersPage = dynamic(() => import('@/components/pages/marketing/CustomersPage'), { ssr: false });
+const SalesReportsPage = dynamic(() => import('@/components/pages/analytics/SalesReportsPage'), { ssr: false });
+const MarketingReportsPage = dynamic(() => import('@/components/pages/analytics/MarketingReportsPage'), { ssr: false });
+const SettingsPage = dynamic(() => import('@/components/pages/system/SettingsPage'), { ssr: false });
+const AuditLogPage = dynamic(() => import('@/components/pages/system/AuditLogPage'), { ssr: false });
+const LoyaltyRulesPage = dynamic(() => import('@/components/pages/system/LoyaltyRulesPage'), { ssr: false });
+const CustomerDetailPage = dynamic(() => import('@/components/pages/system/CustomerDetailPage'), { ssr: false });
+const StoreSettingsPage = dynamic(() => import('@/components/pages/system/StoreSettingsPage'), { ssr: false });
+const NotificationsPage = dynamic(() => import('@/components/pages/marketing/NotificationsPage'), { ssr: false });
+const PromotionsPage = dynamic(() => import('@/components/pages/marketing/PromotionsPage'), { ssr: false });
+const InformationPage = dynamic(() => import('@/components/pages/marketing/InformationPage'), { ssr: false });
+const FeedbackPage = dynamic(() => import('@/components/pages/marketing/FeedbackPage'), { ssr: false });
+const PWASettingsPage = dynamic(() => import('@/components/pages/system/PWASettingsPage'), { ssr: false });
 
 export default function MerchantDashboard() {
   const [token, setToken] = useState('');
@@ -142,7 +144,7 @@ export default function MerchantDashboard() {
         const data = await res.json();
         setStores(Array.isArray(data) ? data : (data.stores || []));
       }
-    } catch {}
+    } catch (err) { console.error('Failed to fetch stores:', err); }
   }, [token]);
 
   async function fetchAdminStores() {
@@ -153,7 +155,7 @@ export default function MerchantDashboard() {
         const data = await res.json();
         setStores(Array.isArray(data) ? data : (data.stores || []));
       }
-    } catch {}
+    } catch (err) { console.error('Failed to fetch admin stores:', err); }
   }
 
   async function fetchUserRole() {
@@ -167,13 +169,15 @@ export default function MerchantDashboard() {
       } else if (res.status === 401) {
         handleLogout();
       }
-    } catch {
+    } catch (err) {
+      console.error('Failed to fetch user role:', err);
       handleLogout();
     }
   }
 
   useEffect(() => {
     if (!token) return;
+    const controller = new AbortController();
     const storeId = selectedStore === 'all' ? '' : selectedStore;
     if (page === 'dashboard') fetchDashboardWithRange(storeId, dateRange.from, dateRange.to, dashboardChartMode);
     else if (page === 'orders') fetchOrders(storeId);
@@ -187,6 +191,7 @@ export default function MerchantDashboard() {
      else if (page === 'auditlog') fetchAuditLog();
     else if (page === 'loyaltyrules') fetchLoyaltyTiers();
     else if (page === 'store') fetchAdminStores();
+    return () => controller.abort();
   }, [page, token, selectedStore, dateRange, ordersPage, ordersStatus, ordersFromDate, ordersToDate]);
 
   function handleLogout() {
@@ -222,7 +227,7 @@ export default function MerchantDashboard() {
       const queryString = params.toString() ? `?${params.toString()}` : '';
       const res = await apiFetch(`/admin/dashboard${queryString}`, token);
       if (res.ok) setDashboard(await res.json());
-    } catch {} finally { setLoading(false); }
+    } catch (err) { console.error('Failed to fetch dashboard:', err); } finally { setLoading(false); }
   }
 
   async function fetchDashboard(storeId?: string, chartMode?: string) {
@@ -246,7 +251,7 @@ export default function MerchantDashboard() {
         setOrders(Array.isArray(data) ? data : (data.orders || []));
         setOrdersTotal(data.total || 0);
       }
-    } catch {} finally { setLoading(false); }
+    } catch (err) { console.error('Failed to fetch orders:', err); } finally { setLoading(false); }
   }
 
   async function fetchMenu() {
@@ -265,7 +270,7 @@ export default function MerchantDashboard() {
         const items = await itemRes.json();
         setMenuItems(items);
       }
-    } catch {} finally { setLoading(false); }
+    } catch (err) { console.error('Failed to fetch menu:', err); } finally { setLoading(false); }
   }
 
   async function fetchInventory() {
@@ -274,7 +279,7 @@ export default function MerchantDashboard() {
     try {
       const res = await apiFetch(`/stores/${selectedStore}/inventory`, token);
       if (res.ok) setInventory(await res.json());
-    } catch {} finally { setLoading(false); }
+    } catch (err) { console.error('Failed to fetch inventory:', err); } finally { setLoading(false); }
   }
 
   async function fetchTables() {
@@ -283,7 +288,7 @@ export default function MerchantDashboard() {
     try {
       const res = await apiFetch(`/stores/${selectedStore}/tables`, token);
       if (res.ok) setTables(await res.json());
-    } catch {} finally { setLoading(false); }
+    } catch (err) { console.error('Failed to fetch tables:', err); } finally { setLoading(false); }
   }
 
   async function fetchRewards() {
@@ -310,7 +315,7 @@ export default function MerchantDashboard() {
         const data = await res.json();
         setLoyaltyTiers(Array.isArray(data) ? data : (data.tiers || []));
       }
-    } catch {} finally { setLoading(false); }
+    } catch (err) { console.error('Failed to fetch loyalty tiers:', err); } finally { setLoading(false); }
   }
 
   function openBroadcastModal() {
@@ -355,6 +360,7 @@ export default function MerchantDashboard() {
   };
 
   return (
+    <ErrorBoundary>
     <div style={{ height: '100vh', display: 'flex', overflow: 'hidden', background: '#F5F7FA' }}>
       <Sidebar
         page={page}
@@ -624,6 +630,7 @@ export default function MerchantDashboard() {
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
 }
 
@@ -659,7 +666,7 @@ function ChangePasswordModal({ token, onClose }: { token: string; onClose: () =>
         return;
       }
       setSuccess(true);
-    } catch { setError('Network error'); }
+    } catch (err) { console.error('Password change failed:', err); setError('Network error'); }
     finally { setSaving(false); }
   }
 
@@ -716,7 +723,7 @@ function CustomizationManager({ storeId, item, token, onClose }: { storeId: numb
     try {
       const res = await apiFetch(`/admin/stores/${storeId}/items/${item.id}/customizations`, token);
       if (res.ok) setOptions(await res.json());
-    } catch {} finally { setLoading(false); }
+    } catch (err) { console.error('Failed to fetch customizations:', err); } finally { setLoading(false); }
   }
 
   React.useEffect(() => { loadOptions(); }, [item.id]);

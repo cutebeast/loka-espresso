@@ -11,21 +11,7 @@ import ItemCard from '@/components/menu/ItemCard';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 
-const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  cream: '#F3EEE5',
-  brown: '#57280D',
-  textPrimary: '#1B2023',
-  textSecondary: '#3A4A5A',
-  textMuted: '#6A7A8A',
-  border: '#D4DCE5',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  bg: '#E4EAEF',
-  white: '#FFFFFF',
-} as const;
+import { LOKA } from '@/lib/tokens';
 
 interface SelectedOption {
   id: number;

@@ -108,6 +108,46 @@ async def create_order(
     if req.order_type == OrderType.delivery and not req.delivery_address:
         raise HTTPException(status_code=400, detail="delivery_address required for delivery")
 
+    # Validate table exists and is available for dine-in orders
+    if req.order_type == OrderType.dine_in and req.table_id:
+        from app.models.store import StoreTable as STModel
+        from app.models.marketing import TableOccupancySnapshot
+        table_result = await db.execute(select(STModel).where(STModel.id == req.table_id))
+        table_obj = table_result.scalar_one_or_none()
+        if not table_obj:
+            raise HTTPException(status_code=400, detail="Table not found")
+        if not table_obj.is_active:
+            raise HTTPException(status_code=400, detail="Table is not active")
+        # Check if table is already occupied by a different user's active order
+        existing_active = await db.execute(
+            select(Order).where(
+                Order.table_id == req.table_id,
+                Order.order_type == OrderType.dine_in,
+                Order.status.in_([OrderStatus.pending, OrderStatus.confirmed, OrderStatus.preparing, OrderStatus.ready]),
+                Order.user_id != user.id,
+            )
+        )
+        if existing_active.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="Table is currently occupied by another customer")
+        # Mark table as occupied
+        table_obj.is_occupied = True
+        # Update occupancy snapshot
+        snap_result = await db.execute(
+            select(TableOccupancySnapshot).where(TableOccupancySnapshot.table_id == req.table_id)
+        )
+        snapshot = snap_result.scalar_one_or_none()
+        if snapshot:
+            snapshot.is_occupied = True
+            snapshot.updated_at = datetime.now(timezone.utc)
+        else:
+            snapshot = TableOccupancySnapshot(
+                table_id=req.table_id,
+                store_id=table_obj.store_id,
+                is_occupied=True,
+            )
+            db.add(snapshot)
+        await db.flush()
+
     if req.voucher_code and getattr(req, 'reward_redemption_code', None):
         raise HTTPException(status_code=400, detail="Only one discount allowed per order")
 
@@ -712,6 +752,24 @@ async def update_order_status(
         type="order",
     )
     db.add(notif)
+
+    # Auto-release table when dine-in order completes or is cancelled
+    if new_status in ("completed", "cancelled") and order.table_id:
+        from app.models.store import StoreTable as STModel
+        from app.models.marketing import TableOccupancySnapshot
+        tbl_result = await db.execute(select(STModel).where(STModel.id == order.table_id))
+        tbl = tbl_result.scalar_one_or_none()
+        if tbl and tbl.is_occupied:
+            tbl.is_occupied = False
+            snap_result = await db.execute(
+                select(TableOccupancySnapshot).where(TableOccupancySnapshot.table_id == order.table_id)
+            )
+            snapshot = snap_result.scalar_one_or_none()
+            if snapshot:
+                snapshot.is_occupied = False
+                snapshot.current_order_id = None
+                snapshot.updated_at = datetime.now(timezone.utc)
+
     await log_action(db, action="ORDER_STATUS_CHANGE", user_id=user.id, store_id=order.store_id, entity_type="order", entity_id=order.id, details={"order_number": order.order_number, "from": old_status, "to": new_status})
     await db.flush()
     return {

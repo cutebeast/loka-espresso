@@ -6,6 +6,7 @@ export const LOKA = {
   copper: '#D18E38',
   copperLight: '#E5A559',
   copperSoft: 'rgba(209,142,56,0.12)',
+  copperMid: 'rgba(209,142,56,0.25)',
   cream: '#F3EEE5',
   brown: '#57280D',
   textPrimary: '#1B2023',

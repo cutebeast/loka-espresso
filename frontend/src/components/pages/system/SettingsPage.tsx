@@ -22,7 +22,7 @@ const CONFIG_GROUPS: { label: string; icon: string; items: ConfigDef[] }[] = [
     items: [
       { key: 'delivery_fee', label: 'Delivery Fee (RM)', description: 'Standard delivery fee charged to customers', type: 'number' },
       { key: 'min_order', label: 'Min Order (RM)', description: 'Minimum order amount for delivery', type: 'number' },
-      { key: 'min_delivery_order', label: 'Min Order for Delivery (RM)', description: 'Minimum order amount required for delivery', type: 'number' },
+      { key: 'min_order_delivery', label: 'Min Order for Delivery (RM)', description: 'Minimum order amount required for delivery', type: 'number' },
       { key: 'currency', label: 'Currency', description: 'Default currency code for all prices', type: 'string' },
     ],
   },
@@ -58,12 +58,16 @@ export default function SettingsPage({ token }: SettingsPageProps) {
     setLoading(true);
     setError('');
     try {
-      const res = await apiFetch('/config', token);
+      const allKeys = CONFIG_GROUPS.flatMap(g => g.items.map(i => i.key));
+      const params = new URLSearchParams();
+      for (const k of allKeys) { params.append('key', k); }
+      const res = await apiFetch(`/admin/config?${params.toString()}`, token);
       if (res.ok) {
         const data = await res.json();
-        setConfigs(data);
+        const configs = data.configs || {};
+        setConfigs(configs);
         const vals: Record<string, string> = {};
-        for (const [k, v] of Object.entries(data)) {
+        for (const [k, v] of Object.entries(configs)) {
           vals[k] = String(v);
         }
         setEditValues(vals);

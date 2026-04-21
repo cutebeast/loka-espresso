@@ -138,15 +138,18 @@ async def list_audit_log(
     paginated_query = base_query.order_by(desc(AuditLog.created_at)).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(paginated_query)
     logs = result.scalars().all()
+    user_ids = [log.user_id for log in logs if log.user_id]
+    if user_ids:
+        users_result = await db.execute(
+            select(User.id, User.email).where(User.id.in_(user_ids))
+        )
+        user_map = {u.id: u.email for u in users_result.all()}
+    else:
+        user_map = {}
+
     items = []
     for log in logs:
-        user_email = None
-        if log.user_id:
-            u = await db.execute(select(User.email).where(User.id == log.user_id))
-            row = u.first()
-            user_email = row[0] if row else None
-        else:
-            user_email = "System"
+        user_email = user_map.get(log.user_id, "System") if log.user_id else "System"
         items.append({
             "id": log.id,
             "user_id": log.user_id,
@@ -535,6 +538,30 @@ async def full_system_reset(
     Use with caution. This is irreversible.
     """
     try:
+        _ALLOWED_RESET_TABLES = {
+            "survey_answers", "survey_responses", "survey_questions",
+            "promo_banners", "surveys", "user_vouchers", "vouchers",
+            "user_rewards", "rewards", "menu_items", "menu_categories",
+            "customization_options", "store_tables", "table_occupancy_snapshot",
+            "inventory_movements", "inventory_items", "inventory_categories",
+            "user_store_access", "staff", "staff_shifts", "marketing_campaigns",
+            "notification_broadcasts", "notifications", "audit_log",
+            "pin_attempts", "token_blacklist", "favorites", "feedback",
+            "referrals", "payment_methods", "user_addresses", "device_tokens",
+            "otp_sessions", "wallet_transactions", "wallets",
+            "loyalty_transactions", "loyalty_accounts", "loyalty_tiers",
+            "payments", "order_items", "order_status_history", "orders",
+            "cart_items", "stores", "splash_content", "users",
+        }
+
+        _ALLOWED_SEQUENCES = {
+            "stores_id_seq", "staff_id_seq", "menu_categories_id_seq",
+            "menu_items_id_seq", "store_tables_id_seq",
+            "inventory_categories_id_seq", "inventory_items_id_seq",
+            "orders_id_seq", "loyalty_accounts_id_seq", "wallets_id_seq",
+            "audit_log_id_seq",
+        }
+
         tables_to_clear = [
             "survey_answers",
             "survey_responses",
@@ -583,8 +610,10 @@ async def full_system_reset(
             "splash_content",
         ]
 
-        for table in tables_to_clear:
-            await db.execute(text(f"DELETE FROM {table}"))
+        for table_name in tables_to_clear:
+            if table_name not in _ALLOWED_RESET_TABLES:
+                raise HTTPException(status_code=400, detail=f"Invalid table name: {table_name}")
+            await db.execute(text(f"DELETE FROM {table_name}"))
 
         # Delete non-admin users
         await db.execute(text("DELETE FROM users WHERE id != 1"))
@@ -604,6 +633,8 @@ async def full_system_reset(
             "audit_log_id_seq",
         ]
         for seq in sequences:
+            if seq not in _ALLOWED_SEQUENCES:
+                raise HTTPException(status_code=400, detail=f"Invalid sequence name: {seq}")
             await db.execute(text(f"SELECT setval('{seq}', 1, false)"))
 
 

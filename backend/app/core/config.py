@@ -1,3 +1,4 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -7,15 +8,11 @@ class Settings(BaseSettings):
     DB_PASSWORD: str = ""
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 10080
+    JWT_EXPIRE_MINUTES: int = 30
     CORS_ORIGINS: str = ""
     UPLOAD_DIR: str = "/root/fnb-super-app/uploads"
-    WEBHOOK_API_KEY: str = "fnb-webhook-default-key"
+    WEBHOOK_API_KEY: str = ""
     WEBHOOK_SIGNING_SECRET: str = ""
-
-    # Environment guard. The DB-driven OTP bypass is ONLY honored when this
-    # is true (so a forgotten admin toggle in prod can never let attackers
-    # authenticate). Default: False so production is safe by default.
     OTP_BYPASS_ALLOWED: bool = False
 
     @property
@@ -23,7 +20,7 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     class Config:
-        env_file = "../.env"
+        env_file = str(Path(__file__).resolve().parents[3] / ".env")
         env_file_encoding = "utf-8"
 
 

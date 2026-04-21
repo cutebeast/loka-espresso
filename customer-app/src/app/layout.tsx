@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -64,35 +65,8 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="font-sans antialiased bg-[#E4EAEF]">
+        <ServiceWorkerRegistrar />
         {children}
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            // Register Service Worker
-            if ('serviceWorker' in navigator) {
-              window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                  .then((registration) => {
-                    console.log('[PWA] SW registered:', registration.scope);
-                    
-                    // Check for updates
-                    registration.addEventListener('updatefound', () => {
-                      const newWorker = registration.installing;
-                      console.log('[PWA] Update found, installing...');
-                      
-                      newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                          console.log('[PWA] New version available, ready for next reload.');
-                        }
-                      });
-                    });
-                  })
-                  .catch((err) => {
-                    console.error('[PWA] SW registration failed:', err);
-                  });
-              });
-            }
-          `
-        }} />
       </body>
     </html>
   );

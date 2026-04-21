@@ -1,14 +1,79 @@
 {
   "name": "Loka Espresso",
   "short_name": "Loka",
-  "description": "Artisan Coffee · Community · Culture",
+  "description": "Artisan Coffee \u00b7 Community \u00b7 Culture",
+  "version": "1.0.1776792748",
+  "build_date": "2026-04-21T17:32:28.000Z",
+  "id": "/",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FCFAF7",
   "theme_color": "#384B16",
   "orientation": "portrait",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "food",
+    "lifestyle",
+    "shopping"
+  ],
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Menu",
+      "short_name": "Menu",
+      "url": "/?page=menu",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "My Orders",
+      "short_name": "Orders",
+      "url": "/?page=orders",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Rewards",
+      "short_name": "Rewards",
+      "url": "/?page=rewards",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

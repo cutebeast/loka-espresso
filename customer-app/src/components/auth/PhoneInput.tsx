@@ -3,13 +3,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Coffee, Loader2, Phone } from 'lucide-react';
+import { normalizePhone } from '@/lib/phone';
 
 interface PhoneInputProps {
   onSubmit: (phone: string) => Promise<void>;
 }
 
-// --- Design tokens (inline-style fallback – guaranteed to render
-// even if Tailwind v4 JIT misses an arbitrary value in production). ---
 const LOKA = {
   primary: '#384B16',
   primaryDark: '#2A3910',
@@ -43,13 +42,6 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPhone(formatPhone(e.target.value));
     setError('');
-  };
-
-  const normalizePhone = (value: string): string => {
-    const digits = value.replace(/\D/g, '');
-    if (digits.startsWith('60')) return '+' + digits;
-    if (digits.startsWith('0')) return '+6' + digits;
-    return '+60' + digits;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

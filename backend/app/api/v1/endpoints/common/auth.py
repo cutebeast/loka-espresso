@@ -103,8 +103,7 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
             limit_val = int(cfg.value)
         except (ValueError, TypeError):
             limit_val = 5
-        from app.core.security import get_remote_address
-        client_ip = get_remote_address(request)
+        client_ip = request.client.host if request.client else "unknown"
         if not hasattr(send_otp, "_rate_cache"):
             send_otp._rate_cache = {}
         if client_ip not in send_otp._rate_cache:

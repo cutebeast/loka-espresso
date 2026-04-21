@@ -72,19 +72,30 @@ async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
         .where(MenuCategory.store_id == UNIVERSAL_MENU_STORE_ID, MenuCategory.is_active == True)
         .order_by(MenuCategory.display_order)
     )
-    categories = []
-    for cat in cat_result.scalars().all():
-        item_result = await db.execute(
+    categories = cat_result.scalars().all()
+
+    cat_ids = [c.id for c in categories]
+    if cat_ids:
+        items_result = await db.execute(
             select(MenuItem)
             .where(
                 MenuItem.store_id == UNIVERSAL_MENU_STORE_ID,
-                MenuItem.category_id == cat.id,
+                MenuItem.category_id.in_(cat_ids),
                 MenuItem.is_available == True,
             )
             .order_by(MenuItem.display_order)
         )
-        items = item_result.scalars().all()
-        categories.append({
+        all_items = items_result.scalars().all()
+        items_by_cat = {}
+        for item in all_items:
+            items_by_cat.setdefault(item.category_id, []).append(item)
+    else:
+        items_by_cat = {}
+
+    cats_out = []
+    for cat in categories:
+        items = items_by_cat.get(cat.id, [])
+        cats_out.append({
             "id": cat.id,
             "name": cat.name,
             "slug": cat.slug,
@@ -103,7 +114,7 @@ async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
                 for i in items
             ],
         })
-    return {"store_id": store_id, "store_name": store.name, "categories": categories}
+    return {"store_id": store_id, "store_name": store.name, "categories": cats_out}
 
 
 @router.get("/{store_id}/tables", response_model=list[StoreTableOut])

@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.middleware import SlowAPIMiddleware
@@ -58,6 +59,12 @@ async def lifespan(app: FastAPI):
     from app.core.database import engine
     logger.info("[startup] FNB Super App starting up...")
     
+    # Warn about insecure defaults
+    if not settings.WEBHOOK_API_KEY:
+        logger.warning("[startup] WARNING: WEBHOOK_API_KEY is not set. Webhook endpoints will reject all requests.")
+    if settings.OTP_BYPASS_ALLOWED:
+        logger.warning("[startup] WARNING: OTP_BYPASS_ALLOWED is enabled. This should be disabled in production.")
+    
     try:
         async with engine.begin() as conn:
             result = await conn.execute(text("DELETE FROM token_blacklist WHERE expires_at < NOW()"))
@@ -96,6 +103,16 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Unhandled exception: {type(exc).__name__}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -136,22 +153,19 @@ app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
 
 @app.get("/health", tags=["System"])
-async def health(db: AsyncSession = Depends(get_db)):
-    """
-    Comprehensive health check endpoint.
-    Checks database connectivity and returns system status.
-    """
+async def health():
+    """Comprehensive health check endpoint."""
+    from app.core.database import engine
     health_status = {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "version": "1.0.0",
         "checks": {}
     }
-    
-    # Check database
+
     try:
-        result = await db.execute(text("SELECT 1"))
-        row = result.scalar()
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
         health_status["checks"]["database"] = {
             "status": "healthy",
             "response": "connected"
@@ -164,8 +178,7 @@ async def health(db: AsyncSession = Depends(get_db)):
             "error": str(e)
         }
         raise HTTPException(status_code=503, detail=health_status)
-    
-    # Check upload directory
+
     try:
         if os.path.exists(upload_dir) and os.access(upload_dir, os.W_OK):
             health_status["checks"]["uploads"] = {
@@ -182,18 +195,17 @@ async def health(db: AsyncSession = Depends(get_db)):
             "status": "unhealthy",
             "error": str(e)
         }
-    
+
     return health_status
 
 
 @app.get("/ready", tags=["System"])
-async def ready(db: AsyncSession = Depends(get_db)):
-    """
-    Kubernetes-style readiness probe.
-    Returns 200 when app is ready to receive traffic.
-    """
+async def ready():
+    """Kubernetes-style readiness probe."""
+    from app.core.database import engine
     try:
-        await db.execute(text("SELECT 1"))
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
         return {"ready": True}
     except Exception:
         raise HTTPException(status_code=503, detail={"ready": False})

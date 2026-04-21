@@ -52,7 +52,7 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
       ]);
       if (fbRes.ok) {
         const fbData = await fbRes.json();
-        setFeedbackList(Array.isArray(fbData) ? fbData : fbData.data ?? []);
+        setFeedbackList(Array.isArray(fbData) ? fbData : fbData.items ?? []);
       }
       if (statsRes.ok) {
         const statsData = await statsRes.json();

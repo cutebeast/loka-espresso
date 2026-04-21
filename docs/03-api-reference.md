@@ -84,9 +84,15 @@ These are the customer-facing PWA menu endpoints.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/tables/scan` | Scan table QR and return store/table context |
+| POST | `/tables/scan` | Scan table QR and return store/table context (QR must be active, not expired) |
 | GET | `/tables/{table_id}` | Get table details |
 | POST | `/tables/{table_id}/release` | Release table after dine-in completion |
+
+**QR Scan Rules:**
+- Table must have a `qr_token` set (QR must have been generated)
+- Table must be `is_active=True`
+- QR codes expire 30 minutes after generation
+- Tables without QR cannot be scanned (returns 403 "This table is not active")
 
 ## Cart & Checkout
 
@@ -282,6 +288,27 @@ These are the customer-facing PWA menu endpoints.
 | PUT | `/admin/config` | Update app config |
 | POST | `/admin/system/init-hq` | Initialize HQ |
 | DELETE | `/admin/system/reset` | Reset data while preserving core structure |
+
+### Store & Table Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/stores` | List all stores |
+| POST | `/admin/stores` | Create store |
+| GET | `/admin/stores/{store_id}/tables` | List tables for a store |
+| POST | `/admin/stores/{store_id}/tables` | Create table (no QR auto-generated) |
+| PUT | `/admin/stores/{store_id}/tables/{table_id}` | Update table |
+| DELETE | `/admin/stores/{store_id}/tables/{table_id}` | Soft-delete table |
+| POST | `/admin/stores/{store_id}/tables/{table_id}/generate-qr` | Generate QR for PENDING table |
+| GET | `/admin/stores/{store_id}/tables/{table_id}/qr-image` | Download QR as PNG |
+| POST | `/admin/stores/{store_id}/tables/{table_id}/generate-qr` | Regenerate QR (invalidates old) |
+
+**Table QR Workflow:**
+1. Create table → status is PENDING (no QR)
+2. Click "Generate QR" → QR generated with 30-min expiry, table becomes ACTIVE
+3. Download/print QR and place on table
+4. Customer scans to place dine-in order
+5. Order completes → table released back to ACTIVE
 
 ## Webhook Security
 

@@ -15,30 +15,62 @@ function createIdempotencyKey(prefix: string): string {
 }
 
 export async function syncCartToServer(items: CartItem[], storeId: number): Promise<void> {
-  await api.delete('/cart');
+  let serverItems: any[] = [];
+  try {
+    const res = await api.get('/cart');
+    if (res.status === 200) {
+      const data = res.data;
+      serverItems = Array.isArray(data) ? data : (data?.items ?? []);
+    }
+  } catch {
+    // proceed with sync even if we can't read the cart
+  }
 
-  for (const item of items) {
-    const customizationOptionIds: number[] = [];
-    
-    if (item.customizations && typeof item.customizations === 'object') {
-      const cust = item.customizations as CustomizationStructure;
-      if (cust.options && Array.isArray(cust.options)) {
-        for (const opt of cust.options) {
-          if (typeof opt.id === 'number') {
-            customizationOptionIds.push(opt.id);
+  const desiredMap = new Map(items.map(i => [i.menu_item_id, i]));
+  const serverMap = new Map(serverItems.map((i: any) => [i.menu_item_id ?? i.item_id, i]));
+
+  const toDelete = serverItems.filter((si: any) => !desiredMap.has(si.menu_item_id ?? si.item_id));
+  for (const item of toDelete) {
+    try {
+      await api.delete(`/cart/items/${item.id}`);
+    } catch (err) {
+      console.error('Failed to delete cart item:', err);
+    }
+  }
+
+  for (const [menuItemId, desired] of desiredMap) {
+    const existing = serverMap.get(menuItemId);
+    try {
+      if (existing) {
+        if (existing.quantity !== desired.quantity) {
+          await api.put(`/cart/items/${existing.id}`, { quantity: desired.quantity });
+        }
+      } else {
+        const customizationOptionIds: number[] = [];
+
+        if (desired.customizations && typeof desired.customizations === 'object') {
+          const cust = desired.customizations as CustomizationStructure;
+          if (cust.options && Array.isArray(cust.options)) {
+            for (const opt of cust.options) {
+              if (typeof opt.id === 'number') {
+                customizationOptionIds.push(opt.id);
+              }
+            }
           }
         }
-      }
-    }
-    
-    customizationOptionIds.sort((a, b) => a - b);
 
-    await api.post('/cart/items', {
-      store_id: storeId,
-      item_id: item.menu_item_id,
-      quantity: item.quantity,
-      customization_option_ids: customizationOptionIds,
-    });
+        customizationOptionIds.sort((a, b) => a - b);
+
+        await api.post('/cart/items', {
+          store_id: storeId,
+          item_id: desired.menu_item_id,
+          quantity: desired.quantity,
+          customization_option_ids: customizationOptionIds,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to sync cart item:', err);
+    }
   }
 }
 
