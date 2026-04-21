@@ -193,12 +193,13 @@ function ApproveProfileButton({ customerId, token, onDone }: { customerId: numbe
   const [result, setResult] = useState<string | null>(null);
 
   async function handleApprove() {
-    if (!confirm('Approve this customer\'s profile? This will mark their phone as verified.')) return;
+    if (!confirm('Approve this customer? This will verify their phone and activate their account.')) return;
     setSaving(true); setError(''); setResult(null);
     try {
       const res = await apiFetch(`/admin/customers/${customerId}/approve-profile`, token, { method: 'POST' });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || 'Failed'); return; }
-      setResult('Profile approved');
+      const data = await res.json().catch(() => ({}));
+      setResult(data.note || 'Customer approved and activated');
       onDone();
     } catch { setError('Network error'); } finally { setSaving(false); }
   }
@@ -208,7 +209,7 @@ function ApproveProfileButton({ customerId, token, onDone }: { customerId: numbe
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 14, color: '#92400E', marginBottom: 4 }}><i className="fas fa-user-check" style={{ marginRight: 6 }}></i>Profile Pending Approval</div>
-          <div style={{ fontSize: 12, color: '#78350F' }}>Phone not verified. Approve to manually verify and activate this customer.</div>
+          <div style={{ fontSize: 12, color: '#78350F' }}>Approve to verify and activate this customer. They can update name/email later from the app.</div>
           {error && <div style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}><i className="fas fa-exclamation-circle"></i> {error}</div>}
           {result && <div style={{ color: '#059669', fontSize: 12, marginTop: 4 }}><i className="fas fa-check-circle"></i> {result}</div>}
         </div>

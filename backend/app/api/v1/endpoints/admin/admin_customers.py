@@ -607,19 +607,26 @@ async def approve_customer_profile(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_hq_access()),
 ):
-    """Approve a pending customer profile by marking phone as verified.
+    """Manually approve a customer profile.
     
-    This is used when a customer's profile is incomplete (phone not verified)
-    and admin manually approves them."""
+    This is used when a customer's profile is incomplete (missing name/email
+    or phone not verified) and admin manually approves them to grant full access.
+    Sets phone_verified=True and is_active=True regardless of profile completion.
+    """
     result = await db.execute(select(User).where(User.id == user_id, User.role_id == RoleIDs.CUSTOMER))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    if target.phone_verified:
-        raise HTTPException(status_code=400, detail="Customer profile is already approved")
+    already_approved = target.phone_verified and target.is_active
+    if already_approved:
+        raise HTTPException(status_code=400, detail="Customer profile is already approved and active")
+
+    previous_phone_verified = target.phone_verified
+    previous_is_active = target.is_active
 
     target.phone_verified = True
+    target.is_active = True
 
     ip = get_client_ip(request)
     await log_action(
@@ -628,16 +635,23 @@ async def approve_customer_profile(
         user_id=user.id,
         entity_type="customer",
         entity_id=user_id,
-        details={"previous_phone_verified": False},
+        details={
+            "previous_phone_verified": previous_phone_verified,
+            "previous_is_active": previous_is_active,
+        },
         ip_address=ip,
     )
     await db.flush()
     await db.refresh(target)
 
+    profile_complete = _is_customer_profile_complete(target.name, target.email, True)
+
     return {
-        "message": "Customer profile approved",
+        "message": "Customer approved and activated",
         "phone_verified": target.phone_verified,
-        "is_profile_complete": _is_customer_profile_complete(target.name, target.email, True),
+        "is_active": target.is_active,
+        "is_profile_complete": profile_complete,
+        "note": "Profile is still missing name/email. Customer can update their profile from the app." if not profile_complete else None,
     }
 
 
