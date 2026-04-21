@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
-import { apiFetch } from '@/lib/merchant-api';
+import React, { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
+import { apiFetch, apiUpload } from '@/lib/merchant-api';
 import { Select, Pagination, Drawer } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 
@@ -220,11 +220,7 @@ function RewardFormPage({ token, existingReward, onBack }: { token: string; exis
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/v1/upload/marketing-image', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
+      const res = await apiUpload('/upload/marketing-image', token, fd);
       if (res.ok) {
         const data = await res.json();
         setImageUrl(data.url);

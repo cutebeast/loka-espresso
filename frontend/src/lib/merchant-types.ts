@@ -43,6 +43,14 @@ export interface MerchantTableItem {
   capacity: number;
   is_active: boolean;
   is_occupied: boolean;
+  active_order?: {
+    id: number;
+    order_number: string;
+    status: string;
+    order_type: string;
+    total: number;
+    payment_status: string;
+  } | null;
 }
 
 export interface MerchantReward {

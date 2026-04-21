@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { apiFetch } from '@/lib/merchant-api';
+import { apiFetch, formatRM } from '@/lib/merchant-api';
 import { StoreSelector } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantTableItem, MerchantStore } from '@/lib/merchant-types';
@@ -16,6 +16,7 @@ interface TablesPageProps {
   onRefresh: () => void;
   stores: MerchantStore[];
   onStoreChange: (storeId: string) => void;
+  onViewOrder: (orderId: number) => void;
 }
 
 const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.textPrimary };
@@ -93,7 +94,7 @@ function useQrImages(tables: MerchantTableItem[], storeId: string, token: string
   return qrUrls;
 }
 
-export default function TablesPage({ tables, selectedStore, storeObj, token, onRefresh, stores, onStoreChange }: TablesPageProps) {
+export default function TablesPage({ tables, selectedStore, storeObj, token, onRefresh, stores, onStoreChange, onViewOrder }: TablesPageProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingTable, setEditingTable] = useState<MerchantTableItem | null>(null);
   const [error, setError] = useState('');
@@ -372,6 +373,48 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                           </span>
                         )}
                       </p>
+                      {/* Active Order Indicator */}
+                      {table.active_order && (
+                        <div
+                          onClick={() => onViewOrder(table.active_order!.id)}
+                          style={{
+                            marginTop: 6,
+                            padding: '6px 10px',
+                            background: table.active_order.payment_status === 'paid' ? '#FEF3C7' : '#FEE2E2',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            border: `1px solid ${table.active_order.payment_status === 'paid' ? '#F59E0B' : '#F87171'}`,
+                            transition: 'box-shadow 0.15s',
+                          }}
+                          title="Click to view order details"
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: THEME.textPrimary }}>
+                                <i className="fas fa-receipt" style={{ marginRight: 4 }}></i>
+                                {table.active_order.order_number}
+                              </span>
+                              <span style={{ marginLeft: 8, fontSize: 11 }} className={`badge ${
+                                table.active_order.status === 'pending' ? 'badge-yellow' :
+                                table.active_order.status === 'preparing' ? 'badge-blue' :
+                                table.active_order.status === 'ready' ? 'badge-green' :
+                                table.active_order.status === 'confirmed' ? 'badge-blue' :
+                                'badge-gray'
+                              }`}>
+                                {table.active_order.status}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: THEME.textMuted }}>
+                              {formatRM(table.active_order.total)}
+                              {table.active_order.payment_status !== 'paid' && (
+                                <span style={{ color: '#DC2626', fontWeight: 600, marginLeft: 6 }}>
+                                  <i className="fas fa-exclamation-circle"></i> Unpaid
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <span className={`badge ${
                       table.is_occupied ? 'badge-red' :

@@ -24,7 +24,7 @@ import type {
 } from "./types";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "https://app.loyaltysystem.uk/api/v1";
+  process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;

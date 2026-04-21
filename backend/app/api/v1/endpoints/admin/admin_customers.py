@@ -11,7 +11,8 @@ from app.models.user import User, RoleIDs
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.order import Order
 from app.models.wallet import Wallet, WalletTransaction
-from app.schemas.admin_customers import AdjustPointsRequest, CustomerUpdateRequest
+from app.models.voucher import Voucher, UserVoucher
+from app.schemas.admin_customers import AdjustPointsRequest, CustomerUpdateRequest, AwardVoucherRequest, SetTierRequest
 
 
 # Tables to clear when resetting customer data, in safe deletion order
@@ -474,6 +475,170 @@ async def adjust_customer_points(
     await log_action(db, action="ADJUST_CUSTOMER_POINTS", user_id=user.id, entity_type="customer", entity_id=user_id, details={"points": data.points, "reason": data.reason, "new_balance": account_fresh.points_balance}, ip_address=ip)
     await db.flush()
     return {"message": "Points adjusted", "new_balance": account_fresh.points_balance}
+
+
+@router.post("/customers/{user_id}/award-voucher")
+async def award_voucher_to_customer(
+    user_id: int,
+    data: AwardVoucherRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_hq_access()),
+):
+    """Award a voucher to a customer. Admin action — bypasses promo claim flow."""
+    # Verify customer exists
+    result = await db.execute(select(User).where(User.id == user_id, User.role_id == RoleIDs.CUSTOMER))
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    # Verify voucher exists and is active
+    result = await db.execute(select(Voucher).where(Voucher.id == data.voucher_id))
+    voucher = result.scalar_one_or_none()
+    if not voucher:
+        raise HTTPException(status_code=404, detail="Voucher not found")
+    if not voucher.is_active or voucher.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="Voucher is not active")
+
+    # Check per-user limit (same as PWA claim flow)
+    user_count = await db.execute(
+        select(func.count()).select_from(UserVoucher).where(
+            UserVoucher.user_id == user_id,
+            UserVoucher.voucher_id == data.voucher_id,
+        )
+    )
+    total_claimed = user_count.scalar() or 0
+    max_per_user = voucher.max_uses_per_user
+    if max_per_user is not None and total_claimed >= max_per_user:
+        raise HTTPException(status_code=400, detail=f"Customer already has {total_claimed} instance(s) of this voucher (max {max_per_user} per user)")
+
+    # Create the user_voucher using the same helper as PWA promos
+    import secrets
+    from datetime import timedelta
+    from app.core.security import now_utc
+
+    validity_days = voucher.validity_days if voucher.validity_days else 30
+    code = f"{voucher.code}-ADM-{secrets.token_hex(4).upper()}"
+
+    uv = UserVoucher(
+        user_id=user_id,
+        voucher_id=data.voucher_id,
+        source="admin_award",
+        source_id=user.id,  # admin user who awarded it
+        status="available",
+        code=code,
+        expires_at=now_utc() + timedelta(days=validity_days),
+        discount_type=voucher.discount_type.value if hasattr(voucher.discount_type, 'value') else str(voucher.discount_type),
+        discount_value=voucher.discount_value,
+        min_spend=voucher.min_spend,
+    )
+    db.add(uv)
+
+    ip = get_client_ip(request)
+    await log_action(
+        db,
+        action="AWARD_VOUCHER_TO_CUSTOMER",
+        user_id=user.id,
+        entity_type="customer",
+        entity_id=user_id,
+        details={"voucher_id": data.voucher_id, "voucher_code": code, "reason": data.reason},
+        ip_address=ip,
+    )
+    await db.flush()
+
+    return {
+        "message": "Voucher awarded",
+        "user_voucher_id": uv.id,
+        "voucher_code": code,
+        "voucher_title": voucher.title or voucher.code,
+        "expires_at": uv.expires_at,
+    }
+
+
+@router.post("/customers/{user_id}/set-tier")
+async def set_customer_tier(
+    user_id: int,
+    data: SetTierRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_hq_access()),
+):
+    """Manually override a customer's loyalty tier."""
+    # Verify customer exists
+    result = await db.execute(select(User).where(User.id == user_id, User.role_id == RoleIDs.CUSTOMER))
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    # Validate tier value
+    valid_tiers = {"bronze", "silver", "gold", "platinum"}
+    tier = data.tier.strip().lower()
+    if tier not in valid_tiers:
+        raise HTTPException(status_code=400, detail=f"Invalid tier. Must be one of: {', '.join(sorted(valid_tiers))}")
+
+    # Get or create loyalty account
+    result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.user_id == user_id))
+    account = result.scalar_one_or_none()
+    if not account:
+        account = LoyaltyAccount(user_id=user_id, points_balance=0, tier=tier, total_points_earned=0)
+        db.add(account)
+    else:
+        account.tier = tier
+
+    ip = get_client_ip(request)
+    await log_action(
+        db,
+        action="SET_CUSTOMER_TIER",
+        user_id=user.id,
+        entity_type="customer",
+        entity_id=user_id,
+        details={"tier": tier, "reason": data.reason},
+        ip_address=ip,
+    )
+    await db.flush()
+
+    return {"message": f"Tier set to {tier}", "tier": tier}
+
+
+@router.post("/customers/{user_id}/approve-profile")
+async def approve_customer_profile(
+    user_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_hq_access()),
+):
+    """Approve a pending customer profile by marking phone as verified.
+    
+    This is used when a customer's profile is incomplete (phone not verified)
+    and admin manually approves them."""
+    result = await db.execute(select(User).where(User.id == user_id, User.role_id == RoleIDs.CUSTOMER))
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    if target.phone_verified:
+        raise HTTPException(status_code=400, detail="Customer profile is already approved")
+
+    target.phone_verified = True
+
+    ip = get_client_ip(request)
+    await log_action(
+        db,
+        action="APPROVE_CUSTOMER_PROFILE",
+        user_id=user.id,
+        entity_type="customer",
+        entity_id=user_id,
+        details={"previous_phone_verified": False},
+        ip_address=ip,
+    )
+    await db.flush()
+    await db.refresh(target)
+
+    return {
+        "message": "Customer profile approved",
+        "phone_verified": target.phone_verified,
+        "is_profile_complete": _is_customer_profile_complete(target.name, target.email, True),
+    }
 
 
 @router.put("/customers/{user_id}")

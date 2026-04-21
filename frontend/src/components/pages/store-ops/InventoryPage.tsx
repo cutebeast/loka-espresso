@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch } from '@/lib/merchant-api';
+import { apiFetch, apiUpload } from '@/lib/merchant-api';
 import { StoreSelector, Select, FilterSelect, DateFilter, Pagination } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantInventoryItem, MerchantInventoryCategory, MerchantStore } from '@/lib/merchant-types';
@@ -165,7 +165,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
       try {
         const formData = new FormData();
         formData.append('file', adjFile);
-        const upRes = await fetch('/api/v1/upload/document', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
+        const upRes = await apiUpload('/upload/document', token, formData);
         if (upRes.ok) { const d = await upRes.json(); attachmentPath = d.url; }
       } catch {}
     }

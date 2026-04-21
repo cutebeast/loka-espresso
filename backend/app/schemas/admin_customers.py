@@ -42,6 +42,16 @@ class AdjustPointsRequest(BaseModel):
     reason: Optional[str] = None
 
 
+class SetTierRequest(BaseModel):
+    tier: str
+    reason: Optional[str] = None
+
+
+class AwardVoucherRequest(BaseModel):
+    voucher_id: int
+    reason: Optional[str] = None
+
+
 class CustomerUpdateRequest(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None

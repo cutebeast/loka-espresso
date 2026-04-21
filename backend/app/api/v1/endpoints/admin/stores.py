@@ -2,7 +2,7 @@ import math
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, desc, asc, case
 
 from app.core.database import get_db
 from app.core.security import get_current_user, require_role, require_store_access, now_utc
@@ -117,12 +117,65 @@ async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
     return {"store_id": store_id, "store_name": store.name, "categories": cats_out}
 
 
-@router.get("/{store_id}/tables", response_model=list[StoreTableOut])
-async def get_store_tables(store_id: int, db: AsyncSession = Depends(get_db)):
+@router.get("/{store_id}/tables")
+async def get_store_tables(
+    store_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """List tables sorted by is_active DESC, table_number ASC.
+    Includes active_order info for dine-in orders that are not completed/cancelled."""
+    from app.models.order import Order, OrderStatus
+
     result = await db.execute(
-        select(StoreTable).where(StoreTable.store_id == store_id)
+        select(StoreTable)
+        .where(StoreTable.store_id == store_id)
+        .order_by(
+            case((StoreTable.is_active == True, 0), else_=1),
+            StoreTable.table_number.asc(),
+        )
     )
-    return result.scalars().all()
+    tables = result.scalars().all()
+
+    # Fetch active (non-terminal) orders for each table in this store
+    active_orders_result = await db.execute(
+        select(Order).where(
+            Order.store_id == store_id,
+            Order.table_id.isnot(None),
+            Order.status.notin_([
+                OrderStatus.completed,
+                OrderStatus.cancelled,
+            ]),
+        )
+    )
+    active_orders = active_orders_result.scalars().all()
+
+    # Build a map: table_id -> active order
+    order_by_table: dict[int, dict] = {}
+    for o in active_orders:
+        if o.table_id:
+            order_by_table[o.table_id] = {
+                "id": o.id,
+                "order_number": o.order_number,
+                "status": o.status.value if hasattr(o.status, 'value') else str(o.status),
+                "order_type": o.order_type.value if hasattr(o.order_type, 'value') else str(o.order_type),
+                "total": to_float(o.total),
+                "payment_status": o.payment_status,
+            }
+
+    return [
+        {
+            "id": t.id,
+            "store_id": t.store_id,
+            "table_number": t.table_number,
+            "qr_code_url": t.qr_code_url,
+            "qr_generated_at": t.qr_generated_at,
+            "capacity": t.capacity,
+            "is_active": t.is_active,
+            "is_occupied": t.is_occupied,
+            "active_order": order_by_table.get(t.id),
+        }
+        for t in tables
+    ]
 
 
 @router.get("/{store_id}/pickup-slots", response_model=list[PickupSlotOut])

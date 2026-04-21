@@ -78,6 +78,7 @@ export default function MerchantDashboard() {
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersPageSize] = useState(50);
   const [ordersStatus, setOrdersStatus] = useState<string>('');
+  const [ordersOrderType, setOrdersOrderType] = useState<string>('');
   const [categories, setCategories] = useState<MerchantCategory[]>([]);
   const [menuItems, setMenuItems] = useState<MerchantMenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
@@ -192,7 +193,7 @@ export default function MerchantDashboard() {
     else if (page === 'loyaltyrules') fetchLoyaltyTiers();
     else if (page === 'store') fetchAdminStores();
     return () => controller.abort();
-  }, [page, token, selectedStore, dateRange, ordersPage, ordersStatus, ordersFromDate, ordersToDate]);
+  }, [page, token, selectedStore, dateRange, ordersPage, ordersStatus, ordersOrderType, ordersFromDate, ordersToDate]);
 
   function handleLogout() {
     setToken('');
@@ -243,6 +244,7 @@ export default function MerchantDashboard() {
       params.append('page_size', String(ordersPageSize));
       if (storeId) params.append('store_id', storeId);
       if (ordersStatus) params.append('status', ordersStatus);
+      if (ordersOrderType) params.append('order_type', ordersOrderType);
       if (ordersFromDate) params.append('from_date', ordersFromDate + 'T00:00:00');
       if (ordersToDate) params.append('to_date', ordersToDate + 'T23:59:59');
       const res = await apiFetch(`/admin/orders?${params.toString()}`, token);
@@ -439,11 +441,13 @@ export default function MerchantDashboard() {
                   page={ordersPage}
                   pageSize={ordersPageSize}
                   status={ordersStatus}
+                  orderType={ordersOrderType}
                   fromDate={ordersFromDate}
                   toDate={ordersToDate}
                   onUpdate={() => fetchOrders(selectedStore === 'all' ? undefined : selectedStore)}
                   onPageChange={setOrdersPage}
                   onStatusChange={setOrdersStatus}
+                  onOrderTypeChange={setOrdersOrderType}
                   onStoreChange={setSelectedStore}
                   onDateChange={(from, to) => { setOrdersFromDate(from); setOrdersToDate(to); }}
                 />
@@ -487,6 +491,10 @@ export default function MerchantDashboard() {
                   onRefresh={fetchTables}
                   stores={stores}
                   onStoreChange={setSelectedStore}
+                  onViewOrder={(orderId: number) => {
+                    setOrdersStatus('');
+                    setPage('orders');
+                  }}
                 />
               )}
 

@@ -116,8 +116,14 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
   async function fetchVersionInfo() {
     setVersionLoading(true);
     try {
-      // Fetch manifest from customer PWA
-      const res = await fetch('https://app.loyaltysystem.uk/manifest.json', {
+      // Build the customer app URL from the same API base (replace admin subdomain)
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+      // Derive customer app origin: strip /api/v1 and replace admin. with app.
+      const adminOrigin = apiBase.replace(/\/api\/v1\/?$/, '');
+      const appOrigin = adminOrigin.replace('//admin.', '//app.');
+      const manifestUrl = `${appOrigin}/manifest.json`;
+
+      const res = await fetch(manifestUrl, {
         headers: { 'Accept': 'application/json' },
       });
       if (res.ok) {
@@ -129,22 +135,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
         });
       }
     } catch {
-      // Fallback - try localhost
-      try {
-        const res = await fetch('http://localhost:3002/manifest.json', {
-          headers: { 'Accept': 'application/json' },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setVersionInfo({
-            version: data.version || '1.0.0',
-            build_date: data.build_date || new Date().toISOString(),
-            cache_name: `loka-pwa-v${data.version || '1.0.0'}`,
-          });
-        }
-      } catch {
-        setVersionInfo(null);
-      }
+      setVersionInfo(null);
     } finally {
       setVersionLoading(false);
     }

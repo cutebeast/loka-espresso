@@ -991,3 +991,220 @@ All 70+ items completed and verified:
 - ✅ QR scanner implemented
 - ✅ Featured items system working
 - ✅ Information cards with content_type differentiation
+
+---
+
+## Session 10: Customer Management, Frontend Hardening, Notifications Refactor (2026-04-21)
+
+### Backend: Customer Management Endpoints
+
+Three new admin endpoints for full customer management capabilities.
+
+| # | Endpoint | Method | Purpose |
+|---|----------|--------|---------|
+| 1 | `/admin/customers/{user_id}/award-voucher` | POST | Award an existing voucher to a customer (admin-initiated). Checks per-user limits, creates UserVoucher with source="admin_award", snapshots discount details. |
+| 2 | `/admin/customers/{user_id}/set-tier` | POST | Manually override a customer's loyalty tier (bronze/silver/gold/platinum). Creates loyalty account if none exists. |
+| 3 | `/admin/customers/{user_id}/approve-profile` | POST | Mark a customer's phone as verified (profile approval). Used when customers can't receive OTP. |
+
+**Schemas used** (already existed in `admin_customers.py`):
+- `AwardVoucherRequest(voucher_id, reason)`
+- `SetTierRequest(tier, reason)`
+
+**Files changed:**
+- `backend/app/api/v1/endpoints/admin/admin_customers.py` — 3 new endpoints + import of Voucher/UserVoucher models
+- `backend/app/schemas/admin_customers.py` — No changes (schemas already existed)
+
+### Frontend: Customer Management UI
+
+New "Manage" tab added to `CustomerDetailPage.tsx` with 4 action panels:
+
+| # | Action | Component | Description |
+|---|--------|-----------|-------------|
+| 1 | **Approve Profile** | `ApproveProfileButton` | Shows only when `is_profile_complete=false`. Approves with confirmation dialog. |
+| 2 | **Award/Deduct Points** | `AwardPointsDialog` | Inline form with points (+/-) and reason. Shows result after submission. |
+| 3 | **Award Voucher** | `AwardVoucherDialog` | Dropdown of active vouchers + reason field. Fetches voucher list from `/admin/vouchers`. |
+| 4 | **Set Tier Override** | `SetTierDialog` | Dropdown (bronze/silver/gold/platinum) + reason. Pre-selects current tier. |
+
+**Additional changes:**
+- Header now shows "Incomplete" badge when `is_profile_complete=false`
+- "Total Earned" points displayed in profile balances
+- Profile edit button text changed to "Edit Profile"
+- Phone verified / profile complete status uses colored indicators
+
+### Frontend: Store Settings Opening Hours UI
+
+**Before:** Raw JSON textarea — non-technical users had to type `{"mon": "08:00-22:00"}`.
+
+**After:** Per-day checkboxes (Mon–Sun) with time inputs for open/close.
+
+| Feature | Detail |
+|---------|--------|
+| Day checkbox | Enable/disable each day independently |
+| Open/Close time inputs | Native `<input type="time">` with 24h format |
+| Disabled state | Time inputs greyed out when day unchecked |
+| Bidirectional parsing | `parseOpeningHours()` converts `"mon": "08:00-22:00"` to state; `openingHoursToJSON()` converts back |
+| Applied to | Both AddStoreForm and EditStoreForm |
+
+**Files changed:**
+- `frontend/src/components/pages/system/StoreSettingsPage.tsx` — New `OpeningHoursEditor` component + `DayHours` type + helper functions
+
+### Frontend: Notifications Page Refactor
+
+**Changes:**
+- Removed "Send Now" button from draft broadcasts (SW-based client fetch replaces server-push)
+- Removed `sendingId` state and `sendBroadcast()` function
+- Updated info banner: Changed from "Phase 3 coming" warning to "SW-based push delivery" info
+- Removed misleading `sent_count / opened` stats (always 0, no actual push delivery)
+- Changed "Sent" label to "Published" for sent broadcasts
+- Changed "Not sent" label to "Draft"
+
+**Rationale:** The broadcast system is DB-only. No FCM/APNs integration exists. The PWA client uses Service Worker to periodically fetch new notifications from the DB. The "Send" button was misleading — it only flipped a status column.
+
+**Files changed:**
+- `frontend/src/components/pages/marketing/NotificationsPage.tsx`
+
+### Frontend: Upload URLs Fixed (apiUpload helper)
+
+**Before:** 4 files used hardcoded `fetch('/api/v1/upload/...')` — bypassed the `apiFetch` helper, didn't go through auth refresh, and had hardcoded paths.
+
+**After:** New `apiUpload(path, token, formData)` helper in `merchant-api.tsx` that:
+- Uses `NEXT_PUBLIC_API_URL` for base URL
+- Sends auth header
+- Handles token refresh on 401
+- Does NOT set Content-Type (browser sets multipart/form-data boundary)
+
+**Files changed:**
+| # | File | Change |
+|---|------|--------|
+| 1 | `src/lib/merchant-api.tsx` | New `apiUpload()` export |
+| 2 | `src/components/pages/marketing/InformationPage.tsx` | `fetch('/api/v1/upload/...')` → `apiUpload(...)` |
+| 3 | `src/components/pages/marketing/PromotionsPage.tsx` | `fetch('/api/v1/upload/...')` → `apiUpload(...)` |
+| 4 | `src/components/pages/marketing/RewardsPage.tsx` | `fetch('/api/v1/upload/...')` → `apiUpload(...)` |
+| 5 | `src/components/pages/store-ops/InventoryPage.tsx` | `fetch('/api/v1/upload/...')` → `apiUpload(...)` |
+
+### Frontend: Hardcoded URLs Fixed
+
+| # | File | Before | After |
+|---|------|--------|-------|
+| 1 | `PWASettingsPage.tsx` | `fetch('https://app.loyaltysystem.uk/manifest.json')` + localhost fallback | Derives from `NEXT_PUBLIC_API_URL` (replaces admin. with app.) |
+| 2 | `customer-app/src/lib/api.ts` | `process.env.NEXT_PUBLIC_API_URL ?? "https://app.loyaltysystem.uk/api/v1"` | `process.env.NEXT_PUBLIC_API_URL || "/api/v1"` |
+
+### Frontend: Missing React Import Bug Fix
+
+Two files used `React.CSSProperties` and `React.ChangeEvent` without importing React, causing runtime `ReferenceError`.
+
+| # | File | Fix |
+|---|------|-----|
+| 1 | `src/components/pages/marketing/RewardsPage.tsx` | Added `React` to import |
+| 2 | `src/components/pages/marketing/VouchersPage.tsx` | Added `React` to import |
+
+### System Pages Audit: env vs DB
+
+All 6 system pages verified — **none rely on env files for settings data**:
+
+| Page | Data Source | Verdict |
+|------|------------|---------|
+| SettingsPage | `/admin/config` → `app_config` table via API | ✅ DB |
+| PWASettingsPage | `/admin/config` + `/config` → `app_config` table | ✅ DB |
+| StoreSettingsPage | `/admin/stores` → `stores` table | ✅ DB |
+| LoyaltyRulesPage | `/admin/loyalty-tiers` → `loyalty_tiers` table | ✅ DB |
+| AuditLogPage | `/admin/audit-log` → `audit_log` table | ✅ DB |
+| CustomerDetailPage | `/admin/customers/{id}` → `users`/`loyalty_accounts` tables | ✅ DB |
+
+The only `process.env` usage in the frontend is `NEXT_PUBLIC_API_URL` in `merchant-api.tsx` and `api.ts` — correct and intentional (tells the client where the backend is).
+
+---
+
+## Session 10b: Tables Ordering, Order Status on Tables, Order Type Filter (2026-04-21)
+
+### Table Sorting
+
+**Before:** Tables returned in database insertion order (no sorting).
+**After:** Tables sorted by `is_active DESC` (active first), then `table_number ASC` (alphabetical).
+
+**Backend change:**
+- `GET /{store_id}/tables` — Added `ORDER BY CASE(is_active=true, 0, 1), table_number ASC`
+
+### Active Order Indicator on Tables
+
+Each table card now shows the active dine-in order (if any) with order number, status badge, total, and payment status. Clicking the order card navigates to the Orders page.
+
+**Backend change:**
+- `GET /{store_id}/tables` — Now queries `orders` table for each table_id where status is not `completed`/`cancelled`. Returns `active_order` field per table:
+  ```json
+  {
+    "id": 42,
+    "order_number": "ORD-20260421-0042",
+    "status": "preparing",
+    "order_type": "dine_in",
+    "total": 45.50,
+    "payment_status": "pending"
+  }
+  ```
+
+**Frontend change:**
+- `TablesPage.tsx` — Renders a clickable order card inside each table with status badge, total, and "Unpaid" indicator
+- `MerchantTableItem` type — Added `active_order` optional field
+- `page.tsx` — Wires `onViewOrder` callback to navigate to Orders page
+
+**Purpose:** Service crew can see at a glance which tables have active orders and their status. This bridges the gap until POS integration is complete — crew can manually key orders into the POS system.
+
+### Order Type Filter
+
+Orders page now has a filter row with 4 buttons: "All Types", "Dine In", "Pickup", "Delivery".
+
+**Backend change:**
+- `GET /admin/orders` — Added `order_type` and `table_id` query parameters for filtering
+
+**Frontend change:**
+- `OrdersPage.tsx` — Added `orderType` prop and order type filter buttons
+- `page.tsx` — Added `ordersOrderType` state, wired to fetch params and component props
+
+### Order Status Flow (Verified Correct)
+
+The backend enforces type-specific status transitions:
+
+**Dine In (Flow B) — Pay after eating:**
+```
+pending → confirmed → preparing → ready → [payment] → completed
+```
+1. Customer confirms order
+2. Kitchen prepares and serves food
+3. Customer makes payment (payment_status set to "paid")
+4. Order completed
+
+**Pickup (Flow A) — Pay first:**
+```
+pending → paid → confirmed → preparing → ready → completed (after pickup)
+```
+1. Customer confirms and pays
+2. Kitchen prepares food
+3. Customer picks up → completed
+
+**Delivery (Flow A) — Pay first:**
+```
+pending → paid → confirmed → preparing → ready → out_for_delivery → completed
+```
+1. Customer confirms and pays
+2. Kitchen prepares food
+3. Handed to 3rd-party delivery (or manual entry into delivery system)
+4. Completed after delivery confirmed
+
+**Frontend status buttons** now show only the valid next transitions based on current order type and status, plus a separate "Cancel Order" button. The modal also shows the flow description for the current order type.
+
+**Backend validation rules:**
+- Dine-in orders must be confirmed before they can be `preparing`
+- Dine-in orders cannot be marked `completed` until `payment_status == "paid"`
+- Pickup/delivery orders must be `paid` before they can be `confirmed`
+- `cancelled` is valid from any non-terminal state
+
+### Files Changed
+
+| File | Changes |
+|------|---------|
+| `backend/app/api/v1/endpoints/admin/stores.py` | Tables endpoint: sorted + active order info |
+| `backend/app/api/v1/endpoints/admin/admin.py` | Orders endpoint: `order_type` + `table_id` filters |
+| `frontend/src/lib/merchant-types.ts` | `MerchantTableItem.active_order` field |
+| `frontend/src/components/pages/store-ops/TablesPage.tsx` | Active order card, `formatRM` import, `onViewOrder` prop |
+| `frontend/src/components/pages/overview/OrdersPage.tsx` | Order type filter, context-aware status buttons, flow descriptions |
+| `frontend/src/app/page.tsx` | `ordersOrderType` state, `onOrderTypeChange`/`onViewOrder` wiring |

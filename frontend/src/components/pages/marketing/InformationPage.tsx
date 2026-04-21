@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { apiFetch } from '@/lib/merchant-api';
+import { apiFetch, apiUpload } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import { Pagination, Drawer } from '@/components/ui';
 
@@ -400,11 +400,7 @@ function ImageUploadField({ label, imageUrl, token, onSet, hint }: { label: stri
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/v1/upload/marketing-image', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
+      const res = await apiUpload('/upload/marketing-image', token, fd);
       if (res.ok) {
         const data = await res.json();
         onSet(data.url);

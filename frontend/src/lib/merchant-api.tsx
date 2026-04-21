@@ -87,6 +87,30 @@ export async function apiFetch(path: string, token: string, options?: RequestIni
   return response;
 }
 
+/**
+ * Upload files via FormData. Unlike apiFetch, this does NOT set Content-Type
+ * so the browser can set the correct multipart boundary automatically.
+ */
+export async function apiUpload(path: string, token: string, formData: FormData): Promise<Response> {
+  const requestWithToken = (authToken: string | null) => fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: {
+      // Intentionally no Content-Type — browser sets multipart/form-data with boundary
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
+    body: formData,
+  });
+
+  let response = await requestWithToken(getStoredToken() || token);
+  if (response.status === 401 && (getStoredRefreshToken() || getStoredToken())) {
+    const refreshed = await refreshMerchantAccessToken();
+    if (refreshed) {
+      response = await requestWithToken(getStoredToken());
+    }
+  }
+  return response;
+}
+
 export function statusBadge(status: string): ReactNode {
   const map: Record<string, string> = {
     pending: 'badge-yellow',

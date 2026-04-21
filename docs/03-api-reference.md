@@ -275,9 +275,18 @@ These are the customer-facing PWA menu endpoints.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/admin/dashboard` | Dashboard summary |
-| GET | `/admin/orders` | Admin orders list |
+| GET | `/admin/orders` | Admin orders list (filter: store_id, status, order_type, table_id, search) |
 | GET | `/admin/customers` | Customer list |
 | GET | `/admin/customers/{user_id}` | Customer detail |
+| GET | `/admin/customers/{user_id}/orders` | Customer order history |
+| GET | `/admin/customers/{user_id}/loyalty-history` | Customer loyalty transactions |
+| GET | `/admin/customers/{user_id}/wallet-history` | Customer wallet transactions |
+| POST | `/admin/customers/{user_id}/adjust-points` | Award/deduct loyalty points |
+| POST | `/admin/customers/{user_id}/award-voucher` | Award voucher to customer |
+| POST | `/admin/customers/{user_id}/set-tier` | Manually set loyalty tier |
+| POST | `/admin/customers/{user_id}/approve-profile` | Approve pending customer profile |
+| PUT | `/admin/customers/{user_id}` | Update customer profile |
+| DELETE | `/admin/customers/reset` | Reset all customer data |
 | GET | `/admin/reports/revenue` | Revenue report |
 | GET | `/admin/reports/sales` | Sales report |
 | GET | `/admin/reports/marketing` | Marketing report |
@@ -295,7 +304,7 @@ These are the customer-facing PWA menu endpoints.
 |--------|------|-------------|
 | GET | `/admin/stores` | List all stores |
 | POST | `/admin/stores` | Create store |
-| GET | `/admin/stores/{store_id}/tables` | List tables for a store |
+| GET | `/admin/stores/{store_id}/tables` | List tables (sorted active-first, includes active_order per table) |
 | POST | `/admin/stores/{store_id}/tables` | Create table (no QR auto-generated) |
 | PUT | `/admin/stores/{store_id}/tables/{table_id}` | Update table |
 | DELETE | `/admin/stores/{store_id}/tables/{table_id}` | Soft-delete table |

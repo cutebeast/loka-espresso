@@ -147,7 +147,6 @@ export default function NotificationsPage({ token, refreshKey, onNewBroadcast }:
   const [toDate, setToDate] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const [sendingId, setSendingId] = useState<number | null>(null);
 
   const fetchBroadcasts = useCallback(async () => {
     setLoading(true);
@@ -183,14 +182,6 @@ export default function NotificationsPage({ token, refreshKey, onNewBroadcast }:
     fetchBroadcasts();
   }
 
-  async function sendBroadcast(id: number) {
-    setSendingId(id);
-    try {
-      const res = await apiFetch(`/admin/broadcasts/${id}/send`, token, { method: 'POST' });
-      if (res.ok) fetchBroadcasts();
-    } catch {} finally { setSendingId(null); }
-  }
-
   const audienceLabel: Record<string, string> = {
     all: 'All Users', new: 'New Users', loyal: 'Loyal Customers',
     inactive: 'Inactive Users', platinum: 'Platinum Members',
@@ -204,8 +195,8 @@ export default function NotificationsPage({ token, refreshKey, onNewBroadcast }:
   return (
     <div>
       <div style={{
-        background: 'linear-gradient(135deg, #FEF3C7, #FFFBEB)',
-        border: '1px solid #F59E0B',
+        background: 'linear-gradient(135deg, #DBEAFE, #EFF6FF)',
+        border: '1px solid #93C5FD',
         borderRadius: 16,
         padding: '14px 20px',
         marginBottom: 20,
@@ -213,11 +204,11 @@ export default function NotificationsPage({ token, refreshKey, onNewBroadcast }:
         alignItems: 'center',
         gap: 14,
       }}>
-        <i className="fas fa-exclamation-triangle" style={{ fontSize: 20, color: '#D97706' }}></i>
+        <i className="fas fa-info-circle" style={{ fontSize: 20, color: '#2563EB' }}></i>
         <div>
-          <div style={{ fontWeight: 600, color: '#92400E', fontSize: 13, marginBottom: 2 }}>Delivery integration coming in Phase 3</div>
-          <div style={{ fontSize: 12, color: '#78350F' }}>
-            Broadcasts are stored in DB but not yet delivered. Twilio / FCM / APNs integration is planned for Phase 3.
+          <div style={{ fontWeight: 600, color: '#1E40AF', fontSize: 13, marginBottom: 2 }}>Service Worker Push Delivery</div>
+          <div style={{ fontSize: 12, color: '#1E3A8A' }}>
+            Broadcasts are stored in DB. The PWA client uses a Service Worker to periodically fetch new notifications. No server-push integration (FCM/APNs) is needed.
           </div>
         </div>
       </div>
@@ -293,9 +284,8 @@ export default function NotificationsPage({ token, refreshKey, onNewBroadcast }:
                     <div style={{ fontSize: 12, color: THEME.success, marginTop: 4 }}>
                       {audienceLabel[bc.audience] || bc.audience}
                       {bc.scheduled_at && !bc.sent_at && <span> &middot; <i className="fas fa-clock"></i> Scheduled: {new Date(bc.scheduled_at).toLocaleString()}</span>}
-                      {bc.sent_at && <span> &middot; Sent: {new Date(bc.sent_at).toLocaleString()}</span>}
-                      {!bc.scheduled_at && !bc.sent_at && <span> &middot; Not sent</span>}
-                      &middot; {bc.sent_count} sent / {bc.open_count} opened
+                      {bc.sent_at && <span> &middot; Published: {new Date(bc.sent_at).toLocaleString()}</span>}
+                      {!bc.scheduled_at && !bc.sent_at && <span> &middot; Draft</span>}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -314,16 +304,8 @@ export default function NotificationsPage({ token, refreshKey, onNewBroadcast }:
                             <i className="fas fa-trash" style={{ color: '#EF4444' }}></i>
                           </button>
                         )}
-                        <button
-                          className="btn btn-sm btn-primary"
-                          title="Send Now"
-                          disabled={sendingId === bc.id}
-                          onClick={() => sendBroadcast(bc.id)}
-                        >
-                          {sendingId === bc.id ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-paper-plane"></i>} Send
-                        </button>
-                      </>
-                    )}
+                       </>
+                     )}
                     <button
                       className="btn btn-sm"
                       title={notifTab === 'archived' ? 'Unarchive' : 'Archive'}

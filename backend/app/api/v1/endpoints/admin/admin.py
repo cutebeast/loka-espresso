@@ -187,6 +187,8 @@ async def dashboard(
 async def list_all_orders(
     store_id: int | None = None,
     status: str | None = None,
+    order_type: str | None = None,
+    table_id: int | None = None,
     search: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
@@ -199,6 +201,10 @@ async def list_all_orders(
         query = query.where(Order.store_id == store_id)
     if status:
         query = query.where(Order.status == status)
+    if order_type:
+        query = query.where(Order.order_type == order_type)
+    if table_id is not None:
+        query = query.where(Order.table_id == table_id)
     if search:
         query = query.where(or_(
             Order.order_number.ilike(f"%{search}%"),

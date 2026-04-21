@@ -120,6 +120,90 @@ Payment records. One per order.
 
 ---
 
+## Order Status Flows
+
+The system enforces different status flows depending on `order_type`.
+
+### Dine In (Flow B — Pay After Eating)
+
+```
+pending → confirmed → preparing → ready → [payment] → completed
+         ↑                                           ↑
+         └─ Customer confirms order                  └─ Customer pays at table
+```
+
+1. Customer scans table QR and places order → **pending**
+2. Order confirmed (kitchen sees it) → **confirmed**
+3. Kitchen prepares food and serves → **preparing**
+4. Food served to customer → **ready**
+5. Customer makes payment (cash/card/QR at counter) → `payment_status = "paid"`
+6. Order completed → **completed**
+
+**Rules:**
+- Dine-in can be confirmed directly from `pending` (no payment required first)
+- Cannot mark `completed` until `payment_status == "paid"`
+- Table is auto-released when order completes or is cancelled
+
+### Pickup (Flow A — Pay First)
+
+```
+pending → paid → confirmed → preparing → ready → completed
+         ↑                                        ↑
+         └─ Customer pays upfront                 └─ Customer picks up
+```
+
+1. Customer places order in PWA → **pending**
+2. Customer makes payment → **paid**
+3. Order confirmed (kitchen sees it) → **confirmed**
+4. Kitchen prepares food → **preparing**
+5. Food ready for pickup → **ready**
+6. Customer picks up → **completed**
+
+**Rules:**
+- Must be `paid` before `confirmed`
+- `out_for_delivery` is not applicable
+
+### Delivery (Flow A — Pay First)
+
+```
+pending → paid → confirmed → preparing → ready → out_for_delivery → completed
+         ↑                                                          ↑
+         └─ Customer pays upfront                                   └─ Delivery confirmed
+```
+
+1. Customer places order in PWA → **pending**
+2. Customer makes payment → **paid**
+3. Order confirmed (kitchen sees it) → **confirmed**
+4. Kitchen prepares food → **preparing**
+5. Food ready for driver pickup → **ready**
+6. Handed to 3rd-party delivery OR manually entered into delivery system → **out_for_delivery**
+7. Delivery confirmed → **completed**
+
+**Rules:**
+- Must be `paid` before `confirmed`
+- `out_for_delivery` only applicable for delivery orders
+- Delivery provider tracking fields populated by 3rd-party integration
+
+### Cancelled
+
+- Valid from any non-terminal state (`pending`, `paid`, `confirmed`, `preparing`, `ready`, `out_for_delivery`)
+- Table is auto-released if dine-in order is cancelled
+
+### Status Enum Values
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Order created, awaiting payment (Flow A) or confirmation (Flow B) |
+| `paid` | Payment received |
+| `confirmed` | Order accepted by kitchen |
+| `preparing` | Kitchen is preparing the order |
+| `ready` | Order is ready for serving/pickup/driver |
+| `out_for_delivery` | Order handed to delivery provider |
+| `completed` | Order fulfilled |
+| `cancelled` | Order cancelled |
+
+---
+
 ## Seeded Data
 
 | Entity | Count | Details |

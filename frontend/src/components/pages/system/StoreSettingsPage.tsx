@@ -5,6 +5,95 @@ import { apiFetch } from '@/lib/merchant-api';
 import type { MerchantStore } from '@/lib/merchant-types';
 import { THEME } from '@/lib/theme';
 
+// Opening hours day config
+const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+const DAY_LABELS: Record<string, string> = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
+
+interface DayHours {
+  enabled: boolean;
+  open: string;
+  close: string;
+}
+
+type OpeningHoursState = Record<string, DayHours>;
+
+function parseOpeningHours(raw: Record<string, string> | null | undefined): OpeningHoursState {
+  const state: OpeningHoursState = {};
+  for (const key of DAY_KEYS) {
+    const val = raw?.[key];
+    if (val && typeof val === 'string') {
+      const parts = val.split('-');
+      state[key] = { enabled: true, open: parts[0] || '09:00', close: parts[1] || '22:00' };
+    } else {
+      state[key] = { enabled: false, open: '09:00', close: '22:00' };
+    }
+  }
+  return state;
+}
+
+function openingHoursToJSON(state: OpeningHoursState): Record<string, string> | null {
+  const result: Record<string, string> = {};
+  let hasAny = false;
+  for (const key of DAY_KEYS) {
+    if (state[key]?.enabled) {
+      result[key] = `${state[key].open}-${state[key].close}`;
+      hasAny = true;
+    }
+  }
+  return hasAny ? result : null;
+}
+
+function OpeningHoursEditor({ value, onChange }: { value: OpeningHoursState; onChange: (v: OpeningHoursState) => void }) {
+  function updateDay(key: string, field: keyof DayHours, val: boolean | string) {
+    onChange({
+      ...value,
+      [key]: { ...value[key], [field]: val },
+    });
+  }
+
+  const inputStyle: React.CSSProperties = {
+    border: `1px solid ${THEME.accentLight}`,
+    borderRadius: 8,
+    padding: '4px 8px',
+    fontSize: 13,
+    width: 90,
+    outline: 'none',
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {DAY_KEYS.map(key => (
+        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: 130, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={value[key]?.enabled || false}
+              onChange={e => updateDay(key, 'enabled', e.target.checked)}
+              style={{ accentColor: THEME.primary }}
+            />
+            {DAY_LABELS[key]}
+          </label>
+          <input
+            type="time"
+            value={value[key]?.open || '09:00'}
+            onChange={e => updateDay(key, 'open', e.target.value)}
+            disabled={!value[key]?.enabled}
+            style={{ ...inputStyle, opacity: value[key]?.enabled ? 1 : 0.4 }}
+          />
+          <span style={{ fontSize: 12, color: THEME.textMuted }}>to</span>
+          <input
+            type="time"
+            value={value[key]?.close || '22:00'}
+            onChange={e => updateDay(key, 'close', e.target.value)}
+            disabled={!value[key]?.enabled}
+            style={{ ...inputStyle, opacity: value[key]?.enabled ? 1 : 0.4 }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface StoreSettingsPageProps {
   stores: MerchantStore[];
   token: string;
@@ -100,7 +189,7 @@ function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }
   const [lng, setLng] = useState('');
   const [deliveryRadius, setDeliveryRadius] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [openingHours, setOpeningHours] = useState('');
+  const [openingHours, setOpeningHours] = useState<OpeningHoursState>(parseOpeningHours(null));
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
@@ -118,9 +207,8 @@ function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }
       if (lng) payload.lng = parseFloat(lng);
       if (deliveryRadius) payload.delivery_radius_km = parseFloat(deliveryRadius);
       if (imageUrl) payload.image_url = imageUrl;
-      if (openingHours) {
-        try { payload.opening_hours = JSON.parse(openingHours); } catch { /* ignore */ }
-      }
+      const ohJSON = openingHoursToJSON(openingHours);
+      if (ohJSON) payload.opening_hours = ohJSON;
       await apiFetch('/admin/stores', token, {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -177,9 +265,8 @@ function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }
             <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Opening Hours (JSON)</label>
-            <textarea value={openingHours} onChange={e => setOpeningHours(e.target.value)} rows={3} placeholder={'{\n  "mon": "08:00-22:00"\n}'} style={{ outline: 'none', border: `1px solid ${THEME.accentLight}`, borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%', fontFamily: 'monospace' }} />
-            <div style={hintStyle}>JSON object with day keys. Leave empty to skip.</div>
+            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Opening Hours</label>
+            <OpeningHoursEditor value={openingHours} onChange={setOpeningHours} />
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Creating...' : 'Create Store'}</button>
@@ -201,7 +288,7 @@ function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token:
   const [lng, setLng] = useState(store.lng != null ? String(store.lng) : '');
   const [deliveryRadius, setDeliveryRadius] = useState(store.delivery_radius_km != null ? String(store.delivery_radius_km) : '');
   const [imageUrl, setImageUrl] = useState(store.image_url || '');
-  const [openingHours, setOpeningHours] = useState<string>(store.opening_hours ? JSON.stringify(store.opening_hours, null, 2) : '');
+  const [openingHours, setOpeningHours] = useState<OpeningHoursState>(parseOpeningHours(store.opening_hours));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -220,9 +307,8 @@ function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token:
       if (lng) payload.lng = parseFloat(lng);
       if (deliveryRadius) payload.delivery_radius_km = parseFloat(deliveryRadius);
       if (imageUrl) payload.image_url = imageUrl;
-      if (openingHours) {
-        try { payload.opening_hours = JSON.parse(openingHours); } catch { /* ignore invalid JSON */ }
-      }
+      const ohJSON = openingHoursToJSON(openingHours);
+      if (ohJSON) payload.opening_hours = ohJSON;
       const res = await apiFetch(`/admin/stores/${store.id}`, token, {
         method: 'PUT',
         body: JSON.stringify(payload),
@@ -292,9 +378,8 @@ function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token:
             <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Opening Hours (JSON)</label>
-            <textarea value={openingHours} onChange={e => setOpeningHours(e.target.value)} rows={3} placeholder={'{\n  "mon": "08:00-22:00",\n  "tue": "08:00-22:00"\n}'} style={{ outline: 'none', border: `1px solid ${THEME.accentLight}`, borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%', fontFamily: 'monospace' }} />
-            <div style={hintStyle}>JSON object with day keys, e.g. {"{"}"mon": "08:00-22:00"{"}"}. Leave empty to clear.</div>
+            <label style={labelStyle}>Opening Hours</label>
+            <OpeningHoursEditor value={openingHours} onChange={setOpeningHours} />
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>

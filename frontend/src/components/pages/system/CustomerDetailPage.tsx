@@ -13,12 +13,211 @@ interface PaginatedResponse<T> {
   items: T[];
 }
 
-type TabId = 'profile' | 'orders' | 'loyalty' | 'wallet';
+type TabId = 'profile' | 'orders' | 'loyalty' | 'wallet' | 'actions';
 
 interface CustomerDetailPageProps {
   token: string;
   customerId: number;
   onBack: () => void;
+}
+
+// ── Action Dialog: Award Points ──
+function AwardPointsDialog({ customerId, token, onDone }: { customerId: number; token: string; onDone: () => void }) {
+  const [points, setPoints] = useState('');
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const pts = parseInt(points);
+    if (!pts) { setError('Enter a non-zero point value'); return; }
+    setSaving(true); setError(''); setResult(null);
+    try {
+      const res = await apiFetch(`/admin/customers/${customerId}/adjust-points`, token, {
+        method: 'POST',
+        body: JSON.stringify({ points: pts, reason: reason || `Admin adjustment: ${pts > 0 ? '+' : ''}${pts} pts` }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || 'Failed'); return; }
+      const d = await res.json();
+      setResult(`Done! New balance: ${d.new_balance} pts`);
+      setPoints(''); setReason('');
+      onDone();
+    } catch { setError('Network error'); } finally { setSaving(false); }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '12px 16px', background: THEME.bgMuted, borderRadius: 12, marginBottom: 16 }}>
+      <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 8 }}><i className="fas fa-star" style={{ marginRight: 6 }}></i>Award / Deduct Points</div>
+      {error && <div style={{ color: '#DC2626', fontSize: 12, marginBottom: 8 }}><i className="fas fa-exclamation-circle"></i> {error}</div>}
+      {result && <div style={{ color: '#059669', fontSize: 12, marginBottom: 8 }}><i className="fas fa-check-circle"></i> {result}</div>}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ flex: '0 0 100px' }}>
+          <label style={labelStyle}>Points</label>
+          <input type="number" value={points} onChange={e => setPoints(e.target.value)} placeholder="+/- pts" style={{ width: '100%' }} />
+          <div style={hintStyle}>Negative to deduct</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 150 }}>
+          <label style={labelStyle}>Reason</label>
+          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Loyalty bonus" />
+        </div>
+        <button type="submit" className="btn btn-primary btn-sm" disabled={saving || !points}>{saving ? 'Applying...' : 'Apply'}</button>
+      </div>
+    </form>
+  );
+}
+
+// ── Action Dialog: Award Voucher ──
+function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number; token: string; onDone: () => void }) {
+  const [vouchers, setVouchers] = useState<{ id: number; code: string; title: string | null; discount_type: string; discount_value: number }[]>([]);
+  const [selectedVoucher, setSelectedVoucher] = useState('');
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiFetch('/admin/vouchers?is_active=true&page_size=100', token);
+        if (res.ok) {
+          const data = await res.json();
+          setVouchers(data.vouchers || data.items || data || []);
+          setLoaded(true);
+        }
+      } catch {}
+    })();
+  }, [token]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!selectedVoucher) { setError('Select a voucher'); return; }
+    setSaving(true); setError(''); setResult(null);
+    try {
+      const res = await apiFetch(`/admin/customers/${customerId}/award-voucher`, token, {
+        method: 'POST',
+        body: JSON.stringify({ voucher_id: parseInt(selectedVoucher), reason: reason || 'Admin awarded' }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || 'Failed'); return; }
+      const d = await res.json();
+      setResult(`Awarded "${d.voucher_title}" (${d.voucher_code})`);
+      setSelectedVoucher(''); setReason('');
+      onDone();
+    } catch { setError('Network error'); } finally { setSaving(false); }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '12px 16px', background: THEME.bgMuted, borderRadius: 12, marginBottom: 16 }}>
+      <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 8 }}><i className="fas fa-ticket-alt" style={{ marginRight: 6 }}></i>Award Voucher</div>
+      {error && <div style={{ color: '#DC2626', fontSize: 12, marginBottom: 8 }}><i className="fas fa-exclamation-circle"></i> {error}</div>}
+      {result && <div style={{ color: '#059669', fontSize: 12, marginBottom: 8 }}><i className="fas fa-check-circle"></i> {result}</div>}
+      {!loaded ? (
+        <div style={{ fontSize: 12, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i> Loading vouchers...</div>
+      ) : vouchers.length === 0 ? (
+        <div style={{ fontSize: 12, color: THEME.textMuted }}>No active vouchers available. Create one in Vouchers first.</div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <label style={labelStyle}>Voucher</label>
+            <select value={selectedVoucher} onChange={e => setSelectedVoucher(e.target.value)} style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 13 }}>
+              <option value="">Select voucher...</option>
+              {vouchers.map(v => (
+                <option key={v.id} value={v.id}>{v.title || v.code} — {v.discount_type}: {v.discount_value}{v.discount_type === 'percent' ? '%' : ' RM'}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: 1, minWidth: 120 }}>
+            <label style={labelStyle}>Reason</label>
+            <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Compensation" />
+          </div>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={saving || !selectedVoucher}>{saving ? 'Awarding...' : 'Award'}</button>
+        </div>
+      )}
+    </form>
+  );
+}
+
+// ── Action Dialog: Set Tier ──
+function SetTierDialog({ customerId, currentTier, token, onDone }: { customerId: number; currentTier: string | null; token: string; onDone: () => void }) {
+  const [tier, setTier] = useState(currentTier || 'bronze');
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true); setError(''); setResult(null);
+    try {
+      const res = await apiFetch(`/admin/customers/${customerId}/set-tier`, token, {
+        method: 'POST',
+        body: JSON.stringify({ tier, reason: reason || `Admin set tier to ${tier}` }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || 'Failed'); return; }
+      setResult(`Tier set to ${tier}`);
+      setReason('');
+      onDone();
+    } catch { setError('Network error'); } finally { setSaving(false); }
+  }
+
+  const tiers = ['bronze', 'silver', 'gold', 'platinum'];
+
+  return (
+    <form onSubmit={handleSubmit} style={{ padding: '12px 16px', background: THEME.bgMuted, borderRadius: 12, marginBottom: 16 }}>
+      <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 8 }}><i className="fas fa-medal" style={{ marginRight: 6 }}></i>Set Tier Override</div>
+      {error && <div style={{ color: '#DC2626', fontSize: 12, marginBottom: 8 }}><i className="fas fa-exclamation-circle"></i> {error}</div>}
+      {result && <div style={{ color: '#059669', fontSize: 12, marginBottom: 8 }}><i className="fas fa-check-circle"></i> {result}</div>}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ flex: '0 0 140px' }}>
+          <label style={labelStyle}>Tier</label>
+          <select value={tier} onChange={e => setTier(e.target.value)} style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 13 }}>
+            {tiers.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1, minWidth: 150 }}>
+          <label style={labelStyle}>Reason</label>
+          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. VIP upgrade" />
+        </div>
+        <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>{saving ? 'Setting...' : 'Set Tier'}</button>
+      </div>
+    </form>
+  );
+}
+
+// ── Action: Approve Profile ──
+function ApproveProfileButton({ customerId, token, onDone }: { customerId: number; token: string; onDone: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<string | null>(null);
+
+  async function handleApprove() {
+    if (!confirm('Approve this customer\'s profile? This will mark their phone as verified.')) return;
+    setSaving(true); setError(''); setResult(null);
+    try {
+      const res = await apiFetch(`/admin/customers/${customerId}/approve-profile`, token, { method: 'POST' });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || 'Failed'); return; }
+      setResult('Profile approved');
+      onDone();
+    } catch { setError('Network error'); } finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: 12, marginBottom: 16, border: '1px solid #F59E0B' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 14, color: '#92400E', marginBottom: 4 }}><i className="fas fa-user-check" style={{ marginRight: 6 }}></i>Profile Pending Approval</div>
+          <div style={{ fontSize: 12, color: '#78350F' }}>Phone not verified. Approve to manually verify and activate this customer.</div>
+          {error && <div style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}><i className="fas fa-exclamation-circle"></i> {error}</div>}
+          {result && <div style={{ color: '#059669', fontSize: 12, marginTop: 4 }}><i className="fas fa-check-circle"></i> {result}</div>}
+        </div>
+        <button className="btn btn-primary btn-sm" disabled={saving} onClick={handleApprove}>
+          {saving ? 'Approving...' : <><i className="fas fa-check"></i> Approve Profile</>}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function CustomerDetailPage({ token, customerId, onBack }: CustomerDetailPageProps) {
@@ -118,6 +317,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
 
   const tabs: { id: TabId; label: string; icon: string }[] = [
     { id: 'profile', label: 'Profile', icon: 'fas fa-user' },
+    { id: 'actions', label: 'Manage', icon: 'fas fa-cog' },
     { id: 'orders', label: 'Orders', icon: 'fas fa-receipt' },
     { id: 'loyalty', label: 'Loyalty', icon: 'fas fa-star' },
     { id: 'wallet', label: 'Wallet', icon: 'fas fa-wallet' },
@@ -197,6 +397,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
             <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'Pending Profile'}</span>
             <span className="badge badge-yellow">{detail.points_balance} pts</span>
             <span className="badge badge-green">{formatRM(detail.wallet_balance || 0)} wallet</span>
+            {!detail.is_profile_complete && <span className="badge badge-red"><i className="fas fa-exclamation-triangle"></i> Incomplete</span>}
           </div>
           <button className="btn btn-sm" onClick={onBack}>
             <i className="fas fa-arrow-left"></i> Back
@@ -256,11 +457,11 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
                     <span style={{ color: '#D97706', fontWeight: 500 }}>Not set</span>
                   )}</p>
                   <p style={{ marginBottom: 8 }}><strong>Tier:</strong> <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'Pending Profile'}</span></p>
-                  <p style={{ marginBottom: 8 }}><strong>Phone Verified:</strong> {detail.phone_verified ? 'Yes' : 'No'}</p>
-                  <p style={{ marginBottom: 12 }}><strong>Profile Complete:</strong> {detail.is_profile_complete ? 'Yes' : 'No (name and email still required)'}</p>
+                  <p style={{ marginBottom: 8 }}><strong>Phone Verified:</strong> {detail.phone_verified ? <span style={{ color: '#059669' }}>Yes</span> : <span style={{ color: '#EF4444' }}>No</span>}</p>
+                  <p style={{ marginBottom: 12 }}><strong>Profile Complete:</strong> {detail.is_profile_complete ? <span style={{ color: '#059669' }}>Yes</span> : <span style={{ color: '#D97706' }}>No (name and email still required)</span>}</p>
                   <p style={{ marginBottom: 12 }}><strong>Joined:</strong> {detail.created_at ? new Date(detail.created_at).toLocaleDateString() : '-'}</p>
                   <button className="btn btn-sm" onClick={() => setEditingCustomer(true)}>
-                    <i className="fas fa-edit"></i> Edit
+                    <i className="fas fa-edit"></i> Edit Profile
                   </button>
                 </>
               )}
@@ -268,10 +469,27 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
             <div>
               <h4 style={{ marginBottom: 12, fontSize: 14, fontWeight: 600, color: THEME.textSecondary }}>Balances</h4>
               <p style={{ marginBottom: 8 }}><strong>Loyalty Points:</strong> {detail.points_balance} pts</p>
+              <p style={{ marginBottom: 8 }}><strong>Total Earned:</strong> {(detail as any).total_points_earned ?? '-'} pts</p>
               <p style={{ marginBottom: 8 }}><strong>Wallet Balance:</strong> {formatRM(detail.wallet_balance || 0)}</p>
               <p style={{ marginBottom: 8 }}><strong>Total Orders:</strong> {detail.total_orders}</p>
               <p><strong>Total Spent:</strong> {formatRM(detail.total_spent)}</p>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'actions' && (
+          <div>
+            <h4 style={{ marginBottom: 16, fontSize: 14, fontWeight: 600, color: THEME.textSecondary }}>
+              <i className="fas fa-cog" style={{ marginRight: 8 }}></i>Customer Management Actions
+            </h4>
+
+            {!detail.is_profile_complete && (
+              <ApproveProfileButton customerId={customerId} token={token} onDone={fetchDetail} />
+            )}
+
+            <AwardPointsDialog customerId={customerId} token={token} onDone={fetchDetail} />
+            <AwardVoucherDialog customerId={customerId} token={token} onDone={fetchDetail} />
+            <SetTierDialog customerId={customerId} currentTier={detail.tier} token={token} onDone={fetchDetail} />
           </div>
         )}
 

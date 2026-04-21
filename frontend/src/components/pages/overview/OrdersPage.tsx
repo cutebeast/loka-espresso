@@ -17,16 +17,18 @@ interface OrdersPageProps {
   page: number;
   pageSize: number;
   status: string;
+  orderType: string;
   fromDate: string;
   toDate: string;
   onUpdate: () => void;
   onPageChange: (page: number) => void;
   onStatusChange: (status: string) => void;
+  onOrderTypeChange: (orderType: string) => void;
   onStoreChange: (storeId: string) => void;
   onDateChange: (from: string, to: string) => void;
 }
 
-export default function OrdersPage({ orders, loading, token, selectedStore, stores, total, page, pageSize, status, fromDate, toDate, onUpdate, onPageChange, onStatusChange, onStoreChange, onDateChange }: OrdersPageProps) {
+export default function OrdersPage({ orders, loading, token, selectedStore, stores, total, page, pageSize, status, orderType, fromDate, toDate, onUpdate, onPageChange, onStatusChange, onOrderTypeChange, onStoreChange, onDateChange }: OrdersPageProps) {
   const [showModal, setShowModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<MerchantOrder | null>(null);
   const [preset, setPreset] = useState<DatePreset>('MTD');
@@ -48,6 +50,27 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
   function openOrderDetail(order: MerchantOrder) {
     setSelectedOrder(order);
     setShowModal(true);
+  }
+
+  /** Get valid next-status buttons based on order type and current status */
+  function getStatusButtons(order: MerchantOrder): string[] {
+    const current = order.status;
+    const type = order.order_type;
+
+    // All flows share these transitions:
+    // pending -> paid/confirmed, paid -> confirmed, confirmed -> preparing, preparing -> ready
+    const transitions: Record<string, string[]> = {
+      pending: type === 'dine_in' ? ['confirmed'] : ['paid'],
+      paid: ['confirmed'],
+      confirmed: ['preparing'],
+      preparing: ['ready'],
+      ready: type === 'delivery' ? ['out_for_delivery'] : ['completed'],
+      out_for_delivery: ['completed'],
+      completed: [],
+      cancelled: [],
+    };
+
+    return transitions[current] || [];
   }
 
   const columns: ColumnDef<MerchantOrder>[] = [
@@ -84,6 +107,20 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
         selectedStatus={status}
         onStatusChange={(s) => { onStatusChange(s); onPageChange(1); }}
       />
+
+      {/* Order Type Filter Row */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {['', 'dine_in', 'pickup', 'delivery'].map(type => (
+          <button
+            key={type}
+            className={`btn btn-sm ${orderType === type ? 'btn-primary' : ''}`}
+            onClick={() => { onOrderTypeChange(type); onPageChange(1); }}
+            style={{ borderRadius: 20, fontSize: 13 }}
+          >
+            {type === '' ? 'All Types' : type === 'dine_in' ? <><i className="fas fa-utensils"></i> Dine In</> : type === 'pickup' ? <><i className="fas fa-shopping-bag"></i> Pickup</> : <><i className="fas fa-truck"></i> Delivery</>}
+          </button>
+        ))}
+      </div>
 
       <div style={{
         display: 'flex',
@@ -137,9 +174,21 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
             {selectedOrder.delivery_courier_name && <p style={{ color: THEME.textSecondary, margin: '8px 0' }}><strong style={{ color: THEME.textPrimary }}>Courier:</strong> {selectedOrder.delivery_courier_name}</p>}
             {selectedOrder.delivery_eta_minutes != null && <p style={{ color: THEME.textSecondary, margin: '8px 0' }}><strong style={{ color: THEME.textPrimary }}>ETA:</strong> {selectedOrder.delivery_eta_minutes} min</p>}
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${THEME.border}` }}>
-              <strong style={{ color: THEME.textPrimary, display: 'block', marginBottom: 12 }}>Update Status:</strong>
+              <strong style={{ color: THEME.textPrimary, display: 'block', marginBottom: 8 }}>Update Status:</strong>
+              <div style={{ fontSize: 12, color: THEME.textMuted, marginBottom: 12, padding: '8px 12px', background: THEME.bgMuted, borderRadius: 8 }}>
+                <strong style={{ color: THEME.textSecondary }}>Flow for {(selectedOrder.order_type || '').replace('_', ' ')}:</strong>{' '}
+                {selectedOrder.order_type === 'dine_in' && (
+                  <span>Pending → Confirmed → Preparing → Ready → <strong>Payment</strong> → Completed</span>
+                )}
+                {selectedOrder.order_type === 'pickup' && (
+                  <span>Pending → Paid → Confirmed → Preparing → Ready → Completed (after pickup)</span>
+                )}
+                {selectedOrder.order_type === 'delivery' && (
+                  <span>Pending → Paid → Confirmed → Preparing → Ready → Out for Delivery → Completed</span>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {['confirmed', 'preparing', 'ready', 'out_for_delivery', 'completed', 'cancelled'].map(s => (
+                {getStatusButtons(selectedOrder).map(s => (
                   <button
                     key={s}
                     onClick={() => { updateOrderStatus(selectedOrder.id, s); setShowModal(false); }}
@@ -153,9 +202,22 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
                       textTransform: 'capitalize',
                     }}
                   >
-                    {s}
+                    {s.replace(/_/g, ' ')}
                   </button>
                 ))}
+                <button
+                  onClick={() => { updateOrderStatus(selectedOrder.id, 'cancelled'); setShowModal(false); }}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: THEME.radius.md,
+                    border: '1px solid #FCA5A5',
+                    background: '#FEF2F2',
+                    color: '#DC2626',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel Order
+                </button>
               </div>
             </div>
           </div>
