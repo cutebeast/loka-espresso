@@ -484,8 +484,20 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
               <i className="fas fa-cog" style={{ marginRight: 8 }}></i>Customer Management Actions
             </h4>
 
-            {!detail.is_profile_complete && (
+            {!detail.phone_verified && (
               <ApproveProfileButton customerId={customerId} token={token} onDone={fetchDetail} />
+            )}
+
+            {detail.phone_verified && !detail.is_profile_complete && (
+              <div style={{ padding: '12px 16px', background: '#EFF6FF', borderRadius: 12, marginBottom: 16, border: '1px solid #3B82F6' }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#1E40AF', marginBottom: 4 }}>
+                  <i className="fas fa-info-circle" style={{ marginRight: 6 }}></i>Phone Verified — Profile Incomplete
+                </div>
+                <div style={{ fontSize: 12, color: '#1E3A8A', marginBottom: 8 }}>
+                  This customer&apos;s phone is verified but profile is incomplete (name/email missing).
+                  Use <strong>Edit Profile</strong> on the Profile tab to set their name and email.
+                </div>
+              </div>
             )}
 
             <AwardPointsDialog customerId={customerId} token={token} onDone={fetchDetail} />
