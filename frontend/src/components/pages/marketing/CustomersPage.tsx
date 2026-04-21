@@ -204,7 +204,7 @@ export default function CustomersPage({ token, stores, selectedStore, onStoreCha
                 {c.tier.charAt(0).toUpperCase() + c.tier.slice(1)}
               </span>
             ) : (
-              <span className="badge badge-yellow">Pending Profile</span>
+              <span className="badge badge-yellow">No Tier</span>
             )
           )},
           { key: 'points_balance', header: 'Points', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.points_balance?.toLocaleString() || 0} pts</span> },

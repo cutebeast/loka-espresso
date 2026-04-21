@@ -208,8 +208,8 @@ function ApproveProfileButton({ customerId, token, onDone }: { customerId: numbe
     <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: 12, marginBottom: 16, border: '1px solid #F59E0B' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontWeight: 600, fontSize: 14, color: '#92400E', marginBottom: 4 }}><i className="fas fa-user-check" style={{ marginRight: 6 }}></i>Profile Pending Approval</div>
-          <div style={{ fontSize: 12, color: '#78350F' }}>Approve to verify and activate this customer. They can update name/email later from the app.</div>
+          <div style={{ fontWeight: 600, fontSize: 14, color: '#92400E', marginBottom: 4 }}><i className="fas fa-user-check" style={{ marginRight: 6 }}></i>Phone Not Verified</div>
+          <div style={{ fontSize: 12, color: '#78350F' }}>Approve to verify this customer&apos;s phone and activate their account. They can update their name later from the app.</div>
           {error && <div style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}><i className="fas fa-exclamation-circle"></i> {error}</div>}
           {result && <div style={{ color: '#059669', fontSize: 12, marginTop: 4 }}><i className="fas fa-check-circle"></i> {result}</div>}
         </div>
@@ -395,7 +395,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
               <div style={{ fontWeight: 600, fontSize: 20 }}>{detail.name || '-'}</div>
               <div style={{ fontSize: 13, color: THEME.textMuted }}>{detail.email || detail.phone || '-'}</div>
             </div>
-            <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'Pending Profile'}</span>
+            <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'No Tier'}</span>
             <span className="badge badge-yellow">{detail.points_balance} pts</span>
             <span className="badge badge-green">{formatRM(detail.wallet_balance || 0)} wallet</span>
             {!detail.is_profile_complete && <span className="badge badge-red"><i className="fas fa-exclamation-triangle"></i> Incomplete</span>}
@@ -457,7 +457,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
                   <p style={{ marginBottom: 8 }}><strong>Email:</strong> {detail.email || (
                     <span style={{ color: '#D97706', fontWeight: 500 }}>Not set</span>
                   )}</p>
-                  <p style={{ marginBottom: 8 }}><strong>Tier:</strong> <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'Pending Profile'}</span></p>
+                  <p style={{ marginBottom: 8 }}><strong>Tier:</strong> <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'No Tier'}</span></p>
                   <p style={{ marginBottom: 8 }}><strong>Phone Verified:</strong> {detail.phone_verified ? <span style={{ color: '#059669' }}>Yes</span> : <span style={{ color: '#EF4444' }}>No</span>}</p>
                   <p style={{ marginBottom: 12 }}><strong>Profile Complete:</strong> {detail.is_profile_complete ? <span style={{ color: '#059669' }}>Yes</span> : <span style={{ color: '#D97706' }}>No {!detail.phone_verified ? '(phone not verified)' : '(name still required)'}</span>}</p>
                   <p style={{ marginBottom: 12 }}><strong>Joined:</strong> {detail.created_at ? new Date(detail.created_at).toLocaleDateString() : '-'}</p>
