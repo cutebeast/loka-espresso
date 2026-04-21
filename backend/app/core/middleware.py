@@ -5,6 +5,7 @@ Includes: security headers, request size limiting, idempotency keys, structured 
 import time
 import uuid
 import json
+import hashlib
 import logging
 from typing import Optional, Callable
 from fastapi import Request, Response
@@ -149,13 +150,22 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         if request.method not in ["POST", "PUT", "PATCH"]:
             return await call_next(request)
+
+        body = await request.body()
+
+        async def receive() -> dict:
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        request._receive = receive
         
         idempotency_key = request.headers.get("Idempotency-Key")
         if not idempotency_key:
             return await call_next(request)
+
+        body_hash = hashlib.sha256(body).hexdigest()
         
         # Check cache (in production, use Redis)
-        cache_key = f"{request.method}:{request.url.path}:{idempotency_key}"
+        cache_key = f"{request.method}:{request.url.path}:{idempotency_key}:{body_hash}"
         
         # Clean expired entries
         now = time.time()

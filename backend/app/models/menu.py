@@ -57,6 +57,10 @@ class MenuItem(Base):
     image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     customization_options: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     is_available: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Admin-curated "featured / today's pick" flag – surfaces on the
+    # customer home page ("Today's recommendations"). Per-user favorites
+    # are a separate concept in app.models.social.Favorite.
+    is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
     display_order: Mapped[int] = mapped_column(Integer, default=0)
     popularity: Mapped[int] = mapped_column(Integer, default=0)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

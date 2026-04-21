@@ -30,13 +30,34 @@ async def list_categories(store_id: int, db: AsyncSession = Depends(get_db)):
 async def list_items(
     store_id: int,
     category: int | None = None,
+    featured: bool | None = None,
+    available_only: bool = False,
+    limit: int | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    """List menu items for the universal HQ menu.
+
+    Query params:
+      - category: filter by category_id
+      - featured: when true, only return items admin-marked as featured
+                  (shown on home page "Today's recommendations")
+      - available_only: when true, hide items toggled off by store staff
+      - limit: cap the number of results
+    """
     # Universal menu: always serve from HQ (store_id=0)
-    q = select(MenuItem).where(MenuItem.store_id == UNIVERSAL_MENU_STORE_ID, MenuItem.deleted_at.is_(None))
+    q = select(MenuItem).where(
+        MenuItem.store_id == UNIVERSAL_MENU_STORE_ID,
+        MenuItem.deleted_at.is_(None),
+    )
     if category:
         q = q.where(MenuItem.category_id == category)
+    if featured is True:
+        q = q.where(MenuItem.is_featured == True)
+    if available_only:
+        q = q.where(MenuItem.is_available == True)
     q = q.order_by(MenuItem.display_order)
+    if limit:
+        q = q.limit(limit)
     result = await db.execute(q)
     return result.scalars().all()
 

@@ -44,6 +44,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
   const [itemPrice, setItemPrice] = useState('');
   const [itemCatId, setItemCatId] = useState(0);
   const [itemAvailable, setItemAvailable] = useState(true);
+  const [itemFeatured, setItemFeatured] = useState(false);
   const [savingItem, setSavingItem] = useState(false);
 
   // Category fields
@@ -61,6 +62,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
     setItemPrice('');
     setItemCatId(categories[0]?.id || 0);
     setItemAvailable(true);
+    setItemFeatured(false);
     setItemError('');
     setShowItemForm(true);
   }
@@ -72,6 +74,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
     setItemPrice(String(item.base_price));
     setItemCatId(item.category_id);
     setItemAvailable(item.is_available);
+    setItemFeatured(item.is_featured || false);
     setItemError('');
     setShowItemForm(true);
   }
@@ -93,6 +96,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
       base_price: parseFloat(itemPrice),
       category_id: itemCatId,
       is_available: itemAvailable,
+      is_featured: itemFeatured,
       display_order: editingItem?.display_order || 0,
     };
 
@@ -345,12 +349,16 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16, flexWrap: 'wrap' }}>
                   <button type="submit" className="btn btn-primary" disabled={savingItem}>
                     {savingItem ? 'Saving...' : editingItem ? 'Update' : 'Create'}
                   </button>
                   <button type="button" className="btn" onClick={closeItemForm}>Cancel</button>
                   <div style={{ flex: 1 }} />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                    <input type="checkbox" checked={itemFeatured} onChange={e => setItemFeatured(e.target.checked)} style={{ width: 16, height: 16 }} />
+                    <span style={{ color: '#D18E38', fontWeight: 600 }}><i className="fas fa-star" style={{ marginRight: 4 }}></i>Featured</span>
+                  </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
                     <input type="checkbox" checked={itemAvailable} onChange={e => setItemAvailable(e.target.checked)} style={{ width: 16, height: 16 }} />
                     Available
@@ -391,6 +399,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                       <strong>{item.name}</strong>
                       <span style={{ marginLeft: 12, color: THEME.primary, fontWeight: 600 }}>{formatRM(item.base_price)}</span>
                       {!item.is_available && <span style={{ marginLeft: 8, fontSize: 11, color: '#EF4444', fontWeight: 500 }}>Hidden</span>}
+                      {item.is_featured && <span style={{ marginLeft: 8, fontSize: 11, color: '#D18E38', fontWeight: 600 }}><i className="fas fa-star"></i> Featured</span>}
                       {item.description && <p style={{ fontSize: 13, color: THEME.success, marginTop: 2 }}>{item.description}</p>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

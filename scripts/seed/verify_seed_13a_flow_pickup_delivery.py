@@ -9,10 +9,11 @@ APIs tested:
   - POST /orders/{id}/apply-voucher (apply discount)
   - POST /pg/charge (mock PG - create charge for wallet topup)
   - POST /pg/confirm (mock PG - confirm topup payment)
-  - PATCH /orders/{id}/payment-status (mark as paid, awards loyalty points)
+  - POST /payments/create-intent (wallet payment intent)
+  - POST /payments/confirm (wallet payment settlement)
   - PATCH /orders/{id}/status (update status: confirmed → preparing → ready → completed)
-  - POST /3rdparty_delivery/create (mock delivery provider)
-  - GET /3rdparty_delivery/{id}/status (track delivery status)
+  - POST /delivery/create (mock delivery provider)
+  - GET /delivery/{id}/status (track delivery status)
 Status: CERTIFIED-2026-04-19 | Flow A - Pickup & Delivery lifecycle (pay → fulfill → complete)
 Dependencies: verify_seed_12a_place_orders_pickup.py, verify_seed_12b_place_orders_delivery.py
 Flow (Flow A - Pickup & Delivery):
@@ -70,15 +71,19 @@ MOCK_DELIVERY_URL = os.environ.get("MOCK_DELIVERY_URL", "http://localhost:8888")
 def get_pending_orders(token, order_type=None):
     """Get pending orders for processing."""
     try:
-        params = {"page": 1, "page_size": 100}
-        resp = api_get("/orders", token=token, params=params)
-        if resp.status_code != 200:
-            return None, f"GET /orders failed: {resp.status_code}"
+        orders = []
+        page = 1
+        total_pages = 1
+        while page <= total_pages:
+            params = {"page": page, "page_size": 100, "status": "pending"}
+            resp = api_get("/orders", token=token, params=params)
+            if resp.status_code != 200:
+                return None, f"GET /orders failed: {resp.status_code}"
+            data = resp.json()
+            orders.extend(data.get("orders", []))
+            total_pages = data.get("total_pages") or max(1, (data.get("total", 0) + data.get("page_size", 100) - 1) // data.get("page_size", 100))
+            page += 1
 
-        data = resp.json()
-        orders = data.get("orders", [])
-
-        # Filter for pending orders
         pending = [o for o in orders if o.get("status") == "pending"]
 
         # Filter by order type if specified
@@ -211,17 +216,25 @@ def update_order_status(order_id, new_status, token, note=None):
         return False, str(e)
 
 
-def update_order_payment_status(order_id, payment_status, token):
-    """Update order payment status via API (awards loyalty points)."""
+def settle_wallet_payment(order_id, token):
+    """Settle a Flow A order using the current wallet payment endpoints."""
     try:
-        resp = api_patch(
-            f"/orders/{order_id}/payment-status",
+        intent_resp = api_post(
+            "/payments/create-intent",
             token=token,
-            json={"payment_status": payment_status}
+            json={"order_id": order_id, "method": "wallet"}
         )
-        if resp.status_code not in (200, 201):
-            return False, f"Payment status update failed: {resp.status_code} - {resp.text[:100]}"
-        return True, resp.json()
+        if intent_resp.status_code not in (200, 201):
+            return False, f"Create intent failed: {intent_resp.status_code} - {intent_resp.text[:100]}"
+        payment_id = intent_resp.json().get("payment_id")
+        confirm_resp = api_post(
+            "/payments/confirm",
+            token=token,
+            json={"payment_id": payment_id}
+        )
+        if confirm_resp.status_code not in (200, 201):
+            return False, f"Payment confirm failed: {confirm_resp.status_code} - {confirm_resp.text[:100]}"
+        return True, confirm_resp.json()
     except Exception as e:
         return False, str(e)
 
@@ -233,17 +246,15 @@ def create_delivery_job(order, token):
         delivery_address = order.get("delivery_address", {})
 
         resp = requests.post(
-            f"{MOCK_DELIVERY_URL}/api/v1/deliveries",
+            f"{MOCK_DELIVERY_URL}/delivery/create",
             json={
-                "order_id": order_id,
-                "order_number": order.get("order_number"),
-                "pickup_location": {
-                    "store_id": order.get("store_id"),
-                    "address": "Store pickup address",  # Would fetch from store API
-                },
-                "dropoff_location": delivery_address,
-                "customer_phone": "+60123456789",  # Would fetch from user API
-                "amount": order.get("total"),
+                "order_id": str(order_id),
+                "store_id": order.get("store_id"),
+                "address": delivery_address.get("address") if isinstance(delivery_address, dict) else str(delivery_address),
+                "lat": delivery_address.get("lat") if isinstance(delivery_address, dict) else None,
+                "lng": delivery_address.get("lng") if isinstance(delivery_address, dict) else None,
+                "items": order.get("items", []),
+                "webhook_url": f"{API_BASE}/orders/{order_id}/delivery-webhook",
             },
             timeout=10
         )
@@ -262,7 +273,7 @@ def simulate_delivery_tracking(delivery_id, order_id, token):
         max_attempts = 10
         for attempt in range(max_attempts):
             resp = requests.get(
-                f"{MOCK_DELIVERY_URL}/api/v1/deliveries/{delivery_id}/status",
+                f"{MOCK_DELIVERY_URL}/delivery/{delivery_id}/status",
                 timeout=10
             )
             if resp.status_code == 200:
@@ -312,6 +323,7 @@ def topup_wallet(user_id, amount, token):
                 "user_id": user_id,
                 "user_email": user.get("email", f"user{user_id}@example.com"),
                 "user_name": user.get("name", f"User {user_id}"),
+                "callback_url": f"{API_BASE}/wallet/webhook/pg-payment",
                 # No order_id - this is wallet topup, not order payment
             },
             timeout=10
@@ -383,19 +395,7 @@ def process_flow_a_order(order, admin_tok):
     print(f"    Order total: RM {float(total):.2f}")
 
     if wallet_balance >= float(total):
-        # Sufficient balance - deduct from wallet via API
-        print(f"    ✓ Sufficient balance. Deducting RM {float(total):.2f} from wallet...")
-        deduct_resp = api_post(
-            "/wallet/deduct",
-            token=customer_token,
-            json={"amount": float(total), "description": f"Order {order_number} payment"}
-        )
-        if deduct_resp.status_code in (200, 201):
-            new_bal = deduct_resp.json().get("new_balance", "?")
-            print(f"    ✓ Payment deducted from wallet. New balance: RM {new_bal:.2f}")
-        else:
-            print(f"    ⚠ Wallet deduction API call failed ({deduct_resp.status_code}): {deduct_resp.text[:100]}")
-            print(f"    Continuing with payment status update...")
+        print(f"    ✓ Sufficient balance available for wallet settlement")
     else:
         # Insufficient balance - top up first
         shortfall = float(total) - wallet_balance
@@ -411,32 +411,26 @@ def process_flow_a_order(order, admin_tok):
             print(f"    ✗ Wallet topup failed: {err}")
             return False, err
 
+        new_balance = wallet_balance
+        for _ in range(10):
+            time.sleep(0.2)
+            new_balance = get_wallet_balance(user_id, customer_token)
+            if new_balance >= wallet_balance + topup_amount:
+                break
+
         print(f"    ✓ Wallet topped up successfully")
-        new_balance = wallet_balance + topup_amount
         print(f"    New wallet balance: RM {new_balance:.2f}")
-        print(f"    Deducting RM {float(total):.2f} from wallet...")
 
-        # Actually deduct via API
-        deduct_resp = api_post(
-            "/wallet/deduct",
-            token=customer_token,
-            json={"amount": float(total), "description": f"Order {order_number} payment"}
-        )
-        if deduct_resp.status_code in (200, 201):
-            new_bal = deduct_resp.json().get("new_balance", "?")
-            print(f"    ✓ Payment deducted from wallet. New balance: RM {new_bal:.2f}")
-        else:
-            print(f"    ⚠ Wallet deduction API call failed ({deduct_resp.status_code}): {deduct_resp.text[:100]}")
-            print(f"    Continuing with payment status update...")
-
-    # Step 3: Update order payment status to paid (awards loyalty points)
-    print("  Step 3: Marking order as paid...")
-    success, result = update_order_payment_status(order_id, "paid", admin_tok)
+    # Step 3: Settle wallet payment using the current payment APIs
+    print("  Step 3: Settling wallet payment...")
+    success, result = settle_wallet_payment(order_id, customer_token)
     if not success:
-        print(f"    ✗ Payment status update failed: {result}")
+        print(f"    ✗ Wallet payment failed: {result}")
         return False, result
     points_earned = result.get("loyalty_points_earned", 0)
-    print(f"    ✓ Order payment status: paid, Loyalty points earned: {points_earned}")
+    if not points_earned:
+        points_earned = result.get("points_earned", 0)
+    print(f"    ✓ Order paid successfully. Loyalty points earned: {points_earned}")
 
     # Step 4: Status transition to confirmed
     print("  Step 4: Confirming order...")
@@ -473,16 +467,8 @@ def process_flow_a_order(order, admin_tok):
         delivery_id = delivery_data.get("delivery_id")
         print(f"    ✓ Delivery job created: {delivery_id}")
 
-        # Transition to out_for_delivery
-        print("  Step 8: Handing to delivery partner...")
-        success, result = update_order_status(order_id, "out_for_delivery", admin_tok, f"Delivery job: {delivery_id}")
-        if not success:
-            print(f"    ✗ Delivery transition failed: {result}")
-            return False, result
-        print("    ✓ Order out for delivery")
-
-        # Simulate delivery tracking
-        print("  Step 9: Tracking delivery...")
+        # Simulate delivery tracking via provider webhooks
+        print("  Step 8: Tracking delivery via provider...")
         success, msg = simulate_delivery_tracking(delivery_id, order_id, admin_tok)
         if not success:
             print(f"    ✗ Delivery tracking failed: {msg}")

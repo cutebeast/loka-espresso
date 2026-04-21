@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import React from 'react';
-import { apiFetch } from '@/lib/merchant-api';
+import { apiFetch, clearMerchantTokens } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import type {
   PageId,
@@ -41,6 +41,7 @@ import NotificationsPage from '@/components/pages/marketing/NotificationsPage';
 import RewardsPage from '@/components/pages/marketing/RewardsPage';
 import VouchersPage from '@/components/pages/marketing/VouchersPage';
 import PromotionsPage from '@/components/pages/marketing/PromotionsPage';
+import InformationPage from '@/components/pages/marketing/InformationPage';
 import FeedbackPage from '@/components/pages/marketing/FeedbackPage';
 import MarketingReportsPage from '@/components/pages/analytics/MarketingReportsPage';
 import SalesReportsPage from '@/components/pages/analytics/SalesReportsPage';
@@ -49,6 +50,7 @@ import PWASettingsPage from '@/components/pages/system/PWASettingsPage';
 
 export default function MerchantDashboard() {
   const [token, setToken] = useState('');
+  const [refreshToken, setRefreshToken] = useState('');
   const [currentUserRole, setCurrentUserRole] = useState('Admin');
   const [currentUserType, setCurrentUserType] = useState<number>(1);
   const [page, setPage] = useState<PageId>('dashboard');
@@ -105,16 +107,19 @@ export default function MerchantDashboard() {
 
   useEffect(() => {
     const saved = localStorage.getItem('fnb_token');
+    const savedRefresh = localStorage.getItem('fnb_refresh_token');
     if (saved) setToken(saved);
+    if (savedRefresh) setRefreshToken(savedRefresh);
   }, []);
 
   useEffect(() => {
     if (token) {
       localStorage.setItem('fnb_token', token);
+      if (refreshToken) localStorage.setItem('fnb_refresh_token', refreshToken);
       fetchStores();
       fetchUserRole();
     }
-  }, [token]);
+  }, [token, refreshToken]);
 
   // Mobile sidebar toggle handling
   useEffect(() => {
@@ -159,8 +164,12 @@ export default function MerchantDashboard() {
         const user = await res.json();
         setCurrentUserRole(user.role || 'Admin');
         setCurrentUserType(user.user_type_id || 1);
+      } else if (res.status === 401) {
+        handleLogout();
       }
-    } catch {}
+    } catch {
+      handleLogout();
+    }
   }
 
   useEffect(() => {
@@ -182,11 +191,18 @@ export default function MerchantDashboard() {
 
   function handleLogout() {
     setToken('');
-    localStorage.removeItem('fnb_token');
+    setRefreshToken('');
+    clearMerchantTokens();
     setPage('dashboard');
     setSelectedStore('all');
     setDateRange({ from: '', to: '' });
   }
+
+  useEffect(() => {
+    const onAuthExpired = () => handleLogout();
+    window.addEventListener('merchant-auth-expired', onAuthExpired);
+    return () => window.removeEventListener('merchant-auth-expired', onAuthExpired);
+  }, []);
 
   const [dashboardChartMode, setDashboardChartMode] = useState<string>('');
 
@@ -304,7 +320,7 @@ export default function MerchantDashboard() {
   }
 
   if (!token) {
-    return <LoginScreen onLogin={setToken} />;
+    return <LoginScreen onLogin={(nextToken, nextRefreshToken) => { setToken(nextToken); setRefreshToken(nextRefreshToken || ''); }} />;
   }
 
   const storeObj = stores.find(s => s.id === Number(selectedStore));
@@ -324,6 +340,7 @@ export default function MerchantDashboard() {
     rewards: 'Rewards',
     vouchers: 'Vouchers',
     promotions: 'Promotions',
+    information: 'Information',
     feedback: 'Feedback',
     reports: 'Sales Reports',
     marketingreports: 'Marketing ROI',
@@ -487,6 +504,10 @@ export default function MerchantDashboard() {
 
             {page === 'promotions' && (
               <PromotionsPage token={token} />
+            )}
+
+            {page === 'information' && (
+              <InformationPage token={token} />
             )}
 
             {page === 'feedback' && (

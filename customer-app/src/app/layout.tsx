@@ -27,8 +27,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: "cover",
   themeColor: "#384B16",
 };
@@ -57,13 +57,42 @@ export default function RootLayout({
         {/* Theme Colors for different platforms */}
         <meta name="theme-color" content="#384B16" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#2A3910" media="(prefers-color-scheme: dark)" />
+        <meta name="screen-orientation" content="portrait" />
         
         {/* Preconnect for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className="antialiased">
+      <body className="font-sans antialiased bg-[#E4EAEF]">
         {children}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // Register Service Worker
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                  .then((registration) => {
+                    console.log('[PWA] SW registered:', registration.scope);
+                    
+                    // Check for updates
+                    registration.addEventListener('updatefound', () => {
+                      const newWorker = registration.installing;
+                      console.log('[PWA] Update found, installing...');
+                      
+                      newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                          console.log('[PWA] New version available, ready for next reload.');
+                        }
+                      });
+                    });
+                  })
+                  .catch((err) => {
+                    console.error('[PWA] SW registration failed:', err);
+                  });
+              });
+            }
+          `
+        }} />
       </body>
     </html>
   );

@@ -25,8 +25,8 @@ const staggerItem = {
   show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 };
 
-function formatPrice(val: number): string {
-  return `RM ${val.toFixed(2)}`;
+function formatPrice(val: number | string): string {
+  return `RM ${Number(val).toFixed(2)}`;
 }
 
 type Tab = 'loyalty' | 'wallet';

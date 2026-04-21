@@ -36,6 +36,7 @@ Individual menu items. **UNIVERSAL** — always lives on `store_id=0` (HQ), serv
 | image_url | varchar(500) | YES | | Item photo |
 | customization_options | json | YES | | Legacy JSON add-ons |
 | is_available | boolean | NO | true | Currently available |
+| is_featured | boolean | NO | false | Show in "Today's recommendations" |
 | display_order | integer | YES | 0 | Sort order within category (lowest to highest; 0=unsorted) |
 | popularity | integer | YES | 0 | Order count |
 | deleted_at | timestamptz | YES | | Soft delete timestamp |

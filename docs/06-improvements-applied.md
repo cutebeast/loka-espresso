@@ -568,7 +568,8 @@ cd /root/fnb-super-app/backend
 
 ## Session 7 — Seed Scripts Certification (2026-04-19)
 
-Comprehensive certification of all base seed scripts (Steps 00-11) with API-only implementation.
+Historical certification snapshot of the seed scripts as they existed on 2026-04-19.
+This section is useful for implementation history, but it is **not** the current source of truth for launch readiness.
 
 ### Seed Scripts Certified
 
@@ -585,7 +586,7 @@ Comprehensive certification of all base seed scripts (Steps 00-11) with API-only
 | `verify_seed_08_promotions.py` | Create 3 surveys + 5 banners | POST /admin/vouchers, POST /admin/surveys, POST /admin/banners, GET APIs | CERTIFIED |
 | `verify_seed_09_reset_customers.py` | Reset customer data | DELETE /admin/customers/reset, GET /admin/customers | CERTIFIED |
 | `verify_seed_10_register.py` | Register 10 customers via OTP | POST /auth/send-otp, POST /auth/verify-otp, POST /auth/register, GET /admin/customers | CERTIFIED |
-| `verify_seed_11_wallet_topup.py` | Topup via Payment Gateway | POST /pg/charge, POST /pg/confirm, POST /wallet/topup, GET /me/wallet | CERTIFIED |
+| `verify_seed_11_wallet_topup.py` | Topup via Payment Gateway | POST /pg/charge, POST /pg/confirm, POST /wallet/webhook/pg-payment, GET /wallet | HISTORICAL |
 
 ### Key Improvements
 
@@ -618,7 +619,14 @@ Comprehensive certification of all base seed scripts (Steps 00-11) with API-only
 
 ## Known Issues
 
-**NONE** - All issues resolved. System is production-ready.
+This document no longer claims that all issues are resolved.
+
+Current project status should be read from:
+
+- `docs/00-index.md`
+- `docs/01-architecture.md`
+- `docs/04-testing-guide.md`
+- `docs/05-alignment-verification.md`
 
 ### Historical Notes
 - `seed_full.sql` is deprecated (marked in file header) - Use Python seed scripts instead
@@ -706,13 +714,71 @@ Comprehensive certification of all base seed scripts (Steps 00-11) with API-only
 
 ---
 
-## Final Status: 100% Complete ✅
+## PWA / Customer App Improvements — Session 2026-04-20
 
-**System Status: ADMIN PANEL PRODUCTION READY**
+### Database Schema Changes
 
-**Next Phase**: PWA Development
+| # | Change | Table/Column | Purpose |
+|---|--------|--------------|---------|
+| 1 | Added column | `menu_items.is_featured` (boolean, default false) | Mark items for "Today's recommendations" section |
+| 2 | Added column | `information_cards.content_type` (varchar(20), default 'promotion') | Differentiate promotional vs system content |
+| 3 | Seeded data | `information_cards` | Terms & Conditions, Privacy Policy, Turkish Coffee Reading |
+| 4 | Seeded data | `notification_broadcasts` | Welcome notification for new users |
 
-All 59+ items completed and verified:
+### Backend API Changes
+
+| # | Endpoint | Change | Purpose |
+|---|----------|--------|---------|
+| 1 | `GET /stores/{id}/items` | Added query params: `featured`, `available_only`, `limit` | Filter featured items for PWA home |
+| 2 | `POST/PUT /admin/stores/{id}/items` | Added field: `is_featured` | Admin can mark items as featured |
+| 3 | `GET /content/information` | Added query params: `content_type`, `include_system`, `limit` | Filter system vs promotional content |
+| 4 | `GET /content/legal/terms` | New endpoint | Get Terms & Conditions text |
+| 5 | `GET /content/legal/privacy` | New endpoint | Get Privacy Policy text |
+| 6 | Phone normalization | `send-otp`, `verify-otp` | Auto-normalize Malaysian phone formats |
+
+### PWA Frontend Changes
+
+| # | Feature | Component/Location | Details |
+|---|---------|-------------------|---------|
+| 1 | Store distance display | AppShell header | Shows distance (e.g., "· 0.5km") next to store name |
+| 2 | Store distance in modal | Store selector | Each store shows distance, sorted by nearest first |
+| 3 | QR Scanner | QRScanner.tsx | Full-screen scanner with flash toggle, camera switch |
+| 4 | Featured items | HomePage.tsx | "Today's recommendations" from `?featured=true` API |
+| 5 | Information cards | HomePage.tsx | Limit 3 promotional cards, exclude system content |
+| 6 | Phone normalization | PhoneInput.tsx | Handles all Malaysian formats: 010..., 601..., +601..., +6001... |
+| 7 | Store loading | AppShell.tsx | Loads stores when modal opens (for guests) |
+
+### Admin Frontend Changes
+
+| # | Feature | Component | Details |
+|---|---------|-----------|---------|
+| 1 | Featured toggle | MenuPage.tsx | Checkbox to mark items as "⭐ Featured" |
+| 2 | Featured badge | MenuPage.tsx | Shows "⭐ Featured" badge in item list |
+
+### Documentation Updates
+
+| File | Changes |
+|------|---------|
+| `02d-menu.md` | Added `is_featured` column documentation |
+| `02g-marketing.md` | Updated `information_cards` with `content_type` field, system content types |
+| `03-api-reference.md` | Added new endpoints: `/content/legal/*`, query params for items and information |
+
+---
+
+## Historical Status Note
+
+This file is a historical implementation log.
+
+It should not be used as the final status document for the current system state.
+
+Current next phase remains:
+
+- real PG integration
+- real delivery-provider integration
+- real Twilio integration
+- real external POS integration
+
+All 70+ items completed and verified:
 - ✅ All frontend pages using standardized UI components
 - ✅ No duplicate Survey Reports tabs
 - ✅ CustomerDetailPage using proper DataTable/Pagination
@@ -721,3 +787,7 @@ All 59+ items completed and verified:
 - ✅ Flow A & B order completion working
 - ✅ Wallet deduction API verified
 - ✅ Customer token flow verified
+- ✅ Store distance calculation working
+- ✅ QR scanner implemented
+- ✅ Featured items system working
+- ✅ Information cards with content_type differentiation

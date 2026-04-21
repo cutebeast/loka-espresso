@@ -23,9 +23,18 @@ async def list_stores(
     lat: float | None = None,
     lng: float | None = None,
     radius: float = 50,
+    include_hq: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Store).where(Store.is_active == True))
+    """List active customer-facing stores.
+
+    Store id=0 is reserved for HQ (universal-menu source) and is NEVER
+    surfaced to customers. Admin tools can opt-in via include_hq=true.
+    """
+    q = select(Store).where(Store.is_active == True)
+    if not include_hq:
+        q = q.where(Store.id != 0)
+    result = await db.execute(q)
     stores = result.scalars().all()
     out = []
     for s in stores:

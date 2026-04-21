@@ -1,131 +1,119 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ShoppingBag,
-  Tag,
-  Wallet,
-  Banknote,
-  CheckCircle2,
-  ArrowLeft,
-  Truck,
-  ChevronRight,
-  Loader2,
-} from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Wallet, Banknote, CheckCircle2, ShoppingBag, Loader2, Receipt } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useOrderStore } from '@/stores/orderStore';
-import { Button, Badge } from '@/components/ui';
-import api from '@/lib/api';
+import { useConfigStore } from '@/stores/configStore';
+import { placeOrder } from '@/lib/cartSync';
+import OrderTypeHeader from '@/components/checkout/OrderTypeHeader';
+import TimeSlotPicker from '@/components/checkout/TimeSlotPicker';
+import DeliveryAddressCard from '@/components/checkout/DeliveryAddressCard';
+import DineInTableCard from '@/components/checkout/DineInTableCard';
+import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
+import PaymentSummary from '@/components/checkout/PaymentSummary';
+import OrderNotesField from '@/components/checkout/OrderNotesField';
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
+const LOKA = {
+  primary: '#384B16',
+  copper: '#D18E38',
+  copperSoft: 'rgba(209,142,56,0.12)',
+  textPrimary: '#1B2023',
+  textMuted: '#6A7A8A',
+  border: '#D4DCE5',
+  borderSubtle: '#E4EAEF',
+  surface: '#F5F7FA',
+  bg: '#E4EAEF',
+  white: '#FFFFFF',
+  success: '#85B085',
+  danger: '#C75050',
 };
 
-const staggerItem = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-};
-
-function formatPrice(val: number): string {
-  return `RM ${val.toFixed(2)}`;
+function formatPrice(val: number | string): string {
+  return `RM ${Number(val).toFixed(2)}`;
 }
 
 export default function CheckoutPage() {
-  const { items, storeId, getTotal, clearCart } = useCartStore();
-  const { selectedStore, orderMode, setPage, showToast } = useUIStore();
-  const { balance, setBalance } = useWalletStore();
+  const { items, getTotal } = useCartStore();
+  const { orderMode, selectedStore, dineInSession, setPage, showToast, setDineInSession, setOrderMode } = useUIStore();
+  const { balance, setBalance, refreshWallet } = useWalletStore();
   const { addOrder } = useOrderStore();
+  const { config } = useConfigStore();
 
-  const [voucherCode, setVoucherCode] = useState('');
-  const [discount, setDiscount] = useState(0);
-  const [voucherValidating, setVoucherValidating] = useState(false);
-  const [voucherApplied, setVoucherApplied] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<'wallet' | 'cash'>(
-    balance >= getTotal() ? 'wallet' : 'cash'
-  );
+  const [pickupTime, setPickupTime] = useState<string | null>(null);
+  const [deliveryAddress, setDeliveryAddress] = useState<{ address: string; lat?: number; lng?: number } | null>(null);
+  const [discountType, setDiscountType] = useState<'none' | 'voucher' | 'reward'>('none');
+  const [discountCode, setDiscountCode] = useState<string>('');
+  const [discountValue, setDiscountValue] = useState(0);
+  const [notes, setNotes] = useState('');
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   const [orderId, setOrderId] = useState<number | null>(null);
+  const [pointsEarned, setPointsEarned] = useState<number>(0);
 
   const subtotal = getTotal();
-  const deliveryFee = orderMode === 'delivery' ? 3 : 0;
+  const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
+  const discount = discountValue;
   const total = subtotal + deliveryFee - discount;
+  const walletSufficient = balance >= total;
+  const belowDeliveryMinimum = orderMode === 'delivery' && config.min_order_delivery > 0 && subtotal < config.min_order_delivery;
 
-  const handleApplyVoucher = async () => {
-    if (!voucherCode.trim()) return;
-    setVoucherValidating(true);
-    try {
-      const res = await api.post('/vouchers/validate', {
-        code: voucherCode.trim(),
-        order_total: subtotal,
-      });
-      const discountVal = res.data?.discount_value || 0;
-      setDiscount(discountVal);
-      setVoucherApplied(true);
-      showToast(`Voucher applied! ${formatPrice(discountVal)} off`, 'success');
-    } catch {
-      setDiscount(0);
-      setVoucherApplied(false);
-      showToast('Invalid voucher code', 'error');
-    } finally {
-      setVoucherValidating(false);
-    }
-  };
+  const effectiveStore = orderMode === 'dine_in' && dineInSession
+    ? { name: dineInSession.storeName, address: '' }
+    : selectedStore || { name: 'Selected Store', address: '' };
+
+  const handleVoucherChange = useCallback((type: 'none' | 'voucher' | 'reward', code?: string, dv?: number) => {
+    setDiscountType(type);
+    setDiscountCode(code || '');
+    setDiscountValue(dv || 0);
+  }, []);
 
   const handlePlaceOrder = async () => {
-    if (items.length === 0) {
-      showToast('Cart is empty', 'error');
-      return;
-    }
+    if (items.length === 0) { showToast('Cart is empty', 'error'); return; }
+    if (!effectiveStore) { showToast('Please select a store', 'error'); return; }
+
+    if (orderMode === 'pickup' && !pickupTime) { showToast('Please select a pickup time', 'error'); return; }
+    if (orderMode === 'delivery' && !deliveryAddress?.address) { showToast('Please enter a delivery address', 'error'); return; }
+    if (orderMode === 'dine_in' && !dineInSession) { showToast('No dine-in session', 'error'); return; }
+    if (belowDeliveryMinimum) { showToast(`Delivery requires at least ${formatPrice(config.min_order_delivery)}`, 'error'); return; }
+    if (orderMode !== 'dine_in' && !walletSufficient) { showToast('Insufficient wallet balance', 'error'); return; }
+
     setPlacing(true);
     try {
-      const orderPayload = {
-        store_id: storeId || selectedStore?.id,
-        order_type: orderMode,
-        items: items.map((i) => ({
-          menu_item_id: i.menu_item_id,
-          name: i.name,
-          price: i.price,
-          quantity: i.quantity,
-          customizations: i.customizations,
-        })),
-        subtotal,
-        delivery_fee: deliveryFee,
-        total,
-        payment_method: selectedPayment,
-      };
+      const storeId = orderMode === 'dine_in' && dineInSession ? dineInSession.storeId : selectedStore?.id;
+      if (!storeId) { showToast('Store not selected', 'error'); setPlacing(false); return; }
 
-      const orderRes = await api.post('/orders', orderPayload);
-      const newOrder = orderRes.data;
+      const newOrder = await placeOrder({
+        storeId,
+        orderType: orderMode,
+        pickupTime: pickupTime || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        tableId: dineInSession?.tableId,
+        notes: notes || undefined,
+        voucherCode: discountType === 'voucher' ? discountCode : undefined,
+        rewardRedemptionCode: discountType === 'reward' ? discountCode : undefined,
+        paymentMethod: orderMode === 'dine_in' ? 'cash' : 'wallet',
+      });
+
       setOrderNumber(newOrder?.order_number || '');
       setOrderId(newOrder?.id || null);
+      setPointsEarned(newOrder?.points_earned || newOrder?.loyalty_points_earned || 0);
       addOrder(newOrder);
 
-      if (selectedPayment === 'wallet') {
-        const intentRes = await api.post('/payments/create-intent', {
-          order_id: newOrder.id,
-          amount: total,
-          method: 'wallet',
-        });
-        await api.post('/payments/confirm', {
-          payment_intent_id: intentRes.data?.id || intentRes.data?.payment_intent_id,
-        });
+      if (orderMode !== 'dine_in') {
         setBalance(balance - total);
+        await refreshWallet();
       }
-
-      clearCart();
       setSuccess(true);
       showToast('Order placed successfully!', 'success');
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Failed to place order';
-      showToast(message, 'error');
+      const detail = (err as { response?: { data?: { detail?: string; message?: string } } })?.response?.data?.detail;
+      const msg = detail || (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to place order';
+      showToast(msg, 'error');
     } finally {
       setPlacing(false);
     }
@@ -133,283 +121,182 @@ export default function CheckoutPage() {
 
   if (success) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center py-16 px-6"
-      >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', damping: 12, stiffness: 200, delay: 0.2 }}
-          className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6"
-        >
-          <CheckCircle2 size={40} className="text-green-500" />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: '40px 24px', background: LOKA.bg }}>
+        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 12, stiffness: 200, delay: 0.2 }}
+          style={{ width: 80, height: 80, borderRadius: 999, background: LOKA.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+          <CheckCircle2 size={40} color={LOKA.white} strokeWidth={1.5} />
         </motion.div>
-        <motion.h2
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="text-xl font-bold text-gray-900 mb-2"
-        >
-          Order Placed!
+        <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ fontSize: 22, fontWeight: 800, color: LOKA.textPrimary, marginBottom: 8 }}>
+          Order placed!
         </motion.h2>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="text-sm text-gray-500 mb-1"
-        >
+        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ fontSize: 13, color: LOKA.textMuted, marginBottom: 4 }}>
           Your order number is
         </motion.p>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="text-2xl font-bold text-primary mb-8"
-        >
+        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
+          style={{ fontSize: 28, fontWeight: 800, color: LOKA.primary, fontFamily: 'monospace', marginBottom: 20 }}>
           #{orderNumber}
         </motion.p>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="w-full space-y-3"
-        >
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full"
-            onClick={() => {
-              if (orderId) {
-                useOrderStore.getState().setCurrentOrder(
-                  useOrderStore.getState().orders.find((o) => o.id === orderId) || null
-                );
-              }
-              setPage('orders');
-            }}
-          >
-            Track Order
-          </Button>
-          <Button variant="outline" size="lg" className="w-full" onClick={() => setPage('home')}>
+
+        <div style={{ background: LOKA.white, borderRadius: 20, padding: 20, width: '100%', maxWidth: 340, marginBottom: 20, textAlign: 'center' }}>
+          {orderMode === 'pickup' && pickupTime && (
+            <p style={{ fontSize: 14, color: LOKA.textPrimary }}>
+              Ready at <strong>{new Date(pickupTime).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true })}</strong>
+            </p>
+          )}
+          {orderMode === 'delivery' && deliveryAddress && (
+            <p style={{ fontSize: 14, color: LOKA.textPrimary }}>
+              {orderId ? 'Dispatch request created for' : 'Delivery request created for'} <strong>{deliveryAddress.address}</strong>
+            </p>
+          )}
+          {orderMode === 'dine_in' && dineInSession && (
+            <p style={{ fontSize: 14, color: LOKA.textPrimary }}>
+              Staff is preparing your order at <strong>Table {dineInSession.tableNumber}</strong>
+            </p>
+          )}
+          {pointsEarned > 0 && (
+            <div style={{ marginTop: 12, padding: '8px 14px', background: LOKA.copperSoft, borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: LOKA.copper }}>+{pointsEarned} Loka points</span>
+            </div>
+          )}
+          {orderMode === 'dine_in' && (
+            <p style={{ fontSize: 12, color: LOKA.textMuted, marginTop: 8 }}>Points will be awarded after payment</p>
+          )}
+        </div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 340 }}>
+          <motion.button whileTap={{ scale: 0.98 }} onClick={() => { setPage('orders'); }}
+            style={{ width: '100%', padding: '16px 24px', borderRadius: 999, background: LOKA.primary, color: LOKA.white, fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 8px 16px rgba(56,75,22,0.25)' }}>
+            Track Order →
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.98 }} onClick={() => { setSuccess(false); setPage('home'); }}
+            style={{ width: '100%', padding: '16px 24px', borderRadius: 999, background: LOKA.white, color: LOKA.primary, fontWeight: 700, fontSize: 15, border: `2px solid ${LOKA.primary}`, cursor: 'pointer' }}>
             Back to Home
-          </Button>
+          </motion.button>
         </motion.div>
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="px-4 pt-4 pb-6">
-      <motion.div variants={staggerItem} className="flex items-center gap-3 mb-5">
-        <button
-          onClick={() => setPage('cart')}
-          className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center"
-        >
-          <ArrowLeft size={18} className="text-gray-600" />
-        </button>
-        <h1 className="text-xl font-bold text-gray-900">Checkout</h1>
-      </motion.div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: LOKA.bg }}>
+      <div style={{ background: LOKA.white, padding: '12px 18px', borderBottom: `1px solid ${LOKA.borderSubtle}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setPage('cart')}
+          style={{ width: 36, height: 36, borderRadius: 10, background: LOKA.surface, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <ArrowLeft size={18} color={LOKA.primary} />
+        </motion.button>
+        <h1 style={{ flex: 1, fontSize: 18, fontWeight: 800, color: LOKA.textPrimary }}>
+          Checkout · {orderMode === 'pickup' ? 'Pickup' : orderMode === 'delivery' ? 'Delivery' : 'Dine-in'}
+        </h1>
+      </div>
 
-      <motion.div variants={staggerItem} className="mb-5">
-        <h2 className="text-sm font-bold text-gray-900 mb-3">Order Summary</h2>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
-          {items.map((item, i) => (
-            <div key={`${item.menu_item_id}-${i}`} className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
-                <p className="text-xs text-gray-400">
-                  x{item.quantity} &middot; {formatPrice(item.price)} each
-                </p>
-              </div>
-              <span className="text-sm font-bold text-gray-900 ml-3">
-                {formatPrice(item.price * item.quantity)}
-              </span>
-            </div>
-          ))}
-          {deliveryFee > 0 && (
-            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-              <div className="flex items-center gap-2">
-                <Truck size={14} className="text-gray-400" />
-                <span className="text-sm text-gray-500">Delivery fee</span>
-              </div>
-              <span className="text-sm font-medium text-gray-900">{formatPrice(deliveryFee)}</span>
-            </div>
-          )}
-          {discount > 0 && (
-            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-              <span className="text-sm text-green-600">Discount</span>
-              <span className="text-sm font-bold text-green-600">-{formatPrice(discount)}</span>
-            </div>
-          )}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-            <span className="text-base font-bold text-gray-900">Total</span>
-            <span className="text-lg font-bold text-primary">{formatPrice(total)}</span>
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div variants={staggerItem} className="mb-5">
-        <h2 className="text-sm font-bold text-gray-900 mb-3">Voucher</h2>
-        <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <Tag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={voucherCode}
-              onChange={(e) => {
-                setVoucherCode(e.target.value);
-                if (voucherApplied) {
-                  setVoucherApplied(false);
-                  setDiscount(0);
-                }
-              }}
-              placeholder="Enter voucher code"
-              className="w-full pl-11 pr-4 py-3.5 rounded-full border-2 border-gray-200 focus:border-primary outline-none text-sm text-gray-900 placeholder:text-gray-400"
+      <div className="scroll-container" style={{ flex: 1, padding: '14px 18px 24px' }}>
+        {orderMode === 'dine_in' && dineInSession ? (
+          <div style={{ marginBottom: 16 }}>
+            <DineInTableCard
+              tableNumber={dineInSession.tableNumber}
+              storeName={dineInSession.storeName}
+              onScanDifferent={() => { setDineInSession(null); setOrderMode('pickup'); setPage('home'); }}
             />
           </div>
-          <Button
-            variant="outline"
-            size="md"
-            onClick={handleApplyVoucher}
-            isLoading={voucherValidating}
-            disabled={!voucherCode.trim() || voucherApplied}
-          >
-            {voucherApplied ? 'Applied' : 'Apply'}
-          </Button>
-        </div>
-        {voucherApplied && discount > 0 && (
-          <motion.p
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-xs text-green-600 mt-2 ml-1"
-          >
-            Voucher applied: {formatPrice(discount)} discount
-          </motion.p>
+        ) : (
+          <div style={{ marginBottom: 16 }}>
+            <OrderTypeHeader
+              orderMode={orderMode}
+              storeName={effectiveStore.name}
+              storeAddress={'address' in effectiveStore ? effectiveStore.address : undefined}
+            />
+          </div>
         )}
-      </motion.div>
 
-      <motion.div variants={staggerItem} className="mb-6">
-        <h2 className="text-sm font-bold text-gray-900 mb-3">Payment Method</h2>
-        <div className="space-y-2">
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setSelectedPayment('wallet')}
-            className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-colors ${
-              selectedPayment === 'wallet'
-                ? 'border-primary bg-primary/5'
-                : 'border-gray-200 bg-white'
-            }`}
-            disabled={balance < total}
-          >
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                selectedPayment === 'wallet' ? 'bg-primary/10' : 'bg-gray-100'
-              }`}
-            >
-              <Wallet
-                size={18}
-                className={selectedPayment === 'wallet' ? 'text-primary' : 'text-gray-400'}
-              />
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-sm font-semibold text-gray-900">Wallet</p>
-              <p className="text-xs text-gray-500">Balance: {formatPrice(balance)}</p>
-            </div>
-            {balance < total && (
-              <Badge variant="error" size="sm">
-                Insufficient
-              </Badge>
-            )}
-            <div
-              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                selectedPayment === 'wallet' ? 'border-primary' : 'border-gray-300'
-              }`}
-            >
-              {selectedPayment === 'wallet' && (
-                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+        {orderMode === 'pickup' && (
+          <div style={{ marginBottom: 20 }}>
+            <TimeSlotPicker
+              value={pickupTime}
+              onChange={setPickupTime}
+              leadMinutes={config.pickup_lead_minutes}
+            />
+          </div>
+        )}
+
+        {orderMode === 'delivery' && (
+          <div style={{ marginBottom: 20 }}>
+            <DeliveryAddressCard value={deliveryAddress} onChange={setDeliveryAddress} />
+          </div>
+        )}
+
+        <div style={{ marginBottom: 20 }}>
+          <VoucherRewardSelector
+            subtotal={subtotal}
+            selectedType={discountType}
+            selectedCode={discountCode}
+            onChange={handleVoucherChange}
+          />
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <OrderNotesField value={notes} onChange={setNotes} orderMode={orderMode} />
+        </div>
+
+        {orderMode !== 'dine_in' && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: LOKA.surface, borderRadius: 16, marginBottom: 12 }}>
+              <Wallet size={18} color={LOKA.primary} />
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary }}>Wallet</p>
+                <p style={{ fontSize: 12, color: LOKA.textMuted }}>Balance: {formatPrice(balance)}</p>
+              </div>
+              {walletSufficient ? (
+                <div style={{ width: 20, height: 20, borderRadius: 999, background: LOKA.success, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckCircle2 size={12} color={LOKA.white} />
+                </div>
+              ) : (
+                <div style={{ width: 20, height: 20, borderRadius: 999, background: LOKA.danger, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ color: LOKA.white, fontSize: 12, fontWeight: 700 }}>!</span>
+                </div>
               )}
             </div>
-          </motion.button>
+          </div>
+        )}
 
+        {orderMode === 'dine_in' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: LOKA.surface, borderRadius: 16, marginBottom: 16 }}>
+            <Receipt size={18} color={LOKA.copper} />
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary }}>Pay at counter</p>
+              <p style={{ fontSize: 12, color: LOKA.textMuted }}>Staff will take your payment</p>
+            </div>
+            <Banknote size={18} color={LOKA.textMuted} />
+          </div>
+        )}
+
+        <div style={{ marginBottom: 20 }}>
+          <PaymentSummary subtotal={subtotal} deliveryFee={deliveryFee} discount={discount} total={total} />
+        </div>
+      </div>
+
+      <div style={{ padding: '12px 18px 24px', background: LOKA.bg, borderTop: `1px solid ${LOKA.borderSubtle}` }}>
+        {orderMode !== 'dine_in' && !walletSufficient ? (
           <motion.button
             whileTap={{ scale: 0.98 }}
-            onClick={() => setSelectedPayment('cash')}
-            className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-colors ${
-              selectedPayment === 'cash'
-                ? 'border-primary bg-primary/5'
-                : 'border-gray-200 bg-white'
-            }`}
+            onClick={() => setPage('wallet')}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 24px', borderRadius: 999, background: LOKA.copper, color: LOKA.white, fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 8px 16px rgba(209,142,56,0.3)' }}
           >
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                selectedPayment === 'cash' ? 'bg-primary/10' : 'bg-gray-100'
-              }`}
-            >
-              <Banknote
-                size={18}
-                className={selectedPayment === 'cash' ? 'text-primary' : 'text-gray-400'}
-              />
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-sm font-semibold text-gray-900">Cash on Pickup</p>
-              <p className="text-xs text-gray-500">Pay when you collect</p>
-            </div>
-            <div
-              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                selectedPayment === 'cash' ? 'border-primary' : 'border-gray-300'
-              }`}
-            >
-              {selectedPayment === 'cash' && (
-                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-              )}
-            </div>
+            <Wallet size={18} />
+            Top up {formatPrice(total - balance)} to continue
           </motion.button>
-        </div>
-      </motion.div>
-
-      <AnimatePresence>
-        {items.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center"
+        ) : (
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={handlePlaceOrder}
+            disabled={placing || belowDeliveryMinimum}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 24px', borderRadius: 999, background: LOKA.primary, color: LOKA.white, fontWeight: 700, fontSize: 15, border: 'none', cursor: placing ? 'not-allowed' : 'pointer', boxShadow: '0 8px 16px rgba(56,75,22,0.25)', opacity: placing ? 0.7 : 1 }}
           >
-            <p className="text-sm text-amber-700">Your cart is empty. Add items to continue.</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => setPage('menu')}
-              rightIcon={<ChevronRight size={14} />}
-            >
-              Browse Menu
-            </Button>
-          </motion.div>
+            {placing ? <><Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} /> Placing...</> : <><ShoppingBag size={18} />{orderMode === 'dine_in' ? 'Send to kitchen →' : `Place Order · ${formatPrice(total)}`}</>}
+          </motion.button>
         )}
-      </AnimatePresence>
-
-      <motion.div variants={staggerItem}>
-        <Button
-          variant="primary"
-          size="lg"
-          className="w-full"
-          onClick={handlePlaceOrder}
-          isLoading={placing}
-          disabled={items.length === 0}
-          leftIcon={placing ? undefined : <ShoppingBag size={18} />}
-        >
-          {placing ? (
-            <span className="flex items-center gap-2">
-              <Loader2 size={18} className="animate-spin" />
-              Placing Order...
-            </span>
-          ) : (
-            `Place Order - ${formatPrice(total)}`
-          )}
-        </Button>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

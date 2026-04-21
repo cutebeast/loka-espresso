@@ -14,6 +14,7 @@ class StoreOut(BaseModel):
     image_url: Optional[str] = None
     opening_hours: Optional[dict] = None
     pickup_lead_minutes: int = 15
+    delivery_radius_km: Optional[float] = None
     is_active: bool = True
 
     class Config:

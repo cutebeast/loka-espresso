@@ -67,13 +67,19 @@ from shared_config import (
 def get_pending_dinein_orders(token):
     """Get pending dine-in orders for processing."""
     try:
-        params = {"page": 1, "page_size": 100}
-        resp = api_get("/orders", token=token, params=params)
-        if resp.status_code != 200:
-            return None, f"GET /orders failed: {resp.status_code}"
+        orders = []
+        page = 1
+        total_pages = 1
+        while page <= total_pages:
+            params = {"page": page, "page_size": 100, "status": "pending"}
+            resp = api_get("/orders", token=token, params=params)
+            if resp.status_code != 200:
+                return None, f"GET /orders failed: {resp.status_code}"
 
-        data = resp.json()
-        orders = data.get("orders", [])
+            data = resp.json()
+            orders.extend(data.get("orders", []))
+            total_pages = data.get("total_pages") or max(1, (data.get("total", 0) + data.get("page_size", 100) - 1) // data.get("page_size", 100))
+            page += 1
 
         # Filter for pending dine-in orders only
         pending_dinein = [
@@ -271,8 +277,7 @@ def process_flow_b_order(order, admin_tok):
         if success:
             discount_applied = discount
             print(f"    ✓ Voucher applied: RM {float(discount):.2f} off")
-            # Recalculate total
-            total = float(total) - float(discount)
+            total = float(result.get("new_total", total))
             print(f"    New total: RM {total:.2f}")
         else:
             print(f"    - No voucher applied: {result}")

@@ -3,11 +3,11 @@ from fastapi import APIRouter
 from app.api.v1.endpoints.admin import (
     admin, admin_rewards, admin_vouchers, admin_staff,
     admin_feedback, admin_system, admin_customers,
-    admin_marketing, admin_surveys,
+    admin_marketing, admin_surveys, admin_content,
     inventory, reports, stores, scan_cron,
 )
 from app.api.v1.endpoints.pwa import (
-    pwa_wallet, pwa_promos, pwa_surveys,
+    pwa_wallet, pwa_promos, pwa_surveys, pwa_content,
     cart, checkout, loyalty, menu, wallet,
     order_tracking, favorites, referral,
 )
@@ -49,9 +49,11 @@ api_router.include_router(admin_system.router)
 api_router.include_router(admin_customers.router)
 api_router.include_router(admin_marketing.router)
 api_router.include_router(admin_surveys.router)
+api_router.include_router(admin_content.router)
 api_router.include_router(pwa_promos.router)
 api_router.include_router(pwa_surveys.router)
 api_router.include_router(pwa_wallet.router)
+api_router.include_router(pwa_content.router)
 api_router.include_router(scan_cron.router)
 api_router.include_router(checkout.router)
 api_router.include_router(order_tracking.router)

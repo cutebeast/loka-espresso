@@ -37,6 +37,14 @@ Main order table. HYBRID scope (user + store).
 | loyalty_points_earned | integer | YES | 0 | Points earned on this order |
 | notes | text | YES | | Customer notes |
 | delivery_provider | varchar(50) | YES | | `grab`, `panda`, `internal` |
+| delivery_status | varchar(50) | YES | | Provider-facing delivery lifecycle state |
+| delivery_external_id | varchar(255) | YES | | External delivery job id |
+| delivery_quote_id | varchar(255) | YES | | External quote id |
+| delivery_tracking_url | varchar(500) | YES | | Tracking link from provider |
+| delivery_eta_minutes | integer | YES | | Current provider ETA |
+| delivery_courier_name | varchar(255) | YES | | Courier display name |
+| delivery_courier_phone | varchar(50) | YES | | Courier contact |
+| delivery_last_event_at | timestamptz | YES | | Last provider event timestamp |
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 
@@ -98,9 +106,14 @@ Payment records. One per order.
 | id | integer | NO | auto | PK |
 | order_id | integer | NO | | FK→orders.id (unique) |
 | method | varchar(50) | YES | | Payment method |
+| provider | varchar(50) | YES | | Payment provider label |
 | amount | numeric(10,2) | NO | | Amount charged |
 | status | varchar(50) | YES | pending | |
 | transaction_id | varchar(255) | YES | | Provider transaction ref |
+| provider_reference | varchar(255) | YES | | Provider-side reference/id |
+| idempotency_key | varchar(255) | YES | | Client/API idempotency key |
+| failure_reason | text | YES | | Failure detail if settlement fails |
+| settled_at | timestamptz | YES | | When payment was settled |
 | created_at | timestamptz | YES | now() | |
 
 **FKs:** order_id → orders(id) (unique)

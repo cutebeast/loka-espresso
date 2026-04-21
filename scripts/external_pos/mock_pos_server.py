@@ -17,6 +17,7 @@ import uuid
 import random
 import time
 import threading
+import os
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
@@ -29,7 +30,8 @@ POS_STATES = ["received", "preparing", "ready", "completed", "cancelled"]
 
 pos_orders = {}
 registered_webhooks = []
-webhook_url = "http://localhost:8000/api/v1/pos/webhook"
+FNB_API_URL = os.environ.get("FNB_API_URL", "http://localhost:8765/api/v1")
+FNB_WEBHOOK_API_KEY = os.environ.get("FNB_WEBHOOK_API_KEY", "fnb-webhook-default-key")
 
 
 class OrderReceiveRequest(BaseModel):
@@ -52,12 +54,14 @@ class StatusUpdateRequest(BaseModel):
     notes: Optional[str] = None
 
 
-def call_webhook(payload: dict):
+def call_webhook(order_id: str, payload: dict):
     import requests
-    try:
-        requests.post(webhook_url, json=payload, timeout=10)
-    except Exception as e:
-        print(f"Webhook call failed: {e}")
+    targets = [entry["callback_url"] for entry in registered_webhooks] or [f"{FNB_API_URL}/orders/{order_id}/pos-webhook"]
+    for target in targets:
+        try:
+            requests.post(target, json=payload, headers={"X-API-Key": FNB_WEBHOOK_API_KEY}, timeout=10)
+        except Exception as e:
+            print(f"Webhook call failed: {e}")
 
 
 def simulate_kitchen_workflow(pos_order_id: str):
@@ -65,7 +69,7 @@ def simulate_kitchen_workflow(pos_order_id: str):
     if pos_order_id in pos_orders:
         pos_orders[pos_order_id]["status"] = "preparing"
         pos_orders[pos_order_id]["updated_at"] = datetime.now().isoformat()
-        call_webhook({
+        call_webhook(pos_orders[pos_order_id]["fnb_order_id"], {
             "pos_order_id": pos_order_id,
             "order_id": pos_orders[pos_order_id]["fnb_order_id"],
             "status": "preparing",
@@ -76,7 +80,7 @@ def simulate_kitchen_workflow(pos_order_id: str):
     if pos_order_id in pos_orders:
         pos_orders[pos_order_id]["status"] = "ready"
         pos_orders[pos_order_id]["updated_at"] = datetime.now().isoformat()
-        call_webhook({
+        call_webhook(pos_orders[pos_order_id]["fnb_order_id"], {
             "pos_order_id": pos_order_id,
             "order_id": pos_orders[pos_order_id]["fnb_order_id"],
             "status": "ready",
@@ -87,7 +91,7 @@ def simulate_kitchen_workflow(pos_order_id: str):
     if pos_order_id in pos_orders:
         pos_orders[pos_order_id]["status"] = "completed"
         pos_orders[pos_order_id]["updated_at"] = datetime.now().isoformat()
-        call_webhook({
+        call_webhook(pos_orders[pos_order_id]["fnb_order_id"], {
             "pos_order_id": pos_order_id,
             "order_id": pos_orders[pos_order_id]["fnb_order_id"],
             "status": "completed",
@@ -173,6 +177,12 @@ def confirm_payment(pos_order_id: str):
         "status": "payment_confirmed",
         "timestamp": datetime.now().isoformat(),
         "notes": "Payment confirmed by POS",
+    })
+    call_webhook(order["fnb_order_id"], {
+        "pos_order_id": pos_order_id,
+        "order_id": order["fnb_order_id"],
+        "payment_status": "paid",
+        "timestamp": datetime.now().isoformat(),
     })
     
     return {"success": True, "pos_order_id": pos_order_id, "message": "Payment confirmed"}

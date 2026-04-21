@@ -77,9 +77,17 @@ class OTPSession(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     phone: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    session_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     code: Mapped[str] = mapped_column(String(6), nullable=False)
     verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    send_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    verify_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    resend_available_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    provider: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    delivery_status: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    failure_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 

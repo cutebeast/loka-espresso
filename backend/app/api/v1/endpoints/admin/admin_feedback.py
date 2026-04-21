@@ -8,7 +8,7 @@ from app.core.security import get_current_user, require_hq_access
 from app.core.audit import log_action, get_client_ip
 from app.core.sanitization import sanitize_text_field
 from app.models.user import User
-from app.models.admin_extras import Feedback
+from app.models.feedback import Feedback
 from app.models.store import Store
 from app.schemas.admin_extras import FeedbackCreate, FeedbackOut, FeedbackReply
 

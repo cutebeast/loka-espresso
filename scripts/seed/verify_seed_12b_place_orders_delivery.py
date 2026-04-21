@@ -3,7 +3,7 @@ SEED SCRIPT: verify_seed_12b_place_orders_delivery.py
 Purpose: Place DELIVERY order for a single customer (self-contained, no helpers)
 APIs tested: 
   - GET /stores (get all stores)
-  - GET /stores/{id}/menu (get menu)
+  - GET /stores/{id}/items (get menu items)
   - DELETE /cart (clear cart)
   - POST /cart/items (add items to cart)
   - POST /orders (place order with delivery_address)
@@ -32,18 +32,19 @@ from datetime import datetime, timezone
 
 SEED_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SEED_DIR)
-from shared_config import API_BASE, rand_date_within_days
+from shared_config import API_BASE, rand_date_within_days, get_store_menu_items, re_auth_customer
 
-# Sample KL addresses for delivery (must be dict as API expects)
+# Sample addresses for delivery (manual-entry style; omit lat/lng so the
+# backend accepts them without distance validation during seed runs).
 SAMPLE_ADDRESSES = [
-    {"address": "1, Jalan Ampang, 50450 Kuala Lumpur", "lat": 3.1590, "lng": 101.7120},
-    {"address": "15, Jalan Bukit Bintang, 55100 Kuala Lumpur", "lat": 3.1490, "lng": 101.7130},
-    {"address": "8, Jalan Sultan Ismail, 50250 Kuala Lumpur", "lat": 3.1500, "lng": 101.7110},
-    {"address": "22, Jalan Alor, 50200 Kuala Lumpur", "lat": 3.1480, "lng": 101.7100},
-    {"address": "45, Jalan Imbi, 55100 Kuala Lumpur", "lat": 3.1460, "lng": 101.7150},
-    {"address": "100, Jalan Tun Razak, 50400 Kuala Lumpur", "lat": 3.1630, "lng": 101.7200},
-    {"address": "55, Jalan Ampang Hilir, 55000 Kuala Lumpur", "lat": 3.1610, "lng": 101.7300},
-    {"address": "33, Jalan Ampang Jaya, 68000 Kuala Lumpur", "lat": 3.1650, "lng": 101.7350},
+    {"address": "1, Jalan Ampang, 50450 Kuala Lumpur"},
+    {"address": "15, Jalan Bukit Bintang, 55100 Kuala Lumpur"},
+    {"address": "8, Jalan Sultan Ismail, 50250 Kuala Lumpur"},
+    {"address": "22, Jalan Alor, 50200 Kuala Lumpur"},
+    {"address": "45, Jalan Imbi, 55100 Kuala Lumpur"},
+    {"address": "100, Jalan Tun Razak, 50400 Kuala Lumpur"},
+    {"address": "55, Jalan Ampang Hilir, 55000 Kuala Lumpur"},
+    {"address": "33, Jalan Ampang Jaya, 68000 Kuala Lumpur"},
 ]
 
 
@@ -63,28 +64,8 @@ def get_stores(token):
 
 
 def get_menu(store_id, token):
-    """Get menu items for a store."""
-    try:
-        resp = requests.get(
-            f"{API_BASE}/stores/{store_id}/menu",
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=10
-        )
-        if resp.status_code != 200:
-            return [], f"GET /stores/{store_id}/menu failed: {resp.status_code}"
-        
-        items = []
-        for cat in resp.json().get("categories", []):
-            for item in cat.get("items", []):
-                if item.get("is_available", True):
-                    items.append({
-                        "item_id": item["id"],
-                        "name": item["name"],
-                        "base_price": item.get("base_price", 0),
-                    })
-        return items, None
-    except Exception as e:
-        return [], str(e)
+    """Get menu items for a store using the current PWA items endpoint."""
+    return get_store_menu_items(store_id, token)
 
 
 def clear_cart(token):
@@ -152,6 +133,12 @@ def place_delivery_order(customer):
     token = customer.get("token")
     if not token:
         return {"success": False, "error": "No token"}
+
+    me_resp = requests.get(f"{API_BASE}/users/me", headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    if me_resp.status_code == 401:
+        customer, token = re_auth_customer(customer)
+        if not token:
+            return {"success": False, "error": "Customer token expired and re-auth failed"}
     
     # Step 1: Fetch stores from API
     stores, err = get_stores(token)
@@ -171,7 +158,11 @@ def place_delivery_order(customer):
     store_name = store["name"]
     
     # Select random delivery address (API expects dict with address field)
-    delivery_address = random.choice(SAMPLE_ADDRESSES)
+    delivery_address = {
+        **random.choice(SAMPLE_ADDRESSES),
+        "recipient_name": customer.get("name"),
+        "phone": customer.get("phone"),
+    }
     
     # Step 2: Get menu
     menu_items, err = get_menu(store_id, token)

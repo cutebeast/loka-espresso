@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { apiFetch, statusBadge, formatRM } from '@/lib/merchant-api';
 import { FilterBar, DataTable, type ColumnDef, Pagination, Modal } from '@/components/ui';
-import { DateFilter, type DatePreset } from '@/components/ui/DateFilter';
+import type { DatePreset } from '@/components/ui/DateFilter';
 import { THEME } from '@/lib/theme';
 import type { MerchantOrder } from '@/lib/merchant-types';
 
@@ -36,10 +36,11 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
 
   async function updateOrderStatus(orderId: number, newStatus: string) {
     try {
-      await apiFetch(`/orders/${orderId}/status`, token, {
+      const res = await apiFetch(`/orders/${orderId}/status`, token, {
         method: 'PATCH',
         body: JSON.stringify({ status: newStatus }),
       });
+      if (!res.ok) return;
       onUpdate();
     } catch {}
   }
@@ -53,7 +54,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
     { key: 'order_number', header: 'Order #', render: (o) => <span style={{ fontWeight: 600, color: THEME.textPrimary }}>{o.order_number}</span> },
     { key: 'order_type', header: 'Type', render: (o) => <span style={{ textTransform: 'capitalize', color: THEME.textSecondary }}>{o.order_type?.replace('_', ' ')}</span> },
     { key: 'total', header: 'Total', render: (o) => <span style={{ color: THEME.textPrimary, fontWeight: 500 }}>{formatRM(o.total)}</span> },
-    { key: 'status', header: 'Status', render: (o) => statusBadge(o.status) },
+    { key: 'status', header: 'Status', render: (o) => statusBadge(o.delivery_status || o.status) },
     { key: 'created_at', header: 'Created', render: (o) => <span style={{ color: THEME.textMuted }}>{new Date(o.created_at).toLocaleDateString()}</span> },
     { key: 'actions', header: 'Actions', render: (o) => (
       <button className="btn btn-sm" onClick={e => { e.stopPropagation(); openOrderDetail(o); }}>View</button>
@@ -76,6 +77,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
           { value: 'confirmed', label: 'Confirmed' },
           { value: 'preparing', label: 'Preparing' },
           { value: 'ready', label: 'Ready' },
+          { value: 'out_for_delivery', label: 'Out for delivery' },
           { value: 'completed', label: 'Completed' },
           { value: 'cancelled', label: 'Cancelled' },
         ]}
@@ -120,7 +122,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
               <strong style={{ color: THEME.textPrimary }}>Type:</strong> {selectedOrder.order_type}
             </p>
             <p style={{ color: THEME.textSecondary, margin: '8px 0' }}>
-              <strong style={{ color: THEME.textPrimary }}>Status:</strong> {statusBadge(selectedOrder.status)}
+              <strong style={{ color: THEME.textPrimary }}>Status:</strong> {statusBadge(selectedOrder.delivery_status || selectedOrder.status)}
             </p>
             <p style={{ color: THEME.textSecondary, margin: '8px 0' }}>
               <strong style={{ color: THEME.textPrimary }}>Total:</strong>
@@ -131,10 +133,13 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
             </p>
             {selectedOrder.table_id && <p style={{ color: THEME.textSecondary, margin: '8px 0' }}><strong style={{ color: THEME.textPrimary }}>Table:</strong> {selectedOrder.table_id}</p>}
             {selectedOrder.pickup_time && <p style={{ color: THEME.textSecondary, margin: '8px 0' }}><strong style={{ color: THEME.textPrimary }}>Pickup:</strong> {new Date(selectedOrder.pickup_time).toLocaleString()}</p>}
+            {selectedOrder.delivery_address && <p style={{ color: THEME.textSecondary, margin: '8px 0' }}><strong style={{ color: THEME.textPrimary }}>Delivery:</strong> {(selectedOrder.delivery_address as { address?: string })?.address || 'Address provided'}</p>}
+            {selectedOrder.delivery_courier_name && <p style={{ color: THEME.textSecondary, margin: '8px 0' }}><strong style={{ color: THEME.textPrimary }}>Courier:</strong> {selectedOrder.delivery_courier_name}</p>}
+            {selectedOrder.delivery_eta_minutes != null && <p style={{ color: THEME.textSecondary, margin: '8px 0' }}><strong style={{ color: THEME.textPrimary }}>ETA:</strong> {selectedOrder.delivery_eta_minutes} min</p>}
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${THEME.border}` }}>
               <strong style={{ color: THEME.textPrimary, display: 'block', marginBottom: 12 }}>Update Status:</strong>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {['confirmed', 'preparing', 'ready', 'completed', 'cancelled'].map(s => (
+                {['confirmed', 'preparing', 'ready', 'out_for_delivery', 'completed', 'cancelled'].map(s => (
                   <button
                     key={s}
                     onClick={() => { updateOrderStatus(selectedOrder.id, s); setShowModal(false); }}

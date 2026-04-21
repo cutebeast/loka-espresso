@@ -194,7 +194,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
               <div style={{ fontWeight: 600, fontSize: 20 }}>{detail.name || '-'}</div>
               <div style={{ fontSize: 13, color: THEME.textMuted }}>{detail.email || detail.phone || '-'}</div>
             </div>
-            <span className="badge badge-blue">{detail.tier || 'Standard'}</span>
+            <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'Pending Profile'}</span>
             <span className="badge badge-yellow">{detail.points_balance} pts</span>
             <span className="badge badge-green">{formatRM(detail.wallet_balance || 0)} wallet</span>
           </div>
@@ -255,7 +255,9 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
                   <p style={{ marginBottom: 8 }}><strong>Email:</strong> {detail.email || (
                     <span style={{ color: '#D97706', fontWeight: 500 }}>Not set</span>
                   )}</p>
-                  <p style={{ marginBottom: 8 }}><strong>Tier:</strong> <span className="badge badge-blue">{detail.tier || 'Standard'}</span></p>
+                  <p style={{ marginBottom: 8 }}><strong>Tier:</strong> <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'Pending Profile'}</span></p>
+                  <p style={{ marginBottom: 8 }}><strong>Phone Verified:</strong> {detail.phone_verified ? 'Yes' : 'No'}</p>
+                  <p style={{ marginBottom: 12 }}><strong>Profile Complete:</strong> {detail.is_profile_complete ? 'Yes' : 'No (name and email still required)'}</p>
                   <p style={{ marginBottom: 12 }}><strong>Joined:</strong> {detail.created_at ? new Date(detail.created_at).toLocaleDateString() : '-'}</p>
                   <button className="btn btn-sm" onClick={() => setEditingCustomer(true)}>
                     <i className="fas fa-edit"></i> Edit

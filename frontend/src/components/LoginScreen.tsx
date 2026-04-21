@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { API } from '@/lib/merchant-api';
+import { API, setMerchantTokens } from '@/lib/merchant-api';
 
 interface LoginScreenProps {
-  onLogin: (token: string) => void;
+  onLogin: (token: string, refreshToken?: string | null) => void;
 }
 
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
@@ -23,7 +23,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       });
       const data = await res.json();
       if (res.ok && data.access_token) {
-        onLogin(data.access_token);
+        setMerchantTokens(data.access_token, data.refresh_token ?? data.refreshToken ?? null);
+        onLogin(data.access_token, data.refresh_token ?? data.refreshToken ?? null);
       } else {
         setLoginError(data.detail || 'Login failed');
       }
@@ -36,8 +37,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5F7FA' }}>
       <div className="card" style={{ maxWidth: 400, width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <i className="fas fa-mug-saucer" style={{ fontSize: 40, color: '#002F6C' }}></i>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#002F6C', marginTop: 8 }}>ZUS Merchant</h1>
+          <i className="fas fa-mug-saucer" style={{ fontSize: 40, color: '#384B16' }}></i>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#384B16', marginTop: 8 }}>Loka Espresso</h1>
           <p style={{ color: '#64748B', fontSize: 14 }}>Sign in to your dashboard</p>
         </div>
         <form onSubmit={handleLogin}>

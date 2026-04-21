@@ -30,10 +30,10 @@ CATEGORIES = [
         "name": "Espresso Bar",
         "slug": "espresso-bar",
         "items": [
-            {"name": "Americano", "base_price": 8.90, "description": "Espresso with hot water"},
-            {"name": "Cappuccino", "base_price": 10.90, "description": "Classic Italian cappuccino"},
+            {"name": "Americano", "base_price": 8.90, "description": "Espresso with hot water", "is_featured": True},
+            {"name": "Cappuccino", "base_price": 10.90, "description": "Classic Italian cappuccino", "is_featured": True},
             {"name": "Espresso", "base_price": 8.90, "description": "Double shot espresso"},
-            {"name": "Flat White", "base_price": 11.90, "description": "Velvety microfoam over espresso"},
+            {"name": "Flat White", "base_price": 11.90, "description": "Velvety microfoam over espresso", "is_featured": True},
             {"name": "Mocha", "base_price": 13.90, "description": "Espresso with chocolate and steamed milk"},
         ],
     },
@@ -41,7 +41,7 @@ CATEGORIES = [
         "name": "Tea & Non-Coffee",
         "slug": "tea-non-coffee",
         "items": [
-            {"name": "Teh Tarik", "base_price": 8.90, "description": "Pulled tea with condensed milk"},
+            {"name": "Teh Tarik", "base_price": 8.90, "description": "Pulled tea with condensed milk", "is_featured": True},
             {"name": "Matcha Latte", "base_price": 12.90, "description": "Japanese green tea latte"},
             {"name": "Cham", "base_price": 9.90, "description": "Coffee and tea blend"},
             {"name": "Iced Lemon Tea", "base_price": 8.90, "description": "Refreshing iced lemon tea"},
@@ -51,7 +51,7 @@ CATEGORIES = [
         "name": "Pastries & Toast",
         "slug": "pastries-toast",
         "items": [
-            {"name": "Croissant", "base_price": 9.90, "description": "Buttery French croissant"},
+            {"name": "Croissant", "base_price": 9.90, "description": "Buttery French croissant", "is_featured": True},
             {"name": "Kaya Toast", "base_price": 7.90, "description": "Classic Malaysian kaya toast"},
             {"name": "Chocolate Muffin", "base_price": 10.90, "description": "Rich chocolate chip muffin"},
             {"name": "Cheese Danish", "base_price": 11.90, "description": "Flaky pastry with cheese filling"},
@@ -61,7 +61,7 @@ CATEGORIES = [
         "name": "Specialties",
         "slug": "specialties",
         "items": [
-            {"name": "Affogato", "base_price": 14.90, "description": "Espresso over vanilla ice cream"},
+            {"name": "Affogato", "base_price": 14.90, "description": "Espresso over vanilla ice cream", "is_featured": True},
             {"name": "Vanilla Latte", "base_price": 12.90, "description": "Latte with vanilla syrup"},
             {"name": "Kopi O Kosong", "base_price": 8.90, "description": "Strong black coffee with sugar"},
         ],
@@ -71,7 +71,7 @@ CATEGORIES = [
         "slug": "iced-blended",
         "items": [
             {"name": "Iced Chocolate", "base_price": 11.90, "description": "Chilled chocolate milk drink"},
-            {"name": "Iced Caramel Latte", "base_price": 13.90, "description": "Chilled caramel latte over ice"},
+            {"name": "Iced Caramel Latte", "base_price": 13.90, "description": "Chilled caramel latte over ice", "is_featured": True},
             {"name": "Frappe Mocha", "base_price": 14.90, "description": "Blended iced coffee with chocolate"},
         ],
     },
@@ -192,6 +192,7 @@ def run():
                 "description": item.get("description", ""),
                 "base_price": item["base_price"],
                 "is_available": True,
+                "is_featured": item.get("is_featured", False),
                 "display_order": j,
             })
             if resp.status_code in (400, 500) and "already exists" in resp.text.lower():

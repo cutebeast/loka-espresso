@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// No middleware needed — SPA handles all routing client-side.
-// This file exists as a no-op to prevent stale builds.
-
-export function middleware(request: NextRequest) {
+// The dashboard remains client-driven. Keep a no-op proxy file only to avoid
+// deprecated middleware warnings on current Next.js.
+export function proxy(_request: NextRequest) {
   return NextResponse.next();
 }
 

@@ -25,8 +25,8 @@ const staggerItem = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 };
 
-function formatPrice(val: number): string {
-  return `RM ${val.toFixed(2)}`;
+function formatPrice(val: number | string): string {
+  return `RM ${Number(val).toFixed(2)}`;
 }
 
 const TOPUP_AMOUNTS = [50, 100, 200, 300, 500];
@@ -112,6 +112,9 @@ export default function WalletPage() {
 
       <motion.div variants={staggerItem} className="mb-6">
         <h2 className="text-sm font-bold text-gray-900 mb-3">Top Up</h2>
+        <p className="text-xs text-gray-500 mb-3">
+          Wallet top-up is currently running on the internal stub flow and will be replaced during payment gateway integration.
+        </p>
         <div className="flex flex-wrap gap-2 mb-4">
           {TOPUP_AMOUNTS.map((amount) => (
             <motion.button

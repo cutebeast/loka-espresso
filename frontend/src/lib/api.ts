@@ -115,7 +115,7 @@ export async function request<T>(
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, error.message ?? "Request failed", error);
+    throw new ApiError(res.status, error.detail ?? error.message ?? "Request failed", error);
   }
 
   const json = await res.json();
@@ -136,15 +136,15 @@ export class ApiError extends Error {
 
 export const auth = {
   sendOTP: (phone: string) =>
-    request<void>("/auth/send-otp", {
+    request<{ session_id: string; retry_after_seconds: number; expires_in_seconds: number }>("/auth/send-otp", {
       method: "POST",
       body: JSON.stringify({ phone }),
     }),
 
-  verifyOTP: (phone: string, code: string) =>
+  verifyOTP: (phone: string, code: string, sessionId?: string) =>
     request<AuthTokens>("/auth/verify-otp", {
       method: "POST",
-      body: JSON.stringify({ phone, code }),
+      body: JSON.stringify({ phone, code, ...(sessionId ? { session_id: sessionId } : {}) }),
     }),
 
   register: (name: string, email: string, phone: string, password: string) =>
@@ -154,7 +154,7 @@ export const auth = {
     }),
 
   loginPassword: (email: string, password: string) =>
-    request<AuthTokens>("/auth/login", {
+    request<AuthTokens>("/auth/login-password", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
@@ -316,10 +316,10 @@ export const notifications = {
 export const wallet = {
   getWallet: () => request<Wallet>("/wallet"),
 
-  topUp: (amount: number, paymentMethod: string) =>
-    request<Wallet>("/wallet/top-up", {
+  topUp: (amount: number, _paymentMethod?: string) =>
+    request<Wallet>("/wallet/topup", {
       method: "POST",
-      body: JSON.stringify({ amount, paymentMethod }),
+      body: JSON.stringify({ amount }),
     }),
 
   getTransactions: (params?: { page?: number; pageSize?: number }) => {
@@ -354,16 +354,21 @@ export const splash = {
 };
 
 export const payments = {
-  createIntent: (data: { amount: number; currency: string; orderId?: string; metadata?: Record<string, string> }) =>
+  createIntent: (data: { orderId: string | number; method?: string; provider?: string; idempotencyKey?: string }) =>
     request<PaymentIntent>("/payments/create-intent", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        order_id: Number(data.orderId),
+        method: data.method ?? "wallet",
+        provider: data.provider,
+        idempotency_key: data.idempotencyKey,
+      }),
     }),
 
-  confirmPayment: (paymentIntentId: string, paymentMethodId: string) =>
+  confirmPayment: (paymentIntentId: string | number, providerReference?: string) =>
     request<PaymentIntent>("/payments/confirm", {
       method: "POST",
-      body: JSON.stringify({ paymentIntentId, paymentMethodId }),
+      body: JSON.stringify({ paymentIntentId, providerReference }),
     }),
 };
 

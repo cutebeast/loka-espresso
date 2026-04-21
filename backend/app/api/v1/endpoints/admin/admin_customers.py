@@ -81,10 +81,33 @@ def _calc_tier(total_earned: int) -> str:
     return "bronze"
 
 
+def _normalize_tier_name(tier: str | None) -> str | None:
+    if not tier:
+        return None
+    normalized = tier.strip().lower()
+    return normalized or None
+
+
+def _is_customer_profile_complete(name: str | None, email: str | None, phone_verified: bool) -> bool:
+    return bool(phone_verified and (name or "").strip() and (email or "").strip())
+
+
+def _effective_customer_tier(loyalty_tier: str | None, total_points_earned: int | None, *, profile_complete: bool) -> str | None:
+    if not profile_complete:
+        return None
+    normalized = _normalize_tier_name(loyalty_tier)
+    if normalized:
+        return normalized
+    return _calc_tier(int(total_points_earned or 0))
+
+
 @router.get("/customers")
 async def list_customers(
     search: str | None = None,
     tier: str | None = None,
+    store_id: int | None = None,
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
     sort_by: str = Query("created_at", regex="^(name|created_at|points_balance|total_spent)$"),
     sort_dir: str = Query("desc", regex="^(asc|desc)$"),
     page: int = Query(1, ge=1),
@@ -92,74 +115,98 @@ async def list_customers(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_hq_access()),
 ):
-    # Base query for counting
-    base_count = select(func.count(User.id.distinct())).where(User.role_id == RoleIDs.CUSTOMER)
-    if search:
-        base_count = base_count.where(or_(
-            User.name.ilike(f"%{search}%"),
-            User.email.ilike(f"%{search}%"),
-            User.phone.ilike(f"%{search}%"),
-        ))
-    if tier:
-        base_count = base_count.join(LoyaltyAccount, LoyaltyAccount.user_id == User.id, isouter=True).where(LoyaltyAccount.tier == tier)
-    count_result = await db.execute(base_count)
-    total = count_result.scalar() or 0
-
-    # Determine sort column
-    sort_col = {
-        "name": User.name,
-        "created_at": User.created_at,
-        "points_balance": LoyaltyAccount.points_balance,
-        "total_spent": func.coalesce(func.sum(Order.total), 0),
-    }.get(sort_by, User.created_at)
-
-    # Paginated results with aggregates
-    data_query = (
+    order_stats_query = (
         select(
-            User.id, User.name, User.email, User.phone, User.created_at,
-            LoyaltyAccount.tier, LoyaltyAccount.points_balance,
-            LoyaltyAccount.total_points_earned,
+            Order.user_id.label("user_id"),
             func.count(Order.id).label("total_orders"),
             func.coalesce(func.sum(Order.total), 0).label("total_spent"),
         )
-        .join(LoyaltyAccount, LoyaltyAccount.user_id == User.id, isouter=True)
-        .join(Order, Order.user_id == User.id, isouter=True)
-        .where(User.role_id == RoleIDs.CUSTOMER)
-        .group_by(User.id, LoyaltyAccount.tier, LoyaltyAccount.points_balance, LoyaltyAccount.total_points_earned)
+        .group_by(Order.user_id)
     )
+    if store_id is not None:
+        order_stats_query = order_stats_query.where(Order.store_id == store_id)
+    if from_date is not None:
+        order_stats_query = order_stats_query.where(Order.created_at >= from_date)
+    if to_date is not None:
+        order_stats_query = order_stats_query.where(Order.created_at <= to_date)
+    order_stats_subquery = order_stats_query.subquery()
+
+    data_query = (
+        select(
+            User.id,
+            User.name,
+            User.email,
+            User.phone,
+            User.phone_verified,
+            User.created_at,
+            LoyaltyAccount.tier,
+            LoyaltyAccount.points_balance,
+            LoyaltyAccount.total_points_earned,
+            func.coalesce(order_stats_subquery.c.total_orders, 0).label("total_orders"),
+            func.coalesce(order_stats_subquery.c.total_spent, 0).label("total_spent"),
+        )
+        .join(LoyaltyAccount, LoyaltyAccount.user_id == User.id, isouter=True)
+        .join(order_stats_subquery, order_stats_subquery.c.user_id == User.id, isouter=True)
+        .where(User.role_id == RoleIDs.CUSTOMER)
+    )
+
     if search:
         data_query = data_query.where(or_(
             User.name.ilike(f"%{search}%"),
             User.email.ilike(f"%{search}%"),
             User.phone.ilike(f"%{search}%"),
         ))
-    if tier:
-        data_query = data_query.where(LoyaltyAccount.tier == tier)
-
-    # Apply sorting
-    if sort_dir == "asc":
-        data_query = data_query.order_by(sort_col.asc())
-    else:
-        data_query = data_query.order_by(desc(sort_col))
-
-    data_query = data_query.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(data_query)
     rows = result.all()
+
+    normalized_tier_filter = _normalize_tier_name(tier)
+    customers = []
+    for row in rows:
+        profile_complete = _is_customer_profile_complete(row.name, row.email, bool(row.phone_verified))
+        effective_tier = _effective_customer_tier(
+            row.tier,
+            row.total_points_earned,
+            profile_complete=profile_complete,
+        )
+        if normalized_tier_filter and effective_tier != normalized_tier_filter:
+            continue
+
+        customers.append(
+            {
+                "id": row.id,
+                "name": row.name,
+                "email": row.email,
+                "phone": row.phone,
+                "tier": effective_tier,
+                "points_balance": int(row.points_balance or 0),
+                "total_points_earned": int(row.total_points_earned or 0),
+                "total_orders": int(row.total_orders or 0),
+                "total_spent": to_float(row.total_spent),
+                "created_at": row.created_at,
+                "is_profile_complete": profile_complete,
+                "phone_verified": bool(row.phone_verified),
+            }
+        )
+
+    reverse = sort_dir == "desc"
+    if sort_by == "name":
+        customers.sort(key=lambda c: (c["name"] or "").lower(), reverse=reverse)
+    elif sort_by == "points_balance":
+        customers.sort(key=lambda c: c["points_balance"], reverse=reverse)
+    elif sort_by == "total_spent":
+        customers.sort(key=lambda c: c["total_spent"], reverse=reverse)
+    else:
+        customers.sort(key=lambda c: c["created_at"] or datetime.min, reverse=reverse)
+
+    total = len(customers)
+    start = (page - 1) * page_size
+    end = start + page_size
     return {
         "total": total,
         "page": page,
         "page_size": page_size,
         "total_pages": max(1, (total + page_size - 1) // page_size),
-        "customers": [
-            {
-                "id": r.id, "name": r.name, "email": r.email, "phone": r.phone,
-                "tier": r.tier, "points_balance": r.points_balance or 0,
-                "total_points_earned": r.total_points_earned or 0,
-                "total_orders": r.total_orders,                 "total_spent": to_float(r.total_spent),
-                "created_at": r.created_at,
-            }
-            for r in rows
-        ],
+        "customers": customers[start:end],
     }
 
 
@@ -206,13 +253,19 @@ async def get_customer(
         "email": target.email,
         "phone": target.phone,
         "avatar_url": target.avatar_url,
-        "tier": loyalty.tier if loyalty else None,
+        "tier": _effective_customer_tier(
+            loyalty.tier if loyalty else None,
+            loyalty.total_points_earned if loyalty else 0,
+            profile_complete=_is_customer_profile_complete(target.name, target.email, bool(target.phone_verified)),
+        ),
         "points_balance": loyalty.points_balance if loyalty else 0,
         "total_points_earned": loyalty.total_points_earned if loyalty else 0,
         "total_orders": stats.total_orders,
         "total_spent": to_float(stats.total_spent),
         "wallet_balance": to_float(wallet.balance) if wallet else 0.0,
         "created_at": target.created_at,
+        "phone_verified": target.phone_verified,
+        "is_profile_complete": _is_customer_profile_complete(target.name, target.email, bool(target.phone_verified)),
         "recent_orders": [
             {
                 "id": o.id,

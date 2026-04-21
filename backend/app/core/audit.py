@@ -4,7 +4,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.admin_extras import AuditLog
+from app.models.audit import AuditLog
 
 
 def get_client_ip(request: Request | None) -> str | None:

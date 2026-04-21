@@ -1,18 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text, func
+from sqlalchemy import select, text
 
+from app.core.commerce import credit_wallet, settle_order_payment
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.utils import to_float
+from app.core.webhooks import verify_webhook_request
+from app.core.config import get_settings
 from app.core.audit import log_action
 from app.models.user import User
 from app.models.wallet import Wallet, WalletTransaction, WalletTxType
-from app.models.order import Order
-from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction, LoyaltyTier
-from app.models.notification import Notification
+from app.models.order import Order, Payment
 from app.schemas.wallet import WalletOut, WalletTopup, WalletTransactionOut
 
 router = APIRouter(prefix="/wallet", tags=["Wallet"])
@@ -151,46 +152,41 @@ class PGWebhookPayload(BaseModel):
 
 
 @router.post("/webhook/pg-payment")
-async def pg_payment_webhook(payload: PGWebhookPayload, db: AsyncSession = Depends(get_db)):
+async def pg_payment_webhook(payload: PGWebhookPayload, request: Request, db: AsyncSession = Depends(get_db)):
     """
     Webhook endpoint for Payment Gateway to notify of payment status.
     This is called by the 3rd party PG when a payment is completed or failed.
     """
+    settings = get_settings()
+    await verify_webhook_request(
+        request,
+        api_key=settings.WEBHOOK_API_KEY,
+        signing_secret=settings.WEBHOOK_SIGNING_SECRET,
+    )
+
     if payload.status == "completed":
-        # Payment successful - add to wallet
-        wallet = await _get_or_create_wallet(payload.user_id, db)
-        
-        # Update wallet balance
-        result = await db.execute(
-            text("""
-                UPDATE wallets
-                SET balance = balance + :amt
-                WHERE id = :wid
-                RETURNING balance
-            """),
-            {"amt": payload.amount, "wid": wallet.id}
+        existing_tx = await db.execute(
+            select(WalletTransaction).where(
+                WalletTransaction.user_id == payload.user_id,
+                WalletTransaction.description == f"Top up via PG (Charge: {payload.charge_id})",
+            )
         )
-        row = result.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Wallet not found")
-        new_balance = row[0]
-        
-        # Record transaction
-        await db.execute(
-            text("""
-                INSERT INTO wallet_transactions (wallet_id, user_id, amount, type, description, balance_after, created_at)
-                VALUES (:wid, :uid, :amt, 'topup', :desc, :bal_after, NOW())
-            """),
-            {
-                "wid": wallet.id,
-                "uid": payload.user_id,
-                "amt": payload.amount,
-                "desc": f"Top up via PG (Charge: {payload.charge_id})",
-                "bal_after": new_balance
+        tx = existing_tx.scalar_one_or_none()
+        if tx:
+            return {
+                "message": "Payment already processed",
+                "charge_id": payload.charge_id,
+                "new_balance": to_float(tx.balance_after or 0),
             }
+
+        _, new_balance = await credit_wallet(
+            db,
+            payload.user_id,
+            payload.amount,
+            description=f"Top up via PG (Charge: {payload.charge_id})",
         )
         await db.flush()
-        
+
         return {
             "message": "Payment processed and wallet updated",
             "charge_id": payload.charge_id,
@@ -231,7 +227,7 @@ class OrderPaymentWebhookPayload(BaseModel):
 
 
 @router.post("/webhook/order-payment")
-async def order_payment_webhook(payload: OrderPaymentWebhookPayload, db: AsyncSession = Depends(get_db)):
+async def order_payment_webhook(payload: OrderPaymentWebhookPayload, request: Request, db: AsyncSession = Depends(get_db)):
     """
     Webhook endpoint for Payment Gateway to notify of ORDER payment status.
     This is called by the 3rd party PG when an order payment is completed or failed.
@@ -242,114 +238,50 @@ async def order_payment_webhook(payload: OrderPaymentWebhookPayload, db: AsyncSe
     3. Creates loyalty transaction record
     4. Sends notification to customer
     """
-    if payload.status == "completed":
-        # Get the order
-        order_result = await db.execute(select(Order).where(Order.id == payload.order_id))
-        order = order_result.scalar_one_or_none()
-        
-        if not order:
-            raise HTTPException(status_code=404, detail="Order not found")
-        
-        if order.payment_status == "paid":
-            # Already paid, return success
-            return {
-                "message": "Order already paid",
-                "order_id": payload.order_id,
-                "loyalty_points_earned": order.loyalty_points_earned
-            }
-        
-        # Update order payment status
-        order.payment_status = "paid"
-        
-        # For Flow A (pickup/delivery), also update order status
-        order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
-        if order_type in ("pickup", "delivery"):
-            order.status = "paid"
-        
-        # Get loyalty config
-        from app.models.splash import AppConfig
-        cfg_result = await db.execute(select(AppConfig).where(AppConfig.key == "loyalty_points_per_rmse"))
-        cfg_row = cfg_result.scalar_one_or_none()
-        earn_rate = int(cfg_row.value) if cfg_row else 1
-        
-        # Get customer's loyalty account
-        la_result = await db.execute(
-            select(LoyaltyAccount).where(LoyaltyAccount.user_id == order.user_id)
+    settings = get_settings()
+    await verify_webhook_request(
+        request,
+        api_key=settings.WEBHOOK_API_KEY,
+        signing_secret=settings.WEBHOOK_SIGNING_SECRET,
+    )
+
+    order_result = await db.execute(select(Order).where(Order.id == payload.order_id))
+    order = order_result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if payload.user_id != order.user_id:
+        raise HTTPException(status_code=400, detail="Webhook user does not match order owner")
+    if abs(to_float(order.total) - payload.amount) > 0.01:
+        raise HTTPException(status_code=400, detail="Webhook amount does not match order total")
+
+    payment_result = await db.execute(select(Payment).where(Payment.order_id == order.id))
+    payment = payment_result.scalar_one_or_none()
+    if not payment:
+        payment = Payment(
+            order_id=order.id,
+            method="card",
+            provider="external",
+            amount=payload.amount,
+            status="pending",
+            transaction_id=payload.charge_id,
+            provider_reference=payload.charge_id,
         )
-        la = la_result.scalar_one_or_none()
-        
-        # Get tier multiplier
-        multiplier = 1.0
-        tier_name = "bronze"
-        if la:
-            tier_name = la.tier
-            tier_result = await db.execute(
-                select(LoyaltyTier).where(func.lower(LoyaltyTier.name) == la.tier.lower())
-            )
-            tier = tier_result.scalar_one_or_none()
-            if tier:
-                multiplier = float(tier.points_multiplier)
-        
-        # Calculate points: amount * earn_rate * multiplier
-        points = int(float(order.total) * earn_rate * multiplier)
-        points_earned = 0
-        
-        if points > 0:
-            if la:
-                # Update existing loyalty account
-                la.points_balance += points
-                la.total_points_earned += points
-            else:
-                # Create new loyalty account
-                la = LoyaltyAccount(
-                    user_id=order.user_id,
-                    points_balance=points,
-                    tier=tier_name,
-                    total_points_earned=points
-                )
-                db.add(la)
-            
-            # Create loyalty transaction
-            lt = LoyaltyTransaction(
-                user_id=order.user_id,
-                order_id=order.id,
-                store_id=order.store_id,
-                points=points,
-                type="earn",
-                description=f"Points earned for order {order.order_number}",
-            )
-            db.add(lt)
-            order.loyalty_points_earned = points
-            points_earned = points
-            
-            # Check for tier promotion
-            if la:
-                lifetime = la.total_points_earned
-                tier_result = await db.execute(
-                    select(LoyaltyTier).where(func.lower(LoyaltyTier.name) == la.tier.lower())
-                )
-                current_tier = tier_result.scalar_one_or_none()
-                current_tier_name = current_tier.name if current_tier else la.tier
-                
-                # Find new tier based on lifetime points
-                tier_promotion_result = await db.execute(
-                    select(LoyaltyTier).where(LoyaltyTier.min_points <= lifetime).order_by(LoyaltyTier.min_points.desc()).limit(1)
-                )
-                new_tier = tier_promotion_result.scalar_one_or_none()
-                if new_tier and new_tier.name != current_tier_name:
-                    la.tier = new_tier.name
-            
-            # Send notification to customer
-            notif = Notification(
-                user_id=order.user_id,
-                title="Payment Successful",
-                body=f"Payment confirmed for order {order.order_number}! +{points} points earned!",
-                type="order",
-            )
-            db.add(notif)
-        
+        db.add(payment)
         await db.flush()
-        
+
+    payment.provider = payment.provider or "external"
+    payment.provider_reference = payload.charge_id
+
+    if payload.status == "completed":
+        points_earned = await settle_order_payment(
+            db,
+            order,
+            payment,
+            transaction_id=payload.charge_id,
+            provider_reference=payload.charge_id,
+        )
+        await db.flush()
+
         return {
             "message": "Order payment processed and loyalty points awarded",
             "order_id": payload.order_id,
@@ -358,7 +290,9 @@ async def order_payment_webhook(payload: OrderPaymentWebhookPayload, db: AsyncSe
         }
     
     elif payload.status == "failed":
-        # Payment failed - just return acknowledgment
+        payment.status = "failed"
+        payment.failure_reason = payload.failure_reason
+        await db.flush()
         return {
             "message": "Order payment failed",
             "order_id": payload.order_id,
@@ -366,7 +300,8 @@ async def order_payment_webhook(payload: OrderPaymentWebhookPayload, db: AsyncSe
         }
     
     else:
-        # Other status (processing, pending) - just acknowledge
+        payment.status = payload.status
+        await db.flush()
         return {
             "message": f"Order payment status received: {payload.status}",
             "order_id": payload.order_id

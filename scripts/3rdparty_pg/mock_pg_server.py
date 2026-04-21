@@ -23,6 +23,7 @@ import uuid
 import random
 import asyncio
 import httpx
+import os
 from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
@@ -34,6 +35,19 @@ app = FastAPI(title="Mock Payment Gateway API", version="1.0.0")
 # In-memory storage (stateless - resets on restart)
 charges = {}
 webhooks = {}  # charge_id -> callback_url
+
+FNB_API_URL = os.environ.get("FNB_API_URL", "http://localhost:8765/api/v1")
+FNB_WEBHOOK_API_KEY = os.environ.get("FNB_WEBHOOK_API_KEY", "fnb-webhook-default-key")
+
+
+async def _post_fnb_webhook(url: str, payload: dict):
+    async with httpx.AsyncClient() as client:
+        await client.post(
+            url,
+            json=payload,
+            headers={"X-API-Key": FNB_WEBHOOK_API_KEY},
+            timeout=5.0,
+        )
 
 
 class PaymentMethod(BaseModel):
@@ -97,8 +111,7 @@ async def simulate_payment_processing(charge_id: str):
         if charge_id in webhooks:
             callback_url = webhooks[charge_id]
             try:
-                async with httpx.AsyncClient() as client:
-                    await client.post(callback_url, json={
+                await _post_fnb_webhook(callback_url, {
                         "charge_id": charge_id,
                         "status": new_status,
                         "amount": charge["amount"],
@@ -106,20 +119,16 @@ async def simulate_payment_processing(charge_id: str):
                         "user_id": charge["user_id"],
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                         "note": note,
-                    }, timeout=5.0)
+                    })
             except Exception as e:
                 print(f"[MOCK PG] Webhook call failed for {charge_id}: {e}")
         
         # For order payments, also call the order payment webhook on completion
         if new_status == "completed" and charge.get("order_id"):
             try:
-                # Default FNB backend URL - can be overridden via env var
-                import os
-                fnb_base_url = os.environ.get("FNB_API_URL", "http://localhost:8000/api/v1")
-                order_webhook_url = f"{fnb_base_url}/wallet/webhook/order-payment"
-                
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(order_webhook_url, json={
+                order_webhook_url = f"{FNB_API_URL}/wallet/webhook/order-payment"
+
+                response = await _post_fnb_webhook(order_webhook_url, {
                         "charge_id": charge_id,
                         "order_id": charge["order_id"],
                         "status": new_status,
@@ -128,8 +137,8 @@ async def simulate_payment_processing(charge_id: str):
                         "user_id": charge["user_id"],
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                         "note": note,
-                    }, timeout=5.0)
-                    print(f"[MOCK PG] Order payment webhook called for order {charge['order_id']}: {response.status_code}")
+                    })
+                print(f"[MOCK PG] Order payment webhook called for order {charge['order_id']}")
             except Exception as e:
                 print(f"[MOCK PG] Order payment webhook call failed for {charge_id}: {e}")
         
@@ -241,11 +250,10 @@ def confirm_payment(req: ConfirmRequest, background_tasks: BackgroundTasks):
 
 async def _send_webhook(callback_url: str, data: dict):
     """Helper to send webhook async."""
-    async with httpx.AsyncClient() as client:
-        try:
-            await client.post(callback_url, json=data, timeout=5.0)
-        except Exception as e:
-            print(f"[MOCK PG] Webhook failed: {e}")
+    try:
+        await _post_fnb_webhook(callback_url, data)
+    except Exception as e:
+        print(f"[MOCK PG] Webhook failed: {e}")
 
 
 @app.get("/pg/charge/{charge_id}/status")

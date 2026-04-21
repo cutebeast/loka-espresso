@@ -48,7 +48,7 @@ def update_pos_order_status(pos_order_id: str, status: str, notes: str = None):
 
 
 def confirm_pos_payment(pos_order_id: str):
-    resp = requests.post(f"{MOCK_POS_API_BASE}/pos/payment/confirm", json={}, timeout=10)
+    resp = requests.post(f"{MOCK_POS_API_BASE}/pos/payment/confirm", params={"pos_order_id": pos_order_id}, json={}, timeout=10)
     if resp.status_code == 200:
         return resp.json()
     return None

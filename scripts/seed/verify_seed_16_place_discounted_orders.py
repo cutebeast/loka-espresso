@@ -8,21 +8,12 @@ import sys
 import json
 import random
 import requests
-from datetime import datetime, timezone, timedelta
 
 SEED_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SEED_DIR)
-from shared_config import API_BASE, load_state, save_state as shared_save_state, admin_token, re_auth_customer, rand_date_within_days
+from shared_config import API_BASE, load_state, save_state, get_store_menu_items, rand_date_within_days
 
 SEED_STATE_FILE = os.path.join(SEED_DIR, "seed_state.json")
-
-def save_state(state):
-    existing = load_state()
-    if existing and isinstance(existing, dict):
-        existing.update(state)
-        shared_save_state(None, existing)
-    else:
-        shared_save_state(None, state)
 
 def get_stores(token):
     resp = requests.get(f"{API_BASE}/stores", headers={"Authorization": f"Bearer {token}"}, timeout=10)
@@ -30,14 +21,7 @@ def get_stores(token):
     return resp.json(), None
 
 def get_menu(store_id, token):
-    resp = requests.get(f"{API_BASE}/stores/{store_id}/menu", headers={"Authorization": f"Bearer {token}"}, timeout=10)
-    if resp.status_code != 200: return [], f"GET /stores/{store_id}/menu failed: {resp.status_code}"
-    items = []
-    for cat in resp.json().get("categories", []):
-        for item in cat.get("items", []):
-            if item.get("is_available", True):
-                items.append({"item_id": item["id"], "name": item["name"], "base_price": item.get("base_price", 0)})
-    return items, None
+    return get_store_menu_items(store_id, token)
 
 def clear_cart(token):
     try:
@@ -130,7 +114,10 @@ def place_single_order(customer, redeemed_rewards, order_index=1):
     if err:
         return None, f"Failed to place order: {err}"
 
-    print(f"  ✓ Order #{order['order_number']} placed. Subtotal: {order.get('subtotal', 0)}, Discount: {order.get('discount_total', 0)}")
+    print(
+        f"  ✓ Order #{order['order_number']} placed. "
+        f"Subtotal: {order.get('subtotal', 0)}, Discount: {order.get('discount', 0)}, Total: {order.get('total', 0)}"
+    )
     return {
         "order_id": order["id"],
         "order_number": order["order_number"],
@@ -147,14 +134,10 @@ def run():
     print("  STEP 16: Place Discounted Orders (3 per customer)")
     print("="*60 + "\n")
 
-    # Load full state from file
-    import json, os
-    SEED_STATE_FILE = os.path.join(SEED_DIR, "seed_state.json")
-    if not os.path.exists(SEED_STATE_FILE):
+    state = load_state()
+    if not state:
         print("[ERROR] No state file found.")
         return
-    with open(SEED_STATE_FILE) as f:
-        state = json.load(f)
 
     customers = state.get("customers", [])
     redeemed_rewards = {r["user_id"]: r["rewards"] for r in state.get("redeemed_rewards", [])}
@@ -184,8 +167,7 @@ def run():
 
     # Save to state
     state["discounted_orders"] = discounted_orders
-    with open(SEED_STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
+    save_state(None, state)
     
     print("\n[SUMMARY]")
     print(f"  Total successful: {success_count}")

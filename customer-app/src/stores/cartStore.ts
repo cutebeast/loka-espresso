@@ -5,10 +5,11 @@ import type { CartItem } from '@/lib/api';
 interface CartState {
   items: CartItem[];
   storeId: number | null;
-  addItem: (item: CartItem, storeId: number) => void;
+  addItem: (item: CartItem, storeId?: number | null) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
   clearCart: () => void;
+  setStoreId: (storeId: number | null) => void;
   getTotal: () => number;
   getItemCount: () => number;
 }
@@ -18,37 +19,41 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       storeId: null,
-      addItem: (item, storeId) =>
+      addItem: (item, storeId = null) =>
         set((state) => {
-          if (state.storeId && state.storeId !== storeId) {
-            return { items: [item], storeId };
+          const resolvedStoreId = storeId && storeId > 0 ? storeId : state.storeId;
+          if (state.storeId && resolvedStoreId && state.storeId !== resolvedStoreId && state.items.length > 0) {
+            return { items: [item], storeId: resolvedStoreId };
           }
           const existing = state.items.find(
             (c) => c.menu_item_id === item.menu_item_id && JSON.stringify(c.customizations) === JSON.stringify(item.customizations)
           );
           if (existing) {
             return {
+              storeId: resolvedStoreId,
               items: state.items.map((c) =>
                 c.menu_item_id === item.menu_item_id && JSON.stringify(c.customizations) === JSON.stringify(item.customizations)
                   ? { ...c, quantity: c.quantity + item.quantity }
                   : c
               ),
-              storeId,
             };
           }
-          return { items: [...state.items, item], storeId };
+          return { items: [...state.items, item], storeId: resolvedStoreId };
         }),
       removeItem: (index) =>
-        set((state) => ({
-          items: state.items.filter((_, i) => i !== index),
-        })),
+        set((state) => {
+          const items = state.items.filter((_, i) => i !== index);
+          return { items, storeId: items.length > 0 ? state.storeId : null };
+        }),
       updateQuantity: (index, quantity) =>
-        set((state) => ({
-          items: state.items
+        set((state) => {
+          const items = state.items
             .map((item, i) => (i === index ? { ...item, quantity: Math.max(0, quantity) } : item))
-            .filter((item) => item.quantity > 0),
-        })),
+            .filter((item) => item.quantity > 0);
+          return { items, storeId: items.length > 0 ? state.storeId : null };
+        }),
       clearCart: () => set({ items: [], storeId: null }),
+      setStoreId: (storeId) => set({ storeId }),
       getTotal: () => get().items.reduce((sum, item) => sum + item.price * item.quantity, 0),
       getItemCount: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
     }),

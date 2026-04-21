@@ -67,8 +67,8 @@ def get_customer_points(customer_token):
         if resp.status_code == 200:
             data = resp.json()
             return data.get("points_balance", 0)
-        # Fallback: try wallet endpoint
-        resp = api_get("/wallet", token=customer_token)
+        # Fallback: combined wallet endpoint exposes loyalty_points
+        resp = api_get("/me/wallet", token=customer_token)
         if resp.status_code == 200:
             data = resp.json()
             return data.get("loyalty_points", 0)

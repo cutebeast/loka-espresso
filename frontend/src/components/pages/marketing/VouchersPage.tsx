@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import { Select, Pagination, Drawer } from '@/components/ui';
@@ -24,7 +24,6 @@ interface VoucherForm {
   valid_until: string;
   promo_type: string;
   is_active: boolean;
-  image_url: string;
   terms: string;
   how_to_redeem: string;
 }
@@ -34,7 +33,7 @@ const emptyForm: VoucherForm = {
   discount_type: 'percent', discount_value: '', min_spend: '0',
   max_uses: '', max_uses_per_user: '1', validity_days: '30',
   valid_from: '', valid_until: '', promo_type: 'generic',
-  is_active: true, image_url: '', terms: '', how_to_redeem: '',
+  is_active: true, terms: '', how_to_redeem: '',
 };
 
 const PAGE_SIZE = 20;
@@ -171,21 +170,19 @@ export default function VouchersPage({ token }: VouchersPageProps) {
         }}>
           <table>
             <thead>
-              <tr><th>Image</th><th>Code</th><th>Title</th><th>Discount</th><th>Used/Max</th><th>Status</th><th>Actions</th></tr>
+                  <tr><th>Code</th><th>Title</th><th>Discount</th><th>Used/Max</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {vouchers.map(v => (
                 <tr key={v.id}>
                   <td>
-                    {v.image_url ? (
-                      <img src={v.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} />
-                    ) : (
-                      <div style={{ width: 40, height: 40, background: THEME.bgMuted, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.success, fontSize: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, fontFamily: 'monospace' }}>
+                      <div style={{ width: 40, height: 40, background: THEME.bgMuted, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.success, fontSize: 14, flexShrink: 0 }}>
                         <i className="fas fa-ticket"></i>
                       </div>
-                    )}
+                      <span>{v.code}</span>
+                    </div>
                   </td>
-                  <td style={{ fontWeight: 600, fontFamily: 'monospace' }}>{v.code}</td>
                   <td>
                     <div style={{ fontWeight: 600 }}>{v.title || '-'}</div>
                     {v.short_description && <div style={{ fontSize: 12, color: THEME.success, marginTop: 2 }}>{v.short_description}</div>}
@@ -226,7 +223,6 @@ export default function VouchersPage({ token }: VouchersPageProps) {
 
 function VoucherFormPage({ token, existingVoucher, onBack }: { token: string; existingVoucher: any | null; onBack: () => void }) {
   const isEdit = !!existingVoucher;
-  const fileRef = useRef<HTMLInputElement>(null);
 
   function formFromVoucher(v: any): VoucherForm {
     return {
@@ -240,7 +236,6 @@ function VoucherFormPage({ token, existingVoucher, onBack }: { token: string; ex
       valid_from: v.valid_from ? v.valid_from.slice(0, 16) : '',
       valid_until: v.valid_until ? v.valid_until.slice(0, 16) : '',
       promo_type: v.promo_type || 'generic', is_active: v.is_active !== false,
-      image_url: v.image_url || '',
       terms: Array.isArray(v.terms) ? v.terms.join('\n') : '',
       how_to_redeem: v.how_to_redeem || '',
     };
@@ -249,22 +244,9 @@ function VoucherFormPage({ token, existingVoucher, onBack }: { token: string; ex
   const [form, setForm] = useState<VoucherForm>(existingVoucher ? formFromVoucher(existingVoucher) : { ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [uploading, setUploading] = useState(false);
 
   function updateField<K extends keyof VoucherForm>(key: K, value: VoucherForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
-  }
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch('/api/v1/upload/marketing-image', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
-      if (res.ok) { const data = await res.json(); updateField('image_url', data.url); }
-    } catch {} finally { setUploading(false); }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -277,7 +259,6 @@ function VoucherFormPage({ token, existingVoucher, onBack }: { token: string; ex
         discount_type: form.discount_type, discount_value: Number(form.discount_value),
         min_spend: Number(form.min_spend) || 0, valid_from: form.valid_from || null,
         valid_until: form.valid_until || null, promo_type: form.promo_type, is_active: form.is_active,
-        image_url: form.image_url || null,
         terms: form.terms.split('\n').map((t: string) => t.trim()).filter(Boolean),
         how_to_redeem: form.how_to_redeem.trim(),
         max_uses: form.max_uses.trim() !== '' ? Number(form.max_uses) : null,
@@ -317,14 +298,6 @@ function VoucherFormPage({ token, existingVoucher, onBack }: { token: string; ex
             <div><label style={labelStyle}>Promo Type</label><Select value={form.promo_type} onChange={(val) => updateField('promo_type', val)} options={[{ value: 'generic', label: 'Generic' }, { value: 'bogo', label: 'Buy One Get One' }, { value: 'happy_hour', label: 'Happy Hour' }, { value: 'seasonal', label: 'Seasonal' }]} /></div>
             <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Terms &amp; Conditions</label><textarea value={form.terms} onChange={e => updateField('terms', e.target.value)} placeholder="One per line" rows={3} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }} /></div>
             <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>How to Redeem</label><input value={form.how_to_redeem} onChange={e => updateField('how_to_redeem', e.target.value)} placeholder="e.g. Show this screen at checkout" /></div>
-            <div>
-              <label style={labelStyle}>Image</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <input type="file" ref={fileRef} accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
-                <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? 'Uploading...' : 'Upload Image'}</button>
-                {form.image_url && (<><img src={form.image_url} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 6 }} /><button type="button" className="btn btn-sm" onClick={() => updateField('image_url', '')} style={{ color: '#EF4444' }}><i className="fas fa-times"></i></button></>)}
-              </div>
-            </div>
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}</button>

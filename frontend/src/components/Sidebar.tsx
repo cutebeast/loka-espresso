@@ -11,7 +11,7 @@ const PAGE_VISIBILITY: Record<number, Set<string>> = {
   1: new Set([
     'dashboard', 'orders',
     'menu', 'inventory', 'tables', 'staff',
-    'customers', 'rewards', 'vouchers', 'promotions', 'notifications', 'feedback',
+    'customers', 'rewards', 'vouchers', 'promotions', 'information', 'notifications', 'feedback',
     'reports', 'marketingreports',
     'store', 'settings', 'pwa', 'loyaltyrules', 'auditlog',
   ]),
@@ -39,6 +39,7 @@ const navGroups = [
     { id: 'rewards' as PageId, icon: 'fa-gift', label: 'Rewards' },
     { id: 'vouchers' as PageId, icon: 'fa-ticket', label: 'Vouchers' },
     { id: 'promotions' as PageId, icon: 'fa-bullhorn', label: 'Promotions' },
+    { id: 'information' as PageId, icon: 'fa-info-circle', label: 'Information' },
     { id: 'notifications' as PageId, icon: 'fa-bell', label: 'Push Notifications' },
     { id: 'feedback' as PageId, icon: 'fa-star', label: 'Feedback' },
   ]},

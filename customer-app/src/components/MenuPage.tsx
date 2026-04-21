@@ -1,30 +1,31 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Coffee, Plus, X, Minus, ShoppingCart } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Search, X } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
 import type { Category, MenuItem, CustomizationOption } from '@/lib/api';
-import { Button } from '@/components/ui/Button';
+import CategoryNav from '@/components/menu/CategoryNav';
+import ItemCard from '@/components/menu/ItemCard';
+import FloatingCartBar from '@/components/menu/FloatingCartBar';
+import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.05 },
-  },
-};
-
-const staggerItem = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-};
-
-function formatPrice(val: number): string {
-  return `RM ${val.toFixed(2)}`;
-}
+const LOKA = {
+  primary: '#384B16',
+  copper: '#D18E38',
+  copperSoft: 'rgba(209,142,56,0.12)',
+  cream: '#F3EEE5',
+  brown: '#57280D',
+  textPrimary: '#1B2023',
+  textSecondary: '#3A4A5A',
+  textMuted: '#6A7A8A',
+  border: '#D4DCE5',
+  borderSubtle: '#E4EAEF',
+  surface: '#F5F7FA',
+  bg: '#E4EAEF',
+  white: '#FFFFFF',
+} as const;
 
 interface SelectedOption {
   id: number;
@@ -37,38 +38,37 @@ export default function MenuPage() {
   const {
     categories,
     menuItems,
-    selectedCategoryId,
-    selectedStore,
     searchQuery,
-    setSelectedCategoryId,
     setCategories,
     setMenuItems,
     setSearchQuery,
   } = useUIStore();
 
   const addItem = useCartStore((s) => s.addItem);
+  const getItemCount = useCartStore((s) => s.getItemCount);
 
   const [loading, setLoading] = useState(true);
+  const [showSearch, setShowSearch] = useState(false);
+  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [customizations, setCustomizations] = useState<SelectedOption[]>([]);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [availableOptions, setAvailableOptions] = useState<CustomizationOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
+
+  const sectionRefs = useRef<Map<number, HTMLElement | null>>(new Map());
 
   const loadMenu = useCallback(async () => {
     setLoading(true);
     try {
-      // Load global menu (not store-specific)
       const [catRes, itemsRes] = await Promise.all([
-        api.get('/categories'),
-        api.get('/items'),
+        api.get('/stores/0/categories'),
+        api.get('/stores/0/items', { params: { available_only: true } }),
       ]);
       setCategories(Array.isArray(catRes.data) ? catRes.data : []);
       setMenuItems(Array.isArray(itemsRes.data) ? itemsRes.data : []);
     } catch {
       try {
-        // Fallback: try global menu endpoint
-        const menuRes = await api.get('/menu');
+        const menuRes = await api.get('/stores/0/menu');
         const data = menuRes.data;
         const cats = Array.isArray(data) ? data : (data?.categories ?? []);
         const allCategories: Category[] = [];
@@ -96,10 +96,8 @@ export default function MenuPage() {
 
   const loadCustomizations = useCallback(async (item: MenuItem) => {
     setLoadingOptions(true);
-    setCustomizations([]);
     try {
-      // Try global endpoint first, fallback to item's customizations
-      const res = await api.get(`/items/${item.id}/customizations`);
+      const res = await api.get(`/stores/0/items/${item.id}/customizations`);
       setAvailableOptions(res.data ?? []);
     } catch {
       setAvailableOptions(item.customization_options ?? []);
@@ -108,42 +106,27 @@ export default function MenuPage() {
     }
   }, []);
 
-  const openDetail = useCallback((item: MenuItem) => {
-    setDetailItem(item);
-    setQuantity(1);
-    setCustomizations([]);
-    loadCustomizations(item);
-  }, [loadCustomizations]);
+  const openItem = useCallback((item: MenuItem) => {
+    if (item.customization_options && item.customization_options.length > 0) {
+      setDetailItem(item);
+      setSheetOpen(true);
+      loadCustomizations(item);
+    } else {
+      addItem({
+        menu_item_id: item.id,
+        name: item.name,
+        price: item.base_price,
+        quantity: 1,
+        customizations: {},
+      });
+    }
+  }, [addItem, loadCustomizations]);
 
-  const closeDetail = useCallback(() => {
-    setDetailItem(null);
-    setQuantity(1);
-    setCustomizations([]);
-    setAvailableOptions([]);
-  }, []);
-
-  const toggleOption = useCallback((opt: CustomizationOption) => {
-    setCustomizations((prev) => {
-      const exists = prev.find((o) => o.id === opt.id);
-      if (exists) {
-        return prev.filter((o) => o.id !== opt.id);
-      }
-      return [...prev, { id: opt.id, name: opt.name, option_type: opt.option_type, price_adjustment: opt.price_adjustment }];
-    });
-  }, []);
-
-  const totalPrice = detailItem
-    ? detailItem.base_price + customizations.reduce((sum, o) => sum + o.price_adjustment, 0)
-    : 0;
-
-  const handleAddToCart = useCallback(() => {
-    if (!detailItem) return;
-    // Menu is global, but orders still need a store - use selected store
-    const storeId = selectedStore?.id ?? 1; // Default to store 1 if none selected
-    addItem(
-      {
-        menu_item_id: detailItem.id,
-        name: detailItem.name,
+  const handleSheetAdd = useCallback(
+    (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number) => {
+      addItem({
+        menu_item_id: item.id,
+        name: item.name,
         price: totalPrice,
         quantity,
         customizations: customizations.length > 0
@@ -152,261 +135,148 @@ export default function MenuPage() {
               return acc;
             }, {})
           : {},
-      },
-      storeId,
-    );
-    closeDetail();
-  }, [detailItem, totalPrice, quantity, customizations, selectedStore, addItem, closeDetail]);
+      });
+    },
+    [addItem],
+  );
 
   const filteredItems = menuItems.filter((item) => {
-    const matchesCategory = selectedCategoryId === null || item.category_id === selectedCategoryId;
     const matchesSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch && item.is_available;
+    return matchesSearch && item.is_available;
   });
 
-  const groupedOptions = availableOptions.reduce<Record<string, CustomizationOption[]>>((acc, opt) => {
-    const type = opt.option_type || 'other';
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(opt);
-    return acc;
-  }, {});
+  const itemsByCategory = categories
+    .map((cat) => ({
+      category: cat,
+      items: filteredItems.filter((item) => item.category_id === cat.id),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  const setSectionRef = useCallback((categoryId: number, el: HTMLElement | null) => {
+    sectionRefs.current.set(categoryId, el);
+  }, []);
+
+  const hasCartItems = getItemCount() > 0;
+  const cartTotal = useCartStore((s) => s.getTotal)();
 
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="px-4 pt-4 pb-24"
-    >
-      {/* Search Bar */}
-      <motion.div variants={staggerItem} className="mb-4">
-        <div className="relative">
-          <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search menu..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-10 py-3.5 bg-white rounded-2xl border-2 border-gray-100 focus:border-primary focus:bg-white transition-all text-base shadow-sm"
-          />
-          {searchQuery && (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: LOKA.bg }}>
+      <div style={{ background: LOKA.white, borderBottom: `1px solid ${LOKA.borderSubtle}`, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px 0 8px', height: 44, gap: 8 }}>
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: showSearch ? LOKA.copperSoft : LOKA.surface,
+              border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', flexShrink: 0,
+            }}
+            aria-label="Search"
+          >
+            {showSearch ? <X size={16} color={LOKA.copper} /> : <Search size={16} color={LOKA.textMuted} />}
+          </button>
+
+          {showSearch ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', background: LOKA.surface, borderRadius: 999, height: 36 }}>
+              <Search size={14} color={LOKA.textMuted} />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: LOKA.textPrimary }}
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} style={{ background: 'transparent', border: 'none', padding: 0, color: LOKA.textMuted, cursor: 'pointer', display: 'flex' }}>
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          ) : (
+            <h1 style={{ flex: 1, fontSize: 16, fontWeight: 800, color: LOKA.textPrimary, letterSpacing: '-0.01em' }}>
+              Menu
+            </h1>
+          )}
+
+          {showSearch && (
             <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+              onClick={() => { setShowSearch(false); setSearchQuery(''); }}
+              style={{ fontSize: 13, fontWeight: 600, color: LOKA.copper, background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0, padding: '4px 4px' }}
             >
-              <X size={18} />
+              Cancel
             </button>
           )}
         </div>
-      </motion.div>
+      </div>
 
-      {/* Category Pills */}
-      <motion.div variants={staggerItem} className="mb-5">
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scroll-x">
-          <button
-            onClick={() => setSelectedCategoryId(null)}
-            className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
-              selectedCategoryId === null
-                ? 'bg-primary text-white shadow-md'
-                : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            All
-          </button>
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setSelectedCategoryId(c.id)}
-              className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
-                selectedCategoryId === c.id
-                  ? 'bg-primary text-white shadow-md'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
-      </motion.div>
+      <div className="scroll-container" style={{ flex: 1, position: 'relative' }}>
+        <CategoryNav
+          categories={categories}
+          activeCategoryId={activeCategoryId}
+          onSelect={setActiveCategoryId}
+          sectionRefs={sectionRefs}
+        />
 
-      {/* Menu Grid */}
-      <motion.div variants={staggerItem}>
         {loading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl p-3 shadow-card border border-gray-100 animate-pulse">
-                <div className="bg-gray-100 rounded-xl h-28 mb-3" />
-                <div className="h-4 bg-gray-100 rounded w-3/4 mb-2" />
-                <div className="h-3 bg-gray-100 rounded w-full" />
-              </div>
+          <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="skeleton" style={{ height: 64, borderRadius: 16 }} />
             ))}
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search size={28} className="text-gray-400" />
+          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <div style={{ width: 56, height: 56, borderRadius: 999, background: LOKA.cream, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Search size={24} color={LOKA.copper} />
             </div>
-            <p className="text-gray-500 font-medium text-lg">No items found</p>
-            <p className="text-sm text-gray-400 mt-1">
-              {searchQuery ? 'Try a different search term' : 'No menu items available'}
+            <p style={{ fontSize: 15, fontWeight: 700, color: LOKA.textPrimary, marginBottom: 8 }}>
+              {searchQuery ? `No items match "${searchQuery}"` : 'No items available'}
             </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{ padding: '8px 16px', borderRadius: 999, background: LOKA.primary, color: LOKA.white, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}
+              >
+                Clear search
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {filteredItems.map((item) => (
-              <motion.div
-                key={item.id}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => openDetail(item)}
-                className="bg-white rounded-2xl p-3 shadow-card border border-gray-100 flex flex-col cursor-pointer active:shadow-md transition-shadow"
-              >
-                <div className="bg-primary/5 rounded-xl h-28 flex items-center justify-center mb-3">
-                  <Coffee size={32} className="text-primary/40" />
+          <div style={{ padding: '8px 10px', paddingBottom: hasCartItems ? 76 : 8 }}>
+            {itemsByCategory.map(({ category, items }) => (
+              <div key={category.id} ref={(el) => setSectionRef(category.id, el)} data-category-id={category.id} style={{ marginBottom: 16 }}>
+                <div style={{ padding: '18px 16px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 4, height: 18, borderRadius: 999, background: LOKA.copper, flexShrink: 0 }} />
+                  <h2 style={{ fontSize: 15, fontWeight: 800, color: LOKA.textPrimary, letterSpacing: '-0.01em' }}>
+                    {category.name}
+                  </h2>
                 </div>
-                <p className="text-sm font-bold text-gray-900 line-clamp-1">{item.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-snug">{item.description}</p>
-                <div className="flex items-center justify-between mt-auto pt-3">
-                  <span className="text-sm font-bold text-primary">{formatPrice(item.base_price)}</span>
-                  <motion.button
-                    whileTap={{ scale: 0.85 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addItem(
-                        {
-                          menu_item_id: item.id,
-                          name: item.name,
-                          price: item.base_price,
-                          quantity: 1,
-                          customizations: {},
-                        },
-                        selectedStore?.id ?? 1,
-                      );
-                    }}
-                    className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white shadow-md touch-target"
-                  >
-                    <Plus size={18} />
-                  </motion.button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {items.map((item) => (
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      onPress={() => openItem(item)}
+                      onAdd={() => openItem(item)}
+                    />
+                  ))}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
-      </motion.div>
+      </div>
 
-      {/* Item Detail Modal */}
-      <AnimatePresence>
-        {detailItem && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center"
-            onClick={closeDetail}
-          >
-            <div className="absolute inset-0 bg-black/50" />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative bg-white w-full max-w-[430px] rounded-t-3xl max-h-[85vh] flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
-                <h2 className="text-lg font-bold text-gray-900">{detailItem.name}</h2>
-                <button
-                  onClick={closeDetail}
-                  className="p-2 rounded-full hover:bg-gray-100 touch-target"
-                >
-                  <X size={20} className="text-gray-500" />
-                </button>
-              </div>
+      <FloatingCartBar />
 
-              {/* Modal Content */}
-              <div className="flex-1 overflow-y-auto p-5 scroll-container">
-                <p className="text-sm text-gray-500 leading-relaxed">{detailItem.description}</p>
-                <p className="text-xl font-bold text-primary mt-3">{formatPrice(detailItem.base_price)}</p>
-
-                {/* Customizations */}
-                {loadingOptions ? (
-                  <div className="space-y-3 mt-5">
-                    {Array.from({ length: 2 }).map((_, i) => (
-                      <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
-                    ))}
-                  </div>
-                ) : Object.keys(groupedOptions).length > 0 ? (
-                  <div className="space-y-5 mt-5">
-                    {Object.entries(groupedOptions).map(([type, options]) => (
-                      <div key={type}>
-                        <p className="text-sm font-semibold text-gray-900 capitalize mb-3">{type}</p>
-                        <div className="space-y-2">
-                          {options.map((opt) => {
-                            const isSelected = customizations.some((o) => o.id === opt.id);
-                            return (
-                              <button
-                                key={opt.id}
-                                onClick={() => toggleOption(opt)}
-                                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm transition-all ${
-                                  isSelected
-                                    ? 'bg-primary/10 border-2 border-primary text-primary font-medium'
-                                    : 'bg-gray-50 border-2 border-transparent text-gray-700 hover:bg-gray-100'
-                                }`}
-                              >
-                                <span>{opt.name}</span>
-                                {opt.price_adjustment > 0 && (
-                                  <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-gray-500'}`}>
-                                    +{formatPrice(opt.price_adjustment)}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                {/* Quantity */}
-                <div className="flex items-center justify-between py-4 mt-4">
-                  <p className="text-sm font-semibold text-gray-700">Quantity</p>
-                  <div className="flex items-center gap-4">
-                    <motion.button
-                      whileTap={{ scale: 0.85 }}
-                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                      className="w-10 h-10 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-colors touch-target"
-                    >
-                      <Minus size={18} />
-                    </motion.button>
-                    <span className="text-lg font-bold text-gray-900 w-8 text-center">{quantity}</span>
-                    <motion.button
-                      whileTap={{ scale: 0.85 }}
-                      onClick={() => setQuantity((q) => q + 1)}
-                      className="w-10 h-10 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary hover:text-primary transition-colors touch-target"
-                    >
-                      <Plus size={18} />
-                    </motion.button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Add to Cart Button */}
-              <div className="p-5 border-t border-gray-100 safe-area-bottom">
-                <Button
-                  variant="primary"
-                  size="lg"
-                  className="w-full"
-                  onClick={handleAddToCart}
-                  leftIcon={<ShoppingCart size={20} />}
-                >
-                  Add to cart - {formatPrice(totalPrice * quantity)}
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      <ItemCustomizeSheet
+        item={detailItem}
+        isOpen={sheetOpen}
+        onClose={() => { setSheetOpen(false); setDetailItem(null); setAvailableOptions([]); }}
+        onAdd={handleSheetAdd}
+        loadingOptions={loadingOptions}
+        customizations={availableOptions}
+      />
+    </div>
   );
 }

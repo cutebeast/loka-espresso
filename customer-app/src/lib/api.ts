@@ -25,9 +25,15 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (res) => res,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('loka-auth');
+      try {
+        const { useAuthStore } = await import('@/stores/authStore');
+        useAuthStore.getState().logout();
+      } catch {
+        localStorage.removeItem('loka-auth');
+        localStorage.removeItem('loka-cart');
+      }
     }
     return Promise.reject(error);
   }
@@ -68,6 +74,10 @@ export interface Store {
   opening_hours: Record<string, string>;
   is_active: boolean;
   image_url?: string;
+  lat?: number;
+  lng?: number;
+  pickup_lead_minutes?: number;
+  delivery_radius_km?: number;
 }
 
 export interface Category {
@@ -76,6 +86,33 @@ export interface Category {
   slug: string;
   is_active: boolean;
   display_order?: number;
+}
+
+export interface PromoBanner {
+  id: number;
+  title: string;
+  short_description: string | null;
+  long_description: string | null;
+  image_url: string | null;
+  action_type: 'detail' | 'survey' | null;
+  terms: string[] | null;
+  how_to_redeem: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  voucher_id?: number | null;
+  survey_id?: number | null;
+}
+
+export interface InformationCard {
+  id: number;
+  title: string;
+  short_description: string | null;
+  long_description?: string | null;
+  content_type?: string | null;
+  icon?: string | null;
+  image_url?: string | null;
+  action_url?: string | null;
+  action_type?: string | null;
 }
 
 export interface CustomizationOption {
@@ -95,17 +132,23 @@ export interface MenuItem {
   base_price: number;
   image_url: string | null;
   is_available: boolean;
+  is_featured?: boolean;
+  display_order?: number;
   customization_options?: CustomizationOption[];
 }
 
 export interface Reward {
   id: number;
   name: string;
+  short_description: string | null;
   description: string;
   points_cost: number;
   reward_type: string;
   image_url?: string;
   is_active: boolean;
+  validity_days?: number;
+  terms?: string[] | null;
+  how_to_redeem?: string | null;
 }
 
 export interface UserReward {
@@ -115,6 +158,11 @@ export interface UserReward {
   redemption_code: string;
   status: 'available' | 'used' | 'expired';
   expires_at: string;
+  reward_image_url?: string;
+  reward_snapshot?: string;
+  points_spent?: number;
+  redeemed_at?: string;
+  used_at?: string;
 }
 
 export interface UserVoucher {
@@ -127,6 +175,11 @@ export interface UserVoucher {
   expires_at: string;
   min_spend?: number;
   max_discount?: number;
+  voucher_title?: string;
+  voucher_image_url?: string;
+  source?: 'survey' | 'promo' | 'gift' | string;
+  issued_at?: string;
+  used_at?: string;
 }
 
 export interface OrderItem {
@@ -134,6 +187,7 @@ export interface OrderItem {
   menu_item_id?: number;
   name: string;
   price: number;
+   unit_price?: number;
   quantity: number;
   customizations?: Record<string, unknown>;
 }
@@ -145,7 +199,9 @@ export interface Order {
   status: string;
   total: number;
   subtotal?: number;
-  discount_applied?: number;
+  discount?: number;
+  voucher_discount?: number;
+  reward_discount?: number;
   delivery_fee?: number;
   items: OrderItem[];
   created_at: string;
@@ -153,9 +209,21 @@ export interface Order {
   store_id?: number;
   store_name?: string;
   table_id?: number;
+  pickup_time?: string;
+  delivery_address?: Record<string, unknown> | string;
+  notes?: string;
   payment_method?: string;
   payment_status?: string;
   loyalty_points_earned?: number;
+  points_earned?: number;
+  voucher_code?: string;
+  reward_redemption_code?: string;
+   delivery_status?: string;
+   delivery_external_id?: string;
+   delivery_tracking_url?: string;
+   delivery_eta_minutes?: number;
+   delivery_courier_name?: string;
+   delivery_courier_phone?: string;
   timeline?: Array<{
     status: string;
     timestamp: string;
@@ -171,6 +239,26 @@ export interface CartItem {
   quantity: number;
   customizations?: Record<string, unknown>;
   image_url?: string;
+}
+
+export interface DeliveryAddress {
+  address: string;
+  lat?: number;
+  lng?: number;
+}
+
+export interface Table {
+  id: number;
+  store_id: number;
+  table_number: string;
+  capacity: number;
+}
+
+export interface PaymentMethod {
+  id: number;
+  type: 'wallet' | 'card' | 'cash';
+  last4?: string;
+  brand?: string;
 }
 
 export interface WalletData {
@@ -218,5 +306,5 @@ export interface UserProfile {
   created_at?: string;
 }
 
-export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history';
+export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support';
 export type OrderMode = 'pickup' | 'delivery' | 'dine_in';

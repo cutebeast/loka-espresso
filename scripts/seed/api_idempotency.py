@@ -19,12 +19,11 @@ def get_store_by_slug(slug, token):
 
 
 def get_menu_category_by_slug(slug, token):
-    """Get menu category ID by slug using GET /stores/0/menu API."""
-    resp = api_get("/stores/0/menu", token=token)
+    """Get menu category ID by slug using GET /stores/0/categories API."""
+    resp = api_get("/stores/0/categories", token=token)
     if resp.status_code != 200:
         return None
-    data = resp.json()
-    categories = data.get("categories", [])
+    categories = resp.json()
     for c in categories:
         if c.get("slug") == slug:
             return c.get("id")
@@ -32,16 +31,13 @@ def get_menu_category_by_slug(slug, token):
 
 
 def get_menu_item_by_name(name, token):
-    """Get menu item ID by name using GET /stores/0/menu API."""
-    resp = api_get("/stores/0/menu", token=token)
+    """Get menu item ID by name using GET /stores/0/items API."""
+    resp = api_get("/stores/0/items", token=token, params={"available_only": "false"})
     if resp.status_code != 200:
         return None
-    data = resp.json()
-    categories = data.get("categories", [])
-    for c in categories:
-        for item in c.get("items", []):
-            if item.get("name", "").lower() == name.lower():
-                return item.get("id")
+    for item in resp.json():
+        if item.get("name", "").lower() == name.lower():
+            return item.get("id")
     return None
 
 
@@ -102,12 +98,12 @@ def get_loyalty_tier_by_name(name, token):
 
 
 def get_config_value(key, token):
-    """Get config value by key using GET /admin/config/{key} API."""
-    resp = api_get(f"/admin/config/{key}", token=token)
+    """Get public config value by key using GET /config API."""
+    resp = api_get("/config", token=token)
     if resp.status_code != 200:
         return None
     data = resp.json()
-    return data.get("value")
+    return data.get(key)
 
 
 def get_voucher_by_code(code, token):

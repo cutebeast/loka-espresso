@@ -1,559 +1,302 @@
-# FNB Super-App — Backend API Reference
+# FNB Super-App — API Reference
 
-> Last updated: 2026-04-19 | Base URL: `https://admin.loyaltysystem.uk/api/v1` | 202 endpoints
-> OpenAPI docs: `https://admin.loyaltysystem.uk/docs`
-
-## Rate Limiting
-
-API rate limiting via slowapi (IP-based):
-
-| Endpoint | Limit |
-|----------|-------|
-| `POST /auth/send-otp` | 5 requests/minute |
-| `POST /auth/register` | 5 requests/minute |
-| `POST /auth/login-password` | 10 requests/minute |
-| `POST /admin/staff/{id}/clock-in` | 5 PIN attempts/5 minutes (database-backed) |
+> Last updated: 2026-04-21 | Base URL: `https://admin.loyaltysystem.uk/api/v1`
+> This document is the current pre-provider-integration reference. It intentionally avoids stale endpoint counts.
 
 ## Authentication
 
-All authenticated endpoints require `Authorization: Bearer <JWT>` header.
+All authenticated endpoints require:
 
-### Auth Endpoints (Public)
+```text
+Authorization: Bearer <access-token>
+```
+
+### Auth Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/auth/login-password` | Login with email+password → `{access_token, refresh_token}` |
-| POST | `/auth/register` | Register new customer |
-| POST | `/auth/send-otp` | Send OTP to phone |
-| POST | `/auth/verify-otp` | Verify OTP code |
-| POST | `/auth/refresh` | Refresh access token |
-| POST | `/auth/logout` | Logout (blacklists JWT via JTI) |
-| POST | `/auth/device-token` | Register push notification token |
-| DELETE | `/auth/device-token` | Unregister push token |
-| POST | `/auth/change-password` | any user | Change own password |
-| GET | `/admin/system/otps` | admin | Admin OTP lookup |
+| POST | `/auth/login-password` | Email/password login for admin/staff/dashboard users |
+| POST | `/auth/send-otp` | Create OTP session for customer login |
+| POST | `/auth/verify-otp` | Verify OTP and issue tokens |
+| POST | `/auth/register` | Complete customer profile after OTP login |
+| POST | `/auth/refresh` | Rotate refresh token and issue new access token |
+| POST | `/auth/logout` | Revoke access token and optional refresh token |
+| POST | `/auth/device-token` | Register device token |
+| DELETE | `/auth/device-token` | Unregister device token |
+| GET | `/admin/otps` | Admin/testing OTP lookup |
 
----
+### Auth Contract Notes
 
-## ACL System
+- `POST /auth/send-otp` returns:
+  - `message`
+  - `phone`
+  - `session_id`
+  - `retry_after_seconds`
+  - `expires_in_seconds`
+- `POST /auth/verify-otp` accepts:
+  - `phone`
+  - `code`
+  - optional `session_id`
+- Token responses now include both snake_case and camelCase token fields for compatibility.
 
-### How It Works
+## Users
 
-Relational access control using integer-based IDs with 6 lookup tables:
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/users/me` | Get current user profile |
+| PUT | `/users/me` | Update current user profile |
+| PUT | `/users/me/avatar` | Update avatar |
+| GET | `/users/me/addresses` | List saved addresses |
+| POST | `/users/me/addresses` | Create saved address |
+| PUT | `/users/me/addresses/{id}` | Update saved address |
+| DELETE | `/users/me/addresses/{id}` | Delete saved address |
 
-| Lookup Table | Purpose |
-|-------------|---------|
-| `user_types` | 4 tiers: HQ Management (1), Store Management (2), Store (3), Customer (4) |
-| `roles` | 7 roles: Admin (1), Brand Owner (2), Manager (3), Asst Manager (4), Staff (5), Customer (6), HQ Staff (7) |
-| `role_user_type` | Valid role↔user_type combinations |
-| `user_store_access` | Per-user store assignments (Admin/Brand Owner = global, no records needed) |
-| `permissions` | 23 granular permissions with resource+action |
-| `role_permissions` | 83 role↔permission mappings |
+## Stores, Menu, Tables
 
-### Access Control Functions
+### Stores
 
-| Function | Who Gets Access | Used For |
-|----------|----------------|----------|
-| `require_role(RoleIDs.ADMIN)` | Admin only (id=1) | System-level configs, rewards, vouchers |
-| `require_hq_access()` | Admin, Brand Owner, HQ Staff | Dashboard, reports, store CRUD |
-| `require_store_access()` | HQ roles + users with `user_store_access` record for that store | Menu, tables, inventory CRUD |
-| `get_current_user` | Any authenticated user | Customer-facing features |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/stores` | List active stores |
+| GET | `/stores/{store_id}` | Get store details |
+| GET | `/stores/{store_id}/menu` | Full universal menu tree for a store |
+| GET | `/stores/{store_id}/pickup-slots` | Pickup slot suggestions |
+| GET | `/stores/{store_id}/tables` | List store tables |
 
-### Store Access Logic
-```
-IF user.role_id IN (1, 2) THEN -- Admin/Brand Owner
-  allowed_stores = ALL active stores
-ELSE
-  allowed_stores = SELECT store_id FROM user_store_access WHERE user_id = :uid
-```
+### Public Menu Endpoints
 
-See `docs/02a-acl.md` for the full ACL specification.
+These are the customer-facing PWA menu endpoints.
 
----
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/stores/{store_id}/categories` | List menu categories |
+| GET | `/stores/{store_id}/items` | List menu items |
+| GET | `/stores/{store_id}/items/search` | Search items |
+| GET | `/stores/{store_id}/items/popular` | Popular items |
+| GET | `/stores/{store_id}/items/{item_id}/customizations` | Public customization options |
 
-## API Endpoints by Module
+### Menu Model Note
 
-### Admin Dashboard
+- Customer/menu routes are store-addressed.
+- The effective menu source remains the universal HQ menu.
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/dashboard` | admin, store_owner | Dashboard KPIs + chart data. Params: `store_id`, `from_date`, `to_date`, `chart_mode` (day/month/quarter/year) |
-| GET | `/admin/orders` | admin, store_owner | Paginated order list. Params: `page`, `page_size`, `status`, `store_id`, `search` |
-| GET | `/admin/export` | admin, store_owner | Export data as CSV/JSON |
+### Table Scan / Dine-in
 
-### Store CRUD
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/tables/scan` | Scan table QR and return store/table context |
+| GET | `/tables/{table_id}` | Get table details |
+| POST | `/tables/{table_id}/release` | Release table after dine-in completion |
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| POST | `/admin/stores` | admin | Create store |
-| PUT | `/stores/{store_id}` | require_store_access(manager+) | Update store details |
-
-### Category CRUD (PER-STORE)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/stores/{store_id}/categories` | public | List categories |
-| POST | `/admin/stores/{store_id}/categories` | require_hq_access | Create category |
-| PUT | `/admin/stores/{store_id}/categories/{cat_id}` | require_hq_access | Update category |
-| DELETE | `/admin/stores/{store_id}/categories/{cat_id}` | require_hq_access | Soft-delete category |
-
-### Menu Item CRUD (PER-STORE)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/stores/{store_id}/items` | public | List items |
-| GET | `/stores/{store_id}/items/search` | public | Search items |
-| GET | `/stores/{store_id}/items/popular` | public | Popular items |
-| GET | `/stores/{store_id}/items/{item_id}/customizations` | public | List customization options |
-| GET | `/stores/{store_id}/menu` | public | Full menu (categories + items tree) |
-| POST | `/admin/stores/{store_id}/items` | require_hq_access | Create item |
-| PUT | `/admin/stores/{store_id}/items/{item_id}` | require_hq_access | Update item |
-| DELETE | `/admin/stores/{store_id}/items/{item_id}` | require_hq_access | **Soft-delete** |
-
-### Customization Options (PER-ITEM, PER-STORE)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_hq_access | List customization options |
-| POST | `/admin/stores/{store_id}/items/{item_id}/customizations` | require_hq_access | Create customization option |
-| PUT | `/admin/stores/{store_id}/customizations/{option_id}` | require_hq_access | Update customization option |
-| DELETE | `/admin/stores/{store_id}/customizations/{option_id}` | require_hq_access | Deactivate customization option |
-
-### Table CRUD (PER-STORE)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/stores/{store_id}/tables` | public | List tables |
-| POST | `/admin/stores/{store_id}/tables` | require_store_access | Create table |
-| PUT | `/admin/stores/{store_id}/tables/{table_id}` | require_store_access | Update table |
-| DELETE | `/admin/stores/{store_id}/tables/{table_id}` | require_store_access | Soft-delete table |
-| POST | `/tables/scan` | customer | Scan QR → get table info |
-| GET | `/tables/{table_id}` | public | Get table details |
-| PATCH | `/admin/stores/{store_id}/tables/{table_id}/occupancy` | require_store_access | Override table occupancy |
-| POST | `/tables/{table_id}/release` | admin, store_owner, staff | Release table after dine-in order completed |
-
-### Inventory (PER-STORE)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/stores/{store_id}/inventory` | require_store_access | List inventory |
-| POST | `/stores/{store_id}/inventory` | require_hq_access | Add inventory item |
-| PUT | `/stores/{store_id}/inventory/{item_id}` | require_store_access | Update inventory |
-| DELETE | `/stores/{store_id}/inventory/{item_id}` | require_store_access | Delete inventory |
-| GET | `/stores/{store_id}/inventory/low-stock` | require_store_access | Low stock alerts |
-| GET | `/stores/{store_id}/inventory-ledger` | require_store_access | **Paginated** inventory movement history. Params: `page`, `page_size`, `from_date`, `to_date`, `movement_type` (received/waste/transfer_out/transfer_in/cycle_count/adjustment) |
-| GET | `/stores/{store_id}/inventory/{item_id}/ledger` | require_store_access | Item-specific ledger history |
-| POST | `/stores/{store_id}/inventory/{item_id}/adjust` | require_store_access | Record stock adjustment |
-| PATCH | `/stores/{store_id}/inventory/{item_id}/toggle` | require_store_access | Toggle inventory item active status |
-
-### Inventory Categories (PER-STORE)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/stores/{store_id}/inventory-categories` | require_store_access | List inventory categories |
-| POST | `/stores/{store_id}/inventory-categories` | admin | Create inventory category |
-| PUT | `/stores/{store_id}/inventory-categories/{cat_id}` | admin | Update inventory category |
-| DELETE | `/stores/{store_id}/inventory-categories/{cat_id}` | admin | Deactivate inventory category |
-
-#### Inventory Ledger Response
-```json
-{
-  "entries": [
-    {
-      "id": 1,
-      "inventory_item_id": 42,
-      "inventory_item_name": "Coffee Beans - Brazil Santos",
-      "movement_type": "received",
-      "quantity": 50,
-      "balance_after": 75,
-      "note": "Supplier delivery",
-      "created_by_name": "John Doe",
-      "created_at": "2026-04-18T10:30:00Z"
-    }
-  ],
-  "total": 150,
-  "page": 1,
-  "page_size": 20,
-  "total_pages": 8
-}
-```
-
-### Staff Management (PER-STORE)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/stores/{store_id}/staff` | manager, assistant_manager | List staff at store |
-| POST | `/admin/stores/{store_id}/staff` | require_hq_access | Create staff member |
-| PUT | `/admin/staff/{staff_id}` | admin | Update staff |
-| DELETE | `/admin/staff/{staff_id}` | admin | Deactivate staff |
-| POST | `/admin/staff/{staff_id}/clock-in` | any (PIN-based) | Clock in (rate-limited) |
-| POST | `/admin/staff/{staff_id}/clock-out` | any (PIN-based) | Clock out |
-| POST | `/admin/staff/{staff_id}/reset-password` | admin | Reset staff password |
-| GET | `/admin/stores/{store_id}/shifts` | manager, assistant_manager | View shifts |
-| POST | `/admin/hq-staff` | require_hq_access | Create HQ staff |
-| GET | `/admin/hq-staff` | require_hq_access | List HQ staff |
-
-### Order Management
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| POST | `/orders` | customer | Create order from cart |
-| GET | `/orders` | customer | List own orders (admin sees all) |
-| GET | `/orders/{order_id}` | customer (own), admin, store_owner, staff | Get order details + timeline |
-| PATCH | `/orders/{order_id}/status` | admin, store_owner, staff at order's store | Update order status |
-| PATCH | `/orders/{order_id}/payment-status` | admin | Update payment status directly (for dine-in flow) |
-| POST | `/orders/{order_id}/confirm` | customer (own) | Confirm dine-in order (sends to kitchen) |
-| POST | `/orders/{order_id}/apply-voucher` | customer (own) | Apply voucher to pending order |
-| POST | `/orders/{order_id}/cancel` | customer (own), admin, store_owner | Cancel order (**rolls back loyalty points**) |
-| POST | `/orders/{order_id}/reorder` | customer | Re-add items to cart |
-| GET | `/orders/tracking/{order_id}` | any user | Track order status (public tracking) |
-| POST | `/orders/{order_id}/delivery-webhook` | any user | Delivery provider webhook |
-| POST | `/orders/{order_id}/pos-webhook` | any user | External POS webhook |
-| POST | `/3rdparty_delivery/create` | any user | Create delivery job |
-| GET | `/3rdparty_delivery/{id}/status` | any user | Check delivery status |
-
-**Order Status Flows:**
-- **Flow A (Pickup/Delivery)**: `pending` → `paid` → `confirmed` → `preparing` → `ready` → `completed`
-- **Flow B (Dine-in)**: `pending` → `confirmed` → `preparing` → `ready` → (payment) → `completed`
-- **Delivery adds**: `ready` → `out_for_delivery` → `completed`
-
-### Checkout
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| POST | `/checkout` | customer | Process checkout with payment |
-| POST | `/checkout/validate` | customer | Validate checkout before payment |
-
-### Customer Management
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/customers` | admin | List all customers |
-| GET | `/admin/customers/{user_id}` | admin | Get customer details |
-| GET | `/admin/customers/{user_id}/orders` | admin | Customer's orders |
-| GET | `/admin/customers/{user_id}/loyalty-history` | admin | Loyalty history |
-| GET | `/admin/customers/{user_id}/wallet-history` | admin | Wallet history |
-| POST | `/admin/customers/{user_id}/adjust-points` | admin | Manual points adjustment |
-| PUT | `/admin/customers/{user_id}` | admin | Update customer details |
-| DELETE | `/admin/customers/reset` | admin | Reset customer data |
-
-### Reward Management (Admin)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/rewards` | admin | List all rewards (excludes soft-deleted; `?include_deleted=true`) |
-| POST | `/admin/rewards` | admin | Create reward |
-| PUT | `/admin/rewards/{reward_id}` | admin | Update reward |
-| DELETE | `/admin/rewards/{reward_id}` | admin | **Soft-delete** reward |
-| GET | `/admin/rewards/{reward_id}/redemptions` | admin | Redemption records |
-
-### PWA Rewards (Customer)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/rewards` | public | Active rewards catalog (sorted by points_cost) |
-| GET | `/rewards/{reward_id}` | public | Reward detail page data |
-| POST | `/rewards/{reward_id}/redeem` | customer, admin | Redeem reward with points → creates user_reward instance with unique redemption_code |
-
-### Voucher Management (Admin)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/vouchers` | admin | List all vouchers (excludes soft-deleted; `?include_deleted=true`) |
-| POST | `/admin/vouchers` | admin | Create voucher |
-| PUT | `/admin/vouchers/{voucher_id}` | admin | Update voucher |
-| DELETE | `/admin/vouchers/{voucher_id}` | admin | **Soft-delete** voucher |
-| GET | `/admin/vouchers/{voucher_id}/usage` | admin | Voucher usage records |
-
-### PWA Vouchers (Customer)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/vouchers/me` | customer, admin | Customer's voucher instances (all statuses) |
-| POST | `/vouchers/validate` | any user | Validate a voucher code before checkout (per-instance or catalog code). Accepts `order_total` for discount calculation |
-| POST | `/vouchers/use/{code}` | customer, admin, store_owner | Use/consume voucher instance at checkout |
-
-### Survey Management (Admin)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/surveys` | admin | List all surveys |
-| GET | `/admin/surveys/{survey_id}` | admin | Get survey detail with questions |
-| POST | `/admin/surveys` | admin | Create survey (with questions) |
-| PUT | `/admin/surveys/{survey_id}` | admin | Update survey |
-| DELETE | `/admin/surveys/{survey_id}` | admin | Delete survey |
-
-### PWA Surveys (Customer)
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/surveys/{survey_id}` | public | Get survey detail + questions for PWA display |
-| POST | `/surveys/{survey_id}/submit` | customer, admin | Submit answers. Auto-grants voucher if `reward_voucher_id` set. Guards: no duplicate submissions, per-user limit, global limit |
-
-### PWA Promo Banners
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/promos/banners` | public | Active banners (within date range, sorted by position) |
-| GET | `/promos/banners/{banner_id}` | public | Banner detail (long_description, terms, linked voucher/survey) |
-| GET | `/promos/banners/{banner_id}/status` | any user | Check if customer already claimed this banner's voucher |
-| POST | `/promos/banners/{banner_id}/claim` | customer, admin | Claim voucher linked to this banner. Guards: max_uses_per_user, global limit, duplicate check |
-
-### PWA Customer Wallet
-
-> **Note**: The wallet endpoint uses `/wallet` path (not `/me/wallet`). The `pwa_wallet.py` router handles customer wallet operations.
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/wallet` | customer, admin | **Full wallet** — returns rewards (user_rewards where available), vouchers (user_vouchers where available), cash (wallets.balance), and loyalty_points (loyalty_accounts.points_balance) |
-
-### Barista Scan & Cron
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| POST | `/scan/reward/{code}` | admin, store_owner | Scan reward redemption code → marks `user_rewards.status='used'`. Returns reward name, image, customer_id |
-| POST | `/scan/voucher/{code}` | admin, store_owner | Scan voucher instance code → marks `user_vouchers.status='used'`, increments catalog `used_count` |
-| POST | `/scan/cron/expire` | admin | Marks all `available` instances past `expires_at` as `expired`. Returns counts expired |
-
-### Loyalty
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/loyalty/balance` | any user | Get points balance + tier + total_points_earned |
-| GET | `/loyalty/history` | any user | Points transaction history |
-| GET | `/loyalty/tiers` | public | Loyalty tier definitions |
-| GET | `/admin/loyalty-tiers` | admin | List tiers (admin) |
-| POST | `/admin/loyalty-tiers` | admin | Create tier |
-| PUT | `/admin/loyalty-tiers/{tier_id}` | admin | Update tier |
-
-### Wallet & Payments
-
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/wallet` | any user | Get wallet balance |
-| POST | `/wallet/topup` | any user | Top up wallet (stub) |
-| POST | `/wallet/deduct` | any user | **Deduct from wallet** — Used for order payments. Body: `{amount: float, description: string}` |
-| GET | `/wallet/transactions` | any user | Wallet transaction history |
-| GET | `/payments/methods` | any user | List saved payment methods |
-| POST | `/payments/methods` | any user | Add payment method |
-| POST | `/payments/create-intent` | any user | Create payment intent (stub) |
-| POST | `/payments/confirm` | any user | Confirm payment (stub) |
-| POST | `/pg/charge` | any user | Create payment charge via Payment Gateway |
-| POST | `/pg/confirm` | any user | Confirm payment |
-| GET | `/pg/charge/{id}/status` | any user | Check charge status |
-| POST | `/wallet/webhook/pg-payment` | any user | PG payment webhook |
-| POST | `/wallet/webhook/order-payment` | any user | Order payment webhook |
+## Cart & Checkout
 
 ### Cart
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/cart` | any user | Get current cart |
-| POST | `/cart/items` | any user | Add item (**400 if different store**). Accepts `customization_option_ids` |
-| PUT | `/cart/items/{item_id}` | any user | Update cart item quantity |
-| DELETE | `/cart/items/{item_id}` | any user | Remove from cart |
-| DELETE | `/cart` | any user | Clear entire cart |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/cart` | Get current cart |
+| POST | `/cart/items` | Add item to cart |
+| PUT | `/cart/items/{item_id}` | Update quantity |
+| DELETE | `/cart/items/{item_id}` | Remove item |
+| DELETE | `/cart` | Clear cart |
 
-### Reports
+### Checkout Helper
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/reports/revenue` | admin, store_owner | Revenue breakdown |
-| GET | `/admin/reports/sales` | admin, store_owner | Sales breakdown |
-| GET | `/admin/reports/popular` | admin, store_owner | Popular items report |
-| GET | `/admin/reports/loyalty` | admin | Loyalty points stats |
-| GET | `/admin/reports/inventory` | admin, store_owner | Inventory report + low stock |
-| GET | `/admin/reports/marketing` | admin | Marketing report: loyalty, tier distribution, points flow, redemptions, voucher usage |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/checkout` | Validate discount and return checkout summary/token |
 
-### Marketing Campaigns
+### Order Creation
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/marketing/campaigns` | admin | List campaigns |
-| POST | `/admin/marketing/campaigns` | admin | Create campaign |
-| PUT | `/admin/marketing/campaigns/{id}` | admin | Update campaign |
-| DELETE | `/admin/marketing/campaigns/{id}` | admin | Cancel campaign |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/orders` | Create order from current cart |
+| GET | `/orders` | List orders |
+| GET | `/orders/{order_id}` | Get order + timeline |
+| POST | `/orders/{order_id}/confirm` | Confirm dine-in order |
+| POST | `/orders/{order_id}/apply-voucher` | Apply voucher to pending order |
+| POST | `/orders/{order_id}/cancel` | Cancel order |
+| POST | `/orders/{order_id}/reorder` | Rebuild cart from an order |
+| PATCH | `/orders/{order_id}/status` | Update order status |
+| PATCH | `/orders/{order_id}/payment-status` | Update payment status directly |
+| GET | `/orders/tracking/{order_id}` | Public/current tracking summary |
 
-### Feedback
+### Order Flow Notes
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| POST | `/feedback` | any user | Submit feedback |
-| GET | `/admin/feedback` | admin | List all feedback |
-| GET | `/admin/feedback/stats` | admin | Aggregated stats (average_rating, total_reviews, rating_distribution). `?store_id=` filter |
-| GET | `/admin/feedback/{id}` | admin | Get feedback detail |
-| POST | `/admin/feedback/{id}/reply` | admin | Reply to feedback |
-| PUT | `/admin/feedback/{id}/reply` | admin | Update reply |
+#### Flow A — Pickup / Delivery
+- `pending -> paid -> confirmed -> preparing -> ready -> completed`
+- delivery may also move through `out_for_delivery`
+- current wallet payment flow uses `/payments/create-intent` + `/payments/confirm`
 
-### Notifications
+#### Flow B — Dine-in
+- `pending -> confirmed -> preparing -> ready -> paid -> completed`
+- payment happens after fulfillment phase
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/notifications` | any user | List own notifications |
-| PUT | `/notifications/read-all` | any user | Mark all as read |
-| PUT | `/notifications/{id}/read` | any user | Mark one as read |
+## Wallet, Payments, Loyalty
 
-### System & Config
+### Wallet
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/admin/audit-log` | admin | View audit trail |
-| GET | `/admin/broadcasts` | admin | List broadcasts |
-| POST | `/admin/broadcasts` | admin | Send broadcast |
-| PATCH | `/admin/broadcasts/{id}/archive` | admin | Archive broadcast |
-| GET | `/admin/banners` | admin | Manage promo banners |
-| POST | `/admin/banners` | admin | Create banner (accepts voucher_id, survey_id, action_type) |
-| PUT | `/admin/banners/{id}` | admin | Update banner |
-| DELETE | `/admin/banners/{id}` | admin | Delete banner |
-| GET | `/banners` | public | Active banners (customer app) |
-| GET | `/promos` | public | Active promos + vouchers |
-| GET | `/splash` | public | Splash screen content |
-| PUT | `/splash` | admin, store_owner | Update splash screen |
-| GET | `/config` | public | App configuration |
-| PUT | `/admin/config` | admin | Update app config |
-| POST | `/upload/image` | admin, store_owner | Upload image file (5MB max, JPEG/PNG/WebP/GIF) |
-| POST | `/upload/marketing-image` | admin | Upload marketing image |
-| POST | `/admin/system/init-hq` | admin | Initialize HQ store (id=0) |
-| DELETE | `/admin/system/reset` | admin | Reset all data (preserves ACL) |
-| POST | `/admin/system/backfill-inventory-ledger` | admin | Backfill missing ledger entries |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/wallet` | Cash wallet balance only |
+| POST | `/wallet/topup` | Internal/mock topup path used before real PG |
+| POST | `/wallet/deduct` | Explicit wallet deduction helper |
+| GET | `/wallet/transactions` | Wallet transaction history |
 
-### User Profile
+### Combined Customer Wallet Projection
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/users/me` | any user | Get own profile |
-| PUT | `/users/me` | any user | Update profile |
-| PUT | `/users/me/avatar` | any user | Upload avatar |
-| GET | `/users/me/addresses` | any user | List saved addresses |
-| POST | `/users/me/addresses` | any user | Add address |
-| PUT | `/users/me/addresses/{id}` | any user | Update address |
-| DELETE | `/users/me/addresses/{id}` | any user | Delete address |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/me/wallet` | Rewards + vouchers + cash + loyalty points |
 
-### Stores (Public)
+### Payments
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/stores` | public | List active stores (with location filter) |
-| GET | `/stores/{id}` | public | Get store details |
-| GET | `/stores/{id}/menu` | public | Full menu tree |
-| GET | `/stores/{id}/pickup-slots` | public | Available pickup time slots |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/payments/methods` | List saved payment methods |
+| POST | `/payments/methods` | Add payment method metadata |
+| POST | `/payments/create-intent` | Create internal payment attempt |
+| POST | `/payments/confirm` | Confirm wallet payment |
 
-### Social
+### Payment Contract Notes
 
-| Method | Path | ACL | Description |
-|--------|------|-----|-------------|
-| GET | `/referral/code` | any user | Get my referral code |
-| POST | `/referral/apply` | any user | Apply referral code (**≤7 days after account creation, one-time only**) |
-| GET | `/favorites` | any user | List my favorites |
-| POST | `/favorites/{item_id}` | any user | Add to favorites |
-| DELETE | `/favorites/{item_id}` | any user | Remove from favorites |
+- `POST /payments/create-intent` accepts:
+  - `order_id`
+  - `method`
+  - optional `provider`
+  - optional `idempotency_key`
+- `POST /payments/confirm` accepts:
+  - `payment_id`
+  - optional `transaction_id`
+  - optional `provider_reference`
+- Real PG is still mocked; these endpoints are the internal contract to integrate against.
 
----
+### Payment & Wallet Webhooks
 
-## Common Request/Response Patterns
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/wallet/webhook/pg-payment` | Provider-style wallet topup webhook |
+| POST | `/wallet/webhook/order-payment` | Provider-style order payment webhook |
 
-### Authentication
-```json
-// POST /auth/login-password
-{ "email": "admin@loyaltysystem.uk", "password": "admin123" }
+### Loyalty
 
-// Response
-{ "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "bearer" }
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/loyalty/balance` | Get points balance + tier |
+| GET | `/loyalty/history` | Loyalty transactions |
+| GET | `/loyalty/tiers` | Public loyalty tiers |
+| GET | `/admin/loyalty-tiers` | Admin list loyalty tiers |
+| POST | `/admin/loyalty-tiers` | Create tier |
+| PUT | `/admin/loyalty-tiers/{tier_id}` | Update tier |
 
-### Reward Redemption
-```json
-// POST /rewards/1/redeem (auth required)
-// Response:
-{
-  "success": true,
-  "message": "Reward redeemed! Code: RWD-1-A3F2B1",
-  "user_reward_id": 6,
-  "redemption_code": "RWD-1-A3F2B1",
-  "expires_at": "2026-05-14T14:23:06Z",
-  "remaining_points": 670
-}
-```
+## Rewards, Vouchers, Promotions, Surveys, Content
 
-### Barista Scan
-```json
-// POST /scan/reward/RWD-1-A3F2B1 (admin/store_owner auth)
-// Response:
-{
-  "success": true,
-  "message": "Reward redeemed: Free Cappuccino",
-  "reward_name": "Free Cappuccino",
-  "reward_image_url": "/images/rewards/free-cappuccino.jpg",
-  "customer_id": 3,
-  "redeemed_at": "2026-04-14T14:23:06Z"
-}
-```
+### Rewards
 
-### Voucher Validation
-```json
-// POST /vouchers/validate (auth required)
-{ "code": "WELCOME10-A3F2B1", "order_total": 50 }
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/rewards` | Public rewards catalog |
+| GET | `/rewards/{reward_id}` | Reward details |
+| POST | `/rewards/{reward_id}/redeem` | Redeem reward with points |
+| GET | `/admin/rewards` | Admin rewards list |
+| POST | `/admin/rewards` | Create reward |
+| PUT | `/admin/rewards/{reward_id}` | Update reward |
+| DELETE | `/admin/rewards/{reward_id}` | Soft-delete reward |
 
-// Response:
-{ "valid": true, "discount_type": "percent", "discount_value": 10.0, "discount": 5.0, "min_spend": 20.0 }
-```
+### Vouchers
 
-### Full Wallet
-```json
-// GET /me/wallet (customer auth required)
-{
-  "rewards": [
-    { "id": 6, "reward_id": 1, "reward_name": "Free Cappuccino", "redemption_code": "RWD-1-A3F2B1", "status": "available", "expires_at": "2026-05-14T..." }
-  ],
-  "vouchers": [
-    { "id": 7, "voucher_id": 3, "code": "VCH-7-28a259", "discount_type": "free_item", "discount_value": 8.9, "status": "available", "expires_at": "2026-05-03T..." }
-  ],
-  "cash": { "balance": 120.5, "currency": "MYR" },
-  "loyalty_points": 670
-}
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/vouchers/me` | Current user's voucher instances |
+| POST | `/vouchers/validate` | Validate voucher code |
+| POST | `/vouchers/use/{code}` | Consume voucher instance |
+| GET | `/admin/vouchers` | Admin vouchers list |
+| POST | `/admin/vouchers` | Create voucher |
+| PUT | `/admin/vouchers/{voucher_id}` | Update voucher |
+| DELETE | `/admin/vouchers/{voucher_id}` | Soft-delete voucher |
 
-### Survey Submit
-```json
-// POST /surveys/1/submit (customer auth required)
-{ "answers": [{"question_id": 1, "answer_text": "5"}, {"question_id": 2, "answer_text": "Great!"}] }
+### Promotions / Surveys / Content
 
-// Response:
-{ "success": true, "message": "Survey submitted successfully! Voucher granted!", "response_id": 1, "voucher_granted": true, "voucher_code": "WELCOME10-A3F2B1", "voucher_title": "First Order Discount" }
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/promos/banners` | Active PWA banners |
+| GET | `/promos/banners/{banner_id}` | Banner detail |
+| GET | `/promos/banners/{banner_id}/status` | Banner interaction status |
+| POST | `/promos/banners/{banner_id}/claim` | Claim linked voucher |
+| GET | `/surveys/{survey_id}` | Survey details |
+| POST | `/surveys/{survey_id}/submit` | Submit survey |
+| GET | `/content/information` | Information cards |
+| GET | `/content/legal/terms` | Terms content |
+| GET | `/content/legal/privacy` | Privacy content |
+| GET | `/content/version` | Current PWA version info |
+| GET | `/content/notifications` | Customer notification feed |
 
-### Pagination
-```json
-// Request: ?page=1&page_size=20
-// Response:
-{ "orders": [...], "total": 21, "page": 1, "page_size": 20 }
-```
+### Admin Content / PWA Operations
 
-### Store-Scoped Access Error
-```json
-// 403 Forbidden
-{ "detail": "No staff record found for this store" }
-{ "detail": "Staff role 'barista' not authorized for this action" }
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/content/cards` | List information cards |
+| POST | `/admin/content/cards` | Create information card |
+| GET | `/admin/content/cards/{card_id}` | Get content card |
+| PUT | `/admin/content/cards/{card_id}` | Update content card |
+| DELETE | `/admin/content/cards/{card_id}` | Delete content card |
+| GET | `/admin/banners` | List banners |
+| POST | `/admin/banners` | Create banner |
+| PUT | `/admin/banners/{banner_id}` | Update banner |
+| DELETE | `/admin/banners/{banner_id}` | Delete banner |
+| POST | `/admin/pwa/rebuild` | Rebuild customer PWA |
+| POST | `/admin/pwa/clear-cache` | Clear PWA cache artifacts |
+| GET | `/admin/pwa/version` | Get current deployed PWA version |
 
-### Token Revocation
-```json
-// 401 Unauthorized (after logout)
-{ "detail": "Token has been revoked" }
-```
+## Feedback, Notifications, Referrals, Favorites
 
----
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/feedback` | Submit customer feedback |
+| GET | `/admin/feedback` | List feedback |
+| GET | `/admin/feedback/stats` | Feedback summary |
+| GET | `/notifications` | List own notifications |
+| PUT | `/notifications/read-all` | Mark all notifications read |
+| PUT | `/notifications/{id}/read` | Mark one notification read |
+| GET | `/referral/code` | Get own referral code |
+| POST | `/referral/apply` | Apply referral code |
+| GET | `/favorites` | List favorites |
+| POST | `/favorites/{item_id}` | Add favorite |
+| DELETE | `/favorites/{item_id}` | Remove favorite |
 
-## Security Features
+## Admin / System / Reports
 
-- **JWT Token Blacklist**: Tokens include a `jti` claim. On logout, the JTI is stored in `token_blacklist` table. Every request checks if the token's JTI is blacklisted.
-- **API Rate Limiting**: slowapi on auth endpoints — send-otp 5/min, register 5/min, login 10/min.
-- **PIN Rate Limiting**: Staff clock-in PIN attempts are rate-limited to 5 per 5 minutes per staff member (database-backed).
-- **Soft Deletes**: Menu items, vouchers, and rewards use `deleted_at` timestamp. GET endpoints filter by default.
-- **File Upload Validation**: 5MB max size, JPEG/PNG/WebP/GIF MIME types only.
-- **Order Cancellation Rollback**: Cancelling an order reverses loyalty points.
-- **Cross-Store Cart Guard**: Adding items from a different store returns 400.
-- **Referral Code Expiry**: Only within 7 days of account creation.
-- **Repeat Customer Protection**: Duplicate voucher claims, survey submissions, and reward redemptions are all guarded.
-- **Audit Log Hooks**: All critical admin actions are logged to `audit_log`.
-- **Token Blacklist Auto-Cleanup**: Background task purges expired rows every 24 hours.
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/dashboard` | Dashboard summary |
+| GET | `/admin/orders` | Admin orders list |
+| GET | `/admin/customers` | Customer list |
+| GET | `/admin/customers/{user_id}` | Customer detail |
+| GET | `/admin/reports/revenue` | Revenue report |
+| GET | `/admin/reports/sales` | Sales report |
+| GET | `/admin/reports/marketing` | Marketing report |
+| GET | `/admin/audit-log` | Audit trail |
+| GET | `/admin/broadcasts` | Notification broadcasts |
+| POST | `/admin/broadcasts` | Create/send broadcast |
+| PATCH | `/admin/broadcasts/{id}/archive` | Archive broadcast |
+| PUT | `/admin/config` | Update app config |
+| POST | `/admin/system/init-hq` | Initialize HQ |
+| DELETE | `/admin/system/reset` | Reset data while preserving core structure |
+
+## Webhook Security
+
+Current provider-style webhook endpoints expect either:
+
+1. `X-API-Key` matching backend config when signing secret is not configured, or
+2. signed webhook headers when signing secret is configured.
+
+Relevant env values:
+
+- `WEBHOOK_API_KEY`
+- `WEBHOOK_SIGNING_SECRET`
+
+## Notes Before Real Provider Integration
+
+1. Payment, delivery, and POS integrations are still mock/provider-simulation based.
+2. These backend routes are the internal contracts that should remain stable while real providers are added.
+3. Customer seeds and local lifecycle testing should use these routes, not ad hoc direct DB mutations.

@@ -8,9 +8,16 @@ interface PWASettingsPageProps {
   token: string;
 }
 
+interface PWAVersionInfo {
+  version: string;
+  build_date: string;
+  cache_name: string;
+}
+
 const CONFIG_GROUPS: { label: string; icon: string }[] = [
   { label: 'Authentication', icon: 'fa-shield-alt' },
   { label: 'Phone Format', icon: 'fa-phone' },
+  { label: 'Version & Cache', icon: 'fa-sync-alt' },
 ];
 
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
@@ -59,32 +66,135 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
   const [savedKeys, setSavedKeys] = useState<Record<string, 'ok' | 'err'>>({});
   const [savingKeys, setSavingKeys] = useState<Record<string, boolean>>({});
   const [editValues, setEditValues] = useState<Record<string, string>>({});
+  
+  // Version and cache management
+  const [versionInfo, setVersionInfo] = useState<PWAVersionInfo | null>(null);
+  const [versionLoading, setVersionLoading] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
+  const [cacheCleared, setCacheCleared] = useState(false);
 
   useEffect(() => {
     fetchConfig();
+    fetchVersionInfo();
   }, [token]);
 
   async function fetchConfig() {
     setLoading(true);
     setError('');
     try {
-      const res = await apiFetch('/config', token);
-      if (res.ok) {
-        const data = await res.json();
-        setConfigs(data);
-        const vals: Record<string, string> = {};
-        for (const [k, v] of Object.entries(data)) {
-          vals[k] = String(v ?? '');
-        }
-        if (!vals.pwa_phone_country_code) vals.pwa_phone_country_code = '+60';
-        setEditValues(vals);
-      } else {
+      const editableKeys = ['otp_bypass_enabled', 'otp_bypass_code', 'pwa_phone_country_code'];
+      const adminRes = await apiFetch(`/admin/config?${editableKeys.map((key) => `key=${encodeURIComponent(key)}`).join('&')}`, token);
+      const publicRes = await apiFetch('/config', token);
+      if (!adminRes.ok || !publicRes.ok) {
         setError('Failed to load config');
+        return;
       }
+
+      const adminData = await adminRes.json();
+      const publicData = await publicRes.json();
+      const data = {
+        ...publicData,
+        ...(adminData.configs || {}),
+      };
+
+      setConfigs(data);
+      const vals: Record<string, string> = {};
+      for (const [k, v] of Object.entries(data)) {
+        vals[k] = String(v ?? '');
+      }
+      if (!vals.pwa_phone_country_code) vals.pwa_phone_country_code = '+60';
+      if (!vals.otp_bypass_enabled) vals.otp_bypass_enabled = 'false';
+      if (!vals.otp_bypass_code) vals.otp_bypass_code = '';
+      setEditValues(vals);
     } catch {
       setError('Network error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchVersionInfo() {
+    setVersionLoading(true);
+    try {
+      // Fetch manifest from customer PWA
+      const res = await fetch('https://app.loyaltysystem.uk/manifest.json', {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVersionInfo({
+          version: data.version || '1.0.0',
+          build_date: data.build_date || new Date().toISOString(),
+          cache_name: `loka-pwa-v${data.version || '1.0.0'}`,
+        });
+      }
+    } catch {
+      // Fallback - try localhost
+      try {
+        const res = await fetch('http://localhost:3002/manifest.json', {
+          headers: { 'Accept': 'application/json' },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setVersionInfo({
+            version: data.version || '1.0.0',
+            build_date: data.build_date || new Date().toISOString(),
+            cache_name: `loka-pwa-v${data.version || '1.0.0'}`,
+          });
+        }
+      } catch {
+        setVersionInfo(null);
+      }
+    } finally {
+      setVersionLoading(false);
+    }
+  }
+
+  async function triggerNewBuild() {
+    setVersionLoading(true);
+    setCacheCleared(false);
+    try {
+      // Call backend to trigger build
+      const res = await apiFetch('/admin/pwa/rebuild', token, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVersionInfo({
+          version: data.version || '1.0.0',
+          build_date: data.build_date || new Date().toISOString(),
+          cache_name: `loka-pwa-v${data.version || '1.0.0'}`,
+        });
+        setCacheCleared(true);
+      } else {
+        setError('Failed to trigger build');
+      }
+    } catch {
+      setError('Network error during rebuild');
+    } finally {
+      setVersionLoading(false);
+    }
+  }
+
+  async function clearPWACache() {
+    setClearingCache(true);
+    setCacheCleared(false);
+    try {
+      // Call backend to clear cache
+      const res = await apiFetch('/admin/pwa/clear-cache', token, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        setCacheCleared(true);
+        // Refresh version info
+        await fetchVersionInfo();
+      } else {
+        setError('Failed to clear cache');
+      }
+    } catch {
+      setError('Network error during cache clear');
+    } finally {
+      setClearingCache(false);
     }
   }
 
@@ -393,6 +503,130 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
             {savedKeys['pwa_phone_country_code'] === 'err' && (
               <span style={{ color: '#DC2626', fontSize: 12, fontWeight: 600 }}>
                 <i className="fas fa-exclamation-circle"></i>
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Version & Cache Management */}
+      <div style={{
+        background: 'white',
+        borderRadius: 16,
+        border: `1px solid ${THEME.accentLight}`,
+        overflow: 'hidden',
+        marginBottom: 24,
+      }}>
+        <div style={{
+          padding: '16px 24px',
+          borderBottom: `1px solid ${THEME.accentLight}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          background: THEME.bgMuted,
+        }}>
+          <i className="fas fa-sync-alt" style={{ color: THEME.primary, fontSize: 16 }}></i>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: THEME.primary }}>Version & Cache</h3>
+        </div>
+
+        {/* Current Version */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          padding: '16px 24px',
+          borderBottom: `1px solid ${THEME.accentLight}`,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 2 }}>
+              Current Version
+            </div>
+            <div style={{ fontSize: 12, color: THEME.success }}>
+              {versionLoading ? 'Loading...' : versionInfo ? `Build: ${versionInfo.build_date}` : 'Unable to fetch version'}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: THEME.primary,
+              fontFamily: 'monospace',
+            }}>
+              {versionInfo?.version || '—'}
+            </div>
+            <div style={{ fontSize: 11, color: THEME.textMuted }}>
+              {versionInfo?.cache_name}
+            </div>
+          </div>
+        </div>
+
+        {/* Force Update Button */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          padding: '16px 24px',
+          borderBottom: `1px solid ${THEME.accentLight}`,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 2 }}>
+              Force PWA Update
+            </div>
+            <div style={{ fontSize: 12, color: THEME.success }}>
+              Trigger a new build with incremented version. Forces all users to update.
+            </div>
+          </div>
+          <button
+            className="btn btn-primary"
+            style={{ padding: '8px 20px', fontSize: 14 }}
+            disabled={versionLoading}
+            onClick={triggerNewBuild}
+          >
+            {versionLoading ? (
+              <><i className="fas fa-spinner fa-spin"></i> Building...</>
+            ) : (
+              <><i className="fas fa-hammer"></i> New Build</>
+            )}
+          </button>
+        </div>
+
+        {/* Clear Cache Button */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          padding: '16px 24px',
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 2 }}>
+              Clear Service Worker Cache
+            </div>
+            <div style={{ fontSize: 12, color: THEME.success }}>
+              Remove old cached files without rebuilding. Users will get fresh content on next visit.
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              className="btn btn-secondary"
+              style={{ 
+                padding: '8px 20px', 
+                fontSize: 14,
+                background: 'transparent',
+                border: `1px solid ${THEME.primary}`,
+                color: THEME.primary,
+              }}
+              disabled={clearingCache}
+              onClick={clearPWACache}
+            >
+              {clearingCache ? (
+                <><i className="fas fa-spinner fa-spin"></i> Clearing...</>
+              ) : (
+                <><i className="fas fa-trash-alt"></i> Clear Cache</>
+              )}
+            </button>
+            {cacheCleared && (
+              <span style={{ color: THEME.primary, fontSize: 12, fontWeight: 600 }}>
+                <i className="fas fa-check-circle"></i> Done
               </span>
             )}
           </div>

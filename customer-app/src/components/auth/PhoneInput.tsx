@@ -2,71 +2,67 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, ChevronRight, Loader2 } from 'lucide-react';
-import { Button } from '../ui/Button';
+import { Coffee, Loader2, Phone } from 'lucide-react';
 
 interface PhoneInputProps {
   onSubmit: (phone: string) => Promise<void>;
-  onNavigateToRegister?: () => void;
 }
 
-export function PhoneInput({ onSubmit, onNavigateToRegister }: PhoneInputProps) {
+// --- Design tokens (inline-style fallback – guaranteed to render
+// even if Tailwind v4 JIT misses an arbitrary value in production). ---
+const LOKA = {
+  primary: '#384B16',
+  primaryDark: '#2A3910',
+  primaryDisabled: '#6B7A4E',
+  copper: '#D18E38',
+  copperSoft: 'rgba(209,142,56,0.12)',
+  textPrimary: '#1B2023',
+  textMuted: '#6A7A8A',
+  border: '#C4CED8',
+  borderSubtle: '#E4EAEF',
+  danger: '#C75050',
+  bg: '#FFFFFF',
+} as const;
+
+export function PhoneInput({ onSubmit }: PhoneInputProps) {
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
 
-  const formatPhone = (value: string) => {
-    // Remove non-digits
-    const digits = value.replace(/\D/g, '');
-    
-    // Format as Malaysian number
-    if (digits.startsWith('60')) {
-      if (digits.length <= 2) return '+' + digits;
-      if (digits.length <= 4) return '+' + digits.slice(0, 2) + ' ' + digits.slice(2);
-      if (digits.length <= 7) return '+' + digits.slice(0, 2) + ' ' + digits.slice(2, 4) + ' ' + digits.slice(4);
-      return '+' + digits.slice(0, 2) + ' ' + digits.slice(2, 4) + ' ' + digits.slice(4, 7) + ' ' + digits.slice(7, 11);
-    }
-    
-    if (digits.startsWith('0')) {
-      if (digits.length <= 3) return digits;
-      if (digits.length <= 6) return digits.slice(0, 3) + ' ' + digits.slice(3);
-      if (digits.length <= 8) return digits.slice(0, 3) + ' ' + digits.slice(3, 6) + ' ' + digits.slice(6);
-      return digits.slice(0, 3) + ' ' + digits.slice(3, 6) + ' ' + digits.slice(6, 9) + ' ' + digits.slice(9, 11);
-    }
-    
-    return digits;
+  const formatPhone = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 10);
+    // Format: 12 345 6789 / 123 456 7890
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 5) return `${digits.slice(0, 2)} ${digits.slice(2)}`;
+    if (digits.length <= 9)
+      return `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`;
+    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhone(formatPhone(e.target.value));
+    setError('');
   };
 
   const normalizePhone = (value: string): string => {
     const digits = value.replace(/\D/g, '');
-    if (digits.startsWith('0')) {
-      return '+6' + digits;
-    }
-    if (digits.startsWith('60')) {
-      return '+' + digits;
-    }
+    if (digits.startsWith('60')) return '+' + digits;
+    if (digits.startsWith('0')) return '+6' + digits;
     return '+60' + digits;
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhone(e.target.value);
-    setPhone(formatted);
-    setError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const digits = phone.replace(/\D/g, '');
-    
-    if (!digits || digits.length < 10) {
+
+    if (!digits || digits.length < 9) {
       setError('Please enter a valid phone number');
       return;
     }
-    
+
     setIsLoading(true);
     setError('');
-    
     try {
       const normalized = normalizePhone(phone);
       await onSubmit(normalized);
@@ -77,98 +73,266 @@ export function PhoneInput({ onSubmit, onNavigateToRegister }: PhoneInputProps) 
     }
   };
 
+  const digitCount = phone.replace(/\D/g, '').length;
+  const isDisabled = isLoading || digitCount < 9;
+  const borderColor = error
+    ? LOKA.danger
+    : isFocused
+      ? LOKA.primary
+      : LOKA.border;
+
   return (
-    <div className="w-full">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="text-center mb-10"
+    <div
+      className="w-full h-full flex flex-col overflow-y-auto"
+      style={{ background: LOKA.bg }}
+    >
+      <div
+        className="flex flex-col h-full"
+        style={{ padding: '56px 24px 32px' }}
       >
-        <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Phone className="w-10 h-10 text-white" />
-        </div>
-        <h1 className="text-3xl font-bold text-white mb-3">Welcome to Loka</h1>
-        <p className="text-white/70">Enter your phone number to get started</p>
-      </motion.div>
-
-      {/* Form */}
-      <motion.form
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        onSubmit={handleSubmit}
-        className="space-y-4"
-      >
-        {/* Phone Input */}
-        <div className="relative">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 font-medium">
-            +60
-          </div>
-          <input
-            type="tel"
-            value={phone.replace('+60 ', '').replace('+60', '')}
-            onChange={handleChange}
-            placeholder="12 345 6789"
-            autoFocus
-            className={`
-              w-full bg-white/10 border-2 rounded-2xl py-4 pl-14 pr-4 text-white text-lg
-              placeholder:text-white/40 transition-all duration-200
-              ${error 
-                ? 'border-red-400 bg-red-500/10' 
-                : 'border-white/20 focus:border-white/50 focus:bg-white/15'
-              }
-            `}
-          />
-          <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-red-300 text-sm text-center"
-          >
-            {error}
-          </motion.p>
-        )}
-
-        {/* Submit Button */}
-        <Button
-          type="submit"
-          className="w-full mt-6"
-          size="lg"
-          disabled={isLoading || phone.length < 10}
+        {/* Brand mark */}
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.35 }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 56,
+            height: 56,
+            borderRadius: 18,
+            background: LOKA.copperSoft,
+            border: `1px solid rgba(209,142,56,0.25)`,
+            marginBottom: 28,
+          }}
         >
-          {isLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <>
-              Continue
-              <ChevronRight className="w-5 h-5" />
-            </>
-          )}
-        </Button>
-      </motion.form>
+          <Coffee size={28} style={{ color: LOKA.copper }} strokeWidth={1.8} />
+        </motion.div>
 
-      {/* Terms */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="text-center text-sm text-white/50 mt-8 leading-relaxed"
-      >
-        By continuing, you agree to our{' '}
-        <button className="text-white/70 underline hover:text-white transition-colors">
-          Terms of Service
-        </button>{' '}
-        and{' '}
-        <button className="text-white/70 underline hover:text-white transition-colors">
-          Privacy Policy
-        </button>
-      </motion.p>
+        {/* Header */}
+        <motion.div
+          initial={{ y: 8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+          style={{ marginBottom: 32 }}
+        >
+          <h2
+            style={{
+              fontSize: 30,
+              fontWeight: 800,
+              lineHeight: 1.15,
+              color: LOKA.textPrimary,
+              letterSpacing: '-0.02em',
+              margin: 0,
+            }}
+          >
+            Welcome back
+          </h2>
+          <p
+            style={{
+              marginTop: 10,
+              fontSize: 15,
+              color: LOKA.textMuted,
+              lineHeight: 1.5,
+            }}
+          >
+            Enter your mobile number to continue
+          </p>
+        </motion.div>
+
+        {/* Form */}
+        <motion.form
+          initial={{ y: 8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.35, delay: 0.1 }}
+          onSubmit={handleSubmit}
+          className="flex flex-col"
+        >
+          <div style={{ marginBottom: 20 }}>
+            <label
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: LOKA.textPrimary,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                letterSpacing: '0.01em',
+              }}
+            >
+              <Phone size={13} style={{ color: LOKA.textMuted }} />
+              Phone number
+            </label>
+            <div
+              className="phone-wrapper"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                border: `1.5px solid ${borderColor}`,
+                borderRadius: 16,
+                padding: '4px 16px 4px 14px',
+                background: LOKA.bg,
+                transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                boxShadow: isFocused
+                  ? `0 0 0 4px rgba(56,75,22,0.08)`
+                  : 'none',
+              }}
+            >
+              {/* Country selector (visual) */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingRight: 10,
+                  marginRight: 10,
+                  borderRight: `1px solid ${LOKA.borderSubtle}`,
+                }}
+              >
+                <span style={{ fontSize: 18 }} role="img" aria-label="Malaysia">
+                  🇲🇾
+                </span>
+                <span
+                  style={{
+                    fontWeight: 600,
+                    color: LOKA.textPrimary,
+                    fontSize: 15,
+                  }}
+                >
+                  +60
+                </span>
+              </div>
+              <input
+                type="tel"
+                value={phone}
+                onChange={handleChange}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                placeholder="12 345 6789"
+                autoFocus
+                inputMode="tel"
+                autoComplete="tel-national"
+                style={{
+                  border: 'none',
+                  padding: '16px 0',
+                  fontSize: 17,
+                  fontWeight: 500,
+                  width: '100%',
+                  outline: 'none',
+                  background: 'transparent',
+                  color: LOKA.textPrimary,
+                  letterSpacing: '0.01em',
+                }}
+              />
+            </div>
+          </div>
+
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                color: LOKA.danger,
+                fontSize: 13,
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              {error}
+            </motion.p>
+          )}
+
+          <motion.button
+            type="submit"
+            disabled={isDisabled}
+            whileTap={isDisabled ? {} : { scale: 0.985 }}
+            style={{
+              background: isDisabled ? LOKA.primaryDisabled : LOKA.primary,
+              color: '#FFFFFF',
+              fontWeight: 600,
+              fontSize: 16,
+              padding: '17px 20px',
+              borderRadius: 9999,
+              width: '100%',
+              marginTop: 8,
+              border: 'none',
+              cursor: isDisabled ? 'not-allowed' : 'pointer',
+              boxShadow: isDisabled
+                ? 'none'
+                : '0 10px 24px -10px rgba(42,57,16,0.5)',
+              transition:
+                'background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease',
+              letterSpacing: '0.01em',
+            }}
+          >
+            {isLoading ? (
+              <Loader2
+                className="animate-spin"
+                style={{ width: 20, height: 20, margin: '0 auto' }}
+              />
+            ) : (
+              'Send OTP'
+            )}
+          </motion.button>
+
+          {/* Helper / character counter */}
+          <div
+            style={{
+              marginTop: 10,
+              textAlign: 'center',
+              fontSize: 12,
+              color: LOKA.textMuted,
+              minHeight: 16,
+            }}
+          >
+            {digitCount > 0 && digitCount < 9
+              ? `${9 - digitCount} more digit${9 - digitCount === 1 ? '' : 's'}`
+              : ''}
+          </div>
+        </motion.form>
+
+        <div style={{ flex: 1 }} />
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          style={{
+            textAlign: 'center',
+            marginTop: 24,
+            fontSize: 12,
+            color: LOKA.textMuted,
+            lineHeight: 1.5,
+          }}
+        >
+          By continuing you agree to our{' '}
+          <a
+            href="#"
+            style={{
+              color: LOKA.primary,
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            Terms of Service
+          </a>{' '}
+          &{' '}
+          <a
+            href="#"
+            style={{
+              color: LOKA.primary,
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            Privacy Policy
+          </a>
+        </motion.p>
+      </div>
     </div>
   );
 }

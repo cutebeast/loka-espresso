@@ -31,6 +31,7 @@ class MenuItemOut(BaseModel):
     image_url: Optional[str] = None
     customization_options: Optional[dict] = None
     is_available: bool = True
+    is_featured: bool = False
     display_order: int = 0
 
     class Config:
@@ -45,6 +46,7 @@ class MenuItemCreate(BaseModel):
     image_url: Optional[str] = None
     customization_options: Optional[dict] = None
     is_available: bool = True
+    is_featured: bool = False
     display_order: int = 0
 
 
@@ -56,6 +58,7 @@ class MenuItemUpdate(BaseModel):
     image_url: Optional[str] = None
     customization_options: Optional[dict] = None
     is_available: Optional[bool] = None
+    is_featured: Optional[bool] = None
     display_order: Optional[int] = None
 
 

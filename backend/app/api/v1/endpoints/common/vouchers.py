@@ -121,7 +121,7 @@ async def my_vouchers(
             source=uv.source,
             expires_at=uv.expires_at,
             voucher_title=v.title if v else None,
-            voucher_image_url=v.image_url if v else None,
+            voucher_image_url=None,
         ))
     return out
 

@@ -36,7 +36,7 @@ def rand_address():
     return f"{random.randint(1,199)}, {random.choice(STREETS)}, 55000 Kuala Lumpur"
 
 def rand_phone():
-    return f"+6011{uuid.uuid4().hex[:7]}"
+    return f"+6011{random.randint(10000000, 99999999)}"
 
 def _existing_customer_count():
     """Get customer count using GET /admin/customers API."""
@@ -81,6 +81,9 @@ def register_one_customer():
     if resp.status_code != 200:
         print(f"    [FAIL] send-otp: {resp.status_code} - {resp.text[:80]}")
         return None
+    send_data = resp.json()
+    phone = send_data.get("phone", phone)
+    session_id = send_data.get("session_id")
 
     # Step 2: get OTP via admin API
     time.sleep(0.2)
@@ -88,7 +91,7 @@ def register_one_customer():
     if not otp_code:
         for code in ["123456", "000000", "111111"]:
             resp2 = requests.post(f"{API_BASE}/auth/verify-otp",
-                                  json={"phone": phone, "code": code}, timeout=10)
+                                  json={"phone": phone, "code": code, "session_id": session_id}, timeout=10)
             if resp2.status_code == 200:
                 otp_code = code
                 break
@@ -98,7 +101,7 @@ def register_one_customer():
 
     # Step 3: verify-otp
     resp = requests.post(f"{API_BASE}/auth/verify-otp",
-                         json={"phone": phone, "code": otp_code}, timeout=10)
+                         json={"phone": phone, "code": otp_code, "session_id": session_id}, timeout=10)
     if resp.status_code != 200:
         print(f"    [FAIL] verify-otp: {resp.status_code} - {resp.text[:80]}")
         return None
@@ -168,7 +171,8 @@ def run(n=20):
             print(f" ✗ FAILED")
         time.sleep(0.5)
 
-    print(f"\n[SUMMARY] {len(customers)}/{n} customers registered")
+    db_count = _existing_customer_count()
+    print(f"\n[SUMMARY] state={len(customers)} customer records, api={db_count}/{n} customers")
     save_state("customers", customers)
 
     # ── DB VALIDATION ────────────────────────────────────────────────

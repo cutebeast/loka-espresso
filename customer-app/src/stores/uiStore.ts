@@ -1,9 +1,24 @@
 import { create } from 'zustand';
 import type { PageId, Store, Category, MenuItem, OrderMode } from '@/lib/api';
 
+export interface PageParams {
+  initialTab?: string;
+  selectedInfoId?: number;
+  [key: string]: unknown;
+}
+
+export interface DineInSession {
+  storeId: number;
+  storeName: string;
+  storeSlug: string;
+  tableId: number;
+  tableNumber: string;
+}
+
 interface UIState {
   page: PageId;
   orderMode: OrderMode;
+  dineInSession: DineInSession | null;
   selectedStore: Store | null;
   stores: Store[];
   categories: Category[];
@@ -12,8 +27,11 @@ interface UIState {
   searchQuery: string;
   isLoading: boolean;
   toast: { message: string; type: 'success' | 'error' | 'info' } | null;
-  setPage: (page: PageId) => void;
+  pageParams: PageParams;
+  showStorePicker: boolean;
+  setPage: (page: PageId, params?: PageParams) => void;
   setOrderMode: (mode: OrderMode) => void;
+  setDineInSession: (session: DineInSession | null) => void;
   setSelectedStore: (store: Store | null) => void;
   setStores: (stores: Store[]) => void;
   setCategories: (categories: Category[]) => void;
@@ -23,11 +41,13 @@ interface UIState {
   setIsLoading: (loading: boolean) => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   hideToast: () => void;
+  setShowStorePicker: (show: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
   page: 'home',
   orderMode: 'pickup',
+  dineInSession: null,
   selectedStore: null,
   stores: [],
   categories: [],
@@ -36,8 +56,11 @@ export const useUIStore = create<UIState>((set) => ({
   searchQuery: '',
   isLoading: false,
   toast: null,
-  setPage: (page) => set({ page }),
+  pageParams: {},
+  showStorePicker: false,
+  setPage: (page, params) => set({ page, pageParams: params ?? {} }),
   setOrderMode: (orderMode) => set({ orderMode }),
+  setDineInSession: (dineInSession) => set({ dineInSession }),
   setSelectedStore: (selectedStore) => set({ selectedStore }),
   setStores: (stores) => set({ stores }),
   setCategories: (categories) => set({ categories }),
@@ -47,4 +70,5 @@ export const useUIStore = create<UIState>((set) => ({
   setIsLoading: (isLoading) => set({ isLoading }),
   showToast: (message, type) => set({ toast: { message, type } }),
   hideToast: () => set({ toast: null }),
+  setShowStorePicker: (showStorePicker) => set({ showStorePicker }),
 }));

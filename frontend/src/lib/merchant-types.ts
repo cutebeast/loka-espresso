@@ -26,6 +26,7 @@ export interface MerchantMenuItem {
   base_price: number;
   image_url: string | null;
   is_available: boolean;
+  is_featured: boolean;
   display_order: number;
 }
 
@@ -102,12 +103,17 @@ export interface MerchantOrder {
   order_number: string;
   order_type: string;
   status: string;
+  delivery_status?: string | null;
   total: number;
   items: Array<Record<string, unknown>>;
   created_at: string;
   store_id: number;
   table_id: number | null;
   pickup_time: string | null;
+  delivery_address?: Record<string, unknown> | null;
+  delivery_eta_minutes?: number | null;
+  delivery_courier_name?: string | null;
+  delivery_tracking_url?: string | null;
   user_id: number;
 }
 
@@ -217,26 +223,30 @@ export interface MerchantLoyaltyTier {
 
 export interface CustomerItem {
   id: number;
-  name: string;
-  phone: string;
-  email: string;
-  tier: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  tier: string | null;
   points_balance: number;
   total_orders: number;
   total_spent: number;
+  phone_verified?: boolean;
+  is_profile_complete?: boolean;
   created_at?: string;
 }
 
 export interface CustomerDetail {
   id: number;
-  name: string;
-  phone: string;
-  email: string;
-  tier: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  tier: string | null;
   points_balance: number;
   wallet_balance: number;
   total_orders: number;
   total_spent: number;
+  phone_verified?: boolean;
+  is_profile_complete?: boolean;
   created_at: string;
 }
 
@@ -256,4 +266,4 @@ export interface CustomerLoyaltyTransaction {
   created_at: string;
 }
 
-export type PageId = 'dashboard' | 'orders' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'feedback' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store' | 'settings' | 'pwa' | 'customerDetail';
+export type PageId = 'dashboard' | 'orders' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'information' | 'feedback' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store' | 'settings' | 'pwa' | 'customerDetail';

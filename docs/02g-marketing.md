@@ -65,8 +65,55 @@ Per-customer voucher **instances**. One row per claim. Catalog→Instance patter
 **Indexes:** PK(id), UNIQUE(code), ix_user_vouchers_user_id
 **FKs:** user_id → users(id), voucher_id → vouchers(id), store_id → stores(id), order_id → orders(id)
 
+### `information_cards`
+Pure content/announcement cards for PWA home. No claim action - just display content.
+Unlike promo_banners, these have no voucher/survey action.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | integer | NO | auto | PK |
+| title | varchar(255) | NO | | Card headline |
+| short_description | varchar(500) | YES | | Card preview text (PWA listing) |
+| long_description | text | YES | | Full content (detail view) |
+| icon | varchar(50) | YES | | Lucide icon name (e.g., "coffee", "info") |
+| image_url | varchar(500) | YES | | Card thumbnail image |
+| store_id | integer | YES | | FK→stores.id (null=all stores) |
+| start_date | timestamptz | YES | | Visibility start |
+| end_date | timestamptz | YES | | Visibility end |
+| is_active | boolean | NO | true | |
+| position | integer | YES | 0 | Display order |
+| content_type | varchar(20) | NO | 'promotion' | `promotion` (PWA display) or `system` (T&C, Privacy) |
+| created_at | timestamptz | YES | now() | |
+| updated_at | timestamptz | YES | now() | |
+
+**FKs:** store_id → stores(id)
+
+**Content Types:**
+- `promotion` - Displayed on PWA home page (max 3 shown)
+- `system` - Legal/policy content, accessed via dedicated endpoints
+
+**System Content (Seeded):**
+| Title | content_type | Purpose |
+|-------|--------------|---------|
+| Terms & Conditions | system | Legal T&C text |
+| Privacy Policy | system | Privacy policy text |
+| ☕ Turkish Coffee Reading | promotion | Feature highlight |
+
+**API:**
+- PWA: `GET /content/information` - List active promotional cards (excludes system by default)
+- PWA: `GET /content/information?include_system=true` - Include system content
+- PWA: `GET /content/legal/terms` - Get Terms & Conditions
+- PWA: `GET /content/legal/privacy` - Get Privacy Policy
+- Admin: `GET/POST/PUT/DELETE /admin/content/cards` - Full CRUD
+
+---
+
 ### `promo_banners`
-In-app promotional banners. Company-wide. Displayed on customer PWA home.
+In-app promotional banners with **claimable action**. Displayed on customer PWA home.
+
+**Action types:**
+- `detail` → Show info + "Claim" button (links to voucher)
+- `survey` → Open survey, auto-reward on completion
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|

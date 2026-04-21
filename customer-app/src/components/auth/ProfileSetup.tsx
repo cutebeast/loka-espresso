@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Camera, ChevronRight, Loader2 } from 'lucide-react';
-import { Button } from '../ui/Button';
+import { User, Mail, Camera, Loader2 } from 'lucide-react';
 
 interface ProfileSetupProps {
   phone: string;
@@ -23,10 +22,6 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
       setError('Please enter your name');
       return;
     }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
     setIsLoading(true);
     setError('');
     try {
@@ -38,26 +33,21 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
     }
   };
 
-  const avatarColors = [
-    'bg-accent-copper',
-    'bg-accent',
-    'bg-accent-blue',
-    'bg-accent-brown',
-  ];
-  const randomColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
-  const displayPhone = phone.replace(/(\+\d{2})(\d{2})(\d{3})(\d{4})/, '$1 $2 $3 $4');
+  const displayPhone = phone.replace(/(\+\d{2})(\d{2})(\d{3,4})(\d{0,4})/, '$1 $2 $3 $4').trim();
 
   return (
-    <div className="w-full">
+    <div className="flex flex-col h-full px-6 pt-12 pb-8 bg-white">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="text-center mb-8"
+        className="mb-8"
       >
-        <h1 className="text-3xl font-bold text-white mb-3">Create Profile</h1>
-        <p className="text-white/70">Tell us a bit about yourself</p>
+        <h2 className="text-[28px] font-bold" style={{ color: '#1B2023' }}>Complete profile</h2>
+        <p className="mt-2 text-[15px]" style={{ color: '#6A7A8A' }}>
+          Tell us a bit about yourself
+        </p>
       </motion.div>
 
       {/* Avatar */}
@@ -68,15 +58,20 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
         className="flex justify-center mb-8"
       >
         <div className="relative">
-          <div className={`w-24 h-24 ${randomColor} rounded-full flex items-center justify-center shadow-lg`}>
+          <div
+            className="w-24 h-24 rounded-full flex items-center justify-center"
+            style={{ background: '#384B16' }}
+          >
             {name ? (
               <span className="text-3xl font-bold text-white">{name[0].toUpperCase()}</span>
             ) : (
-              <User className="w-10 h-10 text-white/80" />
+              <User className="w-10 h-10 text-white/70" />
             )}
           </div>
-          <button className="absolute bottom-0 right-0 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors">
-            <Camera className="w-5 h-5 text-primary" />
+          <button
+            className="absolute bottom-0 right-0 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-[#D4DCE5]"
+          >
+            <Camera className="w-5 h-5" style={{ color: '#384B16' }} />
           </button>
         </div>
       </motion.div>
@@ -87,98 +82,81 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         onSubmit={handleSubmit}
-        className="space-y-4"
       >
         {/* Name Input */}
-        <div className="relative">
-          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-          <input
-            type="text"
-            placeholder="Your name"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setError('');
-            }}
-            autoFocus
-            className={`
-              w-full bg-white/10 border-2 rounded-2xl py-4 pl-12 pr-4 text-white text-lg
-              placeholder:text-white/40 transition-all duration-200
-              ${error && !name
-                ? 'border-red-400 bg-red-500/10' 
-                : 'border-white/20 focus:border-white/50 focus:bg-white/15'
-              }
-            `}
-          />
+        <div className="mb-5">
+          <label className="block font-semibold text-sm mb-1.5" style={{ color: '#1B2023' }}>
+            Name
+          </label>
+          <div
+            className="flex items-center rounded-2xl px-4 py-1 border-[1.5px]"
+            style={{ borderColor: error && !name ? '#C75050' : '#C4CED8' }}
+          >
+            <User size={18} style={{ color: '#6A7A8A' }} className="mr-2" />
+            <input
+              type="text"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => { setName(e.target.value); setError(''); }}
+              autoFocus
+              className="border-none py-4 text-base w-full outline-none text-[#1B2023] placeholder:text-[#6A7A8A]/50"
+            />
+          </div>
         </div>
 
         {/* Email Input */}
-        <div className="relative">
-          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-          <input
-            type="email"
-            placeholder="Email (optional)"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError('');
-            }}
-            className={`
-              w-full bg-white/10 border-2 rounded-2xl py-4 pl-12 pr-4 text-white text-lg
-              placeholder:text-white/40 transition-all duration-200
-              ${error && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-                ? 'border-red-400 bg-red-500/10' 
-                : 'border-white/20 focus:border-white/50 focus:bg-white/15'
-              }
-            `}
-          />
+        <div className="mb-5">
+          <label className="block font-semibold text-sm mb-1.5" style={{ color: '#1B2023' }}>
+            Email <span className="font-normal" style={{ color: '#6A7A8A' }}>(optional)</span>
+          </label>
+          <div className="flex items-center rounded-2xl px-4 py-1 border-[1.5px]" style={{ borderColor: '#C4CED8' }}>
+            <Mail size={18} style={{ color: '#6A7A8A' }} className="mr-2" />
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(''); }}
+              className="border-none py-4 text-base w-full outline-none text-[#1B2023] placeholder:text-[#6A7A8A]/50"
+            />
+          </div>
         </div>
 
-        {/* Phone Display */}
-        <p className="text-center text-sm text-white/40">
+        {/* Phone display */}
+        <p className="text-center text-sm mb-4" style={{ color: '#6A7A8A' }}>
           {displayPhone}
         </p>
 
         {/* Error */}
         {error && (
           <motion.p
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center text-sm text-red-300"
+            className="text-[#C75050] text-sm mb-3"
           >
             {error}
           </motion.p>
         )}
 
-        {/* Submit Button */}
-        <Button
+        {/* Submit */}
+        <button
           type="submit"
-          className="w-full mt-6"
-          size="lg"
           disabled={isLoading || !name.trim()}
+          className="w-full font-semibold text-base py-4 rounded-full text-white disabled:opacity-40"
+          style={{ background: '#384B16' }}
         >
-          {isLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <>
-              Get Started
-              <ChevronRight className="w-5 h-5" />
-            </>
-          )}
-        </Button>
+          {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Get Started'}
+        </button>
 
         {/* Skip */}
         {onSkip && (
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
+          <button
             type="button"
             onClick={onSkip}
-            className="w-full text-center text-white/50 text-sm hover:text-white/80 transition-colors py-2"
+            className="w-full text-center text-sm font-medium py-3 mt-2"
+            style={{ color: '#6A7A8A' }}
           >
             Skip for now
-          </motion.button>
+          </button>
         )}
       </motion.form>
     </div>

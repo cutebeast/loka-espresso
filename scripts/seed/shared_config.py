@@ -1,7 +1,7 @@
 """
 Shared configuration for all seed scripts.
 NO direct DB access - all data flows through API calls only.
-Last updated: 2026-04-19 | REFACTORED - Unified Flow A/B lifecycle
+Last updated: 2026-04-21 | Pre-integration sync with current auth/payment/delivery flow
 
 IMPORTANT: Order of execution for customer seeding:
 00-09: Base system seeds (stores, menu, inventory, staff, config, rewards, vouchers, promotions)
@@ -26,8 +26,10 @@ APIs Used by Flow Scripts:
   - POST /orders/{id}/confirm (dine-in confirmation)
   - PATCH /orders/{id}/status (status transitions)
   - POST /tables/{id}/release (release table after dine-in)
-  - POST /payment-gateway/initiate (mock payment)
-  - POST /payment-gateway/webhook (payment callback)
+  - POST /payments/create-intent (wallet payment intent)
+  - POST /payments/confirm (wallet payment settlement)
+  - POST /wallet/webhook/pg-payment (mock PG wallet topup callback)
+  - POST /wallet/webhook/order-payment (mock PG order-payment callback)
 """
 import os
 
@@ -139,18 +141,54 @@ def save_state(key, data):
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as f:
             state = json.load(f)
-    state[key] = data
+    if key is None:
+        if not isinstance(data, dict):
+            raise ValueError("save_state(None, data) requires data to be a dict")
+        state = data
+    else:
+        state[key] = data
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2, default=str)
 
-def load_state(key):
+def load_state(key=None):
     """Load script state from JSON file."""
     import json, os
     if not os.path.exists(STATE_FILE):
-        return None
+        return None if key is not None else {}
     with open(STATE_FILE) as f:
         state = json.load(f)
+    if key is None:
+        return state
     return state.get(key)
+
+
+def get_store_menu_items(store_id, token, available_only=True):
+    """Fetch flat menu items using the PWA-style items endpoint."""
+    import requests
+    params = {}
+    if available_only:
+        params["available_only"] = "true"
+    resp = requests.get(
+        f"{API_BASE}/stores/{store_id}/items",
+        headers={"Authorization": f"Bearer {token}"} if token else {},
+        params=params,
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        return [], f"GET /stores/{store_id}/items failed: {resp.status_code}"
+
+    items = []
+    for item in resp.json():
+        if available_only and not item.get("is_available", True):
+            continue
+        items.append(
+            {
+                "item_id": item["id"],
+                "name": item["name"],
+                "base_price": item.get("base_price", 0),
+            }
+        )
+    return items, None
 
 def print_header(msg):
     print(f"\n{'='*60}")
@@ -194,15 +232,18 @@ def re_auth_customer(customer):
                        json={"phone": phone}, timeout=10)
     if r1.status_code != 200:
         return customer, None
+    send_data = r1.json()
+    normalized_phone = send_data.get("phone", phone)
+    session_id = send_data.get("session_id")
 
     # Step 2: get OTP via admin API
     time.sleep(0.5)
-    code = get_otp_from_admin_api(phone)
+    code = get_otp_from_admin_api(normalized_phone)
     if not code:
         # Fallback: try common test codes
         for code in ["123456", "000000", "111111"]:
             r2 = requests.post(f"{API_BASE}/auth/verify-otp",
-                             json={"phone": phone, "code": code}, timeout=10)
+                             json={"phone": normalized_phone, "code": code, "session_id": session_id}, timeout=10)
             if r2.status_code == 200:
                 break
         else:
@@ -210,7 +251,7 @@ def re_auth_customer(customer):
 
     # Step 3: verify-otp to get JWT
     r3 = requests.post(f"{API_BASE}/auth/verify-otp",
-                       json={"phone": phone, "code": code}, timeout=10)
+                       json={"phone": normalized_phone, "code": code, "session_id": session_id}, timeout=10)
     if r3.status_code != 200:
         return customer, None
 
@@ -226,7 +267,7 @@ def re_auth_customer(customer):
         timeout=10
     )
 
-    updated = {**customer, "token": new_token}
+    updated = {**customer, "token": new_token, "phone": normalized_phone}
     # Update user_id if verify-otp returned a new user
     if r3.status_code == 200:
         me = requests.get(f"{API_BASE}/users/me",

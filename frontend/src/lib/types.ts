@@ -219,11 +219,12 @@ export interface ReferralInfo {
 }
 
 export interface PaymentIntent {
-  id: string;
-  clientSecret: string;
-  provider: string;
+  payment_id: number;
+  transaction_id?: string;
+  provider?: string;
+  method?: string;
+  status: string;
   amount: number;
-  currency: string;
 }
 
 export interface AuthTokens {

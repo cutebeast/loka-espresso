@@ -64,6 +64,14 @@ class OrderOut(BaseModel):
     loyalty_points_earned: int = 0
     notes: Optional[str] = None
     delivery_provider: Optional[str] = None
+    delivery_status: Optional[str] = None
+    delivery_external_id: Optional[str] = None
+    delivery_quote_id: Optional[str] = None
+    delivery_tracking_url: Optional[str] = None
+    delivery_eta_minutes: Optional[int] = None
+    delivery_courier_name: Optional[str] = None
+    delivery_courier_phone: Optional[str] = None
+    delivery_last_event_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     status_timeline: Optional[list[dict]] = None

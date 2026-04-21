@@ -195,13 +195,17 @@ export default function CustomersPage({ token, stores, selectedStore, onStoreCha
           { key: 'phone', header: 'Phone', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.phone || '-'}</span> },
           { key: 'email', header: 'Email', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.email || '-'}</span> },
           { key: 'tier', header: 'Tier', render: (c) => (
-            <span className={`badge ${
-              c.tier === 'platinum' ? 'badge-purple' :
-              c.tier === 'gold' ? 'badge-yellow' :
-              c.tier === 'silver' ? 'badge-gray' : 'badge-gray'
-            }`}>
-              {c.tier ? c.tier.charAt(0).toUpperCase() + c.tier.slice(1) : 'Standard'}
-            </span>
+            c.tier ? (
+              <span className={`badge ${
+                c.tier === 'platinum' ? 'badge-purple' :
+                c.tier === 'gold' ? 'badge-yellow' :
+                c.tier === 'silver' ? 'badge-gray' : 'badge-gray'
+              }`}>
+                {c.tier.charAt(0).toUpperCase() + c.tier.slice(1)}
+              </span>
+            ) : (
+              <span className="badge badge-yellow">Pending Profile</span>
+            )
           )},
           { key: 'points_balance', header: 'Points', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.points_balance?.toLocaleString() || 0} pts</span> },
           { key: 'total_orders', header: 'Orders', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.total_orders}</span> },

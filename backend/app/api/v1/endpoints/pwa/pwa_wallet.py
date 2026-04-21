@@ -144,7 +144,7 @@ async def get_customer_wallet(
             id=uv.id,
             voucher_id=uv.voucher_id,
             voucher_title=v.title if v else None,
-            voucher_image_url=v.image_url if v else None,
+            voucher_image_url=None,
             code=uv.code,
             discount_type=uv.discount_type or (v.discount_type.value if v and hasattr(v.discount_type, 'value') else None),
             discount_value=to_float(uv.discount_value) if uv.discount_value else (to_float(v.discount_value) if v and v.discount_value else None),

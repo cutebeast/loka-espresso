@@ -5,14 +5,14 @@ APIs tested:
   - POST /pg/charge (create payment with mock PG)
   - POST /pg/confirm (confirm payment)
   - GET /pg/charge/{id}/status (check status)
-  - POST /wallet/webhook/pg-payment (webhook callback)
-  - GET /me/wallet (verify balance)
+  - POST /wallet/webhook/pg-payment (mock PG webhook callback)
+  - GET /wallet (verify cash balance)
 Status: CERTIFIED-2026-04-19 | API-only implementation (except Step 00 which uses SQL for reset)
 Dependencies: verify_seed_10_register.py (customers must exist), mock_pg_server.py running
 Flow: 
   1. Create PG charge for RM 100-500 (multiples of 50)
   2. Confirm payment (simulate user completing payment)
-  3. PG calls webhook to update wallet
+  3. Mock PG calls backend wallet webhook
   4. Verify wallet balance via API
 NO direct DB inserts — ALL via API calls including PG simulation.
 """
@@ -36,12 +36,12 @@ except ImportError:
 
 
 def _get_wallet_balance(token):
-    """Get wallet balance using GET /me/wallet API."""
+    """Get cash wallet balance using GET /wallet API."""
     try:
-        resp = api_get("/me/wallet", token=token)
+        resp = api_get("/wallet", token=token)
         if resp.status_code == 200:
             data = resp.json()
-            return float(data.get("cash", {}).get("balance", 0))
+            return float(data.get("balance", 0))
     except Exception:
         pass
     return 0.0
@@ -98,7 +98,7 @@ def run():
                 user_email=user_email,
                 user_name=user_name,
                 description="Seed wallet topup",
-                callback_url=None  # Skip webhook, use direct topup
+                callback_url=f"{API_BASE}/wallet/webhook/pg-payment"
             )
             charge_id = charge["charge_id"]
             
@@ -115,29 +115,14 @@ def run():
                 results.append({**c, "topups_done": False, "topup_count": 0, "total_topup": 0.0})
                 continue
             
-            # Step 5: Update wallet via direct API (PG confirmed, now topup)
-            # In production, webhook would do this. For seed, we do it directly.
-            topup_date = datetime.now(timezone.utc) - timedelta(days=random.uniform(30, 60))
-            resp = api_post("/wallet/topup", token=token,
-                          json={
-                              "amount": amount,
-                              "description": f"Top up via PG (Charge: {charge_id})",
-                              "created_at": topup_date.isoformat(),
-                          })
-            
-            if resp.status_code == 401:
-                c, new_token = re_auth_customer(c)
-                if new_token:
-                    token = new_token
-                    resp = api_post("/wallet/topup", token=token,
-                                  json={
-                                      "amount": amount,
-                                      "description": f"Top up via PG (Charge: {charge_id})",
-                                      "created_at": topup_date.isoformat(),
-                                  })
-            
-            if resp.status_code == 200:
+            new_balance = existing_balance
+            for _ in range(10):
+                time.sleep(0.2)
                 new_balance = _get_wallet_balance(token)
+                if new_balance >= existing_balance + amount:
+                    break
+
+            if new_balance >= existing_balance + amount:
                 print(f"  [{i+1}] {c['name']}: RM {amount:.2f} via PG (Charge: {charge_id}, Balance: RM {new_balance:.2f})")
                 results.append({
                     **c,
@@ -149,7 +134,7 @@ def run():
                 })
                 customers_topped += 1
             else:
-                print(f"  [{i+1}] {c['name']}: WARNING - Wallet topup failed {resp.status_code}")
+                print(f"  [{i+1}] {c['name']}: WARNING - Wallet webhook did not update balance in time")
                 results.append({**c, "topups_done": False, "topup_count": 0, "total_topup": 0.0})
                 
         except Exception as e:

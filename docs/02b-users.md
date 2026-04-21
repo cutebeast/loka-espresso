@@ -82,12 +82,20 @@ OTP codes for phone-based authentication.
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
 | phone | varchar(20) | NO | | Target phone number |
+| session_token | varchar(64) | NO | | Unique OTP session identifier |
 | code | varchar(6) | NO | | 6-digit OTP code |
 | verified | boolean | NO | false | Whether OTP was verified |
+| send_count | integer | NO | 1 | Number of sends for this session |
+| verify_attempts | integer | NO | 0 | Failed verification attempts |
+| resend_available_at | timestamptz | YES | | Next allowed resend time |
 | expires_at | timestamptz | NO | | Expiry timestamp |
+| verified_at | timestamptz | YES | | When OTP was successfully verified |
+| provider | varchar(30) | YES | | OTP delivery provider label (`stub`, future `twilio`) |
+| delivery_status | varchar(30) | YES | | Delivery state for audit/debug |
+| failure_reason | text | YES | | Last failure/lockout reason |
 | created_at | timestamptz | YES | now() | |
 
-**Indexes:** phone
+**Indexes:** phone, session_token (unique)
 
 ---
 

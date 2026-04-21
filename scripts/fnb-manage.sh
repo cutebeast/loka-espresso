@@ -2,6 +2,10 @@
 # ============================================================
 # FNB Super-App Management Script
 # Usage: ./fnb-manage.sh [command]
+#
+# NOTE: Database seeding is done via Python scripts in:
+#       /root/fnb-super-app/scripts/seed/
+#       Run: cd /root/fnb-super-app/scripts/seed && python3 verify_seed_XX_*.py
 # ============================================================
 
 set -e
@@ -10,7 +14,7 @@ BACKEND_DIR="/root/fnb-super-app/backend"
 FRONTEND_DIR="/root/fnb-super-app/frontend"
 CUSTOMER_DIR="/root/fnb-super-app/customer-app"
 
-BACKEND_PORT=8000
+BACKEND_PORT=8765
 FRONTEND_PORT=3001
 CUSTOMER_PORT=3002
 
@@ -26,6 +30,17 @@ NC='\033[0m'
 log()  { echo -e "${GREEN}[FNB]${NC} $1"; }
 warn() { echo -e "${YELLOW}[FNB]${NC} $1"; }
 err()  { echo -e "${RED}[FNB]${NC} $1"; }
+
+run_backend_migrations() {
+    log "Applying backend migrations..."
+    cd $BACKEND_DIR
+    .venv/bin/alembic upgrade head >/tmp/fnb-alembic.log 2>&1 || {
+        err "Alembic upgrade failed. Check /tmp/fnb-alembic.log"
+        tail -20 /tmp/fnb-alembic.log
+        return 1
+    }
+    log "Backend migrations are up to date"
+}
 
 kill_port() {
     local port=$1
@@ -117,6 +132,7 @@ start_backend() {
     log "Starting backend on port $BACKEND_PORT..."
     kill_port $BACKEND_PORT
     sleep 1
+    run_backend_migrations || return 1
     cd $BACKEND_DIR
     setsid .venv/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port $BACKEND_PORT > $BACKEND_LOG 2>&1 < /dev/null &
     disown
@@ -195,8 +211,37 @@ build_customer() {
     log "Building customer PWA..."
     kill_port $CUSTOMER_PORT
     cd $CUSTOMER_DIR
+    
+    # Update version in manifest.json with timestamp
+    local build_date=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+    local timestamp=$(date +%s)
+    local version="1.0.${timestamp}"
+    
+    # Update manifest.json
+    if [ -f "public/manifest.json" ]; then
+        python3 -c "
+import json
+with open('public/manifest.json', 'r') as f:
+    data = json.load(f)
+data['version'] = '${version}'
+data['build_date'] = '${build_date}'
+with open('public/manifest.json', 'w') as f:
+    json.dump(data, f, indent=2)
+print(f'Updated manifest.json: version={data[\"version\"]}, build_date={data[\"build_date\"]}')
+"
+    fi
+    
+    # Update service worker version
+    if [ -f "public/sw.js" ]; then
+        sed -i "s|const CACHE_VERSION = 'v[^']*'|const CACHE_VERSION = 'v${version}'|" public/sw.js
+        log "Updated sw.js version: ${version}"
+    fi
+    
+    # Clear build cache
+    rm -rf .next
+    
     npx next build
-    log "Customer PWA build complete"
+    log "Customer PWA build complete (version: ${version})"
     start_customer
 }
 
@@ -208,6 +253,30 @@ build() {
 rebuild() {
     log "Clean rebuild all frontends..."
     stop
+    run_backend_migrations || return 1
+    
+    # Update customer PWA version
+    cd $CUSTOMER_DIR
+    local build_date=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+    local timestamp=$(date +%s)
+    local version="1.0.${timestamp}"
+    
+    if [ -f "public/manifest.json" ]; then
+        python3 -c "
+import json
+with open('public/manifest.json', 'r') as f:
+    data = json.load(f)
+data['version'] = '${version}'
+data['build_date'] = '${build_date}'
+with open('public/manifest.json', 'w') as f:
+    json.dump(data, f, indent=2)
+print(f'Updated manifest.json: version={data[\"version\"]}')
+"
+    fi
+    
+    if [ -f "public/sw.js" ]; then
+        sed -i "s|const CACHE_VERSION = 'v[^']*'|const CACHE_VERSION = 'v${version}'|" public/sw.js
+    fi
     
     cd $FRONTEND_DIR
     rm -rf .next
@@ -252,42 +321,17 @@ verify() {
     # Customer count
     local customers=$(curl -s "http://localhost:$BACKEND_PORT/api/v1/admin/customers?page=1&page_size=1" \
         -H "Authorization: Bearer $token" \
-        | python3 -c "import sys,json; print(json.load(sys.stdin).get('total',0))" 2>/dev/null)
+        | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('total', len(d if isinstance(d, list) else d.get('customers', []))))" 2>/dev/null)
     log "Customers: $customers total"
 
     # Broadcasts
     local broadcasts=$(curl -s "http://localhost:$BACKEND_PORT/api/v1/admin/broadcasts?page=1&page_size=1&is_archived=false" \
         -H "Authorization: Bearer $token" \
-        | python3 -c "import sys,json; print(json.load(sys.stdin).get('total',0))" 2>/dev/null)
+        | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('total', len(d if isinstance(d, list) else d.get('broadcasts', []))))" 2>/dev/null)
     log "Active broadcasts: $broadcasts"
 
     echo ""
     log "Verification complete"
-}
-
-seed() {
-    local seed_file="$BACKEND_DIR/seed_full.sql"
-    if [ ! -f "$seed_file" ]; then
-        err "Seed file not found: $seed_file"
-        return 1
-    fi
-    warn "This will TRUNCATE all tables and re-seed. Are you sure?"
-    log "Running seed data..."
-    PGPASSWORD='Tmkh6HsdsOdzBEadYhJ6rafm6Tv-qlbMpuKfYtGyaQrR_MxGq1R317ctuz6zYF1K' \
-        psql -h localhost -p 5433 -d fnb -U fnb -f "$seed_file"
-    log "Seed data applied"
-}
-
-seed_loyalty() {
-    local seed_file="/root/seed-loyalty-full.sql"
-    if [ ! -f "$seed_file" ]; then
-        err "Loyalty seed file not found: $seed_file"
-        return 1
-    fi
-    log "Running loyalty/wallet seed data (append-only)..."
-    PGPASSWORD='Tmkh6HsdsOdzBEadYhJ6rafm6Tv-qlbMpuKfYtGyaQrR_MxGq1R317ctuz6zYF1K' \
-        psql -h localhost -p 5433 -d fnb -U fnb -f "$seed_file"
-    log "Loyalty seed data applied"
 }
 
 # ============================================================
@@ -304,8 +348,6 @@ case "${1:-}" in
     rebuild)         rebuild ;;
     logs)            logs ;;
     verify)          verify ;;
-    seed)            seed ;;
-    seed_loyalty)    seed_loyalty ;;
     backend)         start_backend ;;
     admin)           start_frontend ;;
     customer)        start_customer ;;
@@ -325,8 +367,6 @@ case "${1:-}" in
         echo "  rebuild         Clean rebuild (rm .next) of both apps and restart"
         echo "  logs            Show last 20 lines of all logs"
         echo "  verify          Run API health checks"
-        echo "  seed            Apply seed_full.sql (TRUNCATES all tables)"
-        echo "  seed_loyalty    Apply loyalty/wallet/transaction seed (append-style)"
         echo "  backend         Start Backend only"
         echo "  admin           Start Admin frontend only"
         echo "  customer        Start Customer PWA only"

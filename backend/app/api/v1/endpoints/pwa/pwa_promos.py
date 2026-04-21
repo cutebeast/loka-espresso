@@ -14,7 +14,7 @@ from typing import Optional, List
 from app.core.database import get_db
 from app.core.security import require_role, now_utc, ensure_utc
 from app.models.user import User, RoleIDs
-from app.models.admin_extras import PromoBanner
+from app.models.promotions import PromoBanner
 from app.models.voucher import Voucher, UserVoucher
 
 router = APIRouter(prefix="/promos/banners", tags=["PWA Promos"])
@@ -36,6 +36,8 @@ class PromoBannerPwaOut(BaseModel):
     how_to_redeem: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    survey_id: Optional[int] = None
+    voucher_id: Optional[int] = None
 
     class Config:
         from_attributes = True

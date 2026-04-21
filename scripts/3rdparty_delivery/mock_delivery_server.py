@@ -22,6 +22,7 @@ import random
 import time
 import asyncio
 import httpx
+import os
 from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
@@ -33,6 +34,8 @@ app = FastAPI(title="Mock 3rd Party Delivery API", version="1.0.0")
 # In-memory storage (stateless - resets on restart)
 deliveries = {}
 webhooks = {}  # delivery_id -> callback_url
+
+FNB_WEBHOOK_API_KEY = os.environ.get("FNB_WEBHOOK_API_KEY", "fnb-webhook-default-key")
 
 DELIVERY_STATES = ["pending", "driver_assigned", "picked_up", "in_transit", "delivered"]
 DRIVER_NAMES = ["Ahmad R.", "Lee K.", "Siti N.", "Raj M.", "Fatimah A.", "Wei L.", "Ahmed Z.", "Michelle T."]
@@ -114,10 +117,13 @@ async def auto_advance_delivery(delivery_id: str):
                         "delivery_id": delivery_id,
                         "order_id": d["order_id"],
                         "status": new_status,
-                        "driver_name": d.get("driver_name"),
+                        "driver": {
+                            "id": d.get("driver_id"),
+                            "name": d.get("driver_name"),
+                        },
                         "eta_minutes": d.get("eta_minutes"),
                         "timestamp": datetime.now(timezone.utc).isoformat()
-                    }, timeout=5.0)
+                    }, headers={"X-API-Key": FNB_WEBHOOK_API_KEY}, timeout=5.0)
             except Exception as e:
                 print(f"[MOCK DELIVERY] Webhook call failed for {delivery_id}: {e}")
 

@@ -60,7 +60,10 @@ async def dashboard(
     total_orders = len(filtered_completed)
     total_revenue = sum(to_float(o.total) for o in filtered_completed)
     active_count = len(active_orders)
-    customers = set(o.user_id for o in filtered_completed if o.user_id)
+    customer_count_result = await db.execute(
+        select(func.count(User.id)).where(User.role_id == RoleIDs.CUSTOMER)
+    )
+    total_customers = customer_count_result.scalar() or 0
 
     # When a date filter is applied, show data for the ENTIRE filtered period
     # When no filter, show today's data as default
@@ -130,7 +133,7 @@ async def dashboard(
         "total_orders": total_orders,
         "active_orders": active_count,
         "total_revenue": round(total_revenue, 2),
-        "total_customers": len(customers),
+        "total_customers": total_customers,
         "orders_today": orders_today,
         "revenue_today": round(revenue_today, 2),
         "orders_by_type": orders_by_type,

@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.core.security import now_utc
 from app.core.utils import to_float
 from app.models.voucher import Voucher
-from app.models.admin_extras import PromoBanner
+from app.models.promotions import PromoBanner
 from pydantic import BaseModel
 from typing import Optional
 

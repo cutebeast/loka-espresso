@@ -5,7 +5,7 @@ APIs tested:
   - GET /stores (get all stores)
   - GET /stores/{id}/tables (get available tables)
   - POST /tables/scan (QR code scan)
-  - GET /stores/{id}/menu (get menu)
+  - GET /stores/{id}/items (get menu items)
   - DELETE /cart (clear cart)
   - POST /cart/items (add items to cart)
   - POST /orders (place order with table_id)
@@ -35,7 +35,7 @@ from datetime import datetime, timezone
 
 SEED_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SEED_DIR)
-from shared_config import API_BASE, rand_date_within_days
+from shared_config import API_BASE, rand_date_within_days, get_store_menu_items, re_auth_customer
 
 
 def get_stores(token):
@@ -92,28 +92,8 @@ def scan_table_qr(store_slug, table_id):
 
 
 def get_menu(store_id, token):
-    """Get menu items for a store."""
-    try:
-        resp = requests.get(
-            f"{API_BASE}/stores/{store_id}/menu",
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=10
-        )
-        if resp.status_code != 200:
-            return [], f"GET /stores/{store_id}/menu failed: {resp.status_code}"
-        
-        items = []
-        for cat in resp.json().get("categories", []):
-            for item in cat.get("items", []):
-                if item.get("is_available", True):
-                    items.append({
-                        "item_id": item["id"],
-                        "name": item["name"],
-                        "base_price": item.get("base_price", 0),
-                    })
-        return items, None
-    except Exception as e:
-        return [], str(e)
+    """Get menu items for a store using the current PWA items endpoint."""
+    return get_store_menu_items(store_id, token)
 
 
 def clear_cart(token):
@@ -181,6 +161,12 @@ def place_dinein_order(customer):
     token = customer.get("token")
     if not token:
         return {"success": False, "error": "No token"}
+
+    me_resp = requests.get(f"{API_BASE}/users/me", headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    if me_resp.status_code == 401:
+        customer, token = re_auth_customer(customer)
+        if not token:
+            return {"success": False, "error": "Customer token expired and re-auth failed"}
     
     # Step 1: Fetch stores from API
     stores, err = get_stores(token)

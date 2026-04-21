@@ -44,13 +44,19 @@ import verify_seed_13b_flow_dinein as flow_b
 def get_pending_orders(token):
     """Get all pending orders from API."""
     try:
-        params = {"page": 1, "page_size": 100}
-        resp = api_get("/orders", token=token, params=params)
-        if resp.status_code != 200:
-            return None, f"GET /orders failed: {resp.status_code}"
+        orders = []
+        page = 1
+        total_pages = 1
+        while page <= total_pages:
+            params = {"page": page, "page_size": 100, "status": "pending"}
+            resp = api_get("/orders", token=token, params=params)
+            if resp.status_code != 200:
+                return None, f"GET /orders failed: {resp.status_code}"
 
-        data = resp.json()
-        orders = data.get("orders", [])
+            data = resp.json()
+            orders.extend(data.get("orders", []))
+            total_pages = data.get("total_pages") or max(1, (data.get("total", 0) + data.get("page_size", 100) - 1) // data.get("page_size", 100))
+            page += 1
 
         # Filter for pending orders only
         pending = [o for o in orders if o.get("status") == "pending"]

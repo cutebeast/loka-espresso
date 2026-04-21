@@ -6,13 +6,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from app.core.commerce import (
+    credit_wallet,
+    enum_value,
+    serialize_order_item,
+    settle_order_payment,
+    validate_delivery_request,
+)
 from app.core.database import get_db
 from app.core.security import get_current_user, require_role, require_hq_access, is_global_admin, is_hq, can_access_store
+from app.core.webhooks import verify_webhook_request
 from app.core.audit import log_action
 from app.core.utils import to_float
 from app.core.config import get_settings
 from app.models.user import User, UserTypeIDs, RoleIDs
-from app.models.order import Order, OrderStatusHistory, OrderType, OrderStatus, CartItem, OrderItem
+from app.models.order import Order, OrderStatusHistory, OrderType, OrderStatus, CartItem, OrderItem, Payment
 from app.models.menu import MenuItem
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction, LoyaltyTier
 from app.models.notification import Notification
@@ -40,6 +48,47 @@ VALID_TRANSITIONS = {
 # Flow-specific validation rules
 FLOW_A_TYPES = {"pickup", "delivery"}  # Pay first, then confirm
 FLOW_B_TYPES = {"dine_in"}  # Confirm first, pay at the end
+
+
+def _order_out(order: Order, timeline: list[dict] | None = None) -> OrderOut:
+    items = [serialize_order_item(item) for item in (order.items or [])]
+    return OrderOut(
+        id=order.id,
+        user_id=order.user_id,
+        store_id=order.store_id,
+        table_id=order.table_id,
+        order_number=order.order_number,
+        order_type=order.order_type,
+        items=items,
+        subtotal=to_float(order.subtotal),
+        delivery_fee=to_float(order.delivery_fee),
+        discount=to_float(order.discount),
+        voucher_discount=to_float(order.voucher_discount),
+        reward_discount=to_float(order.reward_discount),
+        loyalty_discount=to_float(order.loyalty_discount),
+        voucher_code=order.voucher_code,
+        reward_redemption_code=order.reward_redemption_code,
+        total=to_float(order.total),
+        status=order.status,
+        pickup_time=order.pickup_time,
+        delivery_address=order.delivery_address,
+        payment_method=order.payment_method,
+        payment_status=order.payment_status,
+        loyalty_points_earned=order.loyalty_points_earned,
+        notes=order.notes,
+        delivery_provider=order.delivery_provider,
+        delivery_status=order.delivery_status,
+        delivery_external_id=order.delivery_external_id,
+        delivery_quote_id=order.delivery_quote_id,
+        delivery_tracking_url=order.delivery_tracking_url,
+        delivery_eta_minutes=order.delivery_eta_minutes,
+        delivery_courier_name=order.delivery_courier_name,
+        delivery_courier_phone=order.delivery_courier_phone,
+        delivery_last_event_at=order.delivery_last_event_at,
+        created_at=order.created_at,
+        updated_at=order.updated_at,
+        status_timeline=timeline,
+    )
 
 
 @router.post("", response_model=OrderOut, status_code=201)
@@ -91,17 +140,30 @@ async def create_order(
 
     delivery_fee = 0.0
     delivery_provider = None
+    delivery_address = req.delivery_address
+    delivery_status = None
     if req.order_type == OrderType.delivery:
+        _, delivery_address, _ = await validate_delivery_request(
+            db,
+            store_id,
+            subtotal,
+            req.delivery_address,
+            customer_name=user.name,
+            customer_phone=user.phone,
+        )
         from app.models.splash import AppConfig
         cfg = await db.execute(select(AppConfig).where(AppConfig.key == "delivery_fee"))
         fee_row = cfg.scalar_one_or_none()
         delivery_fee = float(fee_row.value) if fee_row else 3.0
         delivery_provider = getattr(req, 'delivery_provider', None) or "internal"
+        delivery_status = "awaiting_dispatch"
 
     voucher_discount = 0.0
     reward_discount = 0.0
     used_voucher_code = None
     used_reward_code = None
+    used_voucher = None
+    used_reward = None
 
     if req.voucher_code:
         uv_result = await db.execute(
@@ -134,6 +196,7 @@ async def create_order(
 
         voucher_discount = min(voucher_discount, subtotal + delivery_fee)
         used_voucher_code = req.voucher_code
+        used_voucher = uv
         uv.status = "used"
         uv.used_at = datetime.now(timezone.utc)
         uv.order_id = None
@@ -162,6 +225,7 @@ async def create_order(
             reward_discount = min(disc_value, subtotal + delivery_fee - voucher_discount)
 
         used_reward_code = req.reward_redemption_code
+        used_reward = ur
         ur.status = "used"
         ur.used_at = datetime.now(timezone.utc)
         ur.is_used = True
@@ -182,14 +246,20 @@ async def create_order(
         voucher_code=used_voucher_code,
         reward_redemption_code=used_reward_code,
         total=total, status=OrderStatus.pending,
-        pickup_time=req.pickup_time, delivery_address=req.delivery_address,
+        pickup_time=req.pickup_time, delivery_address=delivery_address,
         payment_method=req.payment_method, notes=req.notes,
         delivery_provider=delivery_provider,
+        delivery_status=delivery_status,
     )
     if req.created_at:
         order.created_at = req.created_at
     db.add(order)
     await db.flush()
+
+    if used_voucher is not None:
+        used_voucher.order_id = order.id
+    if used_reward is not None:
+        used_reward.order_id = order.id
 
     for oi in order_items:
         oi_record = OrderItem(
@@ -221,19 +291,7 @@ async def create_order(
     db.add(notif)
     await db.flush()
 
-    return OrderOut(
-        id=order.id, user_id=order.user_id, store_id=order.store_id,
-        table_id=order.table_id, order_number=order.order_number,
-        order_type=order.order_type, items=order.items,
-        subtotal=to_float(order.subtotal), delivery_fee=to_float(order.delivery_fee),
-        discount=to_float(order.discount), total=to_float(order.total),
-        status=order.status, pickup_time=order.pickup_time,
-        delivery_address=order.delivery_address, payment_method=order.payment_method,
-        payment_status=order.payment_status,
-        loyalty_points_earned=order.loyalty_points_earned,
-        notes=order.notes, delivery_provider=order.delivery_provider,
-        created_at=order.created_at, updated_at=order.updated_at,
-    )
+    return _order_out(order)
 
 
 @router.get("", response_model=OrderListOut)
@@ -258,21 +316,7 @@ async def list_orders(
     total = total_result.scalar() or 0
     result = await db.execute(q.offset((page - 1) * page_size).limit(page_size))
     orders = result.scalars().all()
-    out = []
-    for o in orders:
-        out.append(OrderOut(
-            id=o.id, user_id=o.user_id, store_id=o.store_id,
-            table_id=o.table_id, order_number=o.order_number,
-            order_type=o.order_type, items=o.items,
-            subtotal=to_float(o.subtotal), delivery_fee=to_float(o.delivery_fee),
-            discount=to_float(o.discount), total=to_float(o.total),
-            status=o.status, pickup_time=o.pickup_time,
-            delivery_address=o.delivery_address, payment_method=o.payment_method,
-            payment_status=o.payment_status,
-            loyalty_points_earned=o.loyalty_points_earned,
-            notes=o.notes, delivery_provider=o.delivery_provider,
-            created_at=o.created_at, updated_at=o.updated_at,
-        ))
+    out = [_order_out(o) for o in orders]
     return OrderListOut(orders=out, total=total, page=page, page_size=page_size)
 
 
@@ -294,20 +338,7 @@ async def get_order(
         select(OrderStatusHistory).where(OrderStatusHistory.order_id == order_id).order_by(OrderStatusHistory.created_at)
     )
     timeline = [{"status": h.status.value if hasattr(h.status, 'value') else str(h.status), "note": h.note, "created_at": h.created_at.isoformat() if h.created_at else None} for h in hist_result.scalars().all()]
-    return OrderOut(
-        id=order.id, user_id=order.user_id, store_id=order.store_id,
-        table_id=order.table_id, order_number=order.order_number,
-        order_type=order.order_type, items=order.items,
-        subtotal=to_float(order.subtotal), delivery_fee=to_float(order.delivery_fee),
-        discount=to_float(order.discount), total=to_float(order.total),
-        status=order.status, pickup_time=order.pickup_time,
-        delivery_address=order.delivery_address, payment_method=order.payment_method,
-        payment_status=order.payment_status,
-        loyalty_points_earned=order.loyalty_points_earned,
-        notes=order.notes, delivery_provider=order.delivery_provider,
-        created_at=order.created_at, updated_at=order.updated_at,
-        status_timeline=timeline,
-    )
+    return _order_out(order, timeline=timeline)
 
 
 @router.post("/{order_id}/reorder")
@@ -316,6 +347,7 @@ async def reorder(order_id: int, user: User = Depends(get_current_user), db: Asy
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    added_items = []
     for item_data in order.items:
         ir = await db.execute(select(MenuItem).where(MenuItem.id == item_data.get("item_id")))
         mi = ir.scalar_one_or_none()
@@ -335,8 +367,17 @@ async def reorder(order_id: int, user: User = Depends(get_current_user), db: Asy
                 unit_price=mi.base_price,
             )
             db.add(ci)
+        added_items.append(
+            {
+                "menu_item_id": mi.id,
+                "name": mi.name,
+                "price": to_float(mi.base_price),
+                "quantity": item_data.get("quantity", 1),
+                "customizations": item_data.get("customizations"),
+            }
+        )
     await db.flush()
-    return {"message": "Items added to cart"}
+    return {"message": "Items added to cart", "items": added_items, "store_id": order.store_id}
 
 
 @router.post("/{order_id}/cancel")
@@ -350,9 +391,37 @@ async def cancel_order(order_id: int, user: User = Depends(get_current_user), db
         raise HTTPException(status_code=403, detail="Cannot cancel another user's order")
     if order.status in (OrderStatus.completed, OrderStatus.cancelled):
         raise HTTPException(status_code=400, detail="Cannot cancel this order")
+    was_paid = order.payment_status == "paid"
     order.status = OrderStatus.cancelled
     history = OrderStatusHistory(order_id=order.id, status=OrderStatus.cancelled, note="Cancelled by user")
     db.add(history)
+
+    if order.voucher_code:
+        voucher_result = await db.execute(
+            select(UserVoucher).where(
+                UserVoucher.code == order.voucher_code,
+                UserVoucher.user_id == order.user_id,
+            )
+        )
+        voucher = voucher_result.scalar_one_or_none()
+        if voucher:
+            voucher.status = "available"
+            voucher.used_at = None
+            voucher.order_id = None
+
+    if order.reward_redemption_code:
+        reward_result = await db.execute(
+            select(UserReward).where(
+                UserReward.redemption_code == order.reward_redemption_code,
+                UserReward.user_id == order.user_id,
+            )
+        )
+        reward = reward_result.scalar_one_or_none()
+        if reward:
+            reward.status = "available"
+            reward.used_at = None
+            reward.is_used = False
+            reward.order_id = None
 
     if order.payment_status == "paid" and order.loyalty_points_earned and order.loyalty_points_earned > 0:
         la_result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.user_id == order.user_id))
@@ -374,7 +443,14 @@ async def cancel_order(order_id: int, user: User = Depends(get_current_user), db
             db.add(lt)
         order.loyalty_points_earned = 0
 
-    if order.payment_status == "paid":
+    if was_paid:
+        if order.payment_method == "wallet":
+            await credit_wallet(
+                db,
+                order.user_id,
+                to_float(order.total),
+                description=f"Refund for cancelled order {order.order_number}",
+            )
         order.payment_status = "refunded"
         from app.models.order import Payment
         p_result = await db.execute(select(Payment).where(Payment.order_id == order.id))
@@ -383,7 +459,7 @@ async def cancel_order(order_id: int, user: User = Depends(get_current_user), db
             payment.status = "refunded"
 
     await db.flush()
-    return {"message": "Order cancelled", "loyalty_reversed": order.payment_status == "paid"}
+    return {"message": "Order cancelled", "loyalty_reversed": was_paid}
 
 
 @router.post("/{order_id}/confirm")
@@ -681,86 +757,28 @@ async def update_order_payment_status(
         raise HTTPException(status_code=400, detail="payment_status is required")
 
     old_payment_status = order.payment_status
-    order.payment_status = payment_status
-    
-    # For Flow A (pickup/delivery), also update order status to "paid"
-    order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
-    if payment_status == "paid" and order_type in FLOW_A_TYPES:
-        order.status = OrderStatus.paid
-
-    # If payment is marked as paid, award loyalty points
     points_earned = 0
     if payment_status == "paid" and old_payment_status != "paid":
-        # Get loyalty config
-        cfg_result = await db.execute(select(AppConfig).where(AppConfig.key == "loyalty_points_per_rmse"))
-        cfg_row = cfg_result.scalar_one_or_none()
-        earn_rate = int(cfg_row.value) if cfg_row else 1
-        
-        # Get customer's loyalty account
-        la_result = await db.execute(
-            select(LoyaltyAccount).where(LoyaltyAccount.user_id == order.user_id)
-        )
-        la = la_result.scalar_one_or_none()
-        
-        # Get tier multiplier
-        multiplier = 1.0
-        tier_name = "bronze"
-        if la:
-            tier_name = la.tier
-            tier_result = await db.execute(
-                select(LoyaltyTier).where(func.lower(LoyaltyTier.name) == la.tier.lower())
-            )
-            tier = tier_result.scalar_one_or_none()
-            if tier:
-                multiplier = float(tier.points_multiplier)
-        
-        # Calculate points: amount * earn_rate * multiplier
-        points = int(float(order.total) * earn_rate * multiplier)
-        
-        if points > 0:
-            if la:
-                # Update existing loyalty account
-                la.points_balance += points
-                la.total_points_earned += points
-            else:
-                # Create new loyalty account
-                la = LoyaltyAccount(
-                    user_id=order.user_id, 
-                    points_balance=points, 
-                    tier=tier_name, 
-                    total_points_earned=points
-                )
-                db.add(la)
-            
-            # Create loyalty transaction
-            lt = LoyaltyTransaction(
-                user_id=order.user_id,
+        payment_result = await db.execute(select(Payment).where(Payment.order_id == order.id))
+        payment = payment_result.scalar_one_or_none()
+        if not payment:
+            payment = Payment(
                 order_id=order.id,
-                store_id=order.store_id,
-                points=points,
-                type="earn",
-                description=f"Points earned for order {order.order_number}",
+                method=order.payment_method,
+                provider="internal",
+                amount=to_float(order.total),
+                status="pending",
+                transaction_id=f"MANUAL-{uuid.uuid4().hex[:10].upper()}",
             )
-            db.add(lt)
-            order.loyalty_points_earned = points
-            points_earned = points
-            
-            # Check for tier promotion
-            if la:
-                lifetime = la.total_points_earned
-                tier_result = await db.execute(
-                    select(LoyaltyTier).where(func.lower(LoyaltyTier.name) == la.tier.lower())
-                )
-                current_tier = tier_result.scalar_one_or_none()
-                current_tier_name = current_tier.name if current_tier else la.tier
-                
-                # Find new tier based on lifetime points
-                tier_promotion_result = await db.execute(
-                    select(LoyaltyTier).where(LoyaltyTier.min_points <= lifetime).order_by(LoyaltyTier.min_points.desc()).limit(1)
-                )
-                new_tier = tier_promotion_result.scalar_one_or_none()
-                if new_tier and new_tier.name != current_tier_name:
-                    la.tier = new_tier.name
+            db.add(payment)
+            await db.flush()
+        points_earned = await settle_order_payment(db, order, payment)
+    else:
+        order.payment_status = payment_status
+        payment_result = await db.execute(select(Payment).where(Payment.order_id == order.id))
+        payment = payment_result.scalar_one_or_none()
+        if payment:
+            payment.status = payment_status
 
     await db.flush()
     return {
@@ -792,11 +810,12 @@ async def delivery_provider_webhook(
     
     Authentication: Uses API key in header (X-API-Key) - to be implemented per provider
     """
-    # Validate API key from header
-    api_key = request.headers.get("X-API-Key", "")
     _settings = get_settings()
-    if api_key != _settings.WEBHOOK_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API key")
+    await verify_webhook_request(
+        request,
+        api_key=_settings.WEBHOOK_API_KEY,
+        signing_secret=_settings.WEBHOOK_SIGNING_SECRET,
+    )
     
     # Get the order
     result = await db.execute(select(Order).where(Order.id == order_id))
@@ -812,14 +831,20 @@ async def delivery_provider_webhook(
     delivery_status = payload.get("status")
     delivery_id = payload.get("delivery_id")
     driver_info = payload.get("driver", {})
+    tracking_url = payload.get("tracking_url")
+    eta_minutes = payload.get("eta_minutes")
+    quote_id = payload.get("quote_id")
     
     if not delivery_status:
         raise HTTPException(status_code=400, detail="status is required")
     
     # Map delivery provider status to order status
     status_mapping = {
+        "awaiting_dispatch": "ready",
+        "driver_assigned": "ready",
         "picked_up": "out_for_delivery",
         "out_for_delivery": "out_for_delivery",
+        "in_transit": "out_for_delivery",
         "delivered": "completed",
         "failed": "ready",
         "cancelled": "ready",
@@ -832,17 +857,31 @@ async def delivery_provider_webhook(
             "order_id": order_id,
         }
     
+    order.delivery_status = delivery_status
+    order.delivery_external_id = delivery_id or order.delivery_external_id
+    order.delivery_quote_id = quote_id or order.delivery_quote_id
+    order.delivery_tracking_url = tracking_url or order.delivery_tracking_url
+    if eta_minutes is not None:
+        try:
+            order.delivery_eta_minutes = int(eta_minutes)
+        except (TypeError, ValueError):
+            pass
+    if driver_info:
+        order.delivery_courier_name = driver_info.get("name") or order.delivery_courier_name
+        order.delivery_courier_phone = driver_info.get("phone") or order.delivery_courier_phone
+    order.delivery_last_event_at = datetime.now(timezone.utc)
+
     # Update order status
     old_status = order.status.value if hasattr(order.status, 'value') else str(order.status)
     
     # Validate transition
     if new_status != old_status:
-        order.status = new_status
+        order.status = OrderStatus(new_status)
         
         # Add status history
         history = OrderStatusHistory(
             order_id=order.id,
-            status=new_status,
+            status=OrderStatus(new_status),
             note=f"Delivery webhook: {delivery_status} (Driver: {driver_info.get('name', 'Unknown')})",
         )
         db.add(history)
@@ -861,6 +900,14 @@ async def delivery_provider_webhook(
                 user_id=order.user_id,
                 title="Out for Delivery",
                 body=f"Your order {order.order_number} is on the way!",
+                type="order",
+            )
+            db.add(notif)
+        elif delivery_status == "driver_assigned":
+            notif = Notification(
+                user_id=order.user_id,
+                title="Driver Assigned",
+                body=f"A courier has been assigned to order {order.order_number}.",
                 type="order",
             )
             db.add(notif)
@@ -896,11 +943,12 @@ async def external_pos_webhook(
     
     For dine-in orders, the POS handles the kitchen workflow and payment.
     """
-    # Validate API key from header
-    api_key = request.headers.get("X-API-Key", "")
     _settings = get_settings()
-    if api_key != _settings.WEBHOOK_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API key")
+    await verify_webhook_request(
+        request,
+        api_key=_settings.WEBHOOK_API_KEY,
+        signing_secret=_settings.WEBHOOK_SIGNING_SECRET,
+    )
     
     # Get the order
     result = await db.execute(select(Order).where(Order.id == order_id))
@@ -920,85 +968,43 @@ async def external_pos_webhook(
         if pos_status in valid_statuses:
             old_status = order.status.value if hasattr(order.status, 'value') else str(order.status)
             if pos_status != old_status:
-                order.status = pos_status
+                order.status = OrderStatus(pos_status)
                 updated_fields.append(f"status: {pos_status}")
                 
                 # Add status history
                 history = OrderStatusHistory(
                     order_id=order.id,
-                    status=pos_status,
+                    status=OrderStatus(pos_status),
                     note=f"POS webhook update (POS Order: {pos_order_id})",
                 )
                 db.add(history)
     
     # Handle payment status update from POS
     if payment_status == "paid" and order.payment_status != "paid":
-        order.payment_status = "paid"
         updated_fields.append("payment_status: paid")
-        
-        # Award loyalty points (same logic as payment-status endpoint)
-        cfg_result = await db.execute(select(AppConfig).where(AppConfig.key == "loyalty_points_per_rmse"))
-        cfg_row = cfg_result.scalar_one_or_none()
-        earn_rate = int(cfg_row.value) if cfg_row else 1
-        
-        la_result = await db.execute(
-            select(LoyaltyAccount).where(LoyaltyAccount.user_id == order.user_id)
-        )
-        la = la_result.scalar_one_or_none()
-        
-        multiplier = 1.0
-        tier_name = "bronze"
-        if la:
-            tier_name = la.tier
-            tier_result = await db.execute(
-                select(LoyaltyTier).where(func.lower(LoyaltyTier.name) == la.tier.lower())
-            )
-            tier = tier_result.scalar_one_or_none()
-            if tier:
-                multiplier = float(tier.points_multiplier)
-        
-        points = int(float(order.total) * earn_rate * multiplier)
-        
-        if points > 0:
-            if la:
-                la.points_balance += points
-                la.total_points_earned += points
-            else:
-                la = LoyaltyAccount(
-                    user_id=order.user_id,
-                    points_balance=points,
-                    tier=tier_name,
-                    total_points_earned=points
-                )
-                db.add(la)
-            
-            lt = LoyaltyTransaction(
-                user_id=order.user_id,
+        payment_result = await db.execute(select(Payment).where(Payment.order_id == order.id))
+        payment = payment_result.scalar_one_or_none()
+        if not payment:
+            payment = Payment(
                 order_id=order.id,
-                store_id=order.store_id,
-                points=points,
-                type="earn",
-                description=f"Points earned for order {order.order_number} (via POS)",
+                method=order.payment_method or "cash",
+                provider="pos",
+                amount=to_float(order.total),
+                status="pending",
+                transaction_id=pos_order_id,
+                provider_reference=pos_order_id,
             )
-            db.add(lt)
-            order.loyalty_points_earned = points
+            db.add(payment)
+            await db.flush()
+        points = await settle_order_payment(
+            db,
+            order,
+            payment,
+            transaction_id=pos_order_id,
+            provider_reference=pos_order_id,
+        )
+        if points > 0:
             updated_fields.append(f"loyalty_points: {points}")
-            
-            # Check for tier promotion
-            if la:
-                lifetime = la.total_points_earned
-                tier_result = await db.execute(
-                    select(LoyaltyTier).where(func.lower(LoyaltyTier.name) == la.tier.lower())
-                )
-                current_tier = tier_result.scalar_one_or_none()
-                current_tier_name = current_tier.name if current_tier else la.tier
-                
-                tier_promotion_result = await db.execute(
-                    select(LoyaltyTier).where(LoyaltyTier.min_points <= lifetime).order_by(LoyaltyTier.min_points.desc()).limit(1)
-                )
-                new_tier = tier_promotion_result.scalar_one_or_none()
-                if new_tier and new_tier.name != current_tier_name:
-                    la.tier = new_tier.name
     
     await db.flush()
     

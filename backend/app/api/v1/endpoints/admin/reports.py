@@ -10,7 +10,7 @@ from app.models.user import User, RoleIDs
 from app.models.order import Order, OrderStatus
 from app.models.loyalty import LoyaltyTransaction, LoyaltyAccount
 from app.models.menu import InventoryItem
-from app.models.admin_extras import Feedback
+from app.models.feedback import Feedback
 from app.models.reward import Reward, UserReward
 from app.models.voucher import Voucher, UserVoucher
 from app.models.store import Store
@@ -155,14 +155,20 @@ async def marketing_report(
 
     # --- Loyalty ---
     loyalty_result = await db.execute(
-        select(LoyaltyAccount)
+        select(User, LoyaltyAccount)
+        .join(LoyaltyAccount, LoyaltyAccount.user_id == User.id, isouter=True)
+        .where(User.role_id == RoleIDs.CUSTOMER)
     )
-    accounts = loyalty_result.scalars().all()
-    total_members = len(accounts)
+    loyalty_rows = loyalty_result.all()
+    total_members = 0
     tier_dist = {}
-    for a in accounts:
-        t = a.tier or "bronze"
-        tier_dist[t] = tier_dist.get(t, 0) + 1
+    for customer, account in loyalty_rows:
+        profile_complete = bool(customer.phone_verified and (customer.name or "").strip() and (customer.email or "").strip())
+        if not profile_complete:
+            continue
+        total_members += 1
+        tier_name = (account.tier if account and account.tier else "bronze").strip().lower()
+        tier_dist[tier_name] = tier_dist.get(tier_name, 0) + 1
 
     tx_query = select(LoyaltyTransaction).where(LoyaltyTransaction.created_at >= from_date, LoyaltyTransaction.created_at <= to_date)
     tx_result = await db.execute(tx_query)

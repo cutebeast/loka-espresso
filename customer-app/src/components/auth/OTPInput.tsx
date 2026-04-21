@@ -1,22 +1,40 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ShieldCheck, ChevronLeft, Loader2 } from 'lucide-react';
-import { Button } from '../ui/Button';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Check, Loader2, MessageSquare } from 'lucide-react';
 
 interface OTPInputProps {
   phone: string;
   onSubmit: (otp: string) => Promise<void>;
   onResend: () => Promise<void>;
+  initialRetryAfterSeconds?: number;
   onBack: () => void;
 }
 
-export function OTPInput({ phone, onSubmit, onResend, onBack }: OTPInputProps) {
+const LOKA = {
+  primary: '#384B16',
+  primaryDark: '#2A3910',
+  primaryDisabled: '#6B7A4E',
+  copper: '#D18E38',
+  copperSoft: 'rgba(209,142,56,0.12)',
+  textPrimary: '#1B2023',
+  textMuted: '#6A7A8A',
+  border: '#C4CED8',
+  borderSubtle: '#E4EAEF',
+  danger: '#C75050',
+  success: '#5C8A3E',
+  successSoft: '#EEF4E8',
+  bg: '#FFFFFF',
+} as const;
+
+export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds = 60, onBack }: OTPInputProps) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [resendTimer, setResendTimer] = useState(60);
+  const [resendTimer, setResendTimer] = useState(initialRetryAfterSeconds);
+  const [showResentToast, setShowResentToast] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -24,6 +42,13 @@ export function OTPInput({ phone, onSubmit, onResend, onBack }: OTPInputProps) {
   }, []);
 
   useEffect(() => {
+    setResendTimer(initialRetryAfterSeconds);
+  }, [initialRetryAfterSeconds]);
+
+  useEffect(() => {
+    if (resendTimer <= 0) {
+      return undefined;
+    }
     const interval = setInterval(() => {
       setResendTimer((prev) => {
         if (prev <= 1) {
@@ -34,11 +59,10 @@ export function OTPInput({ phone, onSubmit, onResend, onBack }: OTPInputProps) {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [resendTimer]);
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
-    
     const newOtp = [...otp];
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
@@ -46,10 +70,6 @@ export function OTPInput({ phone, onSubmit, onResend, onBack }: OTPInputProps) {
 
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
-    }
-
-    if (newOtp.every((digit) => digit !== '')) {
-      handleVerify(newOtp.join(''));
     }
   };
 
@@ -63,27 +83,25 @@ export function OTPInput({ phone, onSubmit, onResend, onBack }: OTPInputProps) {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
     if (!/^\d+$/.test(pastedData)) return;
-    
     const newOtp = [...otp];
     pastedData.split('').forEach((char, i) => {
       if (i < 6) newOtp[i] = char;
     });
     setOtp(newOtp);
-    
     const lastFilledIndex = Math.min(pastedData.length - 1, 5);
     inputRefs.current[lastFilledIndex]?.focus();
   };
 
-  const handleVerify = async (code?: string) => {
-    const otpCode = code || otp.join('');
-    if (otpCode.length !== 6) {
+  const handleVerify = async () => {
+    const code = otp.join('');
+    if (code.length !== 6) {
       setError('Please enter the complete 6-digit code');
       return;
     }
     setIsLoading(true);
     setError('');
     try {
-      await onSubmit(otpCode);
+      await onSubmit(code);
     } catch {
       setError('Invalid OTP. Please try again.');
       setOtp(['', '', '', '', '', '']);
@@ -95,146 +113,323 @@ export function OTPInput({ phone, onSubmit, onResend, onBack }: OTPInputProps) {
 
   const handleResend = async () => {
     if (resendTimer > 0) return;
-    setIsLoading(true);
     try {
       await onResend();
       setResendTimer(60);
       setOtp(['', '', '', '', '', '']);
+      setShowResentToast(true);
+      setTimeout(() => setShowResentToast(false), 2500);
       inputRefs.current[0]?.focus();
     } catch {
-      setError('Failed to resend OTP. Please try again.');
-    } finally {
-      setIsLoading(false);
+      setError('Failed to resend OTP.');
     }
   };
 
-  // Format phone for display
-  const displayPhone = phone.replace(/(\+\d{2})(\d{2})(\d{3})(\d{4})/, '$1 $2 $3 $4');
+  // Auto-submit when 6 digits are entered
+  useEffect(() => {
+    if (otp.every((d) => d) && !isLoading) {
+      handleVerify();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp.join('')]);
+
+  // Format +60123456789 → +60 12-345 6789
+  const displayPhone = (() => {
+    const d = phone.replace(/\D/g, '');
+    if (d.length < 11) return phone;
+    return `+${d.slice(0, 2)} ${d.slice(2, 4)}-${d.slice(4, 7)} ${d.slice(7)}`;
+  })();
+
+  const isDisabled = isLoading || otp.some((d) => !d);
 
   return (
-    <div className="w-full">
-      {/* Back Button */}
-      <motion.button
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        onClick={onBack}
-        className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors mb-6"
+    <div
+      className="w-full h-full flex flex-col overflow-y-auto"
+      style={{ background: LOKA.bg }}
+    >
+      <div
+        className="flex flex-col h-full"
+        style={{ padding: '20px 24px 32px' }}
       >
-        <ChevronLeft className="w-6 h-6 text-white" />
-      </motion.button>
-
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="text-center mb-10"
-      >
-        <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <ShieldCheck className="w-10 h-10 text-white" />
+        {/* Top bar – back button */}
+        <div style={{ marginBottom: 20 }}>
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={onBack}
+            aria-label="Back"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              background: '#F5F7FA',
+              border: 'none',
+              cursor: 'pointer',
+              color: LOKA.textPrimary,
+            }}
+          >
+            <ArrowLeft size={18} />
+          </motion.button>
         </div>
-        <h1 className="text-3xl font-bold text-white mb-3">Verify Phone</h1>
-        <p className="text-white/70">
-          Enter the 6-digit code sent to<br />
-          <span className="font-semibold text-white">{displayPhone}</span>
-        </p>
-      </motion.div>
 
-      {/* OTP Input */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="flex justify-center gap-2 mb-6"
-        onPaste={handlePaste}
-      >
-        {otp.map((digit, index) => (
-          <input
-            key={index}
-            ref={(el) => { inputRefs.current[index] = el; }}
-            type="text"
-            inputMode="numeric"
-            value={digit}
-            onChange={(e) => handleChange(index, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(index, e)}
-            className={`
-              w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 transition-all duration-200
-              ${error 
-                ? 'border-red-400 bg-red-500/10 text-red-300' 
-                : digit 
-                  ? 'border-white/50 bg-white/15 text-white' 
-                  : 'border-white/20 bg-white/10 text-white focus:border-white/40'
-              }
-              outline-none
-            `}
-            maxLength={1}
-          />
-        ))}
-      </motion.div>
-
-      {/* Error Message */}
-      {error && (
-        <motion.p
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center text-sm text-red-300 mb-4"
+        {/* Brand accent */}
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.35 }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 56,
+            height: 56,
+            borderRadius: 18,
+            background: LOKA.copperSoft,
+            border: `1px solid rgba(209,142,56,0.25)`,
+            marginBottom: 28,
+          }}
         >
-          {error}
-        </motion.p>
-      )}
+          <MessageSquare
+            size={26}
+            style={{ color: LOKA.copper }}
+            strokeWidth={1.8}
+          />
+        </motion.div>
 
-      {/* Verify Button */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <Button
-          onClick={() => handleVerify()}
-          className="w-full mt-4"
-          size="lg"
-          disabled={isLoading || otp.some((d) => !d)}
+        {/* Header */}
+        <motion.div
+          initial={{ y: 8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+          style={{ marginBottom: 28 }}
+        >
+          <h2
+            style={{
+              fontSize: 30,
+              fontWeight: 800,
+              lineHeight: 1.15,
+              color: LOKA.textPrimary,
+              letterSpacing: '-0.02em',
+              margin: 0,
+            }}
+          >
+            Enter verification code
+          </h2>
+          <p
+            style={{
+              marginTop: 10,
+              fontSize: 15,
+              color: LOKA.textMuted,
+              lineHeight: 1.5,
+            }}
+          >
+            We sent a 6-digit code to{' '}
+            <span style={{ color: LOKA.textPrimary, fontWeight: 600 }}>
+              {displayPhone}
+            </span>
+            <button
+              onClick={onBack}
+              style={{
+                marginLeft: 6,
+                color: LOKA.primary,
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+              }}
+            >
+              edit
+            </button>
+          </p>
+        </motion.div>
+
+        {/* OTP inputs */}
+        <motion.div
+          initial={{ y: 8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.35, delay: 0.1 }}
+          style={{ marginBottom: 24 }}
+        >
+          <div
+            onPaste={handlePaste}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(6, 1fr)',
+              gap: 8,
+            }}
+          >
+            {otp.map((digit, index) => {
+              const isFocusedBox = focusedIndex === index;
+              const borderColor = error
+                ? LOKA.danger
+                : isFocusedBox
+                  ? LOKA.primary
+                  : digit
+                    ? LOKA.primary
+                    : LOKA.border;
+              return (
+                <input
+                  key={index}
+                  ref={(el) => {
+                    inputRefs.current[index] = el;
+                  }}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d"
+                  value={digit}
+                  onChange={(e) => handleChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  onFocus={() => setFocusedIndex(index)}
+                  onBlur={() => setFocusedIndex(null)}
+                  maxLength={1}
+                  aria-label={`Digit ${index + 1}`}
+                  style={{
+                    width: '100%',
+                    aspectRatio: '1 / 1.2',
+                    textAlign: 'center',
+                    fontSize: 26,
+                    fontWeight: 700,
+                    border: `1.5px solid ${borderColor}`,
+                    borderRadius: 14,
+                    outline: 'none',
+                    background: digit ? '#FAFBF8' : '#FFFFFF',
+                    color: LOKA.textPrimary,
+                    transition: 'all 0.15s ease',
+                    boxShadow: isFocusedBox
+                      ? `0 0 0 4px rgba(56,75,22,0.08)`
+                      : 'none',
+                    caretColor: LOKA.primary,
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          {/* OTP-sent confirmation pill */}
+          <AnimatePresence mode="wait">
+            {showResentToast ? (
+              <motion.div
+                key="resent"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: 14,
+                  padding: '6px 12px',
+                  borderRadius: 999,
+                  background: LOKA.successSoft,
+                  color: LOKA.success,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                <Check size={14} /> New code sent
+              </motion.div>
+            ) : (
+              <motion.div
+                key="sent"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: 14,
+                  padding: '6px 12px',
+                  borderRadius: 999,
+                  background: LOKA.successSoft,
+                  color: LOKA.success,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                <Check size={14} /> Code sent to your phone
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ color: LOKA.danger, fontSize: 13, marginBottom: 12 }}
+          >
+            {error}
+          </motion.p>
+        )}
+
+        {/* Primary CTA */}
+        <motion.button
+          onClick={handleVerify}
+          disabled={isDisabled}
+          whileTap={isDisabled ? {} : { scale: 0.985 }}
+          style={{
+            background: isDisabled ? LOKA.primaryDisabled : LOKA.primary,
+            color: '#FFFFFF',
+            fontWeight: 600,
+            fontSize: 16,
+            padding: '17px 20px',
+            borderRadius: 9999,
+            width: '100%',
+            marginTop: 4,
+            border: 'none',
+            cursor: isDisabled ? 'not-allowed' : 'pointer',
+            boxShadow: isDisabled
+              ? 'none'
+              : '0 10px 24px -10px rgba(42,57,16,0.5)',
+            transition:
+              'background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease',
+          }}
         >
           {isLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2
+              className="animate-spin"
+              style={{ width: 20, height: 20, margin: '0 auto' }}
+            />
           ) : (
-            'Verify'
+            'Verify & Continue'
           )}
-        </Button>
-      </motion.div>
+        </motion.button>
 
-      {/* Resend */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="text-center mt-8"
-      >
-        <p className="text-white/50 text-sm">
-          Didn&apos;t receive the code?{' '}
+        <div style={{ flex: 1 }} />
+
+        {/* Resend */}
+        <p
+          style={{
+            textAlign: 'center',
+            marginTop: 24,
+            fontSize: 14,
+            color: LOKA.textMuted,
+          }}
+        >
+          Didn&apos;t get a code?{' '}
           <button
             onClick={handleResend}
             disabled={resendTimer > 0}
-            className={`font-medium transition-colors ${
-              resendTimer > 0 
-                ? 'text-white/30 cursor-not-allowed' 
-                : 'text-white hover:text-white/80'
-            }`}
+            style={{
+              color: resendTimer > 0 ? LOKA.textMuted : LOKA.primary,
+              fontWeight: 600,
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              cursor: resendTimer > 0 ? 'not-allowed' : 'pointer',
+              fontSize: 14,
+              textDecoration: resendTimer > 0 ? 'none' : 'underline',
+            }}
           >
-            {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend'}
+            {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend code'}
           </button>
         </p>
-      </motion.div>
-
-      {/* Demo Note */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="text-center text-xs text-white/30 mt-6"
-      >
-        Demo: Use code 111111
-      </motion.p>
+      </div>
     </div>
   );
 }

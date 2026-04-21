@@ -30,6 +30,7 @@ class RewardCatalogOut(BaseModel):
     id: int
     name: str
     short_description: Optional[str] = None
+    description: Optional[str] = None
     image_url: Optional[str] = None
     points_cost: int
     reward_type: str

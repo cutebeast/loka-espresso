@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = ""
     UPLOAD_DIR: str = "/root/fnb-super-app/uploads"
     WEBHOOK_API_KEY: str = "fnb-webhook-default-key"
+    WEBHOOK_SIGNING_SECRET: str = ""
+
+    # Environment guard. The DB-driven OTP bypass is ONLY honored when this
+    # is true (so a forgotten admin toggle in prod can never let attackers
+    # authenticate). Default: False so production is safe by default.
+    OTP_BYPASS_ALLOWED: bool = False
 
     @property
     def cors_origins_list(self) -> list[str]:

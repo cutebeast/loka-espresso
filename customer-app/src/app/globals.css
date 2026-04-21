@@ -3,6 +3,7 @@
 /* ============================================
    LOKA ESPRESSO - PWA DESIGN SYSTEM
    Tailwind v4 with Custom Properties
+   Adapted from ZUS Coffee design reference
    ============================================ */
 
 @theme inline {
@@ -14,6 +15,18 @@
   --color-primary-100: #E8EDE0;
   --color-primary-200: #D1DBC1;
   
+  --color-loka-primary: #384B16;
+  --color-loka-primary-dark: #2A3910;
+  --color-loka-accent-copper: #D18E38;
+  --color-loka-accent-brown: #57280D;
+  --color-loka-text-primary: #1B2023;
+  --color-loka-text-secondary: #3A4A5A;
+  --color-loka-text-muted: #6A7A8A;
+  --color-loka-border: #C4CED8;
+  --color-loka-border-light: #D4DCE5;
+  --color-loka-bg-light: #E4EAEF;
+  --color-loka-bg-muted: #D4DCE5;
+  
   /* Accent Colors */
   --color-accent: #85B085;
   --color-accent-copper: #D18E38;
@@ -23,21 +36,21 @@
   --color-accent-blue: #4A607A;
   
   /* Background Colors */
-  --color-bg: #E4EAEF;
-  --color-bg-light: #F5F7FA;
-  --color-bg-muted: #D4DCE5;
-  --color-bg-card: #FFFFFF;
+  --color-bg: #F5F7FA;
+  --color-bg-light: #FFFFFF;
+  --color-bg-muted: #EDF2F7;
+  --color-bg-card: #F9FBFE;
   --color-bg-dark: #1B2023;
   
   /* Text Colors */
-  --color-text-primary: #1B2023;
-  --color-text-secondary: #3A4A5A;
-  --color-text-muted: #6A7A8A;
+  --color-text-primary: #0B1E3A;
+  --color-text-secondary: #5E718D;
+  --color-text-muted: #64748B;
   --color-text-light: #FFFFFF;
   
   /* Border Colors */
-  --color-border: #C4CED8;
-  --color-border-light: #D4DCE5;
+  --color-border: #EDF2F7;
+  --color-border-light: #E9F0FA;
   
   /* Semantic Colors */
   --color-success: #85B085;
@@ -62,8 +75,8 @@
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-nav: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03);
+  --shadow-nav: 0 -4px 10px rgba(0, 0, 0, 0.02);
   
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -89,17 +102,22 @@ html {
 }
 
 body {
-  background: var(--color-bg);
+  font-family: var(--font-sans);
+  background: #E4EAEF;
   color: var(--color-text-primary);
   min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
-  overflow: hidden; /* Prevent body scroll, handle in app */
+  min-height: 100dvh;
 }
 
 /* ============================================
-   APP CONTAINER
-   Mobile-first responsive design
-   ============================================ */
+    APP CONTAINER
+    Real mobile PWA – full screen on phones.
+    The rounded "phone preview" frame only kicks
+    in on desktop (≥768px) as a dev/demo chrome;
+    the HTML mockup's phone wrapper was purely a
+    presentational container and not part of the
+    actual PWA design.
+    ============================================ */
 
 .app-container {
   width: 100%;
@@ -107,51 +125,85 @@ body {
   height: 100dvh;
   max-width: 430px;
   margin: 0 auto;
-  background: var(--color-bg-light);
+  background: #FFFFFF;
   position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* Desktop: Show phone frame */
+/* Desktop only: show a phone-frame preview. */
 @media (min-width: 768px) {
   body {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
-    background: linear-gradient(135deg, #D4DCE5 0%, #E4EAEF 100%);
+    min-height: 100vh;
+    padding: 12px;
+    background: #E4EAEF;
   }
-  
+
   .app-container {
-    height: 844px;
-    max-height: 90vh;
-    border-radius: 40px;
-    box-shadow: 
-      0 25px 50px -12px rgba(0, 0, 0, 0.25),
-      0 0 0 1px rgba(56, 75, 22, 0.1);
+    max-width: 390px;
+    height: 780px;
+    border-radius: 36px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(56, 75, 22, 0.15);
     overflow: hidden;
+    background: #FFFFFF;
   }
-  
-  /* Notch simulation for desktop preview */
-  .app-container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 150px;
-    height: 30px;
-    background: var(--color-bg-dark);
-    border-radius: 0 0 20px 20px;
-    z-index: 100;
+}
+
+/* Portrait lock overlay — shown in landscape on short viewports */
+.rotate-prompt {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #E4EAEF;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .app-container > :not(.rotate-prompt) {
+    display: none !important;
   }
+  .rotate-prompt {
+    display: flex;
+  }
+  .rotate-prompt-inner {
+    background: #FFFFFF;
+    border-radius: 24px;
+    padding: 32px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+  .rotate-prompt-icon {
+    font-size: 48px;
+    animation: rotate-hint 1.5s ease-in-out infinite;
+  }
+  .rotate-prompt-text {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1B2023;
+    text-align: center;
+  }
+}
+
+@keyframes rotate-hint {
+  0%, 100% { transform: rotate(-15deg); }
+  50% { transform: rotate(15deg); }
 }
 
 /* ============================================
    SAFE AREA SUPPORT
-   For iOS notch and home indicator
    ============================================ */
 
 .safe-area-top {
@@ -168,33 +220,42 @@ body {
 }
 
 /* ============================================
-   SCROLL CONTAINERS
-   Smooth scrolling with iOS momentum
-   ============================================ */
+    SCROLL CONTAINERS
+    ============================================ */
 
 .scroll-container {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch; /* iOS momentum scroll */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .scroll-container::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  display: none;
 }
 
 .scroll-x {
+  display: flex;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  white-space: nowrap;
 }
 
 .scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/* Scrollbar hide utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 
@@ -204,7 +265,7 @@ body {
 
 input, select, textarea {
   font-family: inherit;
-  font-size: 16px; /* Prevent iOS zoom on focus */
+  font-size: 16px;
   -webkit-appearance: none;
   appearance: none;
 }
@@ -228,7 +289,6 @@ button {
 
 /* ============================================
    TOUCH TARGETS
-   Minimum 44px for accessibility
    ============================================ */
 
 .touch-target {
@@ -263,11 +323,7 @@ button {
 
 /* Gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
-}
-
-.gradient-card {
-  background: linear-gradient(145deg, var(--color-primary) 0%, #4A5D24 100%);
+  background: linear-gradient(145deg, #384B16 0%, #4A6A1D 100%);
 }
 
 /* Glassmorphism effect */
@@ -308,12 +364,26 @@ button {
   }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
 }
 
 .animate-slideUp {
   animation: slideUp 0.4s ease-out;
+}
+
+.loka-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(56, 75, 22, 0.2);
+  border-top-color: #384B16;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 /* ============================================
@@ -324,7 +394,7 @@ button {
   background: linear-gradient(
     90deg,
     var(--color-bg-muted) 25%,
-    var(--color-bg-light) 50%,
+    var(--color-bg) 50%,
     var(--color-bg-muted) 75%
   );
   background-size: 200% 100%;
@@ -347,7 +417,6 @@ button {
 
 /* ============================================
    FOCUS STYLES
-   Accessibility
    ============================================ */
 
 :focus-visible {
@@ -360,33 +429,77 @@ button {
    ============================================ */
 
 .disabled, [disabled] {
-  opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Form-control disabled (input/select/textarea) – soft fade.
+   Buttons keep their explicit `disabled:` Tailwind utility so
+   the primary CTA stays visually prominent like the mockup. */
+input[disabled],
+select[disabled],
+textarea[disabled] {
+  opacity: 0.5;
   pointer-events: none;
 }
 
 /* ============================================
-   PAGE TRANSITIONS
+   CUSTOM STYLES FROM HTML PROTOTYPE
    ============================================ */
 
-.page-enter {
+/* Wallet card gradient */
+.wallet-gradient {
+  background: linear-gradient(145deg, #2A3910 0%, #384B16 100%);
+}
+
+/* Custom wallet shadow */
+.wallet-shadow {
+  box-shadow: 0 12px 24px -8px rgba(42, 57, 16, 0.35);
+}
+
+/* Bottom sheet modal transitions */
+.modal-overlay {
+  visibility: hidden;
   opacity: 0;
-  transform: translateX(20px);
+  transition: opacity 0.2s ease;
 }
-
-.page-enter-active {
+.modal-overlay.show {
+  visibility: visible;
   opacity: 1;
-  transform: translateX(0);
-  transition: opacity 0.3s, transform 0.3s;
+}
+.modal-content {
+  transform: translateY(100%);
+  transition: transform 0.25s ease-out;
+}
+.modal-overlay.show .modal-content {
+  transform: translateY(0);
 }
 
-.page-exit {
-  opacity: 1;
-  transform: translateX(0);
+/* OTP input styling */
+.otp-input {
+  width: 46px;
+  height: 56px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 600;
+  border: 1.5px solid #C4CED8;
+  border-radius: 14px;
+  outline: none;
+  background: white;
+}
+.otp-input:focus {
+  border-color: #384B16;
 }
 
-.page-exit-active {
-  opacity: 0;
-  transform: translateX(-20px);
-  transition: opacity 0.3s, transform 0.3s;
+/* Phone input wrapper focus */
+.phone-wrapper:focus-within {
+  border-color: #384B16;
 }
+
+/* Action chip hover */
+.action-chip {
+  transition: background 0.2s;
+}
+.action-chip:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
