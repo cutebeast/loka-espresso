@@ -128,7 +128,12 @@ export interface MerchantOrder {
   delivery_address?: Record<string, unknown> | null;
   delivery_eta_minutes?: number | null;
   delivery_courier_name?: string | null;
+  delivery_courier_phone?: string | null;
   delivery_tracking_url?: string | null;
+  delivery_provider?: string | null;
+  payment_method?: string | null;
+  payment_status?: string;
+  notes?: string | null;
   user_id: number;
 }
 
@@ -281,4 +286,4 @@ export interface CustomerLoyaltyTransaction {
   created_at: string;
 }
 
-export type PageId = 'dashboard' | 'orders' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'information' | 'feedback' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store' | 'settings' | 'pwa' | 'customerDetail';
+export type PageId = 'dashboard' | 'orders' | 'kitchen' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'information' | 'feedback' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store' | 'settings' | 'pwa' | 'customerDetail';

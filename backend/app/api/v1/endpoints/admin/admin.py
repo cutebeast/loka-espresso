@@ -243,12 +243,63 @@ async def list_all_orders(
                 "payment_status": o.payment_status,
                 "loyalty_points_earned": o.loyalty_points_earned,
                 "notes": o.notes,
+                "pickup_time": o.pickup_time.isoformat() if o.pickup_time else None,
+                "delivery_address": o.delivery_address,
+                "delivery_provider": o.delivery_provider,
+                "delivery_status": o.delivery_status,
+                "delivery_tracking_url": o.delivery_tracking_url,
+                "delivery_courier_name": o.delivery_courier_name,
+                "delivery_courier_phone": o.delivery_courier_phone,
+                "delivery_eta_minutes": o.delivery_eta_minutes,
                 "created_at": o.created_at.isoformat() if o.created_at else None,
                 "updated_at": o.updated_at.isoformat() if o.updated_at else None,
             }
             for o in orders
         ],
     }
+
+
+@router.patch("/orders/{order_id}/delivery-tracking")
+async def update_delivery_tracking(
+    order_id: int,
+    req: dict,
+    user: User = Depends(require_hq_access()),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Manually update delivery tracking info (Scenario B: no 3PL API).
+    Service crew enters driver info after manually booking a courier.
+    """
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
+    if order_type != "delivery":
+        raise HTTPException(status_code=400, detail="Only delivery orders have tracking info")
+
+    updated = []
+    for field in ("delivery_courier_name", "delivery_courier_phone", "delivery_tracking_url",
+                   "delivery_provider", "delivery_eta_minutes", "delivery_external_id"):
+        val = req.get(field)
+        if val is not None:
+            setattr(order, field, int(val) if field == "delivery_eta_minutes" else val)
+            updated.append(field)
+
+    if req.get("delivery_status"):
+        order.delivery_status = req["delivery_status"]
+        updated.append("delivery_status")
+
+    order.delivery_last_event_at = datetime.now(timezone.utc)
+
+    await log_action(
+        db, action="DELIVERY_TRACKING_UPDATE", user_id=user.id,
+        store_id=order.store_id, entity_type="order", entity_id=order.id,
+        details={"order_number": order.order_number, "updated_fields": updated},
+    )
+    await db.flush()
+    return {"message": "Delivery tracking updated", "updated_fields": updated}
 
 
 # ---------------------------------------------------------------------------

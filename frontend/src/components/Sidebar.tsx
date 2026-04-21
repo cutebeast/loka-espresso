@@ -9,24 +9,25 @@ import { THEME } from '@/lib/theme';
 // Page visibility by user_type_id
 const PAGE_VISIBILITY: Record<number, Set<string>> = {
   1: new Set([
-    'dashboard', 'orders',
+    'dashboard', 'orders', 'kitchen',
     'menu', 'inventory', 'tables', 'staff',
     'customers', 'rewards', 'vouchers', 'promotions', 'information', 'notifications', 'feedback',
     'reports', 'marketingreports',
     'store', 'settings', 'pwa', 'loyaltyrules', 'auditlog',
   ]),
   2: new Set([
-    'dashboard', 'orders',
+    'dashboard', 'orders', 'kitchen',
     'menu', 'inventory', 'tables',
     'reports',
   ]),
-  3: new Set(['orders']),
+  3: new Set(['orders', 'kitchen']),
 };
 
 const navGroups = [
   { label: 'Overview', icon: 'fa-compass', items: [
     { id: 'dashboard' as PageId, icon: 'fa-chart-pie', label: 'Dashboard' },
     { id: 'orders' as PageId, icon: 'fa-clipboard-list', label: 'Orders' },
+    { id: 'kitchen' as PageId, icon: 'fa-fire-burner', label: 'Kitchen Display' },
   ]},
   { label: 'Store Operations', icon: 'fa-store', items: [
     { id: 'menu' as PageId, icon: 'fa-mug-hot', label: 'Menu Management' },

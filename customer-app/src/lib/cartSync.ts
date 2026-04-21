@@ -83,7 +83,7 @@ export async function placeOrder(params: {
   notes?: string;
   voucherCode?: string;
   rewardRedemptionCode?: string;
-  paymentMethod: 'wallet' | 'cash';
+  paymentMethod: 'wallet' | 'cash' | 'pay_at_store' | 'cod';
 }) {
   const { items, clearCart } = useCartStore.getState();
 
@@ -120,7 +120,8 @@ export async function placeOrder(params: {
   const newOrder = orderRes.data;
 
   try {
-    if (params.orderType !== 'dine_in' && params.paymentMethod === 'wallet') {
+    // Only process wallet payment for prepaid orders
+    if (params.paymentMethod === 'wallet') {
       const intentRes = await api.post('/payments/create-intent', {
         order_id: newOrder.id,
         method: 'wallet',

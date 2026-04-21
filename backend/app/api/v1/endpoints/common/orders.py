@@ -33,9 +33,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
-# Valid status transitions by order type
-# Flow A (Pickup & Delivery): pending -> paid -> confirmed -> preparing -> ready -> (out_for_delivery) -> completed
-# Flow B (Dine-in): pending -> confirmed -> preparing -> ready -> completed (payment happens at the end)
+# Valid status transitions (unified — all types share the same state machine)
+#
+# Payment timing depends on order type + payment method:
+#   Dine-in:    pending → confirmed → preparing → ready → [PAYMENT] → completed
+#   Pickup:     pending → confirmed → preparing → ready → [PICKUP + PAYMENT if needed] → completed
+#   Delivery:   pending → confirmed → preparing → ready → out_for_delivery → [PAYMENT if COD] → completed
+#
+# Prepaid orders (wallet/card): go through "paid" status first, then auto-confirm.
+# Pay-later orders (pay_at_store / cod): go directly pending → confirmed, payment collected later.
+#
+# ALL orders require payment_status == "paid" before reaching "completed".
 VALID_TRANSITIONS = {
     "pending": ["paid", "confirmed", "cancelled"],
     "paid": ["confirmed", "cancelled"],
@@ -45,9 +53,9 @@ VALID_TRANSITIONS = {
     "out_for_delivery": ["completed", "cancelled"],
 }
 
-# Flow-specific validation rules
-FLOW_A_TYPES = {"pickup", "delivery"}  # Pay first, then confirm
-FLOW_B_TYPES = {"dine_in"}  # Confirm first, pay at the end
+# Legacy type sets (kept for reference, no longer used for flow gating)
+FLOW_A_TYPES = {"pickup", "delivery"}  # Was: pay first, then confirm
+FLOW_B_TYPES = {"dine_in"}  # Was: confirm first, pay at the end
 
 
 def _order_out(order: Order, timeline: list[dict] | None = None) -> OrderOut:
@@ -509,9 +517,9 @@ async def confirm_order(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Confirm a dine-in order to send it to the kitchen/POS.
-    This is used in Flow B (dine-in) where confirmation happens BEFORE payment.
-    Flow A (pickup/delivery) orders must be paid first and will auto-confirm.
+    Confirm an order to send it to the kitchen/POS.
+    Used for ALL order types when payment is collected later (pay_at_store, cod, cash).
+    Prepaid orders should go pending → paid → confirmed instead.
     """
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalar_one_or_none()
@@ -521,14 +529,6 @@ async def confirm_order(
     # Only order owner or authorized staff can confirm
     if order.user_id != user.id and not await can_access_store(user, order.store_id, db):
         raise HTTPException(status_code=403, detail="Cannot confirm this order")
-
-    # Only dine-in orders can use this endpoint
-    order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
-    if order_type not in FLOW_B_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Order confirmation endpoint is only for dine-in orders. {order_type} orders must be paid first."
-        )
 
     # Must be in pending status to confirm
     if order.status != OrderStatus.pending:
@@ -542,7 +542,7 @@ async def confirm_order(
     history = OrderStatusHistory(
         order_id=order.id,
         status=OrderStatus.confirmed,
-        note="Order confirmed by customer - sent to kitchen"
+        note="Order confirmed - sent to kitchen"
     )
     db.add(history)
 
@@ -564,6 +564,7 @@ async def confirm_order(
         "order_id": order.id,
         "order_number": order.order_number,
         "status": order.status.value,
+        "order_type": order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type),
     }
 
 
@@ -718,28 +719,21 @@ async def update_order_status(
 
     order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
 
-    # Flow-specific validations for status transitions
-    if new_status == "confirmed":
-        if order_type in FLOW_A_TYPES and old_status != "paid":
-            # Flow A: pickup/delivery must be paid before confirmed
-            raise HTTPException(
-                status_code=400,
-                detail=f"{order_type} orders must be paid before confirmation. Current status: {old_status}"
-            )
-        elif order_type in FLOW_B_TYPES and old_status != "pending":
-            # Flow B: dine-in must use confirm endpoint from pending
-            raise HTTPException(
-                status_code=400,
-                detail="Dine-in orders must use POST /orders/{id}/confirm from pending status"
-            )
+    # All types: allow pending → confirmed (prepaid goes pending → paid → confirmed,
+    # pay-later goes pending → confirmed directly)
+    # Only enforce: confirmed must come from pending or paid (never from another status)
+    if new_status == "confirmed" and old_status not in ("pending", "paid"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot confirm order in status: {old_status}. Must be pending or paid."
+        )
 
-    # Flow B: dine-in can only be completed if payment_status is paid
-    if new_status == "completed" and order_type in FLOW_B_TYPES:
-        if order.payment_status != "paid":
-            raise HTTPException(
-                status_code=400,
-                detail="Dine-in order cannot be completed until payment is made"
-            )
+    # ALL order types: cannot be completed unless payment_status is paid
+    if new_status == "completed" and order.payment_status != "paid":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Order cannot be completed until payment is made. Current payment_status: {order.payment_status}"
+        )
 
     order.status = req.status
     history = OrderStatusHistory(order_id=order.id, status=req.status, note=req.note)

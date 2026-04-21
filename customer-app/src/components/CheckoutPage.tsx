@@ -55,12 +55,19 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<number | null>(null);
   const [pointsEarned, setPointsEarned] = useState<number>(0);
 
+  // Payment method: 'wallet' (prepaid), 'pay_at_store' (pickup), 'cod' (delivery), 'cash' (dine-in)
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash'>('wallet');
+
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
   const discount = discountValue;
   const total = subtotal + deliveryFee - discount;
   const walletSufficient = balance >= total;
   const belowDeliveryMinimum = orderMode === 'delivery' && config.min_order_delivery > 0 && subtotal < config.min_order_delivery;
+
+  // Derive effective payment method
+  const effectivePaymentMethod = orderMode === 'dine_in' ? 'cash' : paymentMethod;
+  const requiresWallet = effectivePaymentMethod === 'wallet';
 
   const effectiveStore = orderMode === 'dine_in' && dineInSession
     ? { name: dineInSession.storeName, address: '' }
@@ -80,7 +87,7 @@ export default function CheckoutPage() {
     if (orderMode === 'delivery' && !deliveryAddress?.address) { showToast('Please enter a delivery address', 'error'); return; }
     if (orderMode === 'dine_in' && !dineInSession) { showToast('No dine-in session', 'error'); return; }
     if (belowDeliveryMinimum) { showToast(`Delivery requires at least ${formatPrice(config.min_order_delivery)}`, 'error'); return; }
-    if (orderMode !== 'dine_in' && !walletSufficient) { showToast('Insufficient wallet balance', 'error'); return; }
+    if (requiresWallet && !walletSufficient) { showToast('Insufficient wallet balance', 'error'); return; }
 
     setPlacing(true);
     try {
@@ -96,7 +103,7 @@ export default function CheckoutPage() {
         notes: notes || undefined,
         voucherCode: discountType === 'voucher' ? discountCode : undefined,
         rewardRedemptionCode: discountType === 'reward' ? discountCode : undefined,
-        paymentMethod: orderMode === 'dine_in' ? 'cash' : 'wallet',
+        paymentMethod: effectivePaymentMethod,
       });
 
       setOrderNumber(newOrder?.order_number || '');
@@ -104,7 +111,8 @@ export default function CheckoutPage() {
       setPointsEarned(newOrder?.points_earned || newOrder?.loyalty_points_earned || 0);
       addOrder(newOrder);
 
-      if (orderMode !== 'dine_in') {
+      // Only deduct wallet for wallet payments
+      if (requiresWallet) {
         setBalance(balance - total);
         await refreshWallet();
       }
@@ -155,12 +163,20 @@ export default function CheckoutPage() {
               Staff is preparing your order at <strong>Table {dineInSession.tableNumber}</strong>
             </p>
           )}
+          {!requiresWallet && orderMode !== 'dine_in' && (
+            <div style={{ marginTop: 8, padding: '8px 14px', background: '#FFFBEB', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Banknote size={14} color="#92400E" />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#92400E' }}>
+                {effectivePaymentMethod === 'cod' ? 'Cash on Delivery — pay the courier' : 'Pay at store when you pick up'}
+              </span>
+            </div>
+          )}
           {pointsEarned > 0 && (
             <div style={{ marginTop: 12, padding: '8px 14px', background: LOKA.copperSoft, borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: LOKA.copper }}>+{pointsEarned} Loka points</span>
             </div>
           )}
-          {orderMode === 'dine_in' && (
+          {!requiresWallet && (
             <p style={{ fontSize: 12, color: LOKA.textMuted, marginTop: 8 }}>Points will be awarded after payment</p>
           )}
         </div>
@@ -239,28 +255,8 @@ export default function CheckoutPage() {
           <OrderNotesField value={notes} onChange={setNotes} orderMode={orderMode} />
         </div>
 
-        {orderMode !== 'dine_in' && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: LOKA.surface, borderRadius: 16, marginBottom: 12 }}>
-              <Wallet size={18} color={LOKA.primary} />
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary }}>Wallet</p>
-                <p style={{ fontSize: 12, color: LOKA.textMuted }}>Balance: {formatPrice(balance)}</p>
-              </div>
-              {walletSufficient ? (
-                <div style={{ width: 20, height: 20, borderRadius: 999, background: LOKA.success, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <CheckCircle2 size={12} color={LOKA.white} />
-                </div>
-              ) : (
-                <div style={{ width: 20, height: 20, borderRadius: 999, background: LOKA.danger, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ color: LOKA.white, fontSize: 12, fontWeight: 700 }}>!</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {orderMode === 'dine_in' && (
+        {/* Payment Method Selection */}
+        {orderMode === 'dine_in' ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: LOKA.surface, borderRadius: 16, marginBottom: 16 }}>
             <Receipt size={18} color={LOKA.copper} />
             <div style={{ flex: 1 }}>
@@ -268,6 +264,60 @@ export default function CheckoutPage() {
               <p style={{ fontSize: 12, color: LOKA.textMuted }}>Staff will take your payment</p>
             </div>
             <Banknote size={18} color={LOKA.textMuted} />
+          </div>
+        ) : (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary, marginBottom: 8 }}>Payment Method</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Wallet Option */}
+              <button
+                onClick={() => setPaymentMethod('wallet')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+                  borderRadius: 16, border: `2px solid ${paymentMethod === 'wallet' ? LOKA.primary : LOKA.border}`,
+                  background: paymentMethod === 'wallet' ? `${LOKA.primary}10` : LOKA.white,
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <Wallet size={18} color={LOKA.primary} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary }}>E-Wallet</p>
+                  <p style={{ fontSize: 12, color: LOKA.textMuted }}>Balance: {formatPrice(balance)}</p>
+                </div>
+                {paymentMethod === 'wallet' && (
+                  walletSufficient ? (
+                    <div style={{ width: 20, height: 20, borderRadius: 999, background: LOKA.success, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <CheckCircle2 size={12} color={LOKA.white} />
+                    </div>
+                  ) : (
+                    <div style={{ width: 20, height: 20, borderRadius: 999, background: LOKA.danger, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ color: LOKA.white, fontSize: 12, fontWeight: 700 }}>!</span>
+                    </div>
+                  )
+                )}
+              </button>
+
+              {/* Pay at Store / COD Option */}
+              <button
+                onClick={() => setPaymentMethod(orderMode === 'delivery' ? 'cod' : 'pay_at_store')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+                  borderRadius: 16, border: `2px solid ${paymentMethod !== 'wallet' ? LOKA.copper : LOKA.border}`,
+                  background: paymentMethod !== 'wallet' ? `${LOKA.copper}10` : LOKA.white,
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <Banknote size={18} color={LOKA.copper} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary }}>
+                    {orderMode === 'delivery' ? 'Cash on Delivery' : 'Pay at Store'}
+                  </p>
+                  <p style={{ fontSize: 12, color: LOKA.textMuted }}>
+                    {orderMode === 'delivery' ? 'Pay the courier with cash' : 'Pay at the counter when you pick up'}
+                  </p>
+                </div>
+              </button>
+            </div>
           </div>
         )}
 
@@ -277,7 +327,7 @@ export default function CheckoutPage() {
       </div>
 
       <div style={{ padding: '12px 18px 24px', background: LOKA.bg, borderTop: `1px solid ${LOKA.borderSubtle}` }}>
-        {orderMode !== 'dine_in' && !walletSufficient ? (
+        {requiresWallet && !walletSufficient ? (
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={() => setPage('wallet')}

@@ -32,6 +32,7 @@ import OrdersPage from '@/components/pages/overview/OrdersPage';
 
 const MenuPage = dynamic(() => import('@/components/pages/store-ops/MenuPage'), { ssr: false });
 const TablesPage = dynamic(() => import('@/components/pages/store-ops/TablesPage'), { ssr: false });
+const KitchenDisplayPage = dynamic(() => import('@/components/pages/store-ops/KitchenDisplayPage'), { ssr: false });
 const InventoryPage = dynamic(() => import('@/components/pages/store-ops/InventoryPage'), { ssr: false });
 const StaffPage = dynamic(() => import('@/components/pages/store-ops/StaffPage'), { ssr: false });
 const RewardsPage = dynamic(() => import('@/components/pages/marketing/RewardsPage'), { ssr: false });
@@ -185,6 +186,7 @@ export default function MerchantDashboard() {
     else if (page === 'menu') fetchMenu();
     else if (page === 'inventory') fetchInventory();
     else if (page === 'tables') fetchTables();
+    else if (page === 'kitchen') { /* Kitchen page self-fetches + auto-refreshes */ }
     else if (page === 'staff') { /* Staff page now self-fetches */ }
       else if (page === 'rewards') fetchRewards();
      else if (page === 'vouchers') fetchVouchers();
@@ -340,6 +342,7 @@ export default function MerchantDashboard() {
   const pageTitle: Record<PageId, string> = {
     dashboard: 'Dashboard',
     orders: 'Orders',
+    kitchen: 'Kitchen Display',
     menu: 'Menu Management',
     inventory: 'Inventory',
     tables: 'Tables',
@@ -450,6 +453,14 @@ export default function MerchantDashboard() {
                   onOrderTypeChange={setOrdersOrderType}
                   onStoreChange={setSelectedStore}
                   onDateChange={(from, to) => { setOrdersFromDate(from); setOrdersToDate(to); }}
+                />
+              )}
+
+              {page === 'kitchen' && (
+                <KitchenDisplayPage
+                  token={token}
+                  selectedStore={selectedStore}
+                  stores={stores}
                 />
               )}
 
