@@ -9,6 +9,7 @@ import { useConfigStore } from '@/stores/configStore';
 import { Modal } from '@/components/ui/Modal';
 
 import { LOKA, formatPrice } from '@/lib/tokens';
+import { cacheBust } from '@/lib/api';
 
 interface CustomizationStructure {
   options?: Array<{ id: number; name: string; price_adjustment: number }>;
@@ -155,7 +156,7 @@ export default function CartPage() {
                   <div style={{ width: 56, height: 56, borderRadius: 14, background: '#E8EDE0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                     {item.image_url ? (
                       <img 
-                        src={item.image_url.startsWith('http') ? item.image_url : `https://admin.loyaltysystem.uk${item.image_url}`} 
+                        src={cacheBust(item.image_url.startsWith('http') ? item.image_url : `https://admin.loyaltysystem.uk${item.image_url}`)} 
                         alt={item.name} 
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                         onError={(e) => { 

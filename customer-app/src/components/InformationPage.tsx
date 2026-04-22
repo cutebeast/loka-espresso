@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Info, ArrowLeft } from 'lucide-react';
 import { TypePill } from '@/components/shared';
-import api from '@/lib/api';
+import api, { cacheBust } from '@/lib/api';
 import type { InformationCard as ApiInformationCard } from '@/lib/api';
 
 const LOKA = {
@@ -32,7 +32,7 @@ interface InformationPageProps {
 
 function resolveUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  return url.startsWith('http') ? url : `https://admin.loyaltysystem.uk${url}`;
+  return cacheBust(url.startsWith('http') ? url : `https://admin.loyaltysystem.uk${url}`);
 }
 
 export default function InformationPage({ onBack, preselectedId }: InformationPageProps) {

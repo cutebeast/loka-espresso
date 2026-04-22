@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
-import { apiFetch, apiUpload } from '@/lib/merchant-api';
+import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { Select, Pagination, Drawer } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 
@@ -139,7 +139,7 @@ export default function RewardsPage({ token }: RewardsPageProps) {
                 <tr key={reward.id}>
                   <td>
                     {reward.image_url ? (
-                      <img src={reward.image_url} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} />
+                      <img src={cacheBust(reward.image_url)} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} />
                     ) : (
                       <div style={{ width: 50, height: 50, background: THEME.bgMuted, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.success, fontSize: 18 }}>
                         <i className="fas fa-gift"></i>

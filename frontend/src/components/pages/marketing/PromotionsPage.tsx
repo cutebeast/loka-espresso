@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { apiFetch, apiUpload } from '@/lib/merchant-api';
+import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import { Select, Pagination, Drawer } from '@/components/ui';
 import SurveysPage from './SurveysPage';
@@ -429,7 +429,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
                   <tr key={banner.id}>
                     <td>
                       {banner.image_url ? (
-                        <img src={banner.image_url} alt="" style={{ width: 80, height: 45, objectFit: 'cover', borderRadius: 8 }} />
+                        <img src={cacheBust(banner.image_url)} alt="" style={{ width: 80, height: 45, objectFit: 'cover', borderRadius: 8 }} />
                       ) : (
                         <div style={{ width: 80, height: 45, background: THEME.bgMuted, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.success, fontSize: 14 }}>
                           <i className="fas fa-image"></i>

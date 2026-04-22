@@ -130,4 +130,16 @@ export function formatRM(amount: number): string {
   return `RM ${Number(amount).toFixed(2)}`;
 }
 
+/**
+ * Appends a cache-busting query param to an image URL.
+ * Forces Cloudflare/browser to re-fetch instead of serving cached 404.
+ * @param url - The image URL (e.g. "/uploads/items/abc.jpg")
+ * @param ts  - Unix timestamp override (defaults to Date.now())
+ */
+export function cacheBust(url: string, ts?: number): string {
+  if (!url) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${ts ?? Date.now()}`;
+}
+
 export { API };

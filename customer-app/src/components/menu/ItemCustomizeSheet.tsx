@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, ShoppingCart, Coffee, Star } from 'lucide-react';
 import type { MenuItem, CustomizationOption } from '@/lib/api';
+import { cacheBust } from '@/lib/api';
 
 const LOKA = {
   primary: '#384B16',
@@ -95,9 +96,9 @@ export default function ItemCustomizeSheet({
   };
 
   const imgSrc = item?.image_url
-    ? item.image_url.startsWith('http')
+    ? cacheBust(item.image_url.startsWith('http')
       ? item.image_url
-      : `https://admin.loyaltysystem.uk${item.image_url}`
+      : `https://admin.loyaltysystem.uk${item.image_url}`)
     : null;
 
   return (

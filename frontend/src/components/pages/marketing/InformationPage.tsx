@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { apiFetch, apiUpload } from '@/lib/merchant-api';
+import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import { Pagination, Drawer } from '@/components/ui';
 
@@ -340,7 +340,7 @@ export default function InformationPage({ token }: InformationPageProps) {
               <tr key={card.id}>
                 <td>
                   {card.image_url ? (
-                    <img src={card.image_url} alt="" style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 6 }} />
+                    <img src={cacheBust(card.image_url)} alt="" style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 6 }} />
                   ) : (
                     <div style={{ width: 60, height: 40, background: THEME.bgMuted, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.primary, fontSize: 18 }}>
                       <i className={`fas fa-${card.icon || 'info'}`}></i>

@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Plus, Coffee } from 'lucide-react';
 import type { MenuItem } from '@/lib/api';
+import { cacheBust } from '@/lib/api';
 
 const LOKA = {
   primary: '#384B16',
@@ -30,9 +31,9 @@ function formatPrice(val: number | string): string {
 
 export default function ItemCard({ item, onPress, onAdd }: ItemCardProps) {
   const imgSrc = item.image_url
-    ? item.image_url.startsWith('http')
+    ? cacheBust(item.image_url.startsWith('http')
       ? item.image_url
-      : `https://admin.loyaltysystem.uk${item.image_url}`
+      : `https://admin.loyaltysystem.uk${item.image_url}`)
     : null;
 
   return (

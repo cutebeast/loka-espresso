@@ -17,7 +17,7 @@ import {
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
-import api from '@/lib/api';
+import api, { cacheBust } from '@/lib/api';
 import type { MenuItem, PromoBanner, InformationCard, CustomizationOption } from '@/lib/api';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 
@@ -467,9 +467,9 @@ export default function HomePage() {
           >
             {banners.map((banner) => {
               const bImg = banner.image_url
-                ? banner.image_url.startsWith('http')
+                ? cacheBust(banner.image_url.startsWith('http')
                   ? banner.image_url
-                  : `https://admin.loyaltysystem.uk${banner.image_url}`
+                  : `https://admin.loyaltysystem.uk${banner.image_url}`)
                 : null;
               return (
                 <motion.button
@@ -660,11 +660,11 @@ export default function HomePage() {
                     }}
                   >
                     <img
-                      src={
+                      src={cacheBust(
                         card.image_url.startsWith('http')
                           ? card.image_url
                           : `https://admin.loyaltysystem.uk${card.image_url}`
-                      }
+                      )}
                       alt={card.title}
                       style={{
                         width: '100%',
@@ -842,9 +842,9 @@ export default function HomePage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {featuredItems.slice(0, 5).map((item) => {
               const imgSrc = item.image_url
-                ? item.image_url.startsWith('http')
+                ? cacheBust(item.image_url.startsWith('http')
                   ? item.image_url
-                  : `https://admin.loyaltysystem.uk${item.image_url}`
+                  : `https://admin.loyaltysystem.uk${item.image_url}`)
                 : null;
               return (
                 <motion.div

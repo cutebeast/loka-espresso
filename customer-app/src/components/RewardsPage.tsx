@@ -6,7 +6,7 @@ import { Gift, Star, ArrowLeft } from 'lucide-react';
 import { TypePill, RedemptionCodeModal } from '@/components/shared';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
-import api from '@/lib/api';
+import api, { cacheBust } from '@/lib/api';
 import type { Reward } from '@/lib/api';
 
 const LOKA = {
@@ -47,7 +47,7 @@ function getTierProgress(tier: string, points: number): number {
 
 function resolveUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  return url.startsWith('http') ? url : `https://admin.loyaltysystem.uk${url}`;
+  return cacheBust(url.startsWith('http') ? url : `https://admin.loyaltysystem.uk${url}`);
 }
 
 export default function RewardsPage() {

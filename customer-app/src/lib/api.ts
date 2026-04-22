@@ -363,3 +363,15 @@ export interface UserProfile {
 
 export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support';
 export type OrderMode = 'pickup' | 'delivery' | 'dine_in';
+
+/**
+ * Appends a cache-busting query param to an image URL.
+ * Forces Cloudflare/browser to re-fetch instead of serving cached 404.
+ * @param url - The image URL (e.g. "/uploads/items/abc.jpg")
+ * @param ts  - Unix timestamp override (defaults to Date.now())
+ */
+export function cacheBust(url: string, ts?: number): string {
+  if (!url) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${ts ?? Date.now()}`;
+}

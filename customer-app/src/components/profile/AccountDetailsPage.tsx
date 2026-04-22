@@ -6,7 +6,7 @@ import { User, Mail, Phone, Camera, Save } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import { PageHeader } from '@/components/shared';
-import api from '@/lib/api';
+import api, { cacheBust } from '@/lib/api';
 
 const LOKA = {
   primary: '#384B16',
@@ -86,7 +86,7 @@ export default function AccountDetailsPage() {
             </div>
             {user?.avatar_url && (
               <img
-                src={user.avatar_url.startsWith('http') ? user.avatar_url : `https://admin.loyaltysystem.uk${user.avatar_url}`}
+                src={cacheBust(user.avatar_url.startsWith('http') ? user.avatar_url : `https://admin.loyaltysystem.uk${user.avatar_url}`)}
                 alt=""
                 style={{
                   position: 'absolute',

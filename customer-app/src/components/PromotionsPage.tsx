@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Gift, ArrowLeft, Calendar, Clock, Star } from 'lucide-react';
 import { TypePill, RedemptionCodeModal } from '@/components/shared';
 import { useUIStore } from '@/stores/uiStore';
-import api from '@/lib/api';
+import api, { cacheBust } from '@/lib/api';
 import type { PromoBanner } from '@/lib/api';
 
 const LOKA = {
@@ -49,7 +49,7 @@ interface PromotionsPageProps {
 
 function resolveUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  return url.startsWith('http') ? url : `https://admin.loyaltysystem.uk${url}`;
+  return cacheBust(url.startsWith('http') ? url : `https://admin.loyaltysystem.uk${url}`);
 }
 
 function formatDate(d: string | null) {
