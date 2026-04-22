@@ -1,6 +1,6 @@
 # 06-improvements-applied.md
 
-> Last updated: 2026-04-18 (session 4)
+> Last updated: 2026-04-22 (session 12)
 
 ## Overview
 
@@ -1208,6 +1208,60 @@ pending → paid → confirmed → preparing → ready → out_for_delivery → 
 | `frontend/src/components/pages/store-ops/TablesPage.tsx` | Active order card, `formatRM` import, `onViewOrder` prop |
 | `frontend/src/components/pages/overview/OrdersPage.tsx` | Order type filter, context-aware status buttons, flow descriptions |
 | `frontend/src/app/page.tsx` | `ordersOrderType` state, `onOrderTypeChange`/`onViewOrder` wiring |
+
+---
+
+## Session 12: Image Cache-Busting (2026-04-22)
+
+### Problem
+
+After switching uploads from a named Docker volume to a host bind mount (Session 11), the Docker volume was recreated empty. Cloudflare cached 404 responses for all image URLs (`/uploads/items/*`, `/uploads/rewards/*`, `/uploads/banners/*`, etc.). Even after the bind mount was fixed and real files became accessible again, Cloudflare continued serving cached 404s to browsers.
+
+### Solution
+
+Added a `cacheBust()` helper to all image URLs across both frontends. Each image URL now gets `?v=timestamp` appended, making each request unique and bypassing Cloudflare's cached 404 responses.
+
+### Helper Function
+
+```typescript
+export function cacheBust(url: string, ts?: number): string {
+  if (!url) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${ts ?? Date.now()}`;
+}
+```
+
+### Admin Frontend Changes
+
+| File | Change |
+|------|--------|
+| `frontend/src/lib/merchant-api.tsx` | Added `cacheBust()` export |
+| `frontend/src/components/pages/marketing/RewardsPage.tsx` | `reward.image_url` → `cacheBust(reward.image_url)` |
+| `frontend/src/components/pages/marketing/PromotionsPage.tsx` | `banner.image_url` → `cacheBust(banner.image_url)` |
+| `frontend/src/components/pages/marketing/InformationPage.tsx` | `card.image_url` → `cacheBust(card.image_url)` |
+
+### Customer PWA Changes
+
+| File | Change |
+|------|--------|
+| `customer-app/src/lib/api.ts` | Added `cacheBust()` export |
+| `customer-app/src/components/HomePage.tsx` | `bImg`, `card.image_url`, `imgSrc` → wrapped with `cacheBust()` |
+| `customer-app/src/components/CartPage.tsx` | Cart item image URL → wrapped with `cacheBust()` |
+| `customer-app/src/components/RewardsPage.tsx` | `resolveUrl()` → now calls `cacheBust()` |
+| `customer-app/src/components/PromotionsPage.tsx` | `resolveUrl()` → now calls `cacheBust()` |
+| `customer-app/src/components/InformationPage.tsx` | `resolveUrl()` → now calls `cacheBust()` |
+| `customer-app/src/components/menu/ItemCard.tsx` | `imgSrc` → wrapped with `cacheBust()` |
+| `customer-app/src/components/menu/ItemCustomizeSheet.tsx` | `imgSrc` → wrapped with `cacheBust()` |
+| `customer-app/src/components/shared/HeroBanner.tsx` | `backgroundImage` URL → wrapped with `cacheBust()` |
+| `customer-app/src/components/profile/AccountDetailsPage.tsx` | `avatar_url` → wrapped with `cacheBust()` |
+
+### Verification
+
+After hard refresh (`Ctrl+Shift+R`), all images now load correctly. Cloudflare returns `cf-cache-status: HIT` with HTTP 200 for all image URLs.
+
+### Commit
+
+`b861476` — Add cache-busting query param to all image URLs across both frontends
 
 ---
 
