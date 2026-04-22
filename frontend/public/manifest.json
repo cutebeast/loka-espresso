@@ -1,0 +1,21 @@
+{
+  "name": "Loka Espresso - Admin",
+  "short_name": "Loka Admin",
+  "description": "Staff portal for Loka Espresso",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f5f0",
+  "theme_color": "#384B16",
+  "icons": [
+    {
+      "src": "/loka-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/loka-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

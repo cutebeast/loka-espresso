@@ -153,6 +153,11 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
         POS Terminal — Apply Rewards & Vouchers
       </h2>
 
+      <div style={{ marginBottom: 16, padding: '10px 14px', background: '#EFF6FF', borderRadius: 8, border: '1px solid #3B82F6', fontSize: 12, color: '#1E40AF' }}>
+        <i className="fas fa-mobile-alt" style={{ marginRight: 6 }}></i>
+        <strong>Tip:</strong> Add this page to your phone home screen for quick access — open in Chrome/Safari → Menu → "Add to Home Screen"
+      </div>
+
       {/* Step 1: Search Customer */}
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: THEME.textSecondary }}>Step 1: Find Customer</h3>
@@ -166,7 +171,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
               style={{ width: '100%' }}
             />
           </div>
-          <button type="submit" className="btn btn-primary" disabled={searching}>
+          <button type="submit" className="btn btn-primary" disabled={searching} style={{ minHeight: 44, padding: '10px 20px' }}>
             {searching ? 'Searching...' : 'Search'}
           </button>
         </form>
@@ -218,6 +223,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
                       className="btn btn-primary btn-sm"
                       disabled={processingId === `reward-${r.id}`}
                       onClick={() => useReward(r.id)}
+                      style={{ minHeight: 40, padding: '8px 16px' }}
                     >
                       {processingId === `reward-${r.id}` ? 'Applying...' : 'Use Reward'}
                     </button>
@@ -252,6 +258,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
                       className="btn btn-primary btn-sm"
                       disabled={processingId === `voucher-${v.id}`}
                       onClick={() => useVoucher(v.id)}
+                      style={{ minHeight: 40, padding: '8px 16px' }}
                     >
                       {processingId === `voucher-${v.id}` ? 'Applying...' : 'Use Voucher'}
                     </button>
