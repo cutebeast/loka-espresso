@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useRef, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 
@@ -38,6 +38,14 @@ interface WalletData {
   vouchers: WalletVoucher[];
 }
 
+interface ScannedItem {
+  type: 'reward' | 'voucher';
+  code: string;
+  name: string;
+  customer_id: number;
+  detail: any;
+}
+
 interface POSTerminalPageProps {
   token: string;
 }
@@ -51,6 +59,14 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  // QR Scanner state
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState('');
+  const [scannedItem, setScannedItem] = useState<ScannedItem | null>(null);
+  const [confirmingScan, setConfirmingScan] = useState(false);
+  const scannerRef = useRef<any>(null);
+  const videoRef = useRef<HTMLDivElement>(null);
+
   async function handleSearch(e: FormEvent) {
     e.preventDefault();
     if (!phone.trim()) return;
@@ -58,6 +74,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
     setCustomer(null);
     setWallet(null);
     setResult(null);
+    setScannedItem(null);
     try {
       const res = await apiFetch(`/admin/customers?search=${encodeURIComponent(phone.trim())}&page=1&page_size=10`, token);
       if (!res.ok) { setResult({ success: false, message: 'Search failed' }); return; }
@@ -138,6 +155,151 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
     }
   }
 
+  // ── QR Scanner ───────────────────────────────────────────────────────────
+
+  const startScanner = useCallback(async () => {
+    setScanning(true);
+    setScanError('');
+    setScannedItem(null);
+    setResult(null);
+
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+      if (!videoRef.current) return;
+
+      const scanner = new Html5Qrcode('qr-reader');
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        async (decodedText: string) => {
+          // Stop scanning on first successful scan
+          await stopScanner();
+          await validateScannedCode(decodedText.trim());
+        },
+        () => {
+          // Ignore scan errors (keeps trying)
+        }
+      );
+    } catch (err: any) {
+      setScanError(err.message || 'Unable to start camera. Please check permissions.');
+      setScanning(false);
+    }
+  }, []);
+
+  const stopScanner = useCallback(async () => {
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+    } catch {
+      // Ignore
+    }
+    setScanning(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopScanner();
+    };
+  }, [stopScanner]);
+
+  async function validateScannedCode(code: string) {
+    setConfirmingScan(true);
+    setResult(null);
+    try {
+      // Try reward first
+      let res = await apiFetch(`/scan/reward/${encodeURIComponent(code)}`, token, {
+        method: 'POST',
+        body: JSON.stringify({ store_id: null }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScannedItem({
+          type: 'reward',
+          code,
+          name: data.reward_name || 'Unknown Reward',
+          customer_id: data.customer_id,
+          detail: data,
+        });
+        // Also fetch customer's wallet to show context
+        if (data.customer_id) {
+          const cRes = await apiFetch(`/admin/customers/${data.customer_id}`, token);
+          if (cRes.ok) {
+            const c = await cRes.json();
+            setCustomer({ id: c.id, name: c.name, phone: c.phone });
+            await fetchWallet(c.id);
+          }
+        }
+        setConfirmingScan(false);
+        return;
+      }
+
+      // Try voucher
+      res = await apiFetch(`/scan/voucher/${encodeURIComponent(code)}`, token, {
+        method: 'POST',
+        body: JSON.stringify({ store_id: null }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScannedItem({
+          type: 'voucher',
+          code,
+          name: data.reward_name || code,
+          customer_id: data.customer_id,
+          detail: data,
+        });
+        if (data.customer_id) {
+          const cRes = await apiFetch(`/admin/customers/${data.customer_id}`, token);
+          if (cRes.ok) {
+            const c = await cRes.json();
+            setCustomer({ id: c.id, name: c.name, phone: c.phone });
+            await fetchWallet(c.id);
+          }
+        }
+        setConfirmingScan(false);
+        return;
+      }
+
+      // Both failed
+      const errData = await res.json().catch(() => ({}));
+      setResult({ success: false, message: errData.detail || 'Code not found or already used' });
+      setConfirmingScan(false);
+    } catch {
+      setResult({ success: false, message: 'Network error validating code' });
+      setConfirmingScan(false);
+    }
+  }
+
+  async function confirmScannedUse() {
+    if (!scannedItem) return;
+    setConfirmingScan(true);
+    try {
+      const endpoint = scannedItem.type === 'reward'
+        ? `/scan/reward/${encodeURIComponent(scannedItem.code)}`
+        : `/scan/voucher/${encodeURIComponent(scannedItem.code)}`;
+      const res = await apiFetch(endpoint, token, {
+        method: 'POST',
+        body: JSON.stringify({ store_id: null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setResult({ success: false, message: data.detail || 'Failed to apply' });
+        return;
+      }
+      setResult({ success: true, message: data.message || `${scannedItem.type === 'reward' ? 'Reward' : 'Voucher'} applied!` });
+      setScannedItem(null);
+      if (customer) await fetchWallet(customer.id);
+    } catch {
+      setResult({ success: false, message: 'Network error' });
+    } finally {
+      setConfirmingScan(false);
+    }
+  }
+
   function formatDiscount(v: WalletVoucher) {
     if (!v.discount_type || !v.discount_value) return '';
     if (v.discount_type === 'percent') return `${v.discount_value}% off`;
@@ -153,16 +315,11 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
         POS Terminal — Apply Rewards & Vouchers
       </h2>
 
-      <div style={{ marginBottom: 16, padding: '10px 14px', background: '#EFF6FF', borderRadius: 8, border: '1px solid #3B82F6', fontSize: 12, color: '#1E40AF' }}>
-        <i className="fas fa-mobile-alt" style={{ marginRight: 6 }}></i>
-        <strong>Tip:</strong> Add this page to your phone home screen for quick access — open in Chrome/Safari → Menu → "Add to Home Screen"
-      </div>
-
       {/* Step 1: Search Customer */}
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: THEME.textSecondary }}>Step 1: Find Customer</h3>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-          <div style={{ flex: 1 }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMuted, display: 'block', marginBottom: 4 }}>Phone Number</label>
             <input
               value={phone}
@@ -173,6 +330,16 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
           </div>
           <button type="submit" className="btn btn-primary" disabled={searching} style={{ minHeight: 44, padding: '10px 20px' }}>
             {searching ? 'Searching...' : 'Search'}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={startScanner}
+            disabled={scanning}
+            style={{ minHeight: 44, padding: '10px 20px', background: '#384B16', color: 'white' }}
+          >
+            <i className="fas fa-camera" style={{ marginRight: 6 }}></i>
+            {scanning ? 'Opening...' : 'Scan QR'}
           </button>
         </form>
 
@@ -189,6 +356,79 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
           </div>
         )}
       </div>
+
+      {/* QR Scanner Overlay */}
+      {scanning && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(0,0,0,0.85)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: 20,
+        }}>
+          <div style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <span style={{ color: 'white', fontWeight: 600, fontSize: 16 }}>Scan Customer QR Code</span>
+              <button
+                className="btn btn-sm"
+                onClick={stopScanner}
+                style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none' }}
+              >
+                <i className="fas fa-times"></i> Cancel
+              </button>
+            </div>
+            <div
+              id="qr-reader"
+              ref={videoRef}
+              style={{
+                width: '100%',
+                borderRadius: 16,
+                overflow: 'hidden',
+                background: '#000',
+                aspectRatio: '1',
+              }}
+            />
+            {scanError && (
+              <div style={{ color: '#FCA5A5', marginTop: 12, fontSize: 13 }}>{scanError}</div>
+            )}
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 12 }}>
+              Point camera at the customer&apos;s reward or voucher QR code
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Scanned Item Confirmation */}
+      {scannedItem && (
+        <div className="card" style={{ marginBottom: 20, background: '#F0FDF4', border: '2px solid #16A34A' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <i className="fas fa-check-circle" style={{ fontSize: 28, color: '#16A34A' }}></i>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534' }}>
+                {scannedItem.type === 'reward' ? 'Reward' : 'Voucher'} Found
+              </div>
+              <div style={{ fontSize: 14, color: '#166534' }}>{scannedItem.name}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              className="btn btn-primary"
+              onClick={confirmScannedUse}
+              disabled={confirmingScan}
+              style={{ flex: 1, minHeight: 44 }}
+            >
+              {confirmingScan ? 'Applying...' : `Confirm & Mark as Used`}
+            </button>
+            <button
+              className="btn"
+              onClick={() => setScannedItem(null)}
+              disabled={confirmingScan}
+              style={{ minHeight: 44 }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Step 2: Wallet */}
       {customer && loadingWallet && (
@@ -295,11 +535,11 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
         <strong><i className="fas fa-info-circle"></i> How it works:</strong>
         <ol style={{ margin: '8px 0 0 16px', padding: 0 }}>
           <li>Customer comes to the counter for in-store purchase</li>
-          <li>Staff asks for phone number and searches customer</li>
-          <li>Staff sees customer's available rewards and vouchers</li>
+          <li>Staff asks for phone number <strong>OR</strong> taps <strong>Scan QR</strong> to scan customer&apos;s code</li>
+          <li>Staff sees customer&apos;s available rewards and vouchers</li>
           <li>Staff clicks <strong>Use Reward</strong> or <strong>Use Voucher</strong></li>
           <li>Staff manually applies the discount on their physical POS terminal</li>
-          <li>Item is marked as used in the customer's account instantly</li>
+          <li>Item is marked as used in the customer&apos;s account instantly</li>
         </ol>
       </div>
     </div>
