@@ -16,8 +16,8 @@ IMPORTANT: Order of execution for customer seeding:
 
 Flow A (Pickup/Delivery):  pending → paid → confirmed → preparing → ready → completed
                            (delivery adds: out_for_delivery)
-Flow B (Dine-in):          pending → confirmed → preparing → ready → paid → completed
-                           (payment at END of meal)
+Flow B (Dine-in):          pending → [apply voucher] → confirmed → preparing → ready → paid → completed
+                           (voucher applied while pending; payment at END of meal)
 
 APIs Used by Flow Scripts:
   - GET /orders (fetch pending orders)
@@ -47,7 +47,8 @@ SEED_DIR = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(SEED_DIR, "seed_state.json")
 
 # Store IDs available in the system (physical stores, not HQ)
-STORE_IDS = [2, 3, 4, 5, 6]
+# After init-hq (id=0) + 5 physical stores via POST /admin/stores, IDs are 1-5
+STORE_IDS = [1, 2, 3, 4, 5]
 
 # ── Date Generation Helpers ───────────────────────────────────────
 # For spreading orders over a date range (e.g., 60 days)

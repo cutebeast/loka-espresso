@@ -61,14 +61,13 @@ export default function AuditLogPage({ stores, token }: AuditLogPageProps) {
   }, [token, actionFilter, fromDate, toDate]);
 
   useEffect(() => {
+    if (preset === 'CUSTOM') return;
     const range = calcDateRange(preset);
     setFromDate(range.from);
     setToDate(range.to);
   }, [preset]);
 
   useEffect(() => { fetchPage(1); }, [fetchPage]);
-
-  useEffect(() => { setPage(1); fetchPage(1); }, [actionFilter]);
 
   const columns: ColumnDef<MerchantAuditEntry>[] = [
     { key: 'timestamp', header: 'Timestamp', render: (entry) => (

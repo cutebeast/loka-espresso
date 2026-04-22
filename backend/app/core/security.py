@@ -14,7 +14,7 @@ from app.models.user import UserTypeIDs, RoleIDs
 
 settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -66,9 +66,18 @@ async def _is_token_blacklisted(jti: str, db: AsyncSession) -> bool:
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
-    token = credentials.credentials
+    token = None
+    if credentials:
+        token = credentials.credentials
+    elif request:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated", headers={"WWW-Authenticate": "Bearer"})
+
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         if payload.get("type") != "access":

@@ -239,6 +239,15 @@ export default function CheckoutPage() {
         {orderMode === 'delivery' && (
           <div style={{ marginBottom: 20 }}>
             <DeliveryAddressCard value={deliveryAddress} onChange={setDeliveryAddress} />
+            {selectedStore && !selectedStore.delivery_integration_enabled && (
+              <div style={{ marginTop: 10, padding: '10px 14px', background: '#FFFBEB', borderRadius: 12, border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <ShoppingBag size={18} color="#B45309" />
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#92400E', margin: 0 }}>Manual Delivery</p>
+                  <p style={{ fontSize: 12, color: '#B45309', margin: 0 }}>Our team will arrange delivery manually after preparing your order.</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

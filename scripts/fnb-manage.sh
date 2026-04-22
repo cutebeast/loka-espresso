@@ -22,7 +22,9 @@
 #
 # Database seeding:
 #   cd /root/fnb-super-app/scripts/seed
-#   python3 verify_master_base_seed.py
+#   python3 verify_seed_00_full_reset.py
+#   python3 verify_seed_01_stores.py
+#   ... (run scripts 00-18 in order)
 # ============================================================
 
 set -e
@@ -178,7 +180,8 @@ setup() {
     log "API Docs:         http://localhost:$BACKEND_PORT/docs"
     echo ""
     warn "To seed the database, run:"
-    warn "  cd $PROJECT_DIR/scripts/seed && python3 verify_master_base_seed.py"
+    warn "  cd $PROJECT_DIR/scripts/seed"
+    warn "  Run verify_seed_00_full_reset.py through verify_seed_18_submit_feedback.py in order"
 }
 
 # ============================================================
@@ -733,7 +736,7 @@ case "${1:-}" in
         echo ""
         echo "Seed Data:"
         echo "  cd $PROJECT_DIR/scripts/seed"
-        echo "  python3 verify_master_base_seed.py"
+        echo "  Run scripts verify_seed_00_full_reset.py through verify_seed_18_submit_feedback.py in order"
         echo ""
         ;;
 esac

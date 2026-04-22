@@ -44,7 +44,7 @@ export default function InformationPage({ onBack, preselectedId }: InformationPa
   const loadCards = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/content/information?limit=20&include_system=true');
+      const res = await api.get('/content/information?limit=20&content_type=information');
       const data = Array.isArray(res.data) ? res.data : [];
       setCards(data);
       return data;

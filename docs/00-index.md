@@ -1,5 +1,5 @@
 # FNB Super App - Documentation Index
-**Last Updated:** 2026-04-21 | **Status:** Pre-integration hardening complete, provider integrations pending
+**Last Updated:** 2026-04-22 | **Status:** AppShell decomposed, hash routing active, admin auth cleaned up
 
 ---
 
@@ -38,21 +38,25 @@ Current pre-provider posture:
 5. **[07-deployment-guide.md](07-deployment-guide.md)** - deployment and local rebuild workflow
 6. **[09-troubleshooting.md](09-troubleshooting.md)** - runtime and seed troubleshooting
 
-### Historical / Audit Context
-7. **[05-alignment-verification.md](05-alignment-verification.md)** - current alignment summary and known drift boundaries
-8. **[06-improvements-applied.md](06-improvements-applied.md)** - historical implementation log, not a launch signoff
-
 ### Detailed Schema
-9. **[02a-acl.md](02a-acl.md)** - access control schema
-10. **[02b-users.md](02b-users.md)** - users, OTP, device tokens, token blacklist
-11. **[02c-stores.md](02c-stores.md)** - stores and tables
-12. **[02d-menu.md](02d-menu.md)** - menu and inventory
-13. **[02e-orders.md](02e-orders.md)** - orders and payments
-14. **[02f-loyalty.md](02f-loyalty.md)** - loyalty, rewards, wallet
-15. **[02g-marketing.md](02g-marketing.md)** - vouchers, promos, surveys, information cards
-16. **[02h-staff.md](02h-staff.md)** - staff management
-17. **[02i-social.md](02i-social.md)** - referral and favorites
-18. **[02j-system.md](02j-system.md)** - config, notifications, audit
+7. **[02a-acl.md](02a-acl.md)** - access control schema
+8. **[02b-users.md](02b-users.md)** - users, OTP, device tokens, token blacklist
+9. **[02c-stores.md](02c-stores.md)** - stores and tables
+10. **[02d-menu.md](02d-menu.md)** - menu and inventory
+11. **[02e-orders.md](02e-orders.md)** - orders and payments
+12. **[02f-loyalty.md](02f-loyalty.md)** - loyalty, rewards, wallet
+13. **[02g-marketing.md](02g-marketing.md)** - vouchers, promos, surveys, information cards
+14. **[02h-staff.md](02h-staff.md)** - staff management
+15. **[02i-social.md](02i-social.md)** - referral and favorites
+16. **[02j-system.md](02j-system.md)** - config, notifications, audit
+
+### Reference & Audit
+17. **[05-alignment-verification.md](05-alignment-verification.md)** - current alignment summary and known drift boundaries
+18. **[06-improvements-log.md](06-improvements-log.md)** - historical implementation log, not a launch signoff
+19. **[10-frontend-audit.md](10-frontend-audit.md)** - frontend architecture audit and improvement recommendations
+20. **[11-ui-ux-guidelines.md](11-ui-ux-guidelines.md)** - brand colors, theming, and component guidelines
+21. **[12-environment.md](12-environment.md)** - consolidated environment variable reference
+22. **[08-post-pwa-roadmap.md](08-post-pwa-roadmap.md)** - planned features and enhancements
 
 ---
 

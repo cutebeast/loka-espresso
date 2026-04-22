@@ -65,6 +65,7 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
   }, [token, selectedStore, fromDate, toDate]);
 
   useEffect(() => {
+    if (preset === 'CUSTOM') return;
     const range = calcDateRange(preset);
     setFromDate(range.from);
     setToDate(range.to);

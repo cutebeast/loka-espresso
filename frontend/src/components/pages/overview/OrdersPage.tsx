@@ -46,6 +46,8 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
   const [trackingFields, setTrackingFields] = useState({ courier_name: '', courier_phone: '', tracking_url: '', provider: '', eta_minutes: '' });
   const [savingTracking, setSavingTracking] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
+  const [markingPosSynced, setMarkingPosSynced] = useState(false);
+  const [markingDispatched, setMarkingDispatched] = useState(false);
 
   const totalPages = Math.ceil(total / pageSize);
   const physicalStores = stores.filter(s => String(s.id) !== '0');
@@ -157,6 +159,40 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
     return `${method} (${pStatus})`;
   }
 
+  function needsPosSync(order: MerchantOrder): boolean {
+    // Dine-in and pickup orders need POS sync when not yet synced and at confirmed or later
+    if (order.order_type === 'delivery') return false;
+    if (['pending', 'cancelled', 'completed'].includes(order.status)) return false;
+    return !order.pos_synced_at;
+  }
+
+  function needsDispatch(order: MerchantOrder): boolean {
+    // Delivery orders need dispatch when not yet dispatched and at ready or later
+    if (order.order_type !== 'delivery') return false;
+    if (['pending', 'confirmed', 'preparing', 'cancelled', 'completed'].includes(order.status)) return false;
+    return !order.delivery_dispatched_at;
+  }
+
+  async function markPosSynced(order: MerchantOrder) {
+    setMarkingPosSynced(true);
+    try {
+      const res = await apiFetch(`/orders/${order.id}/pos-synced`, token, { method: 'POST' });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); alert(data.detail || 'Failed'); return; }
+      onUpdate();
+      setSelectedOrder(prev => prev ? { ...prev, pos_synced_at: new Date().toISOString() } : prev);
+    } catch { alert('Network error'); } finally { setMarkingPosSynced(false); }
+  }
+
+  async function markDeliveryDispatched(order: MerchantOrder) {
+    setMarkingDispatched(true);
+    try {
+      const res = await apiFetch(`/orders/${order.id}/delivery-dispatched`, token, { method: 'POST' });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); alert(data.detail || 'Failed'); return; }
+      onUpdate();
+      setSelectedOrder(prev => prev ? { ...prev, delivery_dispatched_at: new Date().toISOString() } : prev);
+    } catch { alert('Network error'); } finally { setMarkingDispatched(false); }
+  }
+
   function timeSince(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
@@ -172,10 +208,16 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
     { key: 'order_type', header: 'Type', render: (o) => <span style={{ textTransform: 'capitalize', color: THEME.textSecondary }}>{o.order_type?.replace('_', ' ')}</span> },
     { key: 'total', header: 'Total', render: (o) => <span style={{ color: THEME.textPrimary, fontWeight: 500 }}>{formatRM(o.total)}</span> },
     { key: 'status', header: 'Status', render: (o) => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         {statusBadge(o.status)}
         {o.payment_status !== 'paid' && o.status !== 'completed' && o.status !== 'cancelled' && (
           <span style={{ fontSize: 10, background: '#FEF3C7', color: '#92400E', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>UNPAID</span>
+        )}
+        {needsPosSync(o) && (
+          <span style={{ fontSize: 10, background: '#FEE2E2', color: '#B91C1C', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>POS SYNC REQUIRED</span>
+        )}
+        {needsDispatch(o) && (
+          <span style={{ fontSize: 10, background: '#FEE2E2', color: '#B91C1C', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>DISPATCH REQUIRED</span>
         )}
       </div>
     )},
@@ -373,6 +415,52 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
                   Cancel Order
                 </button>
               </div>
+
+              {/* Manual Action Buttons */}
+              {selectedOrder && needsPosSync(selectedOrder) && (
+                <button
+                  onClick={() => markPosSynced(selectedOrder)}
+                  disabled={markingPosSynced}
+                  style={{
+                    display: 'block', width: '100%', marginBottom: 12,
+                    padding: '10px 16px', borderRadius: 8,
+                    border: '2px solid #D97706', background: '#FFFBEB',
+                    color: '#B45309', fontWeight: 700, fontSize: 14, cursor: markingPosSynced ? 'wait' : 'pointer',
+                  }}
+                >
+                  <i className="fas fa-cash-register" style={{ marginRight: 8 }}></i>
+                  {markingPosSynced ? 'Saving...' : 'Mark POS Synced — Order re-keyed into POS'}
+                </button>
+              )}
+              {selectedOrder && needsDispatch(selectedOrder) && (
+                <button
+                  onClick={() => markDeliveryDispatched(selectedOrder)}
+                  disabled={markingDispatched}
+                  style={{
+                    display: 'block', width: '100%', marginBottom: 12,
+                    padding: '10px 16px', borderRadius: 8,
+                    border: '2px solid #D97706', background: '#FFFBEB',
+                    color: '#B45309', fontWeight: 700, fontSize: 14, cursor: markingDispatched ? 'wait' : 'pointer',
+                  }}
+                >
+                  <i className="fas fa-truck" style={{ marginRight: 8 }}></i>
+                  {markingDispatched ? 'Saving...' : 'Mark Delivery Dispatched — Driver booked externally'}
+                </button>
+              )}
+
+              {/* Audit trail */}
+              {selectedOrder.pos_synced_at && (
+                <div style={{ marginBottom: 12, padding: '8px 12px', background: '#ECFDF5', borderRadius: 8, fontSize: 12, color: '#065F46' }}>
+                  <i className="fas fa-check-circle" style={{ marginRight: 6 }}></i>
+                  POS synced at {new Date(selectedOrder.pos_synced_at).toLocaleString()}
+                </div>
+              )}
+              {selectedOrder.delivery_dispatched_at && (
+                <div style={{ marginBottom: 12, padding: '8px 12px', background: '#ECFDF5', borderRadius: 8, fontSize: 12, color: '#065F46' }}>
+                  <i className="fas fa-check-circle" style={{ marginRight: 6 }}></i>
+                  Delivery dispatched at {new Date(selectedOrder.delivery_dispatched_at).toLocaleString()}
+                </div>
+              )}
 
               {/* Delivery Tracking — for delivery orders at ready or beyond */}
               {selectedOrder.order_type === 'delivery' && ['ready', 'out_for_delivery'].includes(selectedOrder.status) && (

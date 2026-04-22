@@ -151,6 +151,28 @@ export default function StoreSettingsPage({ stores, token, onRefresh }: StoreSet
                 <div style={{ fontSize: 12, color: THEME.success, marginTop: 4 }}>
                   Slug: <code>{s.slug}</code> · Phone: {s.phone || '-'} · Pickup lead: {s.pickup_lead_minutes || '-'} min
                 </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <span style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontWeight: 600,
+                    background: s.pos_integration_enabled ? '#ECFDF5' : '#FEF3C7',
+                    color: s.pos_integration_enabled ? '#059669' : '#B45309',
+                  }}>
+                    POS: {s.pos_integration_enabled ? 'API' : 'Manual'}
+                  </span>
+                  <span style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontWeight: 600,
+                    background: s.delivery_integration_enabled ? '#ECFDF5' : '#FEF3C7',
+                    color: s.delivery_integration_enabled ? '#059669' : '#B45309',
+                  }}>
+                    Delivery: {s.delivery_integration_enabled ? 'API' : 'Manual'}
+                  </span>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button className="btn btn-sm" onClick={() => setEditingStore(s)}><i className="fas fa-edit"></i> Edit</button>
@@ -189,6 +211,8 @@ function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }
   const [lng, setLng] = useState('');
   const [deliveryRadius, setDeliveryRadius] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [posIntegration, setPosIntegration] = useState(false);
+  const [deliveryIntegration, setDeliveryIntegration] = useState(false);
   const [openingHours, setOpeningHours] = useState<OpeningHoursState>(parseOpeningHours(null));
   const [saving, setSaving] = useState(false);
 
@@ -207,6 +231,8 @@ function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }
       if (lng) payload.lng = parseFloat(lng);
       if (deliveryRadius) payload.delivery_radius_km = parseFloat(deliveryRadius);
       if (imageUrl) payload.image_url = imageUrl;
+      payload.pos_integration_enabled = posIntegration;
+      payload.delivery_integration_enabled = deliveryIntegration;
       const ohJSON = openingHoursToJSON(openingHours);
       if (ohJSON) payload.opening_hours = ohJSON;
       await apiFetch('/admin/stores', token, {
@@ -265,6 +291,24 @@ function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }
             <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
           </div>
           <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Integrations</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', border: `1px solid ${THEME.accentLight}`, borderRadius: 8, background: '#FAFAFA' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={posIntegration} onChange={e => setPosIntegration(e.target.checked)} style={{ accentColor: THEME.primary }} />
+                <span>POS API Integration</span>
+                <span style={{ fontSize: 11, color: THEME.success }}>— Auto-sync orders to POS/KDS</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={deliveryIntegration} onChange={e => setDeliveryIntegration(e.target.checked)} style={{ accentColor: THEME.primary }} />
+                <span>Delivery API Integration</span>
+                <span style={{ fontSize: 11, color: THEME.success }}>— Auto-dispatch to Grab/Lalamove/etc</span>
+              </label>
+              <div style={{ fontSize: 11, color: '#B45309', marginTop: 4 }}>
+                <i className="fas fa-info-circle"></i> When disabled, staff must manually sync orders. Default is Manual (recommended for launch).
+              </div>
+            </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Opening Hours</label>
             <OpeningHoursEditor value={openingHours} onChange={setOpeningHours} />
           </div>
@@ -288,6 +332,8 @@ function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token:
   const [lng, setLng] = useState(store.lng != null ? String(store.lng) : '');
   const [deliveryRadius, setDeliveryRadius] = useState(store.delivery_radius_km != null ? String(store.delivery_radius_km) : '');
   const [imageUrl, setImageUrl] = useState(store.image_url || '');
+  const [posIntegration, setPosIntegration] = useState(store.pos_integration_enabled || false);
+  const [deliveryIntegration, setDeliveryIntegration] = useState(store.delivery_integration_enabled || false);
   const [openingHours, setOpeningHours] = useState<OpeningHoursState>(parseOpeningHours(store.opening_hours));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -307,6 +353,8 @@ function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token:
       if (lng) payload.lng = parseFloat(lng);
       if (deliveryRadius) payload.delivery_radius_km = parseFloat(deliveryRadius);
       if (imageUrl) payload.image_url = imageUrl;
+      payload.pos_integration_enabled = posIntegration;
+      payload.delivery_integration_enabled = deliveryIntegration;
       const ohJSON = openingHoursToJSON(openingHours);
       if (ohJSON) payload.opening_hours = ohJSON;
       const res = await apiFetch(`/admin/stores/${store.id}`, token, {
@@ -376,6 +424,24 @@ function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token:
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>Image URL</label>
             <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>Integrations</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', border: `1px solid ${THEME.accentLight}`, borderRadius: 8, background: '#FAFAFA' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={posIntegration} onChange={e => setPosIntegration(e.target.checked)} style={{ accentColor: THEME.primary }} />
+                <span>POS API Integration</span>
+                <span style={{ fontSize: 11, color: THEME.success }}>— Auto-sync orders to POS/KDS</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={deliveryIntegration} onChange={e => setDeliveryIntegration(e.target.checked)} style={{ accentColor: THEME.primary }} />
+                <span>Delivery API Integration</span>
+                <span style={{ fontSize: 11, color: THEME.success }}>— Auto-dispatch to Grab/Lalamove/etc</span>
+              </label>
+              <div style={{ fontSize: 11, color: '#B45309', marginTop: 4 }}>
+                <i className="fas fa-info-circle"></i> When disabled, staff must manually sync orders. Default is Manual (recommended for launch).
+              </div>
+            </div>
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>Opening Hours</label>

@@ -47,7 +47,7 @@ def place_order_with_discount(store_id, pickup_time, discount_payload, token):
         return None, f"{resp.status_code} {resp.text[:100]}"
     return resp.json(), None
 
-def place_single_order(customer, redeemed_rewards, order_index=1):
+def place_single_order(customer, redeemed_rewards, claimed_vouchers_map, order_index=1):
     """Place a single discounted order for a customer."""
     user_id = customer.get("user_id")
     token = customer.get("token")
@@ -56,8 +56,8 @@ def place_single_order(customer, redeemed_rewards, order_index=1):
     if not token:
         return None, "No token"
 
-    # Check for discounts
-    vouchers = customer.get("vouchers", [])
+    # Check for discounts — vouchers from claimed_vouchers state, rewards from redeemed_rewards state
+    vouchers = claimed_vouchers_map.get(user_id, [])
     rewards = redeemed_rewards.get(user_id, [])
 
     if not vouchers and not rewards:
@@ -146,9 +146,16 @@ def run():
     failed_count = 0
     discounted_orders = []
 
+    # Build voucher lookup from claimed_vouchers state (set by verify_seed_14_claim_vouchers.py)
+    claimed_vouchers_map = {}
+    for cv in state.get("claimed_vouchers", []):
+        uid = cv.get("user_id")
+        if uid:
+            claimed_vouchers_map[uid] = cv.get("vouchers", [])
+
     for c in customers:
         user_id = c.get("user_id")
-        vouchers = c.get("vouchers", [])
+        vouchers = claimed_vouchers_map.get(user_id, [])
         rewards = redeemed_rewards.get(user_id, [])
 
         # Skip customers with no discounts
@@ -157,7 +164,7 @@ def run():
 
         # Place 3 orders per customer
         for order_idx in range(1, 4):
-            order_result, err = place_single_order(c, redeemed_rewards, order_idx)
+            order_result, err = place_single_order(c, redeemed_rewards, claimed_vouchers_map, order_idx)
             if order_result:
                 success_count += 1
                 discounted_orders.append(order_result)

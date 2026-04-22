@@ -14,7 +14,7 @@ from shared_config import api_post, api_get, admin_token, print_header
 import db_validate
 
 
-STORE_IDS = [2, 3, 4, 5, 6]
+STORE_IDS = [1, 2, 3, 4, 5]
 
 
 HQ_STAFF = [
@@ -25,28 +25,28 @@ HQ_STAFF = [
 
 
 STORE_MANAGEMENT = [
-    {"name": "Syed Faris",    "email": "mgr_klcc@fnb.com",    "phone": "+60110002001", "user_type_id": 2, "role_id": 3, "store_id": 2},
-    {"name": "Danial Hakim",  "email": "astmgr_klcc@fnb.com", "phone": "+60110002002", "user_type_id": 2, "role_id": 4, "store_id": 2},
-    {"name": "Zara Lee",      "email": "mgr_pavilion@fnb.com","phone": "+60110003001", "user_type_id": 2, "role_id": 3, "store_id": 3},
-    {"name": "Qisya Amin",   "email": "astmgr_pavilion@fnb.com","phone": "+60110003002","user_type_id": 2, "role_id": 4, "store_id": 3},
-    {"name": "Fikri Haikal",  "email": "mgr_cheras@fnb.com",  "phone": "+60110004001", "user_type_id": 2, "role_id": 3, "store_id": 4},
-    {"name": "Hanis Nabilah","email": "mgr_pj@fnb.com",        "phone": "+60110005001", "user_type_id": 2, "role_id": 3, "store_id": 5},
-    {"name": "Irfan Zulkifli","email": "mgr_bangi@fnb.com",   "phone": "+60110006001", "user_type_id": 2, "role_id": 3, "store_id": 6},
+    {"name": "Syed Faris",    "email": "mgr_klcc@fnb.com",    "phone": "+60110002001", "user_type_id": 2, "role_id": 3, "store_id": 1},
+    {"name": "Danial Hakim",  "email": "astmgr_klcc@fnb.com", "phone": "+60110002002", "user_type_id": 2, "role_id": 4, "store_id": 1},
+    {"name": "Zara Lee",      "email": "mgr_pavilion@fnb.com","phone": "+60110003001", "user_type_id": 2, "role_id": 3, "store_id": 2},
+    {"name": "Qisya Amin",   "email": "astmgr_pavilion@fnb.com","phone": "+60110003002","user_type_id": 2, "role_id": 4, "store_id": 2},
+    {"name": "Fikri Haikal",  "email": "mgr_cheras@fnb.com",  "phone": "+60110004001", "user_type_id": 2, "role_id": 3, "store_id": 3},
+    {"name": "Hanis Nabilah","email": "mgr_pj@fnb.com",        "phone": "+60110005001", "user_type_id": 2, "role_id": 3, "store_id": 4},
+    {"name": "Irfan Zulkifli","email": "mgr_bangi@fnb.com",   "phone": "+60110006001", "user_type_id": 2, "role_id": 3, "store_id": 5},
 ]
 
 
 STORE_STAFF = [
-    {"name": "Ainul Mardhiyah","email": "staff_klcc_1@fnb.com","phone": "+60110002011","store_id": 2, "role": "barista"},
-    {"name": "Buddhi Nair",    "email": "staff_klcc_2@fnb.com","phone": "+60110002012","store_id": 2, "role": "cashier"},
-    {"name": "Nadzmi Hakimi",  "email": "staff_klcc_3@fnb.com","phone": "+60110002013","store_id": 2, "role": "delivery"},
-    {"name": "Siti Fatimah",   "email": "staff_pavilion_1@fnb.com","phone": "+60110003011","store_id": 3, "role": "barista"},
-    {"name": "Ravi Kumar",     "email": "staff_pavilion_2@fnb.com","phone": "+60110003012","store_id": 3, "role": "cashier"},
-    {"name": "Yeo Jia Ling",  "email": "staff_cheras_1@fnb.com","phone": "+60110004011","store_id": 4, "role": "barista"},
-    {"name": "Amirul Hazri",   "email": "staff_cheras_2@fnb.com","phone": "+60110004012","store_id": 4, "role": "cashier"},
-    {"name": "Nadia Adriana",  "email": "staff_pj_1@fnb.com",  "phone": "+60110005011","store_id": 5, "role": "barista"},
-    {"name": "Fadli Syazani",  "email": "staff_bangi_1@fnb.com","phone": "+60110006011","store_id": 6, "role": "barista"},
-    {"name": "Aqila Zahrah",   "email": "staff_bangi_2@fnb.com","phone": "+60110006012","store_id": 6, "role": "cashier"},
-    {"name": "Harith Danish",  "email": "staff_bangi_3@fnb.com","phone": "+60110006013","store_id": 6, "role": "delivery"},
+    {"name": "Ainul Mardhiyah","email": "staff_klcc_1@fnb.com","phone": "+60110002011","store_id": 1, "role": "barista"},
+    {"name": "Buddhi Nair",    "email": "staff_klcc_2@fnb.com","phone": "+60110002012","store_id": 1, "role": "cashier"},
+    {"name": "Nadzmi Hakimi",  "email": "staff_klcc_3@fnb.com","phone": "+60110002013","store_id": 1, "role": "delivery"},
+    {"name": "Siti Fatimah",   "email": "staff_pavilion_1@fnb.com","phone": "+60110003011","store_id": 2, "role": "barista"},
+    {"name": "Ravi Kumar",     "email": "staff_pavilion_2@fnb.com","phone": "+60110003012","store_id": 2, "role": "cashier"},
+    {"name": "Yeo Jia Ling",  "email": "staff_cheras_1@fnb.com","phone": "+60110004011","store_id": 3, "role": "barista"},
+    {"name": "Amirul Hazri",   "email": "staff_cheras_2@fnb.com","phone": "+60110004012","store_id": 3, "role": "cashier"},
+    {"name": "Nadia Adriana",  "email": "staff_pj_1@fnb.com",  "phone": "+60110005011","store_id": 4, "role": "barista"},
+    {"name": "Fadli Syazani",  "email": "staff_bangi_1@fnb.com","phone": "+60110006011","store_id": 5, "role": "barista"},
+    {"name": "Aqila Zahrah",   "email": "staff_bangi_2@fnb.com","phone": "+60110006012","store_id": 5, "role": "cashier"},
+    {"name": "Harith Danish",  "email": "staff_bangi_3@fnb.com","phone": "+60110006013","store_id": 5, "role": "delivery"},
 ]
 
 

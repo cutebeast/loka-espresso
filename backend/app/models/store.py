@@ -22,6 +22,8 @@ class Store(Base):
     pickup_lead_minutes: Mapped[int] = mapped_column(Integer, default=15)
     delivery_radius_km: Mapped[float] = mapped_column(DECIMAL(5, 2), default=5.0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    pos_integration_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    delivery_integration_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

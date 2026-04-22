@@ -85,8 +85,8 @@ export default function HomePage() {
   const loadInfoCards = useCallback(async () => {
     setLoadingInfo(true);
     try {
-      // Limit to 3 promotional cards (excludes system content like T&C)
-      const res = await api.get('/content/information?limit=3');
+      // Limit to 3 informational cards (excludes system content, promos, popups)
+      const res = await api.get('/content/information?limit=3&content_type=information');
       setInfoCards(Array.isArray(res.data) ? res.data : []);
     } catch {
       try {

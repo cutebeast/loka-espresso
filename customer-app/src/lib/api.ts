@@ -5,50 +5,11 @@ export const API_BASE = '/api/v1';
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // Send httpOnly cookies automatically
 });
 
 // Prevents multiple simultaneous refresh attempts from triggering multiple reloads
 let _refreshFailed = false;
-
-api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('loka-auth');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        const token = parsed?.state?.token;
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-      } catch {}
-    }
-  }
-  return config;
-});
-
-function getStoredRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem('loka-auth');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.state?.refreshToken ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function getStoredUser() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem('loka-auth');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.state?.user ?? null;
-  } catch {
-    return null;
-  }
-}
 
 api.interceptors.response.use(
   (res) => res,
@@ -59,28 +20,15 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = getStoredRefreshToken();
-        if (refreshToken) {
-          const response = await axios.post(`${API_BASE}/auth/refresh`, {
-            refresh_token: refreshToken,
-          });
+        // Refresh token is sent automatically via httpOnly cookie
+        const response = await axios.post(`${API_BASE}/auth/refresh`, {}, {
+          withCredentials: true,
+        });
 
-          if (response.data?.access_token) {
-            const newToken = response.data.access_token;
-            const newRefresh = response.data.refresh_token || response.data.refreshToken;
-
-            localStorage.setItem('loka-auth', JSON.stringify({
-              state: {
-                token: newToken,
-                refreshToken: newRefresh || refreshToken,
-                user: getStoredUser(),
-              },
-              version: 0,
-            }));
-
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return api(originalRequest);
-          }
+        if (response.data?.access_token) {
+          // New access token is set via httpOnly cookie by the backend
+          // Just retry the original request
+          return api(originalRequest);
         }
       } catch (refreshError) {
         console.error('Token refresh failed:', refreshError);
@@ -89,8 +37,6 @@ api.interceptors.response.use(
       // Only clear and reload once per page load to prevent infinite loops
       if (!_refreshFailed) {
         _refreshFailed = true;
-        localStorage.removeItem('loka-auth');
-        localStorage.removeItem('loka-cart');
         if (typeof window !== 'undefined') {
           window.location.reload();
         }
@@ -116,6 +62,8 @@ export interface Store {
   lng?: number;
   pickup_lead_minutes?: number;
   delivery_radius_km?: number;
+  pos_integration_enabled?: boolean;
+  delivery_integration_enabled?: boolean;
 }
 
 export interface Category {
@@ -262,6 +210,11 @@ export interface Order {
    delivery_eta_minutes?: number;
    delivery_courier_name?: string;
    delivery_courier_phone?: string;
+   pos_synced_at?: string;
+   pos_synced_by?: number;
+   delivery_dispatched_at?: string;
+   delivery_dispatched_by?: number;
+   staff_notes?: string;
   timeline?: Array<{
     status: string;
     timestamp: string;

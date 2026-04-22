@@ -1,6 +1,6 @@
 # FNB Super-App — Architecture Overview
 
-> Last updated: 2026-04-21 | Status: current internal architecture before real provider integrations
+> Last updated: 2026-04-22 | Status: current internal architecture, post-Session-14 refactoring
 
 ## Runtime Topology
 
@@ -38,7 +38,7 @@ backend/ ──────────────── PostgreSQL 16
 - Purpose: merchant/admin dashboard for operations, marketing, reporting, and system management
 - Current auth model:
   - email/password login
-  - local token storage with refresh handling
+  - httpOnly cookie-based auth with automatic credential inclusion (`credentials: 'include'`) 
 
 ### Customer PWA
 - Location: `customer-app/`
@@ -97,7 +97,8 @@ These integrations are still mocked, not real-provider implementations:
 ### Order Flows
 
 #### Flow A — Pickup / Delivery
-- `pending -> paid -> confirmed -> preparing -> ready -> completed`
+- `pending -> confirmed -> preparing -> ready -> completed` (wallet payments auto-advance; pay-later orders advance on staff confirmation)
+- `pending -> paid -> confirmed -> ...` (wallet payment path)
 - delivery may additionally pass through `out_for_delivery`
 - payment happens before fulfillment progression
 
@@ -149,6 +150,7 @@ Important backend env variables currently in use:
 - `WEBHOOK_API_KEY`
 - `WEBHOOK_SIGNING_SECRET`
 - `OTP_BYPASS_ALLOWED`
+- `POS_API_URL` (controls outbound POS integration calls; empty = disabled)
 
 ## Operational Modes
 

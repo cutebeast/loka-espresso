@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { apiFetch, clearMerchantTokens } from '@/lib/merchant-api';
+import { apiFetch } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import type {
   PageId,
@@ -23,10 +23,9 @@ import type {
 import LoginScreen from '@/components/LoginScreen';
 import Sidebar from '@/components/Sidebar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import {
-  AddBroadcastForm,
-  AddCustomizationForm,
-} from '@/components/Modals';
+import { AddBroadcastForm } from '@/components/Modals';
+import ChangePasswordModal from '@/components/ChangePasswordModal';
+import CustomizationManager from '@/components/CustomizationManager';
 import DashboardPage from '@/components/pages/overview/DashboardPage';
 import OrdersPage from '@/components/pages/overview/OrdersPage';
 
@@ -48,6 +47,7 @@ const StoreSettingsPage = dynamic(() => import('@/components/pages/system/StoreS
 const NotificationsPage = dynamic(() => import('@/components/pages/marketing/NotificationsPage'), { ssr: false });
 const PromotionsPage = dynamic(() => import('@/components/pages/marketing/PromotionsPage'), { ssr: false });
 const InformationPage = dynamic(() => import('@/components/pages/marketing/InformationPage'), { ssr: false });
+const WalletTopUpPage = dynamic(() => import('@/components/pages/store-ops/WalletTopUpPage'), { ssr: false });
 const FeedbackPage = dynamic(() => import('@/components/pages/marketing/FeedbackPage'), { ssr: false });
 const PWASettingsPage = dynamic(() => import('@/components/pages/system/PWASettingsPage'), { ssr: false });
 
@@ -56,7 +56,53 @@ export default function MerchantDashboard() {
   const [refreshToken, setRefreshToken] = useState('');
   const [currentUserRole, setCurrentUserRole] = useState('Admin');
   const [currentUserType, setCurrentUserType] = useState<number>(1);
-  const [page, setPage] = useState<PageId>('dashboard');
+  function getHashPage(): PageId {
+    if (typeof window === 'undefined') return 'dashboard';
+    // Prefer hash, fall back to ?page= query param for backward compatibility
+    const hash = window.location.hash.replace('#', '');
+    const valid: PageId[] = ['dashboard','orders','kitchen','menu','inventory','tables','staff','rewards','vouchers','promotions','information','feedback','reports','marketingreports','customers','notifications','auditlog','loyaltyrules','store','settings','pwa','walletTopup','customerDetail'];
+    if (valid.includes(hash as PageId)) return hash as PageId;
+    const qp = new URLSearchParams(window.location.search).get('page');
+    if (qp && valid.includes(qp as PageId)) return qp as PageId;
+    return 'dashboard';
+  }
+  const [page, setPage] = useState<PageId>(getHashPage);
+
+  // Browser back/forward routing: handles both hash changes and pushState history
+  useEffect(() => {
+    const valid: PageId[] = ['dashboard','orders','kitchen','menu','inventory','tables','staff','rewards','vouchers','promotions','information','feedback','reports','marketingreports','customers','notifications','auditlog','loyaltyrules','store','settings','pwa','walletTopup','customerDetail'];
+    const syncPage = () => {
+      // Check history state for customer detail (set by pushState when opening a customer)
+      const stateDetailId = (window.history.state as {customerDetailId?: number} | null)?.customerDetailId;
+      if (stateDetailId != null) {
+        setCustomerDetailId(stateDetailId);
+        setPage('customers');
+        return;
+      }
+      const hash = window.location.hash.replace('#', '');
+      if (valid.includes(hash as PageId)) {
+        setCustomerDetailId(null);
+        setPage(hash as PageId);
+        return;
+      }
+      const qp = new URLSearchParams(window.location.search).get('page');
+      if (qp && valid.includes(qp as PageId)) {
+        setPage(qp as PageId);
+        return;
+      }
+      // Default to dashboard when no hash and no query param
+      if (!hash && !qp) {
+        setCustomerDetailId(null);
+        setPage('dashboard');
+      }
+    };
+    window.addEventListener('hashchange', syncPage);
+    window.addEventListener('popstate', syncPage);
+    return () => {
+      window.removeEventListener('hashchange', syncPage);
+      window.removeEventListener('popstate', syncPage);
+    };
+  }, []);
   const [selectedStore, setSelectedStore] = useState<string>('all');
   const [stores, setStores] = useState<MerchantStore[]>([]);
   const [showStoreModal, setShowStoreModal] = useState(false);
@@ -109,21 +155,31 @@ export default function MerchantDashboard() {
   const [ordersFromDate, setOrdersFromDate] = useState('');
   const [ordersToDate, setOrdersToDate] = useState('');
 
+  // Check auth status on mount using httpOnly cookie
   useEffect(() => {
-    const saved = localStorage.getItem('fnb_token');
-    const savedRefresh = localStorage.getItem('fnb_refresh_token');
-    if (saved) setToken(saved);
-    if (savedRefresh) setRefreshToken(savedRefresh);
+    async function checkAuth() {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/users/me`, {
+          credentials: 'include',
+        });
+        if (res.ok) {
+          setToken('cookie-auth');
+          fetchStores();
+          fetchUserRole();
+        }
+      } catch {
+        // Not authenticated
+      }
+    }
+    checkAuth();
   }, []);
 
   useEffect(() => {
     if (token) {
-      localStorage.setItem('fnb_token', token);
-      if (refreshToken) localStorage.setItem('fnb_refresh_token', refreshToken);
       fetchStores();
       fetchUserRole();
     }
-  }, [token, refreshToken]);
+  }, [token]);
 
   // Mobile sidebar toggle handling
   useEffect(() => {
@@ -197,11 +253,19 @@ export default function MerchantDashboard() {
     return () => controller.abort();
   }, [page, token, selectedStore, dateRange, ordersPage, ordersStatus, ordersOrderType, ordersFromDate, ordersToDate]);
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // Best effort
+    }
     setToken('');
     setRefreshToken('');
-    clearMerchantTokens();
     setPage('dashboard');
+    if (typeof window !== 'undefined') window.location.hash = 'dashboard';
     setSelectedStore('all');
     setDateRange({ from: '', to: '' });
   }
@@ -329,13 +393,16 @@ export default function MerchantDashboard() {
   }
 
   if (!token) {
-    return <LoginScreen onLogin={(nextToken, nextRefreshToken) => { setToken(nextToken); setRefreshToken(nextRefreshToken || ''); }} />;
+    return <LoginScreen onLogin={() => { setToken('cookie-auth'); }} />;
   }
 
   const storeObj = stores.find(s => s.id === Number(selectedStore));
 
   function handlePageChange(newPage: PageId) {
     setCustomerDetailId(null);
+    if (typeof window !== 'undefined') {
+      window.location.hash = newPage;
+    }
     setPage(newPage);
   }
 
@@ -361,6 +428,7 @@ export default function MerchantDashboard() {
     store: 'Store Settings',
     settings: 'App Settings',
     pwa: 'PWA Settings',
+    walletTopup: 'Wallet Top-Up',
     customerDetail: 'Customer Profile',
   };
 
@@ -404,7 +472,7 @@ export default function MerchantDashboard() {
           </button>
           {customerDetailId ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button className="btn btn-sm" onClick={() => { setCustomerDetailId(null); window.history.pushState({}, '', window.location.pathname); }}>
+              <button className="btn btn-sm" onClick={() => window.history.back()}>
                 <i className="fas fa-arrow-left"></i> Back to Customers
               </button>
               <div style={{ fontSize: 14, color: '#64748B' }}>Customer Detail</div>
@@ -414,7 +482,7 @@ export default function MerchantDashboard() {
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
             <div
-              onClick={() => setPage('notifications')}
+              onClick={() => handlePageChange('notifications')}
               style={{ position: 'relative', fontSize: 20, color: '#475569', cursor: 'pointer' }}
             >
               <i className="far fa-bell"></i>
@@ -505,7 +573,7 @@ export default function MerchantDashboard() {
                   onStoreChange={setSelectedStore}
                   onViewOrder={(orderId: number) => {
                     setOrdersStatus('');
-                    setPage('orders');
+                    handlePageChange('orders');
                   }}
                 />
               )}
@@ -550,9 +618,9 @@ export default function MerchantDashboard() {
 
             {page === 'customers' && (
               customerDetailId ? (
-                <CustomerDetailPage token={token} customerId={customerDetailId} onBack={() => { setCustomerDetailId(null); window.history.pushState({}, '', window.location.pathname); }} />
+                <CustomerDetailPage token={token} customerId={customerDetailId} onBack={() => window.history.back()} />
               ) : (
-                <CustomersPage token={token} stores={stores} selectedStore={selectedStore} onStoreChange={setSelectedStore} onEditCustomer={(id) => { setCustomerDetailId(id); window.history.pushState({}, '', `?page=customers&customerId=${id}`); }} />
+                <CustomersPage token={token} stores={stores} selectedStore={selectedStore} onStoreChange={setSelectedStore} onEditCustomer={(id) => { window.history.pushState({customerDetailId: id}, '', '#customers'); setCustomerDetailId(id); }} />
               )
             )}
 
@@ -582,6 +650,10 @@ export default function MerchantDashboard() {
 
             {page === 'pwa' && (
               <PWASettingsPage token={token} />
+            )}
+
+            {page === 'walletTopup' && (
+              <WalletTopUpPage token={token} />
             )}
             </div>
           </ErrorBoundary>
@@ -654,132 +726,4 @@ export default function MerchantDashboard() {
   );
 }
 
-// --- Change Password Modal ---
-function ChangePasswordModal({ token, onClose }: { token: string; onClose: () => void }) {
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters');
-      return;
-    }
-    setSaving(true);
-    setError('');
-    try {
-      const res = await apiFetch('/auth/change-password', token, {
-        method: 'POST',
-        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.detail || 'Failed to change password');
-        return;
-      }
-      setSuccess(true);
-    } catch (err) { console.error('Password change failed:', err); setError('Network error'); }
-    finally { setSaving(false); }
-  }
-
-  if (success) {
-    return (
-      <div style={{ textAlign: 'center', padding: 20 }}>
-        <i className="fas fa-check-circle" style={{ fontSize: 40, color: '#059669', marginBottom: 16 }}></i>
-        <h4>Password changed successfully</h4>
-        <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={onClose}>Done</button>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3 style={{ margin: 0 }}>Change Password</h3>
-        <button className="btn btn-sm" onClick={onClose}><i className="fas fa-times"></i></button>
-      </div>
-      {error && (
-        <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
-          <i className="fas fa-exclamation-circle"></i> {error}
-        </div>
-      )}
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Current Password *</label>
-          <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>New Password *</label>
-          <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6} />
-          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>Minimum 6 characters</div>
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Confirm New Password *</label>
-          <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
-        </div>
-        <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
-          {saving ? 'Changing...' : 'Change Password'}
-        </button>
-      </form>
-    </>
-  );
-}
-
-// --- Customization Manager per Item ---
-function CustomizationManager({ storeId, item, token, onClose }: { storeId: number; item: MerchantMenuItem; token: string; onClose: () => void }) {
-  const [options, setOptions] = useState<Array<{ id: number; name: string; price_adjustment: number; is_active: boolean }>>([]);
-  const [loading, setLoading] = useState(true);
-
-  async function loadOptions() {
-    setLoading(true);
-    try {
-      const res = await apiFetch(`/admin/stores/${storeId}/items/${item.id}/customizations`, token);
-      if (res.ok) setOptions(await res.json());
-    } catch (err) { console.error('Failed to fetch customizations:', err); } finally { setLoading(false); }
-  }
-
-  React.useEffect(() => { loadOptions(); }, [item.id]);
-
-  async function deleteOption(optId: number) {
-    await apiFetch(`/admin/stores/${storeId}/customizations/${optId}`, token, { method: 'DELETE' });
-    loadOptions();
-  }
-
-  return (
-    <div>
-      <AddCustomizationForm storeId={storeId} itemId={item.id} token={token} onClose={loadOptions} />
-      <div style={{ marginTop: 20, borderTop: '1px solid #EDF2F8', paddingTop: 16 }}>
-        <h4 style={{ marginBottom: 12 }}>Current Options ({options.length})</h4>
-        {loading ? <div style={{ color: '#64748B' }}>Loading...</div> : options.length === 0 ? (
-          <div style={{ color: '#94A3B8', textAlign: 'center', padding: 20 }}>No customization options yet</div>
-        ) : (
-          <div style={{ display: 'grid', gap: 8 }}>
-            {options.map(opt => (
-              <div key={opt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#F8FAFC', borderRadius: 10 }}>
-                <div>
-                  <span style={{ fontWeight: 500 }}>{opt.name}</span>
-                  {opt.price_adjustment > 0 && <span style={{ marginLeft: 8, color: '#059669', fontWeight: 600 }}>+RM {opt.price_adjustment.toFixed(2)}</span>}
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span className={`badge ${opt.is_active ? 'badge-green' : 'badge-gray'}`}>{opt.is_active ? 'Active' : 'Inactive'}</span>
-                  <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => deleteOption(opt.id)}><i className="fas fa-trash"></i></button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-        <button className="btn" onClick={onClose}>Done</button>
-      </div>
-    </div>
-  );
-}

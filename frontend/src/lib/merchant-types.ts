@@ -11,6 +11,8 @@ export interface MerchantStore {
   lng: number | null;
   image_url: string | null;
   delivery_radius_km: number | null;
+  pos_integration_enabled: boolean;
+  delivery_integration_enabled: boolean;
 }
 
 export interface MerchantCategory {
@@ -134,6 +136,11 @@ export interface MerchantOrder {
   payment_method?: string | null;
   payment_status?: string;
   notes?: string | null;
+  pos_synced_at?: string | null;
+  pos_synced_by?: number | null;
+  delivery_dispatched_at?: string | null;
+  delivery_dispatched_by?: number | null;
+  staff_notes?: string | null;
   user_id: number;
 }
 
@@ -287,4 +294,4 @@ export interface CustomerLoyaltyTransaction {
   created_at: string;
 }
 
-export type PageId = 'dashboard' | 'orders' | 'kitchen' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'information' | 'feedback' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store' | 'settings' | 'pwa' | 'customerDetail';
+export type PageId = 'dashboard' | 'orders' | 'kitchen' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'information' | 'feedback' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store' | 'settings' | 'pwa' | 'walletTopup' | 'customerDetail';

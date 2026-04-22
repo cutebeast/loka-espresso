@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 
@@ -27,6 +28,37 @@ limiter = Limiter(key_func=get_remote_address)
 logger = logging.getLogger(__name__)
 settings = get_settings()
 _bearer = HTTPBearer()
+
+# Cookie settings for httpOnly auth tokens
+_COOKIE_SECURE = settings.ENVIRONMENT in ("production", "staging")
+_COOKIE_SAMESITE = "Strict"
+_COOKIE_ACCESS_MAX_AGE = int(settings.JWT_EXPIRE_MINUTES * 60)
+_COOKIE_REFRESH_MAX_AGE = 30 * 24 * 60 * 60  # 30 days
+
+def _set_auth_cookies(response: JSONResponse, access_token: str, refresh_token: str) -> None:
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=_COOKIE_SECURE,
+        samesite=_COOKIE_SAMESITE,
+        max_age=_COOKIE_ACCESS_MAX_AGE,
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=_COOKIE_SECURE,
+        samesite=_COOKIE_SAMESITE,
+        max_age=_COOKIE_REFRESH_MAX_AGE,
+        path="/",
+    )
+
+def _clear_auth_cookies(response: JSONResponse) -> None:
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
+
 from app.schemas.auth import (
     SendOTPRequest, SendOTPResponse, VerifyOTPRequest, TokenResponse,
     RegisterRequest, LoginPasswordRequest, RefreshRequest, DeviceTokenRequest,
@@ -252,13 +284,15 @@ async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
 
     access = create_access_token({"sub": str(user.id)})
     refresh = create_refresh_token({"sub": str(user.id)})
-    return TokenResponse(
-        access_token=access,
-        refresh_token=refresh,
-        token=access,
-        refreshToken=refresh,
-        is_new_user=is_new_user,
-    )
+    response = JSONResponse(content={
+        "access_token": access,
+        "refresh_token": refresh,
+        "token": access,
+        "refreshToken": refresh,
+        "is_new_user": is_new_user,
+    })
+    _set_auth_cookies(response, access, refresh)
+    return response
 
 
 @router.post("/register", response_model=UserOut)
@@ -289,16 +323,31 @@ async def login_password(request: Request, req: LoginPasswordRequest, db: AsyncS
     await log_action(db, action="LOGIN", user_id=user.id, entity_type="user", entity_id=user.id, details={"email": req.email, "role_id": user.role_id}, ip_address=get_client_ip(request))
     access = create_access_token({"sub": str(user.id)})
     refresh = create_refresh_token({"sub": str(user.id)})
-    return TokenResponse(access_token=access, refresh_token=refresh, token=access, refreshToken=refresh)
+    response = JSONResponse(content={
+        "access_token": access,
+        "refresh_token": refresh,
+        "token": access,
+        "refreshToken": refresh,
+    })
+    _set_auth_cookies(response, access, refresh)
+    return response
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
+async def refresh_token(request: Request, req: RefreshRequest | None = None, db: AsyncSession = Depends(get_db)):
     from jose import jwt, JWTError
     from app.core.config import get_settings
     settings = get_settings()
+
+    # Accept refresh token from body or httpOnly cookie
+    refresh_token_value = req.refresh_token if req else None
+    if not refresh_token_value:
+        refresh_token_value = request.cookies.get("refresh_token")
+    if not refresh_token_value:
+        raise HTTPException(status_code=401, detail="Refresh token required")
+
     try:
-        payload = jwt.decode(req.refresh_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(refresh_token_value, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
         user_id = payload.get("sub")
@@ -318,10 +367,17 @@ async def refresh_token(req: RefreshRequest, db: AsyncSession = Depends(get_db))
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
-    await _blacklist_token(req.refresh_token, user.id, db)
+    await _blacklist_token(refresh_token_value, user.id, db)
     access = create_access_token({"sub": str(user_id)})
     refresh = create_refresh_token({"sub": str(user_id)})
-    return TokenResponse(access_token=access, refresh_token=refresh, token=access, refreshToken=refresh)
+    response = JSONResponse(content={
+        "access_token": access,
+        "refresh_token": refresh,
+        "token": access,
+        "refreshToken": refresh,
+    })
+    _set_auth_cookies(response, access, refresh)
+    return response
 
 
 @router.post("/logout")
@@ -332,12 +388,16 @@ async def logout(
     db: AsyncSession = Depends(get_db),
 ):
     """Blacklist the current access token and optional refresh token."""
-    token = credentials.credentials
+    token = credentials.credentials if credentials else None
+    if not token:
+        token = request.cookies.get("access_token")
     await _blacklist_token(token, user.id, db)
-    refresh_token = request.headers.get("X-Refresh-Token")
+    refresh_token = request.headers.get("X-Refresh-Token") or request.cookies.get("refresh_token")
     await _blacklist_token(refresh_token, user.id, db)
 
-    return {"message": "Logged out"}
+    response = JSONResponse(content={"message": "Logged out"})
+    _clear_auth_cookies(response)
+    return response
 
 
 @router.post("/device-token")

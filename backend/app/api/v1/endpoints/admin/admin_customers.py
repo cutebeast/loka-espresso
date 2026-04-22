@@ -4,14 +4,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, or_, distinct, text, update, case, and_, literal
 
 from app.core.database import get_db
-from app.core.security import require_hq_access
+from app.core.security import require_hq_access, require_role
 from app.core.audit import log_action, get_client_ip
 from app.core.utils import to_float
+from app.core.commerce import credit_wallet
 from app.models.user import User, RoleIDs
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.order import Order
 from app.models.wallet import Wallet, WalletTransaction
 from app.models.voucher import Voucher, UserVoucher
+from app.models.wallet import WalletTxType
 from app.schemas.admin_customers import AdjustPointsRequest, CustomerUpdateRequest, AwardVoucherRequest, SetTierRequest
 
 
@@ -802,7 +804,7 @@ async def reset_all_customers(
         except Exception as e:
             # Release savepoint to allow continued execution after error
             await db.execute(text(f"RELEASE SAVEPOINT {savepoint_name}"))
-            deleted_counts[table] = f"ERROR: {str(e)[:80]}"
+            deleted_counts[table_name] = f"ERROR: {str(e)[:80]}"
 
     # Delete ALL wallets and wallet_transactions (including admin wallets)
     # Admin should not have wallets - they are for customers only
@@ -834,4 +836,69 @@ async def reset_all_customers(
     return {
         "message": "All customer data deleted successfully",
         "deleted_counts": deleted_counts,
+    }
+
+
+@router.post("/wallet/topup")
+async def admin_wallet_topup(
+    request: Request,
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """
+    In-store wallet top-up processed by staff at the counter.
+    Customer hands over cash/card at the counter, staff credits their wallet instantly.
+    """
+    phone = data.get("phone", "").strip()
+    amount = data.get("amount")
+    payment_method = data.get("payment_method", "cash")  # cash, card, paywave
+    notes = data.get("notes", "")
+
+    if not phone:
+        raise HTTPException(status_code=400, detail="Customer phone number is required")
+    if not amount or amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+
+    # Find customer by phone
+    result = await db.execute(select(User).where(User.phone == phone))
+    customer = result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=404, detail=f"Customer with phone {phone} not found")
+
+    # Credit wallet
+    description = f"In-store top-up via {payment_method}"
+    if notes:
+        description += f" — {notes}"
+    wallet, new_balance = await credit_wallet(db, customer.id, float(amount), description)
+
+    # Audit log
+    ip = get_client_ip(request)
+    await log_action(
+        db,
+        action="WALLET_TOPUP",
+        user_id=user.id,
+        entity_type="wallet",
+        entity_id=wallet.id,
+        details={
+            "customer_id": customer.id,
+            "customer_phone": phone,
+            "customer_name": customer.name,
+            "amount": amount,
+            "payment_method": payment_method,
+            "new_balance": new_balance,
+            "notes": notes,
+        },
+        ip_address=ip,
+    )
+
+    return {
+        "message": f"Top-up successful. New balance: RM {new_balance:.2f}",
+        "customer_id": customer.id,
+        "customer_name": customer.name,
+        "customer_phone": customer.phone,
+        "amount": amount,
+        "payment_method": payment_method,
+        "new_balance": new_balance,
+        "previous_balance": round(new_balance - float(amount), 2),
     }

@@ -65,6 +65,12 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
           method: 'PATCH', body: JSON.stringify({ payment_status: 'paid' }),
         });
         if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
+      } else if (action === 'pos_synced') {
+        const res = await apiFetch(`/orders/${orderId}/pos-synced`, token, { method: 'POST' });
+        if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
+      } else if (action === 'delivery_dispatched') {
+        const res = await apiFetch(`/orders/${orderId}/delivery-dispatched`, token, { method: 'POST' });
+        if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
       } else {
         const res = await apiFetch(`/orders/${orderId}/status`, token, {
           method: 'PATCH', body: JSON.stringify({ status: action }),
@@ -73,6 +79,18 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
       }
       fetchActiveOrders();
     } catch { alert('Network error'); }
+  }
+
+  function needsPosSync(order: MerchantOrder): boolean {
+    if (order.order_type === 'delivery') return false;
+    if (['pending', 'cancelled', 'completed'].includes(order.status)) return false;
+    return !order.pos_synced_at;
+  }
+
+  function needsDispatch(order: MerchantOrder): boolean {
+    if (order.order_type !== 'delivery') return false;
+    if (['pending', 'confirmed', 'preparing', 'cancelled', 'completed'].includes(order.status)) return false;
+    return !order.delivery_dispatched_at;
   }
 
   function getNextAction(order: MerchantOrder): { label: string; action: string; color: string }[] {
@@ -111,6 +129,14 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
     // Mark as paid if unpaid and not completed/cancelled
     if (!isPaid && s !== 'completed' && s !== 'cancelled') {
       actions.push({ label: `💰 Mark Paid (${formatRM(order.total)})`, action: 'mark_paid', color: '#B45309' });
+    }
+
+    // Manual sync actions
+    if (needsPosSync(order)) {
+      actions.push({ label: '📠 Mark POS Synced', action: 'pos_synced', color: '#D97706' });
+    }
+    if (needsDispatch(order)) {
+      actions.push({ label: '🚚 Mark Dispatched', action: 'delivery_dispatched', color: '#D97706' });
     }
 
     return actions;
@@ -251,7 +277,7 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
           {orders.map(order => (
             <div key={order.id} style={{
               borderRadius: THEME.radius.lg,
-              border: `2px solid ${statusColor[order.status] || THEME.border}`,
+              border: `3px solid ${needsPosSync(order) || needsDispatch(order) ? '#D97706' : (statusColor[order.status] || THEME.border)}`,
               background: '#FFF',
               overflow: 'hidden',
             }}>
@@ -297,6 +323,16 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
                 {order.payment_status === 'paid' && (
                   <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: '#DCFCE7', color: '#166534' }}>
                     PAID
+                  </span>
+                )}
+                {needsPosSync(order) && (
+                  <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: '#FEE2E2', color: '#B91C1C' }}>
+                    POS SYNC REQUIRED
+                  </span>
+                )}
+                {needsDispatch(order) && (
+                  <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: '#FEE2E2', color: '#B91C1C' }}>
+                    DISPATCH REQUIRED
                   </span>
                 )}
               </div>

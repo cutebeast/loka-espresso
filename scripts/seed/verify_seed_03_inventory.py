@@ -15,8 +15,8 @@ from shared_config import api_post, api_get, admin_token, print_header
 import db_validate
 
 
-# Physical store IDs from seed_01 (after HQ=0)
-STORE_IDS = [2, 3, 4, 5, 6]
+# Physical store IDs from seed_01 (after HQ=0, physical stores are 1-5)
+STORE_IDS = [1, 2, 3, 4, 5]
 
 
 INVENTORY_CATEGORIES = [
@@ -144,16 +144,12 @@ INVENTORY_CATEGORIES = [
 
 
 def _get_inv_cat_by_slug(store_id, slug, token):
-    """Get inventory category ID by slug using GET /stores/{id}/inventory API."""
-    resp = api_get(f"/stores/{store_id}/inventory", token=token)
+    """Get inventory category ID by slug using GET /stores/{id}/inventory-categories API."""
+    resp = api_get(f"/stores/{store_id}/inventory-categories", token=token)
     if resp.status_code != 200:
         return None
     data = resp.json()
-    # Handle both list and dict responses
-    if isinstance(data, list):
-        categories = data
-    else:
-        categories = data.get("categories", [])
+    categories = data if isinstance(data, list) else data.get("categories", [])
     for c in categories:
         if c.get("slug") == slug:
             return c.get("id")
@@ -166,15 +162,11 @@ def _get_inv_item_by_name(store_id, name, token):
     if resp.status_code != 200:
         return None
     data = resp.json()
-    # Handle both list and dict responses
-    if isinstance(data, list):
-        categories = data
-    else:
-        categories = data.get("categories", [])
-    for c in categories:
-        for item in c.get("items", []):
-            if item.get("name", "").lower() == name.lower():
-                return item.get("id")
+    # Backend returns flat list of InventoryItemOut
+    items = data if isinstance(data, list) else data.get("items", [])
+    for item in items:
+        if item.get("name", "").lower() == name.lower():
+            return item.get("id")
     return None
 
 

@@ -347,7 +347,7 @@ export function AddBroadcastForm({ token, onClose }: { token: string; onClose: (
             type="date"
             value={scheduledDate}
             onChange={e => setScheduledDate(e.target.value)}
-            min={new Date().toISOString().slice(0, 10)}
+            min={((): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()}
             style={{ width: 150, padding: '6px 10px', borderRadius: 8, border: '1px solid #DDE3E9', fontSize: 13 }}
           />
           <input

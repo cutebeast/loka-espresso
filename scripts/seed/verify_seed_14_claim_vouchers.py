@@ -60,7 +60,7 @@ def check_banner_status(banner_id, token):
         resp = api_get(f"/promos/banners/{banner_id}/status", token=token)
         if resp.status_code == 200:
             data = resp.json()
-            return data.get("already_claimed", False)
+            return data.get("voucher_claimed", False)
         return False
     except Exception:
         return False

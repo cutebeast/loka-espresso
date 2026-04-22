@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { API, setMerchantTokens } from '@/lib/merchant-api';
+import { API } from '@/lib/merchant-api';
 
 interface LoginScreenProps {
-  onLogin: (token: string, refreshToken?: string | null) => void;
+  onLogin: () => void;
 }
 
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
@@ -19,12 +19,12 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       const res = await fetch(`${API}/auth/login-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (res.ok && data.access_token) {
-        setMerchantTokens(data.access_token, data.refresh_token ?? data.refreshToken ?? null);
-        onLogin(data.access_token, data.refresh_token ?? data.refreshToken ?? null);
+        onLogin();
       } else {
         setLoginError(data.detail || 'Login failed');
       }

@@ -44,8 +44,20 @@ interface UIState {
   setShowStorePicker: (show: boolean) => void;
 }
 
+// Hash-based routing: sync page state with URL hash
+function getHashPage(): PageId {
+  if (typeof window === 'undefined') return 'home';
+  const hash = window.location.hash.replace('#', '');
+  const validPages: PageId[] = [
+    'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
+    'wallet', 'history', 'promotions', 'information', 'my-rewards',
+    'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support',
+  ];
+  return validPages.includes(hash as PageId) ? (hash as PageId) : 'home';
+}
+
 export const useUIStore = create<UIState>((set) => ({
-  page: 'home',
+  page: getHashPage(),
   orderMode: 'pickup',
   dineInSession: null,
   selectedStore: null,
@@ -58,7 +70,12 @@ export const useUIStore = create<UIState>((set) => ({
   toast: null,
   pageParams: {},
   showStorePicker: false,
-  setPage: (page, params) => set({ page, pageParams: params ?? {} }),
+  setPage: (page, params) => {
+    if (typeof window !== 'undefined') {
+      window.location.hash = page;
+    }
+    set({ page, pageParams: params ?? {} });
+  },
   setOrderMode: (orderMode) => set({ orderMode }),
   setDineInSession: (dineInSession) => set({ dineInSession }),
   setSelectedStore: (selectedStore) => set({ selectedStore }),

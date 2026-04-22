@@ -1,6 +1,6 @@
 # FNB Super-App — Testing & Verification Guide
 
-> Last updated: 2026-04-21 | Current guide for modular API-based verification before real provider integrations
+> Last updated: 2026-04-22 | Current guide for modular API-based verification before real provider integrations
 
 ## Current Testing Approach
 
@@ -61,6 +61,21 @@ Those customers are stored in:
 - `scripts/seed/seed_state.json`
 
 Use the state file as the authoritative test-customer reference after running customer seed steps.
+
+---
+
+## Store ID Convention
+
+| ID | Type | Name | Notes |
+|----|------|------|-------|
+| 0 | HQ (Virtual) | HQ (Headquarters) | Global menu, global staff default. **Never delete.** |
+| 1 | Physical | Loka Espresso KLCC | First physical store after init-hq |
+| 2 | Physical | Loka Espresso Pavilion | |
+| 3 | Physical | Loka Espresso Cheras | |
+| 4 | Physical | Loka Espresso PJ | |
+| 5 | Physical | Loka Espresso Bangi | |
+
+**Important**: `init-hq` creates store 0 and resets the sequence to 1. All physical stores auto-increment from 1. Any script referencing stores 2–6 is outdated.
 
 ---
 

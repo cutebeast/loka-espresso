@@ -234,44 +234,9 @@ def process_flow_b_order(order, admin_tok):
     print(f"  Table ID: {table_id}")
     print(f"  Initial Total: RM {float(total):.2f}")
 
-    # Step 1: Customer confirms order (sends to kitchen/POS)
-    print("  Step 1: Customer confirming order...")
-    success, result = confirm_dinein_order(order_id, admin_tok)
-    if not success:
-        print(f"    ✗ Confirmation failed: {result}")
-        return False, result
-    print("    ✓ Order confirmed and sent to kitchen/POS")
-
-    # Step 2: Kitchen starts preparing
-    print("  Step 2: Kitchen preparing...")
-    success, result = update_order_status(order_id, "preparing", admin_tok, "Kitchen received order")
-    if not success:
-        print(f"    ✗ Kitchen transition failed: {result}")
-        return False, result
-    print("    ✓ Order is being prepared")
-
-    # Step 3: Food is ready
-    print("  Step 3: Food ready...")
-    success, result = update_order_status(order_id, "ready", admin_tok, "Food ready for serving")
-    if not success:
-        print(f"    ✗ Ready transition failed: {result}")
-        return False, result
-    print("    ✓ Food is ready")
-
-    # Step 4: Customer enjoys meal (simulated)
-    print("  Step 4: Customer enjoying meal...")
-    meal_duration = random.uniform(1.0, 3.0)  # Simulate 1-3 seconds as minutes
-    time.sleep(0.3)  # Small delay for simulation
-    print(f"    ✓ Meal complete (simulated)")
-
-    # Step 5: Customer Checkout
-    print("  Step 5: Customer checkout...")
-    print("    Customer walks to counter or presses checkout on PWA")
-    print("    ✓ Staff initiates checkout")
-
-    # Step 6: Apply vouchers/discounts (using customer token)
+    # Step 1: Apply vouchers/discounts BEFORE confirming (order must be pending)
     discount_applied = 0
-    print("  Step 6: Applying vouchers/discounts...")
+    print("  Step 1: Applying vouchers/discounts...")
     if random.random() < 0.5:
         success, result, discount = apply_voucher_to_order(order_id, customer_token)
         if success:
@@ -283,6 +248,41 @@ def process_flow_b_order(order, admin_tok):
             print(f"    - No voucher applied: {result}")
     else:
         print("    - No voucher applied")
+
+    # Step 2: Customer confirms order (sends to kitchen/POS)
+    print("  Step 2: Customer confirming order...")
+    success, result = confirm_dinein_order(order_id, admin_tok)
+    if not success:
+        print(f"    ✗ Confirmation failed: {result}")
+        return False, result
+    print("    ✓ Order confirmed and sent to kitchen/POS")
+
+    # Step 3: Kitchen starts preparing
+    print("  Step 3: Kitchen preparing...")
+    success, result = update_order_status(order_id, "preparing", admin_tok, "Kitchen received order")
+    if not success:
+        print(f"    ✗ Kitchen transition failed: {result}")
+        return False, result
+    print("    ✓ Order is being prepared")
+
+    # Step 4: Food is ready
+    print("  Step 4: Food ready...")
+    success, result = update_order_status(order_id, "ready", admin_tok, "Food ready for serving")
+    if not success:
+        print(f"    ✗ Ready transition failed: {result}")
+        return False, result
+    print("    ✓ Food is ready")
+
+    # Step 5: Customer enjoys meal (simulated)
+    print("  Step 5: Customer enjoying meal...")
+    meal_duration = random.uniform(1.0, 3.0)  # Simulate 1-3 seconds as minutes
+    time.sleep(0.3)  # Small delay for simulation
+    print(f"    ✓ Meal complete (simulated)")
+
+    # Step 6: Customer Checkout
+    print("  Step 6: Customer checkout...")
+    print("    Customer walks to counter or presses checkout on PWA")
+    print("    ✓ Staff initiates checkout")
 
     # Step 7: Deduct from wallet (using customer token + actual API call)
     print("  Step 7: Deducting from customer wallet...")

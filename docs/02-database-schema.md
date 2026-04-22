@@ -1,6 +1,6 @@
 # FNB Super-App — Database Schema
 
-> Last updated: 2026-04-19 | PostgreSQL 16 | Database: `fnb` | 52 tables | 85+ FKs | 1 trigger
+> Last updated: 2026-04-22 | PostgreSQL 16 | Database: `fnb` | 52 tables | 85+ FKs | 1 trigger | Manual-mode POS/3PL columns added
 
 ## Enums
 

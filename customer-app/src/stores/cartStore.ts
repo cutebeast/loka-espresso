@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { CartItem } from '@/lib/api';
+import { idbStorage } from '@/lib/idbStorage';
 
 interface CartState {
   items: CartItem[];
@@ -59,6 +60,7 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'loka-cart',
+      storage: createJSONStorage(() => idbStorage),
     }
   )
 );

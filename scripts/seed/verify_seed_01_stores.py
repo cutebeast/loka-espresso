@@ -75,7 +75,7 @@ def _get_store_by_slug(slug, token):
     return None
 
 
- def _get_table_count(store_id, token):
+def _get_table_count(store_id, token):
     """Get table count using GET /stores/{id}/tables API."""
     resp = api_get(f"/stores/{store_id}/tables", token=token)
     if resp.status_code != 200:
@@ -144,7 +144,18 @@ def run():
         })
         if resp.status_code not in (200, 201):
             raise RuntimeError(f"Create PICKUP table for store {store['id']} failed: {resp.status_code} {resp.text}")
-        print(f"  ✓ {store['name']}: {len(store['tables'])} tables + PICKUP counter")
+
+        # Generate QR codes for all dine-in tables so they can be scanned
+        print(f"  [*] Generating QR codes for {store['name']}...")
+        tables_resp = api_get(f"/stores/{store['id']}/tables", token=token)
+        if tables_resp.status_code == 200:
+            for tbl in tables_resp.json():
+                if tbl.get("table_number") != "PICKUP" and not tbl.get("qr_code_url"):
+                    qr_resp = api_post(f"/admin/stores/{store['id']}/tables/{tbl['id']}/generate-qr", token=token)
+                    if qr_resp.status_code not in (200, 201):
+                        print(f"    ⚠ QR generation failed for table {tbl['table_number']}: {qr_resp.status_code}")
+
+        print(f"  ✓ {store['name']}: {len(store['tables'])} tables + PICKUP counter + QR codes")
 
     print("\n[*] Validating via GET /stores...")
     resp = api_get("/stores", token=token)

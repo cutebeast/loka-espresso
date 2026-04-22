@@ -22,6 +22,7 @@ from app.core.config import get_settings
 from app.models.user import User, UserTypeIDs, RoleIDs
 from app.models.order import Order, OrderStatusHistory, OrderType, OrderStatus, CartItem, OrderItem, Payment
 from app.models.menu import MenuItem
+from app.models.store import Store
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction, LoyaltyTier
 from app.models.notification import Notification
 from app.models.voucher import UserVoucher
@@ -93,6 +94,11 @@ def _order_out(order: Order, timeline: list[dict] | None = None) -> OrderOut:
         delivery_courier_name=order.delivery_courier_name,
         delivery_courier_phone=order.delivery_courier_phone,
         delivery_last_event_at=order.delivery_last_event_at,
+        pos_synced_at=order.pos_synced_at,
+        pos_synced_by=order.pos_synced_by,
+        delivery_dispatched_at=order.delivery_dispatched_at,
+        delivery_dispatched_by=order.delivery_dispatched_by,
+        staff_notes=order.staff_notes,
         created_at=order.created_at,
         updated_at=order.updated_at,
         status_timeline=timeline,
@@ -546,8 +552,15 @@ async def confirm_order(
     )
     db.add(history)
 
-    # Send to external POS
-    await _send_order_to_pos(order)
+    # Check store integration mode
+    store_result = await db.execute(select(Store).where(Store.id == order.store_id))
+    store = store_result.scalar_one_or_none()
+
+    # Send to external POS only if API integration is enabled
+    if store and store.pos_integration_enabled:
+        await _send_order_to_pos(order)
+    else:
+        logger.info(f"Order {order.order_number} confirmed in manual mode (store {order.store_id} POS integration disabled)")
 
     # Notify customer
     notif = Notification(
@@ -569,10 +582,24 @@ async def confirm_order(
 
 
 async def _send_order_to_pos(order: Order):
-    """Send order to external POS system (mock integration)."""
+    """
+    Send order to external POS system.
+    
+    NOTE: This is a placeholder for future POS API integration.
+    Set POS_API_URL in your environment (e.g. https://your-pos-provider.com/api/orders)
+    to enable automatic order sync. Until then, manual mode is used — staff re-key
+    orders into the POS terminal and mark them synced via the admin UI.
+    """
+    from app.core.config import get_settings
+    settings = get_settings()
+    pos_url = settings.POS_API_URL
+    
+    if not pos_url:
+        logger.info(f"POS_API_URL not configured — order {order.order_number} will be handled manually")
+        return
+    
     try:
         import httpx
-        pos_url = "http://localhost:8081/api/v1/orders"
         payload = {
             "order_id": order.id,
             "order_number": order.order_number,
@@ -585,6 +612,7 @@ async def _send_order_to_pos(order: Order):
         }
         async with httpx.AsyncClient() as client:
             await client.post(pos_url, json=payload, timeout=5.0)
+        logger.info(f"Order {order.order_number} sent to POS at {pos_url}")
     except Exception as e:
         logger.warning(f"POS notification failed (best-effort): {e}")
 
@@ -709,6 +737,7 @@ async def update_order_status(
         raise HTTPException(status_code=404, detail="Order not found")
     old_status = order.status.value if hasattr(order.status, 'value') else str(order.status)
     new_status = req.status.value if hasattr(req.status, 'value') else str(req.status)
+    updated_fields = []
 
     valid_next = VALID_TRANSITIONS.get(old_status, [])
     if new_status not in valid_next:
@@ -729,11 +758,31 @@ async def update_order_status(
         )
 
     # ALL order types: cannot be completed unless payment_status is paid
+    # EXCEPTION: COD delivery orders are auto-settled on delivery completion
+    # (the delivery company collects cash and pays the merchant back)
     if new_status == "completed" and order.payment_status != "paid":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Order cannot be completed until payment is made. Current payment_status: {order.payment_status}"
-        )
+        order_type = order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type)
+        is_cod_delivery = order_type == "delivery" and order.payment_method == "cod"
+        if not is_cod_delivery:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Order cannot be completed until payment is made. Current payment_status: {order.payment_status}"
+            )
+        # Auto-settle COD delivery payment
+        payment_result = await db.execute(select(Payment).where(Payment.order_id == order.id))
+        payment = payment_result.scalar_one_or_none()
+        if not payment:
+            payment = Payment(
+                order_id=order.id,
+                method="cod",
+                provider="delivery_partner",
+                amount=to_float(order.total),
+                status="pending",
+            )
+            db.add(payment)
+            await db.flush()
+        await settle_order_payment(db, order, payment, transaction_id=f"cod-{order.order_number}", provider_reference="cod-collected-by-driver")
+        updated_fields.append("payment_status: auto-settled (COD)")
 
     order.status = req.status
     history = OrderStatusHistory(order_id=order.id, status=req.status, note=req.note)
@@ -854,13 +903,17 @@ async def delivery_provider_webhook(
 ):
     """
     Webhook endpoint for 3rd party Delivery Provider to notify of delivery status.
-    This is called by the delivery provider when:
-    - Driver picks up order (status: picked_up)
-    - Order is out for delivery (status: out_for_delivery)
-    - Delivery is completed (status: delivered)
-    - Delivery fails (status: failed)
     
-    Authentication: Uses API key in header (X-API-Key) - to be implemented per provider
+    NOTE: This endpoint is ready for integration but no live 3PL (Grab/Lalamove/etc.)
+    is currently connected. In manual mode, staff book drivers externally and mark
+    orders as dispatched via the admin UI. When a real 3PL API is connected, this
+    endpoint will receive automatic status updates.
+    
+    Expected events:
+    - picked_up → out_for_delivery
+    - out_for_delivery → customer notification
+    - delivered → completed (auto-settles COD payments)
+    - failed / cancelled → ready (for re-dispatch)
     """
     _settings = get_settings()
     await verify_webhook_request(
@@ -938,8 +991,24 @@ async def delivery_provider_webhook(
         )
         db.add(history)
         
-        # Send notification to customer
+        # Auto-settle COD payment on delivery completion
         if delivery_status == "delivered":
+            payment_method = order.payment_method or ""
+            if payment_method == "cod" and order.payment_status != "paid":
+                payment_result = await db.execute(select(Payment).where(Payment.order_id == order.id))
+                payment = payment_result.scalar_one_or_none()
+                if not payment:
+                    payment = Payment(
+                        order_id=order.id,
+                        method="cod",
+                        provider="delivery_partner",
+                        amount=to_float(order.total),
+                        status="pending",
+                    )
+                    db.add(payment)
+                    await db.flush()
+                await settle_order_payment(db, order, payment, transaction_id=f"cod-{order.order_number}", provider_reference="cod-collected-by-driver")
+
             notif = Notification(
                 user_id=order.user_id,
                 title="Order Delivered",
@@ -987,13 +1056,15 @@ async def external_pos_webhook(
 ):
     """
     Webhook endpoint for External POS system to notify of order status and payment.
-    This is called by the external POS when:
-    - Order is confirmed at POS (status: confirmed)
-    - Kitchen starts preparing (status: preparing)
-    - Food is ready (status: ready)
-    - Payment is received (payment_status: paid)
     
-    For dine-in orders, the POS handles the kitchen workflow and payment.
+    NOTE: This endpoint is ready for integration but no live POS is currently
+    connected. In manual mode, staff re-key orders into the POS terminal and
+    mark them synced via the admin UI. When a real POS API is connected, this
+    endpoint will receive automatic status updates.
+    
+    Expected events:
+    - status updates: confirmed, preparing, ready, completed, cancelled
+    - payment_status: paid (auto-creates Payment record and settles loyalty)
     """
     _settings = get_settings()
     await verify_webhook_request(
@@ -1065,3 +1136,93 @@ async def external_pos_webhook(
         "order_id": order_id,
         "updates": updated_fields,
     }
+
+
+@router.post("/{order_id}/pos-synced")
+async def mark_order_pos_synced(
+    order_id: int,
+    req: dict | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Mark an order as manually synced to the POS system.
+    Used in manual mode when staff have re-keyed the order into the POS terminal.
+    """
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Only staff with store access or admin can mark as synced
+    if not await can_access_store(user, order.store_id, db):
+        raise HTTPException(status_code=403, detail="Cannot modify this order")
+
+    # Only mark if not already synced
+    if order.pos_synced_at is not None:
+        raise HTTPException(status_code=400, detail="Order already marked as POS synced")
+
+    order.pos_synced_at = datetime.now(timezone.utc)
+    order.pos_synced_by = user.id
+
+    # Update staff notes if provided
+    note_text = req.get("staff_notes") if req else None
+    if note_text:
+        order.staff_notes = note_text
+
+    history = OrderStatusHistory(
+        order_id=order.id,
+        status=order.status,
+        note="Order manually synced to POS" + (f" — {note_text}" if note_text else "")
+    )
+    db.add(history)
+    await db.flush()
+
+    return _order_out(order)
+
+
+@router.post("/{order_id}/delivery-dispatched")
+async def mark_order_delivery_dispatched(
+    order_id: int,
+    req: dict | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Mark a delivery order as manually dispatched.
+    Used in manual mode when staff have booked a driver via external app.
+    """
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Only staff with store access or admin can mark as dispatched
+    if not await can_access_store(user, order.store_id, db):
+        raise HTTPException(status_code=403, detail="Cannot modify this order")
+
+    # Only for delivery orders
+    if order.order_type != OrderType.delivery:
+        raise HTTPException(status_code=400, detail="Only delivery orders can be marked as dispatched")
+
+    # Only mark if not already dispatched
+    if order.delivery_dispatched_at is not None:
+        raise HTTPException(status_code=400, detail="Order already marked as dispatched")
+
+    order.delivery_dispatched_at = datetime.now(timezone.utc)
+    order.delivery_dispatched_by = user.id
+
+    # Update staff notes if provided
+    note_text = req.get("staff_notes") if req else None
+    if note_text:
+        order.staff_notes = note_text
+
+    history = OrderStatusHistory(
+        order_id=order.id,
+        status=order.status,
+        note="Delivery manually dispatched" + (f" — {note_text}" if note_text else "")
+    )
+    db.add(history)
+    await db.flush()
+
+    return _order_out(order)

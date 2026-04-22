@@ -56,8 +56,8 @@ def run():
              
         print("  ✓ Payment successful (Status: paid)")
         
-        # 2. Lifecycle
-        statuses = ["confirmed", "preparing", "ready", "completed"]
+        # 2. Lifecycle — payment confirm auto-sets pickup/delivery to 'confirmed'
+        statuses = ["preparing", "ready", "completed"]
         failed = False
         for status in statuses:
             resp = api_patch(f"/orders/{order_id}/status", token=tok, json={"status": status})

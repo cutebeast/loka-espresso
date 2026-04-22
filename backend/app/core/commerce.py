@@ -280,8 +280,10 @@ async def settle_order_payment(
         return int(order.loyalty_points_earned or 0)
 
     order.payment_status = "paid"
+    # Align with finalized customer journey: prepaid pickup/delivery goes straight to
+    # confirmed so the kitchen can start preparing. The "paid" status is internal only.
     if enum_value(order.order_type) in FLOW_A_TYPES and enum_value(order.status) == OrderStatus.pending.value:
-        order.status = OrderStatus.paid
+        order.status = OrderStatus.confirmed
 
     if payment is not None:
         payment.status = "paid"

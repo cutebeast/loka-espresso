@@ -72,6 +72,11 @@ class OrderOut(BaseModel):
     delivery_courier_name: Optional[str] = None
     delivery_courier_phone: Optional[str] = None
     delivery_last_event_at: Optional[datetime] = None
+    pos_synced_at: Optional[datetime] = None
+    pos_synced_by: Optional[int] = None
+    delivery_dispatched_at: Optional[datetime] = None
+    delivery_dispatched_by: Optional[int] = None
+    staff_notes: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     status_timeline: Optional[list[dict]] = None

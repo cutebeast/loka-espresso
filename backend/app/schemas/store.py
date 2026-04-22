@@ -15,7 +15,11 @@ class StoreOut(BaseModel):
     opening_hours: Optional[dict] = None
     pickup_lead_minutes: int = 15
     delivery_radius_km: Optional[float] = None
+    pos_integration_enabled: bool = False
+    delivery_integration_enabled: bool = False
     is_active: bool = True
+    pos_integration_enabled: bool = False
+    delivery_integration_enabled: bool = False
 
     class Config:
         from_attributes = True
@@ -32,6 +36,8 @@ class StoreUpdate(BaseModel):
     pickup_lead_minutes: Optional[int] = None
     delivery_radius_km: Optional[float] = None
     is_active: Optional[bool] = None
+    pos_integration_enabled: Optional[bool] = None
+    delivery_integration_enabled: Optional[bool] = None
 
 
 class StoreCreate(BaseModel):

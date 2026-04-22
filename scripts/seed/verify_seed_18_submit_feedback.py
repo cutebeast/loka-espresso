@@ -147,7 +147,7 @@ def run():
         resp = api_get("/admin/feedback?page_size=5", token=tok)
         if resp.status_code == 200:
             data = resp.json()
-            feedbacks = data.get("feedback", []) if isinstance(data, dict) else data
+            feedbacks = data.get("items", []) if isinstance(data, dict) else data
             print(f"  ✓ Admin API returned {len(feedbacks)} feedback entries")
             if feedbacks:
                 avg_rating = sum(f.get("rating", 0) for f in feedbacks) / len(feedbacks)

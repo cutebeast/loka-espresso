@@ -1,6 +1,6 @@
-# 06-improvements-applied.md
+# 06-improvements-log.md
 
-> Last updated: 2026-04-22 (session 13)
+> Last updated: 2026-04-22 (session 14)
 
 ## Overview
 
@@ -1430,3 +1430,131 @@ Comprehensive audit of `customer-app/` codebase covering auth flows, menu/cart/c
 ### Commit
 
 `0c5aeef` — fix(customer-app): prevent token refresh reload loops, add AbortController, remove dead apiFetch
+
+
+---
+
+## Session 14: AppShell Decomposition, Hash Routing, Admin Cleanup (2026-04-22)
+
+### Customer PWA: AppShell Decomposition
+
+**Before:** `AppShell.tsx` was a 914-line monolith containing auth flow, dashboard header, bottom nav, store modal, QR scanner, page routing, toast, and A2HS banner all inline.
+
+**After:** Decomposed into 7 focused components:
+
+| Component | Lines | Responsibility |
+|-----------|-------|----------------|
+| `AppShell.tsx` | 395 | Orchestration: offline banner, emergency popup, auth gate, toast, layout shell |
+| `AuthFlow.tsx` | 220 | Splash → Phone → OTP → Profile → Done flow with loading overlay |
+| `DashboardHeader.tsx` | 130 | Greeting, user name, tier badge, store selector, action icons grid |
+| `BottomNav.tsx` | 120 | 5-item nav (Home/Menu/Rewards/Cart/Orders) with active state + cart badge |
+| `StorePickerModal.tsx` | 200 | Store picker bottom sheet with search, distance sorting, selection UI |
+| `auth/SplashScreen.tsx` | — | Existing component, restored from git |
+| `auth/PhoneInput.tsx` | — | Existing component, restored from git |
+| `auth/OTPInput.tsx` | — | Existing component, restored from git |
+| `auth/ProfileSetup.tsx` | — | Existing component, restored from git |
+
+**Key improvements:**
+- Each component has a single responsibility
+- `AppShell` no longer imports `lucide-react` directly — icons live in their respective components
+- Auth state and handlers moved out of `AppShell` into `AuthFlow`
+- No functional changes — all behaviors preserved
+
+### Hash-Based URL Routing (Both Apps)
+
+**Problem:** Both apps were pure SPAs with no URL-synced navigation. Browser back/forward buttons did nothing, and deep-linking to a specific page was impossible.
+
+**Solution:** Sync `page` state with `window.location.hash`.
+
+**Customer PWA:**
+- `uiStore.setPage()` writes `window.location.hash = page`
+- `AppShell` mounts a `hashchange` listener that calls `setPage(hash)` when user hits back/forward
+- Initial page on load is read from hash
+
+**Admin Frontend:**
+- `handlePageChange()` writes `window.location.hash = page`
+- `hashchange` listener restores page state on browser navigation
+- Backward compatible: falls back to legacy `?page=` query param if hash is empty
+- All internal navigation routes through `handlePageChange()` (no direct `setPage` bypasses)
+
+**Benefits:**
+- Browser back/forward now works across both apps
+- Pages can be deep-linked (e.g., `https://app.loyaltysystem.uk/#orders`)
+- Refresh restores the last viewed page
+
+### Admin Frontend: Page.tsx Partial Decomposition
+
+**Before:** `page.tsx` was 836 lines with inline `ChangePasswordModal` and `CustomizationManager` components.
+
+**After:**
+- Extracted `ChangePasswordModal.tsx` (~80 lines)
+- Extracted `CustomizationManager.tsx` (~50 lines)
+- `page.tsx`: 836 → 708 lines
+
+### Admin Frontend: LocalStorage Auth Cleanup
+
+**Problem:** 15 `localStorage` references for auth tokens (`fnb_token`, `fnb_refresh_token`, `fnb_role`, `fnb_user_type`) existed across 3 dead files — XSS risk and confusing maintenance.
+
+**Files removed:**
+- `frontend/src/lib/api.ts` — dead customer PWA API client
+- `frontend/src/lib/auth.tsx` — dead customer PWA auth context
+- `frontend/src/lib/admin-context.tsx` — dead admin context (state now lives in `page.tsx`)
+- `frontend/src/lib/store.tsx` — dead app context
+
+**Verification:** Grepped entire `frontend/src/` — zero imports of these modules. Admin auth already uses httpOnly cookies (`credentials: 'include'`).
+
+**Remaining localStorage usage:** Only `sidebarCollapsed` preference in `Sidebar.tsx` (not auth-related).
+
+### Build Verification
+
+| App | Status |
+|-----|--------|
+| `customer-app` | ✅ `next build` passes (TypeScript + static generation) |
+| `frontend` | ✅ `next build` passes (TypeScript + static generation) |
+
+---
+
+## Session 15 — Seed Script Audit & API Alignment (2026-04-22)
+
+> Full audit of all 24 seed scripts in `scripts/seed/` after major backend order flow changes.
+> See `docs/13-seed-script-audit.md` for complete details.
+
+### Backend Fix
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `admin_customers.py:807` | Undefined `table` variable in reset exception handler | `table_name` |
+
+### Management Script
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `scripts/fnb-manage.sh` | Referenced non-existent `verify_master_base_seed.py` | Updated to scripts 00–18 |
+
+### Seed Script Fixes (Critical — Would Fail)
+
+| # | Script | Issue | Fix |
+|---|--------|-------|-----|
+| 1 | `verify_seed_01_stores.py:78` | IndentationError | Removed leading space |
+| 2 | `verify_seed_01_stores.py` | No QR codes generated for tables | Added `generate-qr` loop |
+| 3 | `shared_config.py:50` | `STORE_IDS = [2,3,4,5,6]` | `[1,2,3,4,5]` |
+| 4 | `verify_seed_02_menu.py` | Hardcoded store IDs 2,3 | Dynamic from `/stores` |
+| 5 | `verify_seed_03_inventory.py` | Wrong `STORE_IDS`; flat list idempotency broken | Fixed IDs; uses `/inventory-categories` + flat item list |
+| 6 | `verify_seed_04_staff.py` | All `store_id` values off by +1 | Updated to 1–5 |
+| 7 | `verify_seed_06_rewards.py` | `"is_active"` in `RewardCreate` → 422 | Removed from POST |
+| 8 | `verify_seed_10_register.py` | Customer count capped at 50 | Uses `data["total"]` |
+| 9 | `verify_seed_12c_dinein.py` | Missing `qr_token` in scan | Added param |
+| 10 | `verify_seed_13a_pickup_delivery.py` | PATCH `"confirmed"` after auto-confirm | Skipped; goes to `preparing` |
+| 11 | `verify_seed_13b_dinein.py` | Voucher after confirm (needs `pending`) | Moved to before confirm |
+| 12 | `verify_seed_14_claim_vouchers.py` | Wrong key `already_claimed` | `voucher_claimed` |
+| 13 | `verify_seed_16_discounted_orders.py` | Vouchers from wrong data source | Loads from `state["claimed_vouchers"]` |
+| 14 | `verify_seed_17_complete_discounted.py` | PATCH `"confirmed"` after auto-confirm | `statuses = ["preparing","ready","completed"]` |
+| 15 | `verify_seed_18_feedback.py` | Wrong key `feedback` | `items` |
+
+### Verification
+
+- All 24 seed scripts: `python3 -m py_compile` ✅
+- Backend files: `python3 -m py_compile` ✅
+- Store ID convention: HQ=0, physical=1–5 ✅
+
+---

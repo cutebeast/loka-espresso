@@ -328,6 +328,8 @@ async def list_all_stores(
                 "id": s.id, "name": s.name, "slug": s.slug, "address": s.address,
                 "phone": s.phone, "opening_hours": s.opening_hours,
                 "pickup_lead_minutes": s.pickup_lead_minutes, "is_active": s.is_active,
+                "pos_integration_enabled": s.pos_integration_enabled,
+                "delivery_integration_enabled": s.delivery_integration_enabled,
             }
             for s in stores
         ],

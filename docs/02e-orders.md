@@ -45,11 +45,16 @@ Main order table. HYBRID scope (user + store).
 | delivery_courier_name | varchar(255) | YES | | Courier display name |
 | delivery_courier_phone | varchar(50) | YES | | Courier contact |
 | delivery_last_event_at | timestamptz | YES | | Last provider event timestamp |
+| pos_synced_at | timestamptz | YES | | When staff manually marked POS re-keyed |
+| pos_synced_by | integer | YES | | FK→users.id (staff who marked POS synced) |
+| delivery_dispatched_at | timestamptz | YES | | When staff manually marked delivery booked |
+| delivery_dispatched_by | integer | YES | | FK→users.id (staff who marked dispatched) |
+| staff_notes | text | YES | | Internal staff notes on the order |
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 
 **Indexes:** order_number (unique), user_id, store_id, table_id
-**FKs:** user_id→users, store_id→stores, table_id→store_tables
+**FKs:** user_id→users, store_id→stores, table_id→store_tables, pos_synced_by→users(id), delivery_dispatched_by→users(id)
 
 ### `order_items`
 Normalized line items for structured queries.

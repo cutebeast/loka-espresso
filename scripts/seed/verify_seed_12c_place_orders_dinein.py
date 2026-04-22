@@ -76,12 +76,15 @@ def get_tables(store_id, token):
         return [], str(e)
 
 
-def scan_table_qr(store_slug, table_id):
+def scan_table_qr(store_slug, table_id, qr_token=None):
     """Scan QR code at table to get store and table info."""
     try:
+        payload = {"store_slug": store_slug, "table_id": table_id}
+        if qr_token:
+            payload["qr_token"] = qr_token
         resp = requests.post(
             f"{API_BASE}/tables/scan",
-            json={"store_slug": store_slug, "table_id": table_id},
+            json=payload,
             timeout=10
         )
         if resp.status_code != 200:
@@ -199,7 +202,8 @@ def place_dinein_order(customer):
     table_number = selected_table.get("table_number")
     
     # Step 3: Scan QR code at table
-    scan_result, err = scan_table_qr(store_slug, table_id)
+    qr_token = selected_table.get("qr_token")
+    scan_result, err = scan_table_qr(store_slug, table_id, qr_token)
     if err:
         return {"success": False, "error": f"QR scan failed: {err}"}
     

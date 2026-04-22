@@ -24,6 +24,8 @@ Physical store/outlet locations.
 | opening_hours | json | YES | | `{"mon": "08:00-22:00", ...}` |
 | pickup_lead_minutes | integer | YES | 15 | Minimum lead time for pickup |
 | delivery_radius_km | numeric(5,2) | YES | 5.0 | Max delivery distance |
+| pos_integration_enabled | boolean | NO | false | Enable automatic POS outbound sync |
+| delivery_integration_enabled | boolean | NO | false | Enable automatic 3PL delivery booking |
 | is_active | boolean | NO | true | |
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |

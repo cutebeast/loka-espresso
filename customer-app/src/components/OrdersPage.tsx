@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import {
   RefreshCw,
   RotateCcw,
@@ -24,8 +25,11 @@ function formatPrice(val: number | string): string {
   return `RM ${Number(val).toFixed(2)}`;
 }
 
-const TIMELINE_STEPS = ['Ordered', 'Preparing', 'Ready', 'Complete'];
-const DELIVERY_TIMELINE_STEPS = ['Ordered', 'Preparing', 'On the way', 'Complete'];
+// Customer-facing timeline aligned with finalized ordering journey:
+// Pickup/Dine-in: pending/confirmed → preparing → ready → completed
+// Delivery:       pending/confirmed → preparing → ready → out_for_delivery → completed
+const TIMELINE_STEPS = ['Confirmed', 'Preparing', 'Ready', 'Completed'];
+const DELIVERY_TIMELINE_STEPS = ['Confirmed', 'Preparing', 'Ready', 'On the way', 'Completed'];
 
 const STATUS_VARIANT: Record<string, { bg: string; text: string }> = {
   pending: { bg: 'bg-warning-light', text: 'text-[#B85B14]' },
@@ -41,13 +45,25 @@ const STATUS_VARIANT: Record<string, { bg: string; text: string }> = {
   cancelled: { bg: 'bg-danger-light', text: 'text-danger' },
 };
 
-function getStatusStepIndex(status: string): number {
+function getStatusStepIndex(status: string, orderType?: string): number {
   const s = status?.toLowerCase();
-  if (s === 'pending' || s === 'paid' || s === 'confirmed' || s === 'driver_assigned') return 0;
+  const isDelivery = orderType === 'delivery';
+
+  // Step 0: Confirmed (includes pending before kitchen confirmation)
+  if (s === 'pending' || s === 'confirmed') return 0;
+
+  // Step 1: Preparing
   if (s === 'preparing' || s === 'in_progress') return 1;
-  if (s === 'out_for_delivery') return 2;
-  if (s === 'ready') return 2;
-  if (s === 'completed' || s === 'delivered' || s === 'picked_up') return 3;
+
+  // Delivery has 4 steps; pickup/dine-in have 3 steps before complete
+  if (isDelivery) {
+    if (s === 'ready') return 2;
+    if (s === 'out_for_delivery' || s === 'driver_assigned') return 3;
+    if (s === 'completed' || s === 'delivered') return 4;
+  } else {
+    if (s === 'ready') return 2;
+    if (s === 'completed' || s === 'picked_up') return 3;
+  }
   return 0;
 }
 
@@ -66,6 +82,7 @@ export default function OrdersPage() {
   const { orders, setOrders, currentOrder, setCurrentOrder, isLoading, setIsLoading } = useOrderStore();
   const { setPage, showToast } = useUIStore();
   const { clearCart } = useCartStore();
+  const reducedMotion = useReducedMotion();
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [reordering, setReordering] = useState<number | null>(null);
@@ -92,7 +109,7 @@ export default function OrdersPage() {
     if (currentOrder) setDetailOpen(true);
   }, [currentOrder]);
 
-  const activeStatuses = ['pending', 'paid', 'confirmed', 'preparing', 'in_progress', 'ready', 'out_for_delivery', 'driver_assigned'];
+  const activeStatuses = ['pending', 'confirmed', 'preparing', 'in_progress', 'ready', 'out_for_delivery', 'driver_assigned'];
   const hasActive = orders.some((o) => activeStatuses.includes(o.status?.toLowerCase()));
 
   useEffect(() => {
@@ -191,7 +208,7 @@ export default function OrdersPage() {
           Your order history will appear here
         </p>
         <motion.button
-          whileTap={{ scale: 0.98 }}
+          whileTap={reducedMotion ? undefined : { scale: 0.98 }}
           onClick={() => setPage('menu')}
           className="bg-primary text-white font-bold px-8 py-4 rounded-full"
         >
@@ -214,7 +231,7 @@ export default function OrdersPage() {
             {activeOrders.map((order) => {
               const timelineStatus = order.order_type === 'delivery' ? (order.delivery_status || order.status) : order.status;
               const statusCfg = STATUS_VARIANT[timelineStatus?.toLowerCase()] || STATUS_VARIANT.pending;
-              const currentStep = getStatusStepIndex(timelineStatus);
+              const currentStep = getStatusStepIndex(timelineStatus, order.order_type);
               const itemSummary = order.items?.map((i) => i.name).join(', ') || '';
 
               return (
@@ -260,7 +277,7 @@ export default function OrdersPage() {
                   </div>
 
                   <motion.button
-                    whileTap={{ scale: 0.98 }}
+                    whileTap={reducedMotion ? undefined : { scale: 0.98 }}
                     onClick={() => handleOpenDetail(order)}
                     className="w-full bg-primary text-white font-bold py-3 rounded-full mt-4"
                   >
@@ -278,7 +295,7 @@ export default function OrdersPage() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-bold text-text-primary">Past orders</h3>
               <motion.button
-                whileTap={{ scale: 0.9 }}
+                whileTap={reducedMotion ? undefined : { scale: 0.9 }}
                 onClick={fetchOrders}
                 className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center"
               >
@@ -320,7 +337,7 @@ export default function OrdersPage() {
                         {itemSummary} · {order.status}
                       </p>
                       <motion.button
-                        whileTap={{ scale: 0.95 }}
+                        whileTap={reducedMotion ? undefined : { scale: 0.95 }}
                         onClick={() => handleReorder(order)}
                         disabled={reordering === order.id}
                         className="text-primary font-semibold text-sm mt-2 flex items-center gap-1"
@@ -384,7 +401,7 @@ export default function OrdersPage() {
             <div className="flex justify-between py-3">
               {getTimelineSteps(currentOrder).map((step, i) => {
                 const timelineStatus = currentOrder.order_type === 'delivery' ? (currentOrder.delivery_status || currentOrder.status) : currentOrder.status;
-                const currentStep = getStatusStepIndex(timelineStatus);
+                const currentStep = getStatusStepIndex(timelineStatus, currentOrder.order_type);
                 const isCompleted = i <= currentStep;
                 const isCurrent = i === currentStep;
                 return (
@@ -444,9 +461,15 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            {currentOrder.order_type === 'delivery' && (currentOrder.delivery_courier_name || currentOrder.delivery_eta_minutes || currentOrder.delivery_tracking_url) && (
+            {currentOrder.order_type === 'delivery' && (
               <div className="border border-border rounded-2xl p-4 space-y-1">
                 <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider">Delivery</h4>
+                {!currentOrder.delivery_dispatched_at && ['ready', 'out_for_delivery', 'completed'].includes(currentOrder.status) && (
+                  <div className="flex items-center gap-2 py-1">
+                    <Truck size={14} className="text-warning" />
+                    <p className="text-sm text-warning font-medium">Your delivery is being arranged by our team</p>
+                  </div>
+                )}
                 {currentOrder.delivery_courier_name && <p className="text-sm text-text-primary">Courier: {currentOrder.delivery_courier_name}</p>}
                 {currentOrder.delivery_courier_phone && <p className="text-sm text-text-muted">Phone: {currentOrder.delivery_courier_phone}</p>}
                 {currentOrder.delivery_eta_minutes != null && <p className="text-sm text-text-muted">ETA: {currentOrder.delivery_eta_minutes} min</p>}
@@ -480,7 +503,7 @@ export default function OrdersPage() {
 
             {/* Reorder Button */}
             <motion.button
-              whileTap={{ scale: 0.98 }}
+              whileTap={reducedMotion ? undefined : { scale: 0.98 }}
               onClick={() => handleReorder(currentOrder)}
               disabled={reordering === currentOrder.id}
               className="w-full bg-primary text-white font-bold py-4 rounded-full flex items-center justify-center gap-2"
@@ -492,7 +515,7 @@ export default function OrdersPage() {
             {/* Action row */}
             <div className="flex gap-3">
               <motion.button
-                whileTap={{ scale: 0.98 }}
+                whileTap={reducedMotion ? undefined : { scale: 0.98 }}
                 onClick={() => handleShareReceipt(currentOrder)}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full border border-border text-text-primary font-semibold text-sm"
               >
@@ -501,7 +524,7 @@ export default function OrdersPage() {
               </motion.button>
               {['pending', 'confirmed'].includes(currentOrder.status?.toLowerCase()) && (
                 <motion.button
-                  whileTap={{ scale: 0.98 }}
+                  whileTap={reducedMotion ? undefined : { scale: 0.98 }}
                   onClick={() => handleCancelOrder(currentOrder.id)}
                   disabled={cancelling === currentOrder.id}
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full border border-danger-light text-danger font-semibold text-sm"

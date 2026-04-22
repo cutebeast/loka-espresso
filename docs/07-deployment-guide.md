@@ -1,6 +1,6 @@
 # FNB Super-App — Deployment & Rebuild Guide
 
-> Last updated: 2026-04-21
+> Last updated: 2026-04-22
 
 ## Two Supported Operating Contexts
 
@@ -38,6 +38,7 @@ UPLOAD_DIR=/root/fnb-super-app/uploads
 WEBHOOK_API_KEY=<shared-webhook-key>
 WEBHOOK_SIGNING_SECRET=<optional-signing-secret>
 OTP_BYPASS_ALLOWED=false
+POS_API_URL=                          # Leave empty to disable outbound POS calls (manual mode)
 ```
 
 For the current pre-Twilio phase, OTP bypass may still be enabled intentionally in non-production environments via env + app config.

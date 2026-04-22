@@ -432,34 +432,27 @@ def process_flow_a_order(order, admin_tok):
         points_earned = result.get("points_earned", 0)
     print(f"    ✓ Order paid successfully. Loyalty points earned: {points_earned}")
 
-    # Step 4: Status transition to confirmed
-    print("  Step 4: Confirming order...")
-    success, result = update_order_status(order_id, "confirmed", admin_tok, "Order confirmed after payment")
-    if not success:
-        print(f"    ✗ Confirmation failed: {result}")
-        return False, result
-    print("    ✓ Order confirmed")
-
-    # Step 5: Send to kitchen - preparing
-    print("  Step 5: Sending to kitchen...")
+    # NOTE: Backend auto-confirms Flow A orders on payment settlement (pending → confirmed)
+    # Step 4: Send to kitchen - preparing
+    print("  Step 4: Sending to kitchen...")
     success, result = update_order_status(order_id, "preparing", admin_tok, "Order sent to kitchen")
     if not success:
         print(f"    ✗ Kitchen transition failed: {result}")
         return False, result
     print("    ✓ Order is being prepared")
 
-    # Step 6: Kitchen ready
-    print("  Step 6: Kitchen preparation complete...")
+    # Step 5: Kitchen ready
+    print("  Step 5: Kitchen preparation complete...")
     success, result = update_order_status(order_id, "ready", admin_tok, "Order ready for pickup/delivery")
     if not success:
         print(f"    ✗ Ready transition failed: {result}")
         return False, result
     print("    ✓ Order is ready")
 
-    # Step 7: Final step based on order type
+    # Step 6: Final step based on order type
     if order_type == "delivery":
         # Create delivery job
-        print("  Step 7: Creating delivery job...")
+        print("  Step 6: Creating delivery job...")
         delivery_data, err = create_delivery_job(order, admin_tok)
         if err:
             print(f"    ✗ Delivery creation failed: {err}")
@@ -468,14 +461,14 @@ def process_flow_a_order(order, admin_tok):
         print(f"    ✓ Delivery job created: {delivery_id}")
 
         # Simulate delivery tracking via provider webhooks
-        print("  Step 8: Tracking delivery via provider...")
+        print("  Step 7: Tracking delivery via provider...")
         success, msg = simulate_delivery_tracking(delivery_id, order_id, admin_tok)
         if not success:
             print(f"    ✗ Delivery tracking failed: {msg}")
             return False, msg
         print(f"    ✓ {msg}")
 
-    # Step 9/11: Complete order
+    # Final: Complete order
     print(f"  Final: Completing {order_type} order...")
     success, result = update_order_status(order_id, "completed", admin_tok, f"Order {order_type} completed")
     if not success:

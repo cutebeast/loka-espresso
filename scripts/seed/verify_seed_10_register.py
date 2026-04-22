@@ -42,11 +42,10 @@ def _existing_customer_count():
     """Get customer count using GET /admin/customers API."""
     tok = admin_token()
     try:
-        resp = api_get("/admin/customers", token=tok)
+        resp = api_get("/admin/customers?page_size=1", token=tok)
         if resp.status_code == 200:
             data = resp.json()
-            customers = data if isinstance(data, list) else data.get("customers", [])
-            return len(customers)
+            return data.get("total", 0)
     except Exception:
         pass
     return 0

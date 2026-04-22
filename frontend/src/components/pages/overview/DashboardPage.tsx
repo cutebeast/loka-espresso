@@ -77,28 +77,23 @@ function generateChartData(
     }
 
     case 'QTD': {
-      // QTD - Show all 4 quarters with their actual data from monthlyData
-      const quarters = [
-        { name: 'Q1', months: ['01', '02', '03'] },
-        { name: 'Q2', months: ['04', '05', '06'] },
-        { name: 'Q3', months: ['07', '08', '09'] },
-        { name: 'Q4', months: ['10', '11', '12'] },
-      ];
+      // QTD - Show months in current quarter only (quarter-to-date)
+      const quarter = Math.floor(month / 3);
+      const quarterMonths = [
+        ['01', '02', '03'],
+        ['04', '05', '06'],
+        ['07', '08', '09'],
+        ['10', '11', '12'],
+      ][quarter];
 
-      quarters.forEach(q => {
-        let qOrders = 0;
-        let qRevenue = 0;
-
-        q.months.forEach(m => {
-          const key = `${year}-${m}`;
-          qOrders += monthlyData[key]?.orders || 0;
-          qRevenue += monthlyData[key]?.revenue || 0;
-        });
-
+      quarterMonths.forEach(m => {
+        const key = `${year}-${m}`;
+        const monthIndex = parseInt(m, 10) - 1;
+        const d = new Date(year, monthIndex, 1);
         result.push({
-          label: q.name,
-          orders: qOrders,
-          revenue: qRevenue,
+          label: d.toLocaleDateString('en-US', { month: 'short' }),
+          orders: monthlyData[key]?.orders || 0,
+          revenue: monthlyData[key]?.revenue || 0,
         });
       });
       break;
@@ -220,7 +215,11 @@ export default function DashboardPage({ dashboard, loading, selectedStore, store
     switch (preset) {
       case 'TODAY': return 'Today';
       case 'MTD': return 'Last 6 Months';
-      case 'QTD': return 'Quarterly Breakdown';
+      case 'QTD': {
+        const now = new Date();
+        const quarter = Math.floor(now.getMonth() / 3) + 1;
+        return `Q${quarter} ${now.getFullYear()}`;
+      }
       case 'YTD': return 'Last 6 Years';
       case 'CUSTOM': return 'Custom Period';
       default: return '';

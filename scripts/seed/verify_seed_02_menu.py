@@ -216,26 +216,36 @@ def run():
         raise RuntimeError(f"Menu items validation failed: {msg}")
     print(f"  ✓ {msg}")
 
-    print("\n[*] Validating universal menu via GET /stores/2/menu (KLCC store)...")
-    resp = api_get("/stores/2/menu", token=token)
+    # Fetch physical stores dynamically to use correct IDs
+    stores_resp = api_get("/stores", token=token)
+    physical_stores = []
+    if stores_resp.status_code == 200:
+        all_stores = stores_resp.json()
+        physical_stores = [s for s in all_stores if s.get("id") != 0]
+
+    store_a = physical_stores[0] if len(physical_stores) > 0 else {"id": 1, "name": "Store 1"}
+    store_b = physical_stores[1] if len(physical_stores) > 1 else {"id": 2, "name": "Store 2"}
+
+    print(f"\n[*] Validating universal menu via GET /stores/{store_a['id']}/menu ({store_a['name']})...")
+    resp = api_get(f"/stores/{store_a['id']}/menu", token=token)
     if resp.status_code != 200:
-        raise RuntimeError(f"GET /stores/2/menu failed: {resp.status_code}")
+        raise RuntimeError(f"GET /stores/{store_a['id']}/menu failed: {resp.status_code}")
     menu_data = resp.json()
     returned_cats = len(menu_data.get("categories", []))
     returned_items = sum(len(c.get("items", [])) for c in menu_data.get("categories", []))
-    print(f"  ✓ Store 2 (KLCC) returns {returned_cats} categories, {returned_items} items from HQ menu")
+    print(f"  ✓ {store_a['name']} returns {returned_cats} categories, {returned_items} items from HQ menu")
 
-    print("\n[*] Verifying universal menu is same across stores...")
-    resp_klcc = api_get("/stores/2/menu", token=token)
-    resp_pavilion = api_get("/stores/3/menu", token=token)
-    menu_klcc = resp_klcc.json()
-    menu_pavilion = resp_pavilion.json()
-    cats_klcc = len(menu_klcc.get("categories", []))
-    cats_pav = len(menu_pavilion.get("categories", []))
-    if cats_klcc == cats_pav and cats_klcc > 0:
-        print(f"  ✓ KLCC and Pavilion return same menu ({cats_klcc} categories each)")
+    print(f"\n[*] Verifying universal menu is same across stores...")
+    resp_a = api_get(f"/stores/{store_a['id']}/menu", token=token)
+    resp_b = api_get(f"/stores/{store_b['id']}/menu", token=token)
+    menu_a = resp_a.json()
+    menu_b = resp_b.json()
+    cats_a = len(menu_a.get("categories", []))
+    cats_b = len(menu_b.get("categories", []))
+    if cats_a == cats_b and cats_a > 0:
+        print(f"  ✓ {store_a['name']} and {store_b['name']} return same menu ({cats_a} categories each)")
     else:
-        raise RuntimeError(f"Universal menu mismatch: KLCC={cats_klcc}, Pavilion={cats_pav}")
+        raise RuntimeError(f"Universal menu mismatch: {store_a['name']}={cats_a}, {store_b['name']}={cats_b}")
 
     print("\n[✓] STEP 02 complete — universal menu created")
 

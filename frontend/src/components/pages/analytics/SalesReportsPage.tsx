@@ -96,7 +96,7 @@ export default function SalesReportsPage({ token, stores }: SalesReportsPageProp
     const fromDate = new Date(from)
     const toDate = new Date(to)
     for (let d = new Date(fromDate); d <= toDate; d.setDate(d.getDate() + 1)) {
-      const key = d.toISOString().slice(0, 10)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       result.push({ label: key.slice(5), value: Number(raw[key] || 0) })
     }
     return result

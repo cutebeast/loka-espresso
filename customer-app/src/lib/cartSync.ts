@@ -136,8 +136,10 @@ export async function placeOrder(params: {
       newOrder.payment_status = confirmRes.data?.status || 'paid';
       newOrder.points_earned = confirmRes.data?.points_earned ?? newOrder.points_earned;
       newOrder.loyalty_points_earned = confirmRes.data?.points_earned ?? newOrder.loyalty_points_earned;
+      // Backend now auto-advances to confirmed for Flow A types after payment.
+      // Reflect that in the local order object so UI updates immediately.
       if (newOrder.order_type === 'pickup' || newOrder.order_type === 'delivery') {
-        newOrder.status = 'paid';
+        newOrder.status = 'confirmed';
       }
     }
   } catch (error) {
@@ -151,6 +153,21 @@ export async function placeOrder(params: {
       }
     }
     throw error;
+  }
+
+  // For pay-later orders (pay_at_store / COD / cash), auto-confirm so the kitchen
+  // receives the order immediately. This aligns with the finalized customer journey:
+  // pending → confirmed for all order types after checkout.
+  if (params.paymentMethod !== 'wallet' && newOrder?.id) {
+    try {
+      await api.post(`/orders/${newOrder.id}/confirm`, {}, {
+        headers: { 'Idempotency-Key': createIdempotencyKey('order-confirm') },
+      });
+      newOrder.status = 'confirmed';
+    } catch {
+      // If confirm fails, the order stays at pending and kitchen/admin can confirm later.
+      // Customer will see "pending" until confirmed.
+    }
   }
 
   clearCart();

@@ -113,7 +113,7 @@ export default function WalletPage() {
       <motion.div variants={staggerItem} className="mb-6">
         <h2 className="text-sm font-bold text-gray-900 mb-3">Top Up</h2>
         <p className="text-xs text-gray-500 mb-3">
-          Wallet top-up is currently running on the internal stub flow and will be replaced during payment gateway integration.
+          Online top-up will be available after payment gateway integration. You can also top up at any store counter — just tell the staff your phone number.
         </p>
         <div className="flex flex-wrap gap-2 mb-4">
           {TOPUP_AMOUNTS.map((amount) => (

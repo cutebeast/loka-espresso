@@ -1,6 +1,6 @@
 # FNB Super-App — API Reference
 
-> Last updated: 2026-04-21 | Base URL: `https://admin.loyaltysystem.uk/api/v1`
+> Last updated: 2026-04-22 | Base URL: `https://admin.loyaltysystem.uk/api/v1`
 > This document is the current pre-provider-integration reference. It intentionally avoids stale endpoint counts.
 
 ## Authentication
@@ -125,12 +125,15 @@ These are the customer-facing PWA menu endpoints.
 | POST | `/orders/{order_id}/reorder` | Rebuild cart from an order |
 | PATCH | `/orders/{order_id}/status` | Update order status |
 | PATCH | `/orders/{order_id}/payment-status` | Update payment status directly |
+| POST | `/orders/{order_id}/pos-synced` | Staff marks order as manually re-keyed into POS |
+| POST | `/orders/{order_id}/delivery-dispatched` | Staff marks order as manually booked with courier |
 | GET | `/orders/tracking/{order_id}` | Public/current tracking summary |
 
 ### Order Flow Notes
 
 #### Flow A — Pickup / Delivery
-- `pending -> paid -> confirmed -> preparing -> ready -> completed`
+- `pending -> confirmed -> preparing -> ready -> completed` (staff confirms; wallet payments auto-advance)
+- `pending -> paid -> confirmed -> ...` (wallet payment path)
 - delivery may also move through `out_for_delivery`
 - current wallet payment flow uses `/payments/create-intent` + `/payments/confirm`
 
@@ -286,6 +289,7 @@ These are the customer-facing PWA menu endpoints.
 | POST | `/admin/customers/{user_id}/set-tier` | Manually set loyalty tier |
 | POST | `/admin/customers/{user_id}/approve-profile` | Approve pending customer profile |
 | PUT | `/admin/customers/{user_id}` | Update customer profile |
+| POST | `/admin/wallet/topup` | In-store wallet top-up (find by phone, atomic credit) |
 | DELETE | `/admin/customers/reset` | Reset all customer data |
 | GET | `/admin/reports/revenue` | Revenue report |
 | GET | `/admin/reports/sales` | Sales report |
@@ -311,6 +315,7 @@ These are the customer-facing PWA menu endpoints.
 | POST | `/admin/stores/{store_id}/tables/{table_id}/generate-qr` | Generate QR for PENDING table |
 | GET | `/admin/stores/{store_id}/tables/{table_id}/qr-image` | Download QR as PNG |
 | POST | `/admin/stores/{store_id}/tables/{table_id}/generate-qr` | Regenerate QR (invalidates old) |
+| PATCH | `/admin/orders/{order_id}/delivery-tracking` | Set courier name/phone, tracking URL, ETA |
 
 **Table QR Workflow:**
 1. Create table → status is PENDING (no QR)

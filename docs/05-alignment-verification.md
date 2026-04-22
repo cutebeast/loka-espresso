@@ -1,6 +1,6 @@
 # FNB Super-App — Alignment Verification
 
-> Last updated: 2026-04-21 | Purpose: verify current contract alignment, not claim launch perfection
+> Last updated: 2026-04-22 | Purpose: verify current contract alignment, not claim launch perfection
 
 ## What Is Aligned
 
@@ -26,8 +26,8 @@ The following are **not** currently claimed as fully solved:
 
 1. real provider integrations
    - PG still mocked
-   - delivery still mocked
-   - POS still mocked
+   - delivery still mocked (manual-mode 3PL is the active default)
+   - POS still mocked (manual-mode POS is the active default)
    - Twilio not integrated yet
 
 2. distributed idempotency
@@ -36,6 +36,18 @@ The following are **not** currently claimed as fully solved:
 3. full automated regression coverage
    - builds and seed flows exist
    - conventional test-suite coverage is still limited
+
+## Recently Resolved
+
+| # | Gap | Resolution |
+|---|-----|------------|
+| 1 | Admin JWT in localStorage | Removed. All localStorage auth code was dead; admin now uses httpOnly cookies exclusively |
+| 2 | Customer PWA CSP missing | Added CSP headers to `customer-app/next.config.ts` |
+| 3 | Monolithic AppShell (914 lines) | Decomposed into `AuthFlow`, `DashboardHeader`, `BottomNav`, `StorePickerModal` |
+| 4 | No URL-based routing | Hash-based routing added to both apps; browser back/forward now works |
+| 5 | No offline indicator | `OfflineBanner` component added |
+| 6 | No `prefers-reduced-motion` | `useReducedMotion` hook applied to all framer-motion animations |
+| 7 | Aggressive polling | Orders 30s→60s, version 30s→5min, notifications 30s→10min |
 
 ## Current Alignment Notes
 
