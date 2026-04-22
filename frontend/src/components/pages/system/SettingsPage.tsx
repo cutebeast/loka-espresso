@@ -21,8 +21,7 @@ const CONFIG_GROUPS: { label: string; icon: string; items: ConfigDef[] }[] = [
     icon: 'fa-receipt',
     items: [
       { key: 'delivery_fee', label: 'Delivery Fee (RM)', description: 'Standard delivery fee charged to customers', type: 'number' },
-      { key: 'min_order', label: 'Min Order (RM)', description: 'Minimum order amount for delivery', type: 'number' },
-      { key: 'min_order_delivery', label: 'Min Order for Delivery (RM)', description: 'Minimum order amount required for delivery', type: 'number' },
+      { key: 'min_order_delivery', label: 'Min Order for Delivery (RM)', description: 'Minimum order amount required for delivery orders', type: 'number' },
       { key: 'currency', label: 'Currency', description: 'Default currency code for all prices', type: 'string' },
     ],
   },
