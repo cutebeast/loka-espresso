@@ -17,17 +17,17 @@ const PAGE_VISIBILITY: Record<number, Set<string>> = {
   ]),
   2: new Set([
     'dashboard', 'orders', 'kitchen',
-    'menu', 'inventory', 'tables', 'posterminal',
-    'reports',
+    'menu', 'inventory', 'tables', 'staff', 'walletTopup', 'posterminal',
+    'customers', 'reports',
   ]),
-  3: new Set(['orders', 'kitchen', 'posterminal']),
+  3: new Set(['orders', 'kitchen', 'walletTopup', 'posterminal']),
 };
 
 const navGroups = [
   { label: 'Overview', icon: 'fa-compass', items: [
     { id: 'dashboard' as PageId, icon: 'fa-chart-pie', label: 'Dashboard' },
     { id: 'orders' as PageId, icon: 'fa-clipboard-list', label: 'Orders' },
-    { id: 'kitchen' as PageId, icon: 'fa-fire-burner', label: 'Kitchen Display' },
+    { id: 'kitchen' as PageId, icon: 'fa-fire-burner', label: 'Order Station' },
   ]},
   { label: 'Store Operations', icon: 'fa-store', items: [
     { id: 'menu' as PageId, icon: 'fa-mug-hot', label: 'Menu Management' },

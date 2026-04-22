@@ -1,5 +1,7 @@
 from datetime import datetime
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, or_, distinct, text, update, case, and_, literal
 
@@ -183,11 +185,14 @@ async def list_customers(
     )
 
     if search:
-        data_query = data_query.where(or_(
+        search_digits = ''.join(c for c in search if c.isdigit())
+        conditions = [
             User.name.ilike(f"%{search}%"),
             User.email.ilike(f"%{search}%"),
-            User.phone.ilike(f"%{search}%"),
-        ))
+        ]
+        if search_digits:
+            conditions.append(func.regexp_replace(User.phone, r'\D', '', 'g').ilike(f"%{search_digits}%"))
+        data_query = data_query.where(or_(*conditions))
 
     if normalized_tier_filter:
         data_query = data_query.where(effective_tier_case == normalized_tier_filter)
@@ -861,8 +866,11 @@ async def admin_wallet_topup(
     if not amount or amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be greater than 0")
 
-    # Find customer by phone
-    result = await db.execute(select(User).where(User.phone == phone))
+    # Find customer by phone (normalize digits for flexible matching)
+    phone_digits = ''.join(c for c in phone if c.isdigit())
+    result = await db.execute(
+        select(User).where(func.regexp_replace(User.phone, r'\D', '', 'g').ilike(f"%{phone_digits}%"))
+    )
     customer = result.scalar_one_or_none()
     if not customer:
         raise HTTPException(status_code=404, detail=f"Customer with phone {phone} not found")

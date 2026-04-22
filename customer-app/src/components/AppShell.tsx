@@ -250,26 +250,56 @@ export default function AppShell() {
             )}
           </AnimatePresence>
 
-          {/* A2HS Banner */}
+          {/* A2HS Centered Modal */}
           {a2hs.canInstall && (
-            <motion.div
-              initial={{ opacity: 0, y: -40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -40 }}
-              transition={reducedMotion ? { duration: 0 } : { duration: 0.3 }}
-              className="absolute top-0 left-0 right-0 z-[55] px-4 pt-3 pb-3 safe-area-top bg-[#384B16]"
-            >
-              <div className="flex items-center justify-between text-white pt-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-lg">📲</span>
-                  <span className="text-sm font-medium truncate">Add Loka to your home screen for quick access</span>
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0 z-[55] bg-black/50"
+                onClick={a2hs.dismiss}
+              />
+              {/* Modal */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={reducedMotion ? { duration: 0 } : { duration: 0.25 }}
+                className="absolute inset-0 z-[56] flex items-center justify-center px-5 pointer-events-none"
+              >
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[280px] p-5 pointer-events-auto">
+                  <h3 className="text-[#1a1a1a] text-base font-bold mb-4">Add to Home Screen</h3>
+                  <div className="flex items-center gap-3 mb-5">
+                    <img
+                      src="/icon-192.png"
+                      alt="Loka"
+                      className="w-10 h-10 rounded-lg object-cover shadow-sm"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[#1a1a1a] font-semibold text-sm truncate">Loka Espresso</p>
+                      <p className="text-[#64748B] text-xs truncate">app.loyaltysystem.uk</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={a2hs.dismiss}
+                      className="px-3 py-2 text-[#384B16] font-semibold text-sm rounded-lg hover:bg-[#384B16]/5 transition-colors flex-shrink-0"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={a2hs.promptInstall}
+                      className="px-4 py-2 bg-[#384B16] text-white font-semibold text-sm rounded-lg shadow-md active:scale-[0.97] transition-transform flex-shrink-0"
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 ml-3 shrink-0">
-                  <button onClick={a2hs.promptInstall} className="px-3 py-1.5 rounded-lg bg-white text-[#384B16] text-xs font-bold">Install</button>
-                  <button onClick={a2hs.dismiss} className="p-1 rounded-full hover:bg-white/20" aria-label="Dismiss">✕</button>
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </>
           )}
 
           {/* Dashboard Header (only on home) */}

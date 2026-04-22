@@ -1558,3 +1558,42 @@ Comprehensive audit of `customer-app/` codebase covering auth flows, menu/cart/c
 - Store ID convention: HQ=0, physical=1–5 ✅
 
 ---
+
+---
+
+## Session 16 — Phone Search Fix, ACL Tuning & PWA Polish (2026-04-22)
+
+### Backend Fixes
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `admin_customers.py` | Missing `BaseModel` / `Optional` imports | Added imports |
+| `admin_customers.py:188` | Phone search exact match failed when DB stored `+60…` but staff typed `010…` | `regexp_replace(User.phone, '\D', '', 'g')` digit-normalized matching |
+| `admin_customers.py:867` | Wallet top-up exact phone match same issue | Same digit-normalized query |
+| `docker-compose.yml` | `OTP_BYPASS_ALLOWED=false` in container | Set to `"true"` |
+
+### Admin Frontend Fixes
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `WalletTopUpPage.tsx:42` | Exact phone match `c.phone === phone` failed without `+60` prefix | Normalized digits `.replace(/\D/g,'')` before comparing |
+| `WalletTopUpPage.tsx:40` | Backend returns `customers` array, frontend read `data.items` | `data.customers \|\| data.items \|\| []` |
+| `POSTerminalPage.tsx:83` | Same `customers` vs `items` + exact phone match issues | Same fixes |
+| `Sidebar.tsx:10` | Kitchen Display label confusing; Store Staff missing Wallet Top-Up | Renamed → "Order Station"; added `walletTopup` to user_type 3 |
+| `Sidebar.tsx:10` | Store Management missing Staff, Customers, Wallet Top-Up | Added to user_type 2 |
+| `page.tsx:413` | Page title still "Kitchen Display" | Changed → "Order Station" |
+| `KitchenDisplayPage.tsx` | No guidance for new staff on order flow | Added collapsible "How Order Station works" guide |
+
+### PWA (Customer App)
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `AppShell.tsx:253` | Top A2HS banner cramped and ugly | Redesigned to centered modal with dark backdrop, Loka icon, app name, URL, Cancel/Add buttons |
+
+### Verification
+
+- Backend builds & starts ✅
+- Frontend builds ✅
+- Customer app builds ✅
+- Phone search: `0102905388` → finds `+60102905388` ✅
+- OTP bypass: `111111` works on PWA ✅

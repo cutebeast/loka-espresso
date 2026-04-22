@@ -410,7 +410,7 @@ export default function MerchantDashboard() {
   const pageTitle: Record<PageId, string> = {
     dashboard: 'Dashboard',
     orders: 'Orders',
-    kitchen: 'Kitchen Display',
+    kitchen: 'Order Station',
     menu: 'Menu Management',
     inventory: 'Inventory',
     tables: 'Tables',

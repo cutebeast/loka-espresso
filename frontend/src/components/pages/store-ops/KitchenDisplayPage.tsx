@@ -20,6 +20,7 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
   const [filterType, setFilterType] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [showGuide, setShowGuide] = useState(false);
 
   const physicalStores = stores.filter(s => String(s.id) !== '0');
   const activeStoreId = selectedStore !== 'all' ? selectedStore : '';
@@ -199,7 +200,7 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
           {activeStoreId && (
             <span style={{ fontSize: 12, color: THEME.textMuted }}>
               <i className="fas fa-fire-burner" style={{ color: THEME.primary, marginRight: 4 }}></i>
-              Kitchen Display
+              Order Station
               {autoRefresh && <span style={{ color: '#16A34A', marginLeft: 8 }}>· Auto-refresh 30s</span>}
               <span style={{ marginLeft: 8 }}>· Last: {lastRefresh.toLocaleTimeString()}</span>
             </span>
@@ -221,12 +222,33 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
         )}
       </div>
 
+      {/* How it works — collapsible guide */}
+      <div className="card" style={{ marginBottom: 16, padding: '12px 16px', background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+        <div
+          onClick={() => setShowGuide(!showGuide)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#166534' }}
+        >
+          <span><i className="fas fa-circle-info" style={{ marginRight: 8 }}></i>How Order Station works</span>
+          <i className={`fas fa-chevron-${showGuide ? 'up' : 'down'}`}></i>
+        </div>
+        {showGuide && (
+          <div style={{ marginTop: 10, fontSize: 12, color: '#166534', lineHeight: 1.7 }}>
+            <p style={{ margin: '0 0 6px' }}><strong>1. New orders appear here automatically</strong> — they come from customers ordering via the app or POS.</p>
+            <p style={{ margin: '0 0 6px' }}><strong>2. Click Confirm</strong> to acknowledge the order and start preparing.</p>
+            <p style={{ margin: '0 0 6px' }}><strong>3. Click Start Preparing</strong> when the kitchen begins cooking the order.</p>
+            <p style={{ margin: '0 0 6px' }}><strong>4. Click Ready</strong> when the order is packed and ready for pickup/delivery.</p>
+            <p style={{ margin: '0 0 6px' }}><strong>5. Click Complete</strong> when the customer receives the order.</p>
+            <p style={{ margin: 0 }}><strong>For delivery orders:</strong> click "Out for Delivery" when the rider picks up, then "Delivered" when the customer receives it.</p>
+          </div>
+        )}
+      </div>
+
       {/* No store selected */}
       {!activeStoreId && (
         <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted, marginTop: 40 }}>
           <i className="fas fa-fire-burner" style={{ fontSize: 48, marginBottom: 16 }}></i>
-          <p style={{ fontSize: 16, fontWeight: 600, color: THEME.textSecondary }}>Select a store to view kitchen orders</p>
-          <p style={{ fontSize: 13 }}>Choose a store location above to see active orders for that kitchen.</p>
+          <p style={{ fontSize: 16, fontWeight: 600, color: THEME.textSecondary }}>Select a store to view orders</p>
+          <p style={{ fontSize: 13 }}>Choose a store location above to see active orders for preparation.</p>
         </div>
       )}
 

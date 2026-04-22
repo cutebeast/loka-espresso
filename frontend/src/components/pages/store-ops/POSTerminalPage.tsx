@@ -79,8 +79,10 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
       const res = await apiFetch(`/admin/customers?search=${encodeURIComponent(phone.trim())}&page=1&page_size=10`, token);
       if (!res.ok) { setResult({ success: false, message: 'Search failed' }); return; }
       const data = await res.json();
-      const items = data.items || [];
-      const exact = items.find((c: CustomerResult) => c.phone === phone.trim());
+      const items = data.customers || data.items || [];
+      // Normalize digits for flexible phone matching (+60 prefix optional)
+      const searchDigits = phone.trim().replace(/\D/g, '');
+      const exact = items.find((c: CustomerResult) => (c.phone || '').replace(/\D/g, '').includes(searchDigits));
       const match = exact || items[0];
       if (match) {
         setCustomer(match);
