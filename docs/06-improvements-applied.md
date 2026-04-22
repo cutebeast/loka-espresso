@@ -1,6 +1,6 @@
 # 06-improvements-applied.md
 
-> Last updated: 2026-04-22 (session 12)
+> Last updated: 2026-04-22 (session 13)
 
 ## Overview
 
@@ -1396,4 +1396,37 @@ Removed duplicate `min_order` config field (was never used in order logic). Only
 | `c7968b4` | fix: kitchen display store selector matches tables page pattern |
 | `deee98a` | fix: switch uploads from named Docker volume to host bind mount |
 | `c7968b4` | fix: kitchen display store selector matches tables page, placeholder images |
-| *(latest)* | fix: consistent status labels, fnb-manage.sh rewrite, docs update |
+| *(Session 12)* | fix: consistent status labels, fnb-manage.sh rewrite, docs update |
+
+---
+
+## Session 13: PWA Audit & Fixes (2026-04-22)
+
+### PWA Codebase Audit
+
+Comprehensive audit of `customer-app/` codebase covering auth flows, menu/cart/checkout, orders/wallet/rewards, and PWA-specific functionality.
+
+**Key findings (no critical bugs found — app is production-ready):**
+
+| # | Area | Finding |
+|---|------|---------|
+| 1 | `apiFetch()` function | Dead code — defined but never called anywhere. Removed. |
+| 2 | Token refresh loop risk | `_refreshFailed` flag added to prevent multiple simultaneous refresh attempts from causing infinite reload loops. |
+| 3 | Token validation race condition | `AbortController` added to token validation `useEffect` to prevent stale responses from overwriting auth state after logout. |
+| 4 | Cart sync | Already uses diff-based approach (Session 9 fix). Verified working. |
+| 5 | OTP auto-submit | Works correctly — only triggers when all 6 digits entered and not loading. |
+| 6 | Wallet top-up | Stub (expected — PG integration deferred). |
+| 7 | Payment methods | Read-only stub (expected — PG integration deferred). |
+| 8 | PWA shortcuts | Manifest shortcuts use `?page=` query params but URL parsing not implemented. Minor — shortcuts just open home page. |
+
+### Fixes Applied
+
+| # | Fix | File | Description |
+|---|-----|------|-------------|
+| 1 | Token refresh loop guard | `customer-app/src/lib/api.ts` | Added `_refreshFailed` module flag to prevent multiple reloads when refresh fails |
+| 2 | AbortController for token validation | `customer-app/src/components/AppShell.tsx` | Token validation now uses `AbortController` to cancel in-flight requests on unmount/logout |
+| 3 | Dead code removal | `customer-app/src/lib/api.ts` | Removed unused `apiFetch()` function |
+
+### Commit
+
+`0c5aeef` — fix(customer-app): prevent token refresh reload loops, add AbortController, remove dead apiFetch
