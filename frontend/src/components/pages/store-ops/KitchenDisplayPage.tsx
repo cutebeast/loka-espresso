@@ -3,16 +3,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
+import { StoreSelector } from '@/components/ui/Select';
 import type { MerchantOrder } from '@/lib/merchant-types';
 
 interface KitchenDisplayPageProps {
   token: string;
   selectedStore: string;
   stores: { id: number; name: string }[];
+  onStoreChange: (store: string) => void;
 }
 
 /** Simplified card-based view showing ONLY active orders for kitchen/service crew. */
-export default function KitchenDisplayPage({ token, selectedStore, stores }: KitchenDisplayPageProps) {
+export default function KitchenDisplayPage({ token, selectedStore, stores, onStoreChange }: KitchenDisplayPageProps) {
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<string>('');
@@ -20,15 +22,14 @@ export default function KitchenDisplayPage({ token, selectedStore, stores }: Kit
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   const physicalStores = stores.filter(s => String(s.id) !== '0');
+  const activeStoreId = selectedStore !== 'all' ? selectedStore : '';
 
   const fetchActiveOrders = useCallback(async () => {
-    if (!token) return;
+    if (!token || !activeStoreId) return;
     try {
-      let url = '/admin/orders?page=1&page_size=200';
-      // Only get non-terminal orders
-      url += '&order_type=' + (filterType || '');
-      if (selectedStore && selectedStore !== 'all') {
-        url += `&store_id=${selectedStore}`;
+      let url = `/admin/orders?store_id=${activeStoreId}&page=1&page_size=200`;
+      if (filterType) {
+        url += `&order_type=${filterType}`;
       }
       const res = await apiFetch(url, token);
       if (!res.ok) return;
@@ -44,7 +45,7 @@ export default function KitchenDisplayPage({ token, selectedStore, stores }: Kit
     } finally {
       setLoading(false);
     }
-  }, [token, selectedStore, filterType]);
+  }, [token, activeStoreId, filterType]);
 
   useEffect(() => {
     fetchActiveOrders();
@@ -168,23 +169,41 @@ export default function KitchenDisplayPage({ token, selectedStore, stores }: Kit
           </h2>
           <p style={{ fontSize: 13, color: THEME.textMuted, margin: '4px 0 0' }}>
             Active orders only · Last refresh: {lastRefresh.toLocaleTimeString()}
-            {autoRefresh && <span style={{ color: '#16A34A' }}> · Auto-refresh 30s</span>}
+            {autoRefresh && activeStoreId && <span style={{ color: '#16A34A' }}> · Auto-refresh 30s</span>}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn btn-sm" onClick={fetchActiveOrders}>
+          <StoreSelector
+            stores={physicalStores.map(s => ({ id: String(s.id), name: s.name }))}
+            selectedStore={activeStoreId || 'all'}
+            onChange={onStoreChange}
+            showAllOption={false}
+            placeholder="Select store..."
+          />
+          <button className="btn btn-sm" onClick={fetchActiveOrders} disabled={!activeStoreId}>
             <i className="fas fa-sync-alt"></i> Refresh
           </button>
           <button
             className={`btn btn-sm ${autoRefresh ? 'btn-primary' : ''}`}
             onClick={() => setAutoRefresh(!autoRefresh)}
             style={{ fontSize: 12 }}
+            disabled={!activeStoreId}
           >
             <i className={`fas fa-${autoRefresh ? 'pause' : 'play'}`}></i> Auto
           </button>
         </div>
       </div>
 
+      {/* No store selected */}
+      {!activeStoreId && (
+        <div style={{ textAlign: 'center', padding: 80, color: THEME.textMuted, background: 'white', borderRadius: 16, border: `1px solid ${THEME.border}` }}>
+          <i className="fas fa-store" style={{ fontSize: 48, color: THEME.border, marginBottom: 16, display: 'block' }}></i>
+          <p style={{ fontSize: 16, fontWeight: 600, color: THEME.textSecondary }}>Select a store to view kitchen orders</p>
+          <p style={{ fontSize: 13 }}>Choose a store location above to see active orders for that kitchen.</p>
+        </div>
+      )}
+
+      {activeStoreId && (<>
       {/* Status Summary Bar */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {Object.entries(counts).map(([status, count]) => (
@@ -318,6 +337,7 @@ export default function KitchenDisplayPage({ token, selectedStore, stores }: Kit
           ))}
         </div>
       )}
+      </>)}
     </div>
   );
 }

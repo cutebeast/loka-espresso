@@ -461,6 +461,7 @@ export default function MerchantDashboard() {
                   token={token}
                   selectedStore={selectedStore}
                   stores={stores}
+                  onStoreChange={setSelectedStore}
                 />
               )}
 
