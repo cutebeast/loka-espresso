@@ -312,8 +312,10 @@ async def create_order(
 
     if used_voucher is not None:
         used_voucher.order_id = order.id
+        used_voucher.store_id = order.store_id
     if used_reward is not None:
         used_reward.order_id = order.id
+        used_reward.store_id = order.store_id
 
     for oi in order_items:
         oi_record = OrderItem(
@@ -462,6 +464,7 @@ async def cancel_order(order_id: int, user: User = Depends(get_current_user), db
             voucher.status = "available"
             voucher.used_at = None
             voucher.order_id = None
+            voucher.store_id = None
 
     if order.reward_redemption_code:
         reward_result = await db.execute(
@@ -476,6 +479,7 @@ async def cancel_order(order_id: int, user: User = Depends(get_current_user), db
             reward.used_at = None
             reward.is_used = False
             reward.order_id = None
+            reward.store_id = None
 
     if order.payment_status == "paid" and order.loyalty_points_earned and order.loyalty_points_earned > 0:
         la_result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.user_id == order.user_id))

@@ -1,7 +1,7 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, or_
 
 from app.core.database import get_db
 from app.core.security import require_role, require_hq_access
@@ -91,7 +91,8 @@ async def marketing_report(
 
     redemptions_q = select(UserReward).where(UserReward.redeemed_at >= from_date, UserReward.redeemed_at <= to_date)
     if store_id:
-        redemptions_q = redemptions_q.where(UserReward.store_id == store_id)
+        redemptions_q = redemptions_q.outerjoin(Order, UserReward.order_id == Order.id)
+        redemptions_q = redemptions_q.where(or_(UserReward.store_id == store_id, Order.store_id == store_id))
     redemptions_result = await db.execute(redemptions_q)
     redemptions = redemptions_result.scalars().all()
     total_redemptions = len(redemptions)
@@ -112,7 +113,8 @@ async def marketing_report(
 
     usage_q = select(UserVoucher).where(UserVoucher.applied_at >= from_date, UserVoucher.applied_at <= to_date)
     if store_id:
-        usage_q = usage_q.where(UserVoucher.store_id == store_id)
+        usage_q = usage_q.outerjoin(Order, UserVoucher.order_id == Order.id)
+        usage_q = usage_q.where(or_(UserVoucher.store_id == store_id, Order.store_id == store_id))
     usage_result = await db.execute(usage_q)
     usages = usage_result.scalars().all()
     total_voucher_usages = len(usages)
