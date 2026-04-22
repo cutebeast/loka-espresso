@@ -33,7 +33,7 @@ services:
     ports:
       - "3002:8000"
     volumes:
-      - fnb-uploads:/app/uploads
+      - ./uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -63,5 +63,3 @@ services:
 volumes:
   fnb-db-data:
     name: fnb-db-data
-  fnb-uploads:
-    name: fnb-uploads
