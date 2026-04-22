@@ -13,7 +13,7 @@ interface PaginatedResponse<T> {
   items: T[];
 }
 
-type TabId = 'profile' | 'orders' | 'loyalty' | 'wallet' | 'actions';
+type TabId = 'profile' | 'orders' | 'loyalty' | 'wallet' | 'vouchers' | 'actions';
 
 interface CustomerDetailPageProps {
   token: string;
@@ -232,6 +232,8 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
   const [loyaltyPage, setLoyaltyPage] = useState(1);
   const [wallet, setWallet] = useState<PaginatedResponse<CustomerWalletTransaction> | null>(null);
   const [walletPage, setWalletPage] = useState(1);
+  const [customerWallet, setCustomerWallet] = useState<{ rewards: any[]; vouchers: any[] } | null>(null);
+  const [loadingWalletItems, setLoadingWalletItems] = useState(false);
 
   const [editingCustomer, setEditingCustomer] = useState(false);
   const [editName, setEditName] = useState('');
@@ -290,10 +292,22 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
     } catch {}
   }
 
+  async function fetchCustomerWallet() {
+    setLoadingWalletItems(true);
+    try {
+      const res = await apiFetch(`/admin/customers/${customerId}/wallet`, token);
+      if (res.ok) {
+        const data = await res.json();
+        setCustomerWallet({ rewards: data.rewards || [], vouchers: data.vouchers || [] });
+      }
+    } catch {} finally { setLoadingWalletItems(false); }
+  }
+
   useEffect(() => {
     if (activeTab === 'orders') fetchOrders(ordersPage);
     else if (activeTab === 'loyalty') fetchLoyalty(loyaltyPage);
     else if (activeTab === 'wallet') fetchWallet(walletPage);
+    else if (activeTab === 'vouchers') fetchCustomerWallet();
   }, [activeTab, ordersPage, loyaltyPage, walletPage]);
 
   async function handleEditSubmit(e: FormEvent) {
@@ -322,6 +336,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
     { id: 'orders', label: 'Orders', icon: 'fas fa-receipt' },
     { id: 'loyalty', label: 'Loyalty', icon: 'fas fa-star' },
     { id: 'wallet', label: 'Wallet', icon: 'fas fa-wallet' },
+    { id: 'vouchers', label: 'Rewards & Vouchers', icon: 'fas fa-gift' },
   ];
 
   // Column definitions for Orders table
@@ -564,6 +579,57 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
                   totalPages={Math.max(1, Math.ceil(wallet.total / PAGE_SIZE))}
                   onPageChange={setWalletPage}
                 />
+              </>
+            )}
+          </>
+        )}
+
+        {activeTab === 'vouchers' && (
+          <>
+            {loadingWalletItems ? (
+              <div style={{ textAlign: 'center', padding: 20, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i></div>
+            ) : (
+              <>
+                <h4 style={{ marginBottom: 16, fontSize: 14, fontWeight: 600, color: THEME.textSecondary }}>
+                  <i className="fas fa-gift" style={{ marginRight: 8 }}></i>Available Rewards ({customerWallet?.rewards.length || 0})
+                </h4>
+                {customerWallet && customerWallet.rewards.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                    {customerWallet.rewards.map((r: any) => (
+                      <div key={r.id} style={{ padding: '12px 14px', background: THEME.bgMuted, borderRadius: 10, border: `1px solid ${THEME.border}` }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textPrimary }}>{r.name}</div>
+                        <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 2 }}>
+                          Code: <code style={{ background: 'white', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{r.redemption_code}</code>
+                          {r.points_spent ? ` · ${r.points_spent} pts` : ''}
+                          {r.expires_at ? ` · Expires ${new Date(r.expires_at).toLocaleDateString()}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: THEME.textMuted, fontSize: 13, marginBottom: 24 }}>No available rewards</div>
+                )}
+
+                <h4 style={{ marginBottom: 16, fontSize: 14, fontWeight: 600, color: THEME.textSecondary }}>
+                  <i className="fas fa-ticket" style={{ marginRight: 8 }}></i>Available Vouchers ({customerWallet?.vouchers.length || 0})
+                </h4>
+                {customerWallet && customerWallet.vouchers.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {customerWallet.vouchers.map((v: any) => (
+                      <div key={v.id} style={{ padding: '12px 14px', background: THEME.bgMuted, borderRadius: 10, border: `1px solid ${THEME.border}` }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textPrimary }}>{v.title}</div>
+                        <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 2 }}>
+                          Code: <code style={{ background: 'white', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{v.code}</code>
+                          {v.discount_type && v.discount_value ? ` · ${v.discount_type === 'percent' ? v.discount_value + '%' : 'RM ' + v.discount_value} off` : ''}
+                          {v.min_spend ? ` · Min spend RM ${v.min_spend}` : ''}
+                          {v.expires_at ? ` · Expires ${new Date(v.expires_at).toLocaleDateString()}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: THEME.textMuted, fontSize: 13 }}>No available vouchers</div>
+                )}
               </>
             )}
           </>

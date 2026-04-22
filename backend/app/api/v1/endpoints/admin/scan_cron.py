@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.core.database import get_db
-from app.core.security import require_role, require_hq_access, now_utc, ensure_utc
+from app.core.security import require_role, require_hq_access, require_dashboard_access, now_utc, ensure_utc
 from app.models.user import User
 from app.models.reward import UserReward, Reward
 from app.models.voucher import UserVoucher, Voucher
@@ -51,7 +51,7 @@ class CronResult(BaseModel):
 async def scan_reward_code(
     code: str,
     req: ScanRequest,
-    user: User = Depends(require_hq_access()),
+    user: User = Depends(require_dashboard_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -111,7 +111,7 @@ async def scan_reward_code(
 async def scan_voucher_code(
     code: str,
     req: ScanRequest,
-    user: User = Depends(require_hq_access()),
+    user: User = Depends(require_dashboard_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -139,7 +139,6 @@ async def scan_voucher_code(
     # Mark used
     uv.status = "used"
     uv.used_at = now
-    uv.is_used = True
     if req.order_id:
         uv.order_id = req.order_id
     if req.store_id:

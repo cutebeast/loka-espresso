@@ -10,7 +10,7 @@ import { THEME } from '@/lib/theme';
 const PAGE_VISIBILITY: Record<number, Set<string>> = {
   1: new Set([
     'dashboard', 'orders', 'kitchen',
-    'menu', 'inventory', 'tables', 'staff', 'walletTopup',
+    'menu', 'inventory', 'tables', 'staff', 'walletTopup', 'posterminal',
     'customers', 'rewards', 'vouchers', 'promotions', 'information', 'notifications', 'feedback',
     'reports', 'marketingreports',
     'store', 'settings', 'pwa', 'loyaltyrules', 'auditlog',
@@ -35,6 +35,7 @@ const navGroups = [
     { id: 'tables' as PageId, icon: 'fa-chair', label: 'Tables' },
     { id: 'staff' as PageId, icon: 'fa-user-tie', label: 'Staff' },
     { id: 'walletTopup' as PageId, icon: 'fa-wallet', label: 'Wallet Top-Up' },
+    { id: 'posterminal' as PageId, icon: 'fa-cash-register', label: 'POS Terminal' },
   ]},
   { label: 'CRM & Marketing', icon: 'fa-bullhorn', items: [
     { id: 'customers' as PageId, icon: 'fa-users', label: 'Customers' },

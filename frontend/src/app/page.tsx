@@ -48,6 +48,7 @@ const NotificationsPage = dynamic(() => import('@/components/pages/marketing/Not
 const PromotionsPage = dynamic(() => import('@/components/pages/marketing/PromotionsPage'), { ssr: false });
 const InformationPage = dynamic(() => import('@/components/pages/marketing/InformationPage'), { ssr: false });
 const WalletTopUpPage = dynamic(() => import('@/components/pages/store-ops/WalletTopUpPage'), { ssr: false });
+const POSTerminalPage = dynamic(() => import('@/components/pages/store-ops/POSTerminalPage'), { ssr: false });
 const FeedbackPage = dynamic(() => import('@/components/pages/marketing/FeedbackPage'), { ssr: false });
 const PWASettingsPage = dynamic(() => import('@/components/pages/system/PWASettingsPage'), { ssr: false });
 
@@ -60,7 +61,7 @@ export default function MerchantDashboard() {
     if (typeof window === 'undefined') return 'dashboard';
     // Prefer hash, fall back to ?page= query param for backward compatibility
     const hash = window.location.hash.replace('#', '');
-    const valid: PageId[] = ['dashboard','orders','kitchen','menu','inventory','tables','staff','rewards','vouchers','promotions','information','feedback','reports','marketingreports','customers','notifications','auditlog','loyaltyrules','store','settings','pwa','walletTopup','customerDetail'];
+    const valid: PageId[] = ['dashboard','orders','kitchen','menu','inventory','tables','staff','rewards','vouchers','promotions','information','feedback','reports','marketingreports','customers','notifications','auditlog','loyaltyrules','store','settings','pwa','walletTopup','posterminal','customerDetail'];
     if (valid.includes(hash as PageId)) return hash as PageId;
     const qp = new URLSearchParams(window.location.search).get('page');
     if (qp && valid.includes(qp as PageId)) return qp as PageId;
@@ -70,7 +71,7 @@ export default function MerchantDashboard() {
 
   // Browser back/forward routing: handles both hash changes and pushState history
   useEffect(() => {
-    const valid: PageId[] = ['dashboard','orders','kitchen','menu','inventory','tables','staff','rewards','vouchers','promotions','information','feedback','reports','marketingreports','customers','notifications','auditlog','loyaltyrules','store','settings','pwa','walletTopup','customerDetail'];
+    const valid: PageId[] = ['dashboard','orders','kitchen','menu','inventory','tables','staff','rewards','vouchers','promotions','information','feedback','reports','marketingreports','customers','notifications','auditlog','loyaltyrules','store','settings','pwa','walletTopup','posterminal','customerDetail'];
     const syncPage = () => {
       // Check history state for customer detail (set by pushState when opening a customer)
       const stateDetailId = (window.history.state as {customerDetailId?: number} | null)?.customerDetailId;
@@ -429,6 +430,7 @@ export default function MerchantDashboard() {
     settings: 'App Settings',
     pwa: 'PWA Settings',
     walletTopup: 'Wallet Top-Up',
+    posterminal: 'POS Terminal',
     customerDetail: 'Customer Profile',
   };
 
@@ -654,6 +656,10 @@ export default function MerchantDashboard() {
 
             {page === 'walletTopup' && (
               <WalletTopUpPage token={token} />
+            )}
+
+            {page === 'posterminal' && (
+              <POSTerminalPage token={token} />
             )}
             </div>
           </ErrorBoundary>

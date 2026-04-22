@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, or_, distinct, text, update, case, and_, literal
 
 from app.core.database import get_db
-from app.core.security import require_hq_access, require_role
+from app.core.security import require_hq_access, require_role, now_utc, ensure_utc
 from app.core.audit import log_action, get_client_ip
 from app.core.utils import to_float
 from app.core.commerce import credit_wallet
@@ -13,6 +13,7 @@ from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.order import Order
 from app.models.wallet import Wallet, WalletTransaction
 from app.models.voucher import Voucher, UserVoucher
+from app.models.reward import UserReward, Reward
 from app.models.wallet import WalletTxType
 from app.schemas.admin_customers import AdjustPointsRequest, CustomerUpdateRequest, AwardVoucherRequest, SetTierRequest
 
@@ -901,4 +902,239 @@ async def admin_wallet_topup(
         "payment_method": payment_method,
         "new_balance": new_balance,
         "previous_balance": round(new_balance - float(amount), 2),
+    }
+
+
+# ---------------------------------------------------------------------------
+# POS: Customer Wallet Lookup (staff views customer's available rewards/vouchers)
+# ---------------------------------------------------------------------------
+
+@router.get("/customers/{user_id}/wallet")
+async def customer_wallet(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """
+    Return a customer's available rewards and vouchers for in-store POS use.
+    Staff looks up customer by phone, then calls this to see what they can apply.
+    """
+    now = now_utc()
+
+    # Verify customer exists
+    customer_result = await db.execute(select(User).where(User.id == user_id, User.role_id == RoleIDs.CUSTOMER))
+    customer = customer_result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    # Available rewards
+    ur_query = (
+        select(UserReward, Reward)
+        .join(Reward, UserReward.reward_id == Reward.id, isouter=True)
+        .where(
+            UserReward.user_id == user_id,
+            UserReward.status == "available",
+            or_(UserReward.expires_at.is_(None), UserReward.expires_at > ensure_utc(now)),
+        )
+        .order_by(UserReward.expires_at.asc())
+    )
+    ur_result = await db.execute(ur_query)
+    rewards = []
+    for ur, r in ur_result.all():
+        rewards.append({
+            "id": ur.id,
+            "reward_id": ur.reward_id,
+            "name": r.name if r else (ur.reward_snapshot or {}).get("name", "Unknown"),
+            "redemption_code": ur.redemption_code,
+            "points_spent": ur.points_spent,
+            "expires_at": ur.expires_at.isoformat() if ur.expires_at else None,
+            "status": ur.status,
+        })
+
+    # Available vouchers
+    uv_query = (
+        select(UserVoucher, Voucher)
+        .join(Voucher, UserVoucher.voucher_id == Voucher.id, isouter=True)
+        .where(
+            UserVoucher.user_id == user_id,
+            UserVoucher.status == "available",
+            or_(UserVoucher.expires_at.is_(None), UserVoucher.expires_at > ensure_utc(now)),
+        )
+        .order_by(UserVoucher.expires_at.asc())
+    )
+    uv_result = await db.execute(uv_query)
+    vouchers = []
+    for uv, v in uv_result.all():
+        vouchers.append({
+            "id": uv.id,
+            "voucher_id": uv.voucher_id,
+            "title": v.title if v else uv.code,
+            "code": uv.code,
+            "discount_type": uv.discount_type or (v.discount_type.value if v and hasattr(v.discount_type, 'value') else None),
+            "discount_value": to_float(uv.discount_value) if uv.discount_value else (to_float(v.discount_value) if v and v.discount_value else None),
+            "min_spend": to_float(uv.min_spend) if uv.min_spend else (to_float(v.min_spend) if v and v.min_spend else None),
+            "expires_at": uv.expires_at.isoformat() if uv.expires_at else None,
+            "status": uv.status,
+        })
+
+    return {
+        "customer_id": customer.id,
+        "customer_name": customer.name,
+        "customer_phone": customer.phone,
+        "rewards": rewards,
+        "vouchers": vouchers,
+    }
+
+
+# ---------------------------------------------------------------------------
+# POS: Staff marks a customer's reward as used in-store
+# ---------------------------------------------------------------------------
+
+class UseItemRequest(BaseModel):
+    store_id: Optional[int] = None
+    notes: Optional[str] = None
+
+
+@router.post("/customers/{user_id}/use-reward/{ur_id}")
+async def use_customer_reward(
+    user_id: int,
+    ur_id: int,
+    req: UseItemRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """
+    Staff marks a specific reward as used at the counter.
+    Called from the POS Terminal after staff confirms with customer.
+    """
+    now = now_utc()
+
+    result = await db.execute(
+        select(UserReward).where(UserReward.id == ur_id, UserReward.user_id == user_id)
+    )
+    ur = result.scalar_one_or_none()
+    if not ur:
+        raise HTTPException(status_code=404, detail="Reward not found for this customer")
+
+    if ur.status == "used":
+        raise HTTPException(status_code=400, detail="Reward already used")
+    if ur.status == "expired":
+        raise HTTPException(status_code=400, detail="Reward has expired")
+    if ur.expires_at and ensure_utc(ur.expires_at) < now:
+        ur.status = "expired"
+        await db.flush()
+        raise HTTPException(status_code=400, detail="Reward has expired")
+
+    # Mark used
+    ur.status = "used"
+    ur.is_used = True
+    ur.used_at = now
+    if req.store_id:
+        ur.store_id = req.store_id
+
+    # Fetch reward name for response
+    r_result = await db.execute(select(Reward).where(Reward.id == ur.reward_id))
+    reward = r_result.scalar_one_or_none()
+
+    # Audit log
+    ip = get_client_ip(request)
+    await log_action(
+        db,
+        action="REWARD_USED_IN_STORE",
+        user_id=user.id,
+        entity_type="user_reward",
+        entity_id=ur.id,
+        details={
+            "customer_id": user_id,
+            "reward_id": ur.reward_id,
+            "redemption_code": ur.redemption_code,
+            "store_id": req.store_id,
+            "notes": req.notes,
+        },
+        ip_address=ip,
+    )
+
+    return {
+        "success": True,
+        "message": f"Reward used: {reward.name if reward else 'Unknown'}",
+        "reward_name": reward.name if reward else (ur.reward_snapshot or {}).get("name"),
+        "redemption_code": ur.redemption_code,
+        "used_at": ur.used_at.isoformat() if ur.used_at else None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# POS: Staff marks a customer's voucher as used in-store
+# ---------------------------------------------------------------------------
+
+@router.post("/customers/{user_id}/use-voucher/{uv_id}")
+async def use_customer_voucher(
+    user_id: int,
+    uv_id: int,
+    req: UseItemRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """
+    Staff marks a specific voucher as used at the counter.
+    Called from the POS Terminal after staff confirms with customer.
+    """
+    now = now_utc()
+
+    result = await db.execute(
+        select(UserVoucher).where(UserVoucher.id == uv_id, UserVoucher.user_id == user_id)
+    )
+    uv = result.scalar_one_or_none()
+    if not uv:
+        raise HTTPException(status_code=404, detail="Voucher not found for this customer")
+
+    if uv.status == "used":
+        raise HTTPException(status_code=400, detail="Voucher already used")
+    if uv.status == "expired":
+        raise HTTPException(status_code=400, detail="Voucher has expired")
+    if uv.expires_at and ensure_utc(uv.expires_at) < now:
+        uv.status = "expired"
+        await db.flush()
+        raise HTTPException(status_code=400, detail="Voucher has expired")
+
+    # Mark used
+    uv.status = "used"
+    uv.used_at = now
+    if req.store_id:
+        uv.store_id = req.store_id
+
+    # Increment catalog used_count
+    v_result = await db.execute(select(Voucher).where(Voucher.id == uv.voucher_id))
+    voucher = v_result.scalar_one_or_none()
+    if voucher:
+        voucher.used_count += 1
+
+    # Audit log
+    ip = get_client_ip(request)
+    await log_action(
+        db,
+        action="VOUCHER_USED_IN_STORE",
+        user_id=user.id,
+        entity_type="user_voucher",
+        entity_id=uv.id,
+        details={
+            "customer_id": user_id,
+            "voucher_id": uv.voucher_id,
+            "code": uv.code,
+            "store_id": req.store_id,
+            "notes": req.notes,
+        },
+        ip_address=ip,
+    )
+
+    return {
+        "success": True,
+        "message": f"Voucher used: {voucher.title if voucher else uv.code}",
+        "voucher_title": voucher.title if voucher else None,
+        "code": uv.code,
+        "discount_value": to_float(voucher.discount_value) if voucher else None,
+        "discount_type": voucher.discount_type.value if voucher and hasattr(voucher.discount_type, 'value') else None,
+        "used_at": uv.used_at.isoformat() if uv.used_at else None,
     }
