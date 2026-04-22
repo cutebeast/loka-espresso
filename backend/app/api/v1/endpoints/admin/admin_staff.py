@@ -249,8 +249,9 @@ async def create_hq_staff(
         if existing.scalar_one_or_none():
             raise HTTPException(400, detail=f"User with email '{data.email}' already exists")
         temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
+        phone_val = (data.phone or "").strip() or None
         new_user = User(
-            email=data.email, name=data.name, phone=data.phone,
+            email=data.email, name=data.name, phone=phone_val,
             password_hash=hash_password(temp_password),
             user_type_id=ut_id, role_id=r_id, is_active=True,
         )
@@ -485,10 +486,11 @@ async def reset_staff_password(
         if existing.scalar_one_or_none():
             raise HTTPException(400, f"User with email '{staff.email}' exists but not linked")
         temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
+        phone_val = (data.phone or "").strip() or None  # Normalize empty to None to avoid unique constraint clash
         new_user = User(
-            email=staff.email, name=staff.name, phone=staff.phone,
+            email=data.email, name=data.name, phone=phone_val,
             password_hash=hash_password(temp_password),
-            user_type_id=UserTypeIDs.STORE, role_id=RoleIDs.STAFF, is_active=True,
+            user_type_id=ut_id, role_id=r_id, is_active=True,
         )
         db.add(new_user)
         await db.flush()
