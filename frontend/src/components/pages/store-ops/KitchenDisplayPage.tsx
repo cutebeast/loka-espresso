@@ -160,44 +160,45 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: THEME.textPrimary, margin: 0 }}>
-            <i className="fas fa-fire-burner" style={{ color: THEME.primary, marginRight: 8 }}></i>
-            Kitchen Display
-          </h2>
-          <p style={{ fontSize: 13, color: THEME.textMuted, margin: '4px 0 0' }}>
-            Active orders only · Last refresh: {lastRefresh.toLocaleTimeString()}
-            {autoRefresh && activeStoreId && <span style={{ color: '#16A34A' }}> · Auto-refresh 30s</span>}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      {/* Header with StoreSelector always visible */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <StoreSelector
             stores={physicalStores.map(s => ({ id: String(s.id), name: s.name }))}
-            selectedStore={activeStoreId || 'all'}
+            selectedStore={activeStoreId || ''}
             onChange={onStoreChange}
             showAllOption={false}
-            placeholder="Select store..."
+            placeholder="Select a store..."
           />
-          <button className="btn btn-sm" onClick={fetchActiveOrders} disabled={!activeStoreId}>
-            <i className="fas fa-sync-alt"></i> Refresh
-          </button>
-          <button
-            className={`btn btn-sm ${autoRefresh ? 'btn-primary' : ''}`}
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            style={{ fontSize: 12 }}
-            disabled={!activeStoreId}
-          >
-            <i className={`fas fa-${autoRefresh ? 'pause' : 'play'}`}></i> Auto
-          </button>
+          {activeStoreId && (
+            <span style={{ fontSize: 12, color: THEME.textMuted }}>
+              <i className="fas fa-fire-burner" style={{ color: THEME.primary, marginRight: 4 }}></i>
+              Kitchen Display
+              {autoRefresh && <span style={{ color: '#16A34A', marginLeft: 8 }}>· Auto-refresh 30s</span>}
+              <span style={{ marginLeft: 8 }}>· Last: {lastRefresh.toLocaleTimeString()}</span>
+            </span>
+          )}
         </div>
+        {activeStoreId && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button className="btn btn-sm" onClick={fetchActiveOrders}>
+              <i className="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button
+              className={`btn btn-sm ${autoRefresh ? 'btn-primary' : ''}`}
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              style={{ fontSize: 12 }}
+            >
+              <i className={`fas fa-${autoRefresh ? 'pause' : 'play'}`}></i> Auto
+            </button>
+          </div>
+        )}
       </div>
 
       {/* No store selected */}
       {!activeStoreId && (
-        <div style={{ textAlign: 'center', padding: 80, color: THEME.textMuted, background: 'white', borderRadius: 16, border: `1px solid ${THEME.border}` }}>
-          <i className="fas fa-store" style={{ fontSize: 48, color: THEME.border, marginBottom: 16, display: 'block' }}></i>
+        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted, marginTop: 40 }}>
+          <i className="fas fa-fire-burner" style={{ fontSize: 48, marginBottom: 16 }}></i>
           <p style={{ fontSize: 16, fontWeight: 600, color: THEME.textSecondary }}>Select a store to view kitchen orders</p>
           <p style={{ fontSize: 13 }}>Choose a store location above to see active orders for that kitchen.</p>
         </div>
