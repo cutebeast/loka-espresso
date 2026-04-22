@@ -29,7 +29,9 @@ class LoyaltyTierOut(BaseModel):
     id: int
     name: str
     min_points: int
+    points_multiplier: Optional[float] = 1.0
     benefits: Optional[dict] = None
+    sort_order: int = 0
 
     class Config:
         from_attributes = True

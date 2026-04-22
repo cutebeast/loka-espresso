@@ -32,5 +32,5 @@ async def get_history(user: User = Depends(get_current_user), db: AsyncSession =
 
 @router.get("/tiers", response_model=list[LoyaltyTierOut])
 async def get_tiers(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(LoyaltyTier).order_by(LoyaltyTier.min_points))
+    result = await db.execute(select(LoyaltyTier).order_by(LoyaltyTier.sort_order, LoyaltyTier.min_points))
     return result.scalars().all()
