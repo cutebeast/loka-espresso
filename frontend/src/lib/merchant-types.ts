@@ -265,6 +265,7 @@ export interface CustomerDetail {
   wallet_balance: number;
   total_orders: number;
   total_spent: number;
+  total_points_earned: number;
   phone_verified?: boolean;
   is_profile_complete?: boolean;
   created_at: string;

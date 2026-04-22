@@ -470,7 +470,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
             <div>
               <h4 style={{ marginBottom: 12, fontSize: 14, fontWeight: 600, color: THEME.textSecondary }}>Balances</h4>
               <p style={{ marginBottom: 8 }}><strong>Loyalty Points:</strong> {detail.points_balance} pts</p>
-              <p style={{ marginBottom: 8 }}><strong>Total Earned:</strong> {(detail as any).total_points_earned ?? '-'} pts</p>
+              <p style={{ marginBottom: 8 }}><strong>Total Earned:</strong> {detail.total_points_earned ?? '-'} pts</p>
               <p style={{ marginBottom: 8 }}><strong>Wallet Balance:</strong> {formatRM(detail.wallet_balance || 0)}</p>
               <p style={{ marginBottom: 8 }}><strong>Total Orders:</strong> {detail.total_orders}</p>
               <p><strong>Total Spent:</strong> {formatRM(detail.total_spent)}</p>
