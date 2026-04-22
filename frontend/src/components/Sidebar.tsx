@@ -17,10 +17,10 @@ const PAGE_VISIBILITY: Record<number, Set<string>> = {
   ]),
   2: new Set([
     'dashboard', 'orders', 'kitchen',
-    'menu', 'inventory', 'tables',
+    'menu', 'inventory', 'tables', 'posterminal',
     'reports',
   ]),
-  3: new Set(['orders', 'kitchen']),
+  3: new Set(['orders', 'kitchen', 'posterminal']),
 };
 
 const navGroups = [

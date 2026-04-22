@@ -913,7 +913,7 @@ async def admin_wallet_topup(
 async def customer_wallet(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: User = Depends(require_role(RoleIDs.ADMIN, RoleIDs.BRAND_OWNER, RoleIDs.MANAGER, RoleIDs.ASSISTANT_MANAGER, RoleIDs.STAFF, RoleIDs.HQ_STAFF)),
 ):
     """
     Return a customer's available rewards and vouchers for in-store POS use.
@@ -1002,7 +1002,7 @@ async def use_customer_reward(
     req: UseItemRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: User = Depends(require_role(RoleIDs.ADMIN, RoleIDs.BRAND_OWNER, RoleIDs.MANAGER, RoleIDs.ASSISTANT_MANAGER, RoleIDs.STAFF, RoleIDs.HQ_STAFF)),
 ):
     """
     Staff marks a specific reward as used at the counter.
@@ -1075,7 +1075,7 @@ async def use_customer_voucher(
     req: UseItemRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: User = Depends(require_role(RoleIDs.ADMIN, RoleIDs.BRAND_OWNER, RoleIDs.MANAGER, RoleIDs.ASSISTANT_MANAGER, RoleIDs.STAFF, RoleIDs.HQ_STAFF)),
 ):
     """
     Staff marks a specific voucher as used at the counter.
