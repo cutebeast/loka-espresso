@@ -7,6 +7,9 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Prevents multiple simultaneous refresh attempts from triggering multiple reloads
+let _refreshFailed = false;
+
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem('loka-auth');
@@ -83,10 +86,14 @@ api.interceptors.response.use(
         console.error('Token refresh failed:', refreshError);
       }
 
-      localStorage.removeItem('loka-auth');
-      localStorage.removeItem('loka-cart');
-      if (typeof window !== 'undefined') {
-        window.location.reload();
+      // Only clear and reload once per page load to prevent infinite loops
+      if (!_refreshFailed) {
+        _refreshFailed = true;
+        localStorage.removeItem('loka-auth');
+        localStorage.removeItem('loka-cart');
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
       }
     }
 
@@ -95,30 +102,6 @@ api.interceptors.response.use(
 );
 
 export default api;
-
-export async function apiFetch(path: string, token?: string, _options?: RequestInit) {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  
-  try {
-    const response = await api.get(path, { headers });
-    return {
-      ok: true,
-      json: () => Promise.resolve(response.data),
-    };
-  } catch (error) {
-    const err = error as { response?: { status: number; data: unknown } };
-    if (err.response) {
-      const { status, data } = err.response;
-      return {
-        ok: false,
-        status,
-        json: () => Promise.resolve(data),
-      };
-    }
-    throw error;
-  }
-}
 
 export interface Store {
   id: number;

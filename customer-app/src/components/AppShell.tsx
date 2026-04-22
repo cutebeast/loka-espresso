@@ -322,13 +322,15 @@ export default function AppShell() {
   // Validate token on mount
   useEffect(() => {
     if (!token) { setAuthStep('splash'); return; }
+    const abortCtrl = new AbortController();
     const validate = async () => {
       setIsLoading(true);
       try {
-        const res = await api.get('/users/me');
+        const res = await api.get('/users/me', { signal: abortCtrl.signal });
         setUser(res.data);
         setAuthStep('done');
-      } catch {
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
         logout();
         setAuthStep('splash');
       } finally {
@@ -336,6 +338,7 @@ export default function AppShell() {
       }
     };
     validate();
+    return () => abortCtrl.abort();
   }, [logout, setIsLoading, setUser, token]);
 
   // Auth handlers
