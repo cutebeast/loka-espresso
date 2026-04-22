@@ -1208,3 +1208,138 @@ pending → paid → confirmed → preparing → ready → out_for_delivery → 
 | `frontend/src/components/pages/store-ops/TablesPage.tsx` | Active order card, `formatRM` import, `onViewOrder` prop |
 | `frontend/src/components/pages/overview/OrdersPage.tsx` | Order type filter, context-aware status buttons, flow descriptions |
 | `frontend/src/app/page.tsx` | `ordersOrderType` state, `onOrderTypeChange`/`onViewOrder` wiring |
+
+---
+
+## Session 11: Order Flow Flexibility, Kitchen Display, Customer Management Fixes (2026-04-22)
+
+### Overview
+
+Major changes to support flexible order flows (Scenario B — manual workflows), a dedicated Kitchen Display page for service crew, and fixes to customer profile management.
+
+### Backend: bcrypt/passlib Compatibility Fix
+
+| # | Item | Description |
+|---|------|-------------|
+| 1 | `bcrypt==4.2.1` pin | `passlib 1.7.4` + `bcrypt 5.0.0` incompatibility caused `ValueError: password cannot be longer than 72 bytes` on login. Pinned bcrypt to 4.2.1. |
+
+### Backend: Unified Order Status Transitions
+
+**Before:** Rigid Flow A/Flow B gating — pickup/delivery forced through `pending → paid → confirmed`, blocking "Pay at Store" and "COD" workflows.
+
+**After:** Flexible transitions for Scenario B (manual-only):
+
+| Transition | Dine In | Pickup | Delivery |
+|------------|---------|--------|----------|
+| `pending → confirmed` | ✅ Always | ✅ Always | ✅ Always |
+| `completed` (requires `paid`) | ✅ | ✅ | ✅ |
+| `pending → paid` | ❌ | ✅ | ✅ |
+| `confirmed → preparing → ready` | ✅ | ✅ | ✅ |
+| `ready → out_for_delivery` | ❌ | ❌ | ✅ |
+
+**Key changes:**
+- Removed rigid Flow A gating from `PATCH /{order_id}/status`
+- `pending → confirmed` now allowed for ALL order types
+- `completed` requires `payment_status == "paid"` for ALL order types
+- New `PATCH /admin/orders/{id}/delivery-tracking` for manual courier info
+- Admin orders response now includes delivery fields
+
+### Backend: Customer Profile Management Fixes
+
+| # | Fix | Description |
+|---|-----|-------------|
+| 1 | `approve-profile` sets both flags | Now sets `phone_verified=True` AND `is_active=True` (was only phone_verified) |
+| 2 | Rejects only when both true | Only rejects if already `phone_verified AND is_active` |
+| 3 | Returns `note` field | If profile incomplete after approval, returns note explaining what's missing |
+| 4 | Profile completeness = name only | `_is_customer_profile_complete()` now requires `phone_verified + name` only (email optional) |
+
+### Admin Frontend: Orders Page Rewrite
+
+| # | Feature | Description |
+|---|---------|-------------|
+| 1 | "Mark as Paid" button | For unpaid orders — triggers `PATCH /orders/{id}/payment-status` |
+| 2 | Delivery tracking form | Courier name, phone, provider, ETA, tracking URL |
+| 3 | UNPAID badges | Shown in table and detail modal |
+| 4 | Payment info display | Shows method + status |
+| 5 | Updated flow descriptions | Contextual for each order type |
+
+### Admin Frontend: Kitchen Display Page (NEW)
+
+**File:** `frontend/src/components/pages/store-ops/KitchenDisplayPage.tsx`
+
+| # | Feature | Description |
+|---|---------|-------------|
+| 1 | Store selector | Must select a specific store — no "All Stores" (matches Tables page pattern) |
+| 2 | Active orders only | Excludes completed/cancelled orders |
+| 3 | Card-based grid | Color-coded by status |
+| 4 | Status summary bar | Pending/confirmed/preparing/ready/out_for_delivery counts |
+| 5 | Auto-refresh | Every 30 seconds with toggle |
+| 6 | Quick actions | Confirm, Start Preparing, Ready, Out for Delivery, Complete, Mark Paid |
+| 7 | Time warnings | >15min yellow, >30min red |
+| 8 | Role access | Admin (1), Manager (2), Staff (3) |
+
+### Admin Frontend: Customer Management UI Fixes
+
+| # | Fix | Description |
+|---|-----|-------------|
+| 1 | ApproveProfileButton | Only shows when `phone_verified=false` (not `is_profile_complete=false`) |
+| 2 | Info box | Shows when phone verified but name missing — directs to Edit Profile |
+| 3 | "Phone Not Verified" label | Replaces confusing "Profile Pending Approval" |
+| 4 | "No Tier" label | Replaces misleading "Pending Profile" in tier badge |
+| 5 | Consistent descriptions | All text updated: "Approve to verify phone and activate account" |
+| 6 | `total_points_earned` typed | Added to `CustomerDetail` interface, removed `as any` cast |
+
+### Customer PWA: Payment Method Choice
+
+| Order Type | Wallet | Alternative |
+|------------|--------|-------------|
+| Dine In | ❌ Fixed "Pay at counter" | — |
+| Pickup | ✅ E-Wallet | "Pay at Store" |
+| Delivery | ✅ E-Wallet | "Cash on Delivery" |
+
+Only deducts wallet balance when `paymentMethod === 'wallet'`.
+
+### Infrastructure: Upload Persistence Fix
+
+**Before:** Named Docker volume (`fnb-uploads`) — lost on `docker compose down -v`.
+
+**After:** Host bind mount (`./uploads:/app/uploads`) — survives container recreation, visible on host filesystem, backup-friendly.
+
+**File:** `docker-compose.yml`
+
+### Infrastructure: Management Script Rewrite
+
+**File:** `/root/fnb-manage.sh`
+
+Rewritten for Docker-first workflow:
+- `start/stop/restart/status` → Docker compose commands
+- `build/rebuild` → `docker compose build --no-cache`
+- `build-backend/build-admin/build-customer` → Individual service rebuilds
+- `shell [service]` → Container shell access
+- `db-shell` → PostgreSQL shell
+- `db-query "SQL"` → Run SQL queries
+- `verify` → Full verification (containers + auth + DB + uploads)
+- Removed all host-mode commands (venv, npm, alembic)
+
+### Settings Page Fix
+
+Removed duplicate `min_order` config field (was never used in order logic). Only `min_order_delivery` is enforced.
+
+### Commits
+
+| Commit | Message |
+|--------|---------|
+| `1f1b92c` | fix: pin bcrypt to 4.2.1 for passlib compatibility |
+| `b907295` | feat: order flow flexibility, kitchen display, payment method choice |
+| `57ad72a` | fix: approve-profile sets both phone_verified and is_active |
+| `bf221a5` | fix: show correct incompleteness reason (phone vs name) |
+| `54b58f8` | fix: profile complete requires name only, email is optional |
+| `1195932` | fix: show correct profile incompleteness reason (phone vs name) |
+| `2ef7921` | fix: consistent customer status labels — No Tier, Phone Not Verified |
+| `5743342` | fix: add total_points_earned to CustomerDetail type, remove as any cast |
+| `92406d6` | fix: remove unused min_order config, keep only min_order_delivery |
+| `d6cd064` | fix: kitchen display requires store selection |
+| `c7968b4` | fix: kitchen display store selector matches tables page pattern |
+| `deee98a` | fix: switch uploads from named Docker volume to host bind mount |
+| `c7968b4` | fix: kitchen display store selector matches tables page, placeholder images |
+| *(latest)* | fix: consistent status labels, fnb-manage.sh rewrite, docs update |

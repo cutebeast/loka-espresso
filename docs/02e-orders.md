@@ -122,72 +122,73 @@ Payment records. One per order.
 
 ## Order Status Flows
 
-The system enforces different status flows depending on `order_type`.
+The system uses **flexible status transitions** that accommodate both pre-paid and pay-later workflows for all order types. Third-party integrations (POS, 3PL, Payment Gateway) are on hold — Scenario B (manual workflows) is the active path.
 
-### Dine In (Flow B — Pay After Eating)
+### Admin Controls
 
-```
-pending → confirmed → preparing → ready → [payment] → completed
-         ↑                                           ↑
-         └─ Customer confirms order                  └─ Customer pays at table
-```
+| Action | Endpoint | Description |
+|--------|----------|-------------|
+| Update status | `PATCH /orders/{id}/status` | Advance order to next status |
+| Mark as paid | `PATCH /orders/{id}/payment-status` | Set `payment_status = "paid"` for cash/pay-at-store orders |
+| Delivery tracking | `PATCH /admin/orders/{id}/delivery-tracking` | Set courier name/phone, tracking URL, ETA |
 
-1. Customer scans table QR and places order → **pending**
-2. Order confirmed (kitchen sees it) → **confirmed**
-3. Kitchen prepares food and serves → **preparing**
-4. Food served to customer → **ready**
-5. Customer makes payment (cash/card/QR at counter) → `payment_status = "paid"`
-6. Order completed → **completed**
-
-**Rules:**
-- Dine-in can be confirmed directly from `pending` (no payment required first)
-- Cannot mark `completed` until `payment_status == "paid"`
-- Table is auto-released when order completes or is cancelled
-
-### Pickup (Flow A — Pay First)
+### Dine In — Pay at Counter
 
 ```
-pending → paid → confirmed → preparing → ready → completed
-         ↑                                        ↑
-         └─ Customer pays upfront                 └─ Customer picks up
+pending → confirmed → preparing → ready → [mark paid] → completed
+          ↑                                           ↑
+          └─ Kitchen confirms order                   └─ Customer pays at counter
 ```
 
-1. Customer places order in PWA → **pending**
-2. Customer makes payment → **paid**
-3. Order confirmed (kitchen sees it) → **confirmed**
-4. Kitchen prepares food → **preparing**
-5. Food ready for pickup → **ready**
-6. Customer picks up → **completed**
+**Payment:** Always "Pay at counter" — no wallet deduction at checkout.
+1. Customer scans table QR → places order → **pending**
+2. Kitchen confirms → **confirmed**
+3. Kitchen prepares → **preparing**
+4. Food served → **ready**
+5. Customer pays at counter → admin marks **paid** via "Mark as Paid" button
+6. Order → **completed** (requires `payment_status == "paid"`)
 
-**Rules:**
-- Must be `paid` before `confirmed`
-- `out_for_delivery` is not applicable
-
-### Delivery (Flow A — Pay First)
+### Pickup — Pay at Store OR Wallet
 
 ```
-pending → paid → confirmed → preparing → ready → out_for_delivery → completed
-         ↑                                                          ↑
-         └─ Customer pays upfront                                   └─ Delivery confirmed
+pending → [pay or confirm] → confirmed → preparing → ready → completed
 ```
 
-1. Customer places order in PWA → **pending**
-2. Customer makes payment → **paid**
-3. Order confirmed (kitchen sees it) → **confirmed**
-4. Kitchen prepares food → **preparing**
-5. Food ready for driver pickup → **ready**
-6. Handed to 3rd-party delivery OR manually entered into delivery system → **out_for_delivery**
-7. Delivery confirmed → **completed**
+**Payment method choice at checkout:**
+- **E-Wallet:** Deducted immediately → order goes to `confirmed`
+- **Pay at Store:** Not deducted → admin marks paid later via "Mark as Paid"
 
-**Rules:**
-- Must be `paid` before `confirmed`
-- `out_for_delivery` only applicable for delivery orders
-- Delivery provider tracking fields populated by 3rd-party integration
+### Delivery — Cash on Delivery OR Wallet
 
-### Cancelled
+```
+pending → [pay or confirm] → confirmed → preparing → ready → out_for_delivery → completed
+                                                                          ↑
+                                                    admin enters courier/tracking info
+```
 
-- Valid from any non-terminal state (`pending`, `paid`, `confirmed`, `preparing`, `ready`, `out_for_delivery`)
-- Table is auto-released if dine-in order is cancelled
+**Payment method choice at checkout:**
+- **E-Wallet:** Deducted immediately
+- **Cash on Delivery:** Paid upon delivery
+
+**Delivery tracking (manual):** Admin fills in courier name, phone, tracking URL, ETA via delivery tracking form on Orders page.
+
+### Kitchen Display
+
+Dedicated page (`/kitchen`) for service crew to manage orders per store:
+- **Store selector** — must select a specific store (no "All Stores")
+- **Active orders only** — excludes completed/cancelled
+- **Auto-refresh** every 30 seconds
+- **Quick actions:** Confirm, Start Preparing, Ready, Out for Delivery, Complete, Mark Paid
+- **Status summary bar:** pending/confirmed/preparing/ready/out_for_delivery counts
+- Accessible to roles: Admin (1), Manager (2), Staff (3)
+
+### Universal Rules
+
+- `pending → confirmed` is allowed for ALL order types
+- `completed` requires `payment_status == "paid"` for ALL order types
+- "Mark as Paid" button available on Orders page and Kitchen Display for any unpaid order
+- Cancel is valid from any non-terminal state
+- Table auto-released when dine-in order completes or is cancelled
 
 ### Status Enum Values
 
