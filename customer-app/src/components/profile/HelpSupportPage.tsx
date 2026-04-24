@@ -1,71 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-  Headset,
-  MessageCircle,
-  Phone,
-  Mail,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  Send,
-} from 'lucide-react';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
-import { PageHeader } from '@/components/shared';
 import api from '@/lib/api';
-
-const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  textPrimary: '#1B2023',
-  textSecondary: '#3A4A5A',
-  textMuted: '#6A7A8A',
-  border: '#D4DCE5',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  bg: '#E4EAEF',
-  white: '#FFFFFF',
-} as const;
-
-const FAQ_ITEMS = [
-  {
-    q: 'How do I place an order?',
-    a: 'Browse the menu, add items to your cart, select your order type (pickup, delivery, or dine-in), and proceed to checkout.',
-  },
-  {
-    q: 'How do I top up my wallet?',
-    a: 'Go to the Wallet page from your profile or home screen, choose a top-up amount, and complete the payment.',
-  },
-  {
-    q: 'How do loyalty points work?',
-    a: 'You earn points on every order. Points can be redeemed for rewards in the Rewards catalog. Your tier upgrades as you earn more points.',
-  },
-  {
-    q: 'How do I use a voucher?',
-    a: 'During checkout, tap the voucher selector to apply an available voucher to your order. The discount is applied instantly.',
-  },
-  {
-    q: 'How do I scan a QR code for dine-in?',
-    a: 'Tap the QR icon in the navigation bar and point your camera at the table QR code. Your order will be linked to that table automatically.',
-  },
-  {
-    q: 'Can I cancel an order?',
-    a: 'Once placed, orders are sent to the kitchen immediately. Please contact the store directly for cancellation requests.',
-  },
-];
 
 export default function HelpSupportPage() {
   const { setPage, showToast } = useUIStore();
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [feedbackMsg, setFeedbackMsg] = useState('');
-  const [sending, setSending] = useState(false);
 
-  const handleSendFeedback = async () => {
-    if (!feedbackMsg.trim()) {
-      showToast('Please enter a message', 'error');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!name.trim() || !email.trim() || !subject || !message.trim()) {
+      showToast('Please fill in all required fields', 'error');
       return;
     }
     setSending(true);
@@ -73,10 +26,12 @@ export default function HelpSupportPage() {
       await api.post('/feedback', {
         store_id: 0,
         rating: 5,
-        comment: feedbackMsg.trim(),
+        comment: `Subject: ${subject}\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nMessage: ${message}`,
       });
-      showToast('Message sent! We\'ll get back to you soon.', 'success');
-      setFeedbackMsg('');
+      setShowSuccess(true);
+      setSubject('');
+      setMessage('');
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch {
       showToast('Failed to send message', 'error');
     } finally {
@@ -85,184 +40,88 @@ export default function HelpSupportPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: LOKA.bg }}>
-      <PageHeader title="Help & Support" onBack={() => setPage('profile')} />
+    <div className="support-screen">
+      <div className="sub-page-header">
+        <div className="sub-header-left">
+          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label="Back">
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="sub-page-title">Help & Support</h1>
+        </div>
+        <div style={{ width: 36 }} />
+      </div>
 
-      <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <a
-            href="mailto:hello@lokaespresso.com"
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '16px 14px',
-              borderRadius: 18,
-              background: LOKA.white,
-              border: `1px solid ${LOKA.borderSubtle}`,
-              textDecoration: 'none',
-            }}
-          >
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 14,
-                background: '#E8EDE0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <Mail size={18} color={LOKA.primary} />
-            </div>
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 700, color: LOKA.textPrimary }}>Email Us</p>
-              <p style={{ fontSize: 11, color: LOKA.textMuted, marginTop: 2 }}>hello@lokaespresso.com</p>
-            </div>
-          </a>
-          <a
-            href="tel:+60123456789"
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '16px 14px',
-              borderRadius: 18,
-              background: LOKA.white,
-              border: `1px solid ${LOKA.borderSubtle}`,
-              textDecoration: 'none',
-            }}
-          >
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 14,
-                background: LOKA.copperSoft,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <Phone size={18} color={LOKA.copper} />
-            </div>
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 700, color: LOKA.textPrimary }}>Call Us</p>
-              <p style={{ fontSize: 11, color: LOKA.textMuted, marginTop: 2 }}>+60 12-345 6789</p>
-            </div>
-          </a>
+      <div className="support-form-scroll">
+        <div className="support-input-group">
+          <label className="support-input-label">Your Name</label>
+          <input
+            type="text"
+            className="support-input-field"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Sarah Renee"
+          />
         </div>
 
-        <div>
-          <h3 style={{ fontSize: 16, fontWeight: 800, color: LOKA.textPrimary, marginBottom: 12 }}>
-            Frequently Asked Questions
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {FAQ_ITEMS.map((faq, i) => (
-              <div
-                key={i}
-                style={{
-                  background: LOKA.white,
-                  borderRadius: 16,
-                  border: `1px solid ${LOKA.borderSubtle}`,
-                  overflow: 'hidden',
-                }}
-              >
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '14px 16px',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    gap: 10,
-                  }}
-                >
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: LOKA.textPrimary }}>{faq.q}</span>
-                  {openFaq === i ? <ChevronUp size={16} color={LOKA.textMuted} /> : <ChevronDown size={16} color={LOKA.textMuted} />}
-                </button>
-                {openFaq === i && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    style={{ padding: '0 16px 14px' }}
-                  >
-                    <p style={{ fontSize: 13, color: LOKA.textSecondary, lineHeight: 1.5 }}>{faq.a}</p>
-                  </motion.div>
-                )}
-              </div>
-            ))}
-          </div>
+        <div className="support-input-group">
+          <label className="support-input-label">Email</label>
+          <input
+            type="email"
+            className="support-input-field"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="sarah@example.com"
+          />
         </div>
 
-        <div>
-          <h3 style={{ fontSize: 16, fontWeight: 800, color: LOKA.textPrimary, marginBottom: 12 }}>
-            Send us a message
-          </h3>
-          <div
-            style={{
-              background: LOKA.white,
-              borderRadius: 20,
-              padding: 18,
-              border: `1px solid ${LOKA.borderSubtle}`,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 14,
-            }}
-          >
-            <textarea
-              value={feedbackMsg}
-              onChange={(e) => setFeedbackMsg(e.target.value)}
-              placeholder="How can we help?"
-              rows={4}
-              style={{
-                width: '100%',
-                padding: 12,
-                borderRadius: 14,
-                border: `1px solid ${LOKA.borderSubtle}`,
-                fontSize: 14,
-                color: LOKA.textPrimary,
-                outline: 'none',
-                background: LOKA.surface,
-                resize: 'none',
-                fontFamily: 'inherit',
-                boxSizing: 'border-box',
-              }}
-            />
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={handleSendFeedback}
-              disabled={sending}
-              style={{
-                width: '100%',
-                padding: '14px 0',
-                borderRadius: 999,
-                background: sending ? LOKA.border : LOKA.primary,
-                color: LOKA.white,
-                fontWeight: 700,
-                fontSize: 14,
-                border: 'none',
-                cursor: sending ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}
-            >
-              <Send size={16} />
-              {sending ? 'Sending...' : 'Send Message'}
-            </motion.button>
-          </div>
+        <div className="support-input-group">
+          <label className="support-input-label">Phone (optional)</label>
+          <input
+            type="tel"
+            className="support-input-field"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+60 12 345 6789"
+          />
         </div>
+
+        <div className="support-input-group">
+          <label className="support-input-label">Subject</label>
+          <select
+            className="support-input-field"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            style={{ appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236A7A8A'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center', backgroundSize: '20px' }}
+          >
+            <option value="" disabled>Select a topic</option>
+            <option value="feedback">General Feedback</option>
+            <option value="order">Order Issue</option>
+            <option value="rewards">Rewards / Points</option>
+            <option value="technical">Technical Problem</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div className="support-input-group">
+          <label className="support-input-label">Message</label>
+          <textarea
+            className="support-input-field"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Tell us how we can help…"
+          />
+        </div>
+
+        <button className="support-submit-btn" onClick={handleSubmit} disabled={sending}>
+          {sending ? 'Sending...' : 'Send Message'}
+        </button>
+
+        {showSuccess && (
+          <p className="support-success-msg">
+            <CheckCircle size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+            Message sent! We&apos;ll get back to you soon.
+          </p>
+        )}
       </div>
     </div>
   );

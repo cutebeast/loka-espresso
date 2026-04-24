@@ -13,6 +13,10 @@
 #     start, stop, restart, status, build, rebuild, logs,
 #     verify, health, migrate, install, setup
 #
+#   Note:
+#     Build commands automatically deploy via docker compose when the
+#     corresponding frontend service is already running in Docker.
+#
 #   Docker mode:
 #     docker-up, docker-down, docker-build, docker-logs,
 #     docker-status
@@ -113,6 +117,28 @@ print(f'Updated manifest.json: version=${version}')
         sed -i "s|const CACHE_VERSION = 'v[^']*'|const CACHE_VERSION = 'v${version}'|" "$dir/public/sw.js"
         log "Updated sw.js version: ${version}"
     fi
+}
+
+docker_compose_available() {
+    command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1
+}
+
+docker_service_running() {
+    local service=$1
+    if ! docker_compose_available; then
+        return 1
+    fi
+    cd $PROJECT_DIR
+    docker compose -f $COMPOSE_FILE ps --status running "$service" 2>/dev/null | grep -q "$service"
+}
+
+docker_rebuild_service() {
+    local service=$1
+    local label=$2
+    cd $PROJECT_DIR
+    log "Rebuilding $label via docker compose..."
+    docker compose -f $COMPOSE_FILE up -d --build "$service"
+    log "$label deployed via Docker"
 }
 
 # ============================================================
@@ -309,15 +335,24 @@ build_customer_silent() {
 }
 
 build_frontend_cmd() {
-    kill_port $FRONTEND_PORT
-    build_frontend_silent
-    start_frontend
+    if docker_service_running "frontend"; then
+        docker_rebuild_service "frontend" "Admin frontend"
+    else
+        kill_port $FRONTEND_PORT
+        build_frontend_silent
+        start_frontend
+    fi
 }
 
 build_customer_cmd() {
-    kill_port $CUSTOMER_PORT
-    build_customer_silent
-    start_customer
+    if docker_service_running "customer-app"; then
+        update_pwa_version $CUSTOMER_DIR
+        docker_rebuild_service "customer-app" "Customer PWA"
+    else
+        kill_port $CUSTOMER_PORT
+        build_customer_silent
+        start_customer
+    fi
 }
 
 build_all() {
@@ -706,9 +741,9 @@ case "${1:-}" in
         echo "  status          Check running services and HTTP health"
         echo ""
         echo "Build Commands:"
-        echo "  build           Build both frontends and restart them"
-        echo "  build_admin     Build Admin only and restart"
-        echo "  build_customer  Build Customer PWA only and restart"
+        echo "  build           Build both frontends and restart/deploy them"
+        echo "  build_admin     Build Admin only and restart/deploy"
+        echo "  build_customer  Build Customer PWA only and restart/deploy"
         echo "  rebuild         Clean rebuild (install deps + rm .next + build + start)"
         echo ""
         echo "Diagnostics:"

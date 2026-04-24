@@ -1,58 +1,48 @@
 @import "tailwindcss";
 
 /* ============================================
-   LOKA ESPRESSO - PWA DESIGN SYSTEM
+   LOKA ESPRESSO — PWA DESIGN SYSTEM
    Tailwind v4 with Custom Properties
-   Adapted from ZUS Coffee design reference
    ============================================ */
 
 @theme inline {
-  /* Brand Colors - Dark Olive Theme */
+  /* ── Brand Colors ── */
   --color-primary: #384B16;
   --color-primary-dark: #2A3910;
+  --color-primary-deep: #1F2C0B;
   --color-primary-light: #4A6A1D;
   --color-primary-50: #F5F7F0;
   --color-primary-100: #E8EDE0;
   --color-primary-200: #D1DBC1;
-  
-  --color-loka-primary: #384B16;
-  --color-loka-primary-dark: #2A3910;
-  --color-loka-accent-copper: #D18E38;
-  --color-loka-accent-brown: #57280D;
-  --color-loka-text-primary: #1B2023;
-  --color-loka-text-secondary: #3A4A5A;
-  --color-loka-text-muted: #6A7A8A;
-  --color-loka-border: #C4CED8;
-  --color-loka-border-light: #D4DCE5;
-  --color-loka-bg-light: #E4EAEF;
-  --color-loka-bg-muted: #D4DCE5;
-  
-  /* Accent Colors */
-  --color-accent: #85B085;
-  --color-accent-copper: #D18E38;
-  --color-accent-brown: #57280D;
-  --color-accent-brown-light: #7A4A2E;
-  --color-accent-red: #C75050;
-  --color-accent-blue: #4A607A;
-  
-  /* Background Colors */
-  --color-bg: #F5F7FA;
-  --color-bg-light: #FFFFFF;
-  --color-bg-muted: #EDF2F7;
+
+  --color-copper: #D18E38;
+  --color-copper-light: #E5A559;
+  --color-copper-soft: rgba(209, 142, 56, 0.12);
+  --color-copper-mid: rgba(209, 142, 56, 0.25);
+
+  --color-brown: #57280D;
+  --color-brown-light: #7A4A2E;
+
+  --color-cream: #F3EEE5;
+
+  /* ── Text Colors ── */
+  --color-text-primary: #1B2023;
+  --color-text-secondary: #3A4A5A;
+  --color-text-muted: #6A7A8A;
+
+  /* ── Surfaces ── */
+  --color-bg: #E4EAEF;
+  --color-bg-light: #F5F7FA;
   --color-bg-card: #F9FBFE;
-  --color-bg-dark: #1B2023;
-  
-  /* Text Colors */
-  --color-text-primary: #0B1E3A;
-  --color-text-secondary: #5E718D;
-  --color-text-muted: #64748B;
-  --color-text-light: #FFFFFF;
-  
-  /* Border Colors */
-  --color-border: #EDF2F7;
-  --color-border-light: #E9F0FA;
-  
-  /* Semantic Colors */
+  --color-surface: #F5F7FA;
+  --color-surface-warm: #F5F7F0;
+
+  /* ── Borders ── */
+  --color-border: #C4CED8;
+  --color-border-light: #D4DCE5;
+  --color-border-subtle: #E4EAEF;
+
+  /* ── Semantic ── */
   --color-success: #85B085;
   --color-success-light: #E8F5E9;
   --color-warning: #D18E38;
@@ -61,106 +51,168 @@
   --color-danger-light: #FFEBEE;
   --color-info: #4A607A;
   --color-info-light: #E3F2FD;
-  
-  /* Border Radius */
+
+  /* ── Border Radius ── */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-2xl: 24px;
   --radius-full: 9999px;
-  
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.10);
   --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03);
   --shadow-nav: 0 -4px 10px rgba(0, 0, 0, 0.02);
-  
-  /* Typography */
+  --shadow-primary: 0 8px 16px rgba(56, 75, 22, 0.25);
+  --shadow-primary-sm: 0 2px 8px rgba(56, 75, 22, 0.12);
+  --shadow-wallet: 0 18px 36px -14px rgba(31, 44, 11, 0.55);
+
+  /* ── Typography ── */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }
 
 /* ============================================
-   BASE STYLES
+   IMPORT FOCUSED CSS FILES
    ============================================ */
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
-}
-
-html {
-  font-family: var(--font-sans);
-  -webkit-text-size-adjust: 100%;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  font-family: var(--font-sans);
-  background: #E4EAEF;
-  color: var(--color-text-primary);
-  min-height: 100vh;
-  min-height: 100dvh;
-}
+@import "../styles/variables.css";
+@import "../styles/base.css";
+@import "../styles/components.css";
+@import "../styles/auth.css";
+@import "../styles/home.css";
 
 /* ============================================
-    APP CONTAINER
-    Real mobile PWA – full screen on phones.
-    The rounded "phone preview" frame only kicks
-    in on desktop (≥768px) as a dev/demo chrome;
-    the HTML mockup's phone wrapper was purely a
-    presentational container and not part of the
-    actual PWA design.
-    ============================================ */
+   REMAINING UTILITY CLASSES (not in modules)
+   ============================================ */
 
-.app-container {
-  width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  max-width: 430px;
-  margin: 0 auto;
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Bottom Sheet */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 160;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet-content {
   background: #FFFFFF;
-  position: relative;
+  width: 100%;
+  max-width: 430px;
+  border-radius: 24px 24px 0 0;
+  max-height: 78vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* Desktop only: show a phone-frame preview. */
-@media (min-width: 768px) {
-  body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 12px;
-    background: #E4EAEF;
-  }
-
-  .app-container {
-    max-width: 390px;
-    height: 780px;
-    border-radius: 36px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(56, 75, 22, 0.15);
-    overflow: hidden;
-    background: #FFFFFF;
-  }
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: #C4CED8;
+  border-radius: 999px;
+  margin: 16px auto 12px;
+  flex-shrink: 0;
 }
 
-/* Portrait lock overlay — shown in landscape on short viewports */
+.sheet-header {
+  padding: 0 20px 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sheet-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1B2023;
+}
+
+.sheet-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #F5F7FA;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6A7A8A;
+  cursor: pointer;
+}
+
+.sheet-body {
+  overflow-y: auto;
+  padding: 0 20px 16px;
+  flex: 1;
+}
+
+.sheet-body h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 16px 0 6px;
+  color: #1B2023;
+}
+
+.sheet-body p {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #3A4A5A;
+}
+
+.sheet-footer {
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #E4EAEF;
+  flex-shrink: 0;
+}
+
+.sheet-btn {
+  background: #384B16;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 999px;
+  padding: 14px;
+  width: 100%;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+.sheet-btn:active {
+  background: #2A3910;
+}
+
+/* Portrait Lock */
 .rotate-prompt {
   display: none;
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: #E4EAEF;
+  background: var(--color-bg, #E4EAEF);
   align-items: center;
   justify-content: center;
   flex-direction: column;
@@ -169,14 +221,10 @@ body {
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
-  .app-container > :not(.rotate-prompt) {
-    display: none !important;
-  }
-  .rotate-prompt {
-    display: flex;
-  }
+  .app-container > :not(.rotate-prompt) { display: none !important; }
+  .rotate-prompt { display: flex; }
   .rotate-prompt-inner {
-    background: #FFFFFF;
+    background: var(--color-white, #FFFFFF);
     border-radius: 24px;
     padding: 32px 40px;
     display: flex;
@@ -192,271 +240,12 @@ body {
   .rotate-prompt-text {
     font-size: 16px;
     font-weight: 700;
-    color: #1B2023;
+    color: var(--color-text-primary, #1B2023);
     text-align: center;
   }
 }
 
-@keyframes rotate-hint {
-  0%, 100% { transform: rotate(-15deg); }
-  50% { transform: rotate(15deg); }
-}
-
-/* ============================================
-   SAFE AREA SUPPORT
-   ============================================ */
-
-.safe-area-top {
-  padding-top: env(safe-area-inset-top, 0px);
-}
-
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-.safe-area-x {
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-}
-
-/* ============================================
-    SCROLL CONTAINERS
-    ============================================ */
-
-.scroll-container {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.scroll-container::-webkit-scrollbar {
-  display: none;
-}
-
-.scroll-x {
-  display: flex;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.scroll-x::-webkit-scrollbar {
-  display: none;
-}
-
-/* Scrollbar hide utility */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-/* ============================================
-   FORM ELEMENTS
-   ============================================ */
-
-input, select, textarea {
-  font-family: inherit;
-  font-size: 16px;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-input:focus, select:focus, textarea:focus {
-  outline: none;
-}
-
-/* ============================================
-   BUTTON RESET
-   ============================================ */
-
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: none;
-  background: none;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-/* ============================================
-   TOUCH TARGETS
-   ============================================ */
-
-.touch-target {
-  min-height: 44px;
-  min-width: 44px;
-}
-
-/* ============================================
-   UTILITY CLASSES
-   ============================================ */
-
-.line-clamp-1 {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Gradient backgrounds */
-.gradient-primary {
-  background: linear-gradient(145deg, #384B16 0%, #4A6A1D 100%);
-}
-
-/* Glassmorphism effect */
-.glass {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-/* ============================================
-   ANIMATIONS
-   ============================================ */
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { 
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to { 
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.8);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.3);
-    opacity: 0;
-  }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-slideUp {
-  animation: slideUp 0.4s ease-out;
-}
-
-.loka-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid rgba(56, 75, 22, 0.2);
-  border-top-color: #384B16;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-/* ============================================
-   LOADING SKELETON
-   ============================================ */
-
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--color-bg-muted) 25%,
-    var(--color-bg) 50%,
-    var(--color-bg-muted) 75%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-loading 1.5s infinite;
-}
-
-@keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-/* ============================================
-   SELECTION STYLES
-   ============================================ */
-
-::selection {
-  background: var(--color-primary-200);
-  color: var(--color-text-primary);
-}
-
-/* ============================================
-   FOCUS STYLES
-   ============================================ */
-
-:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-/* ============================================
-   DISABLED STATES
-   ============================================ */
-
-.disabled, [disabled] {
-  cursor: not-allowed;
-}
-
-/* Form-control disabled (input/select/textarea) – soft fade.
-   Buttons keep their explicit `disabled:` Tailwind utility so
-   the primary CTA stays visually prominent like the mockup. */
-input[disabled],
-select[disabled],
-textarea[disabled] {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-/* ============================================
-   CUSTOM STYLES FROM HTML PROTOTYPE
-   ============================================ */
-
-/* Wallet card gradient */
-.wallet-gradient {
-  background: linear-gradient(145deg, #2A3910 0%, #384B16 100%);
-}
-
-/* Custom wallet shadow */
-.wallet-shadow {
-  box-shadow: 0 12px 24px -8px rgba(42, 57, 16, 0.35);
-}
-
-/* Bottom sheet modal transitions */
+/* Modal */
 .modal-overlay {
   visibility: hidden;
   opacity: 0;
@@ -473,33 +262,3 @@ textarea[disabled] {
 .modal-overlay.show .modal-content {
   transform: translateY(0);
 }
-
-/* OTP input styling */
-.otp-input {
-  width: 46px;
-  height: 56px;
-  text-align: center;
-  font-size: 24px;
-  font-weight: 600;
-  border: 1.5px solid #C4CED8;
-  border-radius: 14px;
-  outline: none;
-  background: white;
-}
-.otp-input:focus {
-  border-color: #384B16;
-}
-
-/* Phone input wrapper focus */
-.phone-wrapper:focus-within {
-  border-color: #384B16;
-}
-
-/* Action chip hover */
-.action-chip {
-  transition: background 0.2s;
-}
-.action-chip:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-

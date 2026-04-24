@@ -24,11 +24,13 @@ class InformationCardOut(BaseModel):
     """Information card data for PWA."""
     id: int
     title: str
+    slug: Optional[str] = None
     short_description: Optional[str] = None
     long_description: Optional[str] = None
     content_type: Optional[str] = None
     icon: Optional[str] = None
     image_url: Optional[str] = None
+    gallery_urls: Optional[List[str]] = None
 
     class Config:
         from_attributes = True
@@ -80,6 +82,25 @@ async def list_active_cards(
         out.append(card)
     
     return out
+
+
+@router.get("/information/{slug}", response_model=InformationCardOut)
+async def get_card_by_slug(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single information card by slug (public, no auth required).
+
+    Used for QR code deep-linking to specific articles.
+    """
+    result = await db.execute(
+        select(InformationCard)
+        .where(InformationCard.slug == slug, InformationCard.is_active == True)
+    )
+    card = result.scalar_one_or_none()
+    if not card:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return card
 
 
 class SystemContentOut(BaseModel):

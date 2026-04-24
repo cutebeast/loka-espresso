@@ -9,26 +9,34 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  meta?: string;
   children: ReactNode;
+  footer?: ReactNode;
   variant?: 'bottom' | 'center';
 }
 
-export function Modal({ isOpen, onClose, title, children, variant = 'bottom' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, meta, children, footer, variant = 'bottom' }: ModalProps) {
   const containerRef = useFocusTrap<HTMLDivElement>(isOpen);
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/50 z-50"
-            onClick={onClose}
-            aria-hidden="true"
-          />
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 160,
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
           {variant === 'bottom' ? (
             <motion.div
               ref={containerRef}
@@ -38,25 +46,94 @@ export function Modal({ isOpen, onClose, title, children, variant = 'bottom' }: 
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 pb-10 z-50 max-h-[85vh] overflow-y-auto"
+              transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+              style={{
+                background: '#FFFFFF',
+                width: '100%',
+                maxWidth: 430,
+                borderRadius: '24px 24px 0 0',
+                maxHeight: '82vh',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+              }}
               onClick={(e) => e.stopPropagation()}
-              style={{ paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom))' }}
             >
-              <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6" />
-              {title && (
-                <div className="flex items-center justify-between mb-6">
-                  <h3 id="modal-title" className="text-xl font-bold text-gray-900">{title}</h3>
-                  <button
-                    onClick={onClose}
-                    aria-label="Close"
-                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
-                  >
-                    <X size={18} />
-                  </button>
+              {/* Header: handle + title + close + meta */}
+              <div style={{ padding: '20px 20px 0', flexShrink: 0 }}>
+                {/* Handle */}
+                <div style={{
+                  width: '36px',
+                  height: '4px',
+                  borderRadius: '999px',
+                  background: '#C4CED8',
+                  margin: '0 auto 16px',
+                }} />
+
+                {(title || meta) && (
+                  <>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '4px',
+                    }}>
+                      {title && (
+                        <h3 id="modal-title" style={{
+                          fontSize: '18px',
+                          fontWeight: 700,
+                          color: '#1B2023',
+                          margin: 0,
+                        }}>
+                          {title}
+                        </h3>
+                      )}
+                      <button
+                        onClick={onClose}
+                        aria-label="Close"
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          background: '#F5F7FA',
+                          border: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#6A7A8A',
+                          cursor: 'pointer',
+                          marginLeft: 'auto',
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    {meta && (
+                      <p style={{ fontSize: '12px', color: '#6A7A8A', marginBottom: '12px' }}>{meta}</p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Body */}
+              <div style={{
+                overflowY: 'auto',
+                padding: '0 20px 16px',
+                flex: 1,
+              }}>
+                {children}
+              </div>
+
+              {/* Footer */}
+              {footer && (
+                <div style={{
+                  padding: '8px 20px 24px',
+                  flexShrink: 0,
+                  borderTop: '1px solid #E4EAEF',
+                }}>
+                  {footer}
                 </div>
               )}
-              {children}
             </motion.div>
           ) : (
             <motion.div
@@ -68,25 +145,25 @@ export function Modal({ isOpen, onClose, title, children, variant = 'bottom' }: 
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl p-6 z-50 w-[90%] max-w-md"
+              className="bg-white rounded-3xl p-6 w-[90%] max-w-md"
               onClick={(e) => e.stopPropagation()}
             >
               {title && (
                 <div className="flex items-center justify-between mb-4">
-                  <h3 id="modal-title" className="text-xl font-bold text-gray-900">{title}</h3>
+                  <h3 id="modal-title" className="text-xl font-bold text-text-primary">{title}</h3>
                   <button
                     onClick={onClose}
                     aria-label="Close"
-                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
+                    className="w-8 h-8 rounded-full bg-bg-light flex items-center justify-center hover:bg-border-subtle transition-colors"
                   >
-                    <X size={18} />
+                    <X size={18} className="text-text-secondary" />
                   </button>
                 </div>
               )}
               {children}
             </motion.div>
           )}
-        </>
+        </motion.div>
       )}
     </AnimatePresence>
   );

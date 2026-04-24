@@ -1,6 +1,15 @@
-export { Button } from './Button';
-export { Input, Textarea } from './Input';
-export { Modal } from './Modal';
-export { Badge } from './Badge';
-export { Skeleton, CardSkeleton, ProductCardSkeleton } from './Skeleton';
-export { ErrorBoundary } from './ErrorBoundary';
+// Primitive UI components
+export * from './Badge';
+export * from './BottomSheet';
+export * from './Button';
+export * from './IconButton';
+export * from './Input';
+export * from './Modal';
+export * from './SectionHeader';
+export * from './Skeleton';
+export * from './StorePill';
+export * from './SurfaceCard';
+export * from './TierBadge';
+export * from './NotificationBell';
+export * from './ScanFAB';
+export * from './HubHeader';

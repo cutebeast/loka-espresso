@@ -1,43 +1,51 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Coffee, Loader2, Phone } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import { normalizePhone } from '@/lib/phone';
+import api from '@/lib/api';
+import { BottomSheet } from '@/components/ui';
+import { useUIStore } from '@/stores/uiStore';
 
 interface PhoneInputProps {
   onSubmit: (phone: string) => Promise<void>;
 }
 
-const LOKA = {
-  primary: '#384B16',
-  primaryDark: '#2A3910',
-  primaryDisabled: '#6B7A4E',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  textPrimary: '#1B2023',
-  textMuted: '#6A7A8A',
-  border: '#C4CED8',
-  borderSubtle: '#E4EAEF',
-  danger: '#C75050',
-  bg: '#FFFFFF',
-} as const;
+interface LegalContent {
+  id: number;
+  title: string;
+  long_description: string | null;
+  content_type: string;
+}
+
+type LegalKey = 'terms' | 'privacy';
+
+function formatPhone(raw: string) {
+  let digits = raw.replace(/\D/g, '');
+
+  if (digits.startsWith('60') && digits.length > 2) {
+    digits = digits.slice(2);
+  }
+
+  if (digits.startsWith('0') && digits.length > 1) {
+    digits = digits.slice(1);
+  }
+
+  digits = digits.slice(0, 10);
+
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+  return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+}
 
 export function PhoneInput({ onSubmit }: PhoneInputProps) {
+  const { setPage } = useUIStore();
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
-
-  const formatPhone = (raw: string) => {
-    const digits = raw.replace(/\D/g, '').slice(0, 10);
-    // Format: 12 345 6789 / 123 456 7890
-    if (digits.length <= 2) return digits;
-    if (digits.length <= 5) return `${digits.slice(0, 2)} ${digits.slice(2)}`;
-    if (digits.length <= 9)
-      return `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`;
-    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
-  };
+  const [activeLegalKey, setActiveLegalKey] = useState<LegalKey | null>(null);
+  const [legalContent, setLegalContent] = useState<LegalContent | null>(null);
+  const [legalLoading, setLegalLoading] = useState(false);
+  const [legalError, setLegalError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPhone(formatPhone(e.target.value));
@@ -67,264 +75,123 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
 
   const digitCount = phone.replace(/\D/g, '').length;
   const isDisabled = isLoading || digitCount < 9;
-  const borderColor = error
-    ? LOKA.danger
-    : isFocused
-      ? LOKA.primary
-      : LOKA.border;
+
+  const closeLegalSheet = useCallback(() => {
+    setActiveLegalKey(null);
+    setLegalContent(null);
+    setLegalError('');
+    setLegalLoading(false);
+  }, []);
+
+  const openLegalSheet = useCallback(async (key: LegalKey) => {
+    setActiveLegalKey(key);
+    setLegalLoading(true);
+    setLegalError('');
+    setLegalContent(null);
+
+    try {
+      const res = await api.get<LegalContent>(`/content/legal/${key}`);
+      setLegalContent(res.data);
+    } catch {
+      setLegalError(
+        `Unable to load ${key === 'terms' ? 'Terms of Service' : 'Privacy Policy'} right now.`,
+      );
+    } finally {
+      setLegalLoading(false);
+    }
+  }, []);
 
   return (
-    <div
-      className="w-full h-full flex flex-col overflow-y-auto"
-      style={{ background: LOKA.bg }}
-    >
-      <div
-        className="flex flex-col h-full"
-        style={{ padding: '56px 24px 32px' }}
-      >
-        {/* Brand mark */}
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.35 }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 56,
-            height: 56,
-            borderRadius: 18,
-            background: LOKA.copperSoft,
-            border: `1px solid rgba(209,142,56,0.25)`,
-            marginBottom: 28,
-          }}
-        >
-          <Coffee size={28} style={{ color: LOKA.copper }} strokeWidth={1.8} />
-        </motion.div>
+    <>
+      <div className="auth-page">
+        <h2 className="auth-heading">Welcome back</h2>
+        <p className="auth-subheading">Sign in with your phone number to continue</p>
 
-        {/* Header */}
-        <motion.div
-          initial={{ y: 8, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.35, delay: 0.05 }}
-          style={{ marginBottom: 32 }}
-        >
-          <h2
-            style={{
-              fontSize: 30,
-              fontWeight: 800,
-              lineHeight: 1.15,
-              color: LOKA.textPrimary,
-              letterSpacing: '-0.02em',
-              margin: 0,
-            }}
-          >
-            Welcome back
-          </h2>
-          <p
-            style={{
-              marginTop: 10,
-              fontSize: 15,
-              color: LOKA.textMuted,
-              lineHeight: 1.5,
-            }}
-          >
-            Enter your mobile number to continue
-          </p>
-        </motion.div>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <div className="auth-label">Phone number</div>
 
-        {/* Form */}
-        <motion.form
-          initial={{ y: 8, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.35, delay: 0.1 }}
-          onSubmit={handleSubmit}
-          className="flex flex-col"
-        >
-          <div style={{ marginBottom: 20 }}>
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: LOKA.textPrimary,
-                marginBottom: 8,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                letterSpacing: '0.01em',
-              }}
-            >
-              <Phone size={13} style={{ color: LOKA.textMuted }} />
-              Phone number
-            </label>
-            <div
-              className="phone-wrapper"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                border: `1.5px solid ${borderColor}`,
-                borderRadius: 16,
-                padding: '4px 16px 4px 14px',
-                background: LOKA.bg,
-                transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-                boxShadow: isFocused
-                  ? `0 0 0 4px rgba(56,75,22,0.08)`
-                  : 'none',
-              }}
-            >
-              {/* Country selector (visual) */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  paddingRight: 10,
-                  marginRight: 10,
-                  borderRight: `1px solid ${LOKA.borderSubtle}`,
-                }}
-              >
-                <span style={{ fontSize: 18 }} role="img" aria-label="Malaysia">
-                  🇲🇾
-                </span>
-                <span
-                  style={{
-                    fontWeight: 600,
-                    color: LOKA.textPrimary,
-                    fontSize: 15,
-                  }}
-                >
-                  +60
-                </span>
-              </div>
-              <input
-                type="tel"
-                value={phone}
-                onChange={handleChange}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                placeholder="12 345 6789"
-                autoFocus
-                inputMode="tel"
-                autoComplete="tel-national"
-                style={{
-                  border: 'none',
-                  padding: '16px 0',
-                  fontSize: 17,
-                  fontWeight: 500,
-                  width: '100%',
-                  outline: 'none',
-                  background: 'transparent',
-                  color: LOKA.textPrimary,
-                  letterSpacing: '0.01em',
-                }}
-              />
-            </div>
+          <div className="phone-wrapper">
+            <span className="phone-prefix">+60</span>
+            <span className="phone-divider">|</span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={handleChange}
+              placeholder="12 345 6789"
+              autoFocus
+              inputMode="tel"
+              autoComplete="tel-national"
+              className="phone-input"
+            />
           </div>
+
+          <p className="phone-hint">We&apos;ll send a verification code to this number</p>
 
           {error && (
-            <motion.p
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{
-                color: LOKA.danger,
-                fontSize: 13,
-                marginBottom: 12,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              {error}
-            </motion.p>
+            <p style={{ color: '#C75050', fontSize: '12px', marginTop: '8px' }}>{error}</p>
           )}
 
-          <motion.button
-            type="submit"
-            disabled={isDisabled}
-            whileTap={isDisabled ? {} : { scale: 0.985 }}
-            style={{
-              background: isDisabled ? LOKA.primaryDisabled : LOKA.primary,
-              color: '#FFFFFF',
-              fontWeight: 600,
-              fontSize: 16,
-              padding: '17px 20px',
-              borderRadius: 9999,
-              width: '100%',
-              marginTop: 8,
-              border: 'none',
-              cursor: isDisabled ? 'not-allowed' : 'pointer',
-              boxShadow: isDisabled
-                ? 'none'
-                : '0 10px 24px -10px rgba(42,57,16,0.5)',
-              transition:
-                'background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease',
-              letterSpacing: '0.01em',
-            }}
-          >
-            {isLoading ? (
-              <Loader2
-                className="animate-spin"
-                style={{ width: 20, height: 20, margin: '0 auto' }}
-              />
-            ) : (
-              'Send OTP'
-            )}
-          </motion.button>
+          <button type="submit" disabled={isDisabled} className="auth-btn">
+            {isLoading ? <div className="auth-btn-spinner" /> : 'Send OTP'}
+          </button>
 
-          {/* Helper / character counter */}
-          <div
-            style={{
-              marginTop: 10,
-              textAlign: 'center',
-              fontSize: 12,
-              color: LOKA.textMuted,
-              minHeight: 16,
-            }}
-          >
-            {digitCount > 0 && digitCount < 9
-              ? `${9 - digitCount} more digit${9 - digitCount === 1 ? '' : 's'}`
-              : ''}
-          </div>
-        </motion.form>
+          <p className="auth-legal">
+            By continuing you agree to our<br />
+            <button type="button" onClick={() => void openLegalSheet('terms')}>
+              Terms of Service
+            </button>
+            {' '}and{' '}
+            <button type="button" onClick={() => void openLegalSheet('privacy')}>
+              Privacy Policy
+            </button>
+          </p>
 
-        <div style={{ flex: 1 }} />
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          style={{
-            textAlign: 'center',
-            marginTop: 24,
-            fontSize: 12,
-            color: LOKA.textMuted,
-            lineHeight: 1.5,
-          }}
-        >
-          By continuing you agree to our{' '}
-          <a
-            href="#"
-            style={{
-              color: LOKA.primary,
-              fontWeight: 600,
-              textDecoration: 'none',
-            }}
-          >
-            Terms of Service
-          </a>{' '}
-          &{' '}
-          <a
-            href="#"
-            style={{
-              color: LOKA.primary,
-              fontWeight: 600,
-              textDecoration: 'none',
-            }}
-          >
-            Privacy Policy
-          </a>
-        </motion.p>
+          <div style={{ flex: 1 }} />
+        </form>
       </div>
-    </div>
+
+      <BottomSheet
+        isOpen={activeLegalKey !== null}
+        onClose={closeLegalSheet}
+        title={legalContent?.title || (activeLegalKey === 'terms' ? 'Terms of Service' : 'Privacy Policy')}
+      >
+        {legalLoading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ height: '16px', width: '66%', background: '#E4EAEF', borderRadius: '4px' }} />
+            <div style={{ height: '16px', width: '100%', background: '#E4EAEF', borderRadius: '4px' }} />
+            <div style={{ height: '16px', width: '100%', background: '#E4EAEF', borderRadius: '4px' }} />
+            <div style={{ height: '16px', width: '83%', background: '#E4EAEF', borderRadius: '4px' }} />
+            <div style={{ height: '16px', width: '100%', background: '#E4EAEF', borderRadius: '4px' }} />
+          </div>
+        ) : legalError ? (
+          <div style={{ borderRadius: '16px', border: '1px solid rgba(199,80,80,0.2)', background: '#FFEBEE', padding: '12px 16px', fontSize: '14px', color: '#C75050' }}>
+            {legalError}
+          </div>
+        ) : (
+          <>
+            <div className="sheet-body">
+              {legalContent?.long_description || 'No content available.'}
+            </div>
+            <button
+              onClick={() => { closeLegalSheet(); setPage('legal', { legalKey: activeLegalKey || 'terms' }); }}
+              style={{
+                width: '100%',
+                marginTop: 16,
+                padding: '10px 0',
+                background: 'none',
+                border: 'none',
+                color: '#384B16',
+                fontWeight: 600,
+                fontSize: '14px',
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              View full page →
+            </button>
+          </>
+        )}
+      </BottomSheet>
+    </>
   );
 }

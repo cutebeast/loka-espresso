@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { User, Mail, Camera, Loader2 } from 'lucide-react';
 
 interface ProfileSetupProps {
   phone: string;
@@ -36,129 +34,116 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
   const displayPhone = phone.replace(/(\+\d{2})(\d{2})(\d{3,4})(\d{0,4})/, '$1 $2 $3 $4').trim();
 
   return (
-    <div className="flex flex-col h-full px-6 pt-12 pb-8 bg-white">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="mb-8"
-      >
-        <h2 className="text-[28px] font-bold" style={{ color: '#1B2023' }}>Complete profile</h2>
-        <p className="mt-2 text-[15px]" style={{ color: '#6A7A8A' }}>
-          Tell us a bit about yourself
-        </p>
-      </motion.div>
+    <div className="auth-page">
+      <h2 className="auth-heading">Complete your profile</h2>
+      <p className="auth-subheading">Add your name so your orders feel personal</p>
 
-      {/* Avatar */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.15 }}
-        className="flex justify-center mb-8"
-      >
-        <div className="relative">
-          <div
-            className="w-24 h-24 rounded-full flex items-center justify-center"
-            style={{ background: '#384B16' }}
-          >
-            {name ? (
-              <span className="text-3xl font-bold text-white">{name[0].toUpperCase()}</span>
-            ) : (
-              <User className="w-10 h-10 text-white/70" />
-            )}
-          </div>
-          <button
-            className="absolute bottom-0 right-0 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-[#D4DCE5]"
-          >
-            <Camera className="w-5 h-5" style={{ color: '#384B16' }} />
-          </button>
+      {/* Avatar preview */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
+        borderRadius: '16px',
+        border: '1px solid #E4EAEF',
+        background: '#F9F7F2',
+        padding: '16px',
+        marginBottom: '24px',
+      }}>
+        <div style={{
+          width: '56px',
+          height: '56px',
+          flexShrink: 0,
+          borderRadius: '50%',
+          background: '#384B16',
+          color: '#FFFFFF',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '20px',
+          fontWeight: 800,
+          textTransform: 'uppercase',
+        }}>
+          {name ? name.trim()[0] : '👤'}
         </div>
-      </motion.div>
-
-      {/* Form */}
-      <motion.form
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        onSubmit={handleSubmit}
-      >
-        {/* Name Input */}
-        <div className="mb-5">
-          <label className="block font-semibold text-sm mb-1.5" style={{ color: '#1B2023' }}>
-            Name
-          </label>
-          <div
-            className="flex items-center rounded-2xl px-4 py-1 border-[1.5px]"
-            style={{ borderColor: error && !name ? '#C75050' : '#C4CED8' }}
-          >
-            <User size={18} style={{ color: '#6A7A8A' }} className="mr-2" />
-            <input
-              type="text"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => { setName(e.target.value); setError(''); }}
-              autoFocus
-              className="border-none py-4 text-base w-full outline-none text-[#1B2023] placeholder:text-[#6A7A8A]/50"
-            />
-          </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{
+            fontSize: '12px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.12em',
+            color: '#D18E38',
+          }}>Your account</p>
+          <p style={{
+            marginTop: '2px',
+            fontSize: '14px',
+            fontWeight: 700,
+            color: '#1B2023',
+          }}>
+            {name.trim() || 'Set up your Loka profile'}
+          </p>
+          <p style={{
+            marginTop: '2px',
+            fontSize: '12px',
+            color: '#6A7A8A',
+          }}>{displayPhone}</p>
         </div>
+      </div>
 
-        {/* Email Input */}
-        <div className="mb-5">
-          <label className="block font-semibold text-sm mb-1.5" style={{ color: '#1B2023' }}>
-            Email <span className="font-normal" style={{ color: '#6A7A8A' }}>(optional)</span>
-          </label>
-          <div className="flex items-center rounded-2xl px-4 py-1 border-[1.5px]" style={{ borderColor: '#C4CED8' }}>
-            <Mail size={18} style={{ color: '#6A7A8A' }} className="mr-2" />
-            <input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(''); }}
-              className="border-none py-4 text-base w-full outline-none text-[#1B2023] placeholder:text-[#6A7A8A]/50"
-            />
-          </div>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <div className="auth-label">Full name</div>
+        <div className="phone-wrapper">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setError(''); }}
+            placeholder="Your name"
+            autoFocus
+            className="phone-input"
+          />
         </div>
 
-        {/* Phone display */}
-        <p className="text-center text-sm mb-4" style={{ color: '#6A7A8A' }}>
-          {displayPhone}
-        </p>
+        <div className="auth-label" style={{ marginTop: '16px' }}>Email address (optional)</div>
+        <div className="phone-wrapper">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(''); }}
+            placeholder="your@email.com"
+            className="phone-input"
+          />
+        </div>
 
-        {/* Error */}
         {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-[#C75050] text-sm mb-3"
-          >
-            {error}
-          </motion.p>
+          <p style={{ color: '#C75050', fontSize: '12px', marginTop: '8px' }}>{error}</p>
         )}
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={isLoading || !name.trim()}
-          className="w-full font-semibold text-base py-4 rounded-full text-white disabled:opacity-40"
-          style={{ background: '#384B16' }}
-        >
-          {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Get Started'}
+        <button type="submit" disabled={isLoading || !name.trim()} className="auth-btn">
+          {isLoading ? <div className="auth-btn-spinner" /> : 'Get Started'}
         </button>
 
-        {/* Skip */}
         {onSkip && (
           <button
             type="button"
             onClick={onSkip}
-            className="w-full text-center text-sm font-medium py-3 mt-2"
-            style={{ color: '#6A7A8A' }}
+            style={{
+              marginTop: '16px',
+              width: '100%',
+              padding: '12px',
+              textAlign: 'center',
+              fontSize: '14px',
+              fontWeight: 500,
+              color: '#6A7A8A',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
           >
             Skip for now
           </button>
         )}
-      </motion.form>
+
+        <div style={{ flex: 1 }} />
+      </form>
     </div>
   );
 }

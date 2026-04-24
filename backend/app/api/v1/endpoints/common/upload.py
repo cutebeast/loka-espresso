@@ -54,6 +54,21 @@ async def upload_marketing_image(
     return _save_upload(content, file.filename, "marketing", settings)
 
 
+@router.post("/information-image")
+async def upload_information_image(
+    file: UploadFile = File(...),
+    user: User = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """Upload an image for information cards / product gallery."""
+    settings = get_settings()
+    if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
+    return _save_upload(content, file.filename, "information", settings)
+
+
 @router.post("/document")
 async def upload_document(
     file: UploadFile = File(...),

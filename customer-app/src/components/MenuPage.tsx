@@ -1,23 +1,25 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, ArrowLeft, Plus, Coffee } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
-import api from '@/lib/api';
+import api, { cacheBust } from '@/lib/api';
 import type { Category, MenuItem, CustomizationOption } from '@/lib/api';
-import CategoryNav from '@/components/menu/CategoryNav';
-import ItemCard from '@/components/menu/ItemCard';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
-
-import { LOKA } from '@/lib/tokens';
+import { formatPrice } from '@/lib/tokens';
 
 interface SelectedOption {
   id: number;
   name: string;
   option_type: string;
   price_adjustment: number;
+}
+
+function resolveImg(path: string | null | undefined) {
+  if (!path) return null;
+  return cacheBust(path.startsWith('http') ? path : `https://admin.loyaltysystem.uk${path}`);
 }
 
 export default function MenuPage() {
@@ -28,6 +30,7 @@ export default function MenuPage() {
     setCategories,
     setMenuItems,
     setSearchQuery,
+    setPage,
   } = useUIStore();
 
   const addItem = useCartStore((s) => s.addItem);
@@ -42,6 +45,8 @@ export default function MenuPage() {
   const [loadingOptions, setLoadingOptions] = useState(false);
 
   const sectionRefs = useRef<Map<number, HTMLElement | null>>(new Map());
+  const navRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   const loadMenu = useCallback(async () => {
     setLoading(true);
@@ -80,6 +85,28 @@ export default function MenuPage() {
     loadMenu();
   }, [loadMenu]);
 
+  /* intersection observer for active category */
+  useEffect(() => {
+    if (observerRef.current) observerRef.current.disconnect();
+    const rafId = requestAnimationFrame(() => {
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+          if (visible.length > 0) {
+            const id = Number(visible[0].target.getAttribute('data-category-id'));
+            setActiveCategoryId(id);
+          }
+        },
+        { rootMargin: '-20% 0px -70% 0px', threshold: [0, 0.5, 1] }
+      );
+      sectionRefs.current.forEach((el) => { if (el) observerRef.current?.observe(el); });
+    });
+    return () => {
+      cancelAnimationFrame(rafId);
+      observerRef.current?.disconnect();
+    };
+  }, [categories, menuItems]);
+
   const loadCustomizations = useCallback(async (item: MenuItem) => {
     setLoadingOptions(true);
     try {
@@ -98,13 +125,7 @@ export default function MenuPage() {
       setSheetOpen(true);
       loadCustomizations(item);
     } else {
-      addItem({
-        menu_item_id: item.id,
-        name: item.name,
-        price: item.base_price,
-        quantity: 1,
-        customizations: {},
-      });
+      addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {} });
     }
   }, [addItem, loadCustomizations]);
 
@@ -132,124 +153,159 @@ export default function MenuPage() {
   });
 
   const itemsByCategory = categories
-    .map((cat) => ({
-      category: cat,
-      items: filteredItems.filter((item) => item.category_id === cat.id),
-    }))
+    .map((cat) => ({ category: cat, items: filteredItems.filter((item) => item.category_id === cat.id) }))
     .filter((group) => group.items.length > 0);
 
-  const setSectionRef = useCallback((categoryId: number, el: HTMLElement | null) => {
-    sectionRefs.current.set(categoryId, el);
-  }, []);
+  const allCats = [{ id: null as number | null, name: 'All' }, ...categories.map((c) => ({ id: c.id, name: c.name }))];
+
+  const scrollToCategory = (categoryId: number | null) => {
+    setActiveCategoryId(categoryId);
+    if (categoryId === null) {
+      const first = sectionRefs.current.get(categories[0]?.id);
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      const el = sectionRefs.current.get(categoryId);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const hasCartItems = getItemCount() > 0;
-  const cartTotal = useCartStore((s) => s.getTotal)();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: LOKA.bg }}>
-      <div style={{ background: LOKA.white, borderBottom: `1px solid ${LOKA.borderSubtle}`, flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px 0 8px', height: 44, gap: 8 }}>
-          <button
-            onClick={() => setShowSearch(!showSearch)}
-            style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: showSearch ? LOKA.copperSoft : LOKA.surface,
-              border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', flexShrink: 0,
-            }}
-            aria-label="Search"
-          >
-            {showSearch ? <X size={16} color={LOKA.copper} /> : <Search size={16} color={LOKA.textMuted} />}
-          </button>
-
-          {showSearch ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', background: LOKA.surface, borderRadius: 999, height: 36 }}>
-              <Search size={14} color={LOKA.textMuted} />
+    <div className="menu-screen">
+      {/* Header */}
+      <div className="menu-header">
+        {showSearch ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', background: '#F5F7FA', borderRadius: 999, height: 36 }}>
+              <Search size={14} color="#6A7A8A" />
               <input
                 type="text"
                 autoFocus
                 placeholder="Search items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: LOKA.textPrimary }}
+                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: '#1B2023' }}
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} style={{ background: 'transparent', border: 'none', padding: 0, color: LOKA.textMuted, cursor: 'pointer', display: 'flex' }}>
+                <button onClick={() => setSearchQuery('')} style={{ background: 'transparent', border: 'none', padding: 0, color: '#6A7A8A', cursor: 'pointer', display: 'flex' }}>
                   <X size={14} />
                 </button>
               )}
             </div>
-          ) : (
-            <h1 style={{ flex: 1, fontSize: 16, fontWeight: 800, color: LOKA.textPrimary, letterSpacing: '-0.01em' }}>
-              Menu
-            </h1>
-          )}
-
-          {showSearch && (
             <button
               onClick={() => { setShowSearch(false); setSearchQuery(''); }}
-              style={{ fontSize: 13, fontWeight: 600, color: LOKA.copper, background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0, padding: '4px 4px' }}
+              style={{ fontSize: 13, fontWeight: 600, color: '#384B16', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0, padding: '4px 4px' }}
             >
               Cancel
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <>
+            <div className="menu-header-left">
+              <button className="menu-back-btn" onClick={() => setPage('home')} aria-label="Back">
+                <ArrowLeft size={20} />
+              </button>
+              <h1 className="menu-title">Menu</h1>
+            </div>
+            <button className="menu-search-btn" onClick={() => setShowSearch(true)} aria-label="Search">
+              <Search size={18} />
+            </button>
+          </>
+        )}
       </div>
 
-      <div className="scroll-container" style={{ flex: 1, position: 'relative' }}>
-        <CategoryNav
-          categories={categories}
-          activeCategoryId={activeCategoryId}
-          onSelect={setActiveCategoryId}
-          sectionRefs={sectionRefs}
-        />
+      {/* Category Tabs */}
+      {!showSearch && categories.length > 0 && (
+        <div className="category-bar" ref={navRef}>
+          {allCats.map((cat) => (
+            <button
+              key={cat.id ?? 'all'}
+              className={`cat-tab ${activeCategoryId === cat.id ? 'active' : ''}`}
+              onClick={() => scrollToCategory(cat.id)}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      )}
 
+      {/* Product List */}
+      <div className="menu-product-list scroll-container">
         {loading ? (
-          <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="skeleton" style={{ height: 64, borderRadius: 16 }} />
+          <>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="skeleton" style={{ height: 140, borderRadius: 20 }} />
             ))}
-          </div>
+          </>
         ) : filteredItems.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 999, background: LOKA.cream, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <Search size={24} color={LOKA.copper} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, borderRadius: 999, background: '#F3EEE5', margin: '0 auto 16px' }}>
+              <Coffee size={24} color="#D18E38" strokeWidth={1.5} />
             </div>
-            <p style={{ fontSize: 15, fontWeight: 700, color: LOKA.textPrimary, marginBottom: 8 }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: '#1B2023', marginBottom: 8 }}>
               {searchQuery ? `No items match "${searchQuery}"` : 'No items available'}
             </p>
             {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                style={{ padding: '8px 16px', borderRadius: 999, background: LOKA.primary, color: LOKA.white, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}
-              >
+              <button className="btn btn-primary btn-pill" onClick={() => setSearchQuery('')}>
                 Clear search
               </button>
             )}
           </div>
         ) : (
-          <div style={{ padding: '8px 10px', paddingBottom: hasCartItems ? 76 : 8 }}>
-            {itemsByCategory.map(({ category, items }) => (
-              <div key={category.id} ref={(el) => setSectionRef(category.id, el)} data-category-id={category.id} style={{ marginBottom: 16 }}>
-                <div style={{ padding: '18px 16px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 4, height: 18, borderRadius: 999, background: LOKA.copper, flexShrink: 0 }} />
-                  <h2 style={{ fontSize: 15, fontWeight: 800, color: LOKA.textPrimary, letterSpacing: '-0.01em' }}>
-                    {category.name}
-                  </h2>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {items.map((item) => (
-                    <ItemCard
-                      key={item.id}
-                      item={item}
-                      onPress={() => openItem(item)}
-                      onAdd={() => openItem(item)}
-                    />
-                  ))}
-                </div>
+          itemsByCategory.map(({ category, items }) => (
+            <div key={category.id} ref={(el) => { sectionRefs.current.set(category.id, el); }} data-category-id={category.id}>
+              <div style={{ padding: '18px 16px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 4, height: 18, borderRadius: 999, background: '#D18E38', flexShrink: 0 }} />
+                <h2 style={{ fontSize: 15, fontWeight: 800, color: '#1B2023', letterSpacing: '-0.01em' }}>
+                  {category.name}
+                </h2>
               </div>
-            ))}
-          </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {items.map((item) => {
+                  const imgSrc = resolveImg(item.image_url);
+                  return (
+                    <div
+                      key={item.id}
+                      className="menu-product-card"
+                      onClick={() => openItem(item)}
+                    >
+                      <div
+                        className="menu-product-img"
+                        style={imgSrc ? { backgroundImage: `url(${imgSrc})` } : {}}
+                      >
+                        {!imgSrc && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                            <Coffee size={28} color="#C4CED8" strokeWidth={1.5} />
+                          </div>
+                        )}
+                        {item.is_featured && (
+                          <span className="menu-img-badge">⭐ Popular</span>
+                        )}
+                      </div>
+                      <div className="menu-product-info">
+                        <div>
+                          <div className="menu-product-name">{item.name}</div>
+                          {item.description && (
+                            <div className="menu-product-desc">{item.description}</div>
+                          )}
+                        </div>
+                        <div className="menu-product-bottom">
+                          <span className="menu-product-price">{formatPrice(item.base_price)}</span>
+                          <button
+                            className="menu-add-btn"
+                            onClick={(e) => { e.stopPropagation(); openItem(item); }}
+                          >
+                            <Plus size={14} strokeWidth={2.5} /> Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
         )}
       </div>
 

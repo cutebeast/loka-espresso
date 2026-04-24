@@ -19,7 +19,8 @@ import { useA2HS } from '@/hooks/useA2HS';
 import EmergencyPopup from '@/components/EmergencyPopup';
 import StorePickerModal from '@/components/StorePickerModal';
 import BottomNav from '@/components/BottomNav';
-import DashboardHeader from '@/components/DashboardHeader';
+import { HubLayout } from '@/components/layouts';
+import { HomeHeader } from '@/components/HomeHeader';
 import AuthFlow from '@/components/AuthFlow';
 
 import HomePage from './HomePage';
@@ -41,12 +42,16 @@ const PaymentMethodsPage = dynamic(() => import('./profile/PaymentMethodsPage'),
 const SavedAddressesPage = dynamic(() => import('./profile/SavedAddressesPage'), { ssr: false });
 const NotificationsPage = dynamic(() => import('./profile/NotificationsPage'), { ssr: false });
 const HelpSupportPage = dynamic(() => import('./profile/HelpSupportPage'), { ssr: false });
+const LegalPage = dynamic(() => import('./LegalPage'), { ssr: false });
+const SettingsPage = dynamic(() => import('./profile/SettingsPage'), { ssr: false });
+const MyCardPage = dynamic(() => import('./MyCardPage'), { ssr: false });
+const OrderDetailPage = dynamic(() => import('./OrderDetailPage'), { ssr: false });
 
-// Pages that don't show bottom nav or dashboard header
+// Pages that don't show bottom nav (sub-pages)
 const SUB_PAGES: PageId[] = [
-  'checkout', 'order-detail', 'wallet', 'history', 'profile',
+  'checkout', 'order-detail', 'wallet', 'history',
   'promotions', 'information', 'my-rewards', 'account-details',
-  'payment-methods', 'saved-addresses', 'notifications', 'help-support',
+  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card',
 ];
 
 export default function AppShell() {
@@ -56,7 +61,7 @@ export default function AppShell() {
     setPage, setSelectedStore, setStores, showToast, hideToast,
     setIsLoading, showStorePicker, setShowStorePicker,
   } = useUIStore();
-  const { setBalance, setPoints, setTier, refreshWallet } = useWalletStore();
+  const { setBalance, setPoints, setTier, refreshWallet, tier } = useWalletStore();
   const { loadConfig } = useConfigStore();
   const reducedMotion = useReducedMotion();
   const a2hs = useA2HS();
@@ -66,7 +71,39 @@ export default function AppShell() {
   const [storeSearch, setStoreSearch] = useState('');
   const [selectedStoreDistance, setSelectedStoreDistance] = useState('');
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingArticleId = useRef<number | null>(null);
+  const pendingArticleSlug = useRef<string | null>(null);
+
+  // Parse deep-link query params on mount (e.g., ?article=123 or ?slug=history-of-pide from QR code)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+
+    // Support ?article=123 (numeric ID)
+    const article = params.get('article');
+    if (article) {
+      const id = parseInt(article, 10);
+      if (!isNaN(id)) {
+        pendingArticleId.current = id;
+      }
+    }
+
+    // Support ?slug=history-of-pide (human-readable slug)
+    const slug = params.get('slug');
+    if (slug) {
+      pendingArticleSlug.current = slug;
+    }
+
+    // Clean query params from URL without reloading
+    if (article || slug) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('article');
+      url.searchParams.delete('slug');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
 
   // Hash-based routing: listen for back/forward browser navigation
   useEffect(() => {
@@ -75,7 +112,7 @@ export default function AppShell() {
       const valid: PageId[] = [
         'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
         'wallet', 'history', 'promotions', 'information', 'my-rewards',
-        'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support',
+        'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card',
       ];
       if (valid.includes(hash)) {
         setPage(hash);
@@ -147,6 +184,12 @@ export default function AppShell() {
       }
       refreshWallet();
       loadConfig();
+      // Fetch unread notification count
+      try {
+        const notifRes = await api.get('/notifications');
+        const notifs = Array.isArray(notifRes.data) ? notifRes.data : [];
+        setUnreadCount(notifs.filter((n: { is_read?: boolean }) => !n.is_read).length);
+      } catch { /* ignore */ }
     } catch {
       showToast('Failed to load app data', 'error');
     }
@@ -179,7 +222,15 @@ export default function AppShell() {
 
   const handleAuthDone = useCallback(() => {
     setAuthDone(true);
-  }, []);
+    // If a QR code brought us here with an article ID or slug, navigate there after login
+    if (pendingArticleId.current != null) {
+      setPage('information', { selectedInfoId: pendingArticleId.current });
+      pendingArticleId.current = null;
+    } else if (pendingArticleSlug.current != null) {
+      setPage('information', { selectedInfoSlug: pendingArticleSlug.current });
+      pendingArticleSlug.current = null;
+    }
+  }, [setPage]);
 
   const handleNavClick = (id: PageId) => {
     if (id === page) return;
@@ -188,32 +239,66 @@ export default function AppShell() {
 
   const renderPage = () => {
     switch (page) {
-      case 'home': return <HomePage />;
-      case 'menu': return <MenuPage />;
-      case 'rewards': return <RewardsPage />;
+      case 'home': return (
+        <HubLayout
+          page={page}
+          onNavigate={handleNavClick}
+          header={
+            <HomeHeader
+              userName={user?.name}
+              unreadNotifications={unreadCount}
+              onNotificationClick={() => setPage('notifications')}
+              onQRScanClick={() => setShowQRScanner(true)}
+            />
+          }
+        >
+          <HomePage />
+        </HubLayout>
+      );
+      case 'menu': return (
+        <HubLayout page={page} onNavigate={handleNavClick}>
+          <MenuPage />
+        </HubLayout>
+      );
+      case 'rewards': return (
+        <HubLayout page={page} onNavigate={handleNavClick}>
+          <RewardsPage />
+        </HubLayout>
+      );
+      case 'orders': return (
+        <HubLayout page={page} onNavigate={handleNavClick}>
+          <OrdersPage />
+        </HubLayout>
+      );
+      case 'profile': return (
+        <HubLayout page={page} onNavigate={handleNavClick}>
+          <ProfilePage />
+        </HubLayout>
+      );
       case 'cart': return <CartPage />;
       case 'checkout': return <CheckoutPage />;
-      case 'orders': return <OrdersPage />;
-      case 'order-detail': return <OrdersPage />;
-      case 'profile': return <ProfilePage />;
       case 'wallet': return <WalletPage />;
       case 'history': return <HistoryPage />;
       case 'promotions': return <PromotionsPage onBack={() => setPage('home')} preselectedId={pageParams.selectedPromoId as number | undefined} />;
-      case 'information': return <InformationPage onBack={() => setPage('home')} preselectedId={pageParams.selectedInfoId as number | undefined} />;
+      case 'information': return <InformationPage onBack={() => setPage('home')} preselectedId={pageParams.selectedInfoId as number | undefined} preselectedSlug={pageParams.selectedInfoSlug as string | undefined} />;
       case 'my-rewards': return <MyRewardsPage onBack={() => setPage('profile')} initialTab={pageParams.initialTab as 'rewards' | 'vouchers' | undefined} />;
       case 'account-details': return <AccountDetailsPage />;
       case 'payment-methods': return <PaymentMethodsPage />;
       case 'saved-addresses': return <SavedAddressesPage />;
       case 'notifications': return <NotificationsPage />;
       case 'help-support': return <HelpSupportPage />;
+      case 'legal': return <LegalPage />;
+      case 'settings': return <SettingsPage />;
+      case 'my-card': return <MyCardPage />;
+      case 'order-detail': return <OrderDetailPage />;
       default: return <HomePage />;
     }
   };
 
   const toastColorMap = {
-    success: 'bg-[#85B085]',
-    error: 'bg-[#C75050]',
-    info: 'bg-[#4A607A]',
+    success: 'bg-success',
+    error: 'bg-danger',
+    info: 'bg-info',
   };
 
   const isSubPage = SUB_PAGES.includes(page);
@@ -271,7 +356,7 @@ export default function AppShell() {
                 className="absolute inset-0 z-[56] flex items-center justify-center px-5 pointer-events-none"
               >
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[280px] p-5 pointer-events-auto">
-                  <h3 className="text-[#1a1a1a] text-base font-bold mb-4">Add to Home Screen</h3>
+                  <h3 className="text-text-primary text-base font-bold mb-4">Add to Home Screen</h3>
                   <div className="flex items-center gap-3 mb-5">
                     <img
                       src="/icon-192.png"
@@ -279,20 +364,20 @@ export default function AppShell() {
                       className="w-10 h-10 rounded-lg object-cover shadow-sm"
                     />
                     <div className="min-w-0">
-                      <p className="text-[#1a1a1a] font-semibold text-sm truncate">Loka Espresso</p>
-                      <p className="text-[#64748B] text-xs truncate">app.loyaltysystem.uk</p>
+                      <p className="text-text-primary font-semibold text-sm truncate">Loka Espresso</p>
+                      <p className="text-text-muted text-xs truncate">app.loyaltysystem.uk</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={a2hs.dismiss}
-                      className="px-3 py-2 text-[#384B16] font-semibold text-sm rounded-lg hover:bg-[#384B16]/5 transition-colors flex-shrink-0"
+                      className="px-3 py-2 text-primary font-semibold text-sm rounded-lg hover:bg-primary/5 transition-colors flex-shrink-0"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={a2hs.promptInstall}
-                      className="px-4 py-2 bg-[#384B16] text-white font-semibold text-sm rounded-lg shadow-md active:scale-[0.97] transition-transform flex-shrink-0"
+                      className="px-4 py-2 bg-primary text-white font-semibold text-sm rounded-lg shadow-md active:scale-[0.97] transition-transform flex-shrink-0"
                     >
                       Add
                     </button>
@@ -302,21 +387,8 @@ export default function AppShell() {
             </>
           )}
 
-          {/* Dashboard Header (only on home) */}
-          {page === 'home' && (
-            <DashboardHeader
-              userName={user?.name}
-              selectedStore={selectedStore}
-              selectedStoreDistance={selectedStoreDistance}
-              onShowStoreModal={() => setShowStoreModal(true)}
-              onShowQRScanner={() => setShowQRScanner(true)}
-              onShowNotifications={() => showToast('No new notifications', 'info')}
-              onShowProfile={() => setPage('profile')}
-            />
-          )}
-
           {/* Main Content */}
-          <main className="flex-1 overflow-y-auto scroll-container" style={{ background: '#E4EAEF' }}>
+          <main className="flex-1 overflow-hidden bg-bg">
             <AnimatePresence mode="wait">
               <motion.div
                 key={page}
@@ -324,14 +396,12 @@ export default function AppShell() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={reducedMotion ? { duration: 0 } : { duration: 0.2 }}
+                className="h-full"
               >
                 {renderPage()}
               </motion.div>
             </AnimatePresence>
           </main>
-
-          {/* Bottom Nav (hidden on sub-pages) */}
-          {!isSubPage && <BottomNav page={page} onNavigate={handleNavClick} />}
 
           {/* Store Picker Modal */}
           <AnimatePresence>

@@ -2,6 +2,7 @@
 
 Follows the same pattern as admin_marketing.py for Promotions.
 """
+import re
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,15 @@ from app.models.user import User, RoleIDs
 from app.models.content import InformationCard
 
 router = APIRouter(prefix="/admin/content", tags=["Admin Content"])
+
+
+def _slugify(text: str) -> str:
+    """Convert a title to a URL-friendly slug."""
+    text = text.lower().strip()
+    text = re.sub(r'[^a-z0-9\s-]', '', text)
+    text = re.sub(r'\s+', '-', text)
+    text = re.sub(r'-+', '-', text)
+    return text[:255]
 
 
 @router.get("/cards")
@@ -44,11 +54,13 @@ async def list_cards(
             {
                 "id": c.id,
                 "title": c.title,
+                "slug": c.slug,
                 "short_description": c.short_description,
                 "long_description": c.long_description,
                 "content_type": c.content_type,
                 "icon": c.icon,
                 "image_url": c.image_url,
+                "gallery_urls": c.gallery_urls,
                 "is_active": c.is_active,
                 "position": c.position,
                 "start_date": c.start_date.isoformat() if c.start_date else None,
@@ -75,11 +87,13 @@ async def get_card(
     return {
         "id": card.id,
         "title": card.title,
+        "slug": card.slug,
         "short_description": card.short_description,
         "long_description": card.long_description,
         "content_type": card.content_type,
         "icon": card.icon,
         "image_url": card.image_url,
+        "gallery_urls": card.gallery_urls,
         "is_active": card.is_active,
         "position": card.position,
         "start_date": card.start_date.isoformat() if card.start_date else None,
@@ -98,6 +112,7 @@ async def create_card(
     """Create a new information card."""
     card = InformationCard(
         title=req.get("title", ""),
+        slug=req.get("slug") or _slugify(req.get("title", "")),
         short_description=req.get("short_description"),
         long_description=req.get("long_description"),
         icon=req.get("icon"),
@@ -134,8 +149,8 @@ async def update_card(
     
     # Update allowed fields
     allowed_fields = [
-        "title", "short_description", "long_description", "icon",
-        "content_type", "image_url", "is_active",
+        "title", "slug", "short_description", "long_description", "icon",
+        "content_type", "image_url", "gallery_urls", "is_active",
         "position", "start_date", "end_date"
     ]
     

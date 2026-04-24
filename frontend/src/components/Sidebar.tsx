@@ -18,7 +18,7 @@ const PAGE_VISIBILITY: Record<number, Set<string>> = {
   2: new Set([
     'dashboard', 'orders', 'kitchen',
     'menu', 'inventory', 'tables', 'staff', 'walletTopup', 'posterminal',
-    'customers', 'reports',
+    'customers', 'rewards', 'vouchers', 'reports', 'marketingreports',
   ]),
   3: new Set(['orders', 'kitchen', 'walletTopup', 'posterminal']),
 };
@@ -26,16 +26,18 @@ const PAGE_VISIBILITY: Record<number, Set<string>> = {
 const navGroups = [
   { label: 'Overview', icon: 'fa-compass', items: [
     { id: 'dashboard' as PageId, icon: 'fa-chart-pie', label: 'Dashboard' },
+  ]},
+  { label: 'Counter Operations', icon: 'fa-cash-register', items: [
     { id: 'orders' as PageId, icon: 'fa-clipboard-list', label: 'Orders' },
     { id: 'kitchen' as PageId, icon: 'fa-fire-burner', label: 'Order Station' },
+    { id: 'walletTopup' as PageId, icon: 'fa-wallet', label: 'Wallet Top-Up' },
+    { id: 'posterminal' as PageId, icon: 'fa-cash-register', label: 'POS Terminal' },
   ]},
-  { label: 'Store Operations', icon: 'fa-store', items: [
+  { label: 'Store Management', icon: 'fa-store', items: [
     { id: 'menu' as PageId, icon: 'fa-mug-hot', label: 'Menu Management' },
     { id: 'inventory' as PageId, icon: 'fa-boxes-stacked', label: 'Inventory', hasSubmenu: true },
     { id: 'tables' as PageId, icon: 'fa-chair', label: 'Tables' },
     { id: 'staff' as PageId, icon: 'fa-user-tie', label: 'Staff' },
-    { id: 'walletTopup' as PageId, icon: 'fa-wallet', label: 'Wallet Top-Up' },
-    { id: 'posterminal' as PageId, icon: 'fa-cash-register', label: 'POS Terminal' },
   ]},
   { label: 'CRM & Marketing', icon: 'fa-bullhorn', items: [
     { id: 'customers' as PageId, icon: 'fa-users', label: 'Customers' },

@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 
 interface BadgeProps {
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info';
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'primary' | 'copper';
   size?: 'sm' | 'md';
   children: ReactNode;
   className?: string;
@@ -11,11 +11,13 @@ interface BadgeProps {
 
 export function Badge({ variant = 'default', size = 'md', children, className = '' }: BadgeProps) {
   const variants = {
-    default: 'bg-gray-100 text-gray-700',
-    success: 'bg-green-100 text-green-700',
-    warning: 'bg-amber-100 text-amber-700',
-    error: 'bg-red-100 text-red-700',
-    info: 'bg-blue-100 text-blue-700',
+    default:  'bg-bg-light text-text-secondary',
+    success:  'bg-success-light text-success',
+    warning:  'bg-warning-light text-warning',
+    error:    'bg-danger-light text-danger',
+    info:     'bg-info-light text-info',
+    primary:  'bg-primary-100 text-primary',
+    copper:   'bg-copper-soft text-copper',
   };
 
   const sizes = {

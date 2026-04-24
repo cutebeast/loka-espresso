@@ -1,0 +1,174 @@
+/* ============================================
+   COMPONENT PRIMITIVES
+   ============================================ */
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chip-sm {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+.chip-primary {
+  background: var(--loka-primary);
+  color: white;
+}
+.chip-secondary {
+  background: rgba(56, 75, 22, 0.08);
+  color: var(--loka-primary);
+}
+.chip-outline {
+  background: transparent;
+  color: var(--loka-primary);
+  border: 1.5px solid var(--loka-primary);
+}
+.chip-ghost {
+  background: rgba(56, 75, 22, 0.06);
+  color: var(--loka-primary);
+}
+.chip-copper {
+  background: #D18E38;
+  color: white;
+}
+.chip-dark {
+  background: var(--loka-bg-dark);
+  color: white;
+}
+.chip-green {
+  background: #D1E7DD;
+  color: #0F5132;
+}
+.chip-blue {
+  background: #CFE2FF;
+  color: #084298;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+.btn-primary {
+  background: var(--loka-primary);
+  color: white;
+}
+.btn-copper {
+  background: var(--loka-accent-copper);
+  color: white;
+}
+.btn-secondary {
+  background: rgba(56, 75, 22, 0.08);
+  color: var(--loka-primary);
+}
+.btn-outline {
+  background: transparent;
+  color: var(--loka-primary);
+  border: 1.5px solid var(--loka-primary);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--loka-text-muted);
+}
+.btn-pill {
+  border-radius: 100px;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-green {
+  background: #D1E7DD;
+  color: #0F5132;
+}
+.badge-amber {
+  background: #FFF3CD;
+  color: #664D03;
+}
+.badge-red {
+  background: #F8D7DA;
+  color: #842029;
+}
+.badge-dark {
+  background: var(--loka-bg-dark);
+  color: white;
+}
+
+/* Skeleton */
+.skeleton {
+  background: #E8ECEF;
+  background: linear-gradient(90deg, #E8ECEF 25%, #F0F2F4 50%, #E8ECEF 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* Overlay */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+.overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+}
+
+/* Section titles */
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+}
+.section-title-sm {
+  font-size: 16px;
+  font-weight: 600;
+}
+.section-subtitle {
+  font-size: 14px;
+  color: var(--loka-text-muted);
+  margin-top: 2px;
+}
+
+/* Link */
+.link {
+  color: var(--loka-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+.link:hover { text-decoration: underline; }
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--loka-border-light);
+  margin: 0 20px;
+}

@@ -92,11 +92,13 @@ export interface PromoBanner {
 export interface InformationCard {
   id: number;
   title: string;
+  slug?: string | null;
   short_description: string | null;
   long_description?: string | null;
   content_type?: string | null;
   icon?: string | null;
   image_url?: string | null;
+  gallery_urls?: string[] | null;
   action_url?: string | null;
   action_type?: string | null;
 }
@@ -297,7 +299,7 @@ export interface UserProfile {
   created_at?: string;
 }
 
-export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support';
+export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support' | 'legal' | 'settings' | 'my-card';
 export type OrderMode = 'pickup' | 'delivery' | 'dine_in';
 
 /**

@@ -1,44 +1,42 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Wallet, Banknote, CheckCircle2, ShoppingBag, Loader2, Receipt } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import {
+  ArrowLeft,
+  Wallet,
+  Banknote,
+  CheckCircle2,
+  ShoppingBag,
+  Loader2,
+  Receipt,
+  Truck,
+  UtensilsCrossed,
+} from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
 import { placeOrder } from '@/lib/cartSync';
-import OrderTypeHeader from '@/components/checkout/OrderTypeHeader';
+import api from '@/lib/api';
 import TimeSlotPicker from '@/components/checkout/TimeSlotPicker';
 import DeliveryAddressCard from '@/components/checkout/DeliveryAddressCard';
-import DineInTableCard from '@/components/checkout/DineInTableCard';
 import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
-import PaymentSummary from '@/components/checkout/PaymentSummary';
 import OrderNotesField from '@/components/checkout/OrderNotesField';
-
-const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  textPrimary: '#1B2023',
-  textMuted: '#6A7A8A',
-  border: '#D4DCE5',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  bg: '#E4EAEF',
-  white: '#FFFFFF',
-  success: '#85B085',
-  danger: '#C75050',
-};
 
 function formatPrice(val: number | string): string {
   return `RM ${Number(val).toFixed(2)}`;
 }
 
+const ORDER_TYPES = [
+  { key: 'pickup' as const, label: 'Pickup' },
+  { key: 'delivery' as const, label: 'Delivery' },
+  { key: 'dine_in' as const, label: 'Dine-in' },
+];
+
 export default function CheckoutPage() {
   const { items, getTotal } = useCartStore();
-  const { orderMode, selectedStore, dineInSession, setPage, showToast, setDineInSession, setOrderMode } = useUIStore();
+  const { orderMode, selectedStore, stores, dineInSession, setPage, showToast, setDineInSession, setOrderMode, setSelectedStore, setStores } = useUIStore();
   const { balance, setBalance, refreshWallet } = useWalletStore();
   const { addOrder } = useOrderStore();
   const { config } = useConfigStore();
@@ -69,9 +67,17 @@ export default function CheckoutPage() {
   const effectivePaymentMethod = orderMode === 'dine_in' ? 'cash' : paymentMethod;
   const requiresWallet = effectivePaymentMethod === 'wallet';
 
-  const effectiveStore = orderMode === 'dine_in' && dineInSession
-    ? { name: dineInSession.storeName, address: '' }
-    : selectedStore || { name: 'Selected Store', address: '' };
+
+
+  // Fetch stores if not loaded
+  useEffect(() => {
+    if (stores.length === 0) {
+      api.get('/stores').then((res) => {
+        const list = Array.isArray(res.data) ? res.data : [];
+        setStores(list);
+      }).catch(() => {});
+    }
+  }, [stores.length, setStores]);
 
   const handleVoucherChange = useCallback((type: 'none' | 'voucher' | 'reward', code?: string, dv?: number) => {
     setDiscountType(type);
@@ -81,7 +87,7 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     if (items.length === 0) { showToast('Cart is empty', 'error'); return; }
-    if (!effectiveStore) { showToast('Please select a store', 'error'); return; }
+    if (!selectedStore && orderMode !== 'dine_in') { showToast('Please select a store', 'error'); return; }
 
     if (orderMode === 'pickup' && !pickupTime) { showToast('Please select a pickup time', 'error'); return; }
     if (orderMode === 'delivery' && !deliveryAddress?.address) { showToast('Please enter a delivery address', 'error'); return; }
@@ -111,7 +117,6 @@ export default function CheckoutPage() {
       setPointsEarned(newOrder?.points_earned || newOrder?.loyalty_points_earned || 0);
       addOrder(newOrder);
 
-      // Only deduct wallet for wallet payments
       if (requiresWallet) {
         setBalance(balance - total);
         await refreshWallet();
@@ -129,37 +134,27 @@ export default function CheckoutPage() {
 
   if (success) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: '40px 24px', background: LOKA.bg }}>
-        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 12, stiffness: 200, delay: 0.2 }}
-          style={{ width: 80, height: 80, borderRadius: 999, background: LOKA.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
-          <CheckCircle2 size={40} color={LOKA.white} strokeWidth={1.5} />
-        </motion.div>
-        <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-          style={{ fontSize: 22, fontWeight: 800, color: LOKA.textPrimary, marginBottom: 8 }}>
-          Order placed!
-        </motion.h2>
-        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-          style={{ fontSize: 13, color: LOKA.textMuted, marginBottom: 4 }}>
-          Your order number is
-        </motion.p>
-        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-          style={{ fontSize: 28, fontWeight: 800, color: LOKA.primary, fontFamily: 'monospace', marginBottom: 20 }}>
-          #{orderNumber}
-        </motion.p>
+      <div className="co-success-screen">
+        <div className="co-success-icon">
+          <CheckCircle2 size={40} color="white" strokeWidth={1.5} />
+        </div>
+        <h2 className="co-success-title">Order placed!</h2>
+        <p style={{ fontSize: 13, color: '#6A7A8A', marginBottom: 4 }}>Your order number is</p>
+        <p className="co-success-number">#{orderNumber}</p>
 
-        <div style={{ background: LOKA.white, borderRadius: 20, padding: 20, width: '100%', maxWidth: 340, marginBottom: 20, textAlign: 'center' }}>
+        <div className="co-success-card">
           {orderMode === 'pickup' && pickupTime && (
-            <p style={{ fontSize: 14, color: LOKA.textPrimary }}>
+            <p className="co-success-text">
               Ready at <strong>{new Date(pickupTime).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true })}</strong>
             </p>
           )}
           {orderMode === 'delivery' && deliveryAddress && (
-            <p style={{ fontSize: 14, color: LOKA.textPrimary }}>
+            <p className="co-success-text">
               {orderId ? 'Dispatch request created for' : 'Delivery request created for'} <strong>{deliveryAddress.address}</strong>
             </p>
           )}
           {orderMode === 'dine_in' && dineInSession && (
-            <p style={{ fontSize: 14, color: LOKA.textPrimary }}>
+            <p className="co-success-text">
               Staff is preparing your order at <strong>Table {dineInSession.tableNumber}</strong>
             </p>
           )}
@@ -172,76 +167,111 @@ export default function CheckoutPage() {
             </div>
           )}
           {pointsEarned > 0 && (
-            <div style={{ marginTop: 12, padding: '8px 14px', background: LOKA.copperSoft, borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: LOKA.copper }}>+{pointsEarned} Loka points</span>
+            <div className="co-success-points">
+              +{pointsEarned} Loka points
             </div>
           )}
           {!requiresWallet && (
-            <p style={{ fontSize: 12, color: LOKA.textMuted, marginTop: 8 }}>Points will be awarded after payment</p>
+            <p style={{ fontSize: 12, color: '#6A7A8A', marginTop: 8 }}>Points will be awarded after payment</p>
           )}
         </div>
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 340 }}>
-          <motion.button whileTap={{ scale: 0.98 }} onClick={() => { setPage('orders'); }}
-            style={{ width: '100%', padding: '16px 24px', borderRadius: 999, background: LOKA.primary, color: LOKA.white, fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 8px 16px rgba(56,75,22,0.25)' }}>
+        <div className="co-success-btns">
+          <button className="co-success-btn-primary" onClick={() => setPage('orders')}>
             Track Order →
-          </motion.button>
-          <motion.button whileTap={{ scale: 0.98 }} onClick={() => { setSuccess(false); setPage('home'); }}
-            style={{ width: '100%', padding: '16px 24px', borderRadius: 999, background: LOKA.white, color: LOKA.primary, fontWeight: 700, fontSize: 15, border: `2px solid ${LOKA.primary}`, cursor: 'pointer' }}>
+          </button>
+          <button className="co-success-btn-secondary" onClick={() => { setSuccess(false); setPage('home'); }}>
             Back to Home
-          </motion.button>
-        </motion.div>
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: LOKA.bg }}>
-      <div style={{ background: LOKA.white, padding: '12px 18px', borderBottom: `1px solid ${LOKA.borderSubtle}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setPage('cart')}
-          style={{ width: 36, height: 36, borderRadius: 10, background: LOKA.surface, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          <ArrowLeft size={18} color={LOKA.primary} />
-        </motion.button>
-        <h1 style={{ flex: 1, fontSize: 18, fontWeight: 800, color: LOKA.textPrimary }}>
-          Checkout · {orderMode === 'pickup' ? 'Pickup' : orderMode === 'delivery' ? 'Delivery' : 'Dine-in'}
-        </h1>
+    <div className="checkout-screen">
+      {/* Header */}
+      <div className="checkout-header">
+        <button className="checkout-back-btn" onClick={() => setPage('cart')}>
+          <ArrowLeft size={18} />
+        </button>
+        <h1 className="checkout-title">Checkout</h1>
       </div>
 
-      <div className="scroll-container" style={{ flex: 1, padding: '14px 18px 24px' }}>
-        {orderMode === 'dine_in' && dineInSession ? (
-          <div style={{ marginBottom: 16 }}>
-            <DineInTableCard
-              tableNumber={dineInSession.tableNumber}
-              storeName={dineInSession.storeName}
-              onScanDifferent={() => { setDineInSession(null); setOrderMode('pickup'); setPage('home'); }}
-            />
+      <div className="checkout-scroll">
+        {/* Order Type */}
+        <div>
+          <div className="co-section-title">Order Type</div>
+          <div className="co-type-pills">
+            {ORDER_TYPES.map((t) => {
+              const isActive = orderMode === t.key;
+              const isDisabled = t.key === 'dine_in' && !dineInSession;
+              return (
+                <button
+                  key={t.key}
+                  className={`co-type-pill ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
+                  onClick={() => {
+                    if (isDisabled) return;
+                    setOrderMode(t.key);
+                    // Adjust payment method for new order type
+                    if (t.key === 'dine_in') {
+                      setPaymentMethod('cash');
+                    } else if (t.key === 'delivery') {
+                      if (paymentMethod === 'pay_at_store' || paymentMethod === 'cash') {
+                        setPaymentMethod('wallet');
+                      }
+                    } else if (t.key === 'pickup') {
+                      if (paymentMethod === 'cod' || paymentMethod === 'cash') {
+                        setPaymentMethod('wallet');
+                      }
+                    }
+                  }}
+                  disabled={isDisabled}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
-        ) : (
-          <div style={{ marginBottom: 16 }}>
-            <OrderTypeHeader
-              orderMode={orderMode}
-              storeName={effectiveStore.name}
-              storeAddress={'address' in effectiveStore ? effectiveStore.address : undefined}
-            />
+
+          {/* Dine-in info */}
+          {orderMode === 'dine_in' && dineInSession && (
+            <div className="co-dinein-info">
+              <UtensilsCrossed size={16} />
+              <span>Table {dineInSession.tableNumber} · {dineInSession.storeName}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Store selector (pickup / delivery) */}
+        {orderMode !== 'dine_in' && (
+          <div>
+            <div className="co-section-title">Select Store</div>
+            <select
+              className="co-select-box"
+              value={selectedStore?.id || ''}
+              onChange={(e) => {
+                const storeId = parseInt(e.target.value, 10);
+                const found = stores.find((s) => s.id === storeId);
+                if (found) setSelectedStore(found);
+              }}
+            >
+              <option value="" disabled>Choose a store…</option>
+              {stores.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
           </div>
         )}
 
-        {orderMode === 'pickup' && (
-          <div style={{ marginBottom: 20 }}>
-            <TimeSlotPicker
-              value={pickupTime}
-              onChange={setPickupTime}
-              leadMinutes={config.pickup_lead_minutes}
-            />
-          </div>
-        )}
-
+        {/* Delivery Address */}
         {orderMode === 'delivery' && (
-          <div style={{ marginBottom: 20 }}>
+          <div>
+            <div className="co-section-title">Delivery Address</div>
             <DeliveryAddressCard value={deliveryAddress} onChange={setDeliveryAddress} />
             {selectedStore && !selectedStore.delivery_integration_enabled && (
               <div style={{ marginTop: 10, padding: '10px 14px', background: '#FFFBEB', borderRadius: 12, border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <ShoppingBag size={18} color="#B45309" />
+                <Truck size={18} color="#B45309" />
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#92400E', margin: 0 }}>Manual Delivery</p>
                   <p style={{ fontSize: 12, color: '#B45309', margin: 0 }}>Our team will arrange delivery manually after preparing your order.</p>
@@ -251,7 +281,20 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        <div style={{ marginBottom: 20 }}>
+        {/* Scheduled Time */}
+        {orderMode !== 'dine_in' && (
+          <div>
+            <div className="co-section-title">Scheduled Time</div>
+            <TimeSlotPicker
+              value={pickupTime}
+              onChange={setPickupTime}
+              leadMinutes={config.pickup_lead_minutes}
+            />
+          </div>
+        )}
+
+        {/* Voucher / Reward */}
+        <div>
           <VoucherRewardSelector
             subtotal={subtotal}
             selectedType={discountType}
@@ -260,100 +303,116 @@ export default function CheckoutPage() {
           />
         </div>
 
-        <div style={{ marginBottom: 20 }}>
+        {/* Order Notes */}
+        <div>
           <OrderNotesField value={notes} onChange={setNotes} orderMode={orderMode} />
         </div>
 
-        {/* Payment Method Selection */}
-        {orderMode === 'dine_in' ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: LOKA.surface, borderRadius: 16, marginBottom: 16 }}>
-            <Receipt size={18} color={LOKA.copper} />
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary }}>Pay at counter</p>
-              <p style={{ fontSize: 12, color: LOKA.textMuted }}>Staff will take your payment</p>
-            </div>
-            <Banknote size={18} color={LOKA.textMuted} />
-          </div>
-        ) : (
-          <div style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary, marginBottom: 8 }}>Payment Method</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* Wallet Option */}
-              <button
-                onClick={() => setPaymentMethod('wallet')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
-                  borderRadius: 16, border: `2px solid ${paymentMethod === 'wallet' ? LOKA.primary : LOKA.border}`,
-                  background: paymentMethod === 'wallet' ? `${LOKA.primary}10` : LOKA.white,
-                  cursor: 'pointer', textAlign: 'left',
-                }}
-              >
-                <Wallet size={18} color={LOKA.primary} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary }}>E-Wallet</p>
-                  <p style={{ fontSize: 12, color: LOKA.textMuted }}>Balance: {formatPrice(balance)}</p>
-                </div>
-                {paymentMethod === 'wallet' && (
-                  walletSufficient ? (
-                    <div style={{ width: 20, height: 20, borderRadius: 999, background: LOKA.success, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <CheckCircle2 size={12} color={LOKA.white} />
-                    </div>
-                  ) : (
-                    <div style={{ width: 20, height: 20, borderRadius: 999, background: LOKA.danger, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ color: LOKA.white, fontSize: 12, fontWeight: 700 }}>!</span>
-                    </div>
-                  )
-                )}
-              </button>
+        {/* Payment Method */}
+        <div>
+          <div className="co-section-title">Payment Method</div>
 
-              {/* Pay at Store / COD Option */}
-              <button
-                onClick={() => setPaymentMethod(orderMode === 'delivery' ? 'cod' : 'pay_at_store')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
-                  borderRadius: 16, border: `2px solid ${paymentMethod !== 'wallet' ? LOKA.copper : LOKA.border}`,
-                  background: paymentMethod !== 'wallet' ? `${LOKA.copper}10` : LOKA.white,
-                  cursor: 'pointer', textAlign: 'left',
-                }}
-              >
-                <Banknote size={18} color={LOKA.copper} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary }}>
-                    {orderMode === 'delivery' ? 'Cash on Delivery' : 'Pay at Store'}
-                  </p>
-                  <p style={{ fontSize: 12, color: LOKA.textMuted }}>
-                    {orderMode === 'delivery' ? 'Pay the courier with cash' : 'Pay at the counter when you pick up'}
-                  </p>
-                </div>
-              </button>
+          {/* Wallet balance card */}
+          <div className="co-wallet-balance">
+            <div>
+              <div className="co-wallet-label">Loka Wallet</div>
+              <div className="co-wallet-amount">{formatPrice(balance)}</div>
             </div>
+            <Wallet size={24} style={{ opacity: 0.6 }} />
           </div>
-        )}
 
-        <div style={{ marginBottom: 20 }}>
-          <PaymentSummary subtotal={subtotal} deliveryFee={deliveryFee} discount={discount} total={total} />
+          <div className="co-payment-options">
+            {/* Wallet Option */}
+            <button
+              className={`co-payment-card ${paymentMethod === 'wallet' && orderMode !== 'dine_in' ? 'selected' : ''} ${orderMode === 'dine_in' ? 'disabled' : ''}`}
+              onClick={() => {
+                if (orderMode === 'dine_in') return;
+                setPaymentMethod('wallet');
+              }}
+            >
+              <div className="co-payment-radio" />
+              <div>
+                <div className="co-payment-label">E-Wallet</div>
+                <div className="co-payment-desc">Balance: {formatPrice(balance)}</div>
+              </div>
+            </button>
+
+            {/* Pay at Store / COD / Counter Option */}
+            <button
+              className={`co-payment-card ${(paymentMethod !== 'wallet' || orderMode === 'dine_in') ? 'selected' : ''}`}
+              onClick={() => {
+                if (orderMode === 'dine_in') {
+                  setPaymentMethod('cash');
+                } else if (orderMode === 'delivery') {
+                  setPaymentMethod('cod');
+                } else {
+                  setPaymentMethod('pay_at_store');
+                }
+              }}
+            >
+              <div className="co-payment-radio" />
+              <div>
+                <div className="co-payment-label">
+                  {orderMode === 'delivery' ? 'Cash on Delivery' : orderMode === 'dine_in' ? 'Pay at Counter' : 'Pay at Store'}
+                </div>
+                <div className="co-payment-desc">
+                  {orderMode === 'delivery' ? 'Pay the courier with cash' : orderMode === 'dine_in' ? 'Staff will take your payment' : 'Pay at the counter when you pick up'}
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div style={{ padding: '12px 18px 24px', background: LOKA.bg, borderTop: `1px solid ${LOKA.borderSubtle}` }}>
+        {/* Order Summary */}
+        <div className="co-summary-card">
+          <div className="co-section-title">Order Summary</div>
+          <div style={{ fontSize: 14, color: '#3A4A5A', marginBottom: 12 }}>
+            {items.map((item, i) => (
+              <div key={i} style={{ marginBottom: 4 }}>
+                • {item.quantity}x {item.name}
+              </div>
+            ))}
+          </div>
+          <div className="co-summary-row">
+            <span>Subtotal</span>
+            <span>{formatPrice(subtotal)}</span>
+          </div>
+          {deliveryFee > 0 && (
+            <div className="co-summary-row">
+              <span>Delivery fee</span>
+              <span>{formatPrice(deliveryFee)}</span>
+            </div>
+          )}
+          {discount > 0 && (
+            <div className="co-summary-row">
+              <span>Discount</span>
+              <span>-{formatPrice(discount)}</span>
+            </div>
+          )}
+          <div className="co-summary-row total">
+            <span>Total</span>
+            <span>{formatPrice(total)}</span>
+          </div>
+        </div>
+
+        {/* Place Order */}
         {requiresWallet && !walletSufficient ? (
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setPage('wallet')}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 24px', borderRadius: 999, background: LOKA.copper, color: LOKA.white, fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer', boxShadow: '0 8px 16px rgba(209,142,56,0.3)' }}
-          >
+          <button className="co-topup-btn" onClick={() => setPage('wallet')}>
             <Wallet size={18} />
             Top up {formatPrice(total - balance)} to continue
-          </motion.button>
+          </button>
         ) : (
-          <motion.button
-            whileTap={{ scale: 0.98 }}
+          <button
+            className="co-place-order-btn"
             onClick={handlePlaceOrder}
             disabled={placing || belowDeliveryMinimum}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 24px', borderRadius: 999, background: LOKA.primary, color: LOKA.white, fontWeight: 700, fontSize: 15, border: 'none', cursor: placing ? 'not-allowed' : 'pointer', boxShadow: '0 8px 16px rgba(56,75,22,0.25)', opacity: placing ? 0.7 : 1 }}
           >
-            {placing ? <><Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} /> Placing...</> : <><ShoppingBag size={18} />{orderMode === 'dine_in' ? 'Send to kitchen →' : `Place Order · ${formatPrice(total)}`}</>}
-          </motion.button>
+            {placing ? (
+              <><Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} /> Placing…</>
+            ) : (
+              <><Receipt size={18} />{orderMode === 'dine_in' ? 'Send to kitchen' : `Place Order · ${formatPrice(total)}`}</>
+            )}
+          </button>
         )}
       </div>
     </div>

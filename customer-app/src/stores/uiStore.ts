@@ -4,6 +4,10 @@ import type { PageId, Store, Category, MenuItem, OrderMode } from '@/lib/api';
 export interface PageParams {
   initialTab?: string;
   selectedInfoId?: number;
+  selectedInfoSlug?: string;
+  selectedPromoId?: number;
+  legalKey?: 'terms' | 'privacy';
+  orderId?: number;
   [key: string]: unknown;
 }
 
@@ -51,7 +55,7 @@ function getHashPage(): PageId {
   const validPages: PageId[] = [
     'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
     'wallet', 'history', 'promotions', 'information', 'my-rewards',
-    'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support',
+    'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card',
   ];
   return validPages.includes(hash as PageId) ? (hash as PageId) : 'home';
 }

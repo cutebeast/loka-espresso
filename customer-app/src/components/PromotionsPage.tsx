@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Gift, ArrowLeft, Calendar, Clock, Star } from 'lucide-react';
+import { Gift, ArrowLeft, ArrowRight, Calendar, Clock, Star, Tag, PenLine, HelpCircle, CheckCircle, Flame, List, Circle } from 'lucide-react';
 import { TypePill, RedemptionCodeModal } from '@/components/shared';
 import { useUIStore } from '@/stores/uiStore';
 import api, { cacheBust } from '@/lib/api';
@@ -203,204 +203,190 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
     const surveyAlreadyDone = status?.survey_completed || surveyCompleted;
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: LOKA.white }}>
-        <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', overflow: 'hidden', flexShrink: 0 }}>
-          <div style={{ position: 'absolute', inset: 0, background: img ? `url(${img}) center/cover` : `linear-gradient(135deg, ${LOKA.cream}, rgba(209,142,56,0.3))` }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(0deg, rgba(0,0,0,0.25) 0%, transparent 50%)' }} />
-          <motion.button
-            whileTap={{ scale: 0.9 }}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'white' }}>
+        <div className="rd-hero">
+          <div className="rd-hero-img" style={img ? { backgroundImage: `url(${img})` } : { background: 'linear-gradient(135deg, #F3EEE5, rgba(209,142,56,0.3))' }} />
+          <div className="rd-hero-overlay" />
+          <button
+            className="rd-back-btn"
             onClick={() => { setSelectedPromo(null); setSurveyQuestions([]); setSurveyAnswers({}); setSurveyCompleted(false); }}
-            style={{ position: 'absolute', top: 16, left: 16, width: 40, height: 40, borderRadius: 999, background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(4px)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 6px 12px rgba(0,0,0,0.06)', zIndex: 5 }}
+            aria-label="Back"
           >
-            <ArrowLeft size={20} color={LOKA.primary} />
-          </motion.button>
-          <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 2 }}>
-            <TypePill variant={getTagVariant(selectedPromo.action_type)}>{tagText}</TypePill>
-          </div>
+            <ArrowLeft size={20} />
+          </button>
+          <span className={`rd-hero-tag ${isSurvey ? 'rd-tag-teal' : 'rd-tag-primary'}`}>
+            {isSurvey ? <PenLine size={14} /> : <Tag size={14} />}
+            {tagText}
+          </span>
         </div>
 
-        <div className="scroll-container" style={{ flex: 1, overflowY: 'auto' }}>
-          <div style={{ padding: '20px 18px 32px' }}>
-            <h1 style={{ fontSize: 26, fontWeight: 800, color: LOKA.textPrimary, marginBottom: 10, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-              {selectedPromo.title}
-            </h1>
+        <div className="rd-content">
+          <h1 className="rd-title">{selectedPromo.title}</h1>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: LOKA.textMuted }}>
-                <Calendar size={14} style={{ color: LOKA.copper }} /> {formatDate(selectedPromo.start_date)} – {formatDate(selectedPromo.end_date)}
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 12px', borderRadius: 30, background: LOKA.cream, fontSize: 12, fontWeight: 600, color: LOKA.copper }}>
-                <Clock size={12} style={{ marginRight: 4 }} /> {getDaysLeft(selectedPromo.end_date)}
-              </span>
-            </div>
+          <div className="rd-meta">
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              {isSurvey ? <Clock size={16} /> : <Calendar size={16} />}
+              {isSurvey ? '2 min survey' : `${formatDate(selectedPromo.start_date)} – ${formatDate(selectedPromo.end_date)}`}
+            </span>
+            <span className={`rd-meta-pill ${isSurvey ? 'rd-pill-green' : 'rd-pill-brown'}`}>
+              {isSurvey ? 'RM5 voucher' : 'Limited vouchers'}
+            </span>
+          </div>
 
-            <div style={{ width: 40, height: 3, borderRadius: 2, background: LOKA.borderSubtle, marginBottom: 20 }} />
+          <p className="rd-desc">
+            {selectedPromo.long_description || selectedPromo.short_description || 'No description available.'}
+          </p>
 
-            {(selectedPromo.long_description || selectedPromo.short_description) && (
-              <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 700, color: LOKA.textPrimary, marginBottom: 8 }}>About this promotion</h4>
-                <p style={{ fontSize: 15, color: LOKA.textSecondary, lineHeight: 1.7 }}>
-                  {selectedPromo.long_description || selectedPromo.short_description || 'No description available.'}
-                </p>
-              </div>
-            )}
+          {/* ── Survey Flow ── */}
+          {isSurvey && surveyQuestions.length > 0 && !surveyAlreadyDone && (
+            <div className="survey-block">
+              {surveyQuestions.map((q, qi) => (
+                <div key={q.id} style={{ marginBottom: qi < surveyQuestions.length - 1 ? 20 : 0 }}>
+                  <div className="survey-question">
+                    <HelpCircle size={16} />
+                    {q.question_text}
+                    {q.is_required && <span style={{ color: '#C75050' }}>*</span>}
+                  </div>
 
-            {isSurvey && surveyQuestions.length > 0 && !surveyAlreadyDone && (
-              <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 700, color: LOKA.textPrimary, marginBottom: 14 }}>
-                  <span style={{ marginRight: 6 }}>📝</span> Quick Survey
-                </h4>
-                <div style={{ background: LOKA.cream, borderRadius: 20, padding: 18 }}>
-                  {surveyQuestions.map((q, qi) => (
-                    <div key={q.id} style={{ marginBottom: qi < surveyQuestions.length - 1 ? 20 : 0 }}>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: LOKA.textPrimary, marginBottom: 10 }}>
-                        {qi + 1}. {q.question_text}
-                        {q.is_required && <span style={{ color: '#C75050', marginLeft: 4 }}>*</span>}
-                      </p>
-                      {q.question_type === 'rating' && (
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          {[1, 2, 3, 4, 5].map((r) => (
-                            <motion.button
-                              key={r}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => setSurveyAnswers((prev) => ({ ...prev, [q.id]: r }))}
-                              style={{
-                                width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer',
-                                background: surveyAnswers[q.id] === r ? LOKA.primary : LOKA.white,
-                                color: surveyAnswers[q.id] === r ? LOKA.white : LOKA.copper,
-                                fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                              }}
-                            >
-                              {r}
-                            </motion.button>
-                          ))}
-                        </div>
-                      )}
-                      {q.question_type === 'single_choice' && q.options && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          {q.options.map((opt) => (
-                            <motion.button
-                              key={opt}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => setSurveyAnswers((prev) => ({ ...prev, [q.id]: opt }))}
-                              style={{
-                                padding: '12px 16px', borderRadius: 14, border: `1.5px solid ${surveyAnswers[q.id] === opt ? LOKA.primary : LOKA.borderSubtle}`,
-                                background: surveyAnswers[q.id] === opt ? 'rgba(56,75,22,0.06)' : LOKA.white,
-                                color: surveyAnswers[q.id] === opt ? LOKA.primary : LOKA.textSecondary,
-                                fontSize: 14, fontWeight: surveyAnswers[q.id] === opt ? 600 : 400,
-                                cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
-                              }}
-                            >
-                              <div style={{
-                                width: 18, height: 18, borderRadius: 999, flexShrink: 0,
-                                border: `2px solid ${surveyAnswers[q.id] === opt ? LOKA.primary : LOKA.border}`,
-                                background: surveyAnswers[q.id] === opt ? LOKA.primary : 'transparent',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              }}>
-                                {surveyAnswers[q.id] === opt && <div style={{ width: 6, height: 6, borderRadius: 999, background: LOKA.white }} />}
-                              </div>
-                              {opt}
-                            </motion.button>
-                          ))}
-                        </div>
-                      )}
-                      {(q.question_type === 'text') && (
-                        <textarea
-                          placeholder="Type your answer..."
-                          onChange={(e) => setSurveyAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                  {q.question_type === 'rating' && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {[1, 2, 3, 4, 5].map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => setSurveyAnswers((prev) => ({ ...prev, [q.id]: r }))}
+                          className="survey-option"
                           style={{
-                            width: '100%', minHeight: 80, padding: '12px 14px', borderRadius: 14,
-                            border: `1px solid ${LOKA.borderSubtle}`, fontSize: 14, color: LOKA.textPrimary,
-                            background: LOKA.white, resize: 'vertical', fontFamily: 'inherit',
-                          }}
-                        />
-                      )}
-                      {q.question_type === 'dropdown' && q.options && (
-                        <select
-                          onChange={(e) => setSurveyAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                          style={{
-                            width: '100%', padding: '12px 14px', borderRadius: 14,
-                            border: `1px solid ${LOKA.borderSubtle}`, fontSize: 14, color: LOKA.textPrimary,
-                            background: LOKA.white,
+                            width: 44, height: 44, borderRadius: 12, justifyContent: 'center',
+                            border: surveyAnswers[q.id] === r ? '2px solid var(--loka-primary)' : '1.5px solid #e3d8cf',
+                            background: surveyAnswers[q.id] === r ? '#f2f6f4' : 'white',
+                            color: surveyAnswers[q.id] === r ? 'var(--loka-primary)' : 'var(--loka-copper)',
+                            fontWeight: 700,
                           }}
                         >
-                          <option value="">Select an option</option>
-                          {q.options.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
-                        </select>
-                      )}
+                          {r}
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleSubmitSurvey}
-                    disabled={submittingSurvey}
-                    style={{
-                      width: '100%', marginTop: 18, padding: '14px 20px', borderRadius: 60, border: 'none',
-                      background: LOKA.primary, color: LOKA.white, fontSize: 15, fontWeight: 700,
-                      cursor: submittingSurvey ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 8px 16px rgba(56,75,22,0.15)',
-                      opacity: submittingSurvey ? 0.7 : 1,
-                    }}
-                  >
-                    {submittingSurvey ? 'Submitting...' : 'Submit & get reward 🎁'}
-                  </motion.button>
+                  )}
+
+                  {q.question_type === 'single_choice' && q.options && (
+                    <div>
+                      {q.options.map((opt) => (
+                        <div
+                          key={opt}
+                          className={`survey-option ${surveyAnswers[q.id] === opt ? 'selected' : ''}`}
+                          onClick={() => setSurveyAnswers((prev) => ({ ...prev, [q.id]: opt }))}
+                        >
+                          <div style={{
+                            width: 18, height: 18, borderRadius: 999, flexShrink: 0,
+                            border: `2px solid ${surveyAnswers[q.id] === opt ? 'var(--loka-primary)' : 'var(--loka-border-light)'}`,
+                            background: surveyAnswers[q.id] === opt ? 'var(--loka-primary)' : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {surveyAnswers[q.id] === opt && <div style={{ width: 6, height: 6, borderRadius: 999, background: 'white' }} />}
+                          </div>
+                          {opt}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {q.question_type === 'text' && (
+                    <textarea
+                      placeholder="Type your answer..."
+                      onChange={(e) => setSurveyAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                      style={{
+                        width: '100%', minHeight: 80, padding: '12px 14px', borderRadius: 14,
+                        border: '1px solid var(--loka-border-light)', fontSize: 14,
+                        color: 'var(--loka-text-primary)', background: 'white',
+                        resize: 'vertical', fontFamily: 'inherit',
+                      }}
+                    />
+                  )}
+
+                  {q.question_type === 'dropdown' && q.options && (
+                    <select
+                      onChange={(e) => setSurveyAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 14,
+                        border: '1px solid var(--loka-border-light)', fontSize: 14,
+                        color: 'var(--loka-text-primary)', background: 'white',
+                      }}
+                    >
+                      <option value="">Select an option</option>
+                      {q.options.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
+                    </select>
+                  )}
                 </div>
-              </div>
-            )}
+              ))}
+              <button
+                className="survey-submit-btn"
+                onClick={handleSubmitSurvey}
+                disabled={submittingSurvey}
+              >
+                {submittingSurvey ? 'Submitting...' : 'Submit & get voucher'}
+                <Gift size={16} />
+              </button>
+            </div>
+          )}
 
-            {isSurvey && surveyAlreadyDone && (
-              <div style={{ marginBottom: 24, background: '#E6F2E8', borderRadius: 20, padding: 18, textAlign: 'center' }}>
-                <span style={{ fontSize: 28, display: 'block', marginBottom: 8 }}>✓</span>
-                <p style={{ fontSize: 15, fontWeight: 700, color: '#1A6E4B', marginBottom: 4 }}>Survey completed!</p>
-                <p style={{ fontSize: 13, color: LOKA.textSecondary }}>Thank you for your feedback. Your reward has been added to your wallet.</p>
-              </div>
-            )}
+          {isSurvey && surveyAlreadyDone && (
+            <div className="rd-success-state">
+              <CheckCircle size={48} color="#1A6E4B" />
+              <p>Survey completed!</p>
+              <p className="rd-success-sub">Thank you for your feedback. Your reward has been added to your wallet.</p>
+            </div>
+          )}
 
-            {!isSurvey && selectedPromo.how_to_redeem && (
-              <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 700, color: LOKA.textPrimary, marginBottom: 10 }}>
-                  <Star size={14} style={{ color: LOKA.copper, marginRight: 4 }} /> How to redeem
-                </h4>
-                <div style={{ background: LOKA.cream, borderRadius: 18, padding: 16 }}>
-                  <p style={{ fontSize: 14, color: LOKA.textSecondary, lineHeight: 1.6 }}>{selectedPromo.how_to_redeem}</p>
-                </div>
+          {/* ── Promo Claim Flow ── */}
+          {!isSurvey && selectedPromo.how_to_redeem && (
+            <>
+              <div className="rd-section-title">
+                <Star size={16} /> How to redeem
               </div>
-            )}
+              <p className="rd-desc" style={{ background: '#faf7f4', borderRadius: 18, padding: 16, marginBottom: 20 }}>
+                {selectedPromo.how_to_redeem}
+              </p>
+            </>
+          )}
 
-            {!isSurvey && selectedPromo.terms && selectedPromo.terms.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 700, color: LOKA.textPrimary, marginBottom: 10 }}>Terms & Conditions</h4>
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                  {selectedPromo.terms.map((t, i) => (
-                    <li key={i} style={{ padding: '10px 0', borderBottom: `1px solid ${LOKA.borderSubtle}`, fontSize: 14, color: LOKA.textSecondary, display: 'flex', gap: 10 }}>
-                      <span style={{ color: LOKA.copper, flexShrink: 0, fontWeight: 700 }}>•</span> {t}
-                    </li>
-                  ))}
-                </ul>
+          {!isSurvey && selectedPromo.terms && selectedPromo.terms.length > 0 && (
+            <>
+              <div className="rd-section-title">
+                <List size={16} /> Terms
               </div>
-            )}
+              <ul className="rd-terms-list">
+                {selectedPromo.terms.map((t, i) => (
+                  <li key={i}>
+                    <Circle size={10} fill="#D18E38" color="#D18E38" /> {t}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
-            {!isSurvey && (
-              <motion.button
-                whileTap={{ scale: 0.97 }}
+          {!isSurvey && !cta.disabled && (
+            <>
+              <button
+                className="rd-action-btn"
                 onClick={cta.action}
-                disabled={cta.disabled || claiming === selectedPromo.id}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '16px 20px', borderRadius: 60, border: 'none',
-                  cursor: cta.disabled ? 'not-allowed' : 'pointer',
-                  background: cta.disabled ? LOKA.surface : LOKA.primary,
-                  color: cta.disabled ? LOKA.textMuted : LOKA.white,
-                  fontSize: 16, fontWeight: 700, opacity: cta.disabled ? 0.7 : 1,
-                  boxShadow: cta.disabled ? 'none' : '0 8px 16px rgba(56,75,22,0.15)',
-                }}
+                disabled={claiming === selectedPromo.id}
               >
                 <span>{claiming === selectedPromo.id ? 'Processing...' : cta.text}</span>
-                <span>→</span>
-              </motion.button>
-            )}
-          </div>
+                <ArrowRight size={20} />
+              </button>
+              <p className="rd-remaining-badge">
+                <Flame size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                Only 47 vouchers left
+              </p>
+            </>
+          )}
+
+          {!isSurvey && cta.disabled && (
+            <button className="rd-action-btn" disabled>
+              <span>{cta.text}</span>
+            </button>
+          )}
         </div>
 
         <RedemptionCodeModal

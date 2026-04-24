@@ -1,41 +1,32 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   Wallet,
-  Star,
-  Plus,
   ArrowDownLeft,
   ArrowUpRight,
+  Plus,
+  Store,
+  MapPin,
 } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
-import { Button, Skeleton } from '@/components/ui';
+import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
-
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-};
-
-const staggerItem = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-};
 
 function formatPrice(val: number | string): string {
   return `RM ${Number(val).toFixed(2)}`;
 }
 
-const TOPUP_AMOUNTS = [50, 100, 200, 300, 500];
+const TOPUP_AMOUNTS = [20, 50, 100, 200];
 
 export default function WalletPage() {
   const { balance, points, setBalance, transactions, setTransactions } = useWalletStore();
   const { setPage, showToast } = useUIStore();
 
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState('');
   const [toppingUp, setToppingUp] = useState(false);
   const [loadingTx, setLoadingTx] = useState(false);
 
@@ -65,18 +56,37 @@ export default function WalletPage() {
     fetchTransactions();
   }, [fetchBalance, fetchTransactions]);
 
+  const handleSelectAmount = (amount: number) => {
+    setSelectedAmount(amount);
+    setCustomAmount('');
+  };
+
+  const handleCustomChange = (value: string) => {
+    setCustomAmount(value);
+    if (value) setSelectedAmount(null);
+  };
+
+  const getTopUpAmount = (): number | null => {
+    if (selectedAmount) return selectedAmount;
+    const custom = parseInt(customAmount, 10);
+    if (!isNaN(custom) && custom >= 5) return custom;
+    return null;
+  };
+
   const handleTopUp = async () => {
-    if (!selectedAmount) {
-      showToast('Select a top-up amount', 'error');
+    const amount = getTopUpAmount();
+    if (!amount) {
+      showToast('Select or enter a valid amount (min RM 5)', 'error');
       return;
     }
     setToppingUp(true);
     try {
-      await api.post('/wallet/topup', { amount: selectedAmount });
-      showToast(`Successfully topped up ${formatPrice(selectedAmount)}`, 'success');
+      await api.post('/wallet/topup', { amount });
+      showToast(`Successfully topped up ${formatPrice(amount)}`, 'success');
       await fetchBalance();
       await fetchTransactions();
       setSelectedAmount(null);
+      setCustomAmount('');
     } catch {
       showToast('Top-up failed. Please try again.', 'error');
     } finally {
@@ -85,128 +95,136 @@ export default function WalletPage() {
   };
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="px-4 pt-4 pb-6">
-      <motion.div variants={staggerItem} className="flex items-center gap-3 mb-5">
-        <button
-          onClick={() => setPage('profile')}
-          className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center"
-        >
-          <ArrowLeft size={18} className="text-gray-600" />
+    <div className="topup-screen">
+      {/* Header */}
+      <div className="topup-header">
+        <button className="topup-back-btn" onClick={() => setPage('profile')} aria-label="Back">
+          <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-bold text-gray-900">Wallet</h1>
-      </motion.div>
+        <h1 className="topup-title">Top Up</h1>
+      </div>
 
-      <motion.div variants={staggerItem} className="mb-6">
-        <div className="bg-gradient-to-br from-[#384B16] to-[#6b8f3a] rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center gap-2 mb-1">
-            <Wallet size={18} className="opacity-80" />
-            <span className="text-sm opacity-80">Balance</span>
+      {/* Scrollable Content */}
+      <div className="topup-scroll">
+        {/* Balance Card */}
+        <div className="topup-balance-card">
+          <div>
+            <div className="topup-balance-label">Loka Balance</div>
+            <div className="topup-balance-amount">{formatPrice(balance)}</div>
           </div>
-          <p className="text-3xl font-bold mb-3">{formatPrice(balance)}</p>
-          <div className="flex items-center gap-1.5">
-            <Star size={14} className="text-yellow-300" />
-            <span className="text-sm font-medium">{points} points</span>
-          </div>
+          <Wallet size={28} style={{ opacity: 0.6 }} />
         </div>
-      </motion.div>
 
-      <motion.div variants={staggerItem} className="mb-6">
-        <h2 className="text-sm font-bold text-gray-900 mb-3">Top Up</h2>
-        <p className="text-xs text-gray-500 mb-3">
-          Online top-up will be available after payment gateway integration. You can also top up at any store counter — just tell the staff your phone number.
-        </p>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {TOPUP_AMOUNTS.map((amount) => (
-            <motion.button
-              key={amount}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setSelectedAmount(amount)}
-              className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-colors ${
-                selectedAmount === amount
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              RM {amount}
-            </motion.button>
-          ))}
-        </div>
-        <Button
-          variant="primary"
-          size="lg"
-          className="w-full"
-          onClick={handleTopUp}
-          isLoading={toppingUp}
-          disabled={!selectedAmount}
-          leftIcon={<Plus size={18} />}
-        >
-          {selectedAmount ? `Top Up ${formatPrice(selectedAmount)}` : 'Select Amount'}
-        </Button>
-      </motion.div>
-
-      <motion.div variants={staggerItem}>
-        <h2 className="text-sm font-bold text-gray-900 mb-3">Recent Transactions</h2>
-        {loadingTx ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                <Skeleton className="h-4 w-2/3 mb-2" />
-                <Skeleton className="h-3 w-1/3" />
-              </div>
+        {/* Online Top Up */}
+        <div>
+          <div className="topup-section-title">Online Top Up</div>
+          <div className="topup-amount-grid">
+            {TOPUP_AMOUNTS.map((amount) => (
+              <button
+                key={amount}
+                className={`topup-amount-btn ${selectedAmount === amount ? 'selected' : ''}`}
+                onClick={() => handleSelectAmount(amount)}
+              >
+                RM {amount}
+              </button>
             ))}
           </div>
-        ) : transactions.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
-            <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Wallet size={24} className="text-gray-300" />
+          <div className="topup-custom-amount">
+            <span>RM</span>
+            <input
+              type="number"
+              className="topup-custom-input"
+              placeholder="Other amount"
+              min={5}
+              value={customAmount}
+              onChange={(e) => handleCustomChange(e.target.value)}
+            />
+          </div>
+          <button
+            className="topup-btn"
+            onClick={handleTopUp}
+            disabled={toppingUp || !getTopUpAmount()}
+          >
+            {toppingUp ? 'Processing…' : <><Plus size={18} /> Continue to Pay</>}
+          </button>
+        </div>
+
+        {/* Offline Top Up */}
+        <div>
+          <div className="topup-section-title">Offline Top Up</div>
+          <div className="topup-offline-card">
+            <div className="topup-offline-icon">
+              <Store size={32} />
             </div>
-            <p className="text-sm text-gray-500">No transactions yet</p>
+            <p className="topup-offline-text">
+              You can also top up with cash at any Loka Espresso outlet.
+              <br />
+              Just scan your loyalty QR at the counter.
+            </p>
+            <button className="topup-store-btn" onClick={() => setPage('menu')}>
+              <MapPin size={16} /> Find Nearest Store
+            </button>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {transactions.map((tx) => {
-              const isPositive = tx.amount > 0;
-              return (
-                <div
-                  key={tx.id}
-                  className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3"
-                >
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      isPositive ? 'bg-green-50' : 'bg-red-50'
-                    }`}
-                  >
-                    {isPositive ? (
-                      <ArrowDownLeft size={18} className="text-green-600" />
-                    ) : (
-                      <ArrowUpRight size={18} className="text-red-500" />
-                    )}
+        </div>
+
+        {/* Recent Transactions */}
+        <div>
+          <div className="topup-section-title">Recent Transactions</div>
+          {loadingTx ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="topup-tx-item">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-2/3 mb-1" />
+                    <Skeleton className="h-3 w-1/3" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{tx.description}</p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(tx.created_at).toLocaleDateString('en-MY', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-sm font-bold ${
-                      isPositive ? 'text-green-600' : 'text-red-500'
-                    }`}
-                  >
-                    {isPositive ? '+' : '-'}
-                    {formatPrice(Math.abs(tx.amount))}
-                  </span>
+                  <Skeleton className="h-4 w-16" />
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </motion.div>
-    </motion.div>
+              ))}
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="topup-empty">
+              <div className="topup-empty-icon">
+                <Wallet size={24} style={{ color: '#C4CED8' }} />
+              </div>
+              <p style={{ fontSize: 14, color: '#6A7A8A' }}>No transactions yet</p>
+            </div>
+          ) : (
+            <div className="topup-tx-list">
+              {transactions.map((tx) => {
+                const isPositive = tx.amount > 0;
+                return (
+                  <div key={tx.id} className="topup-tx-item">
+                    <div className={`topup-tx-icon ${isPositive ? 'in' : 'out'}`}>
+                      {isPositive ? (
+                        <ArrowDownLeft size={18} />
+                      ) : (
+                        <ArrowUpRight size={18} />
+                      )}
+                    </div>
+                    <div className="topup-tx-info">
+                      <p className="topup-tx-desc">{tx.description}</p>
+                      <p className="topup-tx-date">
+                        {new Date(tx.created_at).toLocaleDateString('en-MY', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                    <span className={`topup-tx-amount ${isPositive ? 'in' : 'out'}`}>
+                      {isPositive ? '+' : '-'}
+                      {formatPrice(Math.abs(tx.amount))}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
