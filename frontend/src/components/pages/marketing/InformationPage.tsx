@@ -35,6 +35,9 @@ interface InfoCardForm {
   image_url: string;
   gallery_urls: string[];
   content_type: string;
+  action_url: string;
+  action_type: string;
+  action_label: string;
   start_date: string;
   end_date: string;
   is_active: boolean;
@@ -49,7 +52,10 @@ const emptyForm: InfoCardForm = {
   icon: 'info',
   image_url: '',
   gallery_urls: [],
-  content_type: 'promotion',
+  content_type: 'information',
+  action_url: '',
+  action_type: '',
+  action_label: '',
   start_date: '',
   end_date: '',
   is_active: true,
@@ -77,10 +83,10 @@ const iconOptions = [
 ];
 
 const contentTypeOptions = [
-  { value: 'promotion', label: 'Promotion' },
   { value: 'information', label: 'Information' },
-  { value: 'pop_up', label: 'Pop-Up Banner' },
-  { value: 'system', label: 'System' },
+  { value: 'product',     label: 'Product' },
+  { value: 'promotion',   label: 'Promotion' },
+  { value: 'system',      label: 'System' },
 ];
 
 export default function InformationPage({ token }: InformationPageProps) {
@@ -132,7 +138,10 @@ export default function InformationPage({ token }: InformationPageProps) {
       icon: card.icon || 'info',
       image_url: card.image_url || '',
       gallery_urls: card.gallery_urls || [],
-      content_type: card.content_type || 'promotion',
+      content_type: card.content_type || 'information',
+      action_url: (card as any).action_url || '',
+      action_type: (card as any).action_type || '',
+      action_label: (card as any).action_label || '',
       start_date: card.start_date ? card.start_date.slice(0, 16) : '',
       end_date: card.end_date ? card.end_date.slice(0, 16) : '',
       is_active: card.is_active ?? true,
@@ -161,7 +170,10 @@ export default function InformationPage({ token }: InformationPageProps) {
       icon: form.icon || null,
       image_url: form.image_url || null,
       gallery_urls: form.gallery_urls.length > 0 ? form.gallery_urls : null,
-      content_type: form.content_type || 'promotion',
+      content_type: form.content_type || 'information',
+      action_url: form.action_url || null,
+      action_type: form.action_type || null,
+      action_label: form.action_label || null,
       start_date: form.start_date || null,
       end_date: form.end_date || null,
       is_active: form.is_active,
@@ -320,6 +332,22 @@ export default function InformationPage({ token }: InformationPageProps) {
               </select>
             </div>
 
+            {form.content_type === 'promotion' && (
+              <div style={{ marginTop: 12, padding: 12, background: '#F5F7FA', borderRadius: 12 }}>
+                <label style={{ ...labelStyle, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Promotion CTA (optional)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
+                  <div>
+                    <label style={{ ...labelStyle, fontSize: 12 }}>Action URL</label>
+                    <input type="text" value={form.action_url} onChange={(e) => setField('action_url', e.target.value)} placeholder="https://..." />
+                  </div>
+                  <div>
+                    <label style={{ ...labelStyle, fontSize: 12 }}>Button Label</label>
+                    <input type="text" value={form.action_label} onChange={(e) => setField('action_label', e.target.value)} placeholder="Learn More" />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
               <div>
                 <label style={labelStyle}>Start Date <span style={{ color: THEME.success, fontWeight: 400 }}>(blank = always)</span></label>
@@ -382,11 +410,11 @@ export default function InformationPage({ token }: InformationPageProps) {
       <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: `1px solid ${THEME.border}`, borderTop: 'none' }}>
         <table>
           <thead>
-            <tr><th>Image</th><th>Title</th><th>Slug / QR</th><th>Short Desc</th><th>Status</th><th>Period</th><th>Actions</th></tr>
+            <tr><th>Image</th><th>Title</th><th>Type</th><th>Slug / QR</th><th>Short Desc</th><th>Status</th><th>Period</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {cards.length === 0 ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', color: THEME.primaryLight, padding: 40 }}>
+              <tr><td colSpan={8} style={{ textAlign: 'center', color: THEME.primaryLight, padding: 40 }}>
                 <i className="fas fa-info-circle" style={{ fontSize: 40, display: 'block', marginBottom: 12 }}></i>
                 No information cards yet
               </td></tr>
@@ -402,6 +430,16 @@ export default function InformationPage({ token }: InformationPageProps) {
                   )}
                 </td>
                 <td style={{ fontWeight: 600 }}>{card.title}</td>
+                <td>
+                  <span className={`badge ${
+                    card.content_type === 'promotion' ? 'badge-copper' :
+                    card.content_type === 'system' ? 'badge-gray' :
+                    card.content_type === 'product' ? 'badge-green' :
+                    'badge-blue'
+                  }`} style={{ fontSize: 11, textTransform: 'capitalize' }}>
+                    {card.content_type || 'information'}
+                  </span>
+                </td>
                 <td style={{ fontSize: 12, fontFamily: 'monospace', color: THEME.success }}>
                   {card.slug ? (
                     <span title={`QR: https://app.loyaltysystem.uk/?slug=${card.slug}#information`}>{card.slug}</span>

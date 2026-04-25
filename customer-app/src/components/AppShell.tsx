@@ -374,7 +374,7 @@ export default function AppShell() {
   return (
     <div className="app-container">
       <OfflineBanner />
-      <PromotionPopup />
+      {page === 'home' && <PromotionPopup />}
 
       {/* Guest banner — prompts sign-in for full access */}
       {isGuest && authDone && (

@@ -2,14 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles } from 'lucide-react';
+import { X } from 'lucide-react';
 import api from '@/lib/api';
 import type { InformationCard } from '@/lib/api';
 import { idbStorage } from '@/lib/idbStorage';
+import { resolveAssetUrl } from '@/lib/tokens';
 
 const DISMISSED_KEY = 'loka-dismissed-popups';
-
-import { resolveAssetUrl } from '@/lib/tokens';
 
 async function getDismissedIds(): Promise<number[]> {
   try {
@@ -28,7 +27,12 @@ async function dismissPopup(id: number) {
   } catch { /* ignore */ }
 }
 
-export default function PromotionPopup() {
+interface PromotionPopupProps {
+  /** If true, renders as a splash-screen overlay (full-screen image, no animation delay) */
+  splashMode?: boolean;
+}
+
+export default function PromotionPopup({ splashMode = false }: PromotionPopupProps) {
   const [popup, setPopup] = useState<InformationCard | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -49,12 +53,13 @@ export default function PromotionPopup() {
   }, []);
 
   useEffect(() => {
-    // Delay slightly so it doesn't clash with splash/auth screens
-    const timer = setTimeout(() => {
+    if (splashMode) {
       checkPopup();
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [checkPopup]);
+      return;
+    }
+    // On homepage, show immediately (no delay)
+    checkPopup();
+  }, [checkPopup, splashMode]);
 
   const handleClose = async () => {
     setIsOpen(false);
@@ -67,104 +72,68 @@ export default function PromotionPopup() {
 
   const imageUrl = resolveAssetUrl(popup.image_url);
 
+  // If no image, don't show anything — promotion popups are image-only
+  if (!imageUrl) return null;
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/60 z-[60]"
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 bg-black/70 z-[60]"
             onClick={handleClose}
             aria-hidden="true"
           />
+
+          {/* Image popup */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 20 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed inset-0 z-[61] flex items-center justify-center p-6 pointer-events-none"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="fixed inset-0 z-[61] flex items-center justify-center p-5 pointer-events-none"
           >
             <div
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden pointer-events-auto"
+              className="relative w-full max-w-xs pointer-events-auto overflow-hidden rounded-2xl shadow-2xl"
               role="dialog"
               aria-modal="true"
-              aria-labelledby="popup-title"
             >
-              {/* Header image */}
-              {imageUrl && (
-                <div className="relative w-full h-40 bg-gray-100">
-                  <img
-                    src={imageUrl}
-                    alt={popup.title}
-                    className="w-full h-full object-cover"
-                    loading="eager"
-                  />
-                  <div className="absolute top-3 left-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#384B16] text-white">
-                      <Sparkles size={12} />
-                      Promotion
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleClose}
-                    className="absolute top-3 right-3 w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
-                    aria-label="Close"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
+              {/* Full-bleed promotion image */}
+              <div className="relative w-full aspect-[3/4] bg-gray-100">
+                <img
+                  src={imageUrl}
+                  alt={popup.title || 'Promotion'}
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                />
 
-              {/* No image header */}
-              {!imageUrl && (
-                <div className="relative px-5 pt-5 pb-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles size={18} className="text-[#384B16]" />
-                    <span className="text-xs font-bold text-[#384B16] uppercase tracking-wider">Promotion</span>
-                  </div>
-                  <button
-                    onClick={handleClose}
-                    className="absolute top-4 right-4 w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-                    aria-label="Close"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
+                {/* Close button — top right */}
+                <button
+                  onClick={handleClose}
+                  className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
 
-              {/* Content */}
-              <div className="px-5 pb-5 pt-3">
-                <h2 id="popup-title" className="text-lg font-bold text-[#1B2023] mb-2">
-                  {popup.title}
-                </h2>
-                <p className="text-sm text-[#6A7A8A] leading-relaxed whitespace-pre-line">
-                  {popup.long_description || popup.short_description}
-                </p>
-
-                {/* Action button if URL provided */}
+                {/* Optional CTA overlay at bottom */}
                 {popup.action_url && (
                   <a
                     href={popup.action_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-4 block w-full text-center bg-[#384B16] text-white font-semibold py-3 rounded-xl text-sm"
+                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-12 pb-5 px-5"
                     onClick={handleClose}
                   >
-                    {popup.action_label || popup.action_type || 'Learn More'}
+                    <span className="block w-full text-center bg-white text-[#1B2023] font-semibold py-3 rounded-xl text-sm">
+                      {popup.action_label || 'Learn More'}
+                    </span>
                   </a>
-                )}
-
-                {/* Dismiss button */}
-                {!popup.action_url && (
-                  <button
-                    onClick={handleClose}
-                    className="mt-4 w-full text-center bg-[#F5F7FA] text-[#384B16] font-semibold py-3 rounded-xl text-sm hover:bg-[#E4EAEF] transition-colors"
-                  >
-                    Got it
-                  </button>
                 )}
               </div>
             </div>

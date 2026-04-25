@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Optional, Any, TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, Text, Integer, ForeignKey, JSON, UniqueConstraint
+from sqlalchemy import String, Boolean, DateTime, Text, Integer, ForeignKey, JSON, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
@@ -35,7 +35,7 @@ class InformationCard(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     position: Mapped[int] = mapped_column(Integer, default=0)
     content_type: Mapped[str] = mapped_column(String(20), default="information", nullable=False)
-    gallery_urls: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    gallery_urls: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     action_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     action_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     action_label: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -44,6 +44,10 @@ class InformationCard(Base):
 
     __table_args__ = (
         UniqueConstraint("store_id", "slug", name="uq_info_card_slug"),
+        CheckConstraint(
+            "content_type IN ('system', 'information', 'product', 'promotion')",
+            name="ck_info_card_content_type"
+        ),
     )
 
     store: Mapped[Optional["Store"]] = relationship("Store")

@@ -84,18 +84,30 @@ Unlike promo_banners, these have no voucher/survey action.
 | end_date | timestamptz | YES | | Visibility end |
 | is_active | boolean | NO | true | |
 | position | integer | YES | 0 | Display order |
-| content_type | varchar(20) | NO | 'information' | `information`, `promotion`, `system` (T&C, Privacy) |
-| action_url | varchar(500) | YES | | CTA target URL |
+| content_type | varchar(20) | NO | 'information' | `information`, `product`, `promotion`, `system` |
+| action_url | varchar(500) | YES | | CTA target URL (promotion popups only) |
 | action_type | varchar(20) | YES | | CTA behavior type |
 | action_label | varchar(100) | YES | | CTA button label |
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 
 **FKs:** store_id → stores(id)
+**Constraints:** `ck_info_card_content_type` ensures valid content_type values
 
 **Content Types:**
-- `promotion` - Displayed on PWA home page (max 3 shown)
-- `system` - Legal/policy content, accessed via dedicated endpoints
+| Type | Purpose | PWA Display |
+|------|---------|-------------|
+| `information` | General articles, stories, reads (coffee culture, food stories) | Home page info cards, Information page listing |
+| `product` | Product-specific info (coffee machine specs, bean origins) | Accessed via QR code scan (`?slug={slug}`) |
+| `promotion` | Promotional image popups | Full-screen image popup on PWA homepage (once per promotion) |
+| `system` | Legal/policy content (T&C, Privacy Policy) | Accessed via `/content/legal/terms` and `/content/legal/privacy` |
+
+**Promotion Popup Behavior:**
+- Image-only fullscreen popup on PWA homepage
+- Fetches the latest active `content_type='promotion'` card
+- Shows immediately (no delay) when user lands on home
+- Dismissed promotion IDs are stored in IndexedDB — never shown again
+- Optional CTA button at bottom if `action_url` is set
 
 **System Content (Seeded):**
 | Title | content_type | Purpose |

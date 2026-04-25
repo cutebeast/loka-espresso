@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -224,6 +224,9 @@ class LoyaltyTierCreate(BaseModel):
     sort_order: int = 0
 
 
+_VALID_CONTENT_TYPES = {"system", "information", "product", "promotion"}
+
+
 class InformationCardCreate(BaseModel):
     title: str
     slug: Optional[str] = None
@@ -232,7 +235,7 @@ class InformationCardCreate(BaseModel):
     icon: Optional[str] = None
     content_type: str = "information"
     image_url: Optional[str] = None
-    gallery_urls: Optional[dict] = None
+    gallery_urls: Optional[list] = None
     action_url: Optional[str] = None
     action_type: Optional[str] = None
     action_label: Optional[str] = None
@@ -240,6 +243,13 @@ class InformationCardCreate(BaseModel):
     position: int = 0
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+
+    @field_validator("content_type")
+    @classmethod
+    def validate_content_type(cls, v: str) -> str:
+        if v not in _VALID_CONTENT_TYPES:
+            raise ValueError(f"content_type must be one of: {', '.join(sorted(_VALID_CONTENT_TYPES))}")
+        return v
 
 
 class InformationCardUpdate(BaseModel):
@@ -250,7 +260,7 @@ class InformationCardUpdate(BaseModel):
     icon: Optional[str] = None
     content_type: Optional[str] = None
     image_url: Optional[str] = None
-    gallery_urls: Optional[dict] = None
+    gallery_urls: Optional[list] = None
     action_url: Optional[str] = None
     action_type: Optional[str] = None
     action_label: Optional[str] = None
@@ -258,3 +268,10 @@ class InformationCardUpdate(BaseModel):
     position: Optional[int] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+
+    @field_validator("content_type")
+    @classmethod
+    def validate_content_type(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in _VALID_CONTENT_TYPES:
+            raise ValueError(f"content_type must be one of: {', '.join(sorted(_VALID_CONTENT_TYPES))}")
+        return v
