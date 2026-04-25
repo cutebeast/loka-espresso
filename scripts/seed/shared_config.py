@@ -35,7 +35,9 @@ import os
 
 API_BASE    = os.environ.get("API_BASE",    "http://localhost:3002/api/v1")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@loyaltysystem.uk")
-ADMIN_PASS  = os.environ.get("ADMIN_PASS",  "admin123")
+ADMIN_PASS = os.environ.get("ADMIN_PASS", "")
+if not ADMIN_PASS:
+    raise RuntimeError("ADMIN_PASS environment variable must be set. Do not use default passwords.")
 
 # ── Admin token cache ──────────────────────────────────────────────
 # Caches the admin token for the lifetime of the process to avoid
@@ -170,13 +172,13 @@ def get_store_menu_items(store_id, token, available_only=True):
     if available_only:
         params["available_only"] = "true"
     resp = requests.get(
-        f"{API_BASE}/stores/{store_id}/items",
+        f"{API_BASE}/menu/items",
         headers={"Authorization": f"Bearer {token}"} if token else {},
         params=params,
         timeout=10,
     )
     if resp.status_code != 200:
-        return [], f"GET /stores/{store_id}/items failed: {resp.status_code}"
+        return [], f"GET /menu/items failed: {resp.status_code}"
 
     items = []
     for item in resp.json():
@@ -241,14 +243,7 @@ def re_auth_customer(customer):
     time.sleep(0.5)
     code = get_otp_from_admin_api(normalized_phone)
     if not code:
-        # Fallback: try common test codes
-        for code in ["123456", "000000", "111111"]:
-            r2 = requests.post(f"{API_BASE}/auth/verify-otp",
-                             json={"phone": normalized_phone, "code": code, "session_id": session_id}, timeout=10)
-            if r2.status_code == 200:
-                break
-        else:
-            return customer, None
+        return customer, None
 
     # Step 3: verify-otp to get JWT
     r3 = requests.post(f"{API_BASE}/auth/verify-otp",

@@ -3,7 +3,7 @@ SEED SCRIPT: verify_seed_12a_place_orders_pickup.py
 Purpose: Place PICKUP order for a single customer (self-contained, no helpers)
 APIs tested: 
   - GET /stores (get all stores)
-  - GET /stores/{id}/items (get menu items)
+  - GET /menu/items (get menu items)
   - DELETE /cart (clear cart)
   - POST /cart/items (add items to cart)
   - POST /orders (place order with pickup_time)

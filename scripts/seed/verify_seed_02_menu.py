@@ -1,7 +1,7 @@
 """
 SEED SCRIPT: verify_seed_02_menu.py
-Purpose: Create universal menu under store_id=0 (HQ)
-APIs tested: POST /admin/stores/0/categories, POST /admin/stores/0/items, GET /stores/{id}/menu
+Purpose: Create universal menu
+APIs tested: POST /admin/categories, POST /admin/items, GET /menu/categories, GET /menu/items
 Status: CERTIFIED-2026-04-19 | API-only implementation (except Step 00 which uses SQL for reset)
 Dependencies: verify_seed_01_stores.py (HQ store must exist at id=0)
 """
@@ -116,12 +116,11 @@ CATEGORIES = [
 
 
 def _get_cat_by_slug(slug, token):
-    """Get category ID by slug using GET /stores/0/menu API."""
-    resp = api_get(f"/stores/{HQ_STORE_ID}/menu", token=token)
+    """Get category ID by slug using GET /menu/categories API."""
+    resp = api_get("/menu/categories", token=token)
     if resp.status_code != 200:
         return None
-    data = resp.json()
-    categories = data.get("categories", [])
+    categories = resp.json()
     for c in categories:
         if c.get("slug") == slug:
             return c.get("id")
@@ -129,21 +128,18 @@ def _get_cat_by_slug(slug, token):
 
 
 def _get_item_by_name(name, token):
-    """Get menu item ID by name using GET /stores/0/menu API."""
-    resp = api_get(f"/stores/{HQ_STORE_ID}/menu", token=token)
+    """Get menu item ID by name using GET /menu/items API."""
+    resp = api_get("/menu/items", token=token, params={"available_only": "false"})
     if resp.status_code != 200:
         return None
-    data = resp.json()
-    categories = data.get("categories", [])
-    for c in categories:
-        for item in c.get("items", []):
-            if item.get("name", "").lower() == name.lower():
-                return item.get("id")
+    for item in resp.json():
+        if item.get("name", "").lower() == name.lower():
+            return item.get("id")
     return None
 
 
 def run():
-    print_header("STEP 02: Create Universal Menu (store_id=0)")
+    print_header("STEP 02: Create Universal Menu")
 
     token = admin_token()
     if not token:
@@ -156,14 +152,14 @@ def run():
     print(f"  ✓ {msg}")
 
     created_categories = []
-    print(f"\n[*] Creating {len(CATEGORIES)} menu categories via POST /admin/stores/0/categories...")
+    print(f"\n[*] Creating {len(CATEGORIES)} menu categories via POST /admin/categories...")
     for i, cat in enumerate(CATEGORIES, 1):
         existing_id = _get_cat_by_slug(cat["slug"], token)
         if existing_id:
             created_categories.append({**cat, "id": existing_id})
             print(f"  [{i}] {cat['name']} — already exists (id={existing_id})")
         else:
-            resp = api_post(f"/admin/stores/{HQ_STORE_ID}/categories", token=token, json={
+            resp = api_post("/admin/categories", token=token, json={
                 "name": cat["name"],
                 "slug": cat["slug"],
                 "display_order": i,
@@ -179,14 +175,14 @@ def run():
                 print(f"  [{i}] {cat['name']} — id={cat_id}")
 
     total_items = 0
-    print(f"\n[*] Creating menu items via POST /admin/stores/0/items...")
+    print(f"\n[*] Creating menu items via POST /admin/items...")
     for cat in created_categories:
         for j, item in enumerate(cat["items"], 1):
             # Idempotent: check API first before creating
             existing_item_id = _get_item_by_name(item["name"], token)
             if existing_item_id is not None:
                 continue
-            resp = api_post(f"/admin/stores/{HQ_STORE_ID}/items", token=token, json={
+            resp = api_post("/admin/items", token=token, json={
                 "name": item["name"],
                 "category_id": cat["id"],
                 "description": item.get("description", ""),
@@ -205,13 +201,13 @@ def run():
     print(f"\n[*] Total: {len(created_categories)} categories, {total_items} items created")
 
     print("\n[*] DB Validation: menu categories...")
-    ok, count, msg = db_validate.validate_menu_categories(HQ_STORE_ID, len(CATEGORIES))
+    ok, count, msg = db_validate.validate_menu_categories(len(CATEGORIES))
     if not ok:
         raise RuntimeError(f"Menu categories validation failed: {msg}")
     print(f"  ✓ {msg}")
 
     print("\n[*] DB Validation: menu items...")
-    ok, count, msg = db_validate.validate_menu_items(HQ_STORE_ID, total_items)
+    ok, count, msg = db_validate.validate_menu_items(total_items)
     if not ok:
         raise RuntimeError(f"Menu items validation failed: {msg}")
     print(f"  ✓ {msg}")
@@ -226,26 +222,26 @@ def run():
     store_a = physical_stores[0] if len(physical_stores) > 0 else {"id": 1, "name": "Store 1"}
     store_b = physical_stores[1] if len(physical_stores) > 1 else {"id": 2, "name": "Store 2"}
 
-    print(f"\n[*] Validating universal menu via GET /stores/{store_a['id']}/menu ({store_a['name']})...")
-    resp = api_get(f"/stores/{store_a['id']}/menu", token=token)
-    if resp.status_code != 200:
-        raise RuntimeError(f"GET /stores/{store_a['id']}/menu failed: {resp.status_code}")
-    menu_data = resp.json()
-    returned_cats = len(menu_data.get("categories", []))
-    returned_items = sum(len(c.get("items", [])) for c in menu_data.get("categories", []))
-    print(f"  ✓ {store_a['name']} returns {returned_cats} categories, {returned_items} items from HQ menu")
+    print(f"\n[*] Validating universal menu via GET /menu/categories and /menu/items...")
+    cat_resp = api_get("/menu/categories", token=token)
+    item_resp = api_get("/menu/items", token=token, params={"available_only": "false"})
+    if cat_resp.status_code != 200:
+        raise RuntimeError(f"GET /menu/categories failed: {cat_resp.status_code}")
+    if item_resp.status_code != 200:
+        raise RuntimeError(f"GET /menu/items failed: {item_resp.status_code}")
+    returned_cats = len(cat_resp.json())
+    returned_items = len(item_resp.json())
+    print(f"  ✓ Universal menu returns {returned_cats} categories, {returned_items} items")
 
-    print(f"\n[*] Verifying universal menu is same across stores...")
-    resp_a = api_get(f"/stores/{store_a['id']}/menu", token=token)
-    resp_b = api_get(f"/stores/{store_b['id']}/menu", token=token)
-    menu_a = resp_a.json()
-    menu_b = resp_b.json()
-    cats_a = len(menu_a.get("categories", []))
-    cats_b = len(menu_b.get("categories", []))
+    print(f"\n[*] Verifying universal menu consistency across stores...")
+    cat_resp_a = api_get("/menu/categories", token=token)
+    cat_resp_b = api_get("/menu/categories", token=token)
+    cats_a = len(cat_resp_a.json()) if cat_resp_a.status_code == 200 else 0
+    cats_b = len(cat_resp_b.json()) if cat_resp_b.status_code == 200 else 0
     if cats_a == cats_b and cats_a > 0:
-        print(f"  ✓ {store_a['name']} and {store_b['name']} return same menu ({cats_a} categories each)")
+        print(f"  ✓ All stores see same menu ({cats_a} categories)")
     else:
-        raise RuntimeError(f"Universal menu mismatch: {store_a['name']}={cats_a}, {store_b['name']}={cats_b}")
+        raise RuntimeError(f"Universal menu mismatch: {cats_a} vs {cats_b}")
 
     print("\n[✓] STEP 02 complete — universal menu created")
 

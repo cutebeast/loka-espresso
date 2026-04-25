@@ -200,7 +200,7 @@ def create_admin_user():
         
         # Hash password using bcrypt directly
         import bcrypt
-        password_hash = bcrypt.hashpw('admin123'.encode(), bcrypt.gensalt()).decode()
+        password_hash = bcrypt.hashpw(ADMIN_PASS.encode(), bcrypt.gensalt()).decode()
         
         cur.execute('''
             INSERT INTO users (id, email, name, password_hash, user_type_id, role_id, is_active, phone_verified)
@@ -209,7 +209,7 @@ def create_admin_user():
         ''', (password_hash,))
         
         conn.commit()
-        print(f"  ✓ Admin user created: admin@loyaltysystem.uk / admin123")
+        print(f"  ✓ Admin user created: admin@loyaltysystem.uk / [REDACTED]")
         return True
     except Exception as e:
         conn.rollback()
@@ -239,7 +239,7 @@ def run():
     time.sleep(1)
     login = api_post("/auth/login-password", json={
         "email": "admin@loyaltysystem.uk",
-        "password": "admin123",
+        "password": ADMIN_PASS,
     })
     if login.status_code != 200:
         raise RuntimeError(f"Admin login failed after reset: {login.status_code} {login.text}")
@@ -261,7 +261,7 @@ def run():
     print(f"    ✓ {msg}")
     
     print("\n[✓] STEP 00 complete - clean state achieved")
-    print("    Admin: admin@loyaltysystem.uk / admin123")
+    print("    Admin: admin@loyaltysystem.uk / [REDACTED]")
 
 
 if __name__ == "__main__":

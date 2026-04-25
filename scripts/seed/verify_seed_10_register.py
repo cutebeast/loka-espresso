@@ -88,15 +88,8 @@ def register_one_customer():
     time.sleep(0.2)
     otp_code = get_otp_from_admin_api(phone)
     if not otp_code:
-        for code in ["123456", "000000", "111111"]:
-            resp2 = requests.post(f"{API_BASE}/auth/verify-otp",
-                                  json={"phone": phone, "code": code, "session_id": session_id}, timeout=10)
-            if resp2.status_code == 200:
-                otp_code = code
-                break
-        if not otp_code:
-            print(f"    [FAIL] Could not retrieve OTP for {phone}")
-            return None
+        print(f"    [FAIL] Could not retrieve OTP for {phone}")
+        return None
 
     # Step 3: verify-otp
     resp = requests.post(f"{API_BASE}/auth/verify-otp",

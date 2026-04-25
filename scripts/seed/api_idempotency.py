@@ -19,8 +19,8 @@ def get_store_by_slug(slug, token):
 
 
 def get_menu_category_by_slug(slug, token):
-    """Get menu category ID by slug using GET /stores/0/categories API."""
-    resp = api_get("/stores/0/categories", token=token)
+    """Get menu category ID by slug using GET /menu/categories API."""
+    resp = api_get("/menu/categories", token=token)
     if resp.status_code != 200:
         return None
     categories = resp.json()
@@ -31,8 +31,8 @@ def get_menu_category_by_slug(slug, token):
 
 
 def get_menu_item_by_name(name, token):
-    """Get menu item ID by name using GET /stores/0/items API."""
-    resp = api_get("/stores/0/items", token=token, params={"available_only": "false"})
+    """Get menu item ID by name using GET /menu/items API."""
+    resp = api_get("/menu/items", token=token, params={"available_only": "false"})
     if resp.status_code != 200:
         return None
     for item in resp.json():

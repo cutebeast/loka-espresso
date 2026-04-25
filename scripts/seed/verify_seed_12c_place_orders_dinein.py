@@ -5,7 +5,7 @@ APIs tested:
   - GET /stores (get all stores)
   - GET /stores/{id}/tables (get available tables)
   - POST /tables/scan (QR code scan)
-  - GET /stores/{id}/items (get menu items)
+  - GET /menu/items (get menu items)
   - DELETE /cart (clear cart)
   - POST /cart/items (add items to cart)
   - POST /orders (place order with table_id)

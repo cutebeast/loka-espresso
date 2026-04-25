@@ -1,11 +1,11 @@
 """
 SEED SCRIPT: verify_seed_06_rewards.py
 Purpose: Create 8 loyalty rewards (6 active, 2 inactive/expired)
-APIs tested: GET /stores/0/menu (fetch menu items), POST /admin/rewards, PUT /admin/rewards/{id}, GET /admin/rewards
+APIs tested: GET /menu/items (fetch menu items), POST /admin/rewards, PUT /admin/rewards/{id}, GET /admin/rewards
 Status: CERTIFIED-2026-04-19 | API-only implementation (except Step 00 which uses SQL for reset)
 Dependencies: verify_seed_05_config.py (loyalty tiers), verify_seed_02_menu.py (menu items must exist)
 Flow:
-  1. Call GET /stores/0/menu to fetch all menu items via API
+  1. Call GET /menu/items to fetch all menu items via API
   2. Extract item IDs for rewards
   3. Create rewards referencing real menu item IDs
   4. Create active rewards first, then mark expired ones as inactive
@@ -20,25 +20,20 @@ import db_validate
 
 def get_menu_items_for_rewards():
     """
-    Fetch menu items via GET /stores/0/menu API.
+    Fetch menu items via GET /menu/items API.
     Returns dict mapping item names to their IDs.
     """
     token = admin_token()
-    resp = api_get("/stores/0/menu", token=token)
+    resp = api_get("/menu/items", token=token, params={"available_only": "false"})
     if resp.status_code != 200:
         raise RuntimeError(f"Failed to fetch menu items: {resp.status_code} {resp.text}")
     
-    data = resp.json()
-    categories = data.get("categories", [])
-    
-    # Build item map from all categories
     items = {}
-    for cat in categories:
-        for item in cat.get("items", []):
-            name = item.get("name", "").lower()
-            item_id = item.get("id")
-            if name and item_id:
-                items[name] = item_id
+    for item in resp.json():
+        name = item.get("name", "").lower()
+        item_id = item.get("id")
+        if name and item_id:
+            items[name] = item_id
     
     return items
 

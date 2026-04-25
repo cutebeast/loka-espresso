@@ -338,40 +338,34 @@ def validate_store_tables(store_id, min_count):
         conn.close()
 
 
-def validate_menu_categories(store_id, expected_count):
-    """Validate menu categories for a store.
+def validate_menu_categories(expected_count):
+    """Validate menu categories (universal, no store filter).
     Returns (success, count, message)."""
     conn = get_conn()
     try:
         cur = conn.cursor()
-        cur.execute(
-            "SELECT COUNT(*) FROM menu_categories WHERE store_id = %s",
-            (store_id,)
-        )
+        cur.execute("SELECT COUNT(*) FROM menu_categories")
         count = cur.fetchone()[0]
         cur.close()
         if count >= expected_count:
-            return True, count, f"Store {store_id}: {count} menu categories"
-        return False, count, f"Store {store_id}: only {count} menu categories (expected >={expected_count})"
+            return True, count, f"{count} menu categories"
+        return False, count, f"only {count} menu categories (expected >={expected_count})"
     finally:
         conn.close()
 
 
-def validate_menu_items(store_id, expected_count):
-    """Validate menu items for a store.
+def validate_menu_items(expected_count):
+    """Validate menu items (universal, no store filter).
     Returns (success, count, message)."""
     conn = get_conn()
     try:
         cur = conn.cursor()
-        cur.execute(
-            "SELECT COUNT(*) FROM menu_items WHERE store_id = %s AND deleted_at IS NULL",
-            (store_id,)
-        )
+        cur.execute("SELECT COUNT(*) FROM menu_items WHERE deleted_at IS NULL")
         count = cur.fetchone()[0]
         cur.close()
         if count >= expected_count:
-            return True, count, f"Store {store_id}: {count} menu items"
-        return False, count, f"Store {store_id}: only {count} menu items (expected >={expected_count})"
+            return True, count, f"{count} menu items"
+        return False, count, f"only {count} menu items (expected >={expected_count})"
     finally:
         conn.close()
 
