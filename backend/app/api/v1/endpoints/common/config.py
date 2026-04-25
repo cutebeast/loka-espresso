@@ -17,10 +17,10 @@ ALLOWED_CONFIG_KEYS = {
     "currency", "currency_symbol", "earn_rate", "pickup_lead_minutes",
     "loyalty_enabled", "loyalty_points_per_rmse", "max_vouchers_per_user",
     "voucher_expiry_days", "points_redemption_rate", "referral_bonus_points",
-    "otp_bypass_enabled", "otp_bypass_code", "pwa_phone_country_code",
+    "otp_bypass_enabled", "pwa_phone_country_code",
 }
 
-SENSITIVE_KEY_PATTERNS = {"secret", "password", "token", "api_key", "private", "jwt", "credential"}
+SENSITIVE_KEY_PATTERNS = {"secret", "password", "token", "api_key", "private", "jwt", "credential", "bypass_code"}
 
 # Whitelist of keys safe to expose via the public /config endpoint.
 # NEVER add `otp_bypass_*`, secrets, API keys, or feature flags that would
@@ -82,11 +82,18 @@ async def get_admin_config(
 ):
     query = select(AppConfig)
     if key:
-        query = query.where(AppConfig.key.in_(key))
+        # Filter out any requested keys that match sensitive patterns
+        allowed_keys = [k for k in key if not any(p in k.lower() for p in SENSITIVE_KEY_PATTERNS)]
+        if allowed_keys:
+            query = query.where(AppConfig.key.in_(allowed_keys))
+        else:
+            return {"configs": {}}
 
     result = await db.execute(query)
     configs = {row.key: row.value for row in result.scalars().all()}
-    return {"configs": configs}
+    # Double-filter results to ensure no sensitive keys leak
+    filtered = {k: v for k, v in configs.items() if not any(p in k.lower() for p in SENSITIVE_KEY_PATTERNS)}
+    return {"configs": filtered}
 
 
 @router.put("/admin/config")
@@ -97,6 +104,10 @@ async def update_config(
     user: User = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
+    # Reject keys not in the allowlist
+    if key not in ALLOWED_CONFIG_KEYS:
+        raise HTTPException(status_code=400, detail="This key is not allowed to be modified via admin config")
+
     # Reject keys that look like secrets or infrastructure
     lower_key = key.lower()
     if any(pattern in lower_key for pattern in SENSITIVE_KEY_PATTERNS):
@@ -113,13 +124,19 @@ async def update_config(
     await db.flush()
 
     ip = get_client_ip(request)
+    # Redact sensitive values in audit log
+    is_sensitive = any(p in key.lower() for p in SENSITIVE_KEY_PATTERNS)
     await log_action(
         db,
         action="config_update",
         user_id=user.id,
         entity_type="app_config",
         entity_id=None,
-        details={"key": key, "old_value": old_value, "new_value": req.value},
+        details={
+            "key": key,
+            "old_value": "***REDACTED***" if is_sensitive else old_value,
+            "new_value": "***REDACTED***" if is_sensitive else req.value,
+        },
         ip_address=ip,
         status="success",
         method="PUT",

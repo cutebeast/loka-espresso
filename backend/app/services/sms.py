@@ -45,7 +45,7 @@ class SMSService:
             {"sent": bool, "sid": str|None, "error": str|None}
         """
         if not self._ready or not self._client:
-            logger.info(f"[SMS stub] OTP for {to[:4]}****: {code}")
+            logger.debug(f"[SMS stub] OTP for {to[:4]}****: {code}")
             return {"sent": False, "sid": None, "error": "Twilio not configured"}
 
         body = f"Your Loka Espresso verification code is: {code}. It expires in 5 minutes."

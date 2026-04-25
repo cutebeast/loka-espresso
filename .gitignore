@@ -11,3 +11,6 @@ build/
 *.log
 seed_state*.json
 *.state.json
+
+# Seed state with live JWT tokens
+scripts/seed/seed_state.json

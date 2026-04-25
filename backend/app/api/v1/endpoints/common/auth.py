@@ -17,7 +17,8 @@ from app.core.config import get_settings
 from app.core.audit import log_action, get_client_ip
 from app.models.user import User, OTPSession, DeviceToken, TokenBlacklist, UserTypeIDs, RoleIDs
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt as jose_jwt
+import jwt as pyjwt
+from jwt import PyJWTError
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -98,11 +99,12 @@ async def _blacklist_token(raw_token: str | None, user_id: int, db: AsyncSession
     if not raw_token:
         return
     try:
-        payload = jose_jwt.decode(raw_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        from app.core.security import _decode_token
+        payload = _decode_token(raw_token)
         jti = payload.get("jti")
         exp = payload.get("exp")
     except Exception as exc:
-        logger.debug(f"Token decode failed during blacklist: {exc}")
+        logger.warning(f"Token decode failed during blacklist: {exc}")
         return
 
     if not jti or not exp:
@@ -294,10 +296,6 @@ async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
     access = create_access_token({"sub": str(user.id)})
     refresh = create_refresh_token({"sub": str(user.id)})
     response = JSONResponse(content={
-        "access_token": access,
-        "refresh_token": refresh,
-        "token": access,
-        "refreshToken": refresh,
         "is_new_user": is_new_user,
     })
     _set_auth_cookies(response, access, refresh)
@@ -332,19 +330,14 @@ async def login_password(request: Request, req: LoginPasswordRequest, db: AsyncS
     await log_action(db, action="LOGIN", user_id=user.id, entity_type="user", entity_id=user.id, details={"email": req.email, "role_id": user.role_id}, ip_address=get_client_ip(request))
     access = create_access_token({"sub": str(user.id)})
     refresh = create_refresh_token({"sub": str(user.id)})
-    response = JSONResponse(content={
-        "access_token": access,
-        "refresh_token": refresh,
-        "token": access,
-        "refreshToken": refresh,
-    })
+    response = JSONResponse(content={"message": "Login successful"})
     _set_auth_cookies(response, access, refresh)
     return response
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("30/minute")
 async def refresh_token(request: Request, req: RefreshRequest | None = None, db: AsyncSession = Depends(get_db)):
-    from jose import jwt, JWTError
     from app.core.config import get_settings
     settings = get_settings()
 
@@ -356,13 +349,19 @@ async def refresh_token(request: Request, req: RefreshRequest | None = None, db:
         raise HTTPException(status_code=401, detail="Refresh token required")
 
     try:
-        payload = jwt.decode(refresh_token_value, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = pyjwt.decode(
+            refresh_token_value,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+            issuer=settings.JWT_ISSUER,
+            audience=settings.JWT_AUDIENCE,
+        )
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
         user_id = payload.get("sub")
         jti = payload.get("jti")
         exp = payload.get("exp")
-    except JWTError:
+    except PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     if not user_id or not jti or not exp:
@@ -379,12 +378,7 @@ async def refresh_token(request: Request, req: RefreshRequest | None = None, db:
     await _blacklist_token(refresh_token_value, user.id, db)
     access = create_access_token({"sub": str(user_id)})
     refresh = create_refresh_token({"sub": str(user_id)})
-    response = JSONResponse(content={
-        "access_token": access,
-        "refresh_token": refresh,
-        "token": access,
-        "refreshToken": refresh,
-    })
+    response = JSONResponse(content={"message": "Token refreshed"})
     _set_auth_cookies(response, access, refresh)
     return response
 

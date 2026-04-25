@@ -7,8 +7,12 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     DB_PASSWORD: str = ""
     JWT_SECRET: str
+    JWT_SECRET_PREVIOUS: str = ""  # Previous secret for key rotation grace period
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 30
+    JWT_REFRESH_EXPIRE_DAYS: int = 7
+    JWT_ISSUER: str = "fnb-api"
+    JWT_AUDIENCE: str = "fnb-app"
     CORS_ORIGINS: str = ""
     UPLOAD_DIR: str = "/root/fnb-super-app/uploads"
     WEBHOOK_API_KEY: str = ""
@@ -16,6 +20,7 @@ class Settings(BaseSettings):
     POS_API_URL: str = ""  # External POS integration endpoint (e.g. https://pos-provider.com/api/orders). Leave empty for manual mode.
     OTP_BYPASS_ALLOWED: bool = False
     ENVIRONMENT: str = "development"
+    ALLOW_CUSTOMER_RESET: bool = False  # Dangerous: wipes all customer data
 
     # Twilio SMS
     TWILIO_ACCOUNT_SID: str = ""
