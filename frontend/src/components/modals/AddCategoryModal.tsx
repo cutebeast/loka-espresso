@@ -22,15 +22,15 @@ export function AddCategoryForm({ storeId: _storeId, token: _token, onClose }: {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Category Name</label>
+      <div className="acf-0">
+        <label className="acf-1">Category Name</label>
         <input value={name} onChange={e => { setName(e.target.value); if (!slug) setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-')); }} required placeholder="e.g. Smoothies" />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Slug (auto-generated)</label>
+      <div className="acf-2">
+        <label className="acf-3">Slug (auto-generated)</label>
         <input value={slug} onChange={e => setSlug(e.target.value)} placeholder="e.g. smoothies" />
       </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+      <button type="submit" className="btn btn-primary acf-4"  disabled={saving}>
         {saving ? 'Saving...' : 'Create Category'}
       </button>
     </form>

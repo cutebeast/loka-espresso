@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { DateFilter, type DatePreset, calcDateRange } from '@/components/ui/DateFilter';
 import { BarChart, Modal, TextArea } from '@/components/ui';
-import { THEME } from '@/lib/theme';
 
 interface FeedbackPageProps {
   token: string;
@@ -77,7 +76,7 @@ export default function FeedbackPage({ token: _token, selectedStore }: FeedbackP
 
   function renderStars(rating: number) {
     return (
-      <span style={{ color: THEME.warning, fontSize: 16 }}>
+      <span className="rs-0">
         {'★'.repeat(rating) + '☆'.repeat(5 - rating)}
       </span>
     );
@@ -138,7 +137,7 @@ export default function FeedbackPage({ token: _token, selectedStore }: FeedbackP
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+      <div className="fp-1">
         <DateFilter
           preset={preset}
           onChange={(p, from, to) => { setPreset(p); setFromDate(from); setToDate(to); }}
@@ -148,20 +147,20 @@ export default function FeedbackPage({ token: _token, selectedStore }: FeedbackP
       </div>
 
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 16, marginBottom: 24 }}>
-          <div className="card" style={{ textAlign: 'center' }}>
-            <div style={{ color: THEME.success, fontSize: 14, marginBottom: 8 }}>Average Rating</div>
-            <div style={{ fontSize: 36, fontWeight: 700, color: THEME.primary }}>
+        <div className="fp-2">
+          <div className="card fp-3" >
+            <div className="fp-4">Average Rating</div>
+            <div className="fp-5">
               {Number(stats.average_rating ?? 0).toFixed(1)}
             </div>
-            <div style={{ marginTop: 4 }}>{renderStars(Math.round(stats.average_rating ?? 0))}</div>
+            <div className="fp-6">{renderStars(Math.round(stats.average_rating ?? 0))}</div>
           </div>
-          <div className="card" style={{ textAlign: 'center' }}>
-            <div style={{ color: THEME.success, fontSize: 14, marginBottom: 8 }}>Total Reviews</div>
-            <div style={{ fontSize: 36, fontWeight: 700, color: THEME.primary }}>{stats.total_reviews ?? 0}</div>
+          <div className="card fp-7" >
+            <div className="fp-8">Total Reviews</div>
+            <div className="fp-9">{stats.total_reviews ?? 0}</div>
           </div>
           <div className="card">
-            <div style={{ color: THEME.success, fontSize: 14, marginBottom: 12 }}>Rating Distribution</div>
+            <div className="fp-10">Rating Distribution</div>
             <BarChart
               data={ratingData}
               orientation="horizontal"
@@ -173,42 +172,42 @@ export default function FeedbackPage({ token: _token, selectedStore }: FeedbackP
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: THEME.success }}>Loading feedback...</div>
+        <div className="fp-11">Loading feedback...</div>
       ) : feedbackList.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', color: THEME.success, padding: 40 }}>
+        <div className="card fp-12" >
           No feedback yet
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="fp-13">
           {feedbackList.map(fb => (
             <div key={fb.id} className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div className="fp-14">
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <strong style={{ fontSize: 16, color: THEME.primary }}>{fb.customer_name}</strong>
+                    <div className="fp-15">
+                      <strong className="fp-16">{fb.customer_name}</strong>
                       {renderStars(fb.rating)}
                     </div>
-                    <div style={{ fontSize: 13, color: THEME.success, marginTop: 2 }}>
+                    <div className="fp-17">
                     {fb.store_name} · {new Date(fb.created_at).toLocaleDateString()}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div className="fp-18">
                   {!fb.reply && (
                     <button className="btn btn-sm" onClick={() => openReplyModal(fb)}>Reply</button>
                   )}
                   {fb.reply && (
                     <>
                       <button className="btn btn-sm" onClick={() => openEditModal(fb)}>Edit Reply</button>
-                      <button className="btn btn-sm" style={{ background: '#A83232', color: '#fff' }} onClick={() => deleteReply(fb)}>Delete Reply</button>
+                      <button className="btn btn-sm fp-19"  onClick={() => deleteReply(fb)}>Delete Reply</button>
                     </>
                   )}
                 </div>
               </div>
-              <p style={{ margin: '8px 0', color: THEME.primary }}>{fb.comment}</p>
+              <p className="fp-20">{fb.comment}</p>
               {fb.reply && (
-                <div style={{ background: THEME.bgMuted, borderRadius: 12, borderLeft: `3px solid ${THEME.primary}`, padding: '12px 16px', marginTop: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: THEME.primary, marginBottom: 4 }}>Merchant Reply</div>
-                  <div style={{ fontSize: 14, color: THEME.primary }}>{fb.reply}</div>
+                <div className="fp-21">
+                  <div className="fp-22">Merchant Reply</div>
+                  <div className="fp-23">{fb.reply}</div>
                 </div>
               )}
             </div>
@@ -226,17 +225,17 @@ export default function FeedbackPage({ token: _token, selectedStore }: FeedbackP
       }>
         {modalFeedback && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <strong style={{ color: THEME.primary }}>{modalFeedback.customer_name}</strong>
+            <div className="fp-24">
+              <strong className="fp-25">{modalFeedback.customer_name}</strong>
               {renderStars(modalFeedback.rating)}
             </div>
-            <p style={{ fontSize: 14, color: THEME.success, marginBottom: 12 }}>{modalFeedback.comment}</p>
+            <p className="fp-26">{modalFeedback.comment}</p>
             <TextArea
               rows={4}
               placeholder="Write your reply..."
               value={replyText}
               onChange={e => setReplyText(e.target.value)}
-              style={{ width: '100%', resize: 'vertical' }}
+              className="fp-27"
             />
           </div>
         )}

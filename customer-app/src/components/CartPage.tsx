@@ -99,7 +99,7 @@ export default function CartPage() {
         {orderMode === 'dine_in' && dineInSession ? (
           <div className="cart-context-card dinein">
             <div className="cart-context-icon copper">
-              <span style={{ fontSize: 16 }}>🍽️</span>
+              <span className="cart-emoji">🍽️</span>
             </div>
             <div className="cart-context-text">
               <p className="cart-context-title">Table {dineInSession.tableNumber} · {dineInSession.storeName}</p>
@@ -115,7 +115,7 @@ export default function CartPage() {
         ) : (
           <div className="cart-context-card store">
             <div className="cart-context-icon copper-light">
-              <span style={{ fontSize: 16 }}>🏪</span>
+              <span className="cart-emoji">🏪</span>
             </div>
             <div className="cart-context-text">
               <p className="cart-context-title">{selectedStore?.name || 'Select a store'}</p>

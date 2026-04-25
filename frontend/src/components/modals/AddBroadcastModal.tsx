@@ -29,16 +29,16 @@ export function AddBroadcastForm({ token: _token, onClose }: { token: string; on
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Title</label>
+      <div className="abf-0">
+        <label className="abf-1">Title</label>
         <input value={title} onChange={e => setTitle(e.target.value)} required />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Message</label>
-        <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4} required style={{ outline: 'none', border: '1px solid #DDE3E9', borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%' }} />
+      <div className="abf-2">
+        <label className="abf-3">Message</label>
+        <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4} required className="abf-4" />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Target Audience</label>
+      <div className="abf-5">
+        <label className="abf-6">Target Audience</label>
         <select value={targetAudience} onChange={e => setTargetAudience(e.target.value)}>
           <option value="all">All Users</option>
           <option value="new">New Users</option>
@@ -46,23 +46,23 @@ export function AddBroadcastForm({ token: _token, onClose }: { token: string; on
           <option value="inactive">Inactive Users</option>
         </select>
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+      <div className="abf-7">
+        <label className="abf-8">
           Schedule (optional)
         </label>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div className="abf-9">
           <input
             type="date"
             value={scheduledDate}
             onChange={e => setScheduledDate(e.target.value)}
             min={((): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()}
-            style={{ width: 150, padding: '6px 10px', borderRadius: 8, border: '1px solid #DDE3E9', fontSize: 13 }}
+            className="abf-10"
           />
           <input
             type="time"
             value={scheduledTime}
             onChange={e => setScheduledTime(e.target.value)}
-            style={{ width: 110, padding: '6px 10px', borderRadius: 8, border: '1px solid #DDE3E9', fontSize: 13 }}
+            className="abf-11"
           />
           {(scheduledDate || scheduledTime) && (
             <button type="button" className="btn btn-sm" onClick={() => { setScheduledDate(''); setScheduledTime(''); }} title="Clear schedule">
@@ -70,11 +70,11 @@ export function AddBroadcastForm({ token: _token, onClose }: { token: string; on
             </button>
           )}
         </div>
-        <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+        <div className="abf-12">
           Leave empty to save as draft (no schedule)
         </div>
       </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+      <button type="submit" className="btn btn-primary abf-13"  disabled={saving}>
         {saving ? 'Saving...' : 'Save Broadcast'}
       </button>
     </form>

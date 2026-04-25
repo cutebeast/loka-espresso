@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import { FilterSelect, StoreSelector, DateFilter, DataTable, type DatePreset, Pagination } from '@/components/ui';
-import { THEME } from '@/lib/theme';
 import type { CustomerItem, MerchantStore } from '@/lib/merchant-types';
 
 interface CustomersPageProps {
@@ -75,8 +74,8 @@ export default function CustomersPage({ token: _token, stores, selectedStore, on
   return (
     <div>
       {/* Filter Bar - Store and Date on left, action buttons on right */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="cp-0">
+        <div className="cp-1">
           {onStoreChange && (
             <StoreSelector
               stores={stores.filter((s) => s.id !== 0).map((s) => ({ id: String(s.id), name: s.name }))}
@@ -105,33 +104,19 @@ export default function CustomersPage({ token: _token, stores, selectedStore, on
             placeholder="Sort By"
           />
           <button
-            className="btn btn-sm"
+            className="btn btn-sm cp-2"
             onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
             title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 40,
-              border: `1px solid ${THEME.borderLight}`,
-              background: 'white',
-              color: THEME.textPrimary,
-              cursor: 'pointer',
-            }}
+            
           >
             <i className={`fas fa-arrow-${sortDir === 'asc' ? 'up' : 'down'}`}></i>
           </button>
           {(search || tier || fromDate || toDate) && (
             <button
-              className="btn btn-sm"
+              className="btn btn-sm cp-3"
               onClick={() => { setSearch(''); setTier(''); setPage(1); setPreset('MTD'); setFromDate(''); setToDate(''); }}
               title="Clear filters"
-              style={{
-                padding: '8px 12px',
-                borderRadius: 40,
-                border: `1px solid ${THEME.borderLight}`,
-                background: 'white',
-                color: '#A83232',
-                cursor: 'pointer',
-              }}
+              
             >
               <i className="fas fa-times"></i>
             </button>
@@ -139,51 +124,24 @@ export default function CustomersPage({ token: _token, stores, selectedStore, on
         </div>
 
         {/* Search on right side */}
-        <div style={{
-          position: 'relative',
-          background: 'white',
-          padding: '8px 14px',
-          borderRadius: 40,
-          border: `1px solid ${THEME.borderLight}`,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-          flex: '1',
-          minWidth: 200,
-          maxWidth: 280,
-        }}>
-          <i className="fas fa-search" style={{ color: THEME.textMuted, fontSize: 12, position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }}></i>
+        <div className="cp-4">
+          <span className="cp-5"><i className="fas fa-search"></i></span>
           <input
             placeholder="Search name, email, phone..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              fontSize: 14,
-              color: THEME.textPrimary,
-              outline: 'none',
-              width: '100%',
-              paddingLeft: 24,
-            }}
+            className="cp-6"
           />
         </div>
       </div>
 
       {/* Stats Bar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-users" style={{ marginRight: 8, color: THEME.primary }}></i>
-          Showing <strong style={{ color: THEME.textPrimary }}>{customers.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> customers
+      <div className="cp-7">
+        <div className="cp-8">
+          <span className="cp-9"><i className="fas fa-users"></i></span>
+          Showing <strong className="cp-10">{customers.length}</strong> of <strong className="cp-11">{total}</strong> customers
         </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+        <div className="cp-12">
           Page {page} of {totalPages}
         </div>
       </div>
@@ -191,9 +149,9 @@ export default function CustomersPage({ token: _token, stores, selectedStore, on
       <DataTable<CustomerItem>
         data={customers}
         columns={[
-          { key: 'name', header: 'Name', render: (c) => <span style={{ fontWeight: 500, color: THEME.textPrimary }}>{c.name || '-'}</span> },
-          { key: 'phone', header: 'Phone', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.phone || '-'}</span> },
-          { key: 'email', header: 'Email', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.email || '-'}</span> },
+          { key: 'name', header: 'Name', render: (c) => <span className="cp-13">{c.name || '-'}</span> },
+          { key: 'phone', header: 'Phone', render: (c) => <span className="cp-14">{c.phone || '-'}</span> },
+          { key: 'email', header: 'Email', render: (c) => <span className="cp-15">{c.email || '-'}</span> },
           { key: 'tier', header: 'Tier', render: (c) => (
             c.tier ? (
               <span className={`badge ${
@@ -207,10 +165,10 @@ export default function CustomersPage({ token: _token, stores, selectedStore, on
               <span className="badge badge-yellow">No Tier</span>
             )
           )},
-          { key: 'points_balance', header: 'Points', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.points_balance?.toLocaleString() || 0} pts</span> },
-          { key: 'total_orders', header: 'Orders', render: (c) => <span style={{ color: THEME.textPrimary }}>{c.total_orders}</span> },
-          { key: 'total_spent', header: 'Total Spent', render: (c) => <span style={{ color: THEME.textPrimary }}>{formatRM(c.total_spent || 0)}</span> },
-          { key: 'created_at', header: 'Joined', render: (c) => <span style={{ color: THEME.textMuted, fontSize: 12 }}>{c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}</span> },
+          { key: 'points_balance', header: 'Points', render: (c) => <span className="cp-16">{c.points_balance?.toLocaleString() || 0} pts</span> },
+          { key: 'total_orders', header: 'Orders', render: (c) => <span className="cp-17">{c.total_orders}</span> },
+          { key: 'total_spent', header: 'Total Spent', render: (c) => <span className="cp-18">{formatRM(c.total_spent || 0)}</span> },
+          { key: 'created_at', header: 'Joined', render: (c) => <span className="cp-19">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}</span> },
           { key: 'actions', header: 'Actions', render: (c) => (
             <button className="btn btn-sm" onClick={() => onEditCustomer(c.id)}>
               <i className="fas fa-eye"></i> View

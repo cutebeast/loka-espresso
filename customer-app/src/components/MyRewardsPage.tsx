@@ -51,7 +51,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
           </button>
           <h1 className="sub-page-title">My Rewards & Vouchers</h1>
         </div>
-        <div style={{ width: 36 }} />
+        <div className="mrewards-spacer" />
       </div>
 
       <div className="myrv-tab-bar">
@@ -72,10 +72,10 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
       <div className="myrv-owned-list">
         {activeTab === 'rewards' ? (
           availableRewards.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 20px', background: 'white', borderRadius: 20, border: '1px solid var(--loka-border-light)' }}>
-              <Gift size={40} color="#D4DCE5" style={{ marginBottom: 12 }} />
-              <p style={{ fontSize: 16, fontWeight: 700, color: '#1B2023', marginBottom: 6 }}>No rewards yet</p>
-              <p style={{ fontSize: 13, color: '#6A7A8A' }}>Redeem rewards to see them here</p>
+            <div className="mrewards-empty">
+              <span className="mrewards-empty-icon"><Gift size={40} color="#D4DCE5" /></span>
+              <p className="mrewards-empty-title">No rewards yet</p>
+              <p className="mrewards-empty-text">Redeem rewards to see them here</p>
             </div>
           ) : (
             availableRewards.map((reward) => (
@@ -93,10 +93,10 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
             ))
           )
         ) : availableVouchers.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 20px', background: 'white', borderRadius: 20, border: '1px solid var(--loka-border-light)' }}>
-            <Ticket size={40} color="#D4DCE5" style={{ marginBottom: 12 }} />
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#1B2023', marginBottom: 6 }}>No vouchers yet</p>
-            <p style={{ fontSize: 13, color: '#6A7A8A' }}>Claim promotions to earn vouchers</p>
+          <div className="mrewards-empty">
+            <span className="mrewards-empty-icon"><Ticket size={40} color="#D4DCE5" /></span>
+            <p className="mrewards-empty-title">No vouchers yet</p>
+            <p className="mrewards-empty-text">Claim promotions to earn vouchers</p>
           </div>
         ) : (
           availableVouchers.map((voucher) => (
@@ -124,22 +124,22 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
         <div className="profile-modal-overlay show" onClick={(e) => { if (e.target === e.currentTarget) setSelectedReward(null); }}>
           <div className="profile-modal-box">
             <h3>{selectedReward.reward_name}</h3>
-            <p style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 24, fontWeight: 800, letterSpacing: 2, margin: '16px 0', color: '#1B2023' }}>
+            <p className="mrewards-code">
               {selectedReward.redemption_code}
             </p>
-            <p style={{ fontSize: 13, color: '#6A7A8A' }}>Show this code at the counter</p>
-            <div className="profile-modal-btns" style={{ marginTop: 20 }}>
+            <p className="mrewards-modal-desc">Show this code at the counter</p>
+            <div className="profile-modal-btns mrewards-modal-btns">
               <button
                 className="profile-modal-btn profile-modal-btn-cancel"
                 onClick={() => handleCopyCode(selectedReward.redemption_code, selectedReward.id)}
               >
                 {copiedId === selectedReward.id ? (
-                  <><Check size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Copied</>
+                  <><span className="mrewards-copy-icon"><Check size={16} /></span> Copied</>
                 ) : (
-                  <><Copy size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Copy</>
+                  <><span className="mrewards-copy-icon"><Copy size={16} /></span> Copy</>
                 )}
               </button>
-              <button className="profile-modal-btn profile-modal-btn-confirm" style={{ background: 'var(--loka-primary)' }} onClick={() => setSelectedReward(null)}>Close</button>
+              <button className="profile-modal-btn profile-modal-btn-confirm mrewards-close-btn" onClick={() => setSelectedReward(null)}>Close</button>
             </div>
           </div>
         </div>
@@ -154,22 +154,22 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                 ? `${selectedVoucher.discount_value}% off`
                 : `RM ${Number(selectedVoucher.discount_value).toFixed(2)} off`}
             </h3>
-            <p style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 24, fontWeight: 800, letterSpacing: 2, margin: '16px 0', color: '#1B2023' }}>
+            <p className="mrewards-code">
               {selectedVoucher.code}
             </p>
-            <p style={{ fontSize: 13, color: '#6A7A8A' }}>Apply at checkout</p>
-            <div className="profile-modal-btns" style={{ marginTop: 20 }}>
+            <p className="mrewards-modal-desc">Apply at checkout</p>
+            <div className="profile-modal-btns mrewards-modal-btns">
               <button
                 className="profile-modal-btn profile-modal-btn-cancel"
                 onClick={() => handleCopyCode(selectedVoucher.code, selectedVoucher.id)}
               >
                 {copiedId === selectedVoucher.id ? (
-                  <><Check size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Copied</>
+                  <><span className="mrewards-copy-icon"><Check size={16} /></span> Copied</>
                 ) : (
-                  <><Copy size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Copy</>
+                  <><span className="mrewards-copy-icon"><Copy size={16} /></span> Copy</>
                 )}
               </button>
-              <button className="profile-modal-btn profile-modal-btn-confirm" style={{ background: 'var(--loka-primary)' }} onClick={() => setSelectedVoucher(null)}>Close</button>
+              <button className="profile-modal-btn profile-modal-btn-confirm mrewards-close-btn" onClick={() => setSelectedVoucher(null)}>Close</button>
             </div>
           </div>
         </div>

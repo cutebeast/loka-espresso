@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
-import { THEME } from '@/lib/theme';
 import { Pagination, Drawer } from '@/components/ui';
 
 interface InformationPageProps {
@@ -245,15 +244,15 @@ export default function InformationPage({ token }: InformationPageProps) {
       <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} width={560}>
         <div className="card">
           {error && (
-            <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+            <div className="ip-0">
               <i className="fas fa-exclamation-circle"></i> {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="ip-1">
               <div>
-                <label style={labelStyle}>Title *</label>
+                <label className="iform-label">Title *</label>
                 <input type="text" required value={form.title} onChange={(e) => {
                   const val = e.target.value;
                   setField('title', val);
@@ -263,8 +262,8 @@ export default function InformationPage({ token }: InformationPageProps) {
                 }} />
               </div>
               <div>
-                <label style={labelStyle}>Icon</label>
-                <select value={form.icon} onChange={(e) => setField('icon', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}` }}>
+                <label className="iform-label">Icon</label>
+                <select value={form.icon} onChange={(e) => setField('icon', e.target.value)} className="ip-2">
                   {iconOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
@@ -272,9 +271,9 @@ export default function InformationPage({ token }: InformationPageProps) {
               </div>
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <label style={labelStyle}>
-                Slug <span style={{ color: THEME.success, fontWeight: 400 }}>(QR code URL — leave blank to auto-generate)</span>
+            <div className="ip-3">
+              <label className="iform-label">
+                Slug <span className="ip-4">(QR code URL — leave blank to auto-generate)</span>
               </label>
               <input
                 type="text"
@@ -283,29 +282,29 @@ export default function InformationPage({ token }: InformationPageProps) {
                 placeholder="e.g. baklava-art"
               />
               {form.slug && (
-                <div style={{ fontSize: 12, color: THEME.success, marginTop: 4, fontFamily: 'monospace' }}>
+                <div className="ip-5">
                   QR URL: https://app.loyaltysystem.uk/?slug={form.slug}#information
                 </div>
               )}
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <label style={labelStyle}>Short Description <span style={{ color: THEME.success, fontWeight: 400 }}>(card preview)</span></label>
+            <div className="ip-6">
+              <label className="iform-label">Short Description <span className="ip-7">(card preview)</span></label>
               <input type="text" value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} placeholder="Brief text shown on PWA card" />
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <label style={labelStyle}>Long Description <span style={{ color: THEME.success, fontWeight: 400 }}>(detail view)</span></label>
+            <div className="ip-8">
+              <label className="iform-label">Long Description <span className="ip-9">(detail view)</span></label>
               <textarea
                 value={form.long_description}
                 onChange={(e) => setField('long_description', e.target.value)}
                 placeholder="Full content shown when customer taps to view details..."
                 rows={4}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }}
+                className="ip-10"
               />
             </div>
 
-            <div style={{ marginTop: 12 }}>
+            <div className="ip-11">
               <ImageUploadField 
                 label="Card Image" 
                 imageUrl={form.image_url} 
@@ -315,7 +314,7 @@ export default function InformationPage({ token }: InformationPageProps) {
               />
             </div>
 
-            <div style={{ marginTop: 12 }}>
+            <div className="ip-12">
               <GalleryUploadField
                 label="Gallery Images"
                 urls={form.gallery_urls}
@@ -325,50 +324,50 @@ export default function InformationPage({ token }: InformationPageProps) {
               />
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <label style={labelStyle}>Content Type</label>
-              <select value={form.content_type} onChange={(e) => setField('content_type', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 12, border: `1px solid ${THEME.accentLight}`, fontSize: 14 }}>
+            <div className="ip-13">
+              <label className="iform-label">Content Type</label>
+              <select value={form.content_type} onChange={(e) => setField('content_type', e.target.value)} className="ip-14">
                 {contentTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
 
             {form.content_type === 'promotion' && (
-              <div style={{ marginTop: 12, padding: 12, background: '#F5F7FA', borderRadius: 12 }}>
-                <label style={{ ...labelStyle, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Promotion CTA (optional)</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
+              <div className="ip-15">
+                <label className="ip-16">Promotion CTA (optional)</label>
+                <div className="ip-17">
                   <div>
-                    <label style={{ ...labelStyle, fontSize: 12 }}>Action URL</label>
+                    <label className="ip-18">Action URL</label>
                     <input type="text" value={form.action_url} onChange={(e) => setField('action_url', e.target.value)} placeholder="https://..." />
                   </div>
                   <div>
-                    <label style={{ ...labelStyle, fontSize: 12 }}>Button Label</label>
+                    <label className="ip-19">Button Label</label>
                     <input type="text" value={form.action_label} onChange={(e) => setField('action_label', e.target.value)} placeholder="Learn More" />
                   </div>
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+            <div className="ip-20">
               <div>
-                <label style={labelStyle}>Start Date <span style={{ color: THEME.success, fontWeight: 400 }}>(blank = always)</span></label>
+                <label className="iform-label">Start Date <span className="ip-21">(blank = always)</span></label>
                 <input type="datetime-local" value={form.start_date} onChange={(e) => setField('start_date', e.target.value)} />
               </div>
               <div>
-                <label style={labelStyle}>End Date <span style={{ color: THEME.success, fontWeight: 400 }}>(blank = unlimited)</span></label>
+                <label className="iform-label">End Date <span className="ip-22">(blank = unlimited)</span></label>
                 <input type="datetime-local" value={form.end_date} onChange={(e) => setField('end_date', e.target.value)} />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+            <div className="ip-23">
               <button type="submit" className="btn btn-primary" disabled={saving}>
                 {saving ? 'Saving...' : editingId ? 'Update' : 'Create'}
               </button>
               <button type="button" className="btn" onClick={closeForm}>
                 Cancel
               </button>
-              <div style={{ flex: 1 }} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                <input type="checkbox" checked={form.is_active} onChange={(e) => setField('is_active', e.target.checked)} style={{ width: 16, height: 16 }} />
+              <div className="ip-24" />
+              <label className="ip-25">
+                <input type="checkbox" checked={form.is_active} onChange={(e) => setField('is_active', e.target.checked)} className="ip-26" />
                 Active
               </label>
             </div>
@@ -376,84 +375,75 @@ export default function InformationPage({ token }: InformationPageProps) {
         </div>
       </Drawer>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
+      <div className="ip-27">
         <button className="btn btn-primary" onClick={openNew}>
           <i className="fas fa-plus"></i> New Information Card
         </button>
       </div>
 
       {error && (
-        <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+        <div className="ip-28">
           <i className="fas fa-exclamation-circle"></i> {error}
         </div>
       )}
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-info-circle" style={{ marginRight: 8, color: THEME.primary }}></i>
-          Showing <strong style={{ color: THEME.textPrimary }}>{cards.length}</strong> of <strong>{total}</strong> cards
+      <div className="ip-29">
+        <div className="ip-30">
+          <span className="ip-31"><i className="fas fa-info-circle"></i></span>
+          Showing <strong className="ip-32">{cards.length}</strong> of <strong>{total}</strong> cards
         </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+        <div className="ip-33">
           Page {page} of {totalPages}
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: `1px solid ${THEME.border}`, borderTop: 'none' }}>
+      <div className="ip-34">
         <table>
           <thead>
             <tr><th>Image</th><th>Title</th><th>Type</th><th>Slug / QR</th><th>Short Desc</th><th>Status</th><th>Period</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {cards.length === 0 ? (
-              <tr><td colSpan={8} style={{ textAlign: 'center', color: THEME.primaryLight, padding: 40 }}>
-                <i className="fas fa-info-circle" style={{ fontSize: 40, display: 'block', marginBottom: 12 }}></i>
+              <tr><td colSpan={8} className="ip-35">
+                <span className="ip-36"><i className="fas fa-info-circle"></i></span>
                 No information cards yet
               </td></tr>
             ) : cards.map(card => (
               <tr key={card.id}>
                 <td>
                   {card.image_url ? (
-                    <Image src={cacheBust(card.image_url)} alt="" width={60} height={40} style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 6 }} />
+                    <Image src={cacheBust(card.image_url)} alt="" width={60} height={40} className="ip-37" />
                   ) : (
-                    <div style={{ width: 60, height: 40, background: THEME.bgMuted, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.primary, fontSize: 18 }}>
+                    <div className="ip-38">
                       <i className={`fas fa-${card.icon || 'info'}`}></i>
                     </div>
                   )}
                 </td>
-                <td style={{ fontWeight: 600 }}>{card.title}</td>
+                <td className="ip-39">{card.title}</td>
                 <td>
                   <span className={`badge ${
                     card.content_type === 'promotion' ? 'badge-copper' :
                     card.content_type === 'system' ? 'badge-gray' :
                     card.content_type === 'product' ? 'badge-green' :
                     'badge-blue'
-                  }`} style={{ fontSize: 11, textTransform: 'capitalize' }}>
+                  } ip-40`} >
                     {card.content_type || 'information'}
                   </span>
                 </td>
-                <td style={{ fontSize: 12, fontFamily: 'monospace', color: THEME.success }}>
+                <td className="ip-41">
                   {card.slug ? (
                     <span title={`QR: https://app.loyaltysystem.uk/?slug=${card.slug}#information`}>{card.slug}</span>
                   ) : '-'}
                 </td>
-                <td style={{ color: THEME.success, fontSize: 13 }}>{card.short_description || '-'}</td>
+                <td className="ip-42">{card.short_description || '-'}</td>
                 <td>
-                  <button className="btn btn-sm" onClick={() => handleToggleActive(card)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
+                  <button className="btn btn-sm ip-43" onClick={() => handleToggleActive(card)} >
                     <span className={`badge ${card.is_active ? 'badge-green' : 'badge-gray'}`}>
                       {card.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </button>
                 </td>
-                <td style={{ fontSize: 13, color: THEME.success }}>
+                <td className="ip-44">
                   {(card.start_date || card.end_date) ? (
                     <>
                       {card.start_date ? new Date(card.start_date).toLocaleDateString() : '—'} → {card.end_date ? new Date(card.end_date).toLocaleDateString() : '—'}
@@ -461,15 +451,15 @@ export default function InformationPage({ token }: InformationPageProps) {
                   ) : '—'}
                 </td>
                 <td>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div className="ip-45">
                     <button className="btn btn-sm" onClick={() => openEdit(card)}><i className="fas fa-edit"></i></button>
                     {deletingId === card.id ? (
                       <>
-                        <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(card.id)}>Confirm</button>
+                        <button className="btn btn-sm ip-46"  onClick={() => handleDelete(card.id)}>Confirm</button>
                         <button className="btn btn-sm" onClick={() => setDeletingId(null)}>Cancel</button>
                       </>
                     ) : (
-                      <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setDeletingId(card.id)}>
+                      <button className="btn btn-sm ip-47"  onClick={() => setDeletingId(card.id)}>
                         <i className="fas fa-trash"></i>
                       </button>
                     )}
@@ -507,20 +497,20 @@ function ImageUploadField({ label, imageUrl, token: _token, onSet, hint }: { lab
 
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input type="file" ref={fileRef} accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
+      <label className="iform-label">{label}</label>
+      <div className="iuf-48">
+        <input type="file" ref={fileRef} accept="image/*" onChange={handleUpload} className="iuf-49" />
         <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
           {uploading ? 'Uploading...' : 'Upload'}
         </button>
         {imageUrl && (
           <>
-            <Image src={imageUrl} alt="" width={60} height={40} style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4 }} />
-            <button type="button" className="btn btn-sm" onClick={() => onSet('')} style={{ color: '#EF4444' }}><i className="fas fa-times"></i></button>
+            <Image src={imageUrl} alt="" width={60} height={40} className="iuf-50" />
+            <button type="button" className="btn btn-sm iuf-51" onClick={() => onSet('')} ><i className="fas fa-times"></i></button>
           </>
         )}
       </div>
-      {hint && <div style={{ fontSize: 11, color: THEME.success, marginTop: 3 }}><i className="fas fa-info-circle" style={{ marginRight: 4 }}></i>{hint}</div>}
+      {hint && <div className="iuf-52"><span className="iuf-53"><i className="fas fa-info-circle"></i></span>{hint}</div>}
     </div>
   );
 }
@@ -554,28 +544,28 @@ function GalleryUploadField({ label, urls, token: _token, onSet, hint }: { label
 
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <input type="file" ref={fileRef} accept="image/*" multiple onChange={handleUpload} style={{ display: 'none' }} />
+      <label className="iform-label">{label}</label>
+      <div className="guf-54">
+        <input type="file" ref={fileRef} accept="image/*" multiple onChange={handleUpload} className="guf-55" />
         <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
           {uploading ? 'Uploading...' : 'Add Images'}
         </button>
         {urls.map((url, i) => (
-          <div key={i} style={{ position: 'relative', display: 'inline-block' }}>
-            <Image src={url} alt="" width={60} height={40} style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4 }} />
+          <div key={i} className="guf-56">
+            <Image src={url} alt="" width={60} height={40} className="guf-57" />
             <button
               type="button"
               onClick={() => removeUrl(i)}
-              style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: 999, background: '#EF4444', color: 'white', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              className="guf-remove-btn"
             >
               ×
             </button>
           </div>
         ))}
       </div>
-      {hint && <div style={{ fontSize: 11, color: THEME.success, marginTop: 3 }}><i className="fas fa-info-circle" style={{ marginRight: 4 }}></i>{hint}</div>}
+      {hint && <div className="guf-58"><span className="guf-59"><i className="fas fa-info-circle"></i></span>{hint}</div>}
     </div>
   );
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primaryDark };
+

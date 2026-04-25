@@ -219,61 +219,61 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
         {viewMode === 'banner-form' && (
           <div className="card">
             {error && (
-              <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+              <div className="pp-0">
                 <i className="fas fa-exclamation-circle"></i> {error}
               </div>
             )}
 
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="pp-1">
                 <div>
-                  <label style={labelStyle}>Title *</label>
+                  <label className="pp-label">Title *</label>
                   <input type="text" required value={form.title} onChange={(e) => setField('title', e.target.value)} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Short Description <span style={{ color: THEME.success, fontWeight: 400 }}>(optional)</span></label>
+                  <label className="pp-label">Short Description <span className="pp-2">(optional)</span></label>
                   <input type="text" value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} placeholder="Brief summary shown on banner card" />
                 </div>
               </div>
 
-              <div style={{ marginTop: 12 }}>
-                  <label style={labelStyle}>Detail Description <span style={{ color: THEME.success, fontWeight: 400 }}>(full content shown when customer taps to view details)</span></label>
+              <div className="pp-3">
+                  <label className="pp-label">Detail Description <span className="pp-4">(full content shown when customer taps to view details)</span></label>
                 <textarea
                   value={form.long_description}
                   onChange={(e) => setField('long_description', e.target.value)}
                   placeholder="Full content shown when customer taps to view details..."
                   rows={4}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }}
+                  className="pp-5"
                 />
               </div>
 
-              <div style={{ marginTop: 12 }}>
+              <div className="pp-6">
                 <ImageUploadField label="Banner Image (thumbnail)" imageUrl={form.image_url} token={token} onSet={(url) => setField('image_url', url)} hint="720 × 405 px (16:9) · Card thumbnail" />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div className="pp-7">
                 <div>
-                  <label style={labelStyle}>Terms &amp; Conditions</label>
+                  <label className="pp-label">Terms &amp; Conditions</label>
                   <textarea
                     value={form.terms}
                     onChange={(e) => setField('terms', e.target.value)}
                     placeholder="One per line. e.g. One per customer per day"
                     rows={3}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }}
+                    className="pp-8"
                   />
-                  <div style={{ fontSize: 11, color: THEME.success, marginTop: 2 }}>One term per line</div>
+                  <div className="pp-9">One term per line</div>
                 </div>
                 <div>
-                  <label style={labelStyle}>How to Redeem</label>
+                  <label className="pp-label">How to Redeem</label>
                   <input value={form.how_to_redeem} onChange={(e) => setField('how_to_redeem', e.target.value)} placeholder="e.g. Show this screen at checkout" />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div className="pp-10">
                   <div>
-                    <label style={labelStyle}>Action Type</label>
+                    <label className="pp-label">Action Type</label>
                     <Select value={form.action_type} onChange={(val) => setField('action_type', val)} options={[{ value: 'detail', label: 'Show Details (with redeem link)' }, { value: 'survey', label: 'Open Survey (auto-reward voucher)' }]} />
-                    <div style={{ fontSize: 11, color: THEME.success, marginTop: 2 }}>
+                    <div className="pp-11">
                       {form.action_type === 'survey'
                         ? 'Customer fills out survey → automatically receives reward voucher'
                         : 'Customer sees banner details → can tap to claim linked voucher'}
@@ -281,42 +281,42 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
                   </div>
                   {form.action_type === 'survey' ? (
                     <div>
-                      <label style={labelStyle}>Survey <span style={{ color: '#EF4444', fontWeight: 400 }}>* required</span></label>
+                      <label className="pp-label">Survey <span className="pp-12">* required</span></label>
                       <Select value={form.survey_id} onChange={(val) => setField('survey_id', val)} options={[{ value: '', label: '— Select Survey —' }, ...surveys.map(s => ({ value: String(s.id), label: s.title }))]} />
-                      <div style={{ fontSize: 11, color: THEME.success, marginTop: 2 }}>Select which survey to show when customer taps this banner</div>
+                      <div className="pp-13">Select which survey to show when customer taps this banner</div>
                     </div>
                   ) : (
                     <div>
-                      <label style={labelStyle}>Voucher to Redeem <span style={{ color: THEME.success, fontWeight: 400 }}>(optional)</span></label>
+                      <label className="pp-label">Voucher to Redeem <span className="pp-14">(optional)</span></label>
                       <Select value={form.voucher_id} onChange={(val) => setField('voucher_id', val)} options={[{ value: '', label: '— None (info only) —' }, ...vouchers.filter(v => v.is_active).map(v => ({ value: String(v.id), label: `${v.code} — ${v.title || v.description}` }))]} />
-                      <div style={{ fontSize: 11, color: THEME.success, marginTop: 2 }}>Customer can claim this voucher when they tap &quot;Redeem&quot;. Leave empty for info-only banners.</div>
+                      <div className="pp-15">Customer can claim this voucher when they tap &quot;Redeem&quot;. Leave empty for info-only banners.</div>
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                <div className="pp-16">
                   <div>
-                    <label style={labelStyle}>Start Date <span style={{ color: THEME.success, fontWeight: 400 }}>(blank = always)</span></label>
+                    <label className="pp-label">Start Date <span className="pp-17">(blank = always)</span></label>
                     <input type="date" value={form.start_date} onChange={(e) => setField('start_date', e.target.value)} />
-                    <div style={{ fontSize: 11, color: THEME.success, marginTop: 2 }}>When banner becomes visible. Leave blank to show immediately.</div>
+                    <div className="pp-18">When banner becomes visible. Leave blank to show immediately.</div>
                   </div>
                   <div>
-                    <label style={labelStyle}>End Date <span style={{ color: THEME.success, fontWeight: 400 }}>(blank = unlimited)</span></label>
+                    <label className="pp-label">End Date <span className="pp-19">(blank = unlimited)</span></label>
                     <input type="date" value={form.end_date} onChange={(e) => setField('end_date', e.target.value)} />
-                    <div style={{ fontSize: 11, color: THEME.success, marginTop: 2 }}>When banner stops showing. Leave blank for no end date.</div>
+                    <div className="pp-20">When banner stops showing. Leave blank for no end date.</div>
                   </div>
                 </div>
 
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+              <div className="pp-21">
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? 'Saving...' : editingId ? 'Update' : 'Create'}
                 </button>
                 <button type="button" className="btn" onClick={closeForm}>
                   Cancel
                 </button>
-                <div style={{ flex: 1 }} />
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                  <input type="checkbox" checked={form.is_active} onChange={(e) => setField('is_active', e.target.checked)} style={{ width: 16, height: 16 }} />
+                <div className="pp-22" />
+                <label className="pp-23">
+                  <input type="checkbox" checked={form.is_active} onChange={(e) => setField('is_active', e.target.checked)} className="pp-24" />
                   Active
                 </label>
               </div>
@@ -326,56 +326,38 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
       </Drawer>
       {/* Tab bar — only show on list views */}
       {(viewMode === 'promotions' || viewMode === 'surveys') && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: `1px solid ${THEME.border}` }}>
+        <div className="pp-25">
           <button
             onClick={() => setViewMode('promotions')}
+            className="pp-tab"
             style={{
-              padding: '12px 20px',
-              border: 'none',
               borderBottom: `2px solid ${currentTab === 'promotions' ? THEME.primary : 'transparent'}`,
-              background: 'transparent',
               color: currentTab === 'promotions' ? THEME.primary : THEME.textMuted,
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
             }}
           >
-            <i className="fas fa-bullhorn" style={{ marginRight: 8 }}></i>
+            <span className="pp-26"><i className="fas fa-bullhorn"></i></span>
             Promotions
           </button>
           <button
             onClick={() => setViewMode('surveys')}
+            className="pp-tab"
             style={{
-              padding: '12px 20px',
-              border: 'none',
               borderBottom: `2px solid ${currentTab === 'surveys' ? THEME.primary : 'transparent'}`,
-              background: 'transparent',
               color: currentTab === 'surveys' ? THEME.primary : THEME.textMuted,
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
             }}
           >
-            <i className="fas fa-list-check" style={{ marginRight: 8 }}></i>
+            <span className="pp-27"><i className="fas fa-list-check"></i></span>
             Surveys
           </button>
           <button
             onClick={() => setViewMode('reports')}
+            className="pp-tab"
             style={{
-              padding: '12px 20px',
-              border: 'none',
               borderBottom: `2px solid ${currentTab === 'reports' ? THEME.primary : 'transparent'}`,
-              background: 'transparent',
               color: currentTab === 'reports' ? THEME.primary : THEME.textMuted,
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
             }}
           >
-            <i className="fas fa-chart-bar" style={{ marginRight: 8 }}></i>
+            <span className="pp-28"><i className="fas fa-chart-bar"></i></span>
             Survey Reports
           </button>
         </div>
@@ -384,61 +366,52 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
       {/* ── PROMOTIONS LIST VIEW ── */}
       {viewMode === 'promotions' && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
+          <div className="pp-29">
             <button className="btn btn-primary" onClick={openNew}>
               <i className="fas fa-plus"></i> New Banner
             </button>
           </div>
 
           {error && (
-            <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+            <div className="pp-30">
               <i className="fas fa-exclamation-circle"></i> {error}
             </div>
           )}
 
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 16px',
-            background: THEME.bgMuted,
-            borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-            border: `1px solid ${THEME.border}`,
-            borderBottom: 'none',
-          }}>
-            <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-              <i className="fas fa-image" style={{ marginRight: 8, color: THEME.primary }}></i>
-              Showing <strong style={{ color: THEME.textPrimary }}>{banners.length}</strong> of <strong>{bannerTotal}</strong> banners
+          <div className="pp-31">
+            <div className="pp-32">
+              <span className="pp-33"><i className="fas fa-image"></i></span>
+              Showing <strong className="pp-34">{banners.length}</strong> of <strong>{bannerTotal}</strong> banners
             </div>
-            <div style={{ fontSize: 13, color: THEME.textMuted }}>
+            <div className="pp-35">
               Page {bannerPage} of {bannerTotalPages}
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: `1px solid ${THEME.border}`, borderTop: 'none' }}>
+          <div className="pp-36">
             <table>
               <thead>
                 <tr><th>Image</th><th>Title</th><th>Short Desc</th><th>Action</th><th>Status</th><th>Period</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {banners.length === 0 ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', color: THEME.primaryLight, padding: 40 }}>
-                    <i className="fas fa-image" style={{ fontSize: 40, display: 'block', marginBottom: 12 }}></i>
+                  <tr><td colSpan={7} className="pp-37">
+                    <span className="pp-38"><i className="fas fa-image"></i></span>
                     No banners yet
                   </td></tr>
                 ) : banners.map(banner => (
                   <tr key={banner.id}>
                     <td>
                       {banner.image_url ? (
-                        <Image src={cacheBust(banner.image_url)} alt="" width={80} height={45} style={{ width: 80, height: 45, objectFit: 'cover', borderRadius: 8 }} />
+                        <Image src={cacheBust(banner.image_url)} alt="" width={80} height={45} className="pp-39" />
                       ) : (
-                        <div style={{ width: 80, height: 45, background: THEME.bgMuted, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.success, fontSize: 14 }}>
+                        <div className="pp-40">
                           <i className="fas fa-image"></i>
                         </div>
                       )}
                     </td>
-                    <td style={{ fontWeight: 600 }}>{banner.title}</td>
-                    <td style={{ color: THEME.success, fontSize: 13 }}>{banner.short_description || '-'}</td>
+                    <td className="pp-41">{banner.title}</td>
+                    <td className="pp-42">{banner.short_description || '-'}</td>
                     <td>
                       <div>
                         <span className={`badge ${banner.action_type === 'survey' ? 'badge-blue' : 'badge-gray'}`}>
@@ -446,24 +419,24 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
                         </span>
                       </div>
                       {(banner.action_type === 'detail' && banner.voucher_id) && (
-                        <div style={{ fontSize: 11, color: THEME.success, marginTop: 3 }}>
-                          <i className="fas fa-ticket-alt" style={{ marginRight: 3 }}></i>Voucher #{banner.voucher_id}
+                        <div className="pp-43">
+                          <span className="pp-44"><i className="fas fa-ticket-alt"></i></span>Voucher #{banner.voucher_id}
                         </div>
                       )}
                       {(banner.action_type === 'survey' && banner.survey_id) && (
-                        <div style={{ fontSize: 11, color: THEME.success, marginTop: 3 }}>
-                          <i className="fas fa-clipboard-list" style={{ marginRight: 3 }}></i>Survey #{banner.survey_id}
+                        <div className="pp-45">
+                          <span className="pp-46"><i className="fas fa-clipboard-list"></i></span>Survey #{banner.survey_id}
                         </div>
                       )}
                     </td>
                     <td>
-                      <button className="btn btn-sm" onClick={() => handleToggleActive(banner)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
+                      <button className="btn btn-sm pp-47" onClick={() => handleToggleActive(banner)} >
                         <span className={`badge ${banner.is_active ? 'badge-green' : 'badge-gray'}`}>
                           {banner.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </button>
                     </td>
-                    <td style={{ fontSize: 13, color: THEME.success }}>
+                    <td className="pp-48">
                       {(banner.start_date || banner.end_date) ? (
                         <>
                           {banner.start_date ? new Date(banner.start_date).toLocaleDateString() : '—'} → {banner.end_date ? new Date(banner.end_date).toLocaleDateString() : '—'}
@@ -471,15 +444,15 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
                       ) : '—'}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div className="pp-49">
                         <button className="btn btn-sm" onClick={() => openEdit(banner)}><i className="fas fa-edit"></i></button>
                         {deletingId === banner.id ? (
                           <>
-                            <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(banner.id)}>Confirm</button>
+                            <button className="btn btn-sm pp-50"  onClick={() => handleDelete(banner.id)}>Confirm</button>
                             <button className="btn btn-sm" onClick={() => setDeletingId(null)}>Cancel</button>
                           </>
                         ) : (
-                          <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setDeletingId(banner.id)}>
+                          <button className="btn btn-sm pp-51"  onClick={() => setDeletingId(banner.id)}>
                             <i className="fas fa-trash"></i>
                           </button>
                         )}
@@ -532,22 +505,22 @@ function ImageUploadField({ label, imageUrl, token: _token, onSet, hint }: { lab
 
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input type="file" ref={fileRef} accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
+      <label className="pp-label">{label}</label>
+      <div className="iuf-52">
+        <input type="file" ref={fileRef} accept="image/*" onChange={handleUpload} className="iuf-53" />
         <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
           {uploading ? 'Uploading...' : 'Upload'}
         </button>
         {imageUrl && (
           <>
-            <Image src={imageUrl} alt="" width={40} height={28} style={{ width: 40, height: 28, objectFit: 'cover', borderRadius: 4 }} />
-            <button type="button" className="btn btn-sm" onClick={() => onSet('')} style={{ color: '#EF4444' }}><i className="fas fa-times"></i></button>
+            <Image src={imageUrl} alt="" width={40} height={28} className="iuf-54" />
+            <button type="button" className="btn btn-sm iuf-55" onClick={() => onSet('')} ><i className="fas fa-times"></i></button>
           </>
         )}
       </div>
-      {hint && <div style={{ fontSize: 11, color: THEME.success, marginTop: 3 }}><i className="fas fa-info-circle" style={{ marginRight: 4 }}></i>{hint}</div>}
+      {hint && <div className="iuf-56"><span className="iuf-57"><i className="fas fa-info-circle"></i></span>{hint}</div>}
     </div>
   );
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primaryDark };
+

@@ -34,28 +34,28 @@ export default function CustomizationManager({ storeId, item, token, onClose }: 
   return (
     <div>
       <AddCustomizationForm storeId={storeId} itemId={item.id} token={token} onClose={loadOptions} />
-      <div style={{ marginTop: 20, borderTop: '1px solid #EDF2F8', paddingTop: 16 }}>
-        <h4 style={{ marginBottom: 12 }}>Current Options ({options.length})</h4>
-        {loading ? <div style={{ color: '#64748B' }}>Loading...</div> : options.length === 0 ? (
-          <div style={{ color: '#94A3B8', textAlign: 'center', padding: 20 }}>No customization options yet</div>
+      <div className="cm-0">
+        <h4 className="cm-1">Current Options ({options.length})</h4>
+        {loading ? <div className="cm-2">Loading...</div> : options.length === 0 ? (
+          <div className="cm-3">No customization options yet</div>
         ) : (
-          <div style={{ display: 'grid', gap: 8 }}>
+          <div className="cm-4">
             {options.map(opt => (
-              <div key={opt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#F8FAFC', borderRadius: 10 }}>
+              <div key={opt.id} className="cm-5">
                 <div>
-                  <span style={{ fontWeight: 500 }}>{opt.name}</span>
-                  {opt.price_adjustment > 0 && <span style={{ marginLeft: 8, color: '#059669', fontWeight: 600 }}>+RM {opt.price_adjustment.toFixed(2)}</span>}
+                  <span className="cm-6">{opt.name}</span>
+                  {opt.price_adjustment > 0 && <span className="cm-7">+RM {opt.price_adjustment.toFixed(2)}</span>}
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div className="cm-8">
                   <span className={`badge ${opt.is_active ? 'badge-green' : 'badge-gray'}`}>{opt.is_active ? 'Active' : 'Inactive'}</span>
-                  <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => deleteOption(opt.id)}><i className="fas fa-trash"></i></button>
+                  <button className="btn btn-sm cm-9"  onClick={() => deleteOption(opt.id)}><i className="fas fa-trash"></i></button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-      <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+      <div className="cm-10">
         <button className="btn" onClick={onClose}>Done</button>
       </div>
     </div>

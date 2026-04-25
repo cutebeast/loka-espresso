@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { apiFetch } from '@/lib/merchant-api';
-import { THEME } from '@/lib/theme';
 import type {
   PageId,
   MerchantStore,
@@ -395,7 +394,7 @@ export default function MerchantDashboard() {
 
   return (
     <ErrorBoundary>
-    <div style={{ height: '100vh', display: 'flex', overflow: 'hidden', background: '#F5F7FA' }}>
+    <div className="md-0">
       <Sidebar
         page={page}
         setPage={handlePageChange}
@@ -416,17 +415,17 @@ export default function MerchantDashboard() {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="mobile-menu-btn"
           >
-            <i className="fas fa-bars" style={{ fontSize: 18 }}></i>
+            <span className="md-1"><i className="fas fa-bars"></i></span>
           </button>
           {customerDetailId ? (
             <div className="admin-header-left">
               <button className="btn btn-sm" onClick={() => window.history.back()}>
                 <i className="fas fa-arrow-left"></i> Back to Customers
               </button>
-              <div style={{ fontSize: 14, color: '#64748B' }}>Customer Detail</div>
+              <div className="md-2">Customer Detail</div>
             </div>
           ) : (
-            <div style={{ fontSize: 24, fontWeight: 700, color: THEME.textPrimary, letterSpacing: -0.5 }}>{pageTitle[page]}</div>
+            <div className="page-title">{pageTitle[page]}</div>
           )}
           <div className="admin-header-actions">
             <div
@@ -445,7 +444,7 @@ export default function MerchantDashboard() {
         <main className="admin-main">
           <ErrorBoundary>
             <div className="page-enter">
-              {loading && <div style={{ textAlign: 'center', padding: 40, color: '#64748B' }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>}
+              {loading && <div className="md-3"><i className="fas fa-spinner fa-spin"></i> Loading...</div>}
 
               {page === 'dashboard' && <DashboardPage dashboard={dashboard} loading={loading} selectedStore={selectedStore} stores={stores} onStoreChange={setSelectedStore} fromDate={dateRange.from} toDate={dateRange.to} onDateChange={handleDateRangeChange} chartMode={dashboardChartMode} />}
 
@@ -618,12 +617,12 @@ export default function MerchantDashboard() {
 
       {showStoreModal && (
         <div className="modal-overlay" onClick={() => setShowStoreModal(false)}>
-          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginBottom: 20 }}>Select Store</h3>
-            <div style={{ marginBottom: 20 }}>
+          <div className="modal md-4"  onClick={e => e.stopPropagation()}>
+            <h3 className="md-5">Select Store</h3>
+            <div className="md-6">
               <button
-                className="btn"
-                style={{ width: '100%', marginBottom: 8, justifyContent: 'center' }}
+                className="btn md-7"
+                
                 onClick={() => { setSelectedStore('all'); setShowStoreModal(false); }}
               >
                 All Stores (Global view)
@@ -632,14 +631,14 @@ export default function MerchantDashboard() {
             {stores.map(s => (
               <button
                 key={s.id}
-                className="btn"
-                style={{ width: '100%', marginBottom: 8, justifyContent: 'center' }}
+                className="btn md-8"
+                
                 onClick={() => { setSelectedStore(String(s.id)); setShowStoreModal(false); }}
               >
                 {s.name} &middot; {s.address}
               </button>
             ))}
-            <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 16 }} onClick={() => setShowStoreModal(false)}>Done</button>
+            <button className="btn btn-primary md-9"  onClick={() => setShowStoreModal(false)}>Done</button>
           </div>
         </div>
       )}
@@ -647,7 +646,7 @@ export default function MerchantDashboard() {
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div className="md-10">
               <h3>{modalTitle}</h3>
               <button className="btn btn-sm" onClick={() => setShowModal(false)}><i className="fas fa-times"></i></button>
             </div>
@@ -660,7 +659,7 @@ export default function MerchantDashboard() {
       {customizingItem && (
         <div className="modal-overlay" onClick={() => setCustomizingItem(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div className="md-11">
               <h3>Customizations: {customizingItem.name}</h3>
               <button className="btn btn-sm" onClick={() => setCustomizingItem(null)}><i className="fas fa-times"></i></button>
             </div>
@@ -672,7 +671,7 @@ export default function MerchantDashboard() {
       {/* Change Password Modal */}
       {showChangePassword && (
         <div className="modal-overlay" onClick={() => setShowChangePassword(false)}>
-          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+          <div className="modal md-12"  onClick={e => e.stopPropagation()}>
             <ChangePasswordModal token={token} onClose={() => setShowChangePassword(false)} />
           </div>
         </div>

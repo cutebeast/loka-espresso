@@ -2,7 +2,6 @@
 
 import { useState, FormEvent } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
-import { THEME } from '@/lib/theme';
 
 interface CustomerResult {
   id: number;
@@ -92,40 +91,40 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, color: THEME.textPrimary }}>
-        <i className="fas fa-wallet" style={{ marginRight: 10, color: THEME.primary }}></i>
+      <h2 className="wtup-0">
+        <span className="wtup-1"><i className="fas fa-wallet"></i></span>
         In-Store Wallet Top-Up
       </h2>
 
       {/* Step 1: Search Customer */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: THEME.textSecondary }}>Step 1: Find Customer</h3>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMuted, display: 'block', marginBottom: 4 }}>Phone Number</label>
+      <div className="card wtup-2" >
+        <h3 className="wtup-3">Step 1: Find Customer</h3>
+        <form onSubmit={handleSearch} className="wtup-4">
+          <div className="wtup-5">
+            <label className="wtup-6">Phone Number</label>
             <input
               value={phone}
               onChange={e => setPhone(e.target.value)}
               placeholder="e.g. +60123456789"
-              style={{ width: '100%' }}
+              className="wtup-7"
             />
           </div>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button type="submit" className="btn btn-primary" disabled={searching} style={{ minHeight: 44 }}>
+          <div className="wtup-8">
+            <button type="submit" className="btn btn-primary wtup-9" disabled={searching} >
               {searching ? 'Searching...' : 'Search'}
             </button>
           </div>
         </form>
 
         {customer && (
-          <div style={{ marginTop: 16, padding: '14px 16px', background: THEME.bgMuted, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }} className="wallet-topup-customer">
+          <div  className="wallet-topup-customer wtup-10">
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: THEME.textPrimary }}>{customer.name || 'Unnamed'}</div>
-              <div style={{ fontSize: 13, color: THEME.textMuted }}>{customer.phone}</div>
+              <div className="wtup-11">{customer.name || 'Unnamed'}</div>
+              <div className="wtup-12">{customer.phone}</div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: THEME.textMuted }}>Current Balance</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: THEME.primary }}>{formatRM(customer.wallet_balance || 0)}</div>
+            <div className="wtup-13">
+              <div className="wtup-14">Current Balance</div>
+              <div className="wtup-15">{formatRM(customer.wallet_balance || 0)}</div>
             </div>
           </div>
         )}
@@ -134,17 +133,17 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
       {/* Step 2: Top-Up Form */}
       {customer && (
         <div className="card">
-          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: THEME.textSecondary }}>Step 2: Process Top-Up</h3>
+          <h3 className="wtup-16">Step 2: Process Top-Up</h3>
 
           {/* Amount presets */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div className="wtup-17">
             {TOPUP_PRESETS.map(preset => (
               <button
                 key={preset}
                 type="button"
                 onClick={() => setAmount(String(preset))}
-                className={`btn btn-sm ${amount === String(preset) ? 'btn-primary' : ''}`}
-                style={{ minWidth: 60 }}
+                className={`btn btn-sm ${amount === String(preset) ? 'btn-primary' : ''} wtup-18`}
+                
               >
                 RM {preset}
               </button>
@@ -152,9 +151,9 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
           </div>
 
           <form onSubmit={handleTopUp}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }} className="wallet-topup-grid">
+            <div  className="wallet-topup-grid wtup-19">
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMuted, display: 'block', marginBottom: 4 }}>Amount (RM)</label>
+                <label className="wtup-20">Amount (RM)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -166,11 +165,11 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
                 />
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMuted, display: 'block', marginBottom: 4 }}>Payment Method</label>
+                <label className="wtup-21">Payment Method</label>
                 <select
                   value={paymentMethod}
                   onChange={e => setPaymentMethod(e.target.value as 'cash' | 'card' | 'paywave')}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.border}`, fontSize: 14 }}
+                  className="wtup-22"
                 >
                   <option value="cash">Cash</option>
                   <option value="card">Card</option>
@@ -179,8 +178,8 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
               </div>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMuted, display: 'block', marginBottom: 4 }}>Notes (optional)</label>
+            <div className="wtup-23">
+              <label className="wtup-24">Notes (optional)</label>
               <input
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
@@ -188,7 +187,7 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
               />
             </div>
 
-            <button type="submit" className="btn btn-primary" disabled={processing} style={{ width: '100%' }}>
+            <button type="submit" className="btn btn-primary wtup-25" disabled={processing} >
               {processing ? 'Processing...' : `Top Up RM ${amount || '0'}`}
             </button>
           </form>
@@ -198,20 +197,14 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
       {/* Result */}
       {result && (
         <div
-          className="card"
-          style={{
-            marginTop: 16,
-            background: result.success ? '#F0FDF4' : '#FEF2F2',
-            border: `1px solid ${result.success ? '#86EFAC' : '#FECACA'}`,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <i className={`fas ${result.success ? 'fa-check-circle' : 'fa-exclamation-circle'}`} style={{ fontSize: 24, color: result.success ? '#16A34A' : '#DC2626' }}></i>
+            >
+          <div className="wtup-26">
+            <i className={`fas ${result.success ? 'fa-check-circle' : 'fa-exclamation-circle'} wtup-icon ${result.success ? 'wtup-icon-success' : 'wtup-icon-error'}`}></i>
             <div>
-              <div style={{ fontWeight: 700, color: result.success ? '#166534' : '#991B1B' }}>{result.success ? 'Success' : 'Error'}</div>
-              <div style={{ fontSize: 13, color: result.success ? '#166534' : '#991B1B' }}>{result.message}</div>
+              <div className={`wtup-title ${result.success ? 'wtup-title-success' : 'wtup-title-error'}`}>{result.success ? 'Success' : 'Error'}</div>
+              <div className={`wtup-msg ${result.success ? 'wtup-msg-success' : 'wtup-msg-error'}`}>{result.message}</div>
               {result.newBalance !== undefined && (
-                <div style={{ fontSize: 18, fontWeight: 800, color: THEME.primary, marginTop: 4 }}>
+                <div className="wtup-27">
                   New Balance: {formatRM(result.newBalance)}
                 </div>
               )}
@@ -221,9 +214,9 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
       )}
 
       {/* Instructions */}
-      <div style={{ marginTop: 20, padding: '12px 16px', background: '#FFFBEB', borderRadius: 8, fontSize: 12, color: '#92400E' }}>
+      <div className="wtup-28">
         <strong><i className="fas fa-info-circle"></i> How it works:</strong>
-        <ol style={{ margin: '8px 0 0 16px', padding: 0 }}>
+        <ol className="wtup-29">
           <li>Customer comes to the counter and requests a wallet top-up</li>
           <li>Staff searches customer by phone number</li>
           <li>Staff collects payment (cash/card/paywave) from customer</li>

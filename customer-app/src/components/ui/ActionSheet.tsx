@@ -32,8 +32,7 @@ export function ActionSheet({ isOpen, onClose, title, options }: ActionSheetProp
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 bg-bg-light rounded-t-3xl z-50 pb-safe"
-            style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+            className="fixed bottom-0 left-0 right-0 bg-bg-light rounded-t-3xl z-50 pb-safe as-sheet"
           >
             <div className="w-12 h-1 bg-border rounded-full mx-auto mt-4 mb-4" />
             {title && (

@@ -29,21 +29,7 @@ export default function MobileBottomNav({ page, setPage }: MobileBottomNavProps)
 
   return (
     <nav
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 56,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        background: THEME.bgCard,
-        borderTop: `1px solid ${THEME.borderLight}`,
-        zIndex: 140,
-        paddingBottom: 'env(safe-area-inset-bottom, 0)',
-        boxShadow: THEME.shadow.lg,
-      }}
+      className="mbn-0"
     >
       {navTabs.map(tab => {
         const isActive = page === tab.id;
@@ -51,43 +37,17 @@ export default function MobileBottomNav({ page, setPage }: MobileBottomNavProps)
           <button
             key={tab.id}
             onClick={() => setPage(tab.id)}
+            className="mbn-btn"
             style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
               color: isActive ? THEME.primary : THEME.textMuted,
-              fontSize: 11,
               fontWeight: isActive ? 600 : 500,
-              gap: 4,
-              padding: '4px 0',
-              transition: 'color 0.15s',
-              WebkitTapHighlightColor: 'transparent',
-              minWidth: 44,
             }}
           >
-            <i
-              className={`fas ${tab.icon}`}
-              style={{ fontSize: 20 }}
-            />
-            <span style={{ lineHeight: 1 }}>{tab.label}</span>
+            <span className="mbn-1"><i className={`fas ${tab.icon}`} /></span>
+            <span className="mbn-2">{tab.label}</span>
             {isActive && (
               <span
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: 24,
-                  height: 3,
-                  borderRadius: '0 0 3px 3px',
-                  background: THEME.primary,
-                }}
+                className="mbn-3"
               />
             )}
           </button>

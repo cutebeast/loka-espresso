@@ -45,40 +45,40 @@ export default function ChangePasswordModal({ token: _token, onClose }: ChangePa
 
   if (success) {
     return (
-      <div style={{ textAlign: 'center', padding: 20 }}>
-        <i className="fas fa-check-circle" style={{ fontSize: 40, color: '#059669', marginBottom: 16 }}></i>
+      <div className="cpm-0">
+        <span className="cpm-1"><i className="fas fa-check-circle"></i></span>
         <h4>Password changed successfully</h4>
-        <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={onClose}>Done</button>
+        <button className="btn btn-primary cpm-2"  onClick={onClose}>Done</button>
       </div>
     );
   }
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3 style={{ margin: 0 }}>Change Password</h3>
+      <div className="cpm-3">
+        <h3 className="cpm-4">Change Password</h3>
         <button className="btn btn-sm" onClick={onClose}><i className="fas fa-times"></i></button>
       </div>
       {error && (
-        <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+        <div className="cpm-5">
           <i className="fas fa-exclamation-circle"></i> {error}
         </div>
       )}
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Current Password *</label>
+        <div className="cpm-6">
+          <label className="cpm-7">Current Password *</label>
           <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
         </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>New Password *</label>
+        <div className="cpm-8">
+          <label className="cpm-9">New Password *</label>
           <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6} />
-          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>Minimum 6 characters</div>
+          <div className="cpm-10">Minimum 6 characters</div>
         </div>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Confirm New Password *</label>
+        <div className="cpm-11">
+          <label className="cpm-12">Confirm New Password *</label>
           <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
         </div>
-        <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+        <button type="submit" className="btn btn-primary cpm-13"  disabled={saving}>
           {saving ? 'Changing...' : 'Change Password'}
         </button>
       </form>

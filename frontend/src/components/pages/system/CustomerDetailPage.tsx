@@ -3,7 +3,6 @@
 import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import type { CustomerDetail, CustomerWalletTransaction, CustomerLoyaltyTransaction, MerchantOrder } from '@/lib/merchant-types';
-import { THEME } from '@/lib/theme';
 import { DataTable, Pagination, ColumnDef } from '@/components/ui';
 
 interface PaginatedResponse<T> {
@@ -48,18 +47,18 @@ function AwardPointsDialog({ customerId, token: _token, onDone }: { customerId: 
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ padding: '12px 16px', background: THEME.bgMuted, borderRadius: 12, marginBottom: 16 }}>
-      <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 8 }}><i className="fas fa-star" style={{ marginRight: 6 }}></i>Award / Deduct Points</div>
-      {error && <div style={{ color: '#DC2626', fontSize: 12, marginBottom: 8 }}><i className="fas fa-exclamation-circle"></i> {error}</div>}
-      {result && <div style={{ color: '#059669', fontSize: 12, marginBottom: 8 }}><i className="fas fa-check-circle"></i> {result}</div>}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <div style={{ flex: '0 0 100px' }}>
-          <label style={labelStyle}>Points</label>
-          <input type="number" value={points} onChange={e => setPoints(e.target.value)} placeholder="+/- pts" style={{ width: '100%' }} />
-          <div style={hintStyle}>Negative to deduct</div>
+    <form onSubmit={handleSubmit} className="apd-0">
+      <div className="apd-1"><span className="apd-2"><i className="fas fa-star"></i></span>Award / Deduct Points</div>
+      {error && <div className="apd-3"><i className="fas fa-exclamation-circle"></i> {error}</div>}
+      {result && <div className="apd-4"><i className="fas fa-check-circle"></i> {result}</div>}
+      <div className="apd-5">
+        <div className="apd-6">
+          <label className="cdp-label">Points</label>
+          <input type="number" value={points} onChange={e => setPoints(e.target.value)} placeholder="+/- pts" className="apd-7" />
+          <div className="cdp-hint">Negative to deduct</div>
         </div>
-        <div style={{ flex: 1, minWidth: 150 }}>
-          <label style={labelStyle}>Reason</label>
+        <div className="apd-8">
+          <label className="cdp-label">Reason</label>
           <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Loyalty bonus" />
         </div>
         <button type="submit" className="btn btn-primary btn-sm" disabled={saving || !points}>{saving ? 'Applying...' : 'Apply'}</button>
@@ -109,27 +108,27 @@ function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number;
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ padding: '12px 16px', background: THEME.bgMuted, borderRadius: 12, marginBottom: 16 }}>
-      <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 8 }}><i className="fas fa-ticket-alt" style={{ marginRight: 6 }}></i>Award Voucher</div>
-      {error && <div style={{ color: '#DC2626', fontSize: 12, marginBottom: 8 }}><i className="fas fa-exclamation-circle"></i> {error}</div>}
-      {result && <div style={{ color: '#059669', fontSize: 12, marginBottom: 8 }}><i className="fas fa-check-circle"></i> {result}</div>}
+    <form onSubmit={handleSubmit} className="avd-9">
+      <div className="avd-10"><span className="avd-11"><i className="fas fa-ticket-alt"></i></span>Award Voucher</div>
+      {error && <div className="avd-12"><i className="fas fa-exclamation-circle"></i> {error}</div>}
+      {result && <div className="avd-13"><i className="fas fa-check-circle"></i> {result}</div>}
       {!loaded ? (
-        <div style={{ fontSize: 12, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i> Loading vouchers...</div>
+        <div className="avd-14"><i className="fas fa-spinner fa-spin"></i> Loading vouchers...</div>
       ) : vouchers.length === 0 ? (
-        <div style={{ fontSize: 12, color: THEME.textMuted }}>No active vouchers available. Create one in Vouchers first.</div>
+        <div className="avd-15">No active vouchers available. Create one in Vouchers first.</div>
       ) : (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 180 }}>
-            <label style={labelStyle}>Voucher</label>
-            <select value={selectedVoucher} onChange={e => setSelectedVoucher(e.target.value)} style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 13 }}>
+        <div className="avd-16">
+          <div className="avd-17">
+            <label className="cdp-label">Voucher</label>
+            <select value={selectedVoucher} onChange={e => setSelectedVoucher(e.target.value)} className="avd-18">
               <option value="">Select voucher...</option>
               {vouchers.map(v => (
                 <option key={v.id} value={v.id}>{v.title || v.code} — {v.discount_type}: {v.discount_value}{v.discount_type === 'percent' ? '%' : ' RM'}</option>
               ))}
             </select>
           </div>
-          <div style={{ flex: 1, minWidth: 120 }}>
-            <label style={labelStyle}>Reason</label>
+          <div className="avd-19">
+            <label className="cdp-label">Reason</label>
             <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Compensation" />
           </div>
           <button type="submit" className="btn btn-primary btn-sm" disabled={saving || !selectedVoucher}>{saving ? 'Awarding...' : 'Award'}</button>
@@ -165,19 +164,19 @@ function SetTierDialog({ customerId, currentTier, token: _token, onDone }: { cus
   const tiers = ['bronze', 'silver', 'gold', 'platinum'];
 
   return (
-    <form onSubmit={handleSubmit} style={{ padding: '12px 16px', background: THEME.bgMuted, borderRadius: 12, marginBottom: 16 }}>
-      <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 8 }}><i className="fas fa-medal" style={{ marginRight: 6 }}></i>Set Tier Override</div>
-      {error && <div style={{ color: '#DC2626', fontSize: 12, marginBottom: 8 }}><i className="fas fa-exclamation-circle"></i> {error}</div>}
-      {result && <div style={{ color: '#059669', fontSize: 12, marginBottom: 8 }}><i className="fas fa-check-circle"></i> {result}</div>}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <div style={{ flex: '0 0 140px' }}>
-          <label style={labelStyle}>Tier</label>
-          <select value={tier} onChange={e => setTier(e.target.value)} style={{ width: '100%', padding: '6px 10px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 13 }}>
+    <form onSubmit={handleSubmit} className="std-20">
+      <div className="std-21"><span className="std-22"><i className="fas fa-medal"></i></span>Set Tier Override</div>
+      {error && <div className="std-23"><i className="fas fa-exclamation-circle"></i> {error}</div>}
+      {result && <div className="std-24"><i className="fas fa-check-circle"></i> {result}</div>}
+      <div className="std-25">
+        <div className="std-26">
+          <label className="cdp-label">Tier</label>
+          <select value={tier} onChange={e => setTier(e.target.value)} className="std-27">
             {tiers.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
           </select>
         </div>
-        <div style={{ flex: 1, minWidth: 150 }}>
-          <label style={labelStyle}>Reason</label>
+        <div className="std-28">
+          <label className="cdp-label">Reason</label>
           <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. VIP upgrade" />
         </div>
         <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>{saving ? 'Setting...' : 'Set Tier'}</button>
@@ -205,13 +204,13 @@ function ApproveProfileButton({ customerId, token: _token, onDone }: { customerI
   }
 
   return (
-    <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: 12, marginBottom: 16, border: '1px solid #F59E0B' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="apb-29">
+      <div className="apb-30">
         <div>
-          <div style={{ fontWeight: 600, fontSize: 14, color: '#92400E', marginBottom: 4 }}><i className="fas fa-user-check" style={{ marginRight: 6 }}></i>Phone Not Verified</div>
-          <div style={{ fontSize: 12, color: '#78350F' }}>Approve to verify this customer&apos;s phone and activate their account. They can update their name later from the app.</div>
-          {error && <div style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}><i className="fas fa-exclamation-circle"></i> {error}</div>}
-          {result && <div style={{ color: '#059669', fontSize: 12, marginTop: 4 }}><i className="fas fa-check-circle"></i> {result}</div>}
+          <div className="apb-31"><span className="apb-32"><i className="fas fa-user-check"></i></span>Phone Not Verified</div>
+          <div className="apb-33">Approve to verify this customer&apos;s phone and activate their account. They can update their name later from the app.</div>
+          {error && <div className="apb-34"><i className="fas fa-exclamation-circle"></i> {error}</div>}
+          {result && <div className="apb-35"><i className="fas fa-check-circle"></i> {result}</div>}
         </div>
         <button className="btn btn-primary btn-sm" disabled={saving} onClick={handleApprove}>
           {saving ? 'Approving...' : <><i className="fas fa-check"></i> Approve Profile</>}
@@ -342,7 +341,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
   // Column definitions for Orders table
   const ordersColumns: ColumnDef<MerchantOrder>[] = [
     { key: 'order_number', header: 'Order #' },
-    { key: 'order_type', header: 'Type', render: (o) => <span style={{ textTransform: 'capitalize' }}>{o.order_type?.replace('_', ' ')}</span> },
+    { key: 'order_type', header: 'Type', render: (o) => <span className="cdp-36">{o.order_type?.replace('_', ' ')}</span> },
     { key: 'total', header: 'Total', render: (o) => formatRM(o.total) },
     { key: 'status', header: 'Status', render: (o) => (
       <span className={`badge ${o.status === 'completed' ? 'badge-green' : o.status === 'cancelled' ? 'badge-red' : 'badge-yellow'}`}>
@@ -360,7 +359,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
       <span className={`badge ${t.type === 'earn' ? 'badge-green' : 'badge-red'}`}>{t.type}</span>
     )},
     { key: 'points', header: 'Points', render: (t) => (
-      <span style={{ color: t.type === 'earn' ? '#059669' : '#EF4444', fontWeight: 600 }}>
+      <span className="cdp-points" style={{ color: t.type === 'earn' ? '#059669' : '#EF4444' }}>
         {t.type === 'earn' ? '+' : '-'}{Math.abs(t.points)} pts
       </span>
     )},
@@ -374,7 +373,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
       <span className={`badge ${t.type === 'top_up' || t.type === 'refund' ? 'badge-green' : 'badge-red'}`}>{t.type}</span>
     )},
     { key: 'amount', header: 'Amount', render: (t) => (
-      <span style={{ color: t.type === 'top_up' || t.type === 'refund' ? '#059669' : '#EF4444', fontWeight: 600 }}>
+      <span className="cdp-points" style={{ color: t.type === 'top_up' || t.type === 'refund' ? '#059669' : '#EF4444' }}>
         {t.type === 'top_up' || t.type === 'refund' ? '+' : '-'}{formatRM(t.amount)}
       </span>
     )},
@@ -382,16 +381,16 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-        <i className="fas fa-spinner fa-spin" style={{ fontSize: 40 }}></i>
-        <p style={{ marginTop: 16 }}>Loading customer...</p>
+      <div className="cdp-37">
+        <span className="cdp-38"><i className="fas fa-spinner fa-spin"></i></span>
+        <p className="cdp-39">Loading customer...</p>
       </div>
     );
   }
 
   if (!detail) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
+      <div className="cdp-40">
         <p>Customer not found</p>
         <button className="btn btn-primary" onClick={onBack}>Back to Customers</button>
       </div>
@@ -400,15 +399,15 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
 
   return (
     <div>
-      <div className="card" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, color: '#1E3A8A' }}>
+      <div className="card cdp-41" >
+        <div className="cdp-42">
+          <div className="cdp-43">
+            <div className="cdp-44">
               {(detail.name || '?')[0].toUpperCase()}
             </div>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 20 }}>{detail.name || '-'}</div>
-              <div style={{ fontSize: 13, color: THEME.textMuted }}>{detail.email || detail.phone || '-'}</div>
+              <div className="cdp-45">{detail.name || '-'}</div>
+              <div className="cdp-46">{detail.email || detail.phone || '-'}</div>
             </div>
             <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'No Tier'}</span>
             <span className="badge badge-yellow">{detail.points_balance} pts</span>
@@ -421,13 +420,13 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${THEME.borderLight}`, marginBottom: 24 }}>
+      <div className="cdp-47">
         {tabs.map(tab => (
           <button
             key={tab.id}
-            className={`btn btn-sm ${activeTab === tab.id ? 'btn-primary' : ''}`}
+            className={`btn btn-sm ${activeTab === tab.id ? 'btn-primary' : ''} cdp-48`}
             onClick={() => setActiveTab(tab.id)}
-            style={{ borderRadius: '8px 8px 0 0' }}
+            
           >
             <i className={tab.icon}></i> {tab.label}
           </button>
@@ -436,46 +435,46 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
 
       <div className="card">
         {activeTab === 'profile' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div className="cdp-49">
             <div>
-              <h4 style={{ marginBottom: 12, fontSize: 14, fontWeight: 600, color: THEME.textSecondary }}>Profile</h4>
+              <h4 className="cdp-50">Profile</h4>
               {editingCustomer ? (
                 <form onSubmit={handleEditSubmit}>
                   {editError && (
-                    <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+                    <div className="cdp-51">
                       <i className="fas fa-exclamation-circle"></i> {editError}
                     </div>
                   )}
-                  <div style={{ marginBottom: 10 }}>
-                    <label style={labelStyle}>Name</label>
+                  <div className="cdp-52">
+                    <label className="cdp-label">Name</label>
                     <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Customer name" />
                   </div>
-                  <div style={{ marginBottom: 10 }}>
-                    <label style={labelStyle}>Phone</label>
+                  <div className="cdp-53">
+                    <label className="cdp-label">Phone</label>
                     <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="+60 12-345 6789" />
-                    <div style={hintStyle}>Used for passwordless login.</div>
+                    <div className="cdp-hint">Used for passwordless login.</div>
                   </div>
-                  <div style={{ marginBottom: 10 }}>
-                    <label style={labelStyle}>Email</label>
+                  <div className="cdp-54">
+                    <label className="cdp-label">Email</label>
                     <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="customer@email.com" />
-                    <div style={hintStyle}>Recovery channel.</div>
+                    <div className="cdp-hint">Recovery channel.</div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="cdp-55">
                     <button type="submit" className="btn btn-primary" disabled={editSaving}>{editSaving ? 'Saving...' : 'Save Changes'}</button>
                     <button type="button" className="btn" onClick={() => setEditingCustomer(false)}>Cancel</button>
                   </div>
                 </form>
               ) : (
                 <>
-                  <p style={{ marginBottom: 8 }}><strong>Name:</strong> {detail.name || '-'}</p>
-                  <p style={{ marginBottom: 8 }}><strong>Phone:</strong> {detail.phone || '-'}</p>
-                  <p style={{ marginBottom: 8 }}><strong>Email:</strong> {detail.email || (
-                    <span style={{ color: '#D97706', fontWeight: 500 }}>Not set</span>
+                  <p className="cdp-56"><strong>Name:</strong> {detail.name || '-'}</p>
+                  <p className="cdp-57"><strong>Phone:</strong> {detail.phone || '-'}</p>
+                  <p className="cdp-58"><strong>Email:</strong> {detail.email || (
+                    <span className="cdp-59">Not set</span>
                   )}</p>
-                  <p style={{ marginBottom: 8 }}><strong>Tier:</strong> <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'No Tier'}</span></p>
-                  <p style={{ marginBottom: 8 }}><strong>Phone Verified:</strong> {detail.phone_verified ? <span style={{ color: '#059669' }}>Yes</span> : <span style={{ color: '#EF4444' }}>No</span>}</p>
-                  <p style={{ marginBottom: 12 }}><strong>Profile Complete:</strong> {detail.is_profile_complete ? <span style={{ color: '#059669' }}>Yes</span> : <span style={{ color: '#D97706' }}>No {!detail.phone_verified ? '(phone not verified)' : '(name still required)'}</span>}</p>
-                  <p style={{ marginBottom: 12 }}><strong>Joined:</strong> {detail.created_at ? new Date(detail.created_at).toLocaleDateString() : '-'}</p>
+                  <p className="cdp-60"><strong>Tier:</strong> <span className="badge badge-blue">{detail.tier ? detail.tier.charAt(0).toUpperCase() + detail.tier.slice(1) : 'No Tier'}</span></p>
+                  <p className="cdp-61"><strong>Phone Verified:</strong> {detail.phone_verified ? <span className="cdp-62">Yes</span> : <span className="cdp-63">No</span>}</p>
+                  <p className="cdp-64"><strong>Profile Complete:</strong> {detail.is_profile_complete ? <span className="cdp-65">Yes</span> : <span className="cdp-66">No {!detail.phone_verified ? '(phone not verified)' : '(name still required)'}</span>}</p>
+                  <p className="cdp-67"><strong>Joined:</strong> {detail.created_at ? new Date(detail.created_at).toLocaleDateString() : '-'}</p>
                   <button className="btn btn-sm" onClick={() => setEditingCustomer(true)}>
                     <i className="fas fa-edit"></i> Edit Profile
                   </button>
@@ -483,11 +482,11 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
               )}
             </div>
             <div>
-              <h4 style={{ marginBottom: 12, fontSize: 14, fontWeight: 600, color: THEME.textSecondary }}>Balances</h4>
-              <p style={{ marginBottom: 8 }}><strong>Loyalty Points:</strong> {detail.points_balance} pts</p>
-              <p style={{ marginBottom: 8 }}><strong>Total Earned:</strong> {detail.total_points_earned ?? '-'} pts</p>
-              <p style={{ marginBottom: 8 }}><strong>Wallet Balance:</strong> {formatRM(detail.wallet_balance || 0)}</p>
-              <p style={{ marginBottom: 8 }}><strong>Total Orders:</strong> {detail.total_orders}</p>
+              <h4 className="cdp-68">Balances</h4>
+              <p className="cdp-69"><strong>Loyalty Points:</strong> {detail.points_balance} pts</p>
+              <p className="cdp-70"><strong>Total Earned:</strong> {detail.total_points_earned ?? '-'} pts</p>
+              <p className="cdp-71"><strong>Wallet Balance:</strong> {formatRM(detail.wallet_balance || 0)}</p>
+              <p className="cdp-72"><strong>Total Orders:</strong> {detail.total_orders}</p>
               <p><strong>Total Spent:</strong> {formatRM(detail.total_spent)}</p>
             </div>
           </div>
@@ -495,8 +494,8 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
 
         {activeTab === 'actions' && (
           <div>
-            <h4 style={{ marginBottom: 16, fontSize: 14, fontWeight: 600, color: THEME.textSecondary }}>
-              <i className="fas fa-cog" style={{ marginRight: 8 }}></i>Customer Management Actions
+            <h4 className="cdp-73">
+              <span className="cdp-74"><i className="fas fa-cog"></i></span>Customer Management Actions
             </h4>
 
             {!detail.phone_verified && (
@@ -504,11 +503,11 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
             )}
 
             {detail.phone_verified && !detail.is_profile_complete && (
-              <div style={{ padding: '12px 16px', background: '#EFF6FF', borderRadius: 12, marginBottom: 16, border: '1px solid #3B82F6' }}>
-                <div style={{ fontWeight: 600, fontSize: 14, color: '#1E40AF', marginBottom: 4 }}>
-                  <i className="fas fa-info-circle" style={{ marginRight: 6 }}></i>Phone Verified — Profile Incomplete
+              <div className="cdp-75">
+                <div className="cdp-76">
+                  <span className="cdp-77"><i className="fas fa-info-circle"></i></span>Phone Verified — Profile Incomplete
                 </div>
-                <div style={{ fontSize: 12, color: '#1E3A8A', marginBottom: 8 }}>
+                <div className="cdp-78">
                   This customer&apos;s phone is verified but profile is incomplete (name missing).
                   Use <strong>Edit Profile</strong> on the Profile tab to set their name.
                 </div>
@@ -524,7 +523,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
         {activeTab === 'orders' && (
           <>
             {!orders ? (
-              <div style={{ textAlign: 'center', padding: 20, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i></div>
+              <div className="cdp-79"><i className="fas fa-spinner fa-spin"></i></div>
             ) : (
               <>
                 <DataTable
@@ -545,7 +544,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
         {activeTab === 'loyalty' && (
           <>
             {!loyalty ? (
-              <div style={{ textAlign: 'center', padding: 20, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i></div>
+              <div className="cdp-80"><i className="fas fa-spinner fa-spin"></i></div>
             ) : (
               <>
                 <DataTable
@@ -566,7 +565,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
         {activeTab === 'wallet' && (
           <>
             {!wallet ? (
-              <div style={{ textAlign: 'center', padding: 20, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i></div>
+              <div className="cdp-81"><i className="fas fa-spinner fa-spin"></i></div>
             ) : (
               <>
                 <DataTable
@@ -587,19 +586,19 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
         {activeTab === 'vouchers' && (
           <>
             {loadingWalletItems ? (
-              <div style={{ textAlign: 'center', padding: 20, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i></div>
+              <div className="cdp-82"><i className="fas fa-spinner fa-spin"></i></div>
             ) : (
               <>
-                <h4 style={{ marginBottom: 16, fontSize: 14, fontWeight: 600, color: THEME.textSecondary }}>
-                  <i className="fas fa-gift" style={{ marginRight: 8 }}></i>Available Rewards ({customerWallet?.rewards.length || 0})
+                <h4 className="cdp-83">
+                  <span className="cdp-84"><i className="fas fa-gift"></i></span>Available Rewards ({customerWallet?.rewards.length || 0})
                 </h4>
                 {customerWallet && customerWallet.rewards.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                  <div className="cdp-85">
                     {customerWallet.rewards.map((r: any) => (
-                      <div key={r.id} style={{ padding: '12px 14px', background: THEME.bgMuted, borderRadius: 10, border: `1px solid ${THEME.border}` }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textPrimary }}>{r.name}</div>
-                        <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 2 }}>
-                          Code: <code style={{ background: 'white', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{r.redemption_code}</code>
+                      <div key={r.id} className="cdp-86">
+                        <div className="cdp-87">{r.name}</div>
+                        <div className="cdp-88">
+                          Code: <code className="cdp-89">{r.redemption_code}</code>
                           {r.points_spent ? ` · ${r.points_spent} pts` : ''}
                           {r.expires_at ? ` · Expires ${new Date(r.expires_at).toLocaleDateString()}` : ''}
                         </div>
@@ -607,19 +606,19 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
                     ))}
                   </div>
                 ) : (
-                  <div style={{ color: THEME.textMuted, fontSize: 13, marginBottom: 24 }}>No available rewards</div>
+                  <div className="cdp-90">No available rewards</div>
                 )}
 
-                <h4 style={{ marginBottom: 16, fontSize: 14, fontWeight: 600, color: THEME.textSecondary }}>
-                  <i className="fas fa-ticket" style={{ marginRight: 8 }}></i>Available Vouchers ({customerWallet?.vouchers.length || 0})
+                <h4 className="cdp-91">
+                  <span className="cdp-92"><i className="fas fa-ticket"></i></span>Available Vouchers ({customerWallet?.vouchers.length || 0})
                 </h4>
                 {customerWallet && customerWallet.vouchers.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="cdp-93">
                     {customerWallet.vouchers.map((v: any) => (
-                      <div key={v.id} style={{ padding: '12px 14px', background: THEME.bgMuted, borderRadius: 10, border: `1px solid ${THEME.border}` }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textPrimary }}>{v.title}</div>
-                        <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 2 }}>
-                          Code: <code style={{ background: 'white', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{v.code}</code>
+                      <div key={v.id} className="cdp-94">
+                        <div className="cdp-95">{v.title}</div>
+                        <div className="cdp-96">
+                          Code: <code className="cdp-97">{v.code}</code>
                           {v.discount_type && v.discount_value ? ` · ${v.discount_type === 'percent' ? v.discount_value + '%' : 'RM ' + v.discount_value} off` : ''}
                           {v.min_spend ? ` · Min spend RM ${v.min_spend}` : ''}
                           {v.expires_at ? ` · Expires ${new Date(v.expires_at).toLocaleDateString()}` : ''}
@@ -628,7 +627,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
                     ))}
                   </div>
                 ) : (
-                  <div style={{ color: THEME.textMuted, fontSize: 13 }}>No available vouchers</div>
+                  <div className="cdp-98">No available vouchers</div>
                 )}
               </>
             )}
@@ -639,5 +638,4 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
   );
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.textSecondary };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.textMuted, marginTop: 2 };
+

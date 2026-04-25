@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { THEME } from '@/lib/theme';
 import { Select, Pagination, DataTableExpandableRow, ColumnDef } from '@/components/ui';
 
 interface SurveyReportPageProps {
@@ -86,12 +85,12 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
       return (
         <div>
           {Array.from({ length: 5 }, (_, i) => (
-            <span key={i} style={{ color: i < stars ? '#F59E0B' : '#D1D5DB', fontSize: 16 }}>★</span>
+            <span key={i} className="srp-star" style={{ color: i < stars ? '#F59E0B' : '#D1D5DB' }}>★</span>
           ))}
         </div>
       );
     }
-    return <span style={{ color: THEME.textPrimary }}>{answer.answer || '—'}</span>;
+    return <span className="ra-0">{answer.answer || '—'}</span>;
   };
 
   const surveyOptions = surveys.map(s => ({
@@ -106,7 +105,7 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
       header: '#',
       render: (r) => {
         const idx = responses.findIndex(item => item.id === r.id);
-        return <span style={{ color: '#6B635E' }}>{(page - 1) * PAGE_SIZE + idx + 1}</span>;
+        return <span className="srp-1">{(page - 1) * PAGE_SIZE + idx + 1}</span>;
       },
       width: '60px'
     },
@@ -115,25 +114,21 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
       header: 'Customer',
       render: (r) => (
         <div>
-          <div style={{ fontWeight: 600, color: '#2C1E16' }}>{r.user_name}</div>
-          {r.user_email && <div style={{ fontSize: 12, color: '#6B635E' }}>{r.user_email}</div>}
+          <div className="srp-2">{r.user_name}</div>
+          {r.user_email && <div className="srp-3">{r.user_email}</div>}
         </div>
       )
     },
     {
       key: 'created_at',
       header: 'Submitted',
-      render: (r) => <span style={{ color: '#6B635E' }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</span>
+      render: (r) => <span className="srp-4">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</span>
     },
     {
       key: 'rewarded',
       header: 'Rewarded',
       render: (r) => (
-        <span style={{
-          padding: '4px 10px',
-          borderRadius: 6,
-          fontSize: 12,
-          fontWeight: 600,
+        <span className="srp-reward-badge" style={{
           background: r.rewarded ? '#ECFDF5' : '#FEF2F2',
           color: r.rewarded ? '#065F46' : '#991B1B',
         }}>
@@ -146,14 +141,14 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
 
   // Render expanded content for a response
   const renderExpandedContent = (response: SurveyResponse) => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="rec-5">
       {response.answers.map((a, ai) => (
         <div key={ai}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: THEME.textSecondary, marginBottom: 4 }}>
+          <div className="rec-6">
             Q{ai + 1}: {a.question_text}
-            <span style={{ fontWeight: 400, color: THEME.textMuted, marginLeft: 8 }}>({a.question_type})</span>
+            <span className="rec-7">({a.question_type})</span>
           </div>
-          <div style={{ fontSize: 14, color: THEME.textPrimary, paddingLeft: 12, borderLeft: `2px solid ${THEME.primary}` }}>
+          <div className="rec-8">
             {renderAnswer(a)}
           </div>
         </div>
@@ -163,13 +158,13 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 20px', color: THEME.textPrimary }}>
-        <i className="fas fa-chart-bar" style={{ marginRight: 8, color: THEME.primary }}></i>
+      <h3 className="srp-9">
+        <span className="srp-10"><i className="fas fa-chart-bar"></i></span>
         Survey Responses
       </h3>
 
       {/* Survey Selector using standardized Select component */}
-      <div style={{ marginBottom: 20 }}>
+      <div className="srp-11">
         <Select
           label="Select Survey"
           value={selectedSurvey ? String(selectedSurvey) : ''}
@@ -180,7 +175,7 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
           placeholder="— Select a survey —"
         />
         {surveys.length === 0 && (
-          <p style={{ fontSize: 13, color: THEME.textMuted, marginTop: 8 }}>
+          <p className="srp-12">
             No surveys with responses yet.
           </p>
         )}
@@ -189,33 +184,18 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
       {selectedSurvey && (
         <>
           {/* Stats Bar */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 16px',
-            background: THEME.bgMuted,
-            borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-            border: `1px solid ${THEME.border}`,
-            borderBottom: 'none',
-          }}>
-            <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-              <i className="fas fa-inbox" style={{ marginRight: 8, color: THEME.primary }}></i>
-              Showing <strong style={{ color: THEME.textPrimary }}>{responses.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{totalResponses}</strong> responses
+          <div className="srp-13">
+            <div className="srp-14">
+              <span className="srp-15"><i className="fas fa-inbox"></i></span>
+              Showing <strong className="srp-16">{responses.length}</strong> of <strong className="srp-17">{totalResponses}</strong> responses
             </div>
-            <div style={{ fontSize: 13, color: THEME.textMuted }}>
+            <div className="srp-18">
               Page {page} of {totalPages}
             </div>
           </div>
 
           {/* Responses Table - using DataTableExpandableRow */}
-          <div style={{
-            borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
-            background: THEME.bgCard,
-            border: `1px solid ${THEME.border}`,
-            borderTop: 'none',
-            overflow: 'hidden',
-          }}>
+          <div className="srp-19">
             <DataTableExpandableRow
               data={responses}
               columns={responseColumns}

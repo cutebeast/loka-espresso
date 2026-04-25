@@ -116,7 +116,7 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
 
       <h2 className="auth-heading">Enter code</h2>
       <p className="auth-subheading">
-        We sent a 6‑digit code to <strong style={{ color: '#1B2023' }}>{displayPhone}</strong>
+        We sent a 6‑digit code to <strong className="otp-phone">{displayPhone}</strong>
       </p>
 
       <div className="auth-label">6‑digit code</div>
@@ -156,14 +156,14 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
       </p>
 
       {error && (
-        <p style={{ color: '#C75050', fontSize: '12px', marginTop: '12px' }}>{error}</p>
+        <p className="otp-error">{error}</p>
       )}
 
       <button onClick={handleVerify} disabled={isLoading || otp.some((d) => !d)} className="auth-btn">
         {isLoading ? <div className="auth-btn-spinner" /> : 'Verify & Continue'}
       </button>
 
-      <div style={{ flex: 1 }} />
+      <div className="otp-spacer" />
     </div>
   );
 }

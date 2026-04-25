@@ -3,12 +3,11 @@
 import { useState } from 'react';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
-import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
 
 export default function HelpSupportPage() {
-  const { setPage, showToast } = useUIStore();
-  const storeId = useCartStore((s) => s.storeId);
+  const { setPage, showToast, selectedStore } = useUIStore();
+  const storeId = selectedStore?.id;
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -50,7 +49,7 @@ export default function HelpSupportPage() {
           </button>
           <h1 className="sub-page-title">Help & Support</h1>
         </div>
-        <div style={{ width: 36 }} />
+        <div className="hsp-spacer" />
       </div>
 
       <div className="support-form-scroll">
@@ -90,10 +89,9 @@ export default function HelpSupportPage() {
         <div className="support-input-group">
           <label className="support-input-label">Subject</label>
           <select
-            className="support-input-field"
+            className="support-input-field hsp-select"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            style={{ appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236A7A8A'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center', backgroundSize: '20px' }}
           >
             <option value="" disabled>Select a topic</option>
             <option value="feedback">General Feedback</option>
@@ -120,7 +118,7 @@ export default function HelpSupportPage() {
 
         {showSuccess && (
           <p className="support-success-msg">
-            <CheckCircle size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+            <CheckCircle size={16} className="hsp-success-icon" />
             Message sent! We&apos;ll get back to you soon.
           </p>
         )}

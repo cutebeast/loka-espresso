@@ -118,7 +118,6 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
     setCollapsedGroups(prev => ({ ...prev, [label]: !prev[label] }));
   }
 
-  const sidebarWidth = collapsed ? 76 : 260;
   
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -136,79 +135,29 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: tooltipStyles }} />
-      <aside className={`sidebar${isOpen ? ' mobile-open' : ''}`} style={{
-        width: sidebarWidth,
-        background: THEME.sidebar.bg,
-        color: THEME.sidebar.textMuted,
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'fixed',
-        height: '100vh',
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        zIndex: 150,
-        transition: 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease',
-      }}>
+      <aside className={`sidebar${isOpen ? ' mobile-open' : ''} sb-aside ${collapsed ? 'sb-w-76' : 'sb-w-260'}`}>
       {/* Brand Header */}
-      <div style={{
-        padding: '20px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        borderBottom: `1px solid ${THEME.sidebar.border}`,
-        position: 'relative',
-        height: 73,
-        justifyContent: collapsed ? 'center' : 'flex-start',
-        transition: 'padding 0.35s ease, justify-content 0.35s ease',
-      }}>
+      <div className={`sb-brand ${collapsed ? 'sb-justify-center' : 'sb-justify-start'}`}>
         {collapsed ? (
-          <div style={{
-            width: 44, height: 44,
-            position: 'relative',
-            borderRadius: 8,
-            overflow: 'hidden',
-            background: THEME.bgCard,
-            flexShrink: 0,
-            padding: 6,
-          }}>
+          <div className="s-0">
             <Image
               src="/loka-logo.png"
               alt="Loka Espresso"
               fill
-              style={{ objectFit: 'contain' }}
+              className="s-1"
             />
           </div>
         ) : (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}>
-            <div style={{
-              width: 48, height: 48,
-              position: 'relative',
-              borderRadius: 8,
-              overflow: 'hidden',
-              background: THEME.bgCard,
-              flexShrink: 0,
-              padding: 8,
-            }}>
+          <div className="s-2">
+            <div className="s-3">
               <Image
                 src="/loka-logo.png"
                 alt="Loka Espresso"
                 fill
-                style={{ objectFit: 'contain' }}
+                className="s-4"
               />
             </div>
-            <span style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: THEME.textLight,
-              letterSpacing: -0.3,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              transition: 'opacity 0.2s, width 0.2s',
-            }}>Loka Espresso</span>
+            <span className="sb-brand-name">Loka Espresso</span>
           </div>
         )}
         
@@ -216,68 +165,31 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
         <div
           onClick={onToggleCollapse}
           title="Toggle sidebar"
-          style={{
-            position: 'absolute',
-            right: -12,
-            top: 24,
-            width: 24,
-            height: 24,
-            background: THEME.bgPage,
-            border: `2px solid ${THEME.border}`,
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            color: THEME.primary,
-            fontSize: 10,
-            zIndex: 160,
-            boxShadow: THEME.shadow.md,
-            transition: 'all 0.3s ease',
-            transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
-          }}
+          className={`sb-toggle ${collapsed ? 'sb-toggle-collapsed' : 'sb-toggle-open'}`}
         >
-          <i className="fas fa-chevron-left" style={{ fontSize: 10 }}></i>
+          <span className="s-5"><i className="fas fa-chevron-left"></i></span>
         </div>
       </div>
       
       {/* Navigation */}
-      <nav style={{ flex: 1, padding: collapsed ? '0 8px' : '0 12px', marginTop: 8 }}>
+      <nav className={`sb-nav ${collapsed ? 'pad-0-8px' : 'pad-0-12px'}`}>
         {navGroups.map(group => {
           const visibleItems = group.items.filter(item => visiblePages.has(item.id));
           if (visibleItems.length === 0) return null;
           const isCollapsed = collapsedGroups[group.label] || false;
           return (
-            <div key={group.label} style={{ marginBottom: 2 }}>
+            <div key={group.label} className="s-6">
               {/* Section Label */}
               <div
                 onClick={() => !collapsed && toggleGroup(group.label)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: collapsed ? 'center' : 'space-between',
-                  padding: collapsed ? '16px 0 8px' : '16px 12px 8px',
-                  cursor: collapsed ? 'default' : 'pointer',
-                  fontSize: 10,
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: 1.5,
-                  color: THEME.sidebar.textMuted,
-                  transition: 'all 0.2s',
-                  whiteSpace: 'nowrap',
-                }}
+                className={`sb-section-label ${collapsed ? 'sb-justify-center sb-pad-collapsed cursor-default' : 'sb-justify-space-between sb-pad-open cursor-pointer'}`}
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 8 }}>
-                  <i className={`fas ${group.icon}`} style={{ fontSize: 13 }}></i>
-                  <span style={{
-                    opacity: collapsed ? 0 : 1,
-                    width: collapsed ? 0 : 'auto',
-                    overflow: 'hidden',
-                    transition: 'opacity 0.2s, width 0.2s',
-                  }}>{group.label}</span>
+                <span className={`sb-section-inner ${collapsed ? 'gap-0' : 'gap-8'}`}>
+                  <span className="s-7"><i className={`fas ${group.icon}`}></i></span>
+                  <span className={`sb-section-text ${collapsed ? 'opacity-0 sb-width-0' : 'opacity-1 sb-width-auto'}`}>{group.label}</span>
                 </span>
                 {!collapsed && (
-                  <i className={`fas fa-chevron-${isCollapsed ? 'right' : 'down'}`} style={{ fontSize: 11, transition: 'transform 0.2s' }}></i>
+                  <span className="s-8"><i className={`fas fa-chevron-${isCollapsed ? 'right' : 'down'}`}></i></span>
                 )}
               </div>
               
@@ -286,53 +198,13 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
                 <div
                   key={n.id}
                   onClick={() => setPage(n.id)}
-                  style={{
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '10px 12px',
-                    margin: '2px 0',
-                    borderRadius: 8,
-                    fontWeight: page === n.id ? 600 : 500,
-                    fontSize: 14,
-                    cursor: 'pointer',
-                    textDecoration: 'none',
-                    color: page === n.id ? THEME.textLight : THEME.sidebar.textMuted,
-                    background: page === n.id
-                      ? `linear-gradient(90deg, rgba(154, 186, 122, 0.25) 0%, rgba(154, 186, 122, 0.05) 100%)`
-                      : 'transparent',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                  }}
+                  className={`sb-nav-item ${page === n.id ? 'sb-nav-item-active' : 'sb-nav-item-inactive'}`}
                 >
                   {page === n.id && (
-                    <div style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: 3,
-                      height: 20,
-                      background: THEME.sidebar.accent,
-                      borderRadius: '0 4px 4px 0',
-                      transition: 'left 0.35s ease',
-                    }} />
+                    <div className="s-9" />
                   )}
-                  <i className={`fas ${n.icon}`} style={{ 
-                    width: 20, 
-                    textAlign: 'center', 
-                    fontSize: 15, 
-                    minWidth: 20, 
-                    color: page === n.id ? THEME.sidebar.accent : THEME.sidebar.textMuted 
-                  }}></i>
-                  <span style={{
-                    opacity: collapsed ? 0 : 1,
-                    width: collapsed ? 0 : 'auto',
-                    overflow: 'hidden',
-                    transition: 'opacity 0.2s, width 0.2s',
-                  }}>{n.label}</span>
+                  <i className={`fas ${n.icon} sb-nav-icon ${page === n.id ? 'sb-nav-icon-active' : 'sb-nav-icon-inactive'}`}></i>
+                  <span className={`sb-nav-label ${collapsed ? 'opacity-0 sb-width-0' : 'opacity-1 sb-width-auto'}`}>{n.label}</span>
                 </div>
               ))}
               
@@ -341,38 +213,13 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
                 <div
                   key={n.id}
                   onClick={() => setPage(n.id)}
-                  className="sidebar-tooltip"
+                  className={`sidebar-tooltip ${page === n.id ? 'sb-collapsed-active' : 'sb-collapsed-inactive'} sb-collapsed-item`}
                   data-tooltip={n.label}
-                  style={{
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '12px',
-                    margin: '2px 0',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    background: page === n.id
-                      ? `linear-gradient(90deg, rgba(154, 186, 122, 0.25) 0%, rgba(154, 186, 122, 0.05) 100%)`
-                      : 'transparent',
-                    color: page === n.id ? THEME.sidebar.accent : THEME.sidebar.textMuted,
-                    transition: 'all 0.2s',
-                  }}
                 >
                   {page === n.id && (
-                    <div style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: 3,
-                      height: 20,
-                      background: THEME.sidebar.accent,
-                      borderRadius: '0 4px 4px 0',
-                      transition: 'left 0.35s ease',
-                    }} />
+                    <div className="s-10" />
                   )}
-                  <i className={`fas ${n.icon}`} style={{ fontSize: 18, margin: 0 }}></i>
+                  <span className="s-11"><i className={`fas ${n.icon}`}></i></span>
                 </div>
               ))}
             </div>
@@ -381,46 +228,15 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
       </nav>
       
       {/* User Footer */}
-      <div style={{
-        padding: collapsed ? '24px 0' : '24px 16px',
-        borderTop: `1px solid ${THEME.sidebar.border}`,
-        marginTop: 16,
-        display: 'flex',
-        justifyContent: collapsed ? 'center' : 'flex-start',
-        transition: 'padding 0.35s ease',
-      }}>
+      <div className={`sb-footer ${collapsed ? 'sb-pad-footer-collapsed sb-justify-center' : 'sb-pad-footer-open sb-justify-start'}`}>
         {collapsed ? (
-          <div style={{
-            width: 36, height: 36,
-            background: `linear-gradient(135deg, ${THEME.accentCopper}, ${THEME.accent})`,
-            borderRadius: 10,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 600,
-            fontSize: 14,
-            color: THEME.textLight,
-            border: `1.5px solid ${THEME.sidebar.border}`,
-            boxShadow: THEME.shadow.md,
-          }}>HQ</div>
+          <div className="s-12">HQ</div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 44, height: 44,
-              background: `linear-gradient(135deg, ${THEME.accentCopper}, ${THEME.accent})`,
-              borderRadius: 12,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 600,
-              fontSize: 18,
-              color: THEME.textLight,
-              border: `1.5px solid ${THEME.sidebar.border}`,
-              boxShadow: THEME.shadow.md,
-            }}>HQ</div>
+          <div className="s-13">
+            <div className="s-14">HQ</div>
             <div>
-              <div style={{ fontWeight: 500, fontSize: 15, color: THEME.textLight }}>HQ Admin</div>
-              <div style={{ fontSize: 12, color: THEME.sidebar.textMuted }}>Administrator</div>
+              <div className="s-15">HQ Admin</div>
+              <div className="s-16">Administrator</div>
             </div>
           </div>
         )}

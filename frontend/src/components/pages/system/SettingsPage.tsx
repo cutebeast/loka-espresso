@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { THEME } from '@/lib/theme';
 
 interface SettingsPageProps {
   token: string;
@@ -109,7 +108,7 @@ export default function SettingsPage({ token }: SettingsPageProps) {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: 40, color: THEME.success }}>
+      <div className="sp-0">
         <i className="fas fa-spinner fa-spin"></i> Loading settings...
       </div>
     );
@@ -117,39 +116,27 @@ export default function SettingsPage({ token }: SettingsPageProps) {
 
   if (error) {
     return (
-      <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '12px 16px', borderRadius: 10 }}>
+      <div className="sp-1">
         <i className="fas fa-exclamation-circle"></i> {error}
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 900 }}>
-      <div style={{ display: 'grid', gap: 24 }}>
+    <div className="sp-2">
+      <div className="sp-3">
         {CONFIG_GROUPS.map(group => (
           <div
             key={group.label}
-            style={{
-              background: 'white',
-              borderRadius: 16,
-              border: `1px solid ${THEME.accentLight}`,
-              overflow: 'hidden',
-            }}
+            className="sp-4"
           >
             <div
-              style={{
-                padding: '16px 24px',
-                borderBottom: `1px solid ${THEME.accentLight}`,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                background: THEME.bgMuted,
-              }}
+              className="sp-5"
             >
-              <i className={`fas ${group.icon}`} style={{ color: THEME.primary, fontSize: 16 }}></i>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: THEME.primary }}>{group.label}</h3>
+              <span className="sp-6"><i className={`fas ${group.icon}`}></i></span>
+              <h3 className="sp-7">{group.label}</h3>
             </div>
-            <div style={{ padding: '8px 24px 20px' }}>
+            <div className="sp-8">
               {group.items.map(item => {
                 const currentVal = editValues[item.key] ?? '';
                 const status = savedKeys[item.key];
@@ -159,21 +146,15 @@ export default function SettingsPage({ token }: SettingsPageProps) {
                 return (
                   <div
                     key={item.key}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 16,
-                      padding: '14px 0',
-                      borderBottom: `1px solid ${THEME.accentLight}`,
-                    }}
+                    className="sp-9"
                   >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 2 }}>
+                    <div className="sp-10">
+                      <div className="sp-11">
                         {item.label}
                       </div>
-                      <div style={{ fontSize: 12, color: THEME.success }}>{item.description}</div>
+                      <div className="sp-12">{item.description}</div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="sp-13">
                       <input
                         type={item.type === 'number' ? 'number' : 'text'}
                         step={item.type === 'number' ? 'any' : undefined}
@@ -186,22 +167,11 @@ export default function SettingsPage({ token }: SettingsPageProps) {
                             return next;
                           });
                         }}
-                        style={{
-                          width: 140,
-                          textAlign: 'right',
-                          padding: '6px 10px',
-                          borderRadius: 8,
-                          border: `1px solid ${THEME.accentLight}`,
-                          fontSize: 14,
-                          fontWeight: 500,
-                        }}
+                        className="sp-14"
                       />
                       <button
-                        className="btn btn-primary"
+                        className="btn btn-primary sp-save-btn"
                         style={{
-                          padding: '6px 14px',
-                          fontSize: 13,
-                          whiteSpace: 'nowrap',
                           opacity: !changed || saving ? 0.5 : 1,
                         }}
                         disabled={!changed || saving}
@@ -214,12 +184,12 @@ export default function SettingsPage({ token }: SettingsPageProps) {
                         )}
                       </button>
                       {status === 'ok' && (
-                        <span style={{ color: THEME.primary, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        <span className="sp-15">
                           <i className="fas fa-check-circle"></i> Saved
                         </span>
                       )}
                       {status === 'err' && (
-                        <span style={{ color: '#DC2626', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        <span className="sp-16">
                           <i className="fas fa-exclamation-circle"></i> Error
                         </span>
                       )}

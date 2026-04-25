@@ -18,34 +18,17 @@ export function Input({
   ...props
 }: InputProps) {
   return (
-    <div style={{ width: '100%' }}>
+    <div className="i-0">
       {label && (
         <label
-          style={{
-            display: 'block',
-            fontSize: 13,
-            fontWeight: 600,
-            color: '#374151',
-            marginBottom: 6,
-          }}
+          className="i-1"
         >
           {label}
         </label>
       )}
-      <div style={{ position: 'relative' }}>
+      <div className="i-2">
         {icon && (
-          <i
-            className={`fas ${icon}`}
-            style={{
-              position: 'absolute',
-              left: 12,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#64748b',
-              fontSize: 14,
-              pointerEvents: 'none',
-            }}
-          />
+          <span className="i-3"><i className={`fas ${icon}`} /></span>
         )}
         <input
           {...props}
@@ -65,19 +48,14 @@ export function Input({
         />
         {rightElement && (
           <div
-            style={{
-              position: 'absolute',
-              right: 8,
-              top: '50%',
-              transform: 'translateY(-50%)',
-            }}
+            className="i-4"
           >
             {rightElement}
           </div>
         )}
       </div>
       {error && (
-        <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{error}</div>
+        <div className="i-5">{error}</div>
       )}
     </div>
   );
@@ -90,16 +68,10 @@ interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 
 export function TextArea({ label, error, style, ...props }: TextAreaProps) {
   return (
-    <div style={{ width: '100%' }}>
+    <div className="ta-6">
       {label && (
         <label
-          style={{
-            display: 'block',
-            fontSize: 13,
-            fontWeight: 600,
-            color: '#374151',
-            marginBottom: 6,
-          }}
+          className="ta-7"
         >
           {label}
         </label>
@@ -122,7 +94,7 @@ export function TextArea({ label, error, style, ...props }: TextAreaProps) {
         }}
       />
       {error && (
-        <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>{error}</div>
+        <div className="ta-8">{error}</div>
       )}
     </div>
   );

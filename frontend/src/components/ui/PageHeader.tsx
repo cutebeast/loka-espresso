@@ -28,73 +28,41 @@ export function PageHeader({
   children,
 }: PageHeaderProps) {
   return (
-    <div style={{
-      marginBottom: 24,
-      paddingBottom: 20,
-      borderBottom: '1px solid #E5E0D8',
-    }}>
+    <div className="ph-0">
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 8,
-          fontSize: 12,
-          color: '#6B635E',
-        }}>
+        <div className="ph-1">
           {breadcrumbs.map((crumb, i) => (
-            <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {i > 0 && <i className="fas fa-chevron-right" style={{ fontSize: 10 }} />}
+            <span key={i} className="ph-2">
+              {i > 0 && <span className="ph-3"><i className="fas fa-chevron-right" /></span>}
               {crumb.href ? (
-                <a href={crumb.href} style={{ color: '#6B635E', textDecoration: 'none' }}>
+                <a href={crumb.href} className="ph-4">
                   {crumb.label}
                 </a>
               ) : (
-                <span style={{ color: '#2C1E16' }}>{crumb.label}</span>
+                <span className="ph-5">{crumb.label}</span>
               )}
             </span>
           ))}
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="ph-6">
         <div>
-          <h2 style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 700,
-            color: '#2C1E16',
-          }}>
+          <h2 className="ph-7">
             {title}
           </h2>
           {subtitle && (
-            <p style={{
-              margin: '4px 0 0 0',
-              fontSize: 14,
-              color: '#6B635E',
-            }}>
+            <p className="ph-8">
               {subtitle}
             </p>
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="ph-9">
           {secondaryAction && (
             <button
               onClick={secondaryAction.onClick}
-              style={{
-                padding: '10px 16px',
-                borderRadius: 10,
-                border: '1px solid #E5E0D8',
-                background: 'white',
-                color: '#2C1E16',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
+              className="ph-10"
             >
               {secondaryAction.icon && <i className={`fas ${secondaryAction.icon}`} />}
               {secondaryAction.label}
@@ -103,20 +71,7 @@ export function PageHeader({
           {primaryAction && (
             <button
               onClick={primaryAction.onClick}
-              style={{
-                padding: '10px 16px',
-                borderRadius: 10,
-                border: 'none',
-                background: '#2C1E16',
-                color: 'white',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                boxShadow: '0 4px 8px rgba(44,30,22,0.15)',
-              }}
+              className="ph-11"
             >
               {primaryAction.icon && <i className={`fas ${primaryAction.icon}`} />}
               {primaryAction.label}
@@ -126,7 +81,7 @@ export function PageHeader({
       </div>
 
       {children && (
-        <div style={{ marginTop: 16 }}>
+        <div className="ph-12">
           {children}
         </div>
       )}

@@ -23,12 +23,12 @@ export function AddStaffForm({ storeId, token: _token, onClose }: { storeId: num
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Name</label>
+      <div className="asf-0">
+        <label className="asf-1">Name</label>
         <input value={name} onChange={e => setName(e.target.value)} required />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Role</label>
+      <div className="asf-2">
+        <label className="asf-3">Role</label>
         <select value={role} onChange={e => setRole(e.target.value)}>
           <option value="staff">Staff</option>
           <option value="manager">Manager</option>
@@ -36,11 +36,11 @@ export function AddStaffForm({ storeId, token: _token, onClose }: { storeId: num
           <option value="kitchen">Kitchen</option>
         </select>
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Phone</label>
+      <div className="asf-4">
+        <label className="asf-5">Phone</label>
         <input value={phone} onChange={e => setPhone(e.target.value)} required placeholder="e.g. +60 12-345 6789" />
       </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+      <button type="submit" className="btn btn-primary asf-6"  disabled={saving}>
         {saving ? 'Adding...' : 'Add Staff'}
       </button>
     </form>

@@ -53,7 +53,7 @@ export default function AccountDetailsPage() {
           </button>
           <h1 className="sub-page-title">Edit Profile</h1>
         </div>
-        <div style={{ width: 36 }} />
+        <div className="ad-spacer" />
       </div>
 
       <div className="edit-form-scroll">
@@ -95,7 +95,7 @@ export default function AccountDetailsPage() {
 
         {showSuccess && (
           <p className="edit-success-msg">
-            <CheckCircle size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+            <CheckCircle size={16} className="ad-success-icon" />
             Profile updated successfully
           </p>
         )}

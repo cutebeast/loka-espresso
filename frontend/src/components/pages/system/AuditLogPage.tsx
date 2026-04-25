@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { DateFilter, FilterSelect, DataTable, type ColumnDef, Pagination, type DatePreset, calcDateRange } from '@/components/ui';
-import { THEME } from '@/lib/theme';
 import type { MerchantAuditEntry, MerchantStore } from '@/lib/merchant-types';
 
 interface AuditLogPageProps {
@@ -71,26 +70,26 @@ export default function AuditLogPage({ stores, token: _token }: AuditLogPageProp
 
   const columns: ColumnDef<MerchantAuditEntry>[] = [
     { key: 'timestamp', header: 'Timestamp', render: (entry) => (
-      <span style={{ fontSize: 13, whiteSpace: 'nowrap', color: THEME.textPrimary }}>
+      <span className="alp-0">
         {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '-'}
       </span>
     )},
     { key: 'user_email', header: 'Who', render: (entry) => (
-      <span style={{ fontWeight: 500, color: THEME.textPrimary }}>{entry.user_email || 'System'}</span>
+      <span className="alp-1">{entry.user_email || 'System'}</span>
     )},
     { key: 'action', header: 'Action', render: (entry) => (
-      <span className="badge badge-blue" style={{ textTransform: 'none', fontFamily: 'monospace', fontSize: 11 }}>{entry.action}</span>
+      <span className="badge badge-blue alp-2" >{entry.action}</span>
     )},
     { key: 'ip_address', header: 'IP', render: (entry) => (
-      <span style={{ fontSize: 12, color: THEME.textMuted, fontFamily: 'monospace' }}>
-        {entry.ip_address && entry.ip_address !== '-' ? entry.ip_address : <span style={{ color: THEME.borderLight }}>—</span>}
+      <span className="alp-3">
+        {entry.ip_address && entry.ip_address !== '-' ? entry.ip_address : <span className="alp-4">—</span>}
       </span>
     )},
     { key: 'store_id', header: 'Location', render: (entry) => {
       const storeName = entry.store_id
         ? (stores.find(s => s.id === entry.store_id)?.name || `Store ${entry.store_id}`)
         : 'All Stores';
-      return <span style={{ fontSize: 13, color: THEME.textMuted }}>{storeName}</span>;
+      return <span className="alp-5">{storeName}</span>;
     }},
     { key: 'status', header: 'Status', render: (entry) => (
       <span className={`badge ${
@@ -102,7 +101,7 @@ export default function AuditLogPage({ stores, token: _token }: AuditLogPageProp
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+      <div className="alp-6">
         <DateFilter
           preset={preset}
           onChange={(p, from, to) => { setPreset(p); setFromDate(from); setToDate(to); }}
@@ -123,21 +122,12 @@ export default function AuditLogPage({ stores, token: _token }: AuditLogPageProp
         )}
       </div>
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-history" style={{ marginRight: 8, color: THEME.primary }}></i>
-          Showing <strong style={{ color: THEME.textPrimary }}>{entries.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> entries
+      <div className="alp-7">
+        <div className="alp-8">
+          <span className="alp-9"><i className="fas fa-history"></i></span>
+          Showing <strong className="alp-10">{entries.length}</strong> of <strong className="alp-11">{total}</strong> entries
         </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+        <div className="alp-12">
           Page {page} of {totalPages}
         </div>
       </div>
@@ -152,7 +142,7 @@ export default function AuditLogPage({ stores, token: _token }: AuditLogPageProp
       <Pagination page={page} totalPages={totalPages} onPageChange={fetchPage} loading={loading} />
 
       {loading && entries.length > 0 && (
-        <div style={{ textAlign: 'center', padding: 8, color: THEME.textMuted, fontSize: 12 }}>
+        <div className="alp-13">
           <i className="fas fa-spinner fa-spin"></i> Loading...
         </div>
       )}

@@ -106,7 +106,7 @@ export default function ProfilePage() {
           <div className="profile-section-title">Recent orders</div>
           <div className="profile-preview-card">
             {recentOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '12px 0', color: '#6A7A8A', fontSize: 14 }}>
+              <div className="profile-empty-orders">
                 No orders yet
               </div>
             ) : (

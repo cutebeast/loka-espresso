@@ -388,3 +388,162 @@
   color: var(--loka-text-primary);
   font-size: 0.95rem;
 }
+
+/* ============================================
+   REWARDS & PROMOS PAGE (from menu-browse.css)
+   ============================================ */
+
+.rewards-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--loka-bg-light);
+  overflow: hidden;
+}
+
+.rewards-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--loka-bg-card);
+  border-bottom: 1px solid var(--loka-border-light);
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  z-index: 10;
+}
+
+.rewards-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rewards-back-btn {
+  background: none;
+  border: none;
+  color: var(--loka-text-primary);
+  font-size: 20px;
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.rewards-back-btn:active { background: rgba(0,0,0,0.04); }
+
+.rewards-page-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+  letter-spacing: -0.3px;
+}
+
+.rewards-points-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #1F2E0B 0%, #384B16 100%);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 40px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+/* ============================================
+   MIGRATED INLINE STYLES — MyRewardsPage
+   ============================================ */
+
+.mrewards-spacer {
+  width: 36px;
+}
+
+.mrewards-empty {
+  text-align: center;
+  padding: 48px 20px;
+  background: var(--color-white);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-light);
+}
+
+.mrewards-empty-icon {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: var(--color-border-light);
+}
+
+.mrewards-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+
+.mrewards-empty-text {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.mrewards-code {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin: 16px 0;
+  color: var(--color-text-primary);
+}
+
+.mrewards-modal-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.mrewards-modal-btns {
+  margin-top: 20px;
+}
+
+.mrewards-copy-icon {
+  display: inline;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.mrewards-close-btn {
+  background: var(--color-primary) !important;
+}
+
+/* ============================================
+   MIGRATED INLINE STYLES — RewardsPage
+   ============================================ */
+
+.rewards-calendar-meta {
+  display: inline-flex;
+  align-items: center;
+}
+
+.rd-action-btn.rewards-action-btn-disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.rewards-action-btn-mt {
+  margin-top: 20px;
+}
+
+.rewards-skeleton-card {
+  height: 110px;
+  border-radius: var(--radius-xl);
+}
+
+.rewards-card-fallback-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}

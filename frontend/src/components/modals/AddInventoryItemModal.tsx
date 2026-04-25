@@ -29,17 +29,17 @@ export function AddInventoryItemForm({ storeId, token: _token, onClose }: { stor
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Ingredient Name</label>
+      <div className="aiif-0">
+        <label className="aiif-1">Ingredient Name</label>
         <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Arabica Coffee Beans" />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+      <div className="aiif-2">
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Current Stock</label>
+          <label className="aiif-3">Current Stock</label>
           <input type="number" step="0.01" value={stock} onChange={e => setStock(e.target.value)} required />
         </div>
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Unit</label>
+          <label className="aiif-4">Unit</label>
           <select value={unit} onChange={e => setUnit(e.target.value)}>
             <option value="kg">kg</option>
             <option value="litre">litre</option>
@@ -49,17 +49,17 @@ export function AddInventoryItemForm({ storeId, token: _token, onClose }: { stor
           </select>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+      <div className="aiif-5">
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reorder Level</label>
+          <label className="aiif-6">Reorder Level</label>
           <input type="number" step="0.01" value={reorderLevel} onChange={e => setReorderLevel(e.target.value)} />
         </div>
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Cost per Unit (RM)</label>
+          <label className="aiif-7">Cost per Unit (RM)</label>
           <input type="number" step="0.01" value={costPerUnit} onChange={e => setCostPerUnit(e.target.value)} />
         </div>
       </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+      <button type="submit" className="btn btn-primary aiif-8"  disabled={saving}>
         {saving ? 'Saving...' : 'Add Ingredient'}
       </button>
     </form>

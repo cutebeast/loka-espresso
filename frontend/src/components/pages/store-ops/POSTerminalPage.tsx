@@ -2,7 +2,6 @@
 
 import { useState, FormEvent, useRef, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { THEME } from '@/lib/theme';
 
 interface CustomerResult {
   id: number;
@@ -306,50 +305,50 @@ export default function POSTerminalPage({ token: _token }: POSTerminalPageProps)
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, color: THEME.textPrimary }}>
-        <i className="fas fa-cash-register" style={{ marginRight: 10, color: THEME.primary }}></i>
+      <h2 className="ptp-0">
+        <span className="ptp-1"><i className="fas fa-cash-register"></i></span>
         POS Terminal — Apply Rewards & Vouchers
       </h2>
 
       {/* Step 1: Search Customer */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: THEME.textSecondary }}>Step 1: Find Customer</h3>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMuted, display: 'block', marginBottom: 4 }}>Phone Number</label>
+      <div className="card ptp-2" >
+        <h3 className="ptp-3">Step 1: Find Customer</h3>
+        <form onSubmit={handleSearch} className="ptp-4">
+          <div className="ptp-5">
+            <label className="ptp-6">Phone Number</label>
             <input
               value={phone}
               onChange={e => setPhone(e.target.value)}
               placeholder="e.g. +60123456789"
-              style={{ width: '100%' }}
+              className="ptp-7"
             />
           </div>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button type="submit" className="btn btn-primary" disabled={searching} style={{ minHeight: 44, padding: '10px 20px' }}>
+          <div className="ptp-8">
+            <button type="submit" className="btn btn-primary ptp-9" disabled={searching} >
               {searching ? 'Searching...' : 'Search'}
             </button>
             <button
               type="button"
-              className="btn"
+              className="btn ptp-10"
               onClick={startScanner}
               disabled={scanning}
-              style={{ minHeight: 44, padding: '10px 20px', background: '#384B16', color: 'white' }}
+              
             >
-              <i className="fas fa-camera" style={{ marginRight: 6 }}></i>
+              <span className="ptp-11"><i className="fas fa-camera"></i></span>
               {scanning ? 'Opening...' : 'Scan QR'}
             </button>
           </div>
         </form>
 
         {customer && (
-          <div style={{ marginTop: 16, padding: '14px 16px', background: THEME.bgMuted, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }} className="pos-customer-card">
+          <div  className="pos-customer-card ptp-12">
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: THEME.textPrimary }}>{customer.name || 'Unnamed'}</div>
-              <div style={{ fontSize: 13, color: THEME.textMuted }}>{customer.phone}</div>
+              <div className="ptp-13">{customer.name || 'Unnamed'}</div>
+              <div className="ptp-14">{customer.phone}</div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: THEME.textMuted }}>Customer ID</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: THEME.primary }}>#{customer.id}</div>
+            <div className="ptp-15">
+              <div className="ptp-16">Customer ID</div>
+              <div className="ptp-17">#{customer.id}</div>
             </div>
           </div>
         )}
@@ -357,19 +356,14 @@ export default function POSTerminalPage({ token: _token }: POSTerminalPageProps)
 
       {/* QR Scanner Overlay */}
       {scanning && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 200,
-          background: 'rgba(0,0,0,0.85)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          padding: 20,
-        }}>
-          <div style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <span style={{ color: 'white', fontWeight: 600, fontSize: 16 }}>Scan Customer QR Code</span>
+        <div className="ptp-18">
+          <div className="ptp-19">
+            <div className="ptp-20">
+              <span className="ptp-21">Scan Customer QR Code</span>
               <button
-                className="btn btn-sm"
+                className="btn btn-sm ptp-22"
                 onClick={stopScanner}
-                style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none' }}
+                
               >
                 <i className="fas fa-times"></i> Cancel
               </button>
@@ -377,18 +371,12 @@ export default function POSTerminalPage({ token: _token }: POSTerminalPageProps)
             <div
               id="qr-reader"
               ref={videoRef}
-              style={{
-                width: '100%',
-                borderRadius: 16,
-                overflow: 'hidden',
-                background: '#000',
-                aspectRatio: '1',
-              }}
+              className="ptp-23"
             />
             {scanError && (
-              <div style={{ color: '#FCA5A5', marginTop: 12, fontSize: 13 }}>{scanError}</div>
+              <div className="ptp-24">{scanError}</div>
             )}
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 12 }}>
+            <p className="ptp-25">
               Point camera at the customer&apos;s reward or voucher QR code
             </p>
           </div>
@@ -397,30 +385,30 @@ export default function POSTerminalPage({ token: _token }: POSTerminalPageProps)
 
       {/* Scanned Item Confirmation */}
       {scannedItem && (
-        <div className="card" style={{ marginBottom: 20, background: '#F0FDF4', border: '2px solid #16A34A' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-            <i className="fas fa-check-circle" style={{ fontSize: 28, color: '#16A34A' }}></i>
+        <div className="card ptp-26" >
+          <div className="ptp-27">
+            <span className="ptp-28"><i className="fas fa-check-circle"></i></span>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#166534' }}>
+              <div className="ptp-29">
                 {scannedItem.type === 'reward' ? 'Reward' : 'Voucher'} Found
               </div>
-              <div style={{ fontSize: 14, color: '#166534' }}>{scannedItem.name}</div>
+              <div className="ptp-30">{scannedItem.name}</div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }} className="pos-scan-actions">
+          <div  className="pos-scan-actions ptp-31">
             <button
-              className="btn btn-primary"
+              className="btn btn-primary ptp-32"
               onClick={confirmScannedUse}
               disabled={confirmingScan}
-              style={{ flex: 1, minHeight: 44 }}
+              
             >
               {confirmingScan ? 'Applying...' : `Confirm & Mark as Used`}
             </button>
             <button
-              className="btn"
+              className="btn ptp-33"
               onClick={() => setScannedItem(null)}
               disabled={confirmingScan}
-              style={{ minHeight: 44 }}
+              
             >
               Cancel
             </button>
@@ -430,7 +418,7 @@ export default function POSTerminalPage({ token: _token }: POSTerminalPageProps)
 
       {/* Step 2: Wallet */}
       {customer && loadingWallet && (
-        <div style={{ textAlign: 'center', padding: 20, color: THEME.textMuted }}>
+        <div className="ptp-34">
           <i className="fas fa-spinner fa-spin"></i> Loading wallet...
         </div>
       )}
@@ -438,30 +426,30 @@ export default function POSTerminalPage({ token: _token }: POSTerminalPageProps)
       {wallet && (
         <>
           {/* Rewards */}
-          <div className="card" style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: THEME.textSecondary }}>
-              <i className="fas fa-gift" style={{ marginRight: 8, color: THEME.primary }}></i>
+          <div className="card ptp-35" >
+            <h3 className="ptp-36">
+              <span className="ptp-37"><i className="fas fa-gift"></i></span>
               Available Rewards ({wallet.rewards.length})
             </h3>
             {wallet.rewards.length === 0 ? (
-              <div style={{ color: THEME.textMuted, fontSize: 13 }}>No available rewards</div>
+              <div className="ptp-38">No available rewards</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="ptp-39">
                 {wallet.rewards.map(r => (
-                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: THEME.bgMuted, borderRadius: 10, border: `1px solid ${THEME.border}`, flexWrap: 'wrap', gap: 10 }} className="pos-wallet-item">
+                  <div key={r.id}  className="pos-wallet-item ptp-40">
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textPrimary }}>{r.name}</div>
-                      <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 2 }}>
-                        Code: <code style={{ background: 'white', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{r.redemption_code}</code>
+                      <div className="ptp-41">{r.name}</div>
+                      <div className="ptp-42">
+                        Code: <code className="ptp-43">{r.redemption_code}</code>
                         {r.points_spent ? ` · ${r.points_spent} pts` : ''}
                         {r.expires_at ? ` · Expires ${new Date(r.expires_at).toLocaleDateString()}` : ''}
                       </div>
                     </div>
                     <button
-                      className="btn btn-primary btn-sm"
+                      className="btn btn-primary btn-sm ptp-44"
                       disabled={processingId === `reward-${r.id}`}
                       onClick={() => applyReward(r.id)}
-                      style={{ minHeight: 40, padding: '8px 16px' }}
+                      
                     >
                       {processingId === `reward-${r.id}` ? 'Applying...' : 'Use Reward'}
                     </button>
@@ -472,31 +460,31 @@ export default function POSTerminalPage({ token: _token }: POSTerminalPageProps)
           </div>
 
           {/* Vouchers */}
-          <div className="card" style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: THEME.textSecondary }}>
-              <i className="fas fa-ticket" style={{ marginRight: 8, color: THEME.primary }}></i>
+          <div className="card ptp-45" >
+            <h3 className="ptp-46">
+              <span className="ptp-47"><i className="fas fa-ticket"></i></span>
               Available Vouchers ({wallet.vouchers.length})
             </h3>
             {wallet.vouchers.length === 0 ? (
-              <div style={{ color: THEME.textMuted, fontSize: 13 }}>No available vouchers</div>
+              <div className="ptp-48">No available vouchers</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="ptp-49">
                 {wallet.vouchers.map(v => (
-                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: THEME.bgMuted, borderRadius: 10, border: `1px solid ${THEME.border}`, flexWrap: 'wrap', gap: 10 }} className="pos-wallet-item">
+                  <div key={v.id}  className="pos-wallet-item ptp-50">
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textPrimary }}>{v.title}</div>
-                      <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 2 }}>
-                        Code: <code style={{ background: 'white', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{v.code}</code>
+                      <div className="ptp-51">{v.title}</div>
+                      <div className="ptp-52">
+                        Code: <code className="ptp-53">{v.code}</code>
                         {formatDiscount(v) ? ` · ${formatDiscount(v)}` : ''}
                         {v.min_spend ? ` · Min spend RM ${v.min_spend}` : ''}
                         {v.expires_at ? ` · Expires ${new Date(v.expires_at).toLocaleDateString()}` : ''}
                       </div>
                     </div>
                     <button
-                      className="btn btn-primary btn-sm"
+                      className="btn btn-primary btn-sm ptp-54"
                       disabled={processingId === `voucher-${v.id}`}
                       onClick={() => applyVoucher(v.id)}
-                      style={{ minHeight: 40, padding: '8px 16px' }}
+                      
                     >
                       {processingId === `voucher-${v.id}` ? 'Applying...' : 'Use Voucher'}
                     </button>
@@ -511,27 +499,22 @@ export default function POSTerminalPage({ token: _token }: POSTerminalPageProps)
       {/* Result */}
       {result && (
         <div
-          className="card"
-          style={{
-            marginBottom: 20,
-            background: result.success ? '#F0FDF4' : '#FEF2F2',
-            border: `1px solid ${result.success ? '#86EFAC' : '#FECACA'}`,
-          }}
+          className={`card ptp-result ${result.success ? 'ptp-result-success' : 'ptp-result-error'}`}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <i className={`fas ${result.success ? 'fa-check-circle' : 'fa-exclamation-circle'}`} style={{ fontSize: 24, color: result.success ? '#16A34A' : '#DC2626' }}></i>
+          <div className="ptp-55">
+            <i className={`fas ${result.success ? 'fa-check-circle' : 'fa-exclamation-circle'} ptp-icon ${result.success ? 'ptp-icon-success' : 'ptp-icon-error'}`}></i>
             <div>
-              <div style={{ fontWeight: 700, color: result.success ? '#166534' : '#991B1B' }}>{result.success ? 'Success' : 'Error'}</div>
-              <div style={{ fontSize: 13, color: result.success ? '#166534' : '#991B1B' }}>{result.message}</div>
+              <div className={`ptp-title ${result.success ? 'ptp-title-success' : 'ptp-title-error'}`}>{result.success ? 'Success' : 'Error'}</div>
+              <div className={`ptp-msg ${result.success ? 'ptp-msg-success' : 'ptp-msg-error'}`}>{result.message}</div>
             </div>
           </div>
         </div>
       )}
 
       {/* Instructions */}
-      <div style={{ padding: '12px 16px', background: '#FFFBEB', borderRadius: 8, fontSize: 12, color: '#92400E' }}>
+      <div className="ptp-56">
         <strong><i className="fas fa-info-circle"></i> How it works:</strong>
-        <ol style={{ margin: '8px 0 0 16px', padding: 0 }}>
+        <ol className="ptp-57">
           <li>Customer comes to the counter for in-store purchase</li>
           <li>Staff asks for phone number <strong>OR</strong> taps <strong>Scan QR</strong> to scan customer&apos;s code</li>
           <li>Staff sees customer&apos;s available rewards and vouchers</li>

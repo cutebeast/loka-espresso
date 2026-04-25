@@ -28,25 +28,25 @@ export function AddItemForm({ storeId: _storeId, categories, token: _token, onCl
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Name</label>
+      <div className="aif-0">
+        <label className="aif-1">Name</label>
         <input value={name} onChange={e => setName(e.target.value)} required />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
-        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} style={{ outline: 'none', border: '1px solid #DDE3E9', borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%' }} />
+      <div className="aif-2">
+        <label className="aif-3">Description</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="aif-4" />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Price (RM)</label>
+      <div className="aif-5">
+        <label className="aif-6">Price (RM)</label>
         <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Category</label>
+      <div className="aif-7">
+        <label className="aif-8">Category</label>
         <select value={categoryId} onChange={e => setCategoryId(Number(e.target.value))}>
           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+      <button type="submit" className="btn btn-primary aif-9"  disabled={saving}>
         {saving ? 'Saving...' : 'Create Item'}
       </button>
     </form>

@@ -25,19 +25,19 @@ export function AddBannerForm({ token: _token, onClose }: { token: string; onClo
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Title</label>
+      <div className="abf-0">
+        <label className="abf-1">Title</label>
         <input value={title} onChange={e => setTitle(e.target.value)} required />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Image URL</label>
+      <div className="abf-2">
+        <label className="abf-3">Image URL</label>
         <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Target URL</label>
+      <div className="abf-4">
+        <label className="abf-5">Target URL</label>
         <input value={targetUrl} onChange={e => setTargetUrl(e.target.value)} placeholder="https://..." />
       </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+      <button type="submit" className="btn btn-primary abf-6"  disabled={saving}>
         {saving ? 'Creating...' : 'Create Banner'}
       </button>
     </form>

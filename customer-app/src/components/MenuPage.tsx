@@ -5,7 +5,7 @@ import { Search, X, ArrowLeft, Plus, Coffee } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
-import type { Category, MenuItem, CustomizationOption } from '@/lib/api';
+import type { MenuItem, CustomizationOption } from '@/lib/api';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
@@ -22,7 +22,6 @@ export default function MenuPage() {
     categories,
     menuItems,
     searchQuery,
-    selectedStore,
     setCategories,
     setMenuItems,
     setSearchQuery,
@@ -32,8 +31,6 @@ export default function MenuPage() {
   } = useUIStore();
 
   const addItem = useCartStore((s) => s.addItem);
-
-  const storeId = selectedStore?.id ?? 0;
 
   const [loading, setLoading] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
@@ -57,28 +54,12 @@ export default function MenuPage() {
       setCategories(Array.isArray(catRes.data) ? catRes.data : []);
       setMenuItems(Array.isArray(itemsRes.data) ? itemsRes.data : []);
     } catch {
-      try {
-        const menuRes = await api.get(`/stores/${storeId}/menu`);
-        const data = menuRes.data;
-        const cats = Array.isArray(data) ? data : (data?.categories ?? []);
-        const allCategories: Category[] = [];
-        const allItems: MenuItem[] = [];
-        cats.forEach((cat: { id: number; name: string; slug: string; items?: MenuItem[] }) => {
-          allCategories.push({ id: cat.id, name: cat.name, slug: cat.slug, is_active: true });
-          (cat.items ?? []).forEach((item: MenuItem) => {
-            allItems.push({ ...item, category_id: cat.id });
-          });
-        });
-        setCategories(allCategories);
-        setMenuItems(allItems);
-      } catch {
-        setCategories([]);
-        setMenuItems([]);
-      }
+      setCategories([]);
+      setMenuItems([]);
     } finally {
       setLoading(false);
     }
-  }, [setCategories, setMenuItems, storeId]);
+  }, [setCategories, setMenuItems]);
 
   useEffect(() => {
     loadMenu();
@@ -128,9 +109,9 @@ export default function MenuPage() {
       setSheetOpen(true);
       loadCustomizations(item);
     } else {
-      addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {} }, storeId);
+      addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {} });
     }
-  }, [addItem, loadCustomizations, isGuest, showToast, storeId]);
+  }, [addItem, loadCustomizations, isGuest, showToast]);
 
   const handleSheetAdd = useCallback(
     (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number) => {
@@ -143,9 +124,9 @@ export default function MenuPage() {
           ? { options: customizations.map((o) => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) }
           : {},
         customization_option_ids: customizations.length > 0 ? customizations.map((o) => o.id) : [],
-      }, storeId);
+      });
     },
-    [addItem, storeId],
+    [addItem],
   );
 
   const filteredItems = useMemo(() => menuItems.filter((item) => {
@@ -234,7 +215,7 @@ export default function MenuPage() {
         {loading ? (
           <>
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="skeleton" style={{ height: 140, borderRadius: 20 }} />
+              <div key={i} className="skeleton menu-skeleton-card" />
             ))}
           </>
         ) : filteredItems.length === 0 ? (
@@ -269,11 +250,10 @@ export default function MenuPage() {
                       className="menu-product-card"
                       onClick={() => openItem(item)}
                     >
-                      <div
-                        className="menu-product-img"
-                        style={imgSrc ? { backgroundImage: `url(${imgSrc})` } : {}}
-                      >
-                        {!imgSrc && (
+                      <div className="menu-product-img">
+                        {imgSrc ? (
+                          <img src={imgSrc} alt={item.name} className="menu-product-img-bg" />
+                        ) : (
                           <div className="menu-img-fallback">
                             <Coffee size={28} color="#C4CED8" strokeWidth={1.5} />
                           </div>

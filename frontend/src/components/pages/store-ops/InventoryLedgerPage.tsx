@@ -64,34 +64,34 @@ export default function InventoryLedgerPage({ selectedStore, storeObj: _storeObj
 
   const columns: ColumnDef<InventoryMovement>[] = [
     { key: 'created_at', header: 'Date', render: (m) => (
-      <span style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{m.created_at ? new Date(m.created_at).toLocaleString() : '—'}</span>
+      <span className="ilp-0">{m.created_at ? new Date(m.created_at).toLocaleString() : '—'}</span>
     )},
     { key: 'inventory_item_name', header: 'Ingredient', render: (m) => (
-      <span style={{ fontWeight: 500 }}>{m.inventory_item_name || `#${m.inventory_item_id}`}</span>
+      <span className="ilp-1">{m.inventory_item_name || `#${m.inventory_item_id}`}</span>
     )},
     { key: 'movement_type', header: 'Type', render: (m) => {
       const style = MOVEMENT_COLORS[m.movement_type] || MOVEMENT_COLORS.adjustment;
-      return <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: style.bg, color: style.color }}>{m.movement_type.replace('_', ' ')}</span>;
+      return <span className="ilp-badge" style={{ background: style.bg, color: style.color }}>{m.movement_type.replace('_', ' ')}</span>;
     }},
     { key: 'quantity', header: 'Quantity', render: (m) => {
       const isDeduction = ['waste', 'transfer_out'].includes(m.movement_type);
-      return <span style={{ fontWeight: 600, color: isDeduction ? THEME.error : THEME.accent }}>{isDeduction ? '-' : '+'}{m.quantity}</span>;
+      return <span className="ilp-qty" style={{ color: isDeduction ? THEME.error : THEME.accent }}>{isDeduction ? '-' : '+'}{m.quantity}</span>;
     }},
     { key: 'balance_after', header: 'Balance After', render: (m) => <strong>{m.balance_after}</strong> },
     { key: 'note', header: 'Note', render: (m) => (
-      <span style={{ fontSize: 13, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', color: THEME.textMuted }}>{m.note}</span>
+      <span className="ilp-2">{m.note}</span>
     )},
     { key: 'created_by_name', header: 'By', render: (m) => (
-      <span style={{ fontSize: 13, color: THEME.textMuted }}>{m.created_by_name || `User #${m.created_by}`}</span>
+      <span className="ilp-3">{m.created_by_name || `User #${m.created_by}`}</span>
     )},
     { key: 'attachment_path', header: 'Attachment', render: (m) => m.attachment_path ? (
-      <a href={m.attachment_path} target="_blank" rel="noopener noreferrer" style={{ color: '#4A607A', fontSize: 12 }}><i className="fas fa-paperclip"></i> View</a>
-    ) : <span style={{ color: THEME.textMuted }}>—</span> },
+      <a href={m.attachment_path} target="_blank" rel="noopener noreferrer" className="ilp-4"><i className="fas fa-paperclip"></i> View</a>
+    ) : <span className="ilp-5">—</span> },
   ];
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+      <div className="ilp-6">
         {selectedStore !== 'all' && (
           <DateFilter
             preset={preset}
@@ -120,27 +120,17 @@ export default function InventoryLedgerPage({ selectedStore, storeObj: _storeObj
       </div>
 
       {selectedStore === 'all' ? (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted, marginTop: 40 }}>
-          <i className="fas fa-clock-rotate-left" style={{ fontSize: 48, marginBottom: 16 }}></i>
-          <p style={{ fontSize: 16 }}>Select a store to view its inventory ledger</p>
+        <div className="card ilp-7" >
+          <span className="ilp-8"><i className="fas fa-clock-rotate-left"></i></span>
+          <p className="ilp-9">Select a store to view its inventory ledger</p>
         </div>
       ) : (<>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '12px 16px',
-          background: THEME.bgMuted,
-          borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-          border: `1px solid ${THEME.border}`,
-          borderBottom: 'none',
-          marginTop: 20,
-        }}>
-          <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-            <i className="fas fa-clock-rotate-left" style={{ marginRight: 8, color: THEME.primary }}></i>
-            Showing <strong style={{ color: THEME.textPrimary }}>{movements.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> movements
+        <div className="ilp-10">
+          <div className="ilp-11">
+            <span className="ilp-12"><i className="fas fa-clock-rotate-left"></i></span>
+            Showing <strong className="ilp-13">{movements.length}</strong> of <strong className="ilp-14">{total}</strong> movements
           </div>
-          <div style={{ fontSize: 13, color: THEME.textMuted }}>
+          <div className="ilp-15">
             Page {page} of {totalPages}
           </div>
         </div>

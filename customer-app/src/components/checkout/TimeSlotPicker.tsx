@@ -35,7 +35,7 @@ export default function TimeSlotPicker({ value, onChange, leadMinutes = 15 }: Ti
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Clock size={16} color={LOKA.copper} />
-        <span className="font-bold text-text-primary" style={{ fontSize: 13 }}>Pickup Time</span>
+        <span className="font-bold text-text-primary tsp-title">Pickup Time</span>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {slots.map((slot, idx) => {
@@ -45,14 +45,7 @@ export default function TimeSlotPicker({ value, onChange, leadMinutes = 15 }: Ti
             <button
               key={slot}
               onClick={() => onChange(slot)}
-              className="py-2.5 px-4 rounded-xl cursor-pointer whitespace-nowrap shrink-0 transition-all border-none"
-              style={{
-                fontSize: 13,
-                fontWeight: isSelected ? 700 : 600,
-                border: isSelected ? '2px solid #384B16' : '1.5px solid #E4EAEF',
-                background: isSelected ? '#F2F6EA' : LOKA.white,
-                color: isSelected ? LOKA.primary : LOKA.textPrimary,
-              }}
+              className={`py-2.5 px-4 rounded-xl cursor-pointer whitespace-nowrap shrink-0 transition-all border-none tsp-slot ${isSelected ? 'tsp-slot-selected' : ''}`}
             >
               {isFirst ? `ASAP · ~${formatTime(slot)}` : formatTime(slot)}
             </button>

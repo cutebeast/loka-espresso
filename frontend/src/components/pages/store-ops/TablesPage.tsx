@@ -228,8 +228,8 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
   return (
     <div>
       {/* Header with StoreSelector always visible */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="tp-0">
+        <div className="tp-1">
           <StoreSelector
             stores={physicalStores}
             selectedStore={selectedStore === 'all' ? '' : selectedStore}
@@ -239,7 +239,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
           />
         </div>
         {selectedStore !== 'all' && (
-          <button className="btn btn-primary" onClick={openCreate} style={{ whiteSpace: 'nowrap' }}>
+          <button className="btn btn-primary tp-2" onClick={openCreate} >
             <i className="fas fa-plus"></i> Add Table
           </button>
         )}
@@ -247,9 +247,9 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
 
       {/* Show prompt when no store selected */}
       {selectedStore === 'all' && (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted, marginTop: 40 }}>
-          <i className="fas fa-chair" style={{ fontSize: 48, marginBottom: 16 }}></i>
-          <p style={{ fontSize: 16 }}>Select a store to manage tables</p>
+        <div className="card tp-3" >
+          <span className="tp-4"><i className="fas fa-chair"></i></span>
+          <p className="tp-5">Select a store to manage tables</p>
         </div>
       )}
 
@@ -257,37 +257,37 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
       {selectedStore !== 'all' && (
         <>
           {error && !showForm && (
-            <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+            <div className="tp-6">
               <i className="fas fa-exclamation-circle"></i> {error}
             </div>
           )}
 
           {/* QR Workflow Instructions */}
-          <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13 }}>
-            <div style={{ fontWeight: 700, color: '#1E40AF', marginBottom: 8 }}>
-              <i className="fas fa-info-circle" style={{ marginRight: 6 }}></i>
+          <div className="tp-7">
+            <div className="tp-8">
+              <span className="tp-9"><i className="fas fa-info-circle"></i></span>
               Table QR Workflow — Read Before Use
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }} className="tables-workflow-grid">
-              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <span style={{ background: '#DBEAFE', color: '#1E40AF', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>1</span>
+            <div  className="tables-workflow-grid tp-10">
+              <div className="tp-11">
+                <span className="tp-12">1</span>
                 <div>
-                  <div style={{ fontWeight: 600, color: '#1E3A5F' }}>Generate QR</div>
-                  <div style={{ color: '#64748B' }}>QR codes expire 30 min after generation. Print and place on table.</div>
+                  <div className="tp-13">Generate QR</div>
+                  <div className="tp-14">QR codes expire 30 min after generation. Print and place on table.</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <span style={{ background: '#DBEAFE', color: '#1E40AF', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>2</span>
+              <div className="tp-15">
+                <span className="tp-16">2</span>
                 <div>
-                  <div style={{ fontWeight: 600, color: '#1E3A5F' }}>Bring QR to Table</div>
-                  <div style={{ color: '#64748B' }}>Service crew places printed QR on table for customer to scan.</div>
+                  <div className="tp-17">Bring QR to Table</div>
+                  <div className="tp-18">Service crew places printed QR on table for customer to scan.</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <span style={{ background: '#DBEAFE', color: '#1E40AF', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>3</span>
+              <div className="tp-19">
+                <span className="tp-20">3</span>
                 <div>
-                  <div style={{ fontWeight: 600, color: '#1E3A5F' }}>Customer Scans</div>
-                  <div style={{ color: '#64748B' }}>Customer scans QR to place dine-in order. <strong>No QR = dine-in not available.</strong></div>
+                  <div className="tp-21">Customer Scans</div>
+                  <div className="tp-22">Customer scans QR to place dine-in order. <strong>No QR = dine-in not available.</strong></div>
                 </div>
               </div>
             </div>
@@ -295,20 +295,20 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
 
           {/* Form */}
           {showForm && (
-            <div className="card" style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h4 style={{ margin: 0 }}>{editingTable ? `Edit Table ${editingTable.table_number}` : 'New Table'}</h4>
+            <div className="card tp-23" >
+              <div className="tp-24">
+                <h4 className="tp-25">{editingTable ? `Edit Table ${editingTable.table_number}` : 'New Table'}</h4>
                 <button className="btn btn-sm" onClick={closeForm}>
                   <i className="fas fa-times"></i>
                 </button>
               </div>
               {error && (
-                <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+                <div className="tp-26">
                   <i className="fas fa-exclamation-circle"></i> {error}
                 </div>
               )}
               <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }} className="tables-form-grid">
+                <div  className="tables-form-grid tp-27">
                   <div>
                     <label style={labelStyle}>Table Number *</label>
                     <input
@@ -331,7 +331,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                     <div style={hintStyle}>Number of seats</div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }} className="tables-form-actions">
+                <div  className="tables-form-actions tp-28">
                   <button type="submit" className="btn btn-primary" disabled={saving}>
                     {saving ? 'Saving...' : editingTable ? 'Update' : 'Create'}
                   </button>
@@ -345,32 +345,28 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
 
           {/* Tables Grid */}
           {tables.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-              <i className="fas fa-chair" style={{ fontSize: 40, marginBottom: 16 }}></i>
+            <div className="card tp-29" >
+              <span className="tp-30"><i className="fas fa-chair"></i></span>
               <p>No tables yet for {storeObj?.name || 'this store'}</p>
-              <button className="btn btn-primary" onClick={openCreate} style={{ marginTop: 12 }}>
+              <button className="btn btn-primary tp-31" onClick={openCreate} >
                 <i className="fas fa-plus"></i> Add First Table
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }} className="tables-grid">
+            <div  className="tables-grid tp-32">
               {tables.map(table => (
                 <div
                   key={table.id}
-                  className="card"
-                  style={{
-                    opacity: table.is_active ? 1 : 0.6,
-                    border: table.is_active ? `1px solid ${THEME.border}` : `1px solid ${THEME.borderLight}`,
-                  }}
+                  className={`card ${table.is_active ? 'tp-table-active' : 'tp-table-inactive'}`}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                  <div className="tp-33">
                     <div>
-                      <h4 style={{ margin: 0, fontSize: 20 }}>Table {table.table_number}</h4>
-                      <p style={{ margin: '4px 0 0 0', color: THEME.textMuted, fontSize: 13 }}>
+                      <h4 className="tp-34">Table {table.table_number}</h4>
+                      <p className="tp-35">
                         <i className="fas fa-users"></i> Capacity: {table.capacity}
                         {table.is_occupied && (
-                          <span style={{ marginLeft: 8, color: '#DC2626', fontWeight: 600 }}>
-                            <i className="fas fa-circle" style={{ fontSize: 8 }}></i> Occupied
+                          <span className="tp-36">
+                            <span className="tp-37"><i className="fas fa-circle"></i></span> Occupied
                           </span>
                         )}
                       </p>
@@ -378,37 +374,29 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                       {table.active_order && (
                         <div
                           onClick={() => onViewOrder(table.active_order!.id)}
-                          style={{
-                            marginTop: 6,
-                            padding: '6px 10px',
-                            background: table.active_order.payment_status === 'paid' ? '#FEF3C7' : '#FEE2E2',
-                            borderRadius: 8,
-                            cursor: 'pointer',
-                            border: `1px solid ${table.active_order.payment_status === 'paid' ? '#F59E0B' : '#F87171'}`,
-                            transition: 'box-shadow 0.15s',
-                          }}
+                          className={`tp-order-indicator ${table.active_order.payment_status === 'paid' ? 'tp-order-indicator-paid' : 'tp-order-indicator-unpaid'}`}
                           title="Click to view order details"
                         >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div className="tp-38">
                             <div>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: THEME.textPrimary }}>
-                                <i className="fas fa-receipt" style={{ marginRight: 4 }}></i>
+                              <span className="tp-39">
+                                <span className="tp-40"><i className="fas fa-receipt"></i></span>
                                 {table.active_order.order_number}
                               </span>
-                              <span style={{ marginLeft: 8, fontSize: 11 }} className={`badge ${
+                              <span  className={`badge ${
                                 table.active_order.status === 'pending' ? 'badge-yellow' :
                                 table.active_order.status === 'preparing' ? 'badge-blue' :
                                 table.active_order.status === 'ready' ? 'badge-green' :
                                 table.active_order.status === 'confirmed' ? 'badge-blue' :
                                 'badge-gray'
-                              }`}>
+                              } tp-41`}>
                                 {table.active_order.status}
                               </span>
                             </div>
-                            <div style={{ fontSize: 11, color: THEME.textMuted }}>
+                            <div className="tp-42">
                               {formatRM(table.active_order.total)}
                               {table.active_order.payment_status !== 'paid' && (
-                                <span style={{ color: '#DC2626', fontWeight: 600, marginLeft: 6 }}>
+                                <span className="tp-43">
                                   <i className="fas fa-exclamation-circle"></i> Unpaid
                                 </span>
                               )}
@@ -432,38 +420,33 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
 
                   {/* QR Code Image — loaded via blob URL with auth */}
                   {table.qr_code_url && qrImages[table.id] && (
-                    <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                    <div className="tp-44">
                       <Image
                         src={qrImages[table.id]}
                         alt={`QR code for table ${table.table_number}`}
                         width={140}
                         height={140}
-                        style={{ width: 140, height: 140, borderRadius: 8, border: `1px solid ${THEME.border}` }}
+                        className="tp-45"
                       />
                       {/* Expiry countdown timer — only show when QR is active and not expired */}
                       {table.qr_code_url && !qrExpiry[table.id]?.expired ? (
-                        <div style={{
-                          marginTop: 6,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: qrExpiry[table.id]?.remaining < 300 ? '#DC2626' : '#F59E0B',
-                        }}>
+                        <div className={`tp-timer ${qrExpiry[table.id]?.remaining < 300 ? 'tp-timer-urgent' : 'tp-timer-warn'}`}>
                           <i className="fas fa-clock"></i> Expires in {formatDuration(qrExpiry[table.id]?.remaining || 0)}
                         </div>
                       ) : table.qr_code_url && qrExpiry[table.id]?.expired ? (
-                        <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: '#DC2626' }}>
+                        <div className="tp-46">
                           <i className="fas fa-exclamation-triangle"></i> QR expired — regenerate
                         </div>
                       ) : null}
                     </div>
                   )}
                   {table.qr_code_url && !qrImages[table.id] && (
-                    <div style={{ textAlign: 'center', marginBottom: 12, padding: '60px 0', color: THEME.textMuted }}>
-                      <i className="fas fa-spinner fa-spin" style={{ fontSize: 24 }}></i>
+                    <div className="tp-47">
+                      <span className="tp-48"><i className="fas fa-spinner fa-spin"></i></span>
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }} className="tables-card-actions">
+                  <div  className="tables-card-actions tp-49">
                     {!table.qr_code_url ? (
                       <button className="btn btn-sm btn-primary" onClick={() => generateQR(table)} title="Generate QR code for this table">
                         <i className="fas fa-qrcode"></i> Generate QR
@@ -484,8 +467,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                       title={table.is_active ? 'Deactivate' : 'Activate'}
                     >
                       <i
-                        className={`fas ${table.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`}
-                        style={{ color: table.is_active ? THEME.success : THEME.primaryLight }}
+                        className={`fas ${table.is_active ? 'fa-toggle-on' : 'fa-toggle-off'} ${table.is_active ? 'text-success' : 'text-primary-light'}`}
                       ></i>
                     </button>
                     <button className="btn btn-sm" onClick={() => openEdit(table)} title="Edit">
@@ -494,8 +476,8 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                     {confirmDelete === table.id ? (
                       <>
                         <button
-                          className="btn btn-sm"
-                          style={{ background: '#EF4444', color: 'white' }}
+                          className="btn btn-sm tp-50"
+                          
                           onClick={() => handleDelete(table.id)}
                         >
                           Confirm
@@ -506,8 +488,8 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                       </>
                     ) : (
                       <button
-                        className="btn btn-sm"
-                        style={{ color: '#EF4444' }}
+                        className="btn btn-sm tp-51"
+                        
                         onClick={() => setConfirmDelete(table.id)}
                         title="Delete"
                       >

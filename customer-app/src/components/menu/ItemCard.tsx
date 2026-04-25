@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { Plus, Coffee } from 'lucide-react';
 import type { MenuItem } from '@/lib/api';
-import { formatPrice, LOKA, resolveAssetUrl } from '@/lib/tokens';
+import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
 
 interface ItemCardProps {
   item: MenuItem;
@@ -18,17 +18,11 @@ export default function ItemCard({ item, onPress, onAdd }: ItemCardProps) {
     <motion.button
       whileTap={{ scale: 0.985 }}
       onClick={onPress}
-      className="flex items-center gap-3 px-3.5 py-2.5 bg-white rounded-2xl border border-border-subtle cursor-pointer text-left w-full h-16 relative"
-      style={{ opacity: item.is_available ? 1 : 0.5 }}
+      className={`flex items-center gap-3 px-3.5 py-2.5 bg-white rounded-2xl border border-border-subtle cursor-pointer text-left w-full h-16 relative ${item.is_available ? '' : 'item-card-unavailable'}`}
     >
       {/* Thumbnail */}
       <div
-        className="w-14 h-14 shrink-0 rounded-[14px] overflow-hidden flex items-center justify-center relative"
-        style={{
-          background: imgSrc
-            ? '#EFEAE0'
-            : `linear-gradient(135deg, #F2F6EA 0%, ${LOKA.cream} 100%)`,
-        }}
+        className={`w-14 h-14 shrink-0 rounded-[14px] overflow-hidden flex items-center justify-center relative ${imgSrc ? 'item-card-thumb-bg has-image' : 'item-card-thumb-bg'}`}
       >
         {imgSrc ? (
           <img
@@ -38,19 +32,11 @@ export default function ItemCard({ item, onPress, onAdd }: ItemCardProps) {
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         ) : (
-          <Coffee size={22} color={LOKA.brown} strokeWidth={1.5} />
+          <Coffee size={22} className="text-[#7A4A2E]" strokeWidth={1.5} />
         )}
         {item.is_featured && (
           <>
-            <div
-              className="absolute top-0 right-0"
-              style={{
-                width: 0, height: 0,
-                borderStyle: 'solid',
-                borderWidth: '0 22px 22px 0',
-                borderColor: `transparent ${LOKA.copper} transparent transparent`,
-              }}
-            />
+            <div className="item-card-featured-corner" />
             <div className="absolute top-[3px] right-[3px] w-[5px] h-[5px] rounded-full bg-white" />
           </>
         )}
@@ -87,7 +73,7 @@ export default function ItemCard({ item, onPress, onAdd }: ItemCardProps) {
           onClick={(e) => { e.stopPropagation(); onAdd(); }}
           className="w-8 h-8 shrink-0 rounded-full bg-primary border-none cursor-pointer flex items-center justify-center"
         >
-          <Plus size={15} color={LOKA.white} strokeWidth={2.5} />
+          <Plus size={15} color="white" strokeWidth={2.5} />
         </motion.button>
       )}
     </motion.button>

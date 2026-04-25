@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Store, MapPin, Check, X } from 'lucide-react';
-import { LOKA } from '@/lib/tokens';
 import { getStoresWithDistance } from '@/lib/geolocation';
 import type { Store as StoreType } from '@/lib/api';
 
@@ -42,59 +41,38 @@ export default function StorePickerModal({ stores, selectedStore, onSelect, onCl
       className="fixed inset-0 z-50 flex items-end justify-center"
       onClick={onClose}
     >
-      {/* TODO: extract to CSS */}
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,19,23,0.55)', backdropFilter: 'blur(2px)' }} />
+      <div className="store-picker-overlay" />
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 320 }}
         onClick={(e) => e.stopPropagation()}
-        /* TODO: extract to CSS */
-        style={{
-          position: 'relative', width: '100%', maxWidth: 430, background: '#FFFFFF',
-          borderTopLeftRadius: 28, borderTopRightRadius: 28,
-          boxShadow: '0 -20px 50px -12px rgba(15,19,23,0.25)',
-          display: 'flex', flexDirection: 'column', maxHeight: '82vh', overflow: 'hidden',
-        }}
+        className="store-picker-sheet"
       >
-        {/* TODO: extract to CSS */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4 }}>
-          <div style={{ width: 44, height: 4, borderRadius: 999, background: LOKA.border }} />
+        <div className="store-picker-handle-bar">
+          <div className="store-picker-handle" />
         </div>
-        <div style={{ padding: '12px 22px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="store-picker-header">
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: LOKA.copper, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              <MapPin size={11} style={{ display: 'inline', marginRight: 4 }} />
+            <div className="store-picker-label">
+              <MapPin size={11} className="store-picker-label-icon" />
               Pickup location
             </div>
-            <h3 style={{ fontSize: 22, fontWeight: 800, color: LOKA.textPrimary, marginTop: 2, letterSpacing: '-0.01em' }}>
-              Select your Loka
-            </h3>
+            <h3 className="store-picker-title">Select your Loka</h3>
           </div>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={onClose}
             aria-label="Close"
-            style={{
-              width: 44, height: 44, borderRadius: 999, background: LOKA.surface,
-              border: 'none', display: 'inline-flex', alignItems: 'center',
-              justifyContent: 'center', color: LOKA.textMuted, cursor: 'pointer',
-            }}
+            className="store-picker-close"
           >
             <X size={18} />
           </motion.button>
         </div>
-        <div style={{ padding: '0 22px 14px' }}>
-          {/* TODO: extract to CSS */}
-          <div
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '12px 14px', borderRadius: 999,
-              background: LOKA.surface, border: `1px solid ${LOKA.borderSubtle}`,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: LOKA.textMuted, flexShrink: 0 }} aria-hidden>
+        <div className="store-picker-search-wrap">
+          <div className="store-picker-search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="store-picker-search-icon" aria-hidden>
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
@@ -102,22 +80,21 @@ export default function StorePickerModal({ stores, selectedStore, onSelect, onCl
               value={storeSearch}
               onChange={(e) => setStoreSearch(e.target.value)}
               placeholder="Search by name or area"
-              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: LOKA.textPrimary }}
+              className="store-picker-search-input"
             />
             {storeSearch && (
-              <button onClick={() => setStoreSearch('')} aria-label="Clear" style={{ background: 'transparent', border: 'none', padding: 0, color: LOKA.textMuted, cursor: 'pointer', display: 'inline-flex' }}>
+              <button onClick={() => setStoreSearch('')} aria-label="Clear" className="store-picker-search-clear">
                 <X size={14} />
               </button>
             )}
           </div>
         </div>
-        {/* TODO: extract to CSS */}
-        <div style={{ padding: '0 22px 8px', fontSize: 12, fontWeight: 700, color: LOKA.textMuted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+        <div className="store-picker-section-label">
           {storeSearch ? `${visible.length} result${visible.length === 1 ? '' : 's'}` : 'Nearest to you'}
         </div>
-        <div className="scroll-container" style={{ flex: 1, overflowY: 'auto', padding: '0 14px 24px' }}>
+        <div className="scroll-container store-picker-scroll">
           {visible.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: LOKA.textMuted, fontSize: 14 }}>
+            <div className="store-picker-empty">
               {storeSearch ? `No stores match "${storeSearch}"` : 'No stores available'}
             </div>
           ) : visible.map((store) => {
@@ -127,36 +104,24 @@ export default function StorePickerModal({ stores, selectedStore, onSelect, onCl
                 key={store.id}
                 whileTap={{ scale: 0.985 }}
                 onClick={() => onSelect(store)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 14,
-                  padding: 14, marginBottom: 8, borderRadius: 18,
-                  background: isSelected ? 'rgba(56,75,22,0.06)' : '#FFFFFF',
-                  border: `1.5px solid ${isSelected ? LOKA.primary : LOKA.borderSubtle}`,
-                  cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s ease, background 0.15s ease',
-                }}
+                className={`store-picker-item ${isSelected ? 'selected' : ''}`}
               >
-                <div
-                  style={{
-                    width: 42, height: 42, borderRadius: 12,
-                    background: isSelected ? LOKA.primary : LOKA.copperSoft,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}
-                >
-                  <Store size={18} style={{ color: isSelected ? '#FFFFFF' : LOKA.copper }} strokeWidth={2} />
+                <div className="store-picker-item-icon-wrap">
+                  <Store size={18} className="store-picker-item-icon" strokeWidth={2} />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: LOKA.textPrimary, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{store.name}</div>
-                  {store.address && <div style={{ fontSize: 12, color: LOKA.textMuted, marginTop: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{store.address}</div>}
-                  <div style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 11, color: LOKA.textMuted }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#5C8A3E', fontWeight: 600 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 999, background: '#5C8A3E' }} />Open now
+                <div className="store-picker-item-info">
+                  <div className="store-picker-item-name">{store.name}</div>
+                  {store.address && <div className="store-picker-item-address">{store.address}</div>}
+                  <div className="store-picker-item-meta">
+                    <span className="store-picker-item-status">
+                      <span className="store-picker-item-status-dot" />Open now
                     </span>
-                    {store.distance && <span style={{ fontWeight: 600, color: LOKA.copper }}>· {store.distance}</span>}
+                    {store.distance && <span className="store-picker-item-distance">· {store.distance}</span>}
                     {store.pickup_lead_minutes != null && <span>· Pickup in ~{store.pickup_lead_minutes} min</span>}
                   </div>
                 </div>
                 {isSelected && (
-                  <div style={{ width: 28, height: 28, borderRadius: 999, background: LOKA.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div className="store-picker-check">
                     <Check size={15} color="#FFFFFF" strokeWidth={3} />
                   </div>
                 )}

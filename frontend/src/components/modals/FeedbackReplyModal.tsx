@@ -21,11 +21,11 @@ export function FeedbackReplyForm({ feedbackId, token: _token, onClose }: { feed
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Reply</label>
-        <textarea value={reply} onChange={e => setReply(e.target.value)} rows={4} required style={{ outline: 'none', border: '1px solid #DDE3E9', borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%' }} />
+      <div className="frf-0">
+        <label className="frf-1">Reply</label>
+        <textarea value={reply} onChange={e => setReply(e.target.value)} rows={4} required className="frf-2" />
       </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+      <button type="submit" className="btn btn-primary frf-3"  disabled={saving}>
         {saving ? 'Sending...' : 'Send Reply'}
       </button>
     </form>

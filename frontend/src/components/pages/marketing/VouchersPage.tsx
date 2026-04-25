@@ -146,52 +146,36 @@ export default function VouchersPage({ token }: VouchersPageProps) {
           <VoucherFormPage token={token} existingVoucher={editingVoucher} onBack={closeForm} />
         )}
       </Drawer>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
+      <div className="vp-0">
         <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Voucher</button>
       </div>
 
       {error && (
-        <div style={{ background: '#FEE2E2', color: '#A83232', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+        <div className="vp-1">
           <i className="fas fa-exclamation-circle"></i> {error}
         </div>
       )}
 
       {/* Stats Bar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-        marginTop: 20,
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-ticket-alt" style={{ marginRight: 8, color: THEME.primary }}></i>
-          Showing <strong style={{ color: THEME.textPrimary }}>{vouchers.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> vouchers
+      <div className="vp-2">
+        <div className="vp-3">
+          <span className="vp-4"><i className="fas fa-ticket-alt"></i></span>
+          Showing <strong className="vp-5">{vouchers.length}</strong> of <strong className="vp-6">{total}</strong> vouchers
         </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+        <div className="vp-7">
           Page {page} of {totalPages}
         </div>
       </div>
 
       {loading && vouchers.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>
+        <div className="vp-8"><i className="fas fa-spinner fa-spin"></i> Loading...</div>
       ) : vouchers.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-          <i className="fas fa-ticket-alt" style={{ fontSize: 40, marginBottom: 16 }}></i>
+        <div className="card vp-9" >
+          <span className="vp-10"><i className="fas fa-ticket-alt"></i></span>
           <p>No vouchers yet</p>
         </div>
       ) : (
-        <div style={{
-          overflowX: 'auto',
-          borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
-          background: THEME.bgCard,
-          border: `1px solid ${THEME.border}`,
-          borderTop: 'none',
-        }}>
+        <div className="vp-11">
           <table>
             <thead>
                   <tr><th>Code</th><th>Title</th><th>Discount</th><th>Used/Max</th><th>Status</th><th>Actions</th></tr>
@@ -200,34 +184,34 @@ export default function VouchersPage({ token }: VouchersPageProps) {
               {vouchers.map(v => (
                 <tr key={v.id}>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, fontFamily: 'monospace' }}>
-                      <div style={{ width: 40, height: 40, background: THEME.bgMuted, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.success, fontSize: 14, flexShrink: 0 }}>
+                    <div className="vp-12">
+                      <div className="vp-13">
                         <i className="fas fa-ticket"></i>
                       </div>
                       <span>{v.code}</span>
                     </div>
                   </td>
                   <td>
-                    <div style={{ fontWeight: 600 }}>{v.title || '-'}</div>
-                    {v.short_description && <div style={{ fontSize: 12, color: THEME.success, marginTop: 2 }}>{v.short_description}</div>}
+                    <div className="vp-14">{v.title || '-'}</div>
+                    {v.short_description && <div className="vp-15">{v.short_description}</div>}
                   </td>
                   <td>{renderDiscount(v)}</td>
                   <td>{renderUsage(v)}</td>
                   <td>
-                    <button className="btn btn-sm" onClick={() => toggleActive(v)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
+                    <button className="btn btn-sm vp-16" onClick={() => toggleActive(v)} >
                       <span className={`badge ${v.is_active ? 'badge-green' : 'badge-gray'}`}>{v.is_active ? 'Active' : 'Inactive'}</span>
                     </button>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div className="vp-17">
                       <button className="btn btn-sm" onClick={() => openEdit(v)} title="Edit"><i className="fas fa-edit"></i></button>
                       {confirmDelete === v.id ? (
                         <>
-                          <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(v.id)}>Confirm</button>
+                          <button className="btn btn-sm vp-18"  onClick={() => handleDelete(v.id)}>Confirm</button>
                           <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
                         </>
                       ) : (
-                        <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(v.id)} title="Delete"><i className="fas fa-trash"></i></button>
+                        <button className="btn btn-sm vp-19"  onClick={() => setConfirmDelete(v.id)} title="Delete"><i className="fas fa-trash"></i></button>
                       )}
                     </div>
                   </td>
@@ -301,34 +285,34 @@ function VoucherFormPage({ token: _token, existingVoucher, onBack }: { token: st
     <div>
       <div className="card">
         {error && (
-          <div style={{ background: '#FEE2E2', color: '#A83232', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+          <div className="vfp-20">
             <i className="fas fa-exclamation-circle"></i> {error}
           </div>
         )}
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="vfp-21">
             <div><label style={labelStyle}>Title *</label><input value={form.title} onChange={e => updateField('title', e.target.value)} placeholder="e.g. Summer Sale" required /></div>
-            <div><label style={labelStyle}>Code *</label><input value={form.code} onChange={e => updateField('code', e.target.value.toUpperCase())} placeholder="e.g. SUMMER2026" style={{ textTransform: 'uppercase' }} required /><div style={hintStyle}>Unique catalog code</div></div>
-            <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Short Description</label><textarea value={form.short_description} onChange={e => updateField('short_description', e.target.value)} placeholder="Brief summary..." rows={2} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }} /></div>
-            <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Detail Description</label><textarea value={form.long_description} onChange={e => updateField('long_description', e.target.value)} placeholder="Full content..." rows={4} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Code *</label><input value={form.code} onChange={e => updateField('code', e.target.value.toUpperCase())} placeholder="e.g. SUMMER2026" className="vfp-22" required /><div style={hintStyle}>Unique catalog code</div></div>
+            <div className="vfp-23"><label style={labelStyle}>Short Description</label><textarea value={form.short_description} onChange={e => updateField('short_description', e.target.value)} placeholder="Brief summary..." rows={2} className="vfp-24" /></div>
+            <div className="vfp-25"><label style={labelStyle}>Detail Description</label><textarea value={form.long_description} onChange={e => updateField('long_description', e.target.value)} placeholder="Full content..." rows={4} className="vfp-26" /></div>
             <div><label style={labelStyle}>Discount Type *</label><Select value={form.discount_type} onChange={(val) => updateField('discount_type', val)} options={[{ value: 'percent', label: 'Percentage (%)' }, { value: 'fixed', label: 'Fixed Amount (RM)' }, { value: 'free_item', label: 'Free Item' }]} /></div>
             <div><label style={labelStyle}>Discount Value *</label><input type="number" min="0" step="0.01" value={form.discount_value} onChange={e => updateField('discount_value', e.target.value)} placeholder="0" required /></div>
             <div><label style={labelStyle}>Min Spend (RM)</label><input type="number" min="0" step="0.01" value={form.min_spend} onChange={e => updateField('min_spend', e.target.value)} /></div>
-            <div><label style={labelStyle}>Max Uses <span style={{ color: THEME.success, fontWeight: 400 }}>(blank = unlimited)</span></label><input type="number" min="1" value={form.max_uses} onChange={e => updateField('max_uses', e.target.value)} placeholder="Blank = unlimited" /></div>
+            <div><label style={labelStyle}>Max Uses <span className="vfp-27">(blank = unlimited)</span></label><input type="number" min="1" value={form.max_uses} onChange={e => updateField('max_uses', e.target.value)} placeholder="Blank = unlimited" /></div>
             <div><label style={labelStyle}>Max Per User</label><input type="number" min="1" value={form.max_uses_per_user} onChange={e => updateField('max_uses_per_user', e.target.value)} placeholder="1" /></div>
-            <div><label style={labelStyle}>Validity Days <span style={{ color: THEME.success, fontWeight: 400 }}>(after claim)</span></label><input type="number" min="1" value={form.validity_days} onChange={e => updateField('validity_days', e.target.value)} placeholder="30" /></div>
+            <div><label style={labelStyle}>Validity Days <span className="vfp-28">(after claim)</span></label><input type="number" min="1" value={form.validity_days} onChange={e => updateField('validity_days', e.target.value)} placeholder="30" /></div>
             <div><label style={labelStyle}>Valid From</label><input type="datetime-local" value={form.valid_from} onChange={e => updateField('valid_from', e.target.value)} /></div>
             <div><label style={labelStyle}>Valid Until</label><input type="datetime-local" value={form.valid_until} onChange={e => updateField('valid_until', e.target.value)} /></div>
             <div><label style={labelStyle}>Promo Type</label><Select value={form.promo_type} onChange={(val) => updateField('promo_type', val)} options={[{ value: 'generic', label: 'Generic' }, { value: 'bogo', label: 'Buy One Get One' }, { value: 'happy_hour', label: 'Happy Hour' }, { value: 'seasonal', label: 'Seasonal' }]} /></div>
-            <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Terms &amp; Conditions</label><textarea value={form.terms} onChange={e => updateField('terms', e.target.value)} placeholder="One per line" rows={3} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }} /></div>
-            <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>How to Redeem</label><input value={form.how_to_redeem} onChange={e => updateField('how_to_redeem', e.target.value)} placeholder="e.g. Show this screen at checkout" /></div>
+            <div className="vfp-29"><label style={labelStyle}>Terms &amp; Conditions</label><textarea value={form.terms} onChange={e => updateField('terms', e.target.value)} placeholder="One per line" rows={3} className="vfp-30" /></div>
+            <div className="vfp-31"><label style={labelStyle}>How to Redeem</label><input value={form.how_to_redeem} onChange={e => updateField('how_to_redeem', e.target.value)} placeholder="e.g. Show this screen at checkout" /></div>
           </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+          <div className="vfp-32">
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}</button>
             <button type="button" className="btn" onClick={onBack}>Cancel</button>
-            <div style={{ flex: 1 }} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-              <input type="checkbox" checked={form.is_active} onChange={e => updateField('is_active', e.target.checked)} style={{ width: 16, height: 16 }} />
+            <div className="vfp-33" />
+            <label className="vfp-34">
+              <input type="checkbox" checked={form.is_active} onChange={e => updateField('is_active', e.target.checked)} className="vfp-35" />
               Active
             </label>
           </div>

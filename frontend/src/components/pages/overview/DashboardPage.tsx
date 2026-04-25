@@ -219,7 +219,7 @@ export default function DashboardPage({ dashboard, loading, selectedStore, store
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div className="dp-0">
         <StoreSelector
           stores={physicalStores}
           selectedStore={selectedStore}
@@ -236,78 +236,64 @@ export default function DashboardPage({ dashboard, loading, selectedStore, store
       </div>
 
       {/* Stats Bar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-chart-line" style={{ marginRight: 8, color: THEME.primary }}></i>
-          <strong style={{ color: THEME.textPrimary }}>{fromDate}</strong> — <strong style={{ color: THEME.textPrimary }}>{toDate}</strong>
+      <div className="dp-1">
+        <div className="dp-2">
+          <span className="dp-3"><i className="fas fa-chart-line"></i></span>
+          <strong className="dp-4">{fromDate}</strong> — <strong className="dp-5">{toDate}</strong>
         </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+        <div className="dp-6">
           Dashboard Overview
         </div>
       </div>
 
       <KPICards cards={kpiCards} columns={4} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 24 }}>
-        <div className="card" style={{ background: THEME.bgCard, borderRadius: THEME.radius.lg, border: `1px solid ${THEME.border}`, padding: 20 }}>
-          <h3 style={{ marginBottom: 16, color: THEME.textPrimary }}><i className="fas fa-bolt" style={{ color: THEME.accentCopper, marginRight: 8 }}></i> Orders by Type</h3>
+      <div className="dp-7">
+        <div className="card dp-8" >
+          <h3 className="dp-9"><span className="dp-10"><i className="fas fa-bolt"></i></span> Orders by Type</h3>
           {Object.keys(dashboard.orders_by_type || {}).length === 0 ? (
-            <p style={{ color: THEME.textMuted }}>No orders yet</p>
+            <p className="dp-11">No orders yet</p>
           ) : (
             Object.entries(dashboard.orders_by_type || {}).map(([type, count]) => (
-              <div key={type} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${THEME.borderLight}` }}>
-                <span style={{ textTransform: 'capitalize', color: THEME.textSecondary }}>{type.replace('_', ' ')}</span>
-                <strong style={{ color: THEME.textPrimary }}>{String(count)}</strong>
+              <div key={type} className="dp-12">
+                <span className="dp-13">{type.replace('_', ' ')}</span>
+                <strong className="dp-14">{String(count)}</strong>
               </div>
             ))
           )}
         </div>
-        <div className="card" style={{ background: THEME.bgCard, borderRadius: THEME.radius.lg, border: `1px solid ${THEME.border}`, padding: 20 }}>
-          <h3 style={{ marginBottom: 16, color: THEME.textPrimary }}>Revenue</h3>
-          <div style={{ fontSize: 36, fontWeight: 700, color: THEME.accentCopper }}>{formatRM(dashboard.total_revenue)}</div>
-          <p style={{ color: THEME.textMuted, marginTop: 8 }}>Revenue for selected period</p>
+        <div className="card dp-15" >
+          <h3 className="dp-16">Revenue</h3>
+          <div className="dp-17">{formatRM(dashboard.total_revenue)}</div>
+          <p className="dp-18">Revenue for selected period</p>
         </div>
       </div>
 
       {/* Dynamic Chart Based on Preset */}
       {chartData.length > 0 && (
-        <div className="card" style={{ marginTop: 24, background: THEME.bgCard, borderRadius: THEME.radius.lg, border: `1px solid ${THEME.border}`, padding: 20 }}>
-          <h3 style={{ marginBottom: 16, color: THEME.textPrimary }}>
-            <i className="fas fa-chart-bar" style={{ color: THEME.accent, marginRight: 8 }}></i> 
+        <div className="card dp-19" >
+          <h3 className="dp-20">
+            <span className="dp-21"><i className="fas fa-chart-bar"></i></span> 
             {getChartTitle()}
           </h3>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 180, padding: '0 10px' }}>
+          <div className="dp-22">
             {chartData.map((data, index) => (
-              <div key={index} style={{ flex: 1, textAlign: 'center', minWidth: 60 }}>
-                <div style={{
+              <div key={index} className="dp-23">
+                <div className="dp-bar" style={{
                   height: `${maxValue > 0 ? (data.orders / maxValue) * 140 : 0}px`,
                   backgroundColor: data.orders > 0 ? THEME.primary : THEME.border,
-                  borderRadius: 4,
                   minHeight: data.orders > 0 ? 4 : 2,
-                  transition: 'height 0.3s ease',
                   opacity: data.orders > 0 ? 1 : 0.4,
                 }} />
-                <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 8, fontWeight: 500 }}>{data.label}</div>
-                <div style={{ 
-                  fontSize: 14, 
-                  fontWeight: 700, 
+                <div className="dp-24">{data.label}</div>
+                <div className="dp-bar-value" style={{ 
                   color: data.orders > 0 ? THEME.textPrimary : THEME.textMuted,
-                  marginTop: 4 
                 }}>{data.orders}</div>
               </div>
             ))}
           </div>
           {chartData.some(d => d.orders === 0) && (
-            <div style={{ marginTop: 16, fontSize: 12, color: THEME.textMuted, fontStyle: 'italic', textAlign: 'center' }}>
+            <div className="dp-25">
               <i className="fas fa-info-circle"></i> Periods with 0 orders are shown in gray (no data skipped)
             </div>
           )}

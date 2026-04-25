@@ -58,7 +58,7 @@ export default function DeliveryAddressCard({ value, onChange }: DeliveryAddress
     <div>
       <div className="flex items-center gap-2 mb-3">
         <MapPin size={16} color={LOKA.copper} />
-        <span className="font-bold text-text-primary" style={{ fontSize: 13 }}>Delivery Address</span>
+        <span className="font-bold text-text-primary dac-title">Delivery Address</span>
       </div>
       <div className="relative">
         <textarea
@@ -67,12 +67,7 @@ export default function DeliveryAddressCard({ value, onChange }: DeliveryAddress
           onBlur={handleBlur}
           placeholder="Enter delivery address"
           rows={2}
-          className="w-full px-3.5 py-3 rounded-[14px] border border-border-subtle bg-white text-sm text-text-primary resize-none outline-none"
-          style={{
-            paddingRight: 44,
-            fontFamily: 'inherit',
-            boxSizing: 'border-box',
-          }}
+          className="w-full px-3.5 py-3 rounded-[14px] border border-border-subtle bg-white text-sm text-text-primary resize-none outline-none dac-textarea"
         />
         <button
           onClick={handleUseCurrentLocation}

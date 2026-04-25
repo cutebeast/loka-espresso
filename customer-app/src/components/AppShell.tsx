@@ -86,7 +86,7 @@ export default function AppShell() {
   const pendingArticleId = useRef<number | null>(null);
   const pendingArticleSlug = useRef<string | null>(null);
   const pendingGuestPage = useRef<PageId | null>(null);
-  const savedGuestCart = useRef<{ items: CartItem[]; storeId: number | null } | null>(null);
+  const savedGuestCart = useRef<CartItem[] | null>(null);
 
   // Parse deep-link query params on mount (e.g., ?article=123 or ?slug=history-of-pide from QR code)
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function AppShell() {
     if (isGuest && !isPublicPage(page) && authDone) {
       pendingGuestPage.current = page;
       const cart = useCartStore.getState();
-      savedGuestCart.current = { items: [...cart.items], storeId: cart.storeId };
+      savedGuestCart.current = [...cart.items];
       useUIStore.getState().setIsGuest(false);
       setAuthDone(false);
       useAuthStore.getState().resetAllExceptCart();
@@ -273,13 +273,12 @@ export default function AppShell() {
     setAuthDone(true);
     // Restore guest cart that was saved before sign-in
     if (savedGuestCart.current) {
-      const { items, storeId } = savedGuestCart.current;
+      const items = savedGuestCart.current;
       savedGuestCart.current = null;
       if (items.length > 0) {
         const cart = useCartStore.getState();
         cart.clearCart();
-        if (storeId) cart.setStoreId(storeId);
-        items.forEach((item) => cart.addItem(item, storeId));
+        items.forEach((item) => cart.addItem(item));
         useUIStore.getState().showToast('Cart restored', 'success');
       }
     }
@@ -386,7 +385,7 @@ export default function AppShell() {
             className="guest-banner-btn"
             onClick={() => {
               const cart = useCartStore.getState();
-              savedGuestCart.current = { items: [...cart.items], storeId: cart.storeId };
+              savedGuestCart.current = [...cart.items];
               useUIStore.getState().setIsGuest(false);
               setAuthDone(false);
               useAuthStore.getState().resetAllExceptCart();
@@ -504,7 +503,7 @@ export default function AppShell() {
                   setSelectedStore(store);
                   setShowStoreModal(false);
                   setShowStorePicker(false);
-                  useCartStore.getState().setStoreId(store.id);
+                  // store selection is tracked in uiStore.selectedStore only
                   setStoreSearch('');
                   showToast(`Switched to ${store.name}`, 'success');
                 }}
@@ -560,7 +559,6 @@ export default function AppShell() {
                 const res = await api.post('/tables/scan', { store_slug: storeSlug, table_id: tableId, qr_token: qrToken });
                 const data = res.data;
                 const { setOrderMode, setDineInSession, setSelectedStore } = useUIStore.getState();
-                const { setStoreId } = useCartStore.getState();
                 setDineInSession({
                   storeId: data.store_id,
                   storeName: data.store_name,
@@ -569,7 +567,6 @@ export default function AppShell() {
                   tableNumber: data.table_number,
                 });
                 setOrderMode('dine_in');
-                setStoreId(data.store_id);
                 const storeRes = await api.get('/stores');
                 const storeList: StoreType[] = storeRes.data;
                 const found = storeList.find((s) => s.id === data.store_id);

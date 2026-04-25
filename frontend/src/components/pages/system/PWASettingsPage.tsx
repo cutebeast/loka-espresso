@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { THEME } from '@/lib/theme';
 
 interface PWASettingsPageProps {
   token: string;
@@ -16,38 +15,16 @@ interface PWAVersionInfo {
 
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
-    <label style={{
-      position: 'relative',
-      display: 'inline-block',
-      width: 44,
-      height: 24,
-      cursor: disabled ? 'not-allowed' : 'pointer',
-      opacity: disabled ? 0.5 : 1,
-    }}>
+    <label className={`psp-toggle-label ${disabled ? 'cursor-not-allowed opacity-0-5' : 'cursor-pointer opacity-1'}`}>
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
-        style={{ opacity: 0, width: 0, height: 0 }}
+        className="t-0"
       />
-      <span style={{
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: checked ? THEME.primary : THEME.bgMuted,
-        transition: '0.3s',
-        borderRadius: 24,
-      }}>
-        <span style={{
-          position: 'absolute',
-          height: 18,
-          width: 18,
-          left: checked ? 23 : 3,
-          bottom: 3,
-          backgroundColor: 'white',
-          transition: '0.3s',
-          borderRadius: '50%',
-        }} />
+      <span className={`psp-toggle-track ${checked ? 'psp-toggle-track-on' : 'psp-toggle-track-off'}`}>
+        <span className={`psp-toggle-thumb ${checked ? 'psp-toggle-thumb-on' : 'psp-toggle-thumb-off'}`} />
       </span>
     </label>
   );
@@ -212,7 +189,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: 40, color: THEME.success }}>
+      <div className="psp-1">
         <i className="fas fa-spinner fa-spin"></i> Loading PWA settings...
       </div>
     );
@@ -220,7 +197,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
 
   if (error) {
     return (
-      <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '12px 16px', borderRadius: 10 }}>
+      <div className="psp-2">
         <i className="fas fa-exclamation-circle"></i> {error}
       </div>
     );
@@ -230,72 +207,34 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
   const bypassCode = editValues.otp_bypass_code ?? '';
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div className="psp-3">
       {/* OTP Bypass Warning Banner */}
       {bypassEnabled && (
-        <div style={{
-          background: 'rgba(209, 142, 56, 0.08)',
-          border: `1px solid ${THEME.accentCopper}`,
-          borderRadius: 12,
-          padding: '12px 20px',
-          marginBottom: 24,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-        }}>
-          <i className="fas fa-exclamation-triangle" style={{ color: THEME.accentCopper, fontSize: 14 }}></i>
-          <span style={{ fontSize: 13, color: THEME.textSecondary }}>
-            OTP Bypass is <strong style={{ color: THEME.accentCopper }}>ACTIVE</strong>. Customers can sign in without a real OTP. Disable before going live.
+        <div className="psp-4">
+          <span className="psp-5"><i className="fas fa-exclamation-triangle"></i></span>
+          <span className="psp-6">
+            OTP Bypass is <strong className="psp-7">ACTIVE</strong>. Customers can sign in without a real OTP. Disable before going live.
           </span>
         </div>
       )}
 
       {/* Authentication Group */}
-      <div style={{
-        background: 'white',
-        borderRadius: 16,
-        border: `1px solid ${THEME.accentLight}`,
-        overflow: 'hidden',
-        marginBottom: 24,
-      }}>
-        <div style={{
-          padding: '16px 24px',
-          borderBottom: `1px solid ${THEME.accentLight}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          background: THEME.bgMuted,
-        }}>
-          <i className="fas fa-shield-alt" style={{ color: THEME.primary, fontSize: 16 }}></i>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: THEME.primary }}>Authentication</h3>
+      <div className="psp-8">
+        <div className="psp-9">
+          <span className="psp-10"><i className="fas fa-shield-alt"></i></span>
+          <h3 className="psp-11">Authentication</h3>
         </div>
 
         {/* Enable Toggle Row */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          padding: '16px 24px',
-          borderBottom: `1px solid ${THEME.accentLight}`,
-        }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 2 }}>
+        <div className="psp-12">
+          <div className="psp-13">
+            <div className="psp-14">
               Enable OTP Bypass
               {bypassEnabled && (
-                <span style={{
-                  marginLeft: 8,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                  background: THEME.accentCopper,
-                  color: 'white',
-                  padding: '2px 8px',
-                  borderRadius: 6,
-                }}>Active</span>
+                <span className="psp-15">Active</span>
               )}
             </div>
-            <div style={{ fontSize: 12, color: THEME.success }}>
+            <div className="psp-16">
               Allow sign-in with a fixed code instead of real OTP. For testing only.
             </div>
           </div>
@@ -309,22 +248,17 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
         </div>
 
         {/* Bypass Code Row */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          padding: '16px 24px',
+        <div className={`psp-bypass-row ${bypassEnabled ? 'opacity-1' : 'opacity-0-5'}`}>
           opacity: bypassEnabled ? 1 : 0.5,
-        }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 2 }}>
+          <div className="psp-17">
+            <div className="psp-18">
               Bypass Code
             </div>
-            <div style={{ fontSize: 12, color: THEME.success }}>
+            <div className="psp-19">
               The code customers can use instead of a real OTP
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="psp-20">
             <input
               type="text"
               value={bypassCode}
@@ -339,22 +273,11 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
               placeholder="e.g. 111111"
               maxLength={10}
               disabled={!bypassEnabled}
-              style={{
-                width: 140,
-                textAlign: 'center',
-                padding: '6px 10px',
-                borderRadius: 8,
-                border: `1px solid ${THEME.accentLight}`,
-                fontSize: 16,
-                fontWeight: 700,
-                letterSpacing: 3,
-                background: bypassEnabled ? 'white' : THEME.bgMuted,
-                color: bypassEnabled ? THEME.textPrimary : THEME.textMuted,
-              }}
+              className={`psp-bypass-input ${bypassEnabled ? 'psp-bypass-input-active' : 'psp-bypass-input-inactive'}`}
             />
             <button
-              className="btn btn-primary"
-              style={{ padding: '6px 14px', fontSize: 13 }}
+              className="btn btn-primary psp-21"
+              
               disabled={!bypassEnabled || savingKeys['otp_bypass_code'] || bypassCode === String(configs['otp_bypass_code'] ?? '')}
               onClick={() => saveConfig('otp_bypass_code')}
             >
@@ -365,12 +288,12 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
               )}
             </button>
             {savedKeys['otp_bypass_code'] === 'ok' && (
-              <span style={{ color: THEME.primary, fontSize: 12, fontWeight: 600 }}>
+              <span className="psp-22">
                 <i className="fas fa-check-circle"></i>
               </span>
             )}
             {savedKeys['otp_bypass_code'] === 'err' && (
-              <span style={{ color: '#DC2626', fontSize: 12, fontWeight: 600 }}>
+              <span className="psp-23">
                 <i className="fas fa-exclamation-circle"></i>
               </span>
             )}
@@ -379,15 +302,10 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
 
         {/* Enable Save Button */}
         {editValues.otp_bypass_enabled !== String(configs.otp_bypass_enabled ?? '') && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '0 24px 16px',
-          }}>
+          <div className="psp-24">
             <button
-              className="btn btn-primary"
-              style={{ padding: '8px 24px', fontSize: 14 }}
+              className="btn btn-primary psp-25"
+              
               disabled={savingKeys['otp_bypass_enabled']}
               onClick={() => saveConfig('otp_bypass_enabled')}
             >
@@ -398,12 +316,12 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
               )}
             </button>
             {savedKeys['otp_bypass_enabled'] === 'ok' && (
-              <span style={{ color: THEME.primary, fontSize: 13, fontWeight: 600 }}>
+              <span className="psp-26">
                 <i className="fas fa-check-circle"></i> Saved
               </span>
             )}
             {savedKeys['otp_bypass_enabled'] === 'err' && (
-              <span style={{ color: '#DC2626', fontSize: 13, fontWeight: 600 }}>
+              <span className="psp-27">
                 <i className="fas fa-exclamation-circle"></i> Error
               </span>
             )}
@@ -412,40 +330,22 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
       </div>
 
       {/* Phone Format Group */}
-      <div style={{
-        background: 'white',
-        borderRadius: 16,
-        border: `1px solid ${THEME.accentLight}`,
-        overflow: 'hidden',
-        marginBottom: 24,
-      }}>
-        <div style={{
-          padding: '16px 24px',
-          borderBottom: `1px solid ${THEME.accentLight}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          background: THEME.bgMuted,
-        }}>
-          <i className="fas fa-phone" style={{ color: THEME.primary, fontSize: 16 }}></i>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: THEME.primary }}>Phone Format</h3>
+      <div className="psp-28">
+        <div className="psp-29">
+          <span className="psp-30"><i className="fas fa-phone"></i></span>
+          <h3 className="psp-31">Phone Format</h3>
         </div>
 
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          padding: '16px 24px',
-        }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 2 }}>
+        <div className="psp-32">
+          <div className="psp-33">
+            <div className="psp-34">
               Default Country Code
             </div>
-            <div style={{ fontSize: 12, color: THEME.success }}>
+            <div className="psp-35">
               Prepended to phone numbers on the PWA (default: +60 for Malaysia)
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="psp-36">
             <input
               type="text"
               value={editValues.pwa_phone_country_code ?? '+60'}
@@ -458,19 +358,11 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
                 });
               }}
               placeholder="+60"
-              style={{
-                width: 80,
-                textAlign: 'right',
-                padding: '6px 10px',
-                borderRadius: 8,
-                border: `1px solid ${THEME.accentLight}`,
-                fontSize: 14,
-                fontWeight: 500,
-              }}
+              className="psp-37"
             />
             <button
-              className="btn btn-primary"
-              style={{ padding: '6px 14px', fontSize: 13 }}
+              className="btn btn-primary psp-38"
+              
               disabled={savingKeys['pwa_phone_country_code'] || editValues.pwa_phone_country_code === String(configs.pwa_phone_country_code ?? '+60')}
               onClick={() => saveConfig('pwa_phone_country_code')}
             >
@@ -481,12 +373,12 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
               )}
             </button>
             {savedKeys['pwa_phone_country_code'] === 'ok' && (
-              <span style={{ color: THEME.primary, fontSize: 12, fontWeight: 600 }}>
+              <span className="psp-39">
                 <i className="fas fa-check-circle"></i>
               </span>
             )}
             {savedKeys['pwa_phone_country_code'] === 'err' && (
-              <span style={{ color: '#DC2626', fontSize: 12, fontWeight: 600 }}>
+              <span className="psp-40">
                 <i className="fas fa-exclamation-circle"></i>
               </span>
             )}
@@ -495,75 +387,45 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
       </div>
 
       {/* Version & Cache Management */}
-      <div style={{
-        background: 'white',
-        borderRadius: 16,
-        border: `1px solid ${THEME.accentLight}`,
-        overflow: 'hidden',
-        marginBottom: 24,
-      }}>
-        <div style={{
-          padding: '16px 24px',
-          borderBottom: `1px solid ${THEME.accentLight}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          background: THEME.bgMuted,
-        }}>
-          <i className="fas fa-sync-alt" style={{ color: THEME.primary, fontSize: 16 }}></i>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: THEME.primary }}>Version & Cache</h3>
+      <div className="psp-41">
+        <div className="psp-42">
+          <span className="psp-43"><i className="fas fa-sync-alt"></i></span>
+          <h3 className="psp-44">Version & Cache</h3>
         </div>
 
         {/* Current Version */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          padding: '16px 24px',
-          borderBottom: `1px solid ${THEME.accentLight}`,
-        }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 2 }}>
+        <div className="psp-45">
+          <div className="psp-46">
+            <div className="psp-47">
               Current Version
             </div>
-            <div style={{ fontSize: 12, color: THEME.success }}>
+            <div className="psp-48">
               {versionLoading ? 'Loading...' : versionInfo ? `Build: ${versionInfo.build_date}` : 'Unable to fetch version'}
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{
-              fontSize: 18,
-              fontWeight: 700,
-              color: THEME.primary,
-              fontFamily: 'monospace',
-            }}>
+          <div className="psp-49">
+            <div className="psp-50">
               {versionInfo?.version || '—'}
             </div>
-            <div style={{ fontSize: 11, color: THEME.textMuted }}>
+            <div className="psp-51">
               {versionInfo?.cache_name}
             </div>
           </div>
         </div>
 
         {/* Force Update Button */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          padding: '16px 24px',
-          borderBottom: `1px solid ${THEME.accentLight}`,
-        }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 2 }}>
+        <div className="psp-52">
+          <div className="psp-53">
+            <div className="psp-54">
               Force PWA Update
             </div>
-            <div style={{ fontSize: 12, color: THEME.success }}>
+            <div className="psp-55">
               Trigger a new build with incremented version. Forces all users to update.
             </div>
           </div>
           <button
-            className="btn btn-primary"
-            style={{ padding: '8px 20px', fontSize: 14 }}
+            className="btn btn-primary psp-56"
+            
             disabled={versionLoading}
             onClick={triggerNewBuild}
           >
@@ -576,30 +438,19 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
         </div>
 
         {/* Clear Cache Button */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          padding: '16px 24px',
-        }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: THEME.primary, marginBottom: 2 }}>
+        <div className="psp-57">
+          <div className="psp-58">
+            <div className="psp-59">
               Clear Service Worker Cache
             </div>
-            <div style={{ fontSize: 12, color: THEME.success }}>
+            <div className="psp-60">
               Remove old cached files without rebuilding. Users will get fresh content on next visit.
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="psp-61">
             <button
-              className="btn btn-secondary"
-              style={{ 
-                padding: '8px 20px', 
-                fontSize: 14,
-                background: 'transparent',
-                border: `1px solid ${THEME.primary}`,
-                color: THEME.primary,
-              }}
+              className="btn btn-secondary psp-62"
+              
               disabled={clearingCache}
               onClick={clearPWACache}
             >
@@ -610,7 +461,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
               )}
             </button>
             {cacheCleared && (
-              <span style={{ color: THEME.primary, fontSize: 12, fontWeight: 600 }}>
+              <span className="psp-63">
                 <i className="fas fa-check-circle"></i> Done
               </span>
             )}
@@ -619,23 +470,18 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
       </div>
 
       {/* How it works */}
-      <div style={{
-        padding: '16px 24px',
-        borderRadius: 16,
-        background: 'white',
-        border: `1px solid ${THEME.accentLight}`,
-      }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: THEME.primary, marginBottom: 10 }}>
-          <i className="fas fa-info-circle" style={{ marginRight: 8 }}></i>
+      <div className="psp-64">
+        <div className="psp-65">
+          <span className="psp-66"><i className="fas fa-info-circle"></i></span>
           How OTP Bypass Works
         </div>
-        <ol style={{ fontSize: 12, color: THEME.textMuted, lineHeight: 1.8, paddingLeft: 18, margin: 0 }}>
+        <ol className="psp-67">
           <li>Enable the toggle above to turn on bypass mode</li>
           <li>Set a numeric code (e.g. 111111) and save it</li>
           <li>On the PWA, the customer enters their phone number and taps Send OTP</li>
           <li>Instead of waiting for a real SMS, they enter the bypass code</li>
           <li>The system skips real OTP validation and logs them in immediately</li>
-          <li><strong style={{ color: '#DC2626' }}>Disable the toggle before going live!</strong></li>
+          <li><strong className="psp-68">Disable the toggle before going live!</strong></li>
         </ol>
       </div>
     </div>

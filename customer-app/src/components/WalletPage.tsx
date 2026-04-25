@@ -186,7 +186,7 @@ export default function WalletPage() {
           ) : transactions.length === 0 ? (
             <div className="topup-empty">
               <div className="topup-empty-icon">
-                <Wallet size={24} style={{ color: '#C4CED8' }} />
+                <Wallet size={24} color="#C4CED8" />
               </div>
               <p className="home-empty-text">No transactions yet</p>
             </div>

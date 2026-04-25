@@ -97,7 +97,7 @@ const ProductCard = memo(function ProductCard({
 });
 
 export default function HomePage() {
-  const { setPage, showToast, isGuest, selectedStore } = useUIStore();
+  const { setPage, showToast, isGuest } = useUIStore();
   const addItem = useCartStore((s) => s.addItem);
   const { balance, points } = useWalletStore();
 
@@ -116,8 +116,6 @@ export default function HomePage() {
   const infoScrollRef = useRef<HTMLDivElement>(null);
   const promoIndexRef = useRef(0);
   const infoIndexRef = useRef(0);
-
-  const storeId = selectedStore?.id ?? 0;
 
   const loadFeatured = useCallback(async () => {
     setLoadingFeatured(true);
@@ -230,16 +228,13 @@ export default function HomePage() {
       setCustomizeItem(item);
       loadCustomizations(item);
     } else {
-      addItem(
-        {
-          menu_item_id: item.id,
-          name: item.name,
-          price: item.base_price,
-          quantity: 1,
-          customizations: {},
-        },
-        storeId,
-      );
+      addItem({
+        menu_item_id: item.id,
+        name: item.name,
+        price: item.base_price,
+        quantity: 1,
+        customizations: {},
+      });
       showToast(`${item.name} added`, 'success');
     }
   };
@@ -263,23 +258,20 @@ export default function HomePage() {
       customizations: { id: number; name: string; option_type: string; price_adjustment: number }[],
       totalPrice: number,
     ) => {
-      addItem(
-        {
-          menu_item_id: item.id,
-          name: item.name,
-          price: totalPrice,
-          quantity,
-          customizations:
-            customizations.length > 0
-              ? { options: customizations.map((o) => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) }
-              : {},
-          customization_option_ids: customizations.length > 0 ? customizations.map((o) => o.id) : [],
-        },
-        storeId,
-      );
+      addItem({
+        menu_item_id: item.id,
+        name: item.name,
+        price: totalPrice,
+        quantity,
+        customizations:
+          customizations.length > 0
+            ? { options: customizations.map((o) => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) }
+            : {},
+        customization_option_ids: customizations.length > 0 ? customizations.map((o) => o.id) : [],
+      });
       showToast(`${item.name} added`, 'success');
     },
-    [addItem, showToast, storeId],
+    [addItem, showToast],
   );
 
   const visibleInfoCards = infoCards.slice(0, 3);

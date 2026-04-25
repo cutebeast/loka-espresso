@@ -18,61 +18,13 @@ export function Badge({
   size = 'sm',
   icon,
 }: BadgeProps) {
-  const variantStyles: Record<BadgeVariant, React.CSSProperties> = {
-    default: {
-      background: '#f1f5f9',
-      color: '#64748b',
-    },
-    primary: {
-      background: '#f0f9f6',
-      color: '#1a3e2f',
-    },
-    success: {
-      background: '#ecfdf5',
-      color: '#059669',
-    },
-    warning: {
-      background: '#fffbeb',
-      color: '#d97706',
-    },
-    danger: {
-      background: '#fef2f2',
-      color: '#dc2626',
-    },
-    info: {
-      background: '#eff6ff',
-      color: '#2563eb',
-    },
-  };
 
-  const sizeStyles: Record<BadgeSize, React.CSSProperties> = {
-    sm: {
-      padding: '2px 8px',
-      fontSize: 11,
-      fontWeight: 600,
-    },
-    md: {
-      padding: '4px 12px',
-      fontSize: 12,
-      fontWeight: 600,
-    },
-  };
 
   return (
     <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        borderRadius: 20,
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px',
-        whiteSpace: 'nowrap',
-        ...variantStyles[variant],
-        ...sizeStyles[size],
-      }}
+      className={`badge-base badge-${variant} badge-${size}`}
     >
-      {icon && <i className={`fas ${icon}`} style={{ fontSize: size === 'sm' ? 9 : 11 }} />}
+      {icon && <i className={`fas ${icon} badge-icon-${size}`} />}
       {children}
     </span>
   );

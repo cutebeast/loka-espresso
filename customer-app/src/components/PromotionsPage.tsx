@@ -8,23 +8,6 @@ import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { PromoBanner } from '@/lib/api';
 
-const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
-  copperLight: '#E5A559',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  cream: '#F3EEE5',
-  brown: '#57280D',
-  textPrimary: '#1B2023',
-  textSecondary: '#3A4A5A',
-  textMuted: '#6A7A8A',
-  border: '#D4DCE5',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  bg: '#E4EAEF',
-  white: '#FFFFFF',
-} as const;
-
 interface BannerStatus {
   action_type: string;
   survey_completed?: boolean;
@@ -202,9 +185,13 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
     const surveyAlreadyDone = status?.survey_completed || surveyCompleted;
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'white' }}>
+      <div className="promo-screen-white">
         <div className="rd-hero">
-          <div className="rd-hero-img" style={img ? { backgroundImage: `url(${img})` } : { background: 'linear-gradient(135deg, #F3EEE5, rgba(209,142,56,0.3))' }} />
+          {img ? (
+            <img src={img} alt="" className="rd-hero-img promo-hero-img-fill" />
+          ) : (
+            <div className="rd-hero-img promo-hero-img-fallback" />
+          )}
           <div className="rd-hero-overlay" />
           <button
             className="rd-back-btn"
@@ -223,7 +210,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
           <h1 className="rd-title">{selectedPromo.title}</h1>
 
           <div className="rd-meta">
-            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+            <span className="promo-meta-item">
               {isSurvey ? <Clock size={16} /> : <Calendar size={16} />}
               {isSurvey ? '2 min survey' : `${formatDate(selectedPromo.start_date)} – ${formatDate(selectedPromo.end_date)}`}
             </span>
@@ -246,28 +233,21 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
           )}
           {isSurvey && !isGuest && surveyQuestions.length > 0 && !surveyAlreadyDone && (
             <div className="survey-block">
-              {surveyQuestions.map((q, qi) => (
-                <div key={q.id} style={{ marginBottom: qi < surveyQuestions.length - 1 ? 20 : 0 }}>
+              {surveyQuestions.map((q) => (
+                <div key={q.id} className="promo-survey-question">
                   <div className="survey-question">
                     <HelpCircle size={16} />
                     {q.question_text}
-                    {q.is_required && <span style={{ color: '#C75050' }}>*</span>}
+                    {q.is_required && <span className="promo-required">*</span>}
                   </div>
 
                   {q.question_type === 'rating' && (
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div className="promo-rating-row">
                       {[1, 2, 3, 4, 5].map((r) => (
                         <button
                           key={r}
                           onClick={() => setSurveyAnswers((prev) => ({ ...prev, [q.id]: r }))}
-                          className="survey-option"
-                          style={{
-                            width: 44, height: 44, borderRadius: 12, justifyContent: 'center',
-                            border: surveyAnswers[q.id] === r ? '2px solid var(--loka-primary)' : '1.5px solid #e3d8cf',
-                            background: surveyAnswers[q.id] === r ? '#f2f6f4' : 'white',
-                            color: surveyAnswers[q.id] === r ? 'var(--loka-primary)' : 'var(--loka-copper)',
-                            fontWeight: 700,
-                          }}
+                          className={`promo-rating-btn ${surveyAnswers[q.id] === r ? 'promo-rating-btn-selected' : ''}`}
                         >
                           {r}
                         </button>
@@ -283,13 +263,8 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
                           className={`survey-option ${surveyAnswers[q.id] === opt ? 'selected' : ''}`}
                           onClick={() => setSurveyAnswers((prev) => ({ ...prev, [q.id]: opt }))}
                         >
-                          <div style={{
-                            width: 18, height: 18, borderRadius: 999, flexShrink: 0,
-                            border: `2px solid ${surveyAnswers[q.id] === opt ? 'var(--loka-primary)' : 'var(--loka-border-light)'}`,
-                            background: surveyAnswers[q.id] === opt ? 'var(--loka-primary)' : 'transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            {surveyAnswers[q.id] === opt && <div style={{ width: 6, height: 6, borderRadius: 999, background: 'white' }} />}
+                          <div className={`promo-radio-circle ${surveyAnswers[q.id] === opt ? 'promo-radio-circle-selected' : ''}`}>
+                            {surveyAnswers[q.id] === opt && <div className="promo-radio-dot" />}
                           </div>
                           {opt}
                         </div>
@@ -299,25 +274,16 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
 
                   {q.question_type === 'text' && (
                     <textarea
+                      className="promo-survey-textarea"
                       placeholder="Type your answer..."
                       onChange={(e) => setSurveyAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                      style={{
-                        width: '100%', minHeight: 80, padding: '12px 14px', borderRadius: 14,
-                        border: '1px solid var(--loka-border-light)', fontSize: 14,
-                        color: 'var(--loka-text-primary)', background: 'white',
-                        resize: 'vertical', fontFamily: 'inherit',
-                      }}
                     />
                   )}
 
                   {q.question_type === 'dropdown' && q.options && (
                     <select
+                      className="promo-survey-select"
                       onChange={(e) => setSurveyAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                      style={{
-                        width: '100%', padding: '12px 14px', borderRadius: 14,
-                        border: '1px solid var(--loka-border-light)', fontSize: 14,
-                        color: 'var(--loka-text-primary)', background: 'white',
-                      }}
                     >
                       <option value="">Select an option</option>
                       {q.options.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
@@ -338,7 +304,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
 
           {isSurvey && surveyAlreadyDone && (
             <div className="rd-success-state">
-              <CheckCircle size={48} color="#1A6E4B" />
+              <CheckCircle size={48} className="promo-success-icon" />
               <p>Survey completed!</p>
               <p className="rd-success-sub">Thank you for your feedback. Your reward has been added to your wallet.</p>
             </div>
@@ -350,7 +316,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
               <div className="rd-section-title">
                 <Star size={16} /> How to redeem
               </div>
-              <p className="rd-desc" style={{ background: '#faf7f4', borderRadius: 18, padding: 16, marginBottom: 20 }}>
+              <p className="rd-desc promo-redeem-box">
                 {selectedPromo.how_to_redeem}
               </p>
             </>
@@ -364,7 +330,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
               <ul className="rd-terms-list">
                 {selectedPromo.terms.map((t, i) => (
                   <li key={i}>
-                    <Circle size={10} fill="#D18E38" color="#D18E38" /> {t}
+                    <Circle size={10} fill="currentColor" /> {t}
                   </li>
                 ))}
               </ul>
@@ -390,7 +356,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
                 <ArrowRight size={20} />
               </button>
               <p className="rd-remaining-badge">
-                <Flame size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                <span className="promo-inline-icon"><Flame size={14} /></span>
                 Only 47 vouchers left
               </p>
             </>
@@ -415,29 +381,29 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: LOKA.bg }}>
-      <div style={{ padding: '20px 18px 12px', background: LOKA.white, borderBottom: `1px solid ${LOKA.borderSubtle}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, display: 'flex', color: LOKA.primary }}>
+    <div className="promo-screen">
+      <div className="promo-header">
+        <div className="promo-header-row">
+          <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} className="promo-back-btn">
             <ArrowLeft size={22} />
           </motion.button>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: LOKA.textPrimary, letterSpacing: '-0.02em' }}>Promotions</h1>
+          <h1 className="promo-title">Promotions</h1>
         </div>
       </div>
 
-      <div className="scroll-container" style={{ flex: 1, padding: '14px 16px 24px' }}>
+      <div className="scroll-container promo-scroll-container">
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[1, 2, 3].map((i) => (<div key={i} className="skeleton" style={{ height: 88, borderRadius: 18 }} />))}
+          <div className="promo-skeleton-list">
+            {[1, 2, 3].map((i) => (<div key={i} className="skeleton promo-skeleton-card" />))}
           </div>
         ) : promotions.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 20px', background: LOKA.white, borderRadius: 20, border: `1px solid ${LOKA.borderSubtle}` }}>
-            <Gift size={40} color={LOKA.borderSubtle} style={{ marginBottom: 12 }} />
-            <p style={{ fontSize: 16, fontWeight: 700, color: LOKA.textPrimary, marginBottom: 6 }}>No active promotions</p>
-            <p style={{ fontSize: 13, color: LOKA.textMuted }}>Check back soon for new offers</p>
+          <div className="promo-empty">
+            <Gift size={40} className="promo-empty-icon" />
+            <p className="promo-empty-title">No active promotions</p>
+            <p className="promo-empty-desc">Check back soon for new offers</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="promo-list">
             {promotions.map((promo) => {
               const img = resolveAssetUrl(promo.image_url);
               const tagText = promo.action_type === 'survey' ? 'Survey' : promo.action_type === 'detail' ? 'Offer' : 'Promo';
@@ -446,35 +412,30 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
                   key={promo.id}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleSelectPromo(promo)}
-                  style={{
-                    display: 'flex', background: LOKA.white, borderRadius: 18,
-                    border: `1px solid ${LOKA.borderSubtle}`, overflow: 'hidden',
-                    cursor: 'pointer', textAlign: 'left', width: '100%',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                  }}
+                  className="promo-card"
                 >
-                  <div
-                    style={{
-                      width: 88, height: 88, flexShrink: 0,
-                      background: img ? `url(${img}) center/cover` : `linear-gradient(135deg, ${LOKA.cream}, rgba(209,142,56,0.2))`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    {!img && <Gift size={24} color={LOKA.brown} strokeWidth={1.5} />}
+                  <div className="promo-card-thumb">
+                    {img ? (
+                      <img src={img} alt="" className="promo-card-thumb-img" />
+                    ) : (
+                      <div className="promo-card-thumb-fallback">
+                        <Gift size={24} strokeWidth={1.5} className="promo-card-thumb-icon" />
+                      </div>
+                    )}
                   </div>
-                  <div style={{ flex: 1, padding: '10px 14px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
+                  <div className="promo-card-body">
+                    <div className="promo-card-tags">
                       <TypePill variant={getTagVariant(promo.action_type)}>{tagText}</TypePill>
                     </div>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p className="promo-card-title">
                       {promo.title}
                     </p>
                     {promo.short_description && (
-                      <p style={{ fontSize: 12, color: LOKA.textMuted, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <p className="promo-card-desc">
                         {promo.short_description}
                       </p>
                     )}
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 4, fontSize: 11, color: LOKA.copper, fontWeight: 600 }}>
+                    <span className="promo-card-meta">
                       <Clock size={10} /> {getDaysLeft(promo.end_date)}
                     </span>
                   </div>

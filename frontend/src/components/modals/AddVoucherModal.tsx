@@ -31,32 +31,32 @@ export function AddVoucherForm({ token: _token, onClose }: { token: string; onCl
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Code</label>
+      <div className="avf-0">
+        <label className="avf-1">Code</label>
         <input value={code} onChange={e => setCode(e.target.value.toUpperCase())} required placeholder="e.g. SUMMER20" />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
+      <div className="avf-2">
+        <label className="avf-3">Description</label>
         <input value={description} onChange={e => setDescription(e.target.value)} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+      <div className="avf-4">
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Type</label>
+          <label className="avf-5">Type</label>
           <select value={discountType} onChange={e => setDiscountType(e.target.value)}>
             <option value="fixed">Fixed (RM)</option>
             <option value="percent">Percent (%)</option>
           </select>
         </div>
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Value</label>
+          <label className="avf-6">Value</label>
           <input type="number" step="0.01" value={discountValue} onChange={e => setDiscountValue(e.target.value)} required />
         </div>
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Min Spend (RM)</label>
+      <div className="avf-7">
+        <label className="avf-8">Min Spend (RM)</label>
         <input type="number" step="0.01" value={minSpend} onChange={e => setMinSpend(e.target.value)} />
       </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+      <button type="submit" className="btn btn-primary avf-9"  disabled={saving}>
         {saving ? 'Creating...' : 'Create Voucher'}
       </button>
     </form>

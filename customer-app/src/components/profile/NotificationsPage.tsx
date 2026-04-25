@@ -81,16 +81,16 @@ export default function NotificationsPage() {
       {/* Content */}
       {loading ? (
         <div className="notif-content">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 360 }}>
+          <div className="np-skeleton-list">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton" style={{ height: 80, borderRadius: 20 }} />
+              <div key={i} className="skeleton np-skeleton-item" />
             ))}
           </div>
         </div>
       ) : notifications.length === 0 ? (
         <div className="notif-content">
           <div className="notif-empty">
-            <Bell size={64} strokeWidth={1.2} style={{ color: '#D4DCE5', margin: '0 auto 20px' }} />
+            <Bell size={64} strokeWidth={1.2} className="np-empty-icon" />
             <div className="notif-empty-title">No new notifications</div>
             <p className="notif-empty-desc">
               We&apos;ll let you know about orders, rewards, and special events.

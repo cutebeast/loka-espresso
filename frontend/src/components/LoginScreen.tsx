@@ -34,24 +34,24 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5F7FA' }}>
-      <div className="card" style={{ maxWidth: 400, width: '100%' }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <i className="fas fa-mug-saucer" style={{ fontSize: 40, color: '#384B16' }}></i>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#384B16', marginTop: 8 }}>Loka Espresso</h1>
-          <p style={{ color: '#64748B', fontSize: 14 }}>Sign in to your dashboard</p>
+    <div className="ls-0">
+      <div className="card ls-1" >
+        <div className="ls-2">
+          <span className="ls-3"><i className="fas fa-mug-saucer"></i></span>
+          <h1 className="ls-4">Loka Espresso</h1>
+          <p className="ls-5">Sign in to your dashboard</p>
         </div>
         <form onSubmit={handleLogin}>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 4 }}>Email</label>
+          <div className="ls-6">
+            <label className="ls-7">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@loyaltysystem.uk" required />
           </div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 4 }}>Password</label>
+          <div className="ls-8">
+            <label className="ls-9">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
           </div>
-          {loginError && <p style={{ color: '#EF4444', fontSize: 13, marginBottom: 12 }}>{loginError}</p>}
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px 16px' }}>Sign In</button>
+          {loginError && <p className="ls-10">{loginError}</p>}
+          <button type="submit" className="btn btn-primary ls-11" >Sign In</button>
         </form>
       </div>
     </div>

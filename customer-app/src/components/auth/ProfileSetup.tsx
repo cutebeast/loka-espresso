@@ -39,57 +39,20 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
       <p className="auth-subheading">Add your name so your orders feel personal</p>
 
       {/* Avatar preview */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
-        borderRadius: '16px',
-        border: '1px solid #E4EAEF',
-        background: '#F9F7F2',
-        padding: '16px',
-        marginBottom: '24px',
-      }}>
-        <div style={{
-          width: '56px',
-          height: '56px',
-          flexShrink: 0,
-          borderRadius: '50%',
-          background: '#384B16',
-          color: '#FFFFFF',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '20px',
-          fontWeight: 800,
-          textTransform: 'uppercase',
-        }}>
+      <div className="ps-preview">
+        <div className="ps-avatar">
           {name ? name.trim()[0] : '👤'}
         </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{
-            fontSize: '12px',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.12em',
-            color: '#D18E38',
-          }}>Your account</p>
-          <p style={{
-            marginTop: '2px',
-            fontSize: '14px',
-            fontWeight: 700,
-            color: '#1B2023',
-          }}>
+        <div className="ps-info">
+          <p className="ps-label">Your account</p>
+          <p className="ps-name">
             {name.trim() || 'Set up your Loka profile'}
           </p>
-          <p style={{
-            marginTop: '2px',
-            fontSize: '12px',
-            color: '#6A7A8A',
-          }}>{displayPhone}</p>
+          <p className="ps-phone">{displayPhone}</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+      <form onSubmit={handleSubmit} className="ps-form">
         <div className="auth-label">Full name</div>
         <div className="phone-wrapper">
           <input
@@ -102,7 +65,7 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
           />
         </div>
 
-        <div className="auth-label" style={{ marginTop: '16px' }}>Email address (optional)</div>
+        <div className="auth-label ps-mt-16">Email address (optional)</div>
         <div className="phone-wrapper">
           <input
             type="email"
@@ -114,7 +77,7 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
         </div>
 
         {error && (
-          <p style={{ color: '#C75050', fontSize: '12px', marginTop: '8px' }}>{error}</p>
+          <p className="ps-error">{error}</p>
         )}
 
         <button type="submit" disabled={isLoading || !name.trim()} className="auth-btn">
@@ -125,24 +88,13 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
           <button
             type="button"
             onClick={onSkip}
-            style={{
-              marginTop: '16px',
-              width: '100%',
-              padding: '12px',
-              textAlign: 'center',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: '#6A7A8A',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-            }}
+            className="ps-skip-btn"
           >
             Skip for now
           </button>
         )}
 
-        <div style={{ flex: 1 }} />
+        <div className="ps-spacer" />
       </form>
     </div>
   );

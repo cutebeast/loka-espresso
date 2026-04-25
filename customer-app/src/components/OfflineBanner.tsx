@@ -40,12 +40,7 @@ export default function OfflineBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -40, opacity: 0 }}
           transition={{ duration: 0.3 }}
-          className="fixed inset-x-0 top-0 flex items-center justify-center gap-2 py-2.5 px-4 text-white font-semibold"
-          style={{
-            zIndex: 9999,
-            fontSize: 13,
-            background: isOnline ? '#059669' : '#B91C1C',
-          }}
+          className={`offline-banner ${isOnline ? 'online' : 'offline'}`}
           role="status"
           aria-live="polite"
         >

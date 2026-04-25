@@ -166,16 +166,7 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
     return '📋';
   }
 
-  const statusColor: Record<string, string> = {
-    pending: '#6B7280',
-    paid: '#2563EB',
-    confirmed: '#0891B2',
-    preparing: '#D97706',
-    ready: '#16A34A',
-    out_for_delivery: '#7C3AED',
-    completed: '#059669',
-    cancelled: '#DC2626',
-  };
+
 
   const counts = {
     pending: orders.filter(o => o.status === 'pending').length,
@@ -188,8 +179,8 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
   return (
     <div>
       {/* Header with StoreSelector always visible */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="kdp-0">
+        <div className="kdp-1">
           <StoreSelector
             stores={physicalStores.map(s => ({ id: String(s.id), name: s.name }))}
             selectedStore={activeStoreId || ''}
@@ -198,23 +189,23 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
             placeholder="Select a store..."
           />
           {activeStoreId && (
-            <span style={{ fontSize: 12, color: THEME.textMuted }}>
-              <i className="fas fa-fire-burner" style={{ color: THEME.primary, marginRight: 4 }}></i>
+            <span className="kdp-2">
+              <span className="kdp-3"><i className="fas fa-fire-burner"></i></span>
               Order Station
-              {autoRefresh && <span style={{ color: '#16A34A', marginLeft: 8 }}>· Auto-refresh 30s</span>}
-              <span style={{ marginLeft: 8 }}>· Last: {lastRefresh.toLocaleTimeString()}</span>
+              {autoRefresh && <span className="kdp-4">· Auto-refresh 30s</span>}
+              <span className="kdp-5">· Last: {lastRefresh.toLocaleTimeString()}</span>
             </span>
           )}
         </div>
         {activeStoreId && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="kdp-6">
             <button className="btn btn-sm" onClick={fetchActiveOrders}>
               <i className="fas fa-sync-alt"></i> Refresh
             </button>
             <button
-              className={`btn btn-sm ${autoRefresh ? 'btn-primary' : ''}`}
+              className={`btn btn-sm ${autoRefresh ? 'btn-primary' : ''} kdp-7`}
               onClick={() => setAutoRefresh(!autoRefresh)}
-              style={{ fontSize: 12 }}
+              
             >
               <i className={`fas fa-${autoRefresh ? 'pause' : 'play'}`}></i> Auto
             </button>
@@ -223,59 +214,54 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
       </div>
 
       {/* How it works — collapsible guide */}
-      <div className="card" style={{ marginBottom: 16, padding: '12px 16px', background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+      <div className="card kdp-8" >
         <div
           onClick={() => setShowGuide(!showGuide)}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#166534' }}
+          className="kdp-9"
         >
-          <span><i className="fas fa-circle-info" style={{ marginRight: 8 }}></i>How Order Station works</span>
+          <span><span className="kdp-10"><i className="fas fa-circle-info"></i></span>How Order Station works</span>
           <i className={`fas fa-chevron-${showGuide ? 'up' : 'down'}`}></i>
         </div>
         {showGuide && (
-          <div style={{ marginTop: 10, fontSize: 12, color: '#166534', lineHeight: 1.7 }}>
-            <p style={{ margin: '0 0 6px' }}><strong>1. New orders appear here automatically</strong> — they come from customers ordering via the app or POS.</p>
-            <p style={{ margin: '0 0 6px' }}><strong>2. Click Confirm</strong> to acknowledge the order and start preparing.</p>
-            <p style={{ margin: '0 0 6px' }}><strong>3. Click Start Preparing</strong> when the kitchen begins cooking the order.</p>
-            <p style={{ margin: '0 0 6px' }}><strong>4. Click Ready</strong> when the order is packed and ready for pickup/delivery.</p>
-            <p style={{ margin: '0 0 6px' }}><strong>5. Click Complete</strong> when the customer receives the order.</p>
-            <p style={{ margin: 0 }}><strong>For delivery orders:</strong> click &quot;Out for Delivery&quot; when the rider picks up, then &quot;Delivered&quot; when the customer receives it.</p>
+          <div className="kdp-11">
+            <p className="kdp-12"><strong>1. New orders appear here automatically</strong> — they come from customers ordering via the app or POS.</p>
+            <p className="kdp-13"><strong>2. Click Confirm</strong> to acknowledge the order and start preparing.</p>
+            <p className="kdp-14"><strong>3. Click Start Preparing</strong> when the kitchen begins cooking the order.</p>
+            <p className="kdp-15"><strong>4. Click Ready</strong> when the order is packed and ready for pickup/delivery.</p>
+            <p className="kdp-16"><strong>5. Click Complete</strong> when the customer receives the order.</p>
+            <p className="kdp-17"><strong>For delivery orders:</strong> click &quot;Out for Delivery&quot; when the rider picks up, then &quot;Delivered&quot; when the customer receives it.</p>
           </div>
         )}
       </div>
 
       {/* No store selected */}
       {!activeStoreId && (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted, marginTop: 40 }}>
-          <i className="fas fa-fire-burner" style={{ fontSize: 48, marginBottom: 16 }}></i>
-          <p style={{ fontSize: 16, fontWeight: 600, color: THEME.textSecondary }}>Select a store to view orders</p>
-          <p style={{ fontSize: 13 }}>Choose a store location above to see active orders for preparation.</p>
+        <div className="card kdp-18" >
+          <span className="kdp-19"><i className="fas fa-fire-burner"></i></span>
+          <p className="kdp-20">Select a store to view orders</p>
+          <p className="kdp-21">Choose a store location above to see active orders for preparation.</p>
         </div>
       )}
 
       {activeStoreId && (<>
       {/* Status Summary Bar */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div className="kdp-22">
         {Object.entries(counts).map(([status, count]) => (
-          <div key={status} style={{
-            flex: 1, padding: '10px 12px', borderRadius: THEME.radius.md,
-            background: count > 0 ? `${statusColor[status]}15` : THEME.bgMuted,
-            border: `1px solid ${count > 0 ? statusColor[status] : THEME.border}`,
-            textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 24, fontWeight: 800, color: count > 0 ? statusColor[status] : THEME.textMuted }}>{count}</div>
-            <div style={{ fontSize: 11, textTransform: 'capitalize' as const, color: THEME.textMuted }}>{status.replace(/_/g, ' ')}</div>
+          <div key={status} className={`kdp-status-card ${count > 0 ? 'kdp-status-card-' + status : 'kdp-status-card-empty'}`}>
+            <div className={`kdp-status-count ${count > 0 ? 'kdp-status-count-' + status : 'kdp-status-count-empty'}`}>{count}</div>
+            <div className="kdp-status-name">{status.replace(/_/g, ' ')}</div>
           </div>
         ))}
       </div>
 
       {/* Filter Row */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div className="kdp-23">
         {['', 'dine_in', 'pickup', 'delivery'].map(type => (
           <button
             key={type}
-            className={`btn btn-sm ${filterType === type ? 'btn-primary' : ''}`}
+            className={`btn btn-sm ${filterType === type ? 'btn-primary' : ''} kdp-24`}
             onClick={() => setFilterType(type)}
-            style={{ borderRadius: 20, fontSize: 13 }}
+            
           >
             {type === '' ? 'All' : type === 'dine_in' ? '🍽️ Dine In' : type === 'pickup' ? '🛍️ Pickup' : '🚚 Delivery'}
           </button>
@@ -284,109 +270,88 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
 
       {/* Order Cards Grid */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: 24 }}></i>
+        <div className="kdp-25">
+          <span className="kdp-26"><i className="fas fa-spinner fa-spin"></i></span>
           <p>Loading active orders...</p>
         </div>
       ) : orders.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-          <i className="fas fa-check-circle" style={{ fontSize: 40, color: '#16A34A' }}></i>
-          <p style={{ fontSize: 16, fontWeight: 600, marginTop: 16 }}>All caught up! 🎉</p>
-          <p style={{ fontSize: 13 }}>No active orders right now.</p>
+        <div className="kdp-27">
+          <span className="kdp-28"><i className="fas fa-check-circle"></i></span>
+          <p className="kdp-29">All caught up! 🎉</p>
+          <p className="kdp-30">No active orders right now.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+        <div className="kdp-31">
           {orders.map(order => (
-            <div key={order.id} style={{
-              borderRadius: THEME.radius.lg,
-              border: `3px solid ${needsPosSync(order) || needsDispatch(order) ? '#D97706' : (statusColor[order.status] || THEME.border)}`,
-              background: '#FFF',
-              overflow: 'hidden',
-            }}>
+            <div key={order.id} className={`kdp-order-card ${needsPosSync(order) || needsDispatch(order) ? 'kdp-order-card-border-warn' : 'kdp-order-card-border-' + (order.status || 'default')}`}>
               {/* Card Header */}
-              <div style={{
-                padding: '10px 14px',
-                background: `${statusColor[order.status]}10`,
-                borderBottom: `1px solid ${statusColor[order.status]}30`,
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>{typeIcon(order.order_type)}</span>
+              <div className={`kdp-order-header kdp-order-header-${order.status}`}>
+                <div className="kdp-32">
+                  <span className="kdp-33">{typeIcon(order.order_type)}</span>
                   <div>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: THEME.textPrimary }}>{order.order_number}</span>
-                    <span style={{ fontSize: 11, textTransform: 'capitalize' as const, color: THEME.textMuted, marginLeft: 6 }}>
+                    <span className="kdp-34">{order.order_number}</span>
+                    <span className="kdp-order-type">
                       {order.order_type?.replace('_', ' ')}
                     </span>
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: THEME.accentCopper }}>{formatRM(order.total)}</div>
-                  <div style={{ fontSize: 11, color: timeSinceColor(order.created_at) }}>{timeSince(order.created_at)} ago</div>
+                <div className="kdp-35">
+                  <div className="kdp-36">{formatRM(order.total)}</div>
+                  <div className={`kdp-time-since ${timeSinceColor(order.created_at) === '#DC2626' ? 'kdp-time-old' : timeSinceColor(order.created_at) === '#D97706' ? 'kdp-time-mid' : 'kdp-time-new'}`}>{timeSince(order.created_at)} ago</div>
                 </div>
               </div>
 
               {/* Status + Payment Row */}
-              <div style={{ padding: '8px 14px', display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{
-                  padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                  background: `${statusColor[order.status]}20`, color: statusColor[order.status],
-                  textTransform: 'capitalize' as const,
-                }}>
+              <div className="kdp-37">
+                <span className={`kdp-status-badge kdp-status-badge-${order.status}`}>
                   {order.status.replace(/_/g, ' ')}
                 </span>
                 {order.payment_status !== 'paid' && (
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700,
-                    background: '#FEF3C7', color: '#92400E',
-                  }}>
+                  <span className="kdp-38">
                     UNPAID
                   </span>
                 )}
                 {order.payment_status === 'paid' && (
-                  <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: '#DCFCE7', color: '#166534' }}>
+                  <span className="kdp-39">
                     PAID
                   </span>
                 )}
                 {needsPosSync(order) && (
-                  <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: '#FEE2E2', color: '#B91C1C' }}>
+                  <span className="kdp-40">
                     POS SYNC REQUIRED
                   </span>
                 )}
                 {needsDispatch(order) && (
-                  <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: '#FEE2E2', color: '#B91C1C' }}>
+                  <span className="kdp-41">
                     DISPATCH REQUIRED
                   </span>
                 )}
               </div>
 
               {/* Items */}
-              <div style={{ padding: '4px 14px 8px', maxHeight: 120, overflowY: 'auto' }}>
+              <div className="kdp-42">
                 {order.items?.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: THEME.textPrimary }}>
+                  <div key={idx} className="kdp-43">
                     <span>{item.quantity as React.ReactNode}× {item.name as React.ReactNode}</span>
-                    <span style={{ color: THEME.textMuted, fontWeight: 500 }}>{formatRM(item.line_total as number)}</span>
+                    <span className="kdp-44">{formatRM(item.line_total as number)}</span>
                   </div>
                 ))}
               </div>
 
               {/* Notes */}
               {order.notes && (
-                <div style={{ margin: '0 14px 8px', padding: '6px 10px', background: '#FFFBEB', borderRadius: 6, fontSize: 12, color: '#92400E' }}>
+                <div className="kdp-45">
                   📝 {order.notes}
                 </div>
               )}
 
               {/* Quick Actions */}
-              <div style={{ padding: '8px 14px 12px', borderTop: `1px solid ${THEME.border}`, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <div className="kdp-46">
                 {getNextAction(order).map(a => (
                   <button
                     key={a.action}
                     onClick={() => quickAction(order.id, a.action)}
-                    style={{
-                      padding: '6px 12px', borderRadius: THEME.radius.md, fontSize: 12, fontWeight: 600,
-                      border: `1px solid ${a.color}`, background: `${a.color}10`, color: a.color,
-                      cursor: 'pointer', flex: 1, minWidth: 'fit-content',
-                    }}
+                    className={`kdp-action-btn ${a.color === '#2563EB' ? 'kdp-action-blue' : a.color === '#D97706' ? 'kdp-action-orange' : a.color === '#16A34A' ? 'kdp-action-green' : a.color === '#7C3AED' ? 'kdp-action-purple' : 'kdp-action-teal'}`}
                   >
                     {a.label}
                   </button>

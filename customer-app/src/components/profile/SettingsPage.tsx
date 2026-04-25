@@ -15,7 +15,7 @@ export default function SettingsPage() {
           </button>
           <h1 className="sub-page-title">Settings</h1>
         </div>
-        <div style={{ width: 36 }} />
+        <div className="st-spacer" />
       </div>
 
       <div className="settings-content-scroll">

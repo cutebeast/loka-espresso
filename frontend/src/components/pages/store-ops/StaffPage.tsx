@@ -44,8 +44,7 @@ const USER_TYPE_COLORS: Record<number, { bg: string; text: string }> = {
   3: { bg: '#F0FDF4', text: '#166534' },
 };
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.textPrimary };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.textMuted, marginTop: 2 };
+
 const PAGE_SIZE = 20;
 
 export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _token, stores, onStoreChange }: StaffPageProps) {
@@ -257,7 +256,7 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
     const colors = USER_TYPE_COLORS[utId];
     const label = getDisplayUserType(s);
     if (colors) {
-      return <span style={{ background: colors.bg, color: colors.text, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{label}</span>;
+      return <span className="sp-badge" style={{ background: colors.bg, color: colors.text }}>{label}</span>;
     }
     return <span className="badge badge-gray">{label}</span>;
   }
@@ -270,28 +269,28 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
       <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} width={560}>
         {/* Store picker modal */}
         {showStoreModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowStoreModal(false)}>
-            <div style={{ background: 'white', borderRadius: 16, padding: 24, width: 400, maxHeight: '80vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h4 style={{ margin: 0 }}>Assign to Stores</h4>
+          <div className="sp-0" onClick={() => setShowStoreModal(false)}>
+            <div className="sp-1" onClick={e => e.stopPropagation()}>
+              <div className="sp-2">
+                <h4 className="sp-3">Assign to Stores</h4>
                 <button className="btn btn-sm" onClick={() => setShowStoreModal(false)}><i className="fas fa-times"></i></button>
               </div>
-              <div style={{ ...hintStyle, marginBottom: 12 }}>Select which stores this staff member should have access to.</div>
+              <div className="sp-4">Select which stores this staff member should have access to.</div>
               {realStores.map(s => (
-                <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', marginBottom: 4, background: selectedStoreIds.includes(s.id) ? THEME.bgMuted : 'white', border: `1px solid ${selectedStoreIds.includes(s.id) ? THEME.accentLight : THEME.accentLight}` }}>
+                <label key={s.id} className="sp-store-row" style={{ background: selectedStoreIds.includes(s.id) ? THEME.bgMuted : 'white', border: `1px solid ${THEME.accentLight}` }}>
                   <input
                     type="checkbox"
                     checked={selectedStoreIds.includes(s.id)}
                     onChange={() => toggleStoreCheckbox(s.id)}
-                    style={{ width: 16, height: 16 }}
+                    className="sp-5"
                   />
-                  <span style={{ fontSize: 14, fontWeight: 500 }}>{s.name}</span>
+                  <span className="sp-6">{s.name}</span>
                 </label>
               ))}
               {realStores.length === 0 && (
-                <div style={{ textAlign: 'center', color: THEME.primaryLight, padding: 20 }}>No stores available</div>
+                <div className="sp-7">No stores available</div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <div className="sp-8">
                 <button className="btn" onClick={() => setShowStoreModal(false)}>Cancel</button>
                 <button className="btn btn-primary" onClick={() => setShowStoreModal(false)}>
                   Done ({selectedStoreIds.length} selected)
@@ -303,63 +302,63 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
 
         <div className="card">
           {error && (
-            <div style={{ background: '#FEE2E2', color: '#A83232', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+            <div className="sp-9">
               <i className="fas fa-exclamation-circle"></i> {error}
             </div>
           )}
           <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div className="sp-10">
               <div>
                 <Input label="Name *" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Ahmad bin Ali" />
-                <div style={hintStyle}>Full name of the staff member</div>
+                <div className="sp-hint">Full name of the staff member</div>
               </div>
               <div>
-                <label style={labelStyle}>User Type *</label>
+                <label className="sp-label">User Type *</label>
                 <Select
                   value={String(userTypeId)}
                   onChange={(val) => handleUserTypeChange(parseInt(val))}
                   options={USER_TYPES.map(t => ({ value: String(t.id), label: t.label }))}
                 />
-                <div style={hintStyle}>Determines dashboard access level</div>
+                <div className="sp-hint">Determines dashboard access level</div>
               </div>
               <div>
-                <label style={labelStyle}>Role *</label>
+                <label className="sp-label">Role *</label>
                 <Select
                   value={String(roleId)}
                   onChange={(val) => setRoleId(parseInt(val))}
                   options={availableRoles.map(r => ({ value: String(r.id), label: r.label }))}
                 />
-                <div style={hintStyle}>Specific position within the type</div>
+                <div className="sp-hint">Specific position within the type</div>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div className="sp-11">
               <div>
-                <label style={labelStyle}>Store Assignments</label>
-                <button type="button" className="btn" onClick={() => setShowStoreModal(true)} style={{ width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="sp-label">Store Assignments</label>
+                <button type="button" className="btn sp-12" onClick={() => setShowStoreModal(true)} >
                   <span>
                     {selectedStoreIds.length === 0 ? 'No stores assigned' :
                       selectedStoreIds.length === 1 ? realStores.find(s => s.id === selectedStoreIds[0])?.name || `${selectedStoreIds.length} store`
                         : `${selectedStoreIds.length} stores selected`}
                   </span>
-                  <i className="fas fa-store" style={{ color: THEME.textMuted }}></i>
+                  <span className="sp-13"><i className="fas fa-store"></i></span>
                 </button>
-                <div style={hintStyle}>Click to select which stores this staff can access</div>
+                <div className="sp-hint">Click to select which stores this staff can access</div>
               </div>
               <div>
                 <Input label="Email (optional)" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="e.g. ahmad@zus.com" />
-                <div style={hintStyle}>Adding email auto-creates a login account</div>
+                <div className="sp-hint">Adding email auto-creates a login account</div>
               </div>
               <div>
                 <Input label="PIN Code (optional)" value={pinCode} onChange={e => setPinCode(e.target.value)} placeholder="4-6 digit PIN" maxLength={6} />
-                <div style={hintStyle}>{editingStaff ? 'Leave blank to keep current' : 'For POS clock-in'}</div>
+                <div className="sp-hint">{editingStaff ? 'Leave blank to keep current' : 'For POS clock-in'}</div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+            <div className="sp-14">
               <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingStaff ? 'Update' : 'Create'}</button>
               <button type="button" className="btn" onClick={closeForm}>Cancel</button>
-              <div style={{ flex: 1 }} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} style={{ width: 16, height: 16 }} />
+              <div className="sp-15" />
+              <label className="sp-16">
+                <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="sp-17" />
                 Active
               </label>
             </div>
@@ -368,8 +367,8 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
       </Drawer>
 
       {/* LIST VIEW */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="sp-18">
+        <div className="sp-19">
           <StoreSelector
             stores={stores.filter(s => String(s.id) !== '0')}
             selectedStore={selectedStore}
@@ -381,17 +380,17 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
       </div>
 
       {error && (
-        <div style={{ background: '#FEE2E2', color: '#A83232', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+        <div className="sp-20">
           <i className="fas fa-exclamation-circle"></i> {error}
         </div>
       )}
 
       {tempPassword && (
-        <div style={{ background: '#ECFDF5', color: '#065F46', padding: '12px 16px', borderRadius: 12, marginBottom: 12, fontSize: 13, border: '1px solid #A7F3D0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="sp-21">
+          <div className="sp-22">
             <div>
               <strong><i className="fas fa-check-circle"></i> Staff account created!</strong>
-              <div style={{ marginTop: 6, fontFamily: 'monospace', fontSize: 14, background: 'white', padding: '6px 10px', borderRadius: 6, display: 'inline-block' }}>
+              <div className="sp-23">
                 Email: {tempPassword.email} &nbsp;|&nbsp; Password: <strong>{tempPassword.password}</strong>
               </div>
             </div>
@@ -401,11 +400,11 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
       )}
 
       {resetPasswordResult && (
-        <div style={{ background: THEME.bgMuted, color: THEME.success, padding: '12px 16px', borderRadius: 12, marginBottom: 12, fontSize: 13, border: `1px solid ${THEME.accentLight}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="sp-24">
+          <div className="sp-25">
             <div>
               <strong><i className="fas fa-key"></i> Password reset for {resetPasswordResult.name}</strong>
-              <div style={{ marginTop: 6, fontFamily: 'monospace', fontSize: 14, background: 'white', padding: '6px 10px', borderRadius: 6, display: 'inline-block' }}>
+              <div className="sp-26">
                 Email: {resetPasswordResult.email} &nbsp;|&nbsp; New Password: <strong>{resetPasswordResult.password}</strong>
               </div>
             </div>
@@ -415,22 +414,12 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
       )}
 
       {/* Stats Bar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-        marginTop: 20,
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-user-tie" style={{ marginRight: 8, color: THEME.primary }}></i>
-          Showing <strong style={{ color: THEME.textPrimary }}>{staffList.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> staff
+      <div className="sp-27">
+        <div className="sp-28">
+          <span className="sp-29"><i className="fas fa-user-tie"></i></span>
+          Showing <strong className="sp-30">{staffList.length}</strong> of <strong className="sp-31">{total}</strong> staff
         </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+        <div className="sp-32">
           Page {page} of {totalPages}
         </div>
       </div>
@@ -438,41 +427,41 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
       <DataTable<MerchantStaffMember>
         data={staffList}
         columns={[
-          { key: 'name', header: 'Name', render: (s) => <span style={{ fontWeight: 500 }}>{s.name}</span> },
+          { key: 'name', header: 'Name', render: (s) => <span className="sp-33">{s.name}</span> },
           { key: 'user_type_id', header: 'User Type', render: (s) => renderUserTypeBadge(s) },
           { key: 'role', header: 'Role', render: (s) => <span className="badge badge-blue">{getDisplayRole(s)}</span> },
           { key: 'store_assignments', header: 'Stores', render: (s) => {
             const realAssignments = (s.store_assignments || []).filter(a => a.store_id > 0);
             return realAssignments.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              <div className="sp-34">
                 {realAssignments.map(a => (
-                  <span key={a.store_id} className="badge badge-gray" style={{ fontSize: 10 }}>{a.store_name}</span>
+                  <span key={a.store_id} className="badge badge-gray sp-35" >{a.store_name}</span>
                 ))}
               </div>
-            ) : <span style={{ color: THEME.textMuted }}>—</span>;
+            ) : <span className="sp-36">—</span>;
           }},
           { key: 'email', header: 'Email', render: (s) => s.email ? (
-            <span>{s.email} <span className="badge badge-green" style={{ marginLeft: 6, fontSize: 10 }}>Has Login</span></span>
-          ) : <span style={{ color: THEME.textMuted }}>No login</span> },
+            <span>{s.email} <span className="badge badge-green sp-37" >Has Login</span></span>
+          ) : <span className="sp-38">No login</span> },
           { key: 'phone', header: 'Phone', render: (s) => s.phone || '—' },
           { key: 'is_active', header: 'Status', render: (s) => (
-            <button onClick={() => toggleActive(s)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
+            <button onClick={() => toggleActive(s)} className="sp-39">
               <span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? 'Active' : 'Inactive'}</span>
             </button>
           )},
           { key: 'actions', header: 'Actions', render: (s) => {
             const rowKey = s.id ?? `user-${s.user_id}`;
             return (
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div className="sp-40">
                 <button className="btn btn-sm" onClick={() => openEdit(s)} title="Edit"><i className="fas fa-edit"></i></button>
                 <button className="btn btn-sm" onClick={() => s.email ? handleResetPassword(s) : setError('Add an email to enable login access.')} title={s.email ? 'Reset password' : 'No login'}><i className="fas fa-key" style={{ color: s.email ? undefined : THEME.accentLight }}></i></button>
                 {confirmDelete === rowKey ? (
                   <>
-                    <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(s.id!)}>Confirm</button>
+                    <button className="btn btn-sm sp-41"  onClick={() => handleDelete(s.id!)}>Confirm</button>
                     <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
                   </>
                 ) : (
-                  <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(rowKey)} title="Deactivate"><i className="fas fa-trash"></i></button>
+                  <button className="btn btn-sm sp-42"  onClick={() => setConfirmDelete(rowKey)} title="Deactivate"><i className="fas fa-trash"></i></button>
                 )}
               </div>
             );

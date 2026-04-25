@@ -33,13 +33,7 @@ export function FilterBar({
   onSearch,
 }: FilterBarProps) {
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 12,
-      marginBottom: 20,
-      flexWrap: 'wrap',
-    }}>
+    <div className="fb-0">
       {stores.length > 0 && onStoreChange && (
         <StoreSelector
           stores={stores}
@@ -64,31 +58,13 @@ export function FilterBar({
       )}
 
       {searchPlaceholder && onSearch && (
-        <div style={{
-          position: 'relative',
-          background: 'white',
-          padding: '8px 14px',
-          borderRadius: 40,
-          border: '1px solid #E5E0D8',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-          flex: '1',
-          minWidth: 200,
-          maxWidth: 320,
-        }}>
-          <i className="fas fa-search" style={{ color: '#6B635E', fontSize: 12, position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }}></i>
+        <div className="fb-1">
+          <span className="fb-2"><i className="fas fa-search"></i></span>
           <input
             type="text"
             placeholder={searchPlaceholder}
             onChange={e => onSearch(e.target.value)}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              fontSize: 13,
-              color: '#2C1E16',
-              outline: 'none',
-              width: '100%',
-              paddingLeft: 28,
-            }}
+            className="fb-3"
           />
         </div>
       )}

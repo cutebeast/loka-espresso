@@ -13,8 +13,7 @@ export function ScanFAB({ onClick, label = 'Scan table' }: ScanFABProps) {
     <motion.button
       whileTap={{ scale: 0.92 }}
       onClick={onClick}
-      className="fixed bottom-24 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl bg-primary text-white shadow-primary-25 cursor-pointer"
-      style={{ boxShadow: '0 8px 24px rgba(56,75,22,0.35)' }}
+      className="fixed bottom-24 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl bg-primary text-white shadow-primary-25 cursor-pointer sf-btn"
       aria-label={label}
     >
       <QrCode size={18} strokeWidth={2.2} />

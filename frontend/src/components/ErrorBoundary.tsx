@@ -46,9 +46,6 @@ export class ErrorBoundary extends Component<Props, State> {
     
     // Call optional error handler
     this.props.onError?.(error, errorInfo);
-    
-    // In production, you might want to send to an error tracking service
-    // Example: Sentry.captureException(error, { extra: errorInfo });
   }
 
   render() {
@@ -60,29 +57,23 @@ export class ErrorBoundary extends Component<Props, State> {
 
       // Default error UI
       return (
-        <div style={styles.container}>
-          <div style={styles.card}>
-            <div style={styles.icon}>⚠️</div>
-            <h2 style={styles.title}>Something went wrong</h2>
-            <p style={styles.message}>
+        <div className="eb-container">
+          <div className="eb-card">
+            <div className="eb-icon">⚠️</div>
+            <h2 className="eb-title">Something went wrong</h2>
+            <p className="eb-message">
               We apologize for the inconvenience. The error has been logged.
             </p>
             <button
               onClick={() => window.location.reload()}
-              style={styles.button}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#2d3d12';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#384B16';
-              }}
+              className="eb-button"
             >
               Reload Page
             </button>
             {process.env.NODE_ENV === 'development' && this.state.error && (
-              <details style={styles.details}>
-                <summary style={styles.summary}>Error Details (Development Only)</summary>
-                <pre style={styles.pre}>{this.state.error.toString()}</pre>
+              <details className="eb-details">
+                <summary className="eb-summary">Error Details (Development Only)</summary>
+                <pre className="eb-pre">{this.state.error.toString()}</pre>
               </details>
             )}
           </div>
@@ -93,76 +84,6 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F5F7FA',
-    padding: '20px',
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    padding: '40px',
-    textAlign: 'center',
-    maxWidth: '500px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-  },
-  icon: {
-    fontSize: '48px',
-    marginBottom: '16px',
-  },
-  title: {
-    fontSize: '24px',
-    fontWeight: 600,
-    color: '#1B2023',
-    marginBottom: '12px',
-  },
-  message: {
-    fontSize: '14px',
-    color: '#6A7A8A',
-    marginBottom: '24px',
-    lineHeight: 1.5,
-  },
-  button: {
-    backgroundColor: '#384B16',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    padding: '12px 24px',
-    fontSize: '14px',
-    fontWeight: 500,
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  details: {
-    marginTop: '20px',
-    textAlign: 'left',
-    backgroundColor: '#F8FAFC',
-    borderRadius: '8px',
-    padding: '12px',
-  },
-  summary: {
-    fontSize: '12px',
-    color: '#64748B',
-    cursor: 'pointer',
-    fontWeight: 500,
-  },
-  pre: {
-    fontSize: '11px',
-    color: '#991B1B',
-    backgroundColor: '#FEF2F2',
-    padding: '12px',
-    borderRadius: '6px',
-    overflow: 'auto',
-    marginTop: '8px',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
-  },
-};
 
 /**
  * Higher-Order Component for wrapping pages with error boundary
@@ -205,7 +126,6 @@ export function useAsyncErrorHandler() {
       }
       
       if (options?.showToast) {
-        // In a real app, you'd show a toast notification here
         alert(`Error: ${err.message}`);
       }
       

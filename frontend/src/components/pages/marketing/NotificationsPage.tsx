@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { FilterSelect, DateFilter, Pagination } from '@/components/ui';
 import { type DatePreset } from '@/components/ui/DateFilter';
-import { THEME } from '@/lib/theme';
 import type { MerchantBroadcast } from '@/lib/merchant-types';
 
 interface NotificationsPageProps {
@@ -77,18 +76,18 @@ function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
   }
 
   return (
-    <div style={{ marginTop: 12, padding: 16, background: THEME.bgMuted, borderRadius: 12, border: `1px solid ${THEME.accentLight}` }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="ef-0">
+      <div className="ef-1">
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: THEME.primary, display: 'block', marginBottom: 4 }}>Title</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14 }} />
+            <label className="ef-2">Title</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} className="ef-3" />
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: THEME.primary, display: 'block', marginBottom: 4 }}>Body</label>
-            <textarea value={body} onChange={e => setBody(e.target.value)} rows={3} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }} />
+            <label className="ef-4">Body</label>
+            <textarea value={body} onChange={e => setBody(e.target.value)} rows={3} className="ef-5" />
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: THEME.primary, display: 'block', marginBottom: 4 }}>Audience</label>
+            <label className="ef-6">Audience</label>
           <FilterSelect
             value={audience}
             onChange={setAudience}
@@ -97,22 +96,22 @@ function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
           />
         </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: THEME.primary, display: 'block', marginBottom: 4 }}>
+            <label className="ef-7">
               Schedule (optional)
             </label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div className="ef-8">
               <input
                 type="date"
                 value={scheduledDate}
                 onChange={e => setScheduledDate(e.target.value)}
                 min={((): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()}
-                style={{ width: 150, padding: '6px 10px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 13 }}
+                className="ef-9"
               />
               <input
                 type="time"
                 value={scheduledTime}
                 onChange={e => setScheduledTime(e.target.value)}
-                style={{ width: 110, padding: '6px 10px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 13 }}
+                className="ef-10"
               />
             {(scheduledDate || scheduledTime) && (
               <button type="button" className="btn btn-sm" onClick={() => { setScheduledDate(''); setScheduledTime(''); }} title="Clear schedule">
@@ -120,11 +119,11 @@ function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
               </button>
             )}
           </div>
-          <div style={{ fontSize: 11, color: THEME.success, marginTop: 4 }}>
+          <div className="ef-11">
             Leave empty to save as draft with no schedule
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div className="ef-12">
           <button className="btn" onClick={onCancel} disabled={saving}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving || !title.trim()}>
             {saving ? 'Saving...' : 'Save'}
@@ -194,28 +193,19 @@ export default function NotificationsPage({ token, refreshKey: _refreshKey, onNe
 
   return (
     <div>
-      <div style={{
-        background: 'linear-gradient(135deg, #DBEAFE, #EFF6FF)',
-        border: '1px solid #93C5FD',
-        borderRadius: 16,
-        padding: '14px 20px',
-        marginBottom: 20,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-      }}>
-        <i className="fas fa-info-circle" style={{ fontSize: 20, color: '#2563EB' }}></i>
+      <div className="np-13">
+        <span className="np-14"><i className="fas fa-info-circle"></i></span>
         <div>
-          <div style={{ fontWeight: 600, color: '#1E40AF', fontSize: 13, marginBottom: 2 }}>Service Worker Push Delivery</div>
-          <div style={{ fontSize: 12, color: '#1E3A8A' }}>
+          <div className="np-15">Service Worker Push Delivery</div>
+          <div className="np-16">
             Broadcasts are stored in DB. The PWA client uses a Service Worker to periodically fetch new notifications. No server-push integration (FCM/APNs) is needed.
           </div>
         </div>
       </div>
 
       {/* Filter Bar - Filters on left, New Broadcast button on right */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div className="np-17">
+        <div className="np-18">
           <FilterSelect
             value={notifTab}
             onChange={(val) => setNotifTab(val as 'active' | 'archived')}
@@ -236,72 +226,54 @@ export default function NotificationsPage({ token, refreshKey: _refreshKey, onNe
       </div>
 
       {/* Stats Bar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-bullhorn" style={{ marginRight: 8, color: THEME.primary }}></i>
-          Showing <strong style={{ color: THEME.textPrimary }}>{broadcasts.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> broadcasts
+      <div className="np-19">
+        <div className="np-20">
+          <span className="np-21"><i className="fas fa-bullhorn"></i></span>
+          Showing <strong className="np-22">{broadcasts.length}</strong> of <strong className="np-23">{total}</strong> broadcasts
         </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+        <div className="np-24">
           Page {page} of {totalPages}
         </div>
       </div>
 
       {broadcasts.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-          <i className="fas fa-bullhorn" style={{ fontSize: 40, marginBottom: 16 }}></i>
+        <div className="card np-25" >
+          <span className="np-26"><i className="fas fa-bullhorn"></i></span>
           <p>No {notifTab === 'archived' ? 'archived' : 'active'} broadcasts</p>
         </div>
       ) : (
-        <div style={{ 
-          display: 'grid', 
-          gap: 12, 
-          marginBottom: 20,
-          borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
-          background: THEME.bgCard,
-          border: `1px solid ${THEME.border}`,
-          borderTop: 'none',
-          padding: '16px 20px',
-        }}>
+        <div className="np-27">
           {broadcasts.map(bc => {
             const draft = isDraftStatus(bc);
             return (
-              <div key={bc.id} className="card" style={{ padding: '16px 20px', margin: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <strong style={{ fontSize: 15 }}>{bc.title}</strong>
+              <div key={bc.id} className="card np-28" >
+                <div className="np-29">
+                  <div className="np-30">
+                    <div className="np-31">
+                      <strong className="np-32">{bc.title}</strong>
                       {statusBadge(bc.status, bc.scheduled_at)}
                     </div>
-                    <div style={{ fontSize: 12, color: THEME.success, marginTop: 4 }}>
+                    <div className="np-33">
                       {audienceLabel[bc.audience] || bc.audience}
                       {bc.scheduled_at && !bc.sent_at && <span> &middot; <i className="fas fa-clock"></i> Scheduled: {new Date(bc.scheduled_at).toLocaleString()}</span>}
                       {bc.sent_at && <span> &middot; Published: {new Date(bc.sent_at).toLocaleString()}</span>}
                       {!bc.scheduled_at && !bc.sent_at && <span> &middot; Draft</span>}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <div className="np-34">
                     {draft && (
                       <>
                         <button className="btn btn-sm" title="Edit" onClick={() => setEditingId(editingId === bc.id ? null : bc.id)}>
                           <i className="fas fa-pen"></i>
                         </button>
                         {confirmDeleteId === bc.id ? (
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            <button className="btn btn-sm" style={{ background: '#EF4444', color: '#fff', border: 'none' }} onClick={() => deleteBroadcast(bc.id)}>Confirm</button>
+                          <div className="np-35">
+                            <button className="btn btn-sm np-36"  onClick={() => deleteBroadcast(bc.id)}>Confirm</button>
                             <button className="btn btn-sm" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
                           </div>
                         ) : (
                           <button className="btn btn-sm" title="Delete" onClick={() => setConfirmDeleteId(bc.id)}>
-                            <i className="fas fa-trash" style={{ color: '#EF4444' }}></i>
+                            <span className="np-37"><i className="fas fa-trash"></i></span>
                           </button>
                         )}
                        </>
@@ -315,7 +287,7 @@ export default function NotificationsPage({ token, refreshKey: _refreshKey, onNe
                     </button>
                   </div>
                 </div>
-                {bc.body && <p style={{ marginTop: 8, color: THEME.primary, fontSize: 14 }}>{bc.body}</p>}
+                {bc.body && <p className="np-38">{bc.body}</p>}
                 {editingId === bc.id && draft && (
                   <EditForm
                     bc={bc}

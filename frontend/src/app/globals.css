@@ -14,3 +14,4 @@
 
 /* 4. Components: buttons, cards, badges, tables, modals, forms, stats, KPIs, filters, tabs, pagination, skeleton */
 @import "../styles/components.css";
+@import "../styles/admin-extra.css";

@@ -107,7 +107,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
         <h2 className="auth-heading">Welcome back</h2>
         <p className="auth-subheading">Sign in with your phone number to continue</p>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <form onSubmit={handleSubmit} className="pi-form">
           <div className="auth-label">Phone number</div>
 
           <div className="phone-wrapper">
@@ -128,7 +128,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
           <p className="phone-hint">We&apos;ll send a verification code to this number</p>
 
           {error && (
-            <p style={{ color: '#C75050', fontSize: '12px', marginTop: '8px' }}>{error}</p>
+            <p className="pi-error">{error}</p>
           )}
 
           <button type="submit" disabled={isDisabled} className="auth-btn">
@@ -146,7 +146,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
             </button>
           </p>
 
-          <div style={{ flex: 1 }} />
+          <div className="pi-spacer" />
         </form>
       </div>
 
@@ -156,15 +156,15 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
         title={legalContent?.title || (activeLegalKey === 'terms' ? 'Terms of Service' : 'Privacy Policy')}
       >
         {legalLoading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ height: '16px', width: '66%', background: '#E4EAEF', borderRadius: '4px' }} />
-            <div style={{ height: '16px', width: '100%', background: '#E4EAEF', borderRadius: '4px' }} />
-            <div style={{ height: '16px', width: '100%', background: '#E4EAEF', borderRadius: '4px' }} />
-            <div style={{ height: '16px', width: '83%', background: '#E4EAEF', borderRadius: '4px' }} />
-            <div style={{ height: '16px', width: '100%', background: '#E4EAEF', borderRadius: '4px' }} />
+          <div className="pi-skeleton-list">
+            <div className="skeleton pi-skeleton-line pi-skeleton-66" />
+            <div className="skeleton pi-skeleton-line pi-skeleton-100" />
+            <div className="skeleton pi-skeleton-line pi-skeleton-100" />
+            <div className="skeleton pi-skeleton-line pi-skeleton-83" />
+            <div className="skeleton pi-skeleton-line pi-skeleton-100" />
           </div>
         ) : legalError ? (
-          <div style={{ borderRadius: '16px', border: '1px solid rgba(199,80,80,0.2)', background: '#FFEBEE', padding: '12px 16px', fontSize: '14px', color: '#C75050' }}>
+          <div className="pi-legal-error">
             {legalError}
           </div>
         ) : (
@@ -174,18 +174,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
             </div>
             <button
               onClick={() => { closeLegalSheet(); setPage('legal', { legalKey: activeLegalKey || 'terms' }); }}
-              style={{
-                width: '100%',
-                marginTop: 16,
-                padding: '10px 0',
-                background: 'none',
-                border: 'none',
-                color: '#384B16',
-                fontWeight: 600,
-                fontSize: '14px',
-                cursor: 'pointer',
-                textAlign: 'center',
-              }}
+              className="pi-view-btn"
             >
               View full page →
             </button>

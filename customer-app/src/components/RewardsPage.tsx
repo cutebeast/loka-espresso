@@ -98,7 +98,7 @@ export default function RewardsPage() {
           <h1 className="rd-title">{selectedReward.name}</h1>
 
           <div className="rd-meta">
-            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+            <span className="rewards-calendar-meta">
               <Calendar size={16} /> Valid {selectedReward.validity_days || 30} days after redemption
             </span>
             <span className="rd-meta-pill rd-pill-copper">{selectedReward.points_cost.toLocaleString()} points</span>
@@ -126,10 +126,9 @@ export default function RewardsPage() {
           {!redemptionSuccess ? (
             <>
               <button
-                className="rd-action-btn"
+                className={`rd-action-btn ${!canRedeem || redeeming === selectedReward.id ? 'rewards-action-btn-disabled' : ''}`}
                 onClick={() => handleRedeem(selectedReward)}
                 disabled={!canRedeem || redeeming === selectedReward.id}
-                style={{ opacity: canRedeem ? 1 : 0.7, cursor: canRedeem && redeeming !== selectedReward.id ? 'pointer' : 'not-allowed' }}
               >
                 <span>{redeeming === selectedReward.id ? 'Redeeming…' : `Redeem for ${selectedReward.points_cost.toLocaleString()} pts`}</span>
                 <ArrowRight size={20} />
@@ -144,8 +143,7 @@ export default function RewardsPage() {
                 Your {selectedReward.name.toLowerCase()} has been added to My Rewards. Show it at the counter to redeem.
               </p>
               <button
-                className="rd-action-btn"
-                style={{ marginTop: 20 }}
+                className="rd-action-btn rewards-action-btn-mt"
                 onClick={() => { setSelectedReward(null); setRedemptionSuccess(false); }}
               >
                 <span>Back to Rewards</span>
@@ -223,7 +221,7 @@ export default function RewardsPage() {
         {loading ? (
           <>
             {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton" style={{ height: 110, borderRadius: 20 }} />
+              <div key={i} className="skeleton rewards-skeleton-card" />
             ))}
           </>
         ) : activeTab === 'rewards' ? (
@@ -244,7 +242,11 @@ export default function RewardsPage() {
                       className="rewards-card-thumb"
                       style={img ? { backgroundImage: `url(${img})` } : {}}
                     >
-                      {!img && <Gift size={24} color="#C4CED8" strokeWidth={1.5} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />}
+                      {!img && (
+                        <span className="rewards-card-fallback-icon">
+                          <Gift size={24} color="#C4CED8" strokeWidth={1.5} />
+                        </span>
+                      )}
                       <span className="rewards-thumb-badge rewards-badge-points">{reward.points_cost.toLocaleString()} pts</span>
                     </div>
                     <div className="rewards-card-body">
@@ -281,7 +283,11 @@ export default function RewardsPage() {
                     className="rewards-card-thumb"
                     style={img ? { backgroundImage: `url(${img})` } : {}}
                   >
-                    {!img && <Gift size={24} color="#C4CED8" strokeWidth={1.5} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />}
+                    {!img && (
+                      <span className="rewards-card-fallback-icon">
+                        <Gift size={24} color="#C4CED8" strokeWidth={1.5} />
+                      </span>
+                    )}
                     <span className="rewards-thumb-badge rewards-badge-source">{promo.action_type === 'survey' ? 'Survey' : 'Promo'}</span>
                   </div>
                   <div className="rewards-card-body">

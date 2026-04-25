@@ -219,22 +219,22 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
     <>
       {viewMode === 'form' ? (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div className="sp-0">
             <button className="btn btn-sm" onClick={surveyCloseForm}>
               <i className="fas fa-arrow-left"></i> Back to Surveys
             </button>
-            <h3 style={{ margin: 0 }}>{surveyEditing ? 'Edit Survey' : 'New Survey'}</h3>
+            <h3 className="sp-1">{surveyEditing ? 'Edit Survey' : 'New Survey'}</h3>
           </div>
 
           <div className="card">
             {surveyError && (
-              <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+              <div className="sp-2">
                 <i className="fas fa-exclamation-circle"></i> {surveyError}
               </div>
             )}
 
             <form onSubmit={surveyHandleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div className="sp-3">
                 <div>
                   <label style={labelStyle}>Title *</label>
                   <input value={surveyTitle} onChange={e => setSurveyTitle(e.target.value)} required placeholder="e.g. Customer Satisfaction Survey" />
@@ -245,16 +245,16 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
                 </div>
               </div>
 
-              <div style={{ marginBottom: 16 }}>
+              <div className="sp-4">
                 <label style={labelStyle}>Description</label>
-                <textarea value={surveyDescription} onChange={e => setSurveyDescription(e.target.value)} placeholder="Survey description..." rows={2} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 14, resize: 'vertical' }} />
+                <textarea value={surveyDescription} onChange={e => setSurveyDescription(e.target.value)} placeholder="Survey description..." rows={2} className="sp-5" />
               </div>
 
-              <div style={{ borderTop: `1px solid ${THEME.accentLight}`, paddingTop: 16, marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <h4 style={{ margin: 0 }}>Questions ({surveyQuestions.length}/5)</h4>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {surveyQuestions.length >= 5 && <span style={{ fontSize: 11, color: THEME.success }}>Maximum 5 questions</span>}
+              <div className="sp-6">
+                <div className="sp-7">
+                  <h4 className="sp-8">Questions ({surveyQuestions.length}/5)</h4>
+                  <div className="sp-9">
+                    {surveyQuestions.length >= 5 && <span className="sp-10">Maximum 5 questions</span>}
                     <button type="button" className="btn btn-sm btn-primary" onClick={surveyAddQuestion} disabled={surveyQuestions.length >= 5}>
                       <i className="fas fa-plus"></i> Add Question
                     </button>
@@ -262,40 +262,40 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
                 </div>
 
                 {surveyQuestions.map((q, i) => (
-                  <div key={i} style={{ background: THEME.bgMuted, borderRadius: 10, padding: 12, marginBottom: 8, border: `1px solid ${THEME.accentLight}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: THEME.primary }}>Q{i + 1}</span>
+                  <div key={i} className="sp-11">
+                    <div className="sp-12">
+                      <span className="sp-13">Q{i + 1}</span>
                       {surveyQuestions.length > 1 && (
-                        <button type="button" className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => surveyRemoveQuestion(i)}>
+                        <button type="button" className="btn btn-sm sp-14"  onClick={() => surveyRemoveQuestion(i)}>
                           <i className="fas fa-trash"></i>
                         </button>
                       )}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8, marginBottom: 8 }}>
+                    <div className="sp-15">
                       <input value={q.question_text} onChange={e => surveyUpdateQuestion(i, 'question_text', e.target.value)} placeholder="Question text" required />
                       <Select value={q.question_type} onChange={(val) => surveyUpdateQuestion(i, 'question_type', val)} options={[{ value: 'text', label: 'Text' }, { value: 'single_choice', label: 'Single Choice' }, { value: 'rating', label: 'Rating' }, { value: 'dropdown', label: 'Dropdown' }]} />
                     </div>
                     {(q.question_type === 'single_choice' || q.question_type === 'dropdown') && (
-                      <div style={{ marginBottom: 8 }}>
-                        <input value={q.options} onChange={e => surveyUpdateQuestion(i, 'options', e.target.value)} placeholder="Options (comma-separated, e.g. Good, Okay, Bad)" style={{ width: '100%' }} />
+                      <div className="sp-16">
+                        <input value={q.options} onChange={e => surveyUpdateQuestion(i, 'options', e.target.value)} placeholder="Options (comma-separated, e.g. Good, Okay, Bad)" className="sp-17" />
                       </div>
                     )}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                      <input type="checkbox" checked={q.required} onChange={e => surveyUpdateQuestion(i, 'required', e.target.checked)} style={{ width: 14, height: 14 }} />
+                    <label className="sp-18">
+                      <input type="checkbox" checked={q.required} onChange={e => surveyUpdateQuestion(i, 'required', e.target.checked)} className="sp-19" />
                       Required
                     </label>
                   </div>
                 ))}
               </div>
 
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+              <div className="sp-20">
                 <button type="submit" className="btn btn-primary" disabled={surveySaving}>
                   {surveySaving ? 'Saving...' : surveyEditing ? 'Update' : 'Create'}
                 </button>
                 <button type="button" className="btn" onClick={surveyCloseForm}>Cancel</button>
-                <div style={{ flex: 1 }} />
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                  <input type="checkbox" checked={surveyIsActive} onChange={e => setSurveyIsActive(e.target.checked)} style={{ width: 16, height: 16 }} />
+                <div className="sp-21" />
+                <label className="sp-22">
+                  <input type="checkbox" checked={surveyIsActive} onChange={e => setSurveyIsActive(e.target.checked)} className="sp-23" />
                   Active
                 </label>
               </div>
@@ -304,80 +304,71 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
         </>
       ) : (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
+          <div className="sp-24">
             <button className="btn btn-primary" onClick={surveyOpenCreate}><i className="fas fa-plus"></i> New Survey</button>
           </div>
 
           {surveyError && (
-            <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+            <div className="sp-25">
               <i className="fas fa-exclamation-circle"></i> {surveyError}
             </div>
           )}
 
           {surveyLoading ? (
-            <div style={{ textAlign: 'center', padding: 40, color: THEME.success }}>Loading surveys...</div>
+            <div className="sp-26">Loading surveys...</div>
           ) : (
           <>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 16px',
-              background: THEME.bgMuted,
-              borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-              border: `1px solid ${THEME.border}`,
-              borderBottom: 'none',
-            }}>
-              <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-                <i className="fas fa-clipboard-list" style={{ marginRight: 8, color: THEME.primary }}></i>
-                Showing <strong style={{ color: THEME.textPrimary }}>{surveyList.length}</strong> of <strong>{surveyTotal}</strong> surveys
+            <div className="sp-27">
+              <div className="sp-28">
+                <span className="sp-29"><i className="fas fa-clipboard-list"></i></span>
+                Showing <strong className="sp-30">{surveyList.length}</strong> of <strong>{surveyTotal}</strong> surveys
               </div>
-              <div style={{ fontSize: 13, color: THEME.textMuted }}>
+              <div className="sp-31">
                 Page {surveyPage} of {surveyTotalPages}
               </div>
             </div>
 
-            <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: `1px solid ${THEME.border}`, borderTop: 'none' }}>
+            <div className="sp-32">
               <table>
                 <thead>
                   <tr><th>Title</th><th>Questions</th><th>Responses</th><th>Reward Voucher</th><th>Status</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                   {surveyList.length === 0 ? (
-                    <tr><td colSpan={6} style={{ textAlign: 'center', color: THEME.success, padding: 40 }}>
-                      <i className="fas fa-clipboard-list" style={{ fontSize: 40, display: 'block', marginBottom: 12 }}></i>
+                    <tr><td colSpan={6} className="sp-33">
+                      <span className="sp-34"><i className="fas fa-clipboard-list"></i></span>
                       No surveys yet. Create one to start collecting feedback.
                     </td></tr>
                   ) : surveyList.map(survey => (
                     <tr key={survey.id}>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{survey.title}</div>
-                        {survey.description && <div style={{ fontSize: 12, color: THEME.success, marginTop: 2 }}>{survey.description}</div>}
+                        <div className="sp-35">{survey.title}</div>
+                        {survey.description && <div className="sp-36">{survey.description}</div>}
                       </td>
                       <td><span className="badge badge-blue">{survey.questions?.length ?? 0}</span></td>
                       <td>{survey.response_count ?? 0}</td>
                       <td>
                         {survey.reward_voucher_id ? (
                           <span className="badge badge-green">{surveyRewardVoucherName(survey.reward_voucher_id)}</span>
-                        ) : <span style={{ color: THEME.success }}>None</span>}
+                        ) : <span className="sp-37">None</span>}
                       </td>
                       <td>
-                        <button className="btn btn-sm" onClick={() => surveyToggleActive(survey)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
+                        <button className="btn btn-sm sp-38" onClick={() => surveyToggleActive(survey)} >
                           <span className={`badge ${survey.is_active ? 'badge-green' : 'badge-gray'}`}>
                             {survey.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </button>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div className="sp-39">
                           <button className="btn btn-sm" onClick={() => surveyOpenEdit(survey)}><i className="fas fa-edit"></i></button>
                           {surveyConfirmDelete === survey.id ? (
                             <>
-                              <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => surveyHandleDelete(survey.id)}>Confirm</button>
+                              <button className="btn btn-sm sp-40"  onClick={() => surveyHandleDelete(survey.id)}>Confirm</button>
                               <button className="btn btn-sm" onClick={() => setSurveyConfirmDelete(null)}>Cancel</button>
                             </>
                           ) : (
-                            <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setSurveyConfirmDelete(survey.id)}><i className="fas fa-trash"></i></button>
+                            <button className="btn btn-sm sp-41"  onClick={() => setSurveyConfirmDelete(survey.id)}><i className="fas fa-trash"></i></button>
                           )}
                         </div>
                       </td>

@@ -26,15 +26,7 @@ export function Modal({ isOpen, onClose, title, meta, children, footer, variant 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            zIndex: 160,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-          }}
+          className="modal-wrap"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           {variant === 'bottom' ? (
@@ -47,90 +39,45 @@ export function Modal({ isOpen, onClose, title, meta, children, footer, variant 
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-              style={{
-                background: '#FFFFFF',
-                width: '100%',
-                maxWidth: 430,
-                borderRadius: '24px 24px 0 0',
-                maxHeight: '82vh',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-              }}
+              className="modal-sheet"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header: handle + title + close + meta */}
-              <div style={{ padding: '20px 20px 0', flexShrink: 0 }}>
+              <div className="modal-header">
                 {/* Handle */}
-                <div style={{
-                  width: '36px',
-                  height: '4px',
-                  borderRadius: '999px',
-                  background: '#C4CED8',
-                  margin: '0 auto 16px',
-                }} />
+                <div className="modal-handle" />
 
                 {(title || meta) && (
                   <>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '4px',
-                    }}>
+                    <div className="modal-title-row">
                       {title && (
-                        <h3 id="modal-title" style={{
-                          fontSize: '18px',
-                          fontWeight: 700,
-                          color: '#1B2023',
-                          margin: 0,
-                        }}>
+                        <h3 id="modal-title" className="modal-title">
                           {title}
                         </h3>
                       )}
                       <button
                         onClick={onClose}
                         aria-label="Close"
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          background: '#F5F7FA',
-                          border: 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#6A7A8A',
-                          cursor: 'pointer',
-                          marginLeft: 'auto',
-                        }}
+                        className="modal-close"
                       >
                         <X size={16} />
                       </button>
                     </div>
                     {meta && (
-                      <p style={{ fontSize: '12px', color: '#6A7A8A', marginBottom: '12px' }}>{meta}</p>
+                      <p className="modal-meta">{meta}</p>
                     )}
                   </>
                 )}
               </div>
 
               {/* Body */}
-              <div style={{
-                overflowY: 'auto',
-                padding: '0 20px 16px',
-                flex: 1,
-              }}>
+              <div className="modal-body">
                 {children}
               </div>
 
               {/* Footer */}
               {footer && (
-                <div style={{
-                  padding: '8px 20px 24px',
-                  flexShrink: 0,
-                  borderTop: '1px solid #E4EAEF',
-                }}>
+                <div className="modal-footer">
                   {footer}
                 </div>
               )}

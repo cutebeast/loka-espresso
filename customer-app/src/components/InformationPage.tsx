@@ -80,12 +80,18 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
     const allImages = img ? [img, ...gallery] : gallery;
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'white' }}>
+      <div className="info-detail-screen">
         <div className="info-detail-hero">
           {allImages.length > 1 ? (
             <ImageCarousel images={allImages} />
           ) : (
-            <div className="info-detail-hero-img" style={img ? { backgroundImage: `url(${img})` } : { background: 'linear-gradient(135deg, #F3EEE5, rgba(209,142,56,0.3))' }} />
+            <>
+              {img ? (
+                <img src={img} alt="" className="info-detail-hero-img info-detail-hero-img-fill" />
+              ) : (
+                <div className="info-detail-hero-img info-detail-hero-img-fallback" />
+              )}
+            </>
           )}
           <div className="info-detail-hero-overlay" />
           <button className="info-detail-back-btn" onClick={() => setSelectedCard(null)} aria-label="Back">
@@ -101,11 +107,11 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
           <h1 className="info-detail-title">{selectedCard.title}</h1>
 
           <div className="info-detail-meta">
-            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+            <span className="info-detail-meta-item">
               <Clock size={16} /> {estimateReadTime(selectedCard.long_description)}
             </span>
             {selectedCard.content_type && (
-              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <span className="info-detail-meta-item">
                 <Star size={16} /> {selectedCard.content_type}
               </span>
             )}
@@ -133,25 +139,28 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
         {loading ? (
           <>
             {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton" style={{ height: 120, borderRadius: 20 }} />
+              <div key={i} className="skeleton info-skeleton-card" />
             ))}
           </>
         ) : cards.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 20px', background: 'white', borderRadius: 20, border: '1px solid var(--loka-border-light)' }}>
-            <Info size={40} color="#D4DCE5" style={{ marginBottom: 12 }} />
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#1B2023', marginBottom: 6 }}>No articles available</p>
-            <p style={{ fontSize: 13, color: '#6A7A8A' }}>Check back soon for updates</p>
+          <div className="info-empty">
+            <Info size={40} className="info-empty-icon" />
+            <p className="info-empty-title">No articles available</p>
+            <p className="info-empty-desc">Check back soon for updates</p>
           </div>
         ) : (
           cards.map((card) => {
             const img = resolveCardImage(card);
             return (
               <div key={card.id} className="info-exp-card" onClick={() => setSelectedCard(card)}>
-                <div
-                  className="info-card-thumb"
-                  style={img ? { backgroundImage: `url(${img})` } : {}}
-                >
-                  {!img && <Info size={24} color="#C4CED8" strokeWidth={1.5} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />}
+                <div className="info-card-thumb">
+                  {img ? (
+                    <img src={img} alt="" className="info-card-thumb-img" />
+                  ) : (
+                    <div className="info-card-thumb-fallback">
+                      <Info size={24} strokeWidth={1.5} className="info-card-fallback-icon" />
+                    </div>
+                  )}
                   <span className="info-thumb-badge">{card.content_type || 'Article'}</span>
                 </div>
                 <div className="info-card-body">
@@ -178,6 +187,7 @@ function ImageCarousel({ images }: { images: string[] }) {
   const total = images.length;
   const touchStartX = useRef(0);
   const isDragging = useRef(false);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   const next = () => setCurrent((c) => (c + 1) % total);
   const prev = () => setCurrent((c) => (c - 1 + total) % total);
@@ -207,6 +217,12 @@ function ImageCarousel({ images }: { images: string[] }) {
     else if (diff < -40) prev();
   };
 
+  useEffect(() => {
+    if (trackRef.current) {
+      trackRef.current.style.transform = `translateX(-${current * 100}%)`;
+    }
+  }, [current]);
+
   return (
     <div
       className="carousel-wrap"
@@ -216,8 +232,8 @@ function ImageCarousel({ images }: { images: string[] }) {
       onMouseUp={onMouseUp}
     >
       <div
+        ref={trackRef}
         className="carousel-track"
-        style={{ transform: `translateX(-${current * 100}%)` }}
       >
         {images.map((src, i) => (
           <div key={i} className="carousel-slide">

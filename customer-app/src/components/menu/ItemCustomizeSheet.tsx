@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, ShoppingCart, Coffee, Star } from 'lucide-react';
 import type { MenuItem, CustomizationOption } from '@/lib/api';
-import { LOKA, resolveAssetUrl } from '@/lib/tokens';
+import { resolveAssetUrl } from '@/lib/tokens';
 
 interface SelectedOption {
   id: number;
@@ -86,145 +86,95 @@ export default function ItemCustomizeSheet({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          /* TODO: extract to CSS */
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 100,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            background: 'rgba(15,19,23,0.6)',
-            backdropFilter: 'blur(2px)',
-          }}
+          className="ics-overlay"
         >
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          onClick={(e) => e.stopPropagation()}
-          /* TODO: extract to CSS */
-          style={{
-            position: 'relative',
-            width: '100%',
-            maxWidth: 430,
-            background: LOKA.white,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
-            maxHeight: '85vh',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
+            onClick={(e) => e.stopPropagation()}
+            className="ics-sheet"
           >
-            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
-              <div style={{ width: 44, height: 4, borderRadius: 999, background: LOKA.borderLight }} />
+            <div className="ics-handle-wrap">
+              <div className="ics-handle" />
             </div>
 
-            <div style={{ position: 'relative', height: 180, background: '#F2F6EA', flexShrink: 0 }}>
+            <div className="ics-image-wrap">
               {imgSrc ? (
                 <img
                   src={imgSrc}
                   alt={item.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  className="ics-image"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #F2F6EA 0%, #F3EEE5 100%)' }}>
-                  <Coffee size={56} color={LOKA.brown} strokeWidth={1.2} />
+                <div className="ics-image-fallback">
+                  <Coffee size={56} color="#57280D" strokeWidth={1.2} />
                 </div>
               )}
               <button
                 onClick={onClose}
-                style={{
-                  position: 'absolute', top: 12, right: 12,
-                  width: 32, height: 32, borderRadius: 999,
-                  background: 'rgba(255,255,255,0.9)',
-                  border: 'none', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
+                className="ics-close-btn"
                 aria-label="Close"
               >
-                <X size={16} color={LOKA.textPrimary} />
+                <X size={16} color="#1B2023" />
               </button>
             </div>
 
-            <div className="scroll-container" style={{ flex: 1, overflowY: 'auto' }}>
-              <div style={{ padding: '16px 20px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <h2 style={{ fontSize: 18, fontWeight: 800, color: LOKA.textPrimary, letterSpacing: '-0.01em' }}>{item.name}</h2>
-                    <p style={{ fontSize: 13, color: LOKA.textMuted, marginTop: 4, lineHeight: 1.5 }}>{item.description}</p>
+            <div className="scroll-container ics-scroll">
+              <div className="ics-body">
+                <div className="ics-header">
+                  <div className="ics-header-text">
+                    <h2 className="ics-title">{item.name}</h2>
+                    <p className="ics-desc">{item.description}</p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                    <Star size={12} color={LOKA.copper} fill={LOKA.copper} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: LOKA.copper }}>4.8</span>
+                  <div className="ics-rating">
+                    <Star size={12} color="#D18E38" fill="#D18E38" />
+                    <span className="ics-rating-text">4.8</span>
                   </div>
                 </div>
-                <p style={{ fontSize: 20, fontWeight: 800, color: LOKA.primary, marginTop: 8 }}>{formatPrice(item.base_price)}</p>
+                <p className="ics-price">{formatPrice(item.base_price)}</p>
               </div>
 
               {loadingOptions ? (
-                <div style={{ padding: '20px 20px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="ics-skeleton-wrap">
                   {[1, 2].map((i) => (
-                    <div key={i} className="skeleton" style={{ height: 56, borderRadius: 14 }} />
+                    <div key={i} className="skeleton ics-skeleton" />
                   ))}
                 </div>
               ) : Object.entries(groupedOptions).length > 0 ? (
-                <div style={{ padding: '16px 20px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div className="ics-section">
                   {Object.entries(groupedOptions).map(([type, opts]) => {
                     const required = isRequiredGroup(type);
                     return (
-                      <div key={type}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: LOKA.textPrimary, textTransform: 'capitalize' }}>
+                      <div key={type} className="ics-group">
+                        <div className="ics-group-header">
+                          <span className="ics-group-title">
                             {type === 'other' ? 'Options' : type}
                           </span>
                           {required && (
-                            <span style={{ fontSize: 10, fontWeight: 700, color: LOKA.copper, background: LOKA.copperSoft, padding: '2px 6px', borderRadius: 999 }}>
+                            <span className="ics-badge-required">
                               Required
                             </span>
                           )}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div className="ics-options-list">
                           {opts.map((opt) => {
                             const isSelected = selectedOptions.some((o) => o.id === opt.id);
                             return (
                               <button
                                 key={opt.id}
                                 onClick={() => toggleOption(opt)}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  width: '100%',
-                                  padding: '14px 16px',
-                                  borderRadius: 14,
-                                  border: isSelected ? `2px solid ${LOKA.primary}` : `1px solid ${LOKA.borderSubtle}`,
-                                  background: isSelected ? '#F2F6EA' : LOKA.white,
-                                  color: isSelected ? LOKA.primary : LOKA.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: isSelected ? 600 : 500,
-                                  cursor: 'pointer',
-                                  textAlign: 'left',
-                                  transition: 'all 0.15s ease',
-                                }}
+                                className={`ics-option-btn ${isSelected ? 'selected' : ''}`}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                  <div style={{
-                                    width: 18, height: 18, borderRadius: 999,
-                                    border: isSelected ? `2px solid ${LOKA.primary}` : `1.5px solid ${LOKA.borderLight}`,
-                                    background: isSelected ? LOKA.primary : 'transparent',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    flexShrink: 0,
-                                  }}>
-                                    {isSelected && <div style={{ width: 8, height: 8, borderRadius: 999, background: LOKA.white }} />}
+                                <div className="ics-option-label">
+                                  <div className={`ics-check ${isSelected ? 'selected' : ''}`}>
+                                    {isSelected && <div className="ics-check-dot" />}
                                   </div>
                                   <span>{opt.name}</span>
                                 </div>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: isSelected ? LOKA.primary : LOKA.textMuted }}>
+                                <span className={`ics-option-price ${isSelected ? 'selected' : ''}`}>
                                   {opt.price_adjustment > 0 ? `+${formatPrice(opt.price_adjustment)}` : 'included'}
                                 </span>
                               </button>
@@ -237,8 +187,8 @@ export default function ItemCustomizeSheet({
                 </div>
               ) : null}
 
-              <div style={{ padding: '20px 20px 0' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: LOKA.textPrimary, marginBottom: 10 }}>
+              <div className="ics-notes-section">
+                <div className="ics-notes-title">
                   Special instructions
                 </div>
                 <textarea
@@ -246,62 +196,36 @@ export default function ItemCustomizeSheet({
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="e.g. No sugar, extra hot"
                   rows={2}
-                  style={{
-                    width: '100%', padding: '12px 14px', borderRadius: 14,
-                    border: `1px solid ${LOKA.borderSubtle}`,
-                    background: LOKA.bgLight, fontSize: 14, color: LOKA.textPrimary,
-                    resize: 'none', outline: 'none', fontFamily: 'inherit',
-                  }}
+                  className="ics-textarea"
                 />
               </div>
             </div>
 
-            {/* TODO: extract to CSS */}
-            <div style={{
-              padding: '16px 20px 24px',
-              borderTop: `1px solid ${LOKA.borderSubtle}`,
-              display: 'flex', alignItems: 'center', gap: 16,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="ics-footer">
+              <div className="ics-qty-row">
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  style={{
-                    width: 44, height: 44, borderRadius: 999,
-                    border: `1.5px solid ${LOKA.borderLight}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', background: LOKA.white,
-                  }}
+                  className="ics-qty-btn"
                 >
-                  <Minus size={14} color={LOKA.textPrimary} />
+                  <Minus size={14} color="#1B2023" />
                 </motion.button>
-                <span style={{ fontSize: 16, fontWeight: 800, color: LOKA.textPrimary, minWidth: 20, textAlign: 'center' }}>
+                <span className="ics-qty-value">
                   {quantity}
                 </span>
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setQuantity((q) => q + 1)}
-                  style={{
-                    width: 44, height: 44, borderRadius: 999,
-                    border: `1.5px solid ${LOKA.borderLight}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', background: LOKA.white,
-                  }}
+                  className="ics-qty-btn"
                 >
-                  <Plus size={14} color={LOKA.textPrimary} />
+                  <Plus size={14} color="#1B2023" />
                 </motion.button>
               </div>
 
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleAdd}
-                style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  padding: '14px 24px', borderRadius: 999,
-                  background: LOKA.primary, color: LOKA.white,
-                  fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer',
-                  boxShadow: '0 8px 16px rgba(56,75,22,0.25)',
-                }}
+                className="ics-add-btn"
               >
                 <ShoppingCart size={16} />
                 Add {quantity > 1 ? `${quantity} · ` : ''}{formatPrice(totalPrice * quantity)}

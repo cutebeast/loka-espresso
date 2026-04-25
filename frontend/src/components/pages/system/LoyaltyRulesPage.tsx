@@ -14,7 +14,7 @@ interface LoyaltyRulesPageProps {
 
 // Human-readable benefits display
 function BenefitsBadges({ benefits }: { benefits: Record<string, unknown> | null }) {
-  if (!benefits) return <span style={{ color: THEME.success }}>No benefits</span>;
+  if (!benefits) return <span className="bb-0">No benefits</span>;
 
   const b = benefits as Record<string, any>;
   const chips: string[] = [];
@@ -33,12 +33,12 @@ function BenefitsBadges({ benefits }: { benefits: Record<string, unknown> | null
     }
   }
 
-  if (chips.length === 0) return <span style={{ color: THEME.success }}>No benefits</span>;
+  if (chips.length === 0) return <span className="bb-1">No benefits</span>;
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+    <div className="bb-2">
       {chips.map((chip, i) => (
-        <span key={i} style={{ background: THEME.bgMuted, color: THEME.primary, fontSize: 11, padding: '2px 8px', borderRadius: 6, whiteSpace: 'nowrap' }}>{chip}</span>
+        <span key={i} className="bb-3">{chip}</span>
       ))}
     </div>
   );
@@ -50,12 +50,12 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
+      <div className="lrp-4">
         <button className="btn btn-primary" onClick={() => setShowAdd(true)}><i className="fas fa-plus"></i> Add Tier</button>
       </div>
 
       {showAdd && (
-        <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card lrp-5" >
           <TierForm
             title="New Tier"
             token={token}
@@ -74,27 +74,18 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
         </Modal>
       )}
 
-      <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '12px 16px',
-          background: THEME.bgMuted,
-          borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-          border: `1px solid ${THEME.border}`,
-          borderBottom: 'none',
-        }}>
-          <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-            <i className="fas fa-layer-group" style={{ marginRight: 8, color: THEME.primary }}></i>
-            Showing <strong style={{ color: THEME.textPrimary }}>{tiers.length}</strong> loyalty tiers
+      <div className="lrp-6">
+          <div className="lrp-7">
+            <span className="lrp-8"><i className="fas fa-layer-group"></i></span>
+            Showing <strong className="lrp-9">{tiers.length}</strong> loyalty tiers
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto', borderRadius: 20, background: 'white', border: `1px solid ${THEME.border}`, borderTop: 'none' }}>
+        <div className="lrp-10">
           <DataTable<MerchantLoyaltyTier>
             data={tiers}
             columns={[
-              { key: 'name', header: 'Tier Name', render: (t) => <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{t.name}</span> },
+              { key: 'name', header: 'Tier Name', render: (t) => <span className="lrp-11">{t.name}</span> },
               { key: 'min_points', header: 'Min Points', render: (t) => `${t.min_points.toLocaleString()} pts` },
               { key: 'points_multiplier', header: 'Points Multiplier', render: (t) => <span className="badge badge-blue">{t.points_multiplier}x</span> },
               { key: 'sort_order', header: 'Sort Order', render: (t) => (
@@ -102,7 +93,7 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
                   type="number"
                   min="0"
                   value={t.sort_order}
-                  style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: `1px solid ${THEME.accentLight}`, textAlign: 'center', fontSize: 13 }}
+                  className="lrp-12"
                   onChange={async (e) => {
                     const val = parseInt(e.target.value) || 0;
                     await apiFetch(`/admin/loyalty-tiers/${t.id}`, undefined, {
@@ -115,9 +106,9 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
               )},
               { key: 'benefits', header: 'Benefits', render: (t) => <BenefitsBadges benefits={t.benefits} /> },
               { key: 'actions', header: 'Actions', render: (t) => (
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div className="lrp-13">
                   <button className="btn btn-sm" onClick={() => setEditingTier(t)}><i className="fas fa-edit"></i> Edit</button>
-                  <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={async () => {
+                  <button className="btn btn-sm lrp-14"  onClick={async () => {
                     if (confirm(`Delete tier "${t.name}"? This cannot be undone.`)) {
                       await apiFetch(`/admin/loyalty-tiers/${t.id}`, undefined, { method: 'DELETE' });
                       onRefresh();
@@ -199,15 +190,15 @@ function TierForm({ token: _token, onClose, existingTier, title }: TierFormProps
 
   return (
     <form onSubmit={handleSubmit}>
-      {title && <h4 style={{ marginBottom: 16 }}>{title}</h4>}
+      {title && <h4 className="tf-15">{title}</h4>}
       {error && (
-        <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+        <div className="tf-16">
           <i className="fas fa-exclamation-circle"></i> {error}
         </div>
       )}
 
       {/* ── Basic Info ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="tf-17">
         <Input label="Tier Name *" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Diamond" />
         <Input label="Min Points *" type="number" value={minPoints} onChange={e => setMinPoints(e.target.value)} required placeholder="e.g. 10000" />
         <Input label="Points Multiplier" type="number" step="0.1" value={multiplier} onChange={e => setMultiplier(e.target.value)} />
@@ -217,12 +208,12 @@ function TierForm({ token: _token, onClose, existingTier, title }: TierFormProps
         </div>
       </div>
 
-      <div style={{ border: `1px solid ${THEME.accentLight}`, borderRadius: 14, padding: 16, marginBottom: 16 }}>
-        <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 14, color: THEME.primary }}>
-          <i className="fas fa-gift" style={{ marginRight: 6 }}></i> Tier Benefits
+      <div className="tf-18">
+        <div className="tf-19">
+          <span className="tf-20"><i className="fas fa-gift"></i></span> Tier Benefits
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div className="tf-21">
           <div>
             <Input label="Discount (%)" type="number" min="0" max="100" value={discount} onChange={e => setDiscount(e.target.value)} placeholder="0" />
             <div style={hintStyle}>Percentage off all orders</div>
@@ -233,25 +224,25 @@ function TierForm({ token: _token, onClose, existingTier, title }: TierFormProps
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div className="tf-22">
           <div>
             <Input label="Birthday Reward" value={birthdayReward} onChange={e => setBirthdayReward(e.target.value)} placeholder="e.g. Free drink" />
             <div style={hintStyle}>Special reward on customer&apos;s birthday</div>
           </div>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingTop: 6 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-              <input type="checkbox" checked={priorityQueue} onChange={e => setPriorityQueue(e.target.checked)} style={{ width: 16, height: 16 }} />
+          <div className="tf-23">
+            <label className="tf-24">
+              <input type="checkbox" checked={priorityQueue} onChange={e => setPriorityQueue(e.target.checked)} className="tf-25" />
               Priority Queue
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-              <input type="checkbox" checked={exclusiveOffers} onChange={e => setExclusiveOffers(e.target.checked)} style={{ width: 16, height: 16 }} />
+            <label className="tf-26">
+              <input type="checkbox" checked={exclusiveOffers} onChange={e => setExclusiveOffers(e.target.checked)} className="tf-27" />
               Exclusive Offers
             </label>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div className="tf-28">
         <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? 'Saving...' : isEdit ? 'Update Tier' : 'Create Tier'}
         </button>

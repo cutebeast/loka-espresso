@@ -99,3 +99,66 @@
   font-weight: 500;
   letter-spacing: 0.2px;
 }
+
+.qr-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  color: white;
+  z-index: 5;
+}
+
+.qr-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.qr-loading-text {
+  font-size: 15px;
+}
+
+.qr-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  padding: 24px;
+}
+
+.qr-error-inner {
+  text-align: center;
+  color: white;
+  max-width: 280px;
+}
+
+.qr-error-text {
+  font-size: 15px;
+  margin-bottom: 20px;
+}
+
+.qr-error-btn {
+  padding: 12px 24px;
+}
+
+.qr-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qr-safe-bottom {
+  height: var(--safe-bottom);
+  flex-shrink: 0;
+}

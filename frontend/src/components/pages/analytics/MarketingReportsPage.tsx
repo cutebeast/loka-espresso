@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { apiFetch } from '@/lib/merchant-api'
 import { DonutChart, StoreSelector, DateFilter, Modal, DataTable, calcDateRange, type DatePreset } from '@/components/ui'
-import { THEME } from '@/lib/theme'
 import type { MerchantStore } from '@/lib/merchant-types'
 
 interface MarketingReportsPageProps {
@@ -35,14 +34,7 @@ interface MarketingData {
 
 /* ── Helpers ── */
 
-function ratingColor(r: number): string {
-  return r >= 4 ? '#4A7A59' : r >= 3 ? '#D99A29' : '#A83232'
-}
-
 const COLORS = ['#2C1E16', '#4A7A59', '#B85D19', '#7C3AED', '#DB2777', '#0891B2', '#4F46E5', '#DC2626', '#65A30D', '#CA8A04']
-const TIER_COLORS: Record<string, string> = {
-  bronze: '#CD7F32', silver: THEME.textSecondary, gold: '#EAB308', platinum: '#3B82F6', diamond: '#06B6D4',
-}
 const TIER_ORDER = ['platinum', 'gold', 'silver', 'bronze']
 
 const PREVIEW_COUNT = 3
@@ -54,13 +46,13 @@ function BarRow({ label, value, max, color, right }: {
 }) {
   const p = max > 0 ? (value / max) * 100 : 0
   return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
-        <span style={{ fontWeight: 500, color: THEME.textPrimary }}>{label}</span>
-        {right || <span style={{ color: THEME.textSecondary, fontWeight: 600 }}>{value}</span>}
+    <div className="br-0">
+      <div className="br-1">
+        <span className="br-2">{label}</span>
+        {right || <span className="br-3">{value}</span>}
       </div>
-      <div style={{ height: 6, background: '#F9F7F3', borderRadius: 10 }}>
-        <div style={{ height: 6, background: color, borderRadius: 10, width: `${p}%`, transition: 'width 0.3s' }} />
+      <div className="br-4">
+        <div className={`br-bar-bg bg-color-${COLORS.indexOf(color) >= 0 ? COLORS.indexOf(color) : 0} w-p-${Math.round(p)}`} />
       </div>
     </div>
   )
@@ -71,7 +63,7 @@ function RankingList({ items, maxVal, colorOffset, totalLabel, onShowAll }: {
   totalLabel: string; onShowAll?: () => void
 }) {
   if (items.length === 0) {
-    return <div style={{ color: THEME.textSecondary, textAlign: 'center', padding: 30, fontSize: 13 }}>No data in this period</div>
+    return <div className="rl-5">No data in this period</div>
   }
   const preview = items.slice(0, PREVIEW_COUNT)
   return (
@@ -79,14 +71,11 @@ function RankingList({ items, maxVal, colorOffset, totalLabel, onShowAll }: {
       {preview.map(([name, count], i) => (
         <BarRow key={name} label={name} value={count} max={maxVal}
           color={COLORS[(i + colorOffset) % COLORS.length]}
-          right={<span style={{ color: THEME.textSecondary, fontWeight: 600 }}>{count}</span>}
+          right={<span className="rl-6">{count}</span>}
         />
       ))}
-      <div style={{
-        marginTop: 10, paddingTop: 10, borderTop: '1px solid #F9F7F3',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13,
-      }}>
-        <span style={{ color: THEME.textSecondary }}>{totalLabel}</span>
+      <div className="rl-7">
+        <span className="rl-8">{totalLabel}</span>
         {items.length > PREVIEW_COUNT && onShowAll && (
           <button className="btn btn-sm" onClick={onShowAll}>
             <i className="fas fa-expand"></i> View All ({items.length})
@@ -145,9 +134,9 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
   if (loading && !data) {
     return (
       <div>
-        <div style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: 24 }}></i>
-          <p style={{ marginTop: 12 }}>Loading...</p>
+        <div className="mrp-9">
+          <span className="mrp-10"><i className="fas fa-spinner fa-spin"></i></span>
+          <p className="mrp-11">Loading...</p>
         </div>
       </div>
     )
@@ -156,10 +145,10 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
   if (error) {
     return (
       <div>
-        <div className="card" style={{ textAlign: 'center', padding: 40, color: THEME.error }}>
-          <i className="fas fa-exclamation-circle" style={{ fontSize: 24 }}></i>
+        <div className="card mrp-12" >
+          <span className="mrp-13"><i className="fas fa-exclamation-circle"></i></span>
           <p>{error}</p>
-          <button className="btn btn-primary" onClick={fetchData} style={{ marginTop: 8 }}>Retry</button>
+          <button className="btn btn-primary mrp-14" onClick={fetchData} >Retry</button>
         </div>
       </div>
     )
@@ -170,7 +159,7 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
   return (
     <div>
       {/* Filter Bar - Store and Date on left */}
-      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+      <div className="mrp-15">
         <StoreSelector
           stores={stores.filter((s) => s.is_active && s.id !== 0).map((s) => ({ id: String(s.id), name: s.name }))}
           selectedStore={localStore}
@@ -185,22 +174,13 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
       </div>
 
       {/* Stats Bar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-bullhorn" style={{ marginRight: 8, color: THEME.primary }}></i>
-          <strong style={{ color: THEME.textPrimary }}>{effectiveRange.from}</strong> — <strong style={{ color: THEME.textPrimary }}>{effectiveRange.to}</strong>
-          <span style={{ marginLeft: 12, color: THEME.textMuted }}>({storeLabel})</span>
+      <div className="mrp-16">
+        <div className="mrp-17">
+          <span className="mrp-18"><i className="fas fa-bullhorn"></i></span>
+          <strong className="mrp-19">{effectiveRange.from}</strong> — <strong className="mrp-20">{effectiveRange.to}</strong>
+          <span className="mrp-21">({storeLabel})</span>
         </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+        <div className="mrp-22">
           Marketing Report
         </div>
       </div>
@@ -208,22 +188,22 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
       {/* ═══════════════════════════════════════
           ROW 1: KPI + Top Rewards + Top Vouchers
           ═══════════════════════════════════════ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24, marginTop: 20 }}>
+      <div className="mrp-23">
 
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ color: THEME.textMuted, fontSize: 13 }}>Total Redemptions</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: THEME.warning }}>
+        <div className="card mrp-24" >
+          <div className="mrp-25">Total Redemptions</div>
+          <div className="mrp-26">
             {data.rewards.total_redemptions + data.vouchers.total_usages}
           </div>
-          <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 4 }}>
+          <div className="mrp-27">
             {data.rewards.total_redemptions} reward · {data.vouchers.total_usages} voucher
           </div>
         </div>
 
-        <div className="card" style={{ padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h4 style={{ margin: 0, fontSize: 14 }}>Top Rewards Redeemed</h4>
-            <span className="badge badge-green" style={{ fontSize: 11 }}>{data.rewards.total_redemptions}</span>
+        <div className="card mrp-28" >
+          <div className="mrp-29">
+            <h4 className="mrp-30">Top Rewards Redeemed</h4>
+            <span className="badge badge-green mrp-31" >{data.rewards.total_redemptions}</span>
           </div>
           <RankingList
             items={topRedeemed} maxVal={topRedeemedMax} colorOffset={0}
@@ -232,10 +212,10 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
           />
         </div>
 
-        <div className="card" style={{ padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h4 style={{ margin: 0, fontSize: 14 }}>Top Vouchers Used</h4>
-            <span className="badge badge-blue" style={{ fontSize: 11 }}>{data.vouchers.total_usages}</span>
+        <div className="card mrp-32" >
+          <div className="mrp-33">
+            <h4 className="mrp-34">Top Vouchers Used</h4>
+            <span className="badge badge-blue mrp-35" >{data.vouchers.total_usages}</span>
           </div>
           <RankingList
             items={topUsed} maxVal={topUsedMax} colorOffset={2}
@@ -249,32 +229,28 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
           ROW 2: Feedback
           ═══════════════════════════════════════ */}
       {data.feedback.total > 0 && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isAllStores ? '1fr 1fr 1fr' : '1fr 1fr',
-          gap: 16, marginBottom: 24,
-        }}>
+        <div className={`mrp-grid-feedback ${isAllStores ? 'grid-cols-3' : 'grid-cols-2'}`}>
 
-          <div className="card" style={{ textAlign: 'center' }}>
-            <h4 style={{ fontSize: 14, marginBottom: 16 }}>Feedback</h4>
-            <div style={{ marginBottom: 12 }}>
-              <span style={{ fontSize: 40, fontWeight: 700, color: ratingColor(data.feedback.average_rating) }}>
+          <div className="card mrp-36" >
+            <h4 className="mrp-37">Feedback</h4>
+            <div className="mrp-38">
+              <span className={`mrp-rating-big ${data.feedback.average_rating >= 4 ? 'rating-high' : data.feedback.average_rating >= 3 ? 'rating-mid' : 'rating-low'}`}>
                 {data.feedback.average_rating.toFixed(1)}
               </span>
-              <span style={{ color: THEME.warning, fontSize: 22, marginLeft: 4 }}>★</span>
+              <span className="mrp-39">★</span>
             </div>
-            <div style={{ display: 'grid', gap: 8, textAlign: 'left', fontSize: 13 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: THEME.textMuted }}>Total</span>
-                <span style={{ fontWeight: 600 }}>{data.feedback.total}</span>
+            <div className="mrp-40">
+              <div className="mrp-41">
+                <span className="mrp-42">Total</span>
+                <span className="mrp-43">{data.feedback.total}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: THEME.textMuted }}>Resolved</span>
-                <span style={{ fontWeight: 600, color: THEME.accent }}>{data.feedback.resolved}</span>
+              <div className="mrp-44">
+                <span className="mrp-45">Resolved</span>
+                <span className="mrp-46">{data.feedback.resolved}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: THEME.textMuted }}>Unreplied</span>
-                <span style={{ fontWeight: 600, color: data.feedback.unreplied > 0 ? THEME.error : THEME.accent }}>
+              <div className="mrp-47">
+                <span className="mrp-48">Unreplied</span>
+                <span className={`mrp-unreplied-text ${data.feedback.unreplied > 0 ? 'text-error' : 'text-accent'}`}>
                   {data.feedback.unreplied}
                 </span>
               </div>
@@ -282,7 +258,7 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
           </div>
 
           <div className="card">
-            <h4 style={{ fontSize: 14, marginBottom: 12 }}>Rating Distribution</h4>
+            <h4 className="mrp-49">Rating Distribution</h4>
             <DonutChart
               data={[5, 4, 3, 2, 1]
                 .filter(s => (ratingDist[String(s)] ?? 0) > 0)
@@ -293,9 +269,9 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
           </div>
 
           {isAllStores && (
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h4 style={{ margin: 0, fontSize: 14 }}>Feedback by Store</h4>
+            <div className="card mrp-50" >
+              <div className="mrp-51">
+                <h4 className="mrp-52">Feedback by Store</h4>
                 {feedbackByStore.length > PREVIEW_COUNT && (
                   <button className="btn btn-sm" onClick={() => setShowFeedbackStoreModal(true)}>
                     <i className="fas fa-expand"></i> All ({feedbackByStore.length})
@@ -303,21 +279,17 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
                 )}
               </div>
               {feedbackByStore.slice(0, PREVIEW_COUNT).map(([name, info], i) => (
-                <div key={name} style={{
-                  marginBottom: i < Math.min(feedbackByStore.length, PREVIEW_COUNT) - 1 ? 12 : 0,
-                  paddingBottom: i < Math.min(feedbackByStore.length, PREVIEW_COUNT) - 1 ? 12 : 0,
-                  borderBottom: i < Math.min(feedbackByStore.length, PREVIEW_COUNT) - 1 ? '1px solid #F9F7F3' : 'none',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 2 }}>
-                    <span style={{ fontWeight: 500 }}>
-                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: COLORS[i % COLORS.length], marginRight: 6 }} />
+                <div key={name} className={i < Math.min(feedbackByStore.length, PREVIEW_COUNT) - 1 ? 'mrp-feedback-item-border' : 'mrp-feedback-item-noborder'}>
+                  <div className="mrp-53">
+                    <span className="mrp-54">
+                      <span className={`mrp-dot-8 bg-color-${i % COLORS.length}`} />
                       {name}
                     </span>
-                    <span style={{ fontWeight: 600, color: ratingColor(info.avg_rating) }}>
+                    <span className={`mrp-rating-text ${info.avg_rating >= 4 ? 'rating-high' : info.avg_rating >= 3 ? 'rating-mid' : 'rating-low'}`}>
                       {info.avg_rating.toFixed(1)} ★
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: THEME.textMuted }}>{info.count} reviews</div>
+                  <div className="mrp-55">{info.count} reviews</div>
                 </div>
               ))}
             </div>
@@ -329,24 +301,24 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
           ROW 3: Loyalty (All Stores only)
           ═══════════════════════════════════════ */}
       {isAllStores && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+        <div className="mrp-56">
 
-          <div className="card" style={{ textAlign: 'center' }}>
-            <h4 style={{ fontSize: 14, marginBottom: 16 }}>Loyalty Members</h4>
-            <div style={{ fontSize: 36, fontWeight: 700, color: THEME.textPrimary }}>{data.loyalty.total_members}</div>
-            <div style={{ fontSize: 13, color: THEME.textMuted, marginTop: 4 }}>total members</div>
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${THEME.borderLight}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                <span style={{ color: THEME.textMuted }}>Avg Points/Member</span>
-                <span style={{ fontWeight: 600 }}>
+          <div className="card mrp-57" >
+            <h4 className="mrp-58">Loyalty Members</h4>
+            <div className="mrp-59">{data.loyalty.total_members}</div>
+            <div className="mrp-60">total members</div>
+            <div className="mrp-61">
+              <div className="mrp-62">
+                <span className="mrp-63">Avg Points/Member</span>
+                <span className="mrp-64">
                   {data.loyalty.total_members > 0
                     ? Math.round(data.loyalty.points_issued / data.loyalty.total_members).toLocaleString()
                     : 0}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: THEME.textMuted }}>Redemption Rate</span>
-                <span style={{ fontWeight: 600 }}>
+              <div className="mrp-65">
+                <span className="mrp-66">Redemption Rate</span>
+                <span className="mrp-67">
                   {data.loyalty.points_issued > 0
                     ? ((data.loyalty.points_redeemed / data.loyalty.points_issued) * 100).toFixed(0)
                     : 0}%
@@ -356,7 +328,7 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
           </div>
 
           <div className="card">
-            <h4 style={{ fontSize: 14, marginBottom: 12 }}>Tier Distribution</h4>
+            <h4 className="mrp-68">Tier Distribution</h4>
             <DonutChart
               data={TIER_ORDER
                 .filter(t => (data.loyalty.tier_distribution[t] ?? 0) > 0)
@@ -367,16 +339,13 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
               size={140}
               formatValue={v => `${v}`}
             />
-            <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div className="mrp-69">
               {TIER_ORDER.map(tier => {
                 const count = data.loyalty.tier_distribution[tier] ?? 0
                 if (count === 0) return null
                 return (
-                  <span key={tier} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, padding: '3px 8px',
-                    background: THEME.borderLight, borderRadius: 6, color: THEME.textPrimary,
-                  }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 2, background: TIER_COLORS[tier], display: 'inline-block' }} />
+                  <span key={tier} className="mrp-70">
+                    <span className={`mrp-tier-dot tier-bg-${tier}`} />
                     {tier}: {count}
                   </span>
                 )
@@ -385,35 +354,29 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
           </div>
 
           <div className="card">
-            <h4 style={{ fontSize: 14, marginBottom: 16 }}>Points Flow</h4>
-            <div style={{ display: 'grid', gap: 16 }}>
+            <h4 className="mrp-71">Points Flow</h4>
+            <div className="mrp-72">
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span style={{ color: THEME.textMuted }}>Issued</span>
-                  <span style={{ fontWeight: 600, color: THEME.warning }}>{data.loyalty.points_issued.toLocaleString()}</span>
+                <div className="mrp-73">
+                  <span className="mrp-74">Issued</span>
+                  <span className="mrp-75">{data.loyalty.points_issued.toLocaleString()}</span>
                 </div>
-                <div style={{ height: 8, background: THEME.borderLight, borderRadius: 10 }}>
-                  <div style={{ height: 8, background: THEME.warning, borderRadius: 10, width: '100%' }} />
+                <div className="mrp-76">
+                  <div className="mrp-77" />
                 </div>
               </div>
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span style={{ color: THEME.textMuted }}>Redeemed</span>
-                  <span style={{ fontWeight: 600, color: THEME.warning }}>{data.loyalty.points_redeemed.toLocaleString()}</span>
+                <div className="mrp-78">
+                  <span className="mrp-79">Redeemed</span>
+                  <span className="mrp-80">{data.loyalty.points_redeemed.toLocaleString()}</span>
                 </div>
-                <div style={{ height: 8, background: THEME.borderLight, borderRadius: 10 }}>
-                  <div style={{
-                    height: 8, background: THEME.warning, borderRadius: 10,
-                    width: `${data.loyalty.points_issued > 0 ? (data.loyalty.points_redeemed / data.loyalty.points_issued) * 100 : 0}%`,
-                  }} />
+                <div className="mrp-81">
+                  <div className={`mrp-loyalty-bar bg-warning w-p-${Math.round(data.loyalty.points_issued > 0 ? (data.loyalty.points_redeemed / data.loyalty.points_issued) * 100 : 0)}`} />
                 </div>
               </div>
-              <div style={{
-                padding: '10px 12px', background: THEME.borderLight, borderRadius: 10,
-                fontSize: 13, display: 'flex', justifyContent: 'space-between',
-              }}>
-                <span style={{ color: THEME.textMuted }}>Net Outstanding</span>
-                <span style={{ fontWeight: 700, color: THEME.textPrimary }}>
+              <div className="mrp-82">
+                <span className="mrp-83">Net Outstanding</span>
+                <span className="mrp-84">
                   {(data.loyalty.points_issued - data.loyalty.points_redeemed).toLocaleString()} pts
                 </span>
               </div>
@@ -427,26 +390,23 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
           ═══════════════════════════════════════ */}
 
       <Modal isOpen={showRedemptionsModal} onClose={() => setShowRedemptionsModal(false)} title="All Reward Redemptions" size="lg">
-        <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+        <div className="mrp-85">
           {topRedeemed.map(([name, count], i) => {
             const total = data.rewards.total_redemptions || 1
             return (
-              <div key={name} style={{
-                marginBottom: 14, paddingBottom: 14,
-                borderBottom: i < topRedeemed.length - 1 ? '1px solid #F9F7F3' : 'none',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, color: THEME.textPrimary }}>
-                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[i % COLORS.length], marginRight: 8 }} />
+              <div key={name} className={`mrp-redemption-item ${i < topRedeemed.length - 1 ? 'border-bottom-light' : 'border-bottom-none'}`}>
+                <div className="mrp-86">
+                  <span className="mrp-87">
+                    <span className={`mrp-dot-10 bg-color-${i % COLORS.length}`} />
                     {name}
                   </span>
-                  <span style={{ fontWeight: 600, color: THEME.textPrimary }}>{count}</span>
+                  <span className="mrp-88">{count}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ flex: 1, height: 8, background: THEME.borderLight, borderRadius: 10 }}>
-                    <div style={{ height: 8, background: COLORS[i % COLORS.length], borderRadius: 10, width: `${(count / total) * 100}%` }} />
+                <div className="mrp-89">
+                  <div className="mrp-90">
+                    <div className={`mrp-bar-track bg-color-${i % COLORS.length} w-p-${Math.round((count / total) * 100)}`} />
                   </div>
-                  <span style={{ fontSize: 12, color: THEME.textMuted, minWidth: 40, textAlign: 'right' }}>
+                  <span className="mrp-91">
                     {((count / total) * 100).toFixed(1)}%
                   </span>
                 </div>
@@ -457,26 +417,23 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
       </Modal>
 
       <Modal isOpen={showVoucherUsageModal} onClose={() => setShowVoucherUsageModal(false)} title="All Voucher Usage" size="lg">
-        <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+        <div className="mrp-92">
           {topUsed.map(([code, count], i) => {
             const total = data.vouchers.total_usages || 1
             return (
-              <div key={code} style={{
-                marginBottom: 14, paddingBottom: 14,
-                borderBottom: i < topUsed.length - 1 ? '1px solid #F9F7F3' : 'none',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, fontFamily: 'monospace', color: THEME.textPrimary }}>
-                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[(i + 2) % COLORS.length], marginRight: 8 }} />
+              <div key={code} className={`mrp-redemption-item ${i < topUsed.length - 1 ? 'border-bottom-light' : 'border-bottom-none'}`}>
+                <div className="mrp-93">
+                  <span className="mrp-94">
+                    <span className={`mrp-dot-10 bg-color-${(i + 2) % COLORS.length}`} />
                     {code}
                   </span>
-                  <span style={{ fontWeight: 600, color: THEME.textPrimary }}>{count}</span>
+                  <span className="mrp-95">{count}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ flex: 1, height: 8, background: THEME.borderLight, borderRadius: 10 }}>
-                    <div style={{ height: 8, background: COLORS[(i + 2) % COLORS.length], borderRadius: 10, width: `${(count / total) * 100}%` }} />
+                <div className="mrp-96">
+                  <div className="mrp-97">
+                    <div className={`mrp-bar-track bg-color-${(i + 2) % COLORS.length} w-p-${Math.round((count / total) * 100)}`} />
                   </div>
-                  <span style={{ fontSize: 12, color: THEME.textMuted, minWidth: 40, textAlign: 'right' }}>
+                  <span className="mrp-98">
                     {((count / total) * 100).toFixed(1)}%
                   </span>
                 </div>
@@ -487,21 +444,21 @@ export default function MarketingReportsPage({ token: _token, stores }: Marketin
       </Modal>
 
       <Modal isOpen={showFeedbackStoreModal} onClose={() => setShowFeedbackStoreModal(false)} title="Feedback by Store" size="lg">
-        <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+        <div className="mrp-99">
           <DataTable<{ label: string; count: number; avg_rating: number }>
             data={feedbackByStore.map(([name, info]) => ({ label: name, count: info.count, avg_rating: info.avg_rating }))}
             columns={[
               { key: 'label', header: 'Store', render: (row) => {
                 const idx = feedbackByStore.findIndex(([n]) => n === row.label);
                 return (
-                <span style={{ fontWeight: 500, color: THEME.textPrimary }}>
-                  <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: COLORS[idx % COLORS.length], marginRight: 8 }} />
+                <span className="mrp-100">
+                  <span className={`mrp-dot-10 bg-color-${idx % COLORS.length}`} />
                   {row.label}
                 </span>
               );}},
-              { key: 'count', header: 'Reviews', render: (row) => <span style={{ fontWeight: 500 }}>{row.count}</span> },
+              { key: 'count', header: 'Reviews', render: (row) => <span className="mrp-101">{row.count}</span> },
               { key: 'avg_rating', header: 'Avg Rating', render: (row) => (
-                <span style={{ fontWeight: 600, color: ratingColor(row.avg_rating) }}>{row.avg_rating.toFixed(1)} ★</span>
+                <span className={`mrp-rating-text ${row.avg_rating >= 4 ? 'rating-high' : row.avg_rating >= 3 ? 'rating-mid' : 'rating-low'}`}>{row.avg_rating.toFixed(1)} ★</span>
               )},
             ]}
             emptyMessage="No feedback data"

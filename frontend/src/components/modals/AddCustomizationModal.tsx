@@ -22,15 +22,15 @@ export function AddCustomizationForm({ storeId: _storeId, itemId, token: _token,
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Option Name</label>
+      <div className="acf-0">
+        <label className="acf-1">Option Name</label>
         <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Less Ice, Extra Sugar, Oat Milk" />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Price Adjustment (RM)</label>
+      <div className="acf-2">
+        <label className="acf-3">Price Adjustment (RM)</label>
         <input type="number" step="0.01" value={priceAdj} onChange={e => setPriceAdj(e.target.value)} />
       </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+      <button type="submit" className="btn btn-primary acf-4"  disabled={saving}>
         {saving ? 'Saving...' : 'Add Option'}
       </button>
     </form>

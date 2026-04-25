@@ -95,95 +95,51 @@ export function DateFilter({ preset, onChange, fromDate, toDate }: DateFilterPro
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      flexWrap: 'nowrap',
-      alignItems: 'center',
-      gap: 4,
-      background: THEME.bgCard,
-      padding: '4px',
-      borderRadius: THEME.radius.xl,
-      boxShadow: THEME.shadow.sm,
-      border: `1px solid ${THEME.border}`,
-    }}>
+    <div className="df-0">
       {PRESETS.map(p => (
         <button
           key={p.value}
           onClick={() => handlePreset(p.value)}
+          className="df-preset"
           style={{
-            padding: '8px 14px',
-            borderRadius: THEME.radius.xl,
-            border: 'none',
             background: preset === p.value ? THEME.primary : 'transparent',
             color: preset === p.value ? THEME.textLight : THEME.textMuted,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
             boxShadow: preset === p.value ? THEME.shadow.md : 'none',
-            whiteSpace: 'nowrap',
           }}
         >
           {p.label}
         </button>
       ))}
 
-      <div style={{
-        width: 1,
-        height: 24,
-        background: THEME.border,
-        margin: '0 4px',
-      }} />
+      <div className="df-1" />
 
       <button
         onClick={() => handlePreset('CUSTOM')}
+        className="df-custom"
         style={{
-          padding: '8px 14px',
-          borderRadius: THEME.radius.xl,
           border: preset === 'CUSTOM' ? `2px solid ${THEME.primary}` : `1px solid ${THEME.border}`,
           background: preset === 'CUSTOM' ? THEME.bgMuted : 'transparent',
           color: preset === 'CUSTOM' ? THEME.textPrimary : THEME.textMuted,
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
         }}
       >
-        <i className="fas fa-calendar" style={{ fontSize: 12 }} />
+        <span className="df-2"><i className="fas fa-calendar" /></span>
         Custom
       </button>
 
       {showCustom && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+        <div className="df-3">
           <input
             type="date"
             value={fromDate}
             onChange={e => handleCustomFrom(e.target.value)}
-            style={{
-              padding: '6px 10px',
-              borderRadius: THEME.radius.md,
-              border: `1px solid ${THEME.border}`,
-              fontSize: 12,
-              color: THEME.textPrimary,
-              outline: 'none',
-            }}
+            className="df-4"
           />
-          <span style={{ color: THEME.textMuted, fontSize: 12 }}>to</span>
+          <span className="df-5">to</span>
           <input
             type="date"
             value={toDate}
             onChange={e => handleCustomTo(e.target.value)}
-            style={{
-              padding: '6px 10px',
-              borderRadius: THEME.radius.md,
-              border: `1px solid ${THEME.border}`,
-              fontSize: 12,
-              color: THEME.textPrimary,
-              outline: 'none',
-            }}
+            className="df-6"
           />
         </div>
       )}

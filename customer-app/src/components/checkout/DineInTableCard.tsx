@@ -10,9 +10,9 @@ interface DineInTableCardProps {
 
 export default function DineInTableCard({ tableNumber, storeName, onScanDifferent }: DineInTableCardProps) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-copper-soft" style={{ border: '1px solid rgba(209,142,56,0.2)' }}>
+    <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-copper-soft ditc-card">
       <div className="w-12 h-12 rounded-[14px] bg-copper flex items-center justify-center shrink-0">
-        <span style={{ fontSize: 22 }}>🍽️</span>
+        <span className="ditc-emoji">🍽️</span>
       </div>
       <div className="flex-1">
         <p className="text-base font-bold text-brown">

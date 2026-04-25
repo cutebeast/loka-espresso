@@ -15,27 +15,24 @@
 @import "../styles/home-cards.css";
 @import "../styles/home-products.css";
 @import "../styles/home-bottom-nav.css";
-@import "../styles/menu-browse.css";
-/* ── Split from menu-browse.css ── */
+@import "../styles/notifications.css";
 @import "../styles/qr-scanner.css";
 @import "../styles/menu-grid.css";
 @import "../styles/category-nav.css";
 @import "../styles/customize-sheet.css";
 @import "../styles/info-cards.css";
-@import "../styles/account.css";
-/* ── Split from account.css ── */
 @import "../styles/profile.css";
 @import "../styles/wallet.css";
 @import "../styles/my-rewards.css";
 @import "../styles/history.css";
 @import "../styles/payment-methods.css";
 @import "../styles/settings.css";
-@import "../styles/orders.css";
-/* ── Split from orders.css ── */
 @import "../styles/cart.css";
 @import "../styles/orders-list.css";
 @import "../styles/order-detail.css";
 @import "../styles/checkout.css";
+@import "../styles/modals.css";
+@import "../styles/sub-components.css";
 
 /* ============================================
    REMAINING UTILITY CLASSES (not in modules)

@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, FormEvent, useRef } from 'reac
 import Image from 'next/image';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { Select, Pagination, Drawer } from '@/components/ui';
-import { THEME } from '@/lib/theme';
 
 interface RewardItem {
   id: number;
@@ -112,52 +111,36 @@ export default function RewardsPage({ token }: RewardsPageProps) {
       </Drawer>
 
       {error && (
-        <div className="badge badge-red" style={{ marginBottom: 12, display: 'inline-flex' }}>
-          <i className="fas fa-exclamation-circle" style={{ marginRight: 6 }}></i> {error}
+        <div className="badge badge-red rp-0" >
+          <span className="rp-1"><i className="fas fa-exclamation-circle"></i></span> {error}
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
+      <div className="rp-2">
         <button className="btn btn-primary" onClick={openCreate}>
           <i className="fas fa-plus"></i> New Reward
         </button>
       </div>
 
       {/* Stats Bar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-        marginTop: 20,
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-gift" style={{ marginRight: 8, color: THEME.primary }}></i>
-          Showing <strong style={{ color: THEME.textPrimary }}>{rewards.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{total}</strong> rewards
+      <div className="rp-3">
+        <div className="rp-4">
+          <span className="rp-5"><i className="fas fa-gift"></i></span>
+          Showing <strong className="rp-6">{rewards.length}</strong> of <strong className="rp-7">{total}</strong> rewards
         </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+        <div className="rp-8">
           Page {page} of {totalPages}
         </div>
       </div>
 
       {loading && rewards.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: THEME.textMuted }}><i className="fas fa-spinner fa-spin"></i> Loading...</div>
+        <div className="rp-9"><i className="fas fa-spinner fa-spin"></i> Loading...</div>
       ) : rewards.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-          <i className="fas fa-gift" style={{ fontSize: 40, marginBottom: 16 }}></i>
+        <div className="card rp-10" >
+          <span className="rp-11"><i className="fas fa-gift"></i></span>
           <p>No rewards configured</p>
         </div>
       ) : (
-        <div style={{
-          overflowX: 'auto',
-          borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
-          background: THEME.bgCard,
-          border: `1px solid ${THEME.border}`,
-          borderTop: 'none',
-        }}>
+        <div className="rp-12">
           <table>
             <thead>
               <tr><th>Image</th><th>Code</th><th>Name</th><th>Type</th><th>Points</th><th>Redeemed</th><th>Status</th><th>Actions</th></tr>
@@ -167,40 +150,40 @@ export default function RewardsPage({ token }: RewardsPageProps) {
                 <tr key={reward.id}>
                   <td>
                     {reward.image_url ? (
-                      <Image src={cacheBust(reward.image_url)} alt="" width={50} height={50} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} />
+                      <Image src={cacheBust(reward.image_url)} alt="" width={50} height={50} className="rp-13" />
                     ) : (
-                      <div style={{ width: 50, height: 50, background: THEME.bgMuted, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.success, fontSize: 18 }}>
+                      <div className="rp-14">
                         <i className="fas fa-gift"></i>
                       </div>
                     )}
                   </td>
-                  <td><span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: 13 }}>{reward.code || '-'}</span></td>
+                  <td><span className="rp-15">{reward.code || '-'}</span></td>
                   <td>
-                    <div style={{ fontWeight: 600 }}>{reward.name}</div>
+                    <div className="rp-16">{reward.name}</div>
                     {reward.short_description && (
-                      <div style={{ fontSize: 12, color: THEME.success, marginTop: 2 }}>{reward.short_description}</div>
+                      <div className="rp-17">{reward.short_description}</div>
                     )}
                   </td>
-                  <td style={{ textTransform: 'capitalize' }}>{(reward.reward_type || 'free_item').replace('_', ' ')}</td>
+                  <td className="rp-18">{(reward.reward_type || 'free_item').replace('_', ' ')}</td>
                   <td><span className="badge badge-blue">{(reward.points_cost ?? 0).toLocaleString()} pts</span></td>
                   <td>{reward.total_redeemed ?? 0}</td>
                   <td>
-                    <button className="btn btn-sm" onClick={() => toggleActive(reward)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
+                    <button className="btn btn-sm rp-19" onClick={() => toggleActive(reward)} >
                       <span className={`badge ${reward.is_active ? 'badge-green' : 'badge-gray'}`}>
                         {reward.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </button>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div className="rp-20">
                       <button className="btn btn-sm" onClick={() => openEdit(reward)}><i className="fas fa-edit"></i></button>
                       {confirmDelete === reward.id ? (
                         <>
-                          <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(reward.id)}>Confirm</button>
+                          <button className="btn btn-sm rp-21"  onClick={() => handleDelete(reward.id)}>Confirm</button>
                           <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
                         </>
                       ) : (
-                        <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(reward.id)}>
+                        <button className="btn btn-sm rp-22"  onClick={() => setConfirmDelete(reward.id)}>
                           <i className="fas fa-trash"></i>
                         </button>
                       )}
@@ -296,31 +279,31 @@ function RewardFormPage({ token: _token, existingReward, onBack }: { token: stri
     <div>
       <div className="card">
         {error && (
-          <div style={{ background: '#FEE2E2', color: '#A83232', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+          <div className="rfp-23">
             <i className="fas fa-exclamation-circle"></i> {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div className="rfp-24">
             <div>
-              <label style={labelStyle}>Name *</label>
+              <label className="rp-label">Name *</label>
               <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Free Coffee" />
             </div>
             <div>
-              <label style={labelStyle}>Code <span style={{ color: THEME.success, fontWeight: 400 }}>(blank = auto)</span></label>
-              <input value={code} onChange={e => setCode(e.target.value)} placeholder="RWD-{auto}" style={{ textTransform: 'uppercase' }} />
+              <label className="rp-label">Code <span className="rfp-25">(blank = auto)</span></label>
+              <input value={code} onChange={e => setCode(e.target.value)} placeholder="RWD-{auto}" className="rfp-26" />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div className="rfp-27">
             <div>
-              <label style={labelStyle}>Points Cost *</label>
+              <label className="rp-label">Points Cost *</label>
               <input type="number" min="0" value={pointsCost} onChange={e => setPointsCost(e.target.value)} required placeholder="e.g. 500" />
-              <div style={hintStyle}>Loyalty points customer spends to redeem this reward</div>
+              <div className="rp-hint">Loyalty points customer spends to redeem this reward</div>
             </div>
             <div>
-              <label style={labelStyle}>Reward Type *</label>
+              <label className="rp-label">Reward Type *</label>
               <Select
                 value={rewardType}
                 onChange={(val) => setRewardType(val)}
@@ -333,68 +316,68 @@ function RewardFormPage({ token: _token, existingReward, onBack }: { token: stri
             </div>
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Short Description</label>
-            <textarea value={shortDescription} onChange={e => setShortDescription(e.target.value)} placeholder="Brief summary..." rows={2} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }} />
+          <div className="rfp-28">
+            <label className="rp-label">Short Description</label>
+            <textarea value={shortDescription} onChange={e => setShortDescription(e.target.value)} placeholder="Brief summary..." rows={2} className="rfp-29" />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Detail Description</label>
-            <textarea value={longDescription} onChange={e => setLongDescription(e.target.value)} placeholder="Full content shown when customer taps to view details..." rows={4} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }} />
+          <div className="rfp-30">
+            <label className="rp-label">Detail Description</label>
+            <textarea value={longDescription} onChange={e => setLongDescription(e.target.value)} placeholder="Full content shown when customer taps to view details..." rows={4} className="rfp-31" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div className="rfp-32">
             <div>
-              <label style={labelStyle}>Stock Limit</label>
+              <label className="rp-label">Stock Limit</label>
               <input type="number" min="0" value={stockLimit} onChange={e => setStockLimit(e.target.value)} placeholder="Blank = unlimited" />
-              <div style={hintStyle}>Leave blank for unlimited stock</div>
+              <div className="rp-hint">Leave blank for unlimited stock</div>
             </div>
             <div>
-              <label style={labelStyle}>Validity Days <span style={{ color: THEME.success, fontWeight: 400 }}>(after redemption)</span></label>
+              <label className="rp-label">Validity Days <span className="rfp-33">(after redemption)</span></label>
               <input type="number" min="1" value={validityDays} onChange={e => setValidityDays(e.target.value)} placeholder="30" />
             </div>
             <div>
-              <label style={labelStyle}>Min Spend (RM) <span style={{ color: THEME.success, fontWeight: 400 }}>(optional)</span></label>
+              <label className="rp-label">Min Spend (RM) <span className="rfp-34">(optional)</span></label>
               <input type="number" min="0" step="0.01" value={minSpend} onChange={e => setMinOrder(e.target.value)} placeholder="0" />
-              <div style={hintStyle}>Minimum spend to use this reward. 0 = no minimum.</div>
+              <div className="rp-hint">Minimum spend to use this reward. 0 = no minimum.</div>
             </div>
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Terms &amp; Conditions</label>
-            <textarea value={terms} onChange={e => setTerms(e.target.value)} placeholder="One per line" rows={3} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1px solid ${THEME.accentLight}`, fontSize: 14, resize: 'vertical' }} />
+          <div className="rfp-35">
+            <label className="rp-label">Terms &amp; Conditions</label>
+            <textarea value={terms} onChange={e => setTerms(e.target.value)} placeholder="One per line" rows={3} className="rfp-36" />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>How to Redeem</label>
+          <div className="rfp-37">
+            <label className="rp-label">How to Redeem</label>
             <input value={howToRedeem} onChange={e => setHowToRedeem(e.target.value)} placeholder="e.g. Show this screen at checkout" />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Image</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <input type="file" ref={fileRef} accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+          <div className="rfp-38">
+            <label className="rp-label">Image</label>
+            <div className="rfp-39">
+              <input type="file" ref={fileRef} accept="image/*" onChange={handleImageUpload} className="rfp-40" />
               <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
                 {uploading ? 'Uploading...' : 'Upload Image'}
               </button>
               {imageUrl && (
                 <>
-                  <Image src={imageUrl} alt="" width={40} height={40} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} />
-                  <button type="button" className="btn btn-sm" onClick={() => setImageUrl('')} style={{ color: '#EF4444' }}><i className="fas fa-times"></i></button>
+                  <Image src={imageUrl} alt="" width={40} height={40} className="rfp-41" />
+                  <button type="button" className="btn btn-sm rfp-42" onClick={() => setImageUrl('')} ><i className="fas fa-times"></i></button>
                 </>
               )}
             </div>
-            <div style={hintStyle}><i className="fas fa-info-circle" style={{ marginRight: 4 }}></i>Recommended: <strong>720 × 405 px (16:9)</strong> · WebP/PNG · Max 200 KB</div>
+            <div className="rp-hint"><span className="rfp-43"><i className="fas fa-info-circle"></i></span>Recommended: <strong>720 × 405 px (16:9)</strong> · WebP/PNG · Max 200 KB</div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+          <div className="rfp-44">
             <button type="submit" className="btn btn-primary" disabled={saving}>
               {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
             </button>
             <button type="button" className="btn" onClick={onBack}>Cancel</button>
-            <div style={{ flex: 1 }} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-              <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} style={{ width: 16, height: 16 }} />
+            <div className="rfp-45" />
+            <label className="rfp-46">
+              <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="rfp-47" />
               Active
             </label>
           </div>
@@ -404,5 +387,3 @@ function RewardFormPage({ token: _token, existingReward, onBack }: { token: stri
   );
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primary };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.success, marginTop: 2 };

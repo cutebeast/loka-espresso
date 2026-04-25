@@ -82,20 +82,19 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
       {/* Scanner Area */}
       <div className="scanner-area">
         {isLoading && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: 'white', zIndex: 5 }}>
-            <div style={{ width: 36, height: 36, border: '3px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--loka-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-            <p style={{ fontSize: 15 }}>Starting camera…</p>
+          <div className="qr-loading">
+            <div className="qr-spinner" />
+            <p className="qr-loading-text">Starting camera…</p>
           </div>
         )}
 
         {error && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, padding: 24 }}>
-            <div style={{ textAlign: 'center', color: 'white', maxWidth: 280 }}>
-              <p style={{ fontSize: 15, marginBottom: 20 }}>{error}</p>
+          <div className="qr-error-overlay">
+            <div className="qr-error-inner">
+              <p className="qr-error-text">{error}</p>
               <button
                 onClick={startScanner}
-                className="btn btn-primary btn-pill"
-                style={{ padding: '12px 24px' }}
+                className="btn btn-primary btn-pill qr-error-btn"
               >
                 Try Again
               </button>
@@ -105,7 +104,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
 
         <video
           ref={videoRef}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          className="qr-video"
           playsInline
           muted
         />
@@ -125,7 +124,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
       </div>
 
       {/* Bottom safe area */}
-      <div style={{ height: 'var(--safe-bottom)', flexShrink: 0 }} />
+      <div className="qr-safe-bottom" />
     </div>
   );
 }

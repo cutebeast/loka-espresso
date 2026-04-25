@@ -1,7 +1,5 @@
 'use client';
 
-import { THEME } from '@/lib/theme';
-
 interface PaginationProps {
   page: number;
   totalPages: number;
@@ -21,35 +19,16 @@ export function Pagination({ page, totalPages, onPageChange, loading }: Paginati
   const canNext = page < totalPages && !loading;
 
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 12,
-      marginTop: 20,
-      padding: '12px',
-      background: THEME.bgCard,
-      borderRadius: THEME.radius.md,
-      border: `1px solid ${THEME.border}`,
-    }}>
+    <div className="p-0">
       <button
-        className="btn btn-sm"
+        className={`p-btn ${!canPrev ? 'p-btn-disabled' : 'p-btn-enabled'}`}
         disabled={!canPrev}
         onClick={() => onPageChange(page - 1)}
-        style={{
-          padding: '8px 16px',
-          borderRadius: THEME.radius.md,
-          border: `1px solid ${THEME.border}`,
-          background: !canPrev ? THEME.bgMuted : THEME.bgCard,
-          color: !canPrev ? THEME.textMuted : THEME.textPrimary,
-          cursor: !canPrev ? 'not-allowed' : 'pointer',
-          opacity: !canPrev ? 0.6 : 1,
-        }}
       >
         <i className="fas fa-chevron-left"></i> Previous
       </button>
 
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div className="p-1">
         {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
           let pageNum: number;
           if (totalPages <= 5) {
@@ -67,16 +46,7 @@ export function Pagination({ page, totalPages, onPageChange, loading }: Paginati
             <button
               key={pageNum}
               onClick={() => onPageChange(pageNum)}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: THEME.radius.md,
-                border: `1px solid ${isActive ? THEME.primary : THEME.border}`,
-                background: isActive ? THEME.primary : THEME.bgCard,
-                color: isActive ? THEME.textLight : THEME.textPrimary,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
+              className={`p-page-btn ${isActive ? 'p-page-btn-active' : 'p-page-btn-normal'}`}
             >
               {pageNum}
             </button>
@@ -85,18 +55,9 @@ export function Pagination({ page, totalPages, onPageChange, loading }: Paginati
       </div>
 
       <button
-        className="btn btn-sm"
+        className={`p-btn ${!canNext ? 'p-btn-disabled' : 'p-btn-enabled'}`}
         disabled={!canNext}
         onClick={() => onPageChange(page + 1)}
-        style={{
-          padding: '8px 16px',
-          borderRadius: THEME.radius.md,
-          border: `1px solid ${THEME.border}`,
-          background: !canNext ? THEME.bgMuted : THEME.bgCard,
-          color: !canNext ? THEME.textMuted : THEME.textPrimary,
-          cursor: !canNext ? 'not-allowed' : 'pointer',
-          opacity: !canNext ? 0.6 : 1,
-        }}
       >
         Next <i className="fas fa-chevron-right"></i>
       </button>

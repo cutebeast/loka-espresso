@@ -51,25 +51,17 @@ function OpeningHoursEditor({ value, onChange }: { value: OpeningHoursState; onC
     });
   }
 
-  const inputStyle: React.CSSProperties = {
-    border: `1px solid ${THEME.accentLight}`,
-    borderRadius: 8,
-    padding: '4px 8px',
-    fontSize: 13,
-    width: 90,
-    outline: 'none',
-  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="ohe-0">
       {DAY_KEYS.map(key => (
-        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: 130, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+        <div key={key} className="ohe-1">
+          <label className="ohe-2">
             <input
               type="checkbox"
               checked={value[key]?.enabled || false}
               onChange={e => updateDay(key, 'enabled', e.target.checked)}
-              style={{ accentColor: THEME.primary }}
+              className="ohe-3"
             />
             {DAY_LABELS[key]}
           </label>
@@ -78,15 +70,15 @@ function OpeningHoursEditor({ value, onChange }: { value: OpeningHoursState; onC
             value={value[key]?.open || '09:00'}
             onChange={e => updateDay(key, 'open', e.target.value)}
             disabled={!value[key]?.enabled}
-            style={{ ...inputStyle, opacity: value[key]?.enabled ? 1 : 0.4 }}
+            className={`ss-input ${value[key]?.enabled ? 'opacity-1' : 'opacity-0-4'}`}
           />
-          <span style={{ fontSize: 12, color: THEME.textMuted }}>to</span>
+          <span className="ohe-4">to</span>
           <input
             type="time"
             value={value[key]?.close || '22:00'}
             onChange={e => updateDay(key, 'close', e.target.value)}
             disabled={!value[key]?.enabled}
-            style={{ ...inputStyle, opacity: value[key]?.enabled ? 1 : 0.4 }}
+            className={`ss-input ${value[key]?.enabled ? 'opacity-1' : 'opacity-0-4'}`}
           />
         </div>
       ))}
@@ -131,53 +123,41 @@ export default function StoreSettingsPage({ stores, token, onRefresh }: StoreSet
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
+      <div className="ssp-5">
         <button className="btn btn-primary" onClick={() => setShowAdd(true)}><i className="fas fa-plus"></i> Add Store</button>
       </div>
 
       {error && (
-        <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+        <div className="ssp-6">
           <i className="fas fa-exclamation-circle"></i> {error}
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: 16 }}>
+      <div className="ssp-7">
         {stores.map(s => (
-          <div key={s.id} className="card" style={{ padding: '20px 24px', opacity: s.is_active ? 1 : 0.6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div key={s.id} className={`card ss-store-card ${s.is_active ? 'opacity-1' : 'opacity-0-6'}`}>
+            <div className="ssp-8">
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700 }}>{s.name} {!s.is_active && <span style={{ fontSize: 12, color: '#EF4444', fontWeight: 500 }}>(Inactive)</span>}</div>
-                <div style={{ fontSize: 13, color: THEME.success, marginTop: 4 }}>{s.address}</div>
-                <div style={{ fontSize: 12, color: THEME.success, marginTop: 4 }}>
+                <div className="ssp-9">{s.name} {!s.is_active && <span className="ssp-10">(Inactive)</span>}</div>
+                <div className="ssp-11">{s.address}</div>
+                <div className="ssp-12">
                   Slug: <code>{s.slug}</code> · Phone: {s.phone || '-'} · Pickup lead: {s.pickup_lead_minutes || '-'} min
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <span style={{
-                    fontSize: 11,
-                    padding: '2px 8px',
-                    borderRadius: 4,
-                    fontWeight: 600,
-                    background: s.pos_integration_enabled ? '#ECFDF5' : '#FEF3C7',
-                    color: s.pos_integration_enabled ? '#059669' : '#B45309',
-                  }}>
+                <div className="ssp-13">
+                  <span className={`ss-badge ${s.pos_integration_enabled ? 'ss-badge-green' : 'ss-badge-yellow'}`}>
+                  
                     POS: {s.pos_integration_enabled ? 'API' : 'Manual'}
                   </span>
-                  <span style={{
-                    fontSize: 11,
-                    padding: '2px 8px',
-                    borderRadius: 4,
-                    fontWeight: 600,
-                    background: s.delivery_integration_enabled ? '#ECFDF5' : '#FEF3C7',
-                    color: s.delivery_integration_enabled ? '#059669' : '#B45309',
-                  }}>
+                  <span className={`ss-badge ${s.delivery_integration_enabled ? 'ss-badge-green' : 'ss-badge-yellow'}`}>
+                  
                     Delivery: {s.delivery_integration_enabled ? 'API' : 'Manual'}
                   </span>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div className="ssp-14">
                 <button className="btn btn-sm" onClick={() => setEditingStore(s)}><i className="fas fa-edit"></i> Edit</button>
                 {s.id === 0 ? (
-                  <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, background: THEME.bgMuted, color: THEME.primary, fontWeight: 500 }}>Main Store — Cannot deactivate</span>
+                  <span className="ssp-15">Main Store — Cannot deactivate</span>
                 ) : (
                   <button
                     className={`btn btn-sm ${s.is_active ? '' : 'btn-primary'}`}
@@ -245,74 +225,74 @@ function AddStoreForm({ token: _token, onClose }: { token: string; onClose: () =
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 20 }}>
+      <div className="asf-16">
         <button className="btn btn-sm" onClick={onClose}><i className="fas fa-arrow-left"></i> Back</button>
       </div>
       <div className="card">
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Store Name *</label>
+          <div className="asf-17">
+            <label className="asf-18">Store Name *</label>
             <input value={name} onChange={e => { setName(e.target.value); if (!slug) setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-')); }} required placeholder="e.g. ZUS Coffee Bangsar" />
           </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Slug *</label>
+          <div className="asf-19">
+            <label className="asf-20">Slug *</label>
             <input value={slug} onChange={e => setSlug(e.target.value)} required placeholder="e.g. zus-bangsar" />
           </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Address</label>
-            <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} style={{ outline: 'none', border: `1px solid ${THEME.accentLight}`, borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%' }} />
+          <div className="asf-21">
+            <label className="asf-22">Address</label>
+            <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className="asf-23" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div className="asf-24">
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Phone</label>
+              <label className="asf-25">Phone</label>
               <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+60 3-XXXX XXXX" />
             </div>
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Pickup Lead Time (min)</label>
+              <label className="asf-26">Pickup Lead Time (min)</label>
               <input type="number" value={pickupLead} onChange={e => setPickupLead(e.target.value)} min={0} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div className="asf-27">
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Latitude</label>
+              <label className="asf-28">Latitude</label>
               <input type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} placeholder="e.g. 3.1390" />
             </div>
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Longitude</label>
+              <label className="asf-29">Longitude</label>
               <input type="number" step="any" value={lng} onChange={e => setLng(e.target.value)} placeholder="e.g. 101.6869" />
             </div>
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Delivery Radius (km)</label>
+              <label className="asf-30">Delivery Radius (km)</label>
               <input type="number" step="any" value={deliveryRadius} onChange={e => setDeliveryRadius(e.target.value)} placeholder="e.g. 5.0" />
             </div>
           </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Image URL</label>
+          <div className="asf-31">
+            <label className="asf-32">Image URL</label>
             <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
           </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Integrations</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', border: `1px solid ${THEME.accentLight}`, borderRadius: 8, background: '#FAFAFA' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                <input type="checkbox" checked={posIntegration} onChange={e => setPosIntegration(e.target.checked)} style={{ accentColor: THEME.primary }} />
+          <div className="asf-33">
+            <label className="asf-34">Integrations</label>
+            <div className="asf-35">
+              <label className="asf-36">
+                <input type="checkbox" checked={posIntegration} onChange={e => setPosIntegration(e.target.checked)} className="asf-37" />
                 <span>POS API Integration</span>
-                <span style={{ fontSize: 11, color: THEME.success }}>— Auto-sync orders to POS/KDS</span>
+                <span className="asf-38">— Auto-sync orders to POS/KDS</span>
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                <input type="checkbox" checked={deliveryIntegration} onChange={e => setDeliveryIntegration(e.target.checked)} style={{ accentColor: THEME.primary }} />
+              <label className="asf-39">
+                <input type="checkbox" checked={deliveryIntegration} onChange={e => setDeliveryIntegration(e.target.checked)} className="asf-40" />
                 <span>Delivery API Integration</span>
-                <span style={{ fontSize: 11, color: THEME.success }}>— Auto-dispatch to Grab/Lalamove/etc</span>
+                <span className="asf-41">— Auto-dispatch to Grab/Lalamove/etc</span>
               </label>
-              <div style={{ fontSize: 11, color: '#B45309', marginTop: 4 }}>
+              <div className="asf-42">
                 <i className="fas fa-info-circle"></i> When disabled, staff must manually sync orders. Default is Manual (recommended for launch).
               </div>
             </div>
           </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Opening Hours</label>
+          <div className="asf-43">
+            <label className="asf-44">Opening Hours</label>
             <OpeningHoursEditor value={openingHours} onChange={setOpeningHours} />
           </div>
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div className="asf-45">
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Creating...' : 'Create Store'}</button>
             <button type="button" className="btn" onClick={onClose}>Cancel</button>
           </div>
@@ -372,31 +352,31 @@ function EditStoreForm({ store, token: _token, onClose }: { store: MerchantStore
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div className="esf-46">
         <h3>Edit: {store.name}</h3>
         <button className="btn btn-sm" onClick={onClose}><i className="fas fa-arrow-left"></i> Back</button>
       </div>
       <div className="card">
         {error && (
-          <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+          <div className="esf-47">
             <i className="fas fa-exclamation-circle"></i> {error}
           </div>
         )}
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 12 }}>
+          <div className="esf-48">
             <label style={labelStyle}>Store Name *</label>
             <input value={name} onChange={e => setName(e.target.value)} required />
           </div>
-          <div style={{ marginBottom: 12 }}>
+          <div className="esf-49">
             <label style={labelStyle}>Slug</label>
-            <input value={store.slug} disabled style={{ background: THEME.bgMuted }} />
+            <input value={store.slug} disabled className="esf-50" />
             <div style={hintStyle}>Slug cannot be changed after creation</div>
           </div>
-          <div style={{ marginBottom: 12 }}>
+          <div className="esf-51">
             <label style={labelStyle}>Address</label>
-            <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} style={{ outline: 'none', border: `1px solid ${THEME.accentLight}`, borderRadius: 12, padding: '8px 14px', fontSize: 14, width: '100%' }} />
+            <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className="esf-52" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div className="esf-53">
             <div>
               <label style={labelStyle}>Phone</label>
               <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+60 3-XXXX XXXX" />
@@ -407,7 +387,7 @@ function EditStoreForm({ store, token: _token, onClose }: { store: MerchantStore
               <div style={hintStyle}>How far in advance customers must order for pickup</div>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div className="esf-54">
             <div>
               <label style={labelStyle}>Latitude</label>
               <input type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} placeholder="e.g. 3.1390" />
@@ -421,33 +401,33 @@ function EditStoreForm({ store, token: _token, onClose }: { store: MerchantStore
               <input type="number" step="any" value={deliveryRadius} onChange={e => setDeliveryRadius(e.target.value)} placeholder="e.g. 5.0" />
             </div>
           </div>
-          <div style={{ marginBottom: 12 }}>
+          <div className="esf-55">
             <label style={labelStyle}>Image URL</label>
             <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
           </div>
-          <div style={{ marginBottom: 12 }}>
+          <div className="esf-56">
             <label style={labelStyle}>Integrations</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', border: `1px solid ${THEME.accentLight}`, borderRadius: 8, background: '#FAFAFA' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                <input type="checkbox" checked={posIntegration} onChange={e => setPosIntegration(e.target.checked)} style={{ accentColor: THEME.primary }} />
+            <div className="esf-57">
+              <label className="esf-58">
+                <input type="checkbox" checked={posIntegration} onChange={e => setPosIntegration(e.target.checked)} className="esf-59" />
                 <span>POS API Integration</span>
-                <span style={{ fontSize: 11, color: THEME.success }}>— Auto-sync orders to POS/KDS</span>
+                <span className="esf-60">— Auto-sync orders to POS/KDS</span>
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                <input type="checkbox" checked={deliveryIntegration} onChange={e => setDeliveryIntegration(e.target.checked)} style={{ accentColor: THEME.primary }} />
+              <label className="esf-61">
+                <input type="checkbox" checked={deliveryIntegration} onChange={e => setDeliveryIntegration(e.target.checked)} className="esf-62" />
                 <span>Delivery API Integration</span>
-                <span style={{ fontSize: 11, color: THEME.success }}>— Auto-dispatch to Grab/Lalamove/etc</span>
+                <span className="esf-63">— Auto-dispatch to Grab/Lalamove/etc</span>
               </label>
-              <div style={{ fontSize: 11, color: '#B45309', marginTop: 4 }}>
+              <div className="esf-64">
                 <i className="fas fa-info-circle"></i> When disabled, staff must manually sync orders. Default is Manual (recommended for launch).
               </div>
             </div>
           </div>
-          <div style={{ marginBottom: 12 }}>
+          <div className="esf-65">
             <label style={labelStyle}>Opening Hours</label>
             <OpeningHoursEditor value={openingHours} onChange={setOpeningHours} />
           </div>
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div className="esf-66">
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
             <button type="button" className="btn" onClick={onClose}>Cancel</button>
           </div>

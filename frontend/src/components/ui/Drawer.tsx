@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import { THEME } from '@/lib/theme';
 
 interface DrawerProps {
   isOpen: boolean;
@@ -32,70 +31,23 @@ export function Drawer({ isOpen, onClose, title, children, width = 500 }: Drawer
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 200,
-      display: 'flex',
-      justifyContent: 'flex-end',
-    }}>
+    <div className="d-0">
       <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(2px)',
-          animation: 'fadeIn 0.2s ease',
-        }}
+        className="d-1"
         onClick={onClose}
       />
-      <div style={{
-        position: 'relative',
-        width: width,
-        maxWidth: '90vw',
-        height: '100vh',
-        background: THEME.bgCard,
-        boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.15)',
-        display: 'flex',
-        flexDirection: 'column',
-        animation: 'slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        zIndex: 1,
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '20px 24px',
-          borderBottom: `1px solid ${THEME.border}`,
-          background: THEME.bgCard,
-        }}>
-          <h2 style={{
-            margin: 0,
-            fontSize: 18,
-            fontWeight: 700,
-            color: THEME.textPrimary,
-          }}>{title}</h2>
+      <div className="d-panel" style={{ width: width }}>
+        <div className="d-2">
+          <h2 className="d-3">{title}</h2>
           <button
-            className="btn btn-sm"
+            className="btn btn-sm d-4"
             onClick={onClose}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: THEME.radius.md,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 0,
-            }}
+            
           >
             <i className="fas fa-times"></i>
           </button>
         </div>
-        <div style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: 24,
-        }}>
+        <div className="d-5">
           {children}
         </div>
       </div>

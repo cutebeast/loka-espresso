@@ -59,7 +59,7 @@ export default function PaymentMethodsPage() {
           </button>
           <h1 className="sub-page-title">Payment Methods</h1>
         </div>
-        <div style={{ width: 36 }} />
+        <div className="pm-spacer" />
       </div>
 
       <div className="payment-content-scroll">
@@ -67,7 +67,7 @@ export default function PaymentMethodsPage() {
         <div className="payment-wallet-card">
           <div className="payment-wallet-row">
             <span className="payment-wallet-label">
-              <Wallet size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+              <Wallet size={14} className="pm-wallet-icon" />
               Loka Balance
             </span>
             <button className="payment-wallet-topup-btn" onClick={() => setPage('wallet')}>
@@ -82,14 +82,16 @@ export default function PaymentMethodsPage() {
 
         {loading ? (
           <>
-            <div className="skeleton" style={{ height: 72, borderRadius: 20 }} />
-            <div className="skeleton" style={{ height: 72, borderRadius: 20 }} />
+            <div className="skeleton pm-skeleton" />
+            <div className="skeleton pm-skeleton" />
           </>
         ) : methods.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '32px 20px', background: 'white', borderRadius: 20, border: '1px solid var(--loka-border-light)' }}>
-            <CreditCard size={36} color="#D4DCE5" style={{ margin: '0 auto 10px' }} />
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#6A7A8A' }}>No saved cards</p>
-            <p style={{ fontSize: 12, color: '#3A4A5A', marginTop: 4 }}>Add a card for faster checkout</p>
+          <div className="pm-empty">
+            <div className="pm-empty-icon">
+              <CreditCard size={36} color="#D4DCE5" />
+            </div>
+            <p className="pm-empty-title">No saved cards</p>
+            <p className="pm-empty-desc">Add a card for faster checkout</p>
           </div>
         ) : (
           methods.map((m) => (

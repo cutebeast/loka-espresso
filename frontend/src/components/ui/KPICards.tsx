@@ -1,5 +1,7 @@
 'use client';
 
+import { THEME } from '@/lib/theme';
+
 interface KPICardProps {
   icon: string;
   iconColor?: string;
@@ -13,6 +15,20 @@ interface KPICardProps {
   subtitle?: string;
 }
 
+function getIconColorClass(color?: string) {
+  if (!color || color === '#2C1E16') return 'kc-icon-dark';
+  if (color === THEME.primary) return 'kc-icon-primary';
+  if (color === THEME.accentCopper) return 'kc-icon-copper';
+  if (color === THEME.accent) return 'kc-icon-accent';
+  if (color === THEME.accentBrown) return 'kc-icon-brown';
+  return 'kc-icon-dark';
+}
+
+function getIconBgClass(bg?: string) {
+  if (bg === THEME.bgMuted) return 'kc-icon-bg-muted';
+  return 'kc-icon-bg-default';
+}
+
 export function KPICard({
   icon,
   iconColor = '#2C1E16',
@@ -23,68 +39,28 @@ export function KPICard({
   subtitle,
 }: KPICardProps) {
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: 16,
-      padding: '20px',
-      border: '1px solid #E5E0D8',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    }}>
-      <div style={{ flex: 1 }}>
-        <div style={{
-          fontSize: 13,
-          color: '#6B635E',
-          marginBottom: 4,
-          fontWeight: 500,
-        }}>
+    <div className="kc-0">
+      <div className="kc-1">
+        <div className="kc-2">
           {label}
         </div>
-        <div style={{
-          fontSize: 28,
-          fontWeight: 700,
-          color: '#2C1E16',
-          lineHeight: 1.2,
-        }}>
+        <div className="kc-3">
           {value}
         </div>
         {trend && (
-          <div style={{
-            fontSize: 12,
-            color: trend.isPositive ? '#4A7A59' : '#A83232',
-            marginTop: 6,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            fontWeight: 500,
-          }}>
-            <i className={`fas fa-arrow-${trend.isPositive ? 'up' : 'down'}`} style={{ fontSize: 10 }} />
+          <div className={`kc-trend ${trend.isPositive ? 'kc-trend-up' : 'kc-trend-down'}`}>
+            <span className="kc-4"><i className={`fas fa-arrow-${trend.isPositive ? 'up' : 'down'}`} /></span>
             {Math.abs(trend.value)}% vs last period
           </div>
         )}
         {subtitle && (
-          <div style={{
-            fontSize: 11,
-            color: '#6B635E',
-            marginTop: 4,
-          }}>
+          <div className="kc-5">
             {subtitle}
           </div>
         )}
       </div>
-      <div style={{
-        width: 48,
-        height: 48,
-        borderRadius: 12,
-        background: iconBgColor,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: 16,
-      }}>
-        <i className={`fas ${icon}`} style={{ fontSize: 20, color: iconColor }} />
+      <div className={`kc-icon-wrap ${getIconBgClass(iconBgColor)}`}>
+        <i className={`fas ${icon} kc-icon ${getIconColorClass(iconColor)}`} />
       </div>
     </div>
   );
@@ -97,12 +73,7 @@ interface KPICardsProps {
 
 export function KPICards({ cards, columns = 4 }: KPICardsProps) {
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: `repeat(${columns}, 1fr)`,
-      gap: 16,
-      marginBottom: 24,
-    }}>
+    <div className={`kc-grid kc-grid-${columns}`}>
       {cards.map((card, i) => (
         <KPICard key={i} {...card} />
       ))}

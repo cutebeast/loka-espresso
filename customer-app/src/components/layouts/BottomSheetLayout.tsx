@@ -43,7 +43,7 @@ export function BottomSheetLayout({
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className={`fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-50 overflow-hidden ${className}`}
-            style={{ maxHeight, paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+            style={{ maxHeight }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Handle */}
@@ -59,7 +59,7 @@ export function BottomSheetLayout({
             )}
 
             {/* Content */}
-            <div className="overflow-y-auto px-6 pb-6" style={{ maxHeight: `calc(${maxHeight} - ${showHandle ? 60 : 0}px - ${title ? 56 : 0}px)` }}>
+            <div className="overflow-y-auto px-6 pb-6 bsl-content" style={{ maxHeight: `calc(${maxHeight} - ${showHandle ? 60 : 0}px - ${title ? 56 : 0}px)` }}>
               {children}
             </div>
           </motion.div>

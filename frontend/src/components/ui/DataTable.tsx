@@ -43,15 +43,10 @@ export function DataTable<T extends Record<string, any>>({
 }: DataTableProps<T>) {
   if (loading) {
     return (
-      <div style={{
-        background: 'white',
-        borderRadius: 16,
-        border: '1px solid #E5E0D8',
-        overflow: 'hidden',
-      }}>
-        <div style={{ padding: 40, textAlign: 'center', color: '#6B635E' }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: 24 }}></i>
-          <p style={{ marginTop: 12 }}>Loading...</p>
+      <div className="dt-0">
+        <div className="dt-1">
+          <span className="dt-2"><i className="fas fa-spinner fa-spin"></i></span>
+          <p className="dt-3">Loading...</p>
         </div>
       </div>
     );
@@ -59,15 +54,10 @@ export function DataTable<T extends Record<string, any>>({
 
   if (data.length === 0) {
     return (
-      <div style={{
-        background: 'white',
-        borderRadius: 16,
-        border: '1px solid #E5E0D8',
-        overflow: 'hidden',
-      }}>
-        <div style={{ padding: 60, textAlign: 'center', color: '#6B635E' }}>
-          <i className="fas fa-inbox" style={{ fontSize: 32, opacity: 0.5 }}></i>
-          <p style={{ marginTop: 12 }}>{emptyMessage}</p>
+      <div className="dt-4">
+        <div className="dt-5">
+          <span className="dt-6"><i className="fas fa-inbox"></i></span>
+          <p className="dt-7">{emptyMessage}</p>
         </div>
       </div>
     );
@@ -77,50 +67,26 @@ export function DataTable<T extends Record<string, any>>({
 
   return (
     <div>
-      <div style={{
-        background: 'white',
-        borderRadius: 16,
-        border: '1px solid #E5E0D8',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-      }}>
+      <div className="dt-8">
         <div className="data-table">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="dt-9">
             <thead>
-              <tr style={{ background: '#F9F7F3' }}>
+              <tr className="dt-10">
                 {columns.map(col => (
                   <th
                     key={col.key}
-                    style={{
-                      padding: '12px 16px',
-                      textAlign: 'left',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#6B635E',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      borderBottom: '1px solid #E5E0D8',
-                      width: col.width,
-                    }}
+                    className="dt-th"
+                    {...({ width: col.width } as any)}
                   >
                     {col.header}
                     {sortable && col.sortable && (
-                      <i className="fas fa-sort" style={{ marginLeft: 6, fontSize: 10, opacity: 0.5 }}></i>
+                      <span className="dt-11"><i className="fas fa-sort"></i></span>
                     )}
                   </th>
                 ))}
                 {actions.length > 0 && (
-                  <th style={{
-                    padding: '12px 16px',
-                    textAlign: 'right',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#6B635E',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    borderBottom: '1px solid #E5E0D8',
-                    width: actions.length * 80,
-                  }}>
+                  <th className="dt-th dt-th-right"
+                    {...({ width: actions.length * 80 } as any)}>
                     Actions
                   </th>
                 )}
@@ -131,47 +97,28 @@ export function DataTable<T extends Record<string, any>>({
                 <tr
                   key={idx}
                   onClick={() => onRowClick?.(row)}
-                  style={{
-                    cursor: onRowClick ? 'pointer' : 'default',
-                    transition: 'background 0.15s',
-                  }}
+                  className={`dt-row ${onRowClick ? 'cursor-pointer' : 'cursor-default'}`}
                   onMouseEnter={e => (e.currentTarget.style.background = '#F9F7F3')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   {columns.map(col => (
                     <td
                       key={col.key}
-                      style={{
-                        padding: '14px 16px',
-                        fontSize: 14,
-                        color: '#2C1E16',
-                        borderBottom: '1px solid #E5E0D8',
-                      }}
+                      className="dt-12"
                     >
                       {col.render ? col.render(row) : row[col.key]}
                     </td>
                   ))}
                   {actions.length > 0 && (
-                    <td style={{ padding: '14px 16px', borderBottom: '1px solid #E5E0D8' }}>
-                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <td className="dt-13">
+                      <div className="dt-14">
                         {actions.map((action, i) => (
                           <button
                             key={i}
                             onClick={e => { e.stopPropagation(); action.onClick(row); }}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: 8,
-                              border: 'none',
-                              fontSize: 12,
-                              fontWeight: 500,
-                              cursor: 'pointer',
-                              transition: 'all 0.15s',
-                              background: action.variant === 'danger' ? '#A83232' :
-                                         action.variant === 'ghost' ? 'transparent' : '#2C1E16',
-                              color: action.variant === 'ghost' ? '#6B635E' : 'white',
-                            }}
+                            className={`dt-action-btn ${action.variant === 'danger' ? 'dt-action-danger' : action.variant === 'ghost' ? 'dt-action-ghost' : 'dt-action-primary'}`}
                           >
-                            {action.icon && <i className={`fas ${action.icon}`} style={{ marginRight: 4 }} />}
+                            {action.icon && <span className="dt-15"><i className={`fas ${action.icon}`} /></span>}
                             {action.label}
                           </button>
                         ))}
@@ -186,29 +133,13 @@ export function DataTable<T extends Record<string, any>>({
       </div>
 
       {pagination && totalPages > 1 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: 12,
-          marginTop: 16,
-          color: '#6B635E',
-          fontSize: 13,
-        }}>
+        <div className="dt-16">
           <button
             onClick={() => pagination.onPageChange(pagination.page - 1)}
             disabled={pagination.page <= 1}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 8,
-              border: '1px solid #E5E0D8',
-              background: 'white',
-              color: pagination.page <= 1 ? '#C5BFB8' : '#2C1E16',
-              cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer',
-              fontSize: 13,
-            }}
+            className={`dt-page-btn ${pagination.page <= 1 ? 'dt-page-disabled' : 'dt-page-enabled'}`}
           >
-            <i className="fas fa-chevron-left" style={{ marginRight: 4 }} />
+            <span className="dt-17"><i className="fas fa-chevron-left" /></span>
             Prev
           </button>
           <span>
@@ -217,18 +148,10 @@ export function DataTable<T extends Record<string, any>>({
           <button
             onClick={() => pagination.onPageChange(pagination.page + 1)}
             disabled={pagination.page >= totalPages}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 8,
-              border: '1px solid #E5E0D8',
-              background: 'white',
-              color: pagination.page >= totalPages ? '#C5BFB8' : '#2C1E16',
-              cursor: pagination.page >= totalPages ? 'not-allowed' : 'pointer',
-              fontSize: 13,
-            }}
+            className={`dt-page-btn ${pagination.page >= totalPages ? 'dt-page-disabled' : 'dt-page-enabled'}`}
           >
             Next
-            <i className="fas fa-chevron-right" style={{ marginLeft: 4 }} />
+            <span className="dt-18"><i className="fas fa-chevron-right" /></span>
           </button>
         </div>
       )}
@@ -278,15 +201,10 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
 
   if (loading) {
     return (
-      <div style={{
-        background: 'white',
-        borderRadius: 16,
-        border: '1px solid #E5E0D8',
-        overflow: 'hidden',
-      }}>
-        <div style={{ padding: 40, textAlign: 'center', color: '#6B635E' }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: 24 }}></i>
-          <p style={{ marginTop: 12 }}>Loading...</p>
+      <div className="dter-19">
+        <div className="dter-20">
+          <span className="dter-21"><i className="fas fa-spinner fa-spin"></i></span>
+          <p className="dter-22">Loading...</p>
         </div>
       </div>
     );
@@ -294,15 +212,10 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
 
   if (data.length === 0) {
     return (
-      <div style={{
-        background: 'white',
-        borderRadius: 16,
-        border: '1px solid #E5E0D8',
-        overflow: 'hidden',
-      }}>
-        <div style={{ padding: 60, textAlign: 'center', color: '#6B635E' }}>
-          <i className="fas fa-inbox" style={{ fontSize: 32, opacity: 0.5 }}></i>
-          <p style={{ marginTop: 12 }}>{emptyMessage}</p>
+      <div className="dter-23">
+        <div className="dter-24">
+          <span className="dter-25"><i className="fas fa-inbox"></i></span>
+          <p className="dter-26">{emptyMessage}</p>
         </div>
       </div>
     );
@@ -312,91 +225,38 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
 
   return (
     <div>
-      <div style={{
-        background: 'white',
-        borderRadius: 16,
-        border: '1px solid #E5E0D8',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-      }}>
+      <div className="dter-27">
         <div className="data-table">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="dter-28">
             <thead>
-              <tr style={{ background: '#F9F7F3' }}>
+              <tr className="dter-29">
                 {columns.map(col => (
                   <th
                     key={col.key}
-                    style={{
-                      padding: '12px 16px',
-                      textAlign: 'left',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#6B635E',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      borderBottom: '1px solid #E5E0D8',
-                      width: col.width,
-                    }}
+                    className="dt-th"
+                    {...({ width: col.width } as any)}
                   >
                     {col.header}
                     {sortable && col.sortable && (
-                      <i className="fas fa-sort" style={{ marginLeft: 6, fontSize: 10, opacity: 0.5 }}></i>
+                      <span className="dter-30"><i className="fas fa-sort"></i></span>
                     )}
                   </th>
                 ))}
-                <th style={{
-                  padding: '12px 16px',
-                  textAlign: 'center',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#6B635E',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  borderBottom: '1px solid #E5E0D8',
-                  width: 80,
-                }}>
+                <th className="dter-31">
                   {expandColumnHeader}
                 </th>
                 {actions.length > 0 && (
-                  <th style={{
-                    padding: '12px 16px',
-                    textAlign: 'right',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#6B635E',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    borderBottom: '1px solid #E5E0D8',
-                    width: actions.length * 80,
-                  }}>
+                  <th className="dt-th dt-th-right"
+                    {...({ width: actions.length * 80 } as any)}>
                     Actions
                   </th>
                 )}
-                <th style={{
-                  padding: '12px 16px',
-                  textAlign: 'center',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#6B635E',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  borderBottom: '1px solid #E5E0D8',
-                  width: 100,
-                }}>
+                <th className="dter-32">
                   {expandColumnHeader}
                 </th>
                 {actions.length > 0 && (
-                  <th style={{
-                    padding: '12px 16px',
-                    textAlign: 'right',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#6B635E',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    borderBottom: '1px solid #E5E0D8',
-                    width: actions.length * 80,
-                  }}>
+                  <th className="dt-th dt-th-right"
+                    {...({ width: actions.length * 80 } as any)}>
                     Actions
                   </th>
                 )}
@@ -407,66 +267,37 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
                 <>
                   <tr
                     key={getRowId(row)}
-                    style={{
-                      transition: 'background 0.15s',
-                      background: isExpanded(row) ? '#F9F7F3' : 'transparent',
-                    }}
+                    className={`dter-row ${isExpanded(row) ? 'dter-row-expanded' : 'dter-row-collapsed'}`}
                     onMouseEnter={e => (e.currentTarget.style.background = '#F9F7F3')}
                     onMouseLeave={e => (e.currentTarget.style.background = isExpanded(row) ? '#F9F7F3' : 'transparent')}
                   >
                     {columns.map(col => (
                       <td
                         key={col.key}
-                        style={{
-                          padding: '14px 16px',
-                          fontSize: 14,
-                          color: '#2C1E16',
-                          borderBottom: '1px solid #E5E0D8',
-                        }}
+                        className="dter-33"
                       >
                         {col.render ? col.render(row) : row[col.key]}
                       </td>
                     ))}
-                    <td style={{ padding: '14px 16px', textAlign: 'center', borderBottom: '1px solid #E5E0D8' }}>
+                    <td className="dter-34">
                       <button
                         onClick={() => toggleRow(row)}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: 8,
-                          border: 'none',
-                          fontSize: 12,
-                          fontWeight: 500,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
-                          background: '#2C1E16',
-                          color: 'white',
-                        }}
+                        className="dter-35"
                       >
-                        <i className={`fas fa-chevron-${isExpanded(row) ? 'up' : 'down'}`} style={{ marginRight: 4 }}></i>
+                        <span className="dter-36"><i className={`fas fa-chevron-${isExpanded(row) ? 'up' : 'down'}`}></i></span>
                         {isExpanded(row) ? 'Hide' : 'View'}
                       </button>
                     </td>
                     {actions.length > 0 && (
-                      <td style={{ padding: '14px 16px', borderBottom: '1px solid #E5E0D8' }}>
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <td className="dter-37">
+                        <div className="dter-38">
                           {actions.map((action, i) => (
                             <button
                               key={i}
                               onClick={e => { e.stopPropagation(); action.onClick(row); }}
-                              style={{
-                                padding: '6px 12px',
-                                borderRadius: 8,
-                                border: 'none',
-                                fontSize: 12,
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s',
-                                background: action.variant === 'danger' ? '#A83232' :
-                                           action.variant === 'ghost' ? 'transparent' : '#2C1E16',
-                                color: action.variant === 'ghost' ? '#6B635E' : 'white',
-                              }}
+                              className={`dt-action-btn ${action.variant === 'danger' ? 'dt-action-danger' : action.variant === 'ghost' ? 'dt-action-ghost' : 'dt-action-primary'}`}
                             >
-                              {action.icon && <i className={`fas ${action.icon}`} style={{ marginRight: 4 }} />}
+                              {action.icon && <span className="dter-39"><i className={`fas ${action.icon}`} /></span>}
                               {action.label}
                             </button>
                           ))}
@@ -478,11 +309,7 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
                     <tr>
                       <td
                         colSpan={columns.length + 1 + (actions.length > 0 ? 1 : 0)}
-                        style={{
-                          padding: '16px 24px',
-                          background: '#FAFAF8',
-                          borderBottom: '1px solid #E5E0D8',
-                        }}
+                        className="dter-40"
                       >
                         {renderExpandedContent(row)}
                       </td>
@@ -496,29 +323,13 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
       </div>
 
       {pagination && totalPages > 1 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: 12,
-          marginTop: 16,
-          color: '#6B635E',
-          fontSize: 13,
-        }}>
+        <div className="dter-41">
           <button
             onClick={() => pagination.onPageChange(pagination.page - 1)}
             disabled={pagination.page <= 1}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 8,
-              border: '1px solid #E5E0D8',
-              background: 'white',
-              color: pagination.page <= 1 ? '#C5BFB8' : '#2C1E16',
-              cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer',
-              fontSize: 13,
-            }}
+            className={`dt-page-btn ${pagination.page <= 1 ? 'dt-page-disabled' : 'dt-page-enabled'}`}
           >
-            <i className="fas fa-chevron-left" style={{ marginRight: 4 }} />
+            <span className="dter-42"><i className="fas fa-chevron-left" /></span>
             Prev
           </button>
           <span>
@@ -527,18 +338,10 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
           <button
             onClick={() => pagination.onPageChange(pagination.page + 1)}
             disabled={pagination.page >= totalPages}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 8,
-              border: '1px solid #E5E0D8',
-              background: 'white',
-              color: pagination.page >= totalPages ? '#C5BFB8' : '#2C1E16',
-              cursor: pagination.page >= totalPages ? 'not-allowed' : 'pointer',
-              fontSize: 13,
-            }}
+            className={`dt-page-btn ${pagination.page >= totalPages ? 'dt-page-disabled' : 'dt-page-enabled'}`}
           >
             Next
-            <i className="fas fa-chevron-right" style={{ marginLeft: 4 }} />
+            <span className="dter-43"><i className="fas fa-chevron-right" /></span>
           </button>
         </div>
       )}

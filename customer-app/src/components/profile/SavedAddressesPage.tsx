@@ -7,20 +7,6 @@ import { useUIStore } from '@/stores/uiStore';
 import { PageHeader } from '@/components/shared';
 import api from '@/lib/api';
 
-const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  textPrimary: '#1B2023',
-  textSecondary: '#3A4A5A',
-  textMuted: '#6A7A8A',
-  border: '#D4DCE5',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  bg: '#E4EAEF',
-  white: '#FFFFFF',
-} as const;
-
 interface Address {
   id: number;
   label: string;
@@ -103,102 +89,57 @@ export default function SavedAddressesPage() {
 
   const labelIcon = (label: string) => {
     const Icon = LABEL_ICONS[label?.toLowerCase()] || MapPin;
-    return <Icon size={20} color={LOKA.primary} />;
+    return <Icon size={20} color="#384B16" />;
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: LOKA.bg }}>
+    <div className="sa-page">
       <PageHeader title="Saved Addresses" onBack={() => setPage('profile')} />
 
-      <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="sa-content">
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="sa-skeleton-list">
             {[1, 2].map((i) => (
-              <div key={i} style={{ background: LOKA.white, borderRadius: 18, padding: 16, border: `1px solid ${LOKA.borderSubtle}`, height: 80 }} />
+              <div key={i} className="skeleton sa-skeleton-item" />
             ))}
           </div>
         ) : addresses.length === 0 && !showAdd ? (
-          <div
-            style={{
-              background: LOKA.white,
-              borderRadius: 20,
-              padding: 32,
-              textAlign: 'center',
-              border: `1px solid ${LOKA.borderSubtle}`,
-            }}
-          >
-            <MapPin size={36} color={LOKA.border} style={{ margin: '0 auto 10px' }} />
-            <p style={{ fontSize: 14, fontWeight: 600, color: LOKA.textMuted }}>No saved addresses</p>
-            <p style={{ fontSize: 12, color: LOKA.textSecondary, marginTop: 4 }}>Add an address for faster delivery checkout</p>
+          <div className="sa-empty">
+            <div className="sa-empty-icon">
+              <MapPin size={36} color="#D4DCE5" />
+            </div>
+            <p className="sa-empty-title">No saved addresses</p>
+            <p className="sa-empty-desc">Add an address for faster delivery checkout</p>
           </div>
         ) : (
           addresses.map((addr) => (
             <motion.div
               key={addr.id}
               whileTap={{ scale: 0.98 }}
-              style={{
-                background: LOKA.white,
-                borderRadius: 18,
-                padding: 16,
-                border: `1px solid ${LOKA.borderSubtle}`,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 14,
-              }}
+              className="sa-item"
             >
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 14,
-                  background: '#E8EDE0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
+              <div className="sa-icon-wrap">
                 {labelIcon(addr.label)}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary }}>{addr.label}</p>
+              <div className="sa-info">
+                <div className="sa-header">
+                  <p className="sa-label">{addr.label}</p>
                   {addr.is_default && (
-                    <span
-                      style={{
-                        background: '#E8EDE0',
-                        color: LOKA.primary,
-                        padding: '2px 8px',
-                        borderRadius: 999,
-                        fontSize: 10,
-                        fontWeight: 700,
-                      }}
-                    >
+                    <span className="sa-badge">
                       Default
                     </span>
                   )}
                 </div>
-                <p style={{ fontSize: 12, color: LOKA.textSecondary, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p className="sa-address">
                   {addr.address}
                 </p>
               </div>
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handleDelete(addr.id)}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 999,
-                  border: 'none',
-                  background: 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
+                className="sa-delete-btn"
               >
-                <Trash2 size={16} color='#C75050' />
+                <Trash2 size={16} color="#C75050" />
               </motion.button>
             </motion.div>
           ))
@@ -208,77 +149,40 @@ export default function SavedAddressesPage() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            style={{
-              background: LOKA.white,
-              borderRadius: 20,
-              padding: 18,
-              border: `1px solid ${LOKA.border}`,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 14,
-            }}
+            className="sa-form"
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: LOKA.textPrimary }}>New Address</p>
-              <button onClick={() => setShowAdd(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}>
-                <X size={18} color={LOKA.textMuted} />
+            <div className="sa-form-header">
+              <p className="sa-form-title">New Address</p>
+              <button onClick={() => setShowAdd(false)} className="sa-close-btn">
+                <X size={18} color="#6A7A8A" />
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="sa-labels">
               {['Home', 'Office', 'Other'].map((lbl) => (
                 <button
                   key={lbl}
                   onClick={() => setNewLabel(lbl)}
-                  style={{
-                    flex: 1,
-                    padding: '10px 0',
-                    borderRadius: 12,
-                    background: newLabel === lbl ? LOKA.primary : LOKA.surface,
-                    color: newLabel === lbl ? LOKA.white : LOKA.textSecondary,
-                    fontWeight: 600,
-                    fontSize: 13,
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
+                  className={`sa-label-btn ${newLabel === lbl ? 'sa-label-btn-active' : 'sa-label-btn-inactive'}`}
                 >
                   {lbl}
                 </button>
               ))}
             </div>
 
-            <div style={{ position: 'relative' }}>
+            <div className="sa-input-wrap">
               <input
                 type="text"
                 value={newAddress}
                 onChange={(e) => setNewAddress(e.target.value)}
                 placeholder="Enter your address"
-                style={{
-                  width: '100%',
-                  padding: '12px 44px 12px 14px',
-                  borderRadius: 14,
-                  border: `1px solid ${LOKA.borderSubtle}`,
-                  fontSize: 14,
-                  color: LOKA.textPrimary,
-                  outline: 'none',
-                  background: LOKA.surface,
-                  boxSizing: 'border-box',
-                }}
+                className="sa-input"
               />
               <button
                 onClick={handleGetCurrentLocation}
-                style={{
-                  position: 'absolute',
-                  right: 8,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 4,
-                }}
+                className="sa-loc-btn"
               >
-                <Navigation size={18} color={LOKA.primary} />
+                <Navigation size={18} color="#384B16" />
               </button>
             </div>
 
@@ -286,21 +190,7 @@ export default function SavedAddressesPage() {
               whileTap={{ scale: 0.97 }}
               onClick={handleAdd}
               disabled={saving}
-              style={{
-                width: '100%',
-                padding: '14px 0',
-                borderRadius: 999,
-                background: saving ? LOKA.border : LOKA.primary,
-                color: LOKA.white,
-                fontWeight: 700,
-                fontSize: 14,
-                border: 'none',
-                cursor: saving ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}
+              className={`sa-save-btn ${saving ? 'sa-save-btn-disabled' : 'sa-save-btn-enabled'}`}
             >
               <Check size={18} />
               {saving ? 'Saving...' : 'Save Address'}
@@ -312,21 +202,7 @@ export default function SavedAddressesPage() {
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={() => setShowAdd(true)}
-            style={{
-              width: '100%',
-              padding: '14px 0',
-              borderRadius: 999,
-              border: `2px dashed ${LOKA.border}`,
-              background: 'transparent',
-              color: LOKA.textSecondary,
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
+            className="sa-add-btn"
           >
             <Plus size={18} /> Add Address
           </motion.button>

@@ -5,19 +5,6 @@ import { motion } from 'framer-motion';
 import type { Category } from '@/lib/api';
 import { getCategoryIcon } from '@/lib/categoryIcons';
 
-const LOKA = {
-  primary: '#384B16',
-  primaryLight: '#4A6A1D',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  cream: '#F3EEE5',
-  textPrimary: '#1B2023',
-  textMuted: '#6A7A8A',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  white: '#FFFFFF',
-} as const;
-
 interface CategoryNavProps {
   categories: Category[];
   activeCategoryId: number | null;
@@ -82,14 +69,8 @@ export default function CategoryNav({
   ];
 
   return (
-    <div ref={navRef} style={{
-      position: 'sticky', top: 0, zIndex: 15, background: LOKA.white,
-      borderBottom: `1px solid ${LOKA.borderSubtle}`, padding: '4px 0',
-    }}>
-      <div className="scroll-x" style={{
-        display: 'flex', gap: 6, overflowX: 'auto', paddingLeft: 12, paddingRight: 12, paddingBottom: 2,
-        WebkitOverflowScrolling: 'touch',
-      }}>
+    <div ref={navRef} className="category-nav">
+      <div className="scroll-x category-nav-scroll">
         {allCats.map((cat) => {
           const isActive = activeId === cat.id;
           return (
@@ -97,19 +78,10 @@ export default function CategoryNav({
               key={cat.id ?? 'all'}
               whileTap={{ scale: 0.95 }}
               onClick={() => scrollToCategory(cat.id)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                gap: 6, padding: '4px 12px', minHeight: 36,
-                borderRadius: 999, fontSize: 13, fontWeight: isActive ? 800 : 600,
-                cursor: 'pointer', border: 'none', flexShrink: 0,
-                background: isActive ? LOKA.primary : LOKA.surface,
-                color: isActive ? LOKA.white : LOKA.textPrimary,
-                transition: 'background 0.2s ease, color 0.2s ease',
-                boxShadow: isActive ? '0 3px 8px -2px rgba(56,75,22,0.3)' : 'none',
-              }}
+              className={`category-nav-btn ${isActive ? 'active' : ''}`}
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>{cat.icon}</span>
-              <span style={{ fontSize: 12, lineHeight: 1, whiteSpace: 'nowrap' }}>{cat.name}</span>
+              <span className="category-nav-icon">{cat.icon}</span>
+              <span className="category-nav-label">{cat.name}</span>
             </motion.button>
           );
         })}

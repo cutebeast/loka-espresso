@@ -107,9 +107,9 @@ export default function SalesReportsPage({ token: _token, stores }: SalesReports
   if (loading && !report) {
     return (
       <div>
-        <div style={{ textAlign: 'center', padding: 60, color: THEME.textMuted }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: 24 }}></i>
-          <p style={{ marginTop: 12 }}>Loading...</p>
+        <div className="srp-0">
+          <span className="srp-1"><i className="fas fa-spinner fa-spin"></i></span>
+          <p className="srp-2">Loading...</p>
         </div>
       </div>
     )
@@ -118,10 +118,10 @@ export default function SalesReportsPage({ token: _token, stores }: SalesReports
   if (error) {
     return (
       <div>
-        <div className="card" style={{ textAlign: 'center', padding: 40, color: '#EF4444' }}>
-          <i className="fas fa-exclamation-circle" style={{ fontSize: 24 }}></i>
+        <div className="card srp-3" >
+          <span className="srp-4"><i className="fas fa-exclamation-circle"></i></span>
           <p>{error}</p>
-          <button className="btn btn-primary" onClick={fetchData} style={{ marginTop: 8 }}>Retry</button>
+          <button className="btn btn-primary srp-5" onClick={fetchData} >Retry</button>
         </div>
       </div>
     )
@@ -132,7 +132,7 @@ export default function SalesReportsPage({ token: _token, stores }: SalesReports
   return (
     <div>
       {/* Filter Bar - Store and Date on left */}
-      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+      <div className="srp-6">
         <StoreSelector
           stores={stores.filter((s) => s.id !== 0).map((s) => ({ id: String(s.id), name: s.name }))}
           selectedStore={localStore}
@@ -147,64 +147,55 @@ export default function SalesReportsPage({ token: _token, stores }: SalesReports
       </div>
 
       {/* Stats Bar */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 16px',
-        background: THEME.bgMuted,
-        borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-        border: `1px solid ${THEME.border}`,
-        borderBottom: 'none',
-      }}>
-        <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-          <i className="fas fa-chart-line" style={{ marginRight: 8, color: THEME.primary }}></i>
-          <strong style={{ color: THEME.textPrimary }}>{effectiveRange.from}</strong> — <strong style={{ color: THEME.textPrimary }}>{effectiveRange.to}</strong>
+      <div className="srp-7">
+        <div className="srp-8">
+          <span className="srp-9"><i className="fas fa-chart-line"></i></span>
+          <strong className="srp-10">{effectiveRange.from}</strong> — <strong className="srp-11">{effectiveRange.to}</strong>
         </div>
-        <div style={{ fontSize: 13, color: THEME.textMuted }}>
+        <div className="srp-12">
           Revenue Report
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, marginBottom: 24, marginTop: 20 }}>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ color: THEME.textMuted, fontSize: 13 }}>Total Revenue</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: THEME.accent }}>{formatRM(report.total || 0)}</div>
+      <div className="srp-13">
+        <div className="card srp-14" >
+          <div className="srp-15">Total Revenue</div>
+          <div className="srp-16">{formatRM(report.total || 0)}</div>
         </div>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ color: THEME.textMuted, fontSize: 13 }}>Total Orders</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: THEME.textPrimary }}>{totalOrders.toLocaleString()}</div>
+        <div className="card srp-17" >
+          <div className="srp-18">Total Orders</div>
+          <div className="srp-19">{totalOrders.toLocaleString()}</div>
         </div>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ color: THEME.textMuted, fontSize: 13 }}>Avg Order Value</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: THEME.warning }}>{formatRM(avgOrderValue)}</div>
+        <div className="card srp-20" >
+          <div className="srp-21">Avg Order Value</div>
+          <div className="srp-22">{formatRM(avgOrderValue)}</div>
         </div>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ color: THEME.textMuted, fontSize: 13 }}>Top Store by Revenue</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: THEME.accent }}>{topStore ? topStore.name : '-'}</div>
-          {topStore && <div style={{ fontSize: 13, color: THEME.textMuted, marginTop: 2 }}>{formatRM(topStore.value)}</div>}
+        <div className="card srp-23" >
+          <div className="srp-24">Top Store by Revenue</div>
+          <div className="srp-25">{topStore ? topStore.name : '-'}</div>
+          {topStore && <div className="srp-26">{formatRM(topStore.value)}</div>}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isAllStores ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 24 }}>
+      <div className="srp-grid" style={{ gridTemplateColumns: isAllStores ? '1fr 1fr' : '1fr' }}>
         {isAllStores && (
           <div className="card">
-            <h4 style={{ fontSize: 14, marginBottom: 12, color: THEME.textPrimary }}>Revenue by Store</h4>
+            <h4 className="srp-27">Revenue by Store</h4>
             {byStoreEntries.length === 0 ? (
-              <div style={{ color: THEME.textMuted, textAlign: 'center', padding: 30, fontSize: 13 }}>No data</div>
+              <div className="srp-28">No data</div>
             ) : (
               <div>
                 {byStoreEntries.slice(0, 8).map((s, i) => {
                   const total = report.total || 1
                   const colors = ['#2C1E16', '#B85D19', '#869E66', '#4A7A59', '#D99A29', '#4A607A', '#A83232', '#6B635E']
                   return (
-                    <div key={i} style={{ marginBottom: 10 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
-                        <span style={{ fontWeight: 500, color: THEME.textPrimary }}>{s.name}</span>
-                        <span style={{ color: THEME.textMuted }}>{formatRM(s.value)} <span style={{ fontSize: 11, color: THEME.textMuted }}>({((s.value / total) * 100).toFixed(0)}%)</span></span>
+                    <div key={i} className="srp-29">
+                      <div className="srp-30">
+                        <span className="srp-31">{s.name}</span>
+                        <span className="srp-32">{formatRM(s.value)} <span className="srp-33">({((s.value / total) * 100).toFixed(0)}%)</span></span>
                       </div>
-                      <div style={{ height: 6, background: '#F9F7F3', borderRadius: 10 }}>
-                        <div style={{ height: 6, background: colors[i % colors.length], borderRadius: 10, width: `${(s.value / total) * 100}%`, transition: 'width 0.3s' }} />
+                      <div className="srp-34">
+                        <div className="srp-progress-bar" style={{ background: colors[i % colors.length], width: `${(s.value / total) * 100}%` }} />
                       </div>
                     </div>
                   )
@@ -214,9 +205,9 @@ export default function SalesReportsPage({ token: _token, stores }: SalesReports
           </div>
         )}
           <div className="card">
-            <h4 style={{ fontSize: 14, marginBottom: 12, color: THEME.textPrimary }}>Revenue by Order Type</h4>
+            <h4 className="srp-35">Revenue by Order Type</h4>
           {byTypeEntries.length === 0 ? (
-            <div style={{ color: THEME.textMuted, textAlign: 'center', padding: 30, fontSize: 13 }}>No data</div>
+            <div className="srp-36">No data</div>
           ) : (
             <DonutChart
               data={byTypeEntries}
@@ -228,22 +219,22 @@ export default function SalesReportsPage({ token: _token, stores }: SalesReports
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: THEME.textPrimary }}>
-            <i className="fas fa-chart-line" style={{ color: THEME.warning }}></i>
+        <div className="srp-37">
+          <h4 className="srp-38">
+            <span className="srp-39"><i className="fas fa-chart-line"></i></span>
             Daily Revenue
           </h4>
-          <div style={{ display: 'flex', gap: 16, fontSize: 13, color: THEME.textMuted }}>
-            <span><strong style={{ color: THEME.textPrimary }}>{formatRM(report.total || 0)}</strong> total</span>
+          <div className="srp-40">
+            <span><strong className="srp-41">{formatRM(report.total || 0)}</strong> total</span>
             {(() => {
               const vals = byDayEntries.map(d => d.value)
               const days = vals.length || 1
-              return <span><strong style={{ color: THEME.textPrimary }}>{formatRM(vals.reduce((a, b) => a + b, 0) / days)}</strong> avg/day</span>
+              return <span><strong className="srp-42">{formatRM(vals.reduce((a, b) => a + b, 0) / days)}</strong> avg/day</span>
             })()}
           </div>
         </div>
         {byDayEntries.length > 0 ? (
-          <div style={{ height: 240, position: 'relative' }}>
+          <div className="srp-43">
             <Line
               data={{
                 labels: byDayEntries.map(d => d.label),
@@ -301,7 +292,7 @@ export default function SalesReportsPage({ token: _token, stores }: SalesReports
             />
           </div>
         ) : (
-          <div style={{ color: THEME.textMuted, textAlign: 'center', padding: 30, fontSize: 13 }}>No data</div>
+          <div className="srp-44">No data</div>
         )}
       </div>
     </div>

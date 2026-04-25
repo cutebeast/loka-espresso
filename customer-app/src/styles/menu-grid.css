@@ -290,3 +290,12 @@
   justify-content: center;
   height: 100%;
 }
+
+/* ============================================
+   MIGRATED INLINE STYLES — MenuPage
+   ============================================ */
+
+.menu-skeleton {
+  height: 140px;
+  border-radius: var(--radius-xl);
+}

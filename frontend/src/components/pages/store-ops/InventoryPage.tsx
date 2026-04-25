@@ -29,8 +29,6 @@ const MOVEMENT_TYPES = [
   { value: 'adjustment', label: 'Adjustment', icon: 'fa-sliders', color: THEME.primaryLight },
 ];
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.textPrimary };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.textMuted, marginTop: 2 };
 
 export default function InventoryPage({ inventory, selectedStore, storeObj: _storeObj, token, onRefresh, userRole: _userRole, userType, stores, onStoreChange }: InventoryPageProps) {
   const isHQ = userType === 1;
@@ -183,8 +181,8 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="ip-0">
+        <div className="ip-1">
           <StoreSelector
             stores={physicalStores}
             selectedStore={selectedStore === 'all' ? '' : selectedStore}
@@ -194,62 +192,42 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
           />
         </div>
         {selectedStore !== 'all' && isHQ && activeTab === 'stock' && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn" onClick={openCreateCat} style={{ whiteSpace: 'nowrap' }}><i className="fas fa-folder-plus"></i> Add Category</button>
-            <button className="btn btn-primary" onClick={openCreate} style={{ whiteSpace: 'nowrap' }}><i className="fas fa-plus"></i> New Ingredient</button>
+          <div className="ip-2">
+            <button className="btn ip-3" onClick={openCreateCat} ><i className="fas fa-folder-plus"></i> Add Category</button>
+            <button className="btn btn-primary ip-4" onClick={openCreate} ><i className="fas fa-plus"></i> New Ingredient</button>
           </div>
         )}
       </div>
 
       {selectedStore === 'all' && (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: THEME.textMuted, marginTop: 40 }}>
-          <i className="fas fa-boxes-stacked" style={{ fontSize: 48, marginBottom: 16 }}></i>
-          <p style={{ fontSize: 16 }}>Select a store to view its inventory</p>
+        <div className="card ip-5" >
+          <span className="ip-6"><i className="fas fa-boxes-stacked"></i></span>
+          <p className="ip-7">Select a store to view its inventory</p>
         </div>
       )}
 
       {selectedStore !== 'all' && (<>
 
       {/* Tab Navigation */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: `1px solid ${THEME.border}`, flexWrap: 'wrap' }}>
+      <div className="ip-8">
         <button
           onClick={() => setActiveTab('stock')}
-          style={{
-            padding: '12px 20px',
-            border: 'none',
-            borderBottom: `2px solid ${activeTab === 'stock' ? THEME.primary : 'transparent'}`,
-            background: 'transparent',
-            color: activeTab === 'stock' ? THEME.primary : THEME.textMuted,
-            fontWeight: 600,
-            fontSize: 14,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
+          className={`ip-tab ${activeTab === 'stock' ? 'ip-tab-active' : 'ip-tab-inactive'}`}
         >
-          <i className="fas fa-boxes-stacked" style={{ marginRight: 8 }}></i>
+          <span className="ip-9"><i className="fas fa-boxes-stacked"></i></span>
           Stock
         </button>
         <button
           onClick={() => setActiveTab('ledger')}
-          style={{
-            padding: '12px 20px',
-            border: 'none',
-            borderBottom: `2px solid ${activeTab === 'ledger' ? THEME.primary : 'transparent'}`,
-            background: 'transparent',
-            color: activeTab === 'ledger' ? THEME.primary : THEME.textMuted,
-            fontWeight: 600,
-            fontSize: 14,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
+          className={`ip-tab ${activeTab === 'ledger' ? 'ip-tab-active' : 'ip-tab-inactive'}`}
         >
-          <i className="fas fa-clock-rotate-left" style={{ marginRight: 8 }}></i>
+          <span className="ip-10"><i className="fas fa-clock-rotate-left"></i></span>
           Ledger
         </button>
       </div>
 
       {error && !showForm && !adjustingItem && (
-        <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+        <div className="ip-11">
           <i className="fas fa-exclamation-circle"></i> {error}
         </div>
       )}
@@ -267,19 +245,19 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
       />
       ) : (
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 220px) 1fr', gap: 24 }} className="inventory-grid">
+      <div  className="inventory-grid ip-12">
         {/* Category Sidebar */}
         <div>
           {showCatForm && isHQ && (
-            <div style={{ background: THEME.bgMuted, borderRadius: 12, padding: 12, marginBottom: 12, border: `1px solid ${THEME.accentLight}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <strong style={{ fontSize: 13 }}>{editingCat ? 'Edit Category' : 'New Category'}</strong>
-                <button className="btn btn-sm" onClick={closeCatForm} style={{ padding: '2px 6px' }}><i className="fas fa-times"></i></button>
+            <div className="ip-13">
+              <div className="ip-14">
+                <strong className="ip-15">{editingCat ? 'Edit Category' : 'New Category'}</strong>
+                <button className="btn btn-sm ip-16" onClick={closeCatForm} ><i className="fas fa-times"></i></button>
               </div>
-              {catError && <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '4px 8px', borderRadius: 6, marginBottom: 8, fontSize: 12 }}>{catError}</div>}
+              {catError && <div className="ip-17">{catError}</div>}
               <form onSubmit={handleCatSubmit}>
-                <input value={catName} onChange={e => setCatName(e.target.value)} required placeholder="Category name" style={{ marginBottom: 6, fontSize: 13 }} autoFocus />
-                <button type="submit" className="btn btn-sm btn-primary" disabled={catSaving} style={{ width: '100%', justifyContent: 'center' }}>
+                <input value={catName} onChange={e => setCatName(e.target.value)} required placeholder="Category name" className="ip-18" autoFocus />
+                <button type="submit" className="btn btn-sm btn-primary ip-19" disabled={catSaving} >
                   {catSaving ? '...' : editingCat ? 'Update' : 'Create'}
                 </button>
               </form>
@@ -287,29 +265,25 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
           )}
 
           <div className="card">
-            <h4 style={{ marginBottom: 12 }}>Categories</h4>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+            <h4 className="ip-20">Categories</h4>
+            <ul className="ip-21">
               <li>
-                  <div
-                    onClick={() => setSelectedCat(null)}
-                    style={{
-                      padding: '8px 12px', borderRadius: 10, cursor: 'pointer', marginBottom: 4,
-                      background: selectedCat === null ? THEME.bgMuted : 'transparent',
-                      fontWeight: selectedCat === null ? 600 : 400, color: THEME.textPrimary,
-                    }}
-                  >
-                  All Items ({inventory.length})
+                <div
+                  onClick={() => setSelectedCat(null)}
+                  className={`ip-cat-item ${selectedCat === null ? 'ip-cat-selected' : 'ip-cat-normal'}`}
+                >
+                  All
                 </div>
               </li>
               {categories.map(c => (
                 <li key={c.id}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, marginBottom: 4, cursor: 'pointer', background: selectedCat === c.id ? THEME.bgMuted : 'transparent', fontWeight: selectedCat === c.id ? 600 : 400, color: c.is_active ? THEME.textPrimary : THEME.textMuted, opacity: c.is_active ? 1 : 0.6 }}>
-                    <span style={{ flex: 1 }} onClick={() => setSelectedCat(c.id)}>
+                    <div className={`ip-cat-item-flex ${selectedCat === c.id ? 'ip-cat-selected' : 'ip-cat-normal'} ${c.is_active ? 'text-primary opacity-1' : 'text-muted opacity-0-6'}`}>
+                    <span className="ip-22" onClick={() => setSelectedCat(c.id)}>
                       {c.name}
-                      {!c.is_active && <span style={{ fontSize: 10, marginLeft: 6, color: '#EF4444' }}>Inactive</span>}
+                      {!c.is_active && <span className="ip-23">Inactive</span>}
                     </span>
                     {isHQ && (
-                      <button onClick={(e) => { e.stopPropagation(); openEditCat(c); }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: THEME.textMuted, fontSize: 11, padding: '2px 4px' }}><i className="fas fa-edit"></i></button>
+                      <button onClick={(e) => { e.stopPropagation(); openEditCat(c); }} className="ip-24"><i className="fas fa-edit"></i></button>
                     )}
                   </div>
                 </li>
@@ -322,55 +296,55 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
         <div>
           {/* HQ: CRUD Form */}
           {isHQ && showForm && (
-            <div className="card" style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h4 style={{ margin: 0 }}>{editingItem ? `Edit: ${editingItem.name}` : 'New Ingredient'}</h4>
+            <div className="card ip-25" >
+              <div className="ip-26">
+                <h4 className="ip-27">{editingItem ? `Edit: ${editingItem.name}` : 'New Ingredient'}</h4>
                 <button className="btn btn-sm" onClick={closeForm}><i className="fas fa-times"></i></button>
               </div>
               {error && (
-                <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+                <div className="ip-28">
                   <i className="fas fa-exclamation-circle"></i> {error}
                 </div>
               )}
               <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }} className="inventory-form-grid">
+                <div  className="inventory-form-grid ip-29">
                   <div>
-                    <label style={labelStyle}>Ingredient Name *</label>
+                    <label className="ip-label">Ingredient Name *</label>
                     <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Arabica Coffee Beans" />
-                    <div style={hintStyle}>Name of the ingredient or supply item</div>
+                    <div className="ip-hint">Name of the ingredient or supply item</div>
                   </div>
                   <div>
-                    <label style={labelStyle}>Opening Stock *</label>
+                    <label className="ip-label">Opening Stock *</label>
                     <input type="number" step="0.01" value={stock} onChange={e => setStock(e.target.value)} required />
-                    <div style={hintStyle}>Starting quantity on hand</div>
+                    <div className="ip-hint">Starting quantity on hand</div>
                   </div>
                   <div>
-                    <label style={labelStyle}>Unit *</label>
+                    <label className="ip-label">Unit *</label>
                     <Select
                       value={unit}
                       onChange={(val) => setUnit(val)}
                       options={UNITS.map(u => ({ value: u, label: u }))}
                     />
-                    <div style={hintStyle}>Measurement unit</div>
+                    <div className="ip-hint">Measurement unit</div>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }} className="inventory-form-grid-2">
+                <div  className="inventory-form-grid-2 ip-30">
                   <div>
-                    <label style={labelStyle}>Reorder Level <span style={{ fontWeight: 400, color: THEME.textMuted }}>(blank = never)</span></label>
+                    <label className="ip-label">Reorder Level <span className="ip-31">(blank = never)</span></label>
                     <input type="number" step="0.01" value={reorderLevel} onChange={e => setReorderLevel(e.target.value)} placeholder="e.g. 5" />
-                    <div style={hintStyle}>Alert when stock drops below this level</div>
+                    <div className="ip-hint">Alert when stock drops below this level</div>
                   </div>
                   <div>
-                    <label style={labelStyle}>Category</label>
+                    <label className="ip-label">Category</label>
                     <Select
                       value={catId ? String(catId) : ''}
                       onChange={(val) => setCatId(val ? Number(val) : null)}
                       options={[{ value: '', label: '— No Category —' }, ...categories.filter(c => c.is_active).map(c => ({ value: String(c.id), label: c.name }))]}
                     />
-                    <div style={hintStyle}>Group ingredients for filtering</div>
+                    <div className="ip-hint">Group ingredients for filtering</div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16, flexWrap: 'wrap' }} className="inventory-form-actions">
+                <div  className="inventory-form-actions ip-32">
                   <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingItem ? 'Update' : 'Create'}</button>
                   <button type="button" className="btn" onClick={closeForm}>Cancel</button>
                 </div>
@@ -380,47 +354,47 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
 
           {/* Adjust Inventory Form */}
           {adjustingItem && (
-            <div className="card" style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h4 style={{ margin: 0 }}>Adjust: {adjustingItem.name}</h4>
+            <div className="card ip-33" >
+              <div className="ip-34">
+                <h4 className="ip-35">Adjust: {adjustingItem.name}</h4>
                 <button className="btn btn-sm" onClick={closeAdjust}><i className="fas fa-times"></i></button>
               </div>
-              <div style={{ fontSize: 13, color: THEME.primaryLight, marginBottom: 12 }}>Current balance: <strong>{adjustingItem.current_stock} {adjustingItem.unit}</strong></div>
+              <div className="ip-36">Current balance: <strong>{adjustingItem.current_stock} {adjustingItem.unit}</strong></div>
               {error && (
-                <div style={{ background: '#FEF2F2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+                <div className="ip-37">
                   <i className="fas fa-exclamation-circle"></i> {error}
                 </div>
               )}
               <form onSubmit={handleAdjust}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }} className="inventory-form-grid">
+                <div  className="inventory-form-grid ip-38">
                   <div>
-                    <label style={labelStyle}>Movement Type *</label>
+                    <label className="ip-label">Movement Type *</label>
                     <Select
                       value={adjType}
                       onChange={(val) => setAdjType(val)}
                       options={MOVEMENT_TYPES.map(m => ({ value: m.value, label: m.label }))}
                     />
-                    <div style={hintStyle}>
+                    <div className="ip-hint">
                       {['waste', 'transfer_out'].includes(adjType) ? '⚠ This will DEDUCT from current balance' : 'This will ADD to current balance'}
                     </div>
                   </div>
                   <div>
-                    <label style={labelStyle}>Quantity *</label>
+                    <label className="ip-label">Quantity *</label>
                     <input type="number" step="0.01" value={adjQty} onChange={e => setAdjQty(e.target.value)} required placeholder="e.g. 5" min="0.01" />
-                    <div style={hintStyle}>Amount to add or deduct</div>
+                    <div className="ip-hint">Amount to add or deduct</div>
                   </div>
                   <div>
-                    <label style={labelStyle}>Note / Reason *</label>
+                    <label className="ip-label">Note / Reason *</label>
                     <input value={adjNote} onChange={e => setAdjNote(e.target.value)} required placeholder="e.g. Delivery from supplier" />
-                    <div style={hintStyle}>Required — explain why this adjustment</div>
+                    <div className="ip-hint">Required — explain why this adjustment</div>
                   </div>
                 </div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={labelStyle}>Attachment <span style={{ fontWeight: 400, color: THEME.textMuted }}>(optional)</span></label>
-                  <input type="file" accept="image/*,.pdf,.csv,.xlsx" onChange={e => setAdjFile(e.target.files?.[0] || null)} style={{ fontSize: 13 }} />
-                  <div style={hintStyle}>Receipt, delivery note, or waste photo (max 10MB)</div>
+                <div className="ip-39">
+                  <label className="ip-label">Attachment <span className="ip-40">(optional)</span></label>
+                  <input type="file" accept="image/*,.pdf,.csv,.xlsx" onChange={e => setAdjFile(e.target.files?.[0] || null)} className="ip-41" />
+                  <div className="ip-hint">Receipt, delivery note, or waste photo (max 10MB)</div>
                 </div>
-                <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap' }} className="inventory-form-actions">
+                <div  className="inventory-form-actions ip-42">
                   <button type="submit" className="btn btn-primary" disabled={savingAdj}>{savingAdj ? 'Processing...' : 'Submit Adjustment'}</button>
                   <button type="button" className="btn" onClick={closeAdjust}>Cancel</button>
                 </div>
@@ -429,70 +403,54 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
           )}
 
           {/* Stats Bar */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 16px',
-            background: THEME.bgMuted,
-            borderRadius: `${THEME.radius.md} ${THEME.radius.md} 0 0`,
-            border: `1px solid ${THEME.border}`,
-            borderBottom: 'none',
-            marginTop: 20,
-          }}>
-            <div style={{ fontSize: 14, color: THEME.textSecondary }}>
-              <i className="fas fa-boxes-stacked" style={{ marginRight: 8, color: THEME.primary }}></i>
-              Showing <strong style={{ color: THEME.textPrimary }}>{filteredItems.length}</strong> of <strong style={{ color: THEME.textPrimary }}>{inventory.length}</strong> items
+          <div className="ip-43">
+            <div className="ip-44">
+              <span className="ip-45"><i className="fas fa-boxes-stacked"></i></span>
+              Showing <strong className="ip-46">{filteredItems.length}</strong> of <strong className="ip-47">{inventory.length}</strong> items
             </div>
           </div>
 
           {/* Table */}
-          <div style={{
-            overflowX: 'auto',
-            borderRadius: `0 0 ${THEME.radius.md} ${THEME.radius.md}`,
-            background: THEME.bgCard,
-            border: `1px solid ${THEME.border}`,
-            borderTop: 'none',
-          }}>
+          <div className="ip-48">
             <table className="inventory-table">
               <thead>
                 <tr><th>Ingredient</th><th>Category</th><th>Balance</th><th>Unit</th><th>Reorder Level</th><th>Status</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {filteredItems.length === 0 ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', color: THEME.textMuted, padding: 40 }}>
-                    <i className="fas fa-boxes-stacked" style={{ fontSize: 40, display: 'block', marginBottom: 12 }}></i>
+                  <tr><td colSpan={7} className="ip-49">
+                    <span className="ip-50"><i className="fas fa-boxes-stacked"></i></span>
                     No inventory items yet.
                   </td></tr>
                 ) : filteredItems.map(item => {
                   const isLow = item.current_stock <= item.reorder_level && item.is_active;
                   return (
-                    <tr key={item.id} style={{ opacity: item.is_active ? 1 : 0.5 }}>
-                      <td style={{ fontWeight: 500 }}>
+                    <tr key={item.id} className={item.is_active ? 'opacity-1' : 'opacity-0-5'}>
+                      <td className="ip-51">
                         {item.name}
-                        {!item.is_active && <span style={{ marginLeft: 8, fontSize: 11, color: '#EF4444', fontWeight: 500 }}>Inactive</span>}
+                        {!item.is_active && <span className="ip-52">Inactive</span>}
                       </td>
-                      <td style={{ fontSize: 13 }}>{item.category_name || '—'}</td>
+                      <td className="ip-53">{item.category_name || '—'}</td>
                       <td><strong>{item.current_stock}</strong></td>
                       <td>{item.unit}</td>
                       <td>{item.reorder_level}</td>
                       <td><span className={`badge ${!item.is_active ? 'badge-gray' : isLow ? 'badge-yellow' : 'badge-green'}`}>{!item.is_active ? 'Inactive' : isLow ? 'Low' : 'OK'}</span></td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} className="inventory-actions">
+                        <div  className="inventory-actions ip-54">
                           <button className="btn btn-sm" onClick={() => openAdjust(item)} title="Adjust qty"><i className="fas fa-right-left"></i></button>
                           {isHQ && (
                             <>
                               <button className="btn btn-sm" onClick={() => handleToggle(item)} title={item.is_active ? 'Deactivate' : 'Activate'}>
-                                <i className={`fas ${item.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ color: item.is_active ? THEME.success : THEME.primaryLight }}></i>
+                                <i className={`fas ${item.is_active ? 'fa-toggle-on' : 'fa-toggle-off'} ${item.is_active ? 'text-success' : 'text-primary-light'}`}></i>
                               </button>
                               <button className="btn btn-sm" onClick={() => openEdit(item)} title="Edit"><i className="fas fa-edit"></i></button>
                               {confirmDelete === item.id ? (
                                 <>
-                                  <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white' }} onClick={() => handleDelete(item.id)}>Confirm</button>
+                                  <button className="btn btn-sm ip-55"  onClick={() => handleDelete(item.id)}>Confirm</button>
                                   <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
                                 </>
                               ) : (
-                                <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={() => setConfirmDelete(item.id)} title="Delete"><i className="fas fa-trash"></i></button>
+                                <button className="btn btn-sm ip-56"  onClick={() => setConfirmDelete(item.id)} title="Delete"><i className="fas fa-trash"></i></button>
                               )}
                             </>
                           )}

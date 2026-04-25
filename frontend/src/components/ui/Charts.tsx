@@ -12,7 +12,7 @@ const BRAND_COLORS = ['#2C1E16', '#B85D19', '#869E66', '#4A7A59', '#D99A29', '#4
 
 export function BarChart({ data, orientation = 'vertical', showTarget = false, formatValue, height = 200 }: BarChartProps) {
   if (!data || data.length === 0) {
-    return <p style={{ color: '#6B635E', fontSize: 14, textAlign: 'center', padding: 40 }}>No data</p>;
+    return <p className="bc-0">No data</p>;
   }
 
   const maxVal = Math.max(...data.map(d => Math.max(d.value, d.target || 0)), 1);
@@ -20,39 +20,30 @@ export function BarChart({ data, orientation = 'vertical', showTarget = false, f
 
   if (orientation === 'horizontal') {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="bc-1">
         {data.map((d, i) => {
           const barWidth = (d.value / maxVal) * 100;
           const targetPos = d.target ? (d.target / maxVal) * 100 : null;
           const color = d.color || BRAND_COLORS[i % BRAND_COLORS.length];
           return (
             <div key={i}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                <span style={{ fontWeight: 500, color: '#2C1E16' }}>{d.label}</span>
-                <span style={{ color: '#6B635E' }}>{fmt(d.value)}</span>
+              <div className="bc-2">
+                <span className="bc-3">{d.label}</span>
+                <span className="bc-4">{fmt(d.value)}</span>
               </div>
-              <div style={{ height: 8, background: '#F1F5F9', borderRadius: 4, position: 'relative' }}>
-                <div style={{
-                  height: 8,
+              <div className="bc-5">
+                <div className="bc-bar" style={{
                   background: color,
-                  borderRadius: 4,
                   width: `${barWidth}%`,
-                  transition: 'width 0.3s ease',
                 }} />
                 {showTarget && targetPos !== null && (
-                  <div style={{
-                    position: 'absolute',
-                    top: -4,
+                  <div className="bc-target" style={{
                     left: `${targetPos}%`,
-                    width: 2,
-                    height: 16,
-                    background: '#A83232',
-                    borderRadius: 1,
                   }} />
                 )}
               </div>
               {showTarget && d.target && (
-                <div style={{ fontSize: 11, color: '#6B635E', marginTop: 2 }}>
+                <div className="bc-6">
                   Target: {fmt(d.target)}
                 </div>
               )}
@@ -68,7 +59,7 @@ export function BarChart({ data, orientation = 'vertical', showTarget = false, f
   const chartWidth = data.length * (barWidth + gap) + gap;
 
   return (
-    <svg width="100%" viewBox={`0 0 ${chartWidth} ${height + 40}`} style={{ display: 'block' }}>
+    <svg width="100%" viewBox={`0 0 ${chartWidth} ${height + 40}`} className="bc-7">
       {data.map((d, i) => {
         const barHeight = (d.value / maxVal) * (height - 20);
         const x = gap + i * (barWidth + gap);
@@ -113,7 +104,7 @@ interface DonutChartProps {
 
 export function DonutChart({ data, size = 160, formatValue, centerLabel }: DonutChartProps) {
   if (!data || data.length === 0) {
-    return <p style={{ color: '#6B635E', fontSize: 14, textAlign: 'center', padding: 40 }}>No data</p>;
+    return <p className="dc-8">No data</p>;
   }
 
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
@@ -135,7 +126,7 @@ export function DonutChart({ data, size = 160, formatValue, centerLabel }: Donut
   }, []);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+    <div className="dc-9">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F1F5F9" strokeWidth={strokeWidth} />
         {segments.map((seg, i) => (
@@ -157,13 +148,13 @@ export function DonutChart({ data, size = 160, formatValue, centerLabel }: Donut
           {centerLabel || 'Total'}
         </text>
       </svg>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="dc-10">
         {segments.map((seg, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 3, background: seg.color, flexShrink: 0 }} />
-            <span style={{ color: '#2C1E16', fontWeight: 500 }}>{seg.label}</span>
-            <span style={{ color: '#6B635E', marginLeft: 'auto' }}>{fmt(seg.value)}</span>
-            <span style={{ color: '#C5BFB8', fontSize: 11 }}>({(seg.pct * 100).toFixed(0)}%)</span>
+          <div key={i} className="dc-11">
+            <span className="dc-legend-dot" style={{ background: seg.color }} />
+            <span className="dc-12">{seg.label}</span>
+            <span className="dc-13">{fmt(seg.value)}</span>
+            <span className="dc-14">({(seg.pct * 100).toFixed(0)}%)</span>
           </div>
         ))}
       </div>
@@ -181,7 +172,7 @@ interface LineChartProps {
 
 export function LineChart({ data, xAxisLabels, formatValue, height = 220, colors = BRAND_COLORS }: LineChartProps) {
   if (!data || data.length === 0 || !xAxisLabels.length) {
-    return <p style={{ color: '#6B635E', fontSize: 14, textAlign: 'center', padding: 40 }}>No data</p>;
+    return <p className="lc-15">No data</p>;
   }
 
   const allValues = data.flatMap(d => d.values);
@@ -199,7 +190,7 @@ export function LineChart({ data, xAxisLabels, formatValue, height = 220, colors
   const skipInterval = Math.max(1, Math.ceil(xAxisLabels.length / 12));
 
   return (
-    <svg width="100%" viewBox={`0 0 ${chartW} ${height}`} style={{ display: 'block' }}>
+    <svg width="100%" viewBox={`0 0 ${chartW} ${height}`} className="lc-16">
       {Array.from({ length: yTicks + 1 }, (_, i) => {
         const val = yStep * i;
         const y = pad.top + plotH - (val / yMax) * plotH;

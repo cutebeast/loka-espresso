@@ -254,6 +254,15 @@ export default function CheckoutPage() {
               <span>Table {dineInSession.tableNumber} · {dineInSession.storeName}</span>
             </div>
           )}
+          {orderMode === 'dine_in' && !dineInSession && (
+            <button
+              className="co-dinein-scan-btn"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-qr-scanner'))}
+            >
+              <UtensilsCrossed size={16} />
+              <span>Scan table QR code</span>
+            </button>
+          )}
         </div>
 
         {/* Store selector (pickup / delivery) */}

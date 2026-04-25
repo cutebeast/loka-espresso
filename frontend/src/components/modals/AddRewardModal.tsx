@@ -27,27 +27,27 @@ export function AddRewardForm({ token: _token, onClose }: { token: string; onClo
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Name</label>
+      <div className="arf-0">
+        <label className="arf-1">Name</label>
         <input value={name} onChange={e => setName(e.target.value)} required />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
+      <div className="arf-2">
+        <label className="arf-3">Description</label>
         <input value={description} onChange={e => setDescription(e.target.value)} />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Points Cost</label>
+      <div className="arf-4">
+        <label className="arf-5">Points Cost</label>
         <input type="number" value={pointsCost} onChange={e => setPointsCost(e.target.value)} required />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Type</label>
+      <div className="arf-6">
+        <label className="arf-7">Type</label>
         <select value={rewardType} onChange={e => setRewardType(e.target.value)}>
           <option value="free_item">Free Item</option>
           <option value="discount_voucher">Discount Voucher</option>
           <option value="custom">Custom</option>
         </select>
       </div>
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+      <button type="submit" className="btn btn-primary arf-8"  disabled={saving}>
         {saving ? 'Creating...' : 'Create Reward'}
       </button>
     </form>

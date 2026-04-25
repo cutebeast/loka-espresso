@@ -54,15 +54,15 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
 
       <div className="legal-content">
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="skeleton" style={{ height: '16px', width: '66%', borderRadius: '4px' }} />
-            <div className="skeleton" style={{ height: '16px', width: '100%', borderRadius: '4px' }} />
-            <div className="skeleton" style={{ height: '16px', width: '100%', borderRadius: '4px' }} />
-            <div className="skeleton" style={{ height: '16px', width: '83%', borderRadius: '4px' }} />
-            <div className="skeleton" style={{ height: '16px', width: '100%', borderRadius: '4px' }} />
+          <div className="legal-skeleton-list">
+            <div className="skeleton legal-skeleton-line w-2_3" />
+            <div className="skeleton legal-skeleton-line" />
+            <div className="skeleton legal-skeleton-line" />
+            <div className="skeleton legal-skeleton-line w-5_6" />
+            <div className="skeleton legal-skeleton-line" />
           </div>
         ) : error ? (
-          <div style={{ borderRadius: '16px', border: '1px solid rgba(199,80,80,0.2)', background: '#FFEBEE', padding: '12px 16px', fontSize: '14px', color: '#C75050' }}>
+          <div className="legal-error">
             {error}
           </div>
         ) : (

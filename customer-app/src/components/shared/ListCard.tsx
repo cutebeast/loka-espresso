@@ -6,15 +6,9 @@ import { resolveAssetUrl } from '@/lib/tokens';
 import TypePill from './TypePill';
 
 const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
   cream: '#F3EEE5',
+  copper: '#D18E38',
   brown: '#57280D',
-  textPrimary: '#1B2023',
-  textSecondary: '#3A4A5A',
-  textMuted: '#6A7A8A',
-  borderSubtle: '#E4EAEF',
-  white: '#FFFFFF',
 } as const;
 
 interface ListCardProps {
@@ -53,93 +47,48 @@ export default function ListCard({
       whileTap={{ scale: disabled ? 1 : 0.98, opacity: disabled ? 0.7 : 1 }}
       onClick={disabled ? undefined : onPress}
       disabled={disabled}
-      style={{
-        display: 'flex',
-        width: '100%',
-        background: LOKA.white,
-        border: `1px solid ${LOKA.borderSubtle}`,
-        borderRadius: 24,
-        overflow: 'hidden',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
-        textAlign: 'left',
-        opacity: disabled ? 0.7 : 1,
-      }}
+      className={`lc-card ${disabled ? 'lc-card-disabled' : ''}`}
     >
       <div
         onError={handleImageError}
+        className="lc-thumb"
         style={{
-          width: 100,
-          height: 100,
-          flexShrink: 0,
           background: imageUrl
             ? `url(${resolveAssetUrl(imageUrl)}) center/cover`
             : `linear-gradient(135deg, ${LOKA.cream} 0%, ${LOKA.copper}30 100%)`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
         }}
       >
         {!imageUrl && <Gift size={28} color={LOKA.brown} strokeWidth={1.5} />}
       </div>
-      <div style={{ flex: 1, padding: '14px 16px', minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+      <div className="lc-body">
+        <div className="lc-row">
+          <div className="lc-col">
+            <div className="lc-meta-row">
               {tag && <TypePill variant={tag.variant}>{tag.text}</TypePill>}
               {date && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: LOKA.textMuted }}>
+                <span className="lc-date">
                   <Calendar size={10} /> {date}
                 </span>
               )}
               {daysLeft && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: LOKA.copper, fontWeight: 600 }}>
+                <span className="lc-days">
                   <Clock size={10} /> {daysLeft}
                 </span>
               )}
             </div>
-            <p
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: LOKA.textPrimary,
-                letterSpacing: '-0.01em',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <p className="lc-title">
               {title}
             </p>
             {subtitle && (
-              <p
-                style={{
-                  fontSize: 12,
-                  color: LOKA.textSecondary,
-                  marginTop: 2,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+              <p className="lc-subtitle">
                 {subtitle}
               </p>
             )}
             {meta && (
-              <p style={{ fontSize: 12, color: LOKA.textMuted, marginTop: 4 }}>{meta}</p>
+              <p className="lc-meta-text">{meta}</p>
             )}
             {pointsCost != null && (
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  marginTop: 6,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: LOKA.copper,
-                }}
-              >
+              <span className="lc-points">
                 <Tag size={11} /> {pointsCost} pts
               </span>
             )}

@@ -105,7 +105,7 @@ export default function OrderDetailPage() {
       const cartItems = res.data?.items ?? [];
       clearCart();
       for (const item of cartItems) {
-        useCartStore.getState().addItem(item, order.store_id);
+        useCartStore.getState().addItem(item);
       }
       showToast('Items added to cart', 'success');
       setPage('cart');
