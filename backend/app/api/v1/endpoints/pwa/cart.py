@@ -10,16 +10,16 @@ from app.models.user import User
 from app.models.order import CartItem
 from app.models.menu import MenuItem
 from app.models.marketing import CustomizationOption
-from app.models.store import Store
 from app.schemas.cart import CartItemCreate, CartItemUpdate, CartItemOut, CartOut
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
 
-def _hash_option_ids(option_ids: list[int] | None) -> str | None:
-    """Deterministic hash of sorted customization option IDs."""
+def _hash_option_ids(option_ids: list[int] | None) -> str:
+    """Deterministic hash of sorted customization option IDs.
+    Returns SHA-256 of empty string when no options provided."""
     if not option_ids:
-        return None
+        return "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     sorted_ids = sorted(int(o) for o in option_ids)
     return hashlib.sha256(",".join(str(i) for i in sorted_ids).encode()).hexdigest()
 
@@ -56,13 +56,8 @@ async def get_cart(user: User = Depends(get_current_user), db: AsyncSession = De
     result = await db.execute(select(CartItem).where(CartItem.user_id == user.id))
     items = result.scalars().all()
     if not items:
-        return CartOut(store_id=0, items=[], subtotal=0)
-    store_id = items[0].store_id
-    store_name = None
-    sr = await db.execute(select(Store).where(Store.id == store_id))
-    s = sr.scalar_one_or_none()
-    if s:
-        store_name = s.name
+        return CartOut(items=[], subtotal=0)
+
     item_ids = [ci.item_id for ci in items]
     if item_ids:
         menu_items_result = await db.execute(
@@ -99,26 +94,18 @@ async def get_cart(user: User = Depends(get_current_user), db: AsyncSession = De
             resolved_customizations = {"options": resolved_options}
         subtotal += (base + custom_total) * ci.quantity
         cart_items.append(CartItemOut(
-            id=ci.id, user_id=ci.user_id, store_id=ci.store_id,
+            id=ci.id, user_id=ci.user_id,
             item_id=ci.item_id, quantity=ci.quantity,
             customizations=resolved_customizations,
             customization_option_ids=ci.customization_option_ids,
             unit_price=to_float(ci.unit_price),
             item_name=name, created_at=ci.created_at,
         ))
-    return CartOut(store_id=store_id, store_name=store_name, items=cart_items, subtotal=round(subtotal, 2))
+    return CartOut(items=cart_items, subtotal=round(subtotal, 2))
 
 
 @router.post("/items", response_model=CartItemOut, status_code=201)
 async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    existing = await db.execute(select(CartItem).where(CartItem.user_id == user.id))
-    existing_items = existing.scalars().all()
-    if existing_items and existing_items[0].store_id != req.store_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Cart contains items from a different store. Clear your cart first before adding items from this store.",
-        )
-
     item_result = await db.execute(select(MenuItem).where(MenuItem.id == req.item_id))
     menu_item = item_result.scalar_one_or_none()
     if not menu_item:
@@ -134,7 +121,6 @@ async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user
     dupe_query = select(CartItem).where(
         CartItem.user_id == user.id,
         CartItem.item_id == req.item_id,
-        CartItem.store_id == req.store_id,
         CartItem.customization_hash == hash_val,
     )
     dupe_result = await db.execute(dupe_query)
@@ -143,7 +129,7 @@ async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user
         existing_cart.quantity += req.quantity
         await db.flush()
         return CartItemOut(
-            id=existing_cart.id, user_id=user.id, store_id=existing_cart.store_id,
+            id=existing_cart.id, user_id=user.id,
             item_id=existing_cart.item_id, quantity=existing_cart.quantity,
             customizations=None,
             customization_option_ids=existing_cart.customization_option_ids,
@@ -152,7 +138,7 @@ async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user
         )
 
     ci = CartItem(
-        user_id=user.id, store_id=req.store_id, item_id=req.item_id,
+        user_id=user.id, item_id=req.item_id,
         quantity=req.quantity,
         customization_option_ids=option_ids,
         customization_hash=hash_val,
@@ -161,7 +147,7 @@ async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user
     db.add(ci)
     await db.flush()
     return CartItemOut(
-        id=ci.id, user_id=user.id, store_id=ci.store_id,
+        id=ci.id, user_id=user.id,
         item_id=ci.item_id, quantity=ci.quantity,
         customizations=None,
         customization_option_ids=ci.customization_option_ids,
@@ -188,7 +174,7 @@ async def update_cart_item(item_id: int, req: CartItemUpdate, user: User = Depen
     item_result = await db.execute(select(MenuItem).where(MenuItem.id == ci.item_id))
     menu_item = item_result.scalar_one_or_none()
     return CartItemOut(
-        id=ci.id, user_id=ci.user_id, store_id=ci.store_id,
+        id=ci.id, user_id=ci.user_id,
         item_id=ci.item_id, quantity=ci.quantity,
         customizations=None,
         customization_option_ids=ci.customization_option_ids,

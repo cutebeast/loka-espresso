@@ -187,11 +187,7 @@ async def create_order(
     if req.voucher_code and getattr(req, 'reward_redemption_code', None):
         raise HTTPException(status_code=400, detail="Only one discount allowed per order")
 
-    store_id = req.store_id or cart_items[0].store_id
-
-    for ci in cart_items:
-        if ci.store_id != store_id:
-            raise HTTPException(status_code=400, detail="All cart items must be from the same store")
+    store_id = req.store_id
 
     order_items = []
     subtotal = 0.0
@@ -201,7 +197,7 @@ async def create_order(
         if not mi:
             raise HTTPException(status_code=400, detail=f"Menu item {ci.item_id} not found")
         # Menu items are universal (HQ-managed); store validation is done
-        # on cart item store_id, not menu item store_id.
+        # on the order's store_id (fulfillment store), not menu items.
         name = mi.name
         price = to_float(ci.unit_price)
         custom_adj = 0.0
@@ -488,7 +484,7 @@ async def reorder(order_id: int, user: User = Depends(get_current_user), db: Asy
         else:
             from app.api.v1.endpoints.pwa.cart import _hash_option_ids
             ci = CartItem(
-                user_id=user.id, store_id=order.store_id, item_id=mi.id,
+                user_id=user.id, item_id=mi.id,
                 quantity=item_data.get("quantity", 1),
                 customization_option_ids=option_ids,
                 customization_hash=_hash_option_ids(option_ids),

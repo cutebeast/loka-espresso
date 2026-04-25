@@ -24,7 +24,6 @@ class PromoItemOut(BaseModel):
     code: Optional[str] = None
     discount_type: Optional[str] = None
     discount_value: Optional[float] = None
-    target_url: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
 
@@ -50,9 +49,8 @@ async def list_promos(db: AsyncSession = Depends(get_db)):
             id=b.id,
             promo_type="banner",
             title=b.title,
-            subtitle=b.subtitle,
+            subtitle=b.short_description,
             image_url=b.image_url,
-            target_url=b.target_url,
             start_date=b.start_date,
             end_date=b.end_date,
         ))

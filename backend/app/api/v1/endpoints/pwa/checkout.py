@@ -83,11 +83,7 @@ async def checkout(
     if not cart_items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    # Validate store match
     store_id = req.store_id
-    for ci in cart_items:
-        if ci.store_id != store_id:
-            raise HTTPException(status_code=400, detail="All cart items must be from the same store")
 
     # Calculate subtotal (including customization price adjustments)
     subtotal = 0.0

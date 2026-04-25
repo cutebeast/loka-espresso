@@ -10,6 +10,7 @@ from app.core.security import require_hq_access, require_role, now_utc, ensure_u
 from app.core.audit import log_action, get_client_ip
 from app.core.utils import to_float
 from app.core.commerce import credit_wallet
+from app.core.config import get_settings
 from app.models.user import User, RoleIDs
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.order import Order
@@ -162,6 +163,7 @@ async def update_customer(
 @router.delete("/customers/reset")
 async def reset_all_customers(
     request: Request,
+    confirm: bool = Query(False, description="Must pass confirm=true to execute this destructive operation"),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_hq_access()),
 ):
@@ -172,8 +174,21 @@ async def reset_all_customers(
     Preserves: admin/staff accounts, stores, menu items, rewards catalog,
     voucher catalog, system config.
 
-    Requires HQ access. Use with caution — this is irreversible.
+    Requires HQ access + ALLOW_CUSTOMER_RESET env flag + explicit confirm=true.
+    Use with caution — this is irreversible.
     """
+    settings = get_settings()
+    if not settings.ALLOW_CUSTOMER_RESET:
+        raise HTTPException(
+            status_code=403,
+            detail="Customer reset is disabled. Set ALLOW_CUSTOMER_RESET=true to enable."
+        )
+    if not confirm:
+        raise HTTPException(
+            status_code=400,
+            detail="This is a destructive operation. Pass confirm=true to proceed."
+        )
+
     CUSTOMER_ROLE_ID = 6
 
     deleted_counts = {}

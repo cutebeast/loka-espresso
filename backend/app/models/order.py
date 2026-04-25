@@ -36,23 +36,20 @@ class CartItem(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True)
     item_id: Mapped[int] = mapped_column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     customization_option_ids: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
-    customization_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    customization_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True, default="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
     unit_price: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_cart_item_quantity_positive"),
         CheckConstraint("unit_price >= 0", name="ck_cart_item_unit_price_nonnegative"),
-        Index("ix_cart_item_user_store", "user_id", "store_id"),
-        UniqueConstraint("user_id", "store_id", "item_id", "customization_hash", name="uq_cart_item_identity"),
+        UniqueConstraint("user_id", "item_id", "customization_hash", name="uq_cart_item_identity"),
     )
 
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
-    store: Mapped["Store"] = relationship("Store", foreign_keys=[store_id])
     menu_item: Mapped["MenuItem"] = relationship("MenuItem", foreign_keys=[item_id])
 
 
