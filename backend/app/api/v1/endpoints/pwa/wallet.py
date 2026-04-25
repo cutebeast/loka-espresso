@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.core.commerce import credit_wallet, debit_wallet, settle_order_payment
 from app.core.database import get_db
@@ -111,13 +111,22 @@ async def deduct_wallet(req: WalletDeduct, db: AsyncSession = Depends(get_db), u
 
 
 @router.get("/transactions", response_model=list[WalletTransactionOut])
-async def wallet_transactions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def wallet_transactions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     wallet = await _get_or_create_wallet(user.id, db)
+    count_q = select(func.count()).select_from(WalletTransaction).where(WalletTransaction.wallet_id == wallet.id)
+    total_result = await db.execute(count_q)
+    total = total_result.scalar() or 0
+
     result = await db.execute(
         select(WalletTransaction)
         .where(WalletTransaction.wallet_id == wallet.id)
         .order_by(WalletTransaction.created_at.desc())
-        .limit(50)
+        .offset((page - 1) * page_size).limit(page_size)
     )
     return result.scalars().all()
 

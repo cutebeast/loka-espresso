@@ -4,6 +4,8 @@ from app.api.v1.endpoints.admin import (
     admin, admin_rewards, admin_vouchers, admin_staff,
     admin_feedback, admin_system, admin_customers,
     admin_marketing, admin_surveys, admin_content,
+    admin_banners, admin_broadcasts, admin_loyalty_tiers,
+    admin_pwa_mgmt,
     inventory, reports, stores, scan_cron,
 )
 from app.api.v1.endpoints.pwa import (
@@ -49,6 +51,10 @@ api_router.include_router(admin_system.router)
 api_router.include_router(admin_customers.router)
 api_router.include_router(admin_marketing.router)
 api_router.include_router(admin_surveys.router)
+api_router.include_router(admin_banners.router)
+api_router.include_router(admin_broadcasts.router)
+api_router.include_router(admin_loyalty_tiers.router)
+api_router.include_router(admin_pwa_mgmt.router)
 api_router.include_router(admin_content.router)
 api_router.include_router(pwa_promos.router)
 api_router.include_router(pwa_surveys.router)

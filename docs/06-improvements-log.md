@@ -74,3 +74,67 @@ See `_archive/06-improvements-log-full.md` for detailed chronological history.
 1. **Initial Setup** — Backend API, database schema, admin dashboard
 2. **PWA Launch** — Customer PWA, ordering flows, loyalty system
 3. **Deep Audit (April 2026)** — Modularity, responsive design, DB optimization, naming conventions
+4. **Session 3 (April 2026)** — Bug fixes, alembic consolidation, backend split, service crew mobile
+
+### Session 3 Changes
+
+**Critical Bug Fixes:**
+- Fixed broadcast send crash (`Notification` model import missing in `admin_system.py`)
+- Changed `users.user_type_id` / `role_id` FKs from `CASCADE` to `RESTRICT` (prevents accidental user-type deletion)
+- Fixed PWASettingsPage stray text render (line 252)
+- Fixed DataTable duplicate `<thead>` in expandable rows
+- Fixed HistoryPage broken CSS classes (`space-y-2`, `bg-green-50`, etc.) — added to `utilities.css`
+- Fixed admin login not returning `access_token` in response body (frontend checked for it)
+
+**Alembic Consolidation (57 files → 5):**
+- Single consolidated baseline `5a81abc564c3_baseline.py` with all Phase 6 DB fixes baked in
+- Deleted 11 incremental migrations, `_archived/` (39 files), unused `helpers.py`
+- New baseline includes: RESTRICT on user FKs, payment_status CHECK, device token length fix, 30+ missing indexes
+
+**Backend API Improvements:**
+- Renamed `admin_reports_legacy.py` → `admin_reports_store.py`
+- Split `admin_system.py` (904 lines) → 5 files: `admin_banners`, `admin_broadcasts`, `admin_loyalty_tiers`, `admin_pwa_mgmt`, `admin_system` (core)
+- Removed duplicate public `GET /banners` (canonical is in `pwa_promos.py`)
+- Gated `GET /admin/otps` behind `ENVIRONMENT != production`
+- Moved `POST /auth/change-password` from `admin_staff.py` to `auth.py` with audit logging
+- Added pagination to `/favorites`, `/notifications`, `/wallet/transactions`, `/rewards`
+
+**Admin Frontend:**
+- Deleted dead code: `StatCard.tsx`, `PageHeader.tsx`, unused `pageStyles` from `theme.ts`
+- Fixed `Modals.tsx` re-export of `StatCard` to point to `Card.tsx`
+- Logo containers (`.s-0`, `.s-3`) background changed from white to `#384b16` (visible with white-text logo)
+- Fixed logo responsive overlap — `Image fill` overridden with `position: relative !important`
+- Moved mobile CSS from JS `document.head.appendChild(style)` to `admin-extra.css` @media block (5 pages: POS Terminal, Tables, Orders, Wallet Top-Up, Inventory)
+- Added `tables` to service crew page visibility (user_type_id=3)
+- Added `Tables` tab to `MobileBottomNav` for service crew mobile access
+
+**PWA Customer App:**
+- Removed `formatPrice` duplication from 9 files (all import from `lib/tokens.ts`)
+- Removed runtime cache-busting from `resolveAssetUrl` (was defeating browser cache)
+- Added 17 missing exports to `components/ui/index.ts` barrel (15 → 32)
+- Deleted unused `auth/PhoneNumberField.tsx`
+- Added missing CSS utility classes: `space-y-2`, `space-y-3`, `bg-green-50`, `bg-red-50`, `text-green-600`, `text-red-500`
+
+**Database Schema Sync:**
+- Added 33 missing columns across 12 tables (stores, loyalty_tiers, store_tables, payment_methods, permissions, roles, user_types, wallets, inventory_categories, referrals, cart_items, users, audit_log, notifications, feedback, information_cards)
+- Created missing `checkout_tokens` table
+- Added `paid` and `authorized` to `payments.status` CHECK constraint
+- Stamped alembic to `5a81abc564c3`
+
+**Documentation:**
+- Fixed port references in 09-troubleshooting.md (8765→3002) and 07-deployment-guide.md
+- Fixed table count in 02-database-schema.md (35→54 tables)
+- Marked Phase 2 (device tokens) as COMPLETED in roadmap
+- Updated 02a-acl.md with service crew page visibility and Tables access
+- Removed `OTP_BYPASS_ALLOWED` from `docker-compose.yml`
+- Cleared `WEBHOOK_API_KEY` and `WEBHOOK_SIGNING_SECRET` placeholders in `.env` / `.env.example`
+- Deleted empty `backend/seeds/` directory
+
+**CSS Modularization (admin frontend):**
+- Moved 3 `@keyframes` animations from component `<style>` tags to `admin-extra.css` (Drawer, Modal, Sidebar tooltip)
+- Moved `Sidebar.tsx` tooltip CSS from `dangerouslySetInnerHTML` to `admin-extra.css` with CSS custom properties
+- Extracted `Button.tsx` CSS-in-JS to `.btn-admin` CSS classes (4 variants × 3 sizes)
+- Extracted `Input.tsx`/`TextArea.tsx` CSS-in-JS to `.input-field`/`.textarea-field` CSS classes
+- Created shared `.form-label`/`.form-hint` CSS classes, replacing 9 duplicated style constants across 6 files (TablesPage, StoreSettingsPage, VouchersPage, SurveysPage, LoyaltyRulesPage, OrdersPage)
+- Removed unused `THEME` imports from 8 files (Sidebar, TablesPage, StoreSettingsPage, VouchersPage, SurveysPage, LoyaltyRulesPage, OrdersPage, Button)
+- Zero JS-injected `<style>` tags remain in admin frontend

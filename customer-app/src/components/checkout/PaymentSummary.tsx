@@ -1,17 +1,13 @@
 'use client';
 
 import { Truck } from 'lucide-react';
-import { LOKA } from '@/lib/tokens';
+import { LOKA, formatPrice } from '@/lib/tokens';
 
 interface PaymentSummaryProps {
   subtotal: number;
   deliveryFee: number;
   discount: number;
   total: number;
-}
-
-function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
 }
 
 export default function PaymentSummary({ subtotal, deliveryFee, discount, total }: PaymentSummaryProps) {

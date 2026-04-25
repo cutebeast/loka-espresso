@@ -52,6 +52,10 @@
 .gap-5 { gap: 20px; }
 .gap-6 { gap: 24px; }
 
+/* ── Space Between ── */
+.space-y-2 > * + * { margin-top: 8px; }
+.space-y-3 > * + * { margin-top: 12px; }
+
 /* ── Padding ── */
 .p-0 { padding: 0; }
 .p-1 { padding: 4px; }
@@ -298,6 +302,8 @@
 
 .bg-gray-100 { background-color: #F3F4F6; }
 .bg-gray-200 { background-color: #E5E7EB; }
+.bg-green-50 { background-color: #F0FDF4; }
+.bg-red-50 { background-color: #FEF2F2; }
 .text-gray-500 { color: #6B7280; }
 .text-gray-900 { color: #111827; }
 
@@ -315,6 +321,8 @@
 .text-success { color: var(--color-success); }
 .text-danger { color: var(--color-danger); }
 .text-red-600 { color: #DC2626; }
+.text-red-500 { color: #EF4444; }
+.text-green-600 { color: #16A34A; }
 .text-warning { color: var(--color-warning); }
 .text-info { color: var(--color-info); }
 .text-\[\#6A7A8A\] { color: #6A7A8A; }

@@ -6,9 +6,9 @@
 """
 import secrets
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -76,12 +76,21 @@ class RedeemResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.get("", response_model=List[RewardCatalogOut])
-async def list_rewards_catalog(db: AsyncSession = Depends(get_db)):
+async def list_rewards_catalog(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
     """List all active rewards for PWA catalog. Public (no auth)."""
+    count_q = select(func.count()).select_from(Reward).where(Reward.is_active == True, Reward.deleted_at.is_(None))
+    total_result = await db.execute(count_q)
+    total = total_result.scalar() or 0
+
     result = await db.execute(
         select(Reward)
         .where(Reward.is_active == True, Reward.deleted_at.is_(None))
         .order_by(Reward.points_cost.asc())
+        .offset((page - 1) * page_size).limit(page_size)
     )
     return result.scalars().all()
 

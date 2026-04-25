@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import { StoreSelector } from '@/components/ui';
-import { THEME } from '@/lib/theme';
+
 import type { MerchantTableItem, MerchantStore } from '@/lib/merchant-types';
 
 const QR_EXPIRY_SECONDS = 30 * 60; // 30 minutes
@@ -20,8 +20,6 @@ interface TablesPageProps {
   onViewOrder: (orderId: number) => void;
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.textPrimary };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.textMuted, marginTop: 2 };
 
 /** Format seconds as MM:SS */
 function formatDuration(seconds: number): string {
@@ -310,17 +308,17 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
               <form onSubmit={handleSubmit}>
                 <div  className="tables-form-grid tp-27">
                   <div>
-                    <label style={labelStyle}>Table Number *</label>
+                    <label className="form-label">Table Number *</label>
                     <input
                       value={tableNumber}
                       onChange={e => setTableNumber(e.target.value)}
                       required
                       placeholder="e.g. A1, T12"
                     />
-                    <div style={hintStyle}>Unique identifier for this table</div>
+                    <div className="form-hint">Unique identifier for this table</div>
                   </div>
                   <div>
-                    <label style={labelStyle}>Capacity *</label>
+                    <label className="form-label">Capacity *</label>
                     <input
                       type="number"
                       min="1"
@@ -328,7 +326,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                       onChange={e => setCapacity(e.target.value)}
                       required
                     />
-                    <div style={hintStyle}>Number of seats</div>
+                    <div className="form-hint">Number of seats</div>
                   </div>
                 </div>
                 <div  className="tables-form-actions tp-28">
@@ -505,45 +503,4 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
       )}
     </div>
   );
-}
-
-/* Mobile responsive styles */
-const tablesMobileStyles = `
-@media (max-width: 767px) {
-  .tables-workflow-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .tables-form-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .tables-form-actions {
-    flex-direction: column;
-    align-items: stretch !important;
-  }
-  .tables-form-actions button {
-    width: 100%;
-    justify-content: center;
-  }
-  .tables-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .tables-card-actions {
-    justify-content: flex-start !important;
-  }
-  .tables-card-actions button {
-    flex: 1;
-    min-width: 44px;
-    justify-content: center;
-  }
-}
-`;
-
-if (typeof document !== 'undefined') {
-  const styleId = 'tables-mobile-styles';
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = tablesMobileStyles;
-    document.head.appendChild(style);
-  }
 }

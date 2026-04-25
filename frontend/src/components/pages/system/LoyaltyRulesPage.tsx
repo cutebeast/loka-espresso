@@ -4,7 +4,7 @@ import { useState, FormEvent } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import type { MerchantLoyaltyTier } from '@/lib/merchant-types';
 import { Modal, DataTable, Input } from '@/components/ui';
-import { THEME } from '@/lib/theme';
+
 
 interface LoyaltyRulesPageProps {
   tiers: MerchantLoyaltyTier[];
@@ -204,7 +204,7 @@ function TierForm({ token: _token, onClose, existingTier, title }: TierFormProps
         <Input label="Points Multiplier" type="number" step="0.1" value={multiplier} onChange={e => setMultiplier(e.target.value)} />
         <div>
           <Input label="Sort Order" type="number" min="0" value={sortOrder} onChange={e => setSortOrder(e.target.value)} placeholder="0" />
-          <div style={hintStyle}>Lower values appear first</div>
+          <div className="form-hint">Lower values appear first</div>
         </div>
       </div>
 
@@ -216,18 +216,18 @@ function TierForm({ token: _token, onClose, existingTier, title }: TierFormProps
         <div className="tf-21">
           <div>
             <Input label="Discount (%)" type="number" min="0" max="100" value={discount} onChange={e => setDiscount(e.target.value)} placeholder="0" />
-            <div style={hintStyle}>Percentage off all orders</div>
+            <div className="form-hint">Percentage off all orders</div>
           </div>
           <div>
             <Input label="Free Deliveries / Month" type="number" min="0" value={freeDelivery} onChange={e => setFreeDelivery(e.target.value)} placeholder="0" />
-            <div style={hintStyle}>Number of free deliveries each month</div>
+            <div className="form-hint">Number of free deliveries each month</div>
           </div>
         </div>
 
         <div className="tf-22">
           <div>
             <Input label="Birthday Reward" value={birthdayReward} onChange={e => setBirthdayReward(e.target.value)} placeholder="e.g. Free drink" />
-            <div style={hintStyle}>Special reward on customer&apos;s birthday</div>
+            <div className="form-hint">Special reward on customer&apos;s birthday</div>
           </div>
           <div className="tf-23">
             <label className="tf-24">
@@ -252,4 +252,3 @@ function TierForm({ token: _token, onClose, existingTier, title }: TierFormProps
   );
 }
 
-const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.success, marginTop: 2 };

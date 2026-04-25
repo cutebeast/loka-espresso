@@ -5,6 +5,7 @@ import { ArrowLeft, Wallet, Plus, Trash2, CreditCard } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
+import { formatPrice } from '@/lib/tokens';
 
 interface PaymentMethodItem {
   id: number;
@@ -13,12 +14,6 @@ interface PaymentMethodItem {
   last4?: string;
   expiry?: string;
   is_default: boolean;
-}
-
-function formatPrice(val: number | string): string {
-  const n = Number(val);
-  if (!Number.isFinite(n)) return 'RM 0.00';
-  return `RM ${n.toFixed(2)}`;
 }
 
 export default function PaymentMethodsPage() {

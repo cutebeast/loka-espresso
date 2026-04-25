@@ -4,17 +4,13 @@ import { useState, useCallback } from 'react';
 import { Tag, Gift, CheckCircle2 } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import api from '@/lib/api';
-import { LOKA } from '@/lib/tokens';
+import { LOKA, formatPrice } from '@/lib/tokens';
 
 interface VoucherRewardSelectorProps {
   subtotal: number;
   selectedType: 'none' | 'voucher' | 'reward';
   selectedCode: string;
   onChange: (type: 'none' | 'voucher' | 'reward', code?: string, discountValue?: number) => void;
-}
-
-function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
 }
 
 export default function VoucherRewardSelector({ subtotal, selectedType, selectedCode, onChange }: VoucherRewardSelectorProps) {

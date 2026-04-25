@@ -39,11 +39,11 @@
 .mbn-1 { font-size: 20px; }
 .mbn-2 { line-height: 1; }
 .mbn-3 { position: absolute; top: 0px; left: 50%; transform: translateX(-50%); width: 24px; height: 3px; border-radius: 0 0 3px 3px; background: var(--color-primary); }
-.s-0 { width: 44px; height: 44px; position: relative; border-radius: 8px; overflow: hidden; background: var(--color-bg-card); flex-shrink: 0; padding: 6px; }
-.s-1 { object-fit: contain; }
-.s-2 { display: flex; align-items: center; gap: 12px; }
-.s-3 { width: 48px; height: 48px; position: relative; border-radius: 8px; overflow: hidden; background: var(--color-bg-card); flex-shrink: 0; padding: 8px; }
-.s-4 { object-fit: contain; }
+.s-0 { width: 44px; height: 44px; position: relative; border-radius: 8px; overflow: hidden; background: #384b16; flex-shrink: 0; padding: 6px; }
+.s-1 { object-fit: contain; width: 100% !important; height: 100% !important; position: relative !important; }
+.s-2 { display: flex; flex-direction: row; align-items: center; gap: 12px; min-width: 0; }
+.s-3 { width: 48px; height: 48px; position: relative; border-radius: 8px; overflow: hidden; background: #384b16; flex-shrink: 0; padding: 8px; }
+.s-4 { object-fit: contain; width: 100% !important; height: 100% !important; position: relative !important; }
 .s-5 { font-size: 10px; }
 .s-6 { margin-bottom: 2px; }
 .s-7 { font-size: 13px; }
@@ -2086,3 +2086,116 @@
 
 /* Page title */
 .page-title { font-size: 24px; font-weight: 700; color: var(--color-text-primary); letter-spacing: -0.5px; }
+
+/* ── Mobile Overrides (POS Terminal + Tables) ── */
+@media (max-width: 767px) {
+  /* POS Terminal */
+  .ptp-4 { flex-direction: column; }
+  .ptp-5 { min-width: 0; width: 100%; }
+  .ptp-8 { flex-direction: column; }
+  .ptp-8 .ptp-9,
+  .ptp-8 .ptp-10 { width: 100%; justify-content: center; }
+  .pos-customer-card { flex-direction: column; align-items: flex-start !important; }
+  .pos-customer-card > div:last-child { text-align: left !important; width: 100%; }
+  .pos-scan-actions { flex-direction: column; }
+  .pos-scan-actions button { width: 100%; }
+  .pos-wallet-item { flex-direction: column; align-items: flex-start !important; }
+  .pos-wallet-item button { width: 100%; justify-content: center; }
+
+  /* Tables Page */
+  .tp-0 { flex-direction: column; align-items: stretch; }
+  .tp-3 { padding: 40px 20px; }
+  .tp-33 { flex-direction: column; gap: 4px; }
+  .tp-38 { flex-direction: column; gap: 4px; }
+  .tables-workflow-grid { grid-template-columns: 1fr !important; }
+  .tables-form-grid { grid-template-columns: 1fr !important; }
+  .tables-form-actions { flex-direction: column; align-items: stretch !important; }
+  .tables-form-actions button { width: 100%; justify-content: center; }
+  .tables-grid { grid-template-columns: 1fr !important; }
+  .tables-card-actions { justify-content: flex-start !important; }
+  .tables-card-actions button { flex: 1; min-width: 44px; justify-content: center; }
+
+  /* Orders Page */
+  .orders-type-filter { justify-content: flex-start; }
+  .orders-detail-grid { grid-template-columns: 1fr !important; }
+  .orders-status-buttons { flex-direction: column; }
+  .orders-status-buttons button { width: 100%; }
+  .orders-tracking-grid { grid-template-columns: 1fr !important; }
+
+  /* Wallet Top-Up Page */
+  .wallet-topup-grid { grid-template-columns: 1fr !important; }
+  .wallet-topup-customer { flex-direction: column; align-items: flex-start !important; }
+  .wallet-topup-customer > div:last-child { text-align: left !important; width: 100%; }
+
+  /* Inventory Page */
+  .inventory-grid { grid-template-columns: 1fr !important; }
+  .inventory-form-grid { grid-template-columns: 1fr !important; }
+  .inventory-form-grid-2 { grid-template-columns: 1fr !important; }
+  .inventory-form-actions { flex-direction: column; align-items: stretch !important; }
+  .inventory-form-actions button { width: 100%; justify-content: center; }
+  .inventory-actions { justify-content: flex-start; }
+  .inventory-table th:nth-child(2),
+  .inventory-table td:nth-child(2),
+  .inventory-table th:nth-child(5),
+  .inventory-table td:nth-child(5) { display: none; }
+}
+
+/* ── Global Keyframes (moved from component <style> tags) ── */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(-10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes tooltipIn { from { opacity: 0; transform: translateY(-50%) translateX(-4px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
+
+/* ── Sidebar Tooltips (moved from Sidebar.tsx) ── */
+.sidebar-tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--color-primary-dark);
+  color: var(--color-text-light);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  animation: tooltipIn 0.2s ease;
+}
+.sidebar-tooltip:hover::before {
+  content: '';
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-right-color: var(--color-primary-dark);
+  z-index: 100;
+  pointer-events: none;
+}
+
+/* ── Button component (moved from Button.tsx CSS-in-JS) ── */
+.btn-admin { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+.btn-admin:disabled { cursor: not-allowed; opacity: 0.6; }
+.btn-admin.btn-sm { padding: 8px 12px; font-size: 13px; }
+.btn-admin.btn-md { padding: 10px 16px; font-size: 14px; }
+.btn-admin.btn-lg { padding: 14px 24px; font-size: 16px; }
+.btn-admin.btn-primary { background: var(--color-primary); color: white; box-shadow: 0 4px 12px rgba(26, 62, 47, 0.2); }
+.btn-admin.btn-secondary { background: white; color: #1e293b; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+.btn-admin.btn-ghost { background: transparent; color: #64748b; }
+.btn-admin.btn-danger { background: #dc2626; color: white; }
+
+/* ── Input component (moved from Input.tsx CSS-in-JS) ── */
+.input-field { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; font-size: 14px; color: #1e293b; outline: none; transition: all 0.2s; }
+.input-field.has-icon { padding-left: 36px; }
+.input-field.has-right-element { padding-right: 40px; }
+.input-field.input-error { border-color: #dc2626; }
+.textarea-field { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; font-size: 14px; color: #1e293b; outline: none; resize: vertical; min-height: 80px; font-family: inherit; }
+.textarea-field.textarea-error { border-color: #dc2626; }
+
+/* ── Shared form helpers (replaces duplicated labelStyle/hintStyle constants) ── */
+.form-label { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); display: block; margin-bottom: 6px; }
+.form-hint { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }

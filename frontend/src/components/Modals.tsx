@@ -9,4 +9,4 @@ export { FeedbackReplyForm } from './modals/FeedbackReplyModal';
 export { AddCategoryForm } from './modals/AddCategoryModal';
 export { AddCustomizationForm } from './modals/AddCustomizationModal';
 export { AddInventoryItemForm } from './modals/AddInventoryItemModal';
-export { StatCard } from './ui/StatCard';
+export { StatCard } from './ui/Card';

@@ -1,23 +1,23 @@
-"""Consolidated baseline: create all tables from current models.
+"""Session 3 consolidated baseline: create all tables from current models with all fixes baked in.
 
-This migration is the single baseline that creates every table, enum,
-constraint, and index required for a fresh database.  It is placed at the
-start of the Alembic chain so that ``alembic upgrade head`` works on an
-empty PostgreSQL instance.
+This is the SOLE migration for the project. It creates every table, enum,
+constraint, and index required for a fresh database. All Phase 6 DB improvements
+are incorporated (RESTRICT on user FKs, CHECK constraints for payment_status,
+device token length fix, missing FK indexes).
 
 All statements use ``IF NOT EXISTS`` so the migration is idempotent when
 run against a partially-created schema.
 
-Revision ID: 82f8aa600119
+Revision ID: 5a81abc564c3
 Revises: 
-Create Date: 2025-04-25 12:54:00.000000
+Create Date: 2026-04-26 00:00:00.000000
 """
 
 from alembic import op
 from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
-revision = "82f8aa600119"
+revision = "5a81abc564c3"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -434,8 +434,8 @@ def upgrade() -> None:
         created_at TIMESTAMP WITH TIME ZONE NOT NULL,
         updated_at TIMESTAMP WITH TIME ZONE,
         PRIMARY KEY (id),
-        FOREIGN KEY(user_type_id) REFERENCES user_types (id) ON DELETE CASCADE,
-        FOREIGN KEY(role_id) REFERENCES roles (id) ON DELETE CASCADE,
+        FOREIGN KEY(user_type_id) REFERENCES user_types (id) ON DELETE RESTRICT,
+        FOREIGN KEY(role_id) REFERENCES roles (id) ON DELETE RESTRICT,
         UNIQUE (referral_code),
         FOREIGN KEY(referred_by) REFERENCES users (id) ON DELETE SET NULL
     );"""))
@@ -507,7 +507,7 @@ def upgrade() -> None:
     CREATE TABLE IF NOT EXISTS device_tokens (
         id SERIAL NOT NULL,
         user_id INTEGER NOT NULL,
-        token VARCHAR(500) NOT NULL,
+        token VARCHAR(4096) NOT NULL,
         platform VARCHAR(20),
         is_active BOOLEAN NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -670,6 +670,7 @@ def upgrade() -> None:
         CONSTRAINT ck_orders_total CHECK (total >= 0),
         CONSTRAINT ck_orders_delivery_fee CHECK (delivery_fee >= 0),
         CONSTRAINT ck_orders_discount CHECK (discount >= 0),
+        CONSTRAINT ck_orders_payment_status CHECK (payment_status IN ('pending','paid','failed','refunded','partial')),
         FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
         FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE CASCADE,
         FOREIGN KEY(table_id) REFERENCES store_tables (id) ON DELETE SET NULL,
@@ -910,6 +911,7 @@ def upgrade() -> None:
         created_at TIMESTAMP WITH TIME ZONE NOT NULL,
         PRIMARY KEY (id),
         CONSTRAINT ck_payments_amount CHECK (amount >= 0),
+        CONSTRAINT ck_payments_status CHECK (status IN ('pending','paid','completed','failed','refunded','cancelled','authorized')),
         UNIQUE (order_id),
         FOREIGN KEY(order_id) REFERENCES orders (id) ON DELETE CASCADE
     );"""))
@@ -1147,6 +1149,38 @@ def upgrade() -> None:
     op.execute(text("CREATE INDEX IF NOT EXISTS ix_wallet_tx_wallet_created ON wallet_transactions (wallet_id, created_at);"))
     op.execute(text("CREATE INDEX IF NOT EXISTS ix_wallet_tx_wallet_type ON wallet_transactions (wallet_id, type);"))
     op.execute(text("CREATE INDEX IF NOT EXISTS ix_wallet_transactions_id ON wallet_transactions (id);"))
+
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_inventory_items_category_id ON inventory_items (category_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_orders_table_id ON orders (table_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_loyalty_transactions_order_id ON loyalty_transactions (order_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_loyalty_transactions_store_id ON loyalty_transactions (store_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_survey_questions_survey_id ON survey_questions (survey_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_survey_responses_survey_id ON survey_responses (survey_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_survey_responses_user_id ON survey_responses (user_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_survey_answers_response_id ON survey_answers (response_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_information_cards_store_id ON information_cards (store_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_promo_banners_active_dates ON promo_banners (is_active, start_date, end_date);"))
+    op.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_payments_idempotency_key ON payments (idempotency_key);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_payments_order_id ON payments (order_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_token_blacklist_expires_at ON token_blacklist (expires_at);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_orders_order_type ON orders (order_type);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_payments_method ON payments (method);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_staff_shifts_clock_in ON staff_shifts (clock_in);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_notification_broadcasts_store_id ON notification_broadcasts (store_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_marketing_campaigns_store_id ON marketing_campaigns (store_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_inventory_movements_movement_type ON inventory_movements (movement_type);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_referrals_invitee_id ON referrals (invitee_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_user_rewards_status ON user_rewards (status);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_user_vouchers_status ON user_vouchers (status);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_user_vouchers_code ON user_vouchers (code);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_cart_items_item_id ON cart_items (item_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_pin_attempts_attempted_at ON pin_attempts (attempted_at);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_order_status_history_created_at ON order_status_history (created_at);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_type ON notifications (type);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_device_tokens_token ON device_tokens (token);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_roles_typical_user_type_id ON roles (typical_user_type_id);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_staff_pin_code ON staff (pin_code);"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_info_card_active_content ON information_cards (is_active, content_type);"))
 
 
 def downgrade() -> None:

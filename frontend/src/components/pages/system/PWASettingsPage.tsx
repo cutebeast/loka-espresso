@@ -249,7 +249,6 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
 
         {/* Bypass Code Row */}
         <div className={`psp-bypass-row ${bypassEnabled ? 'opacity-1' : 'opacity-0-5'}`}>
-          opacity: bypassEnabled ? 1 : 0.5,
           <div className="psp-17">
             <div className="psp-18">
               Bypass Code

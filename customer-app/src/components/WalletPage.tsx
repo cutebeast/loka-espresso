@@ -14,10 +14,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
-
-function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
-}
+import { formatPrice } from '@/lib/tokens';
 
 const TOPUP_AMOUNTS = [20, 50, 100, 200];
 

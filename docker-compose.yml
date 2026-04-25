@@ -30,7 +30,6 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://fnb:${DB_PASSWORD}@db:5432/fnb
       UPLOAD_DIR: /app/uploads
-      OTP_BYPASS_ALLOWED: "true"
     ports:
       - "3002:8000"
     volumes:

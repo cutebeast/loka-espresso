@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, ShoppingCart, Coffee, Star } from 'lucide-react';
 import type { MenuItem, CustomizationOption } from '@/lib/api';
-import { resolveAssetUrl } from '@/lib/tokens';
+import { resolveAssetUrl, formatPrice } from '@/lib/tokens';
 
 interface SelectedOption {
   id: number;
@@ -20,10 +20,6 @@ interface ItemCustomizeSheetProps {
   onAdd: (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number) => void;
   loadingOptions?: boolean;
   customizations?: CustomizationOption[];
-}
-
-function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
 }
 
 export default function ItemCustomizeSheet({

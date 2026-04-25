@@ -65,11 +65,11 @@ Content cards with `slug` (unique, URL-friendly identifier) and `gallery_urls` (
 | role_permissions | 83 | Role↔Permission mappings |
 | Tables | 28 | 13 KLCC, 10 KLCC Park, 5 Cheras |
 | Menu Categories | 10 | Coffee, Tea, Pastries, Specialties |
-| Menu Items | 35 | Full drink/pastry menu |
+| Menu Items | 54 | Full drink/pastry menu |
 | Customization Options | 0 | — |
 | Checkout Tokens | — | Temporary checkout discount tokens |
 | Information Cards | — | Content cards with slug and gallery URLs |
-| Inventory Items | 31 | Stock levels |
+| Inventory Items | 300 | Stock levels |
 | Loyalty Tiers | 4 | Bronze, Silver, Gold, Platinum |
 | Rewards | 8 | Free items, discounts |
 | Vouchers | 8 | Promo codes |

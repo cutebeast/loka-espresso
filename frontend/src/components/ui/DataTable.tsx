@@ -251,15 +251,6 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
                     Actions
                   </th>
                 )}
-                <th className="dter-32">
-                  {expandColumnHeader}
-                </th>
-                {actions.length > 0 && (
-                  <th className="dt-th dt-th-right"
-                    {...({ width: actions.length * 80 } as any)}>
-                    Actions
-                  </th>
-                )}
               </tr>
             </thead>
             <tbody>

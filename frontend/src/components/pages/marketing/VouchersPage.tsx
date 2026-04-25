@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, FormEvent } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
-import { THEME } from '@/lib/theme';
+
 import { Select, Pagination, Drawer } from '@/components/ui';
 
 interface VoucherItem {
@@ -291,21 +291,21 @@ function VoucherFormPage({ token: _token, existingVoucher, onBack }: { token: st
         )}
         <form onSubmit={handleSubmit}>
           <div className="vfp-21">
-            <div><label style={labelStyle}>Title *</label><input value={form.title} onChange={e => updateField('title', e.target.value)} placeholder="e.g. Summer Sale" required /></div>
-            <div><label style={labelStyle}>Code *</label><input value={form.code} onChange={e => updateField('code', e.target.value.toUpperCase())} placeholder="e.g. SUMMER2026" className="vfp-22" required /><div style={hintStyle}>Unique catalog code</div></div>
-            <div className="vfp-23"><label style={labelStyle}>Short Description</label><textarea value={form.short_description} onChange={e => updateField('short_description', e.target.value)} placeholder="Brief summary..." rows={2} className="vfp-24" /></div>
-            <div className="vfp-25"><label style={labelStyle}>Detail Description</label><textarea value={form.long_description} onChange={e => updateField('long_description', e.target.value)} placeholder="Full content..." rows={4} className="vfp-26" /></div>
-            <div><label style={labelStyle}>Discount Type *</label><Select value={form.discount_type} onChange={(val) => updateField('discount_type', val)} options={[{ value: 'percent', label: 'Percentage (%)' }, { value: 'fixed', label: 'Fixed Amount (RM)' }, { value: 'free_item', label: 'Free Item' }]} /></div>
-            <div><label style={labelStyle}>Discount Value *</label><input type="number" min="0" step="0.01" value={form.discount_value} onChange={e => updateField('discount_value', e.target.value)} placeholder="0" required /></div>
-            <div><label style={labelStyle}>Min Spend (RM)</label><input type="number" min="0" step="0.01" value={form.min_spend} onChange={e => updateField('min_spend', e.target.value)} /></div>
-            <div><label style={labelStyle}>Max Uses <span className="vfp-27">(blank = unlimited)</span></label><input type="number" min="1" value={form.max_uses} onChange={e => updateField('max_uses', e.target.value)} placeholder="Blank = unlimited" /></div>
-            <div><label style={labelStyle}>Max Per User</label><input type="number" min="1" value={form.max_uses_per_user} onChange={e => updateField('max_uses_per_user', e.target.value)} placeholder="1" /></div>
-            <div><label style={labelStyle}>Validity Days <span className="vfp-28">(after claim)</span></label><input type="number" min="1" value={form.validity_days} onChange={e => updateField('validity_days', e.target.value)} placeholder="30" /></div>
-            <div><label style={labelStyle}>Valid From</label><input type="datetime-local" value={form.valid_from} onChange={e => updateField('valid_from', e.target.value)} /></div>
-            <div><label style={labelStyle}>Valid Until</label><input type="datetime-local" value={form.valid_until} onChange={e => updateField('valid_until', e.target.value)} /></div>
-            <div><label style={labelStyle}>Promo Type</label><Select value={form.promo_type} onChange={(val) => updateField('promo_type', val)} options={[{ value: 'generic', label: 'Generic' }, { value: 'bogo', label: 'Buy One Get One' }, { value: 'happy_hour', label: 'Happy Hour' }, { value: 'seasonal', label: 'Seasonal' }]} /></div>
-            <div className="vfp-29"><label style={labelStyle}>Terms &amp; Conditions</label><textarea value={form.terms} onChange={e => updateField('terms', e.target.value)} placeholder="One per line" rows={3} className="vfp-30" /></div>
-            <div className="vfp-31"><label style={labelStyle}>How to Redeem</label><input value={form.how_to_redeem} onChange={e => updateField('how_to_redeem', e.target.value)} placeholder="e.g. Show this screen at checkout" /></div>
+            <div><label className="form-label">Title *</label><input value={form.title} onChange={e => updateField('title', e.target.value)} placeholder="e.g. Summer Sale" required /></div>
+            <div><label className="form-label">Code *</label><input value={form.code} onChange={e => updateField('code', e.target.value.toUpperCase())} placeholder="e.g. SUMMER2026" className="vfp-22" required /><div className="form-hint">Unique catalog code</div></div>
+            <div className="vfp-23"><label className="form-label">Short Description</label><textarea value={form.short_description} onChange={e => updateField('short_description', e.target.value)} placeholder="Brief summary..." rows={2} className="vfp-24" /></div>
+            <div className="vfp-25"><label className="form-label">Detail Description</label><textarea value={form.long_description} onChange={e => updateField('long_description', e.target.value)} placeholder="Full content..." rows={4} className="vfp-26" /></div>
+            <div><label className="form-label">Discount Type *</label><Select value={form.discount_type} onChange={(val) => updateField('discount_type', val)} options={[{ value: 'percent', label: 'Percentage (%)' }, { value: 'fixed', label: 'Fixed Amount (RM)' }, { value: 'free_item', label: 'Free Item' }]} /></div>
+            <div><label className="form-label">Discount Value *</label><input type="number" min="0" step="0.01" value={form.discount_value} onChange={e => updateField('discount_value', e.target.value)} placeholder="0" required /></div>
+            <div><label className="form-label">Min Spend (RM)</label><input type="number" min="0" step="0.01" value={form.min_spend} onChange={e => updateField('min_spend', e.target.value)} /></div>
+            <div><label className="form-label">Max Uses <span className="vfp-27">(blank = unlimited)</span></label><input type="number" min="1" value={form.max_uses} onChange={e => updateField('max_uses', e.target.value)} placeholder="Blank = unlimited" /></div>
+            <div><label className="form-label">Max Per User</label><input type="number" min="1" value={form.max_uses_per_user} onChange={e => updateField('max_uses_per_user', e.target.value)} placeholder="1" /></div>
+            <div><label className="form-label">Validity Days <span className="vfp-28">(after claim)</span></label><input type="number" min="1" value={form.validity_days} onChange={e => updateField('validity_days', e.target.value)} placeholder="30" /></div>
+            <div><label className="form-label">Valid From</label><input type="datetime-local" value={form.valid_from} onChange={e => updateField('valid_from', e.target.value)} /></div>
+            <div><label className="form-label">Valid Until</label><input type="datetime-local" value={form.valid_until} onChange={e => updateField('valid_until', e.target.value)} /></div>
+            <div><label className="form-label">Promo Type</label><Select value={form.promo_type} onChange={(val) => updateField('promo_type', val)} options={[{ value: 'generic', label: 'Generic' }, { value: 'bogo', label: 'Buy One Get One' }, { value: 'happy_hour', label: 'Happy Hour' }, { value: 'seasonal', label: 'Seasonal' }]} /></div>
+            <div className="vfp-29"><label className="form-label">Terms &amp; Conditions</label><textarea value={form.terms} onChange={e => updateField('terms', e.target.value)} placeholder="One per line" rows={3} className="vfp-30" /></div>
+            <div className="vfp-31"><label className="form-label">How to Redeem</label><input value={form.how_to_redeem} onChange={e => updateField('how_to_redeem', e.target.value)} placeholder="e.g. Show this screen at checkout" /></div>
           </div>
           <div className="vfp-32">
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}</button>
@@ -322,5 +322,3 @@ function VoucherFormPage({ token: _token, existingVoucher, onBack }: { token: st
   );
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primary };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.success, marginTop: 2 };

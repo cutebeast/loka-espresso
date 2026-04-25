@@ -142,8 +142,8 @@ Reverse proxy examples should route:
 ### Local
 
 ```bash
-curl -s http://localhost:8765/health
-curl -s http://localhost:8765/api/v1/config
+curl -s http://localhost:3002/health
+curl -s http://localhost:3002/api/v1/config
 curl -I http://localhost:3001
 curl -I http://localhost:3002
 ```

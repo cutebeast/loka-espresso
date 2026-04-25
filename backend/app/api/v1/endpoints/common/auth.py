@@ -330,7 +330,7 @@ async def login_password(request: Request, req: LoginPasswordRequest, db: AsyncS
     await log_action(db, action="LOGIN", user_id=user.id, entity_type="user", entity_id=user.id, details={"email": req.email, "role_id": user.role_id}, ip_address=get_client_ip(request))
     access = create_access_token({"sub": str(user.id)})
     refresh = create_refresh_token({"sub": str(user.id)})
-    response = JSONResponse(content={"message": "Login successful"})
+    response = JSONResponse(content={"message": "Login successful", "access_token": access, "refresh_token": refresh})
     _set_auth_cookies(response, access, refresh)
     return response
 
@@ -426,3 +426,29 @@ async def unregister_device_token(token: str, user: User = Depends(get_current_u
         await db.delete(dt)
         await db.flush()
     return {"message": "Device token removed"}
+
+
+from pydantic import BaseModel
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password")
+async def change_password(
+    request: Request,
+    body: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if len(body.new_password) < 6:
+        raise HTTPException(400, "New password must be at least 6 characters")
+    if not user.password_hash or not verify_password(body.current_password, user.password_hash):
+        raise HTTPException(400, "Current password is incorrect")
+    user.password_hash = hash_password(body.new_password)
+    ip = get_client_ip(request)
+    await log_action(db, action="CHANGE_PASSWORD", user_id=user.id, entity_type="user", entity_id=user.id, details={"ip": ip}, ip_address=ip)
+    await db.flush()
+    return {"detail": "Password changed successfully"}

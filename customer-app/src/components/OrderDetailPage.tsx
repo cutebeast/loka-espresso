@@ -18,10 +18,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
 import type { Order } from '@/lib/api';
-
-function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
-}
+import { formatPrice } from '@/lib/tokens';
 
 /* Timeline steps matching ordertrack.html reference */
 const PICKUP_STEPS = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed'];

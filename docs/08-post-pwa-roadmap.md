@@ -64,11 +64,11 @@ ALTER TABLE users ADD COLUMN referral_earnings DECIMAL(10,2) DEFAULT 0.00;
 
 ---
 
-## Phase 2: Push Notifications (Medium Priority)
+## Phase 2: Push Notifications (Medium Priority) — COMPLETED (Session 3)
 
 ### Status
 - **Service Provider**: Twilio (SMS + Push combined)
-- **Database**: Device token table needed
+- **Database**: `device_tokens` table implemented and live
 - **Timeline**: After Invite Friends system
 
 ### Required Database Changes

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { apiFetch, statusBadge, formatRM } from '@/lib/merchant-api';
 import { FilterBar, DataTable, type ColumnDef, Pagination, Modal } from '@/components/ui';
 import type { DatePreset } from '@/components/ui/DateFilter';
-import { THEME } from '@/lib/theme';
+
 import type { MerchantOrder } from '@/lib/merchant-types';
 
 interface OrdersPageProps {
@@ -432,10 +432,10 @@ export default function OrdersPage({ orders, loading, token: _token, selectedSto
                     <div className="op-58">
                       <strong className="op-59">Delivery Tracking Info</strong>
                       <div  className="orders-tracking-grid op-60">
-                        <input placeholder="Courier Name" value={trackingFields.courier_name} onChange={e => setTrackingFields(p => ({ ...p, courier_name: e.target.value }))} style={inputStyle} />
-                        <input placeholder="Courier Phone" value={trackingFields.courier_phone} onChange={e => setTrackingFields(p => ({ ...p, courier_phone: e.target.value }))} style={inputStyle} />
-                        <input placeholder="Provider (Grab/Lalamove)" value={trackingFields.provider} onChange={e => setTrackingFields(p => ({ ...p, provider: e.target.value }))} style={inputStyle} />
-                        <input placeholder="ETA (minutes)" type="number" value={trackingFields.eta_minutes} onChange={e => setTrackingFields(p => ({ ...p, eta_minutes: e.target.value }))} style={inputStyle} />
+                        <input placeholder="Courier Name" value={trackingFields.courier_name} onChange={e => setTrackingFields(p => ({ ...p, courier_name: e.target.value }))} className="input-field" />
+                        <input placeholder="Courier Phone" value={trackingFields.courier_phone} onChange={e => setTrackingFields(p => ({ ...p, courier_phone: e.target.value }))} className="input-field" />
+                        <input placeholder="Provider (Grab/Lalamove)" value={trackingFields.provider} onChange={e => setTrackingFields(p => ({ ...p, provider: e.target.value }))} className="input-field" />
+                        <input placeholder="ETA (minutes)" type="number" value={trackingFields.eta_minutes} onChange={e => setTrackingFields(p => ({ ...p, eta_minutes: e.target.value }))} className="input-field" />
                         <input placeholder="Tracking URL" value={trackingFields.tracking_url} onChange={e => setTrackingFields(p => ({ ...p, tracking_url: e.target.value }))} className="op-61" />
                       </div>
                       <div className="op-62">
@@ -463,42 +463,3 @@ export default function OrdersPage({ orders, loading, token: _token, selectedSto
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  padding: '8px 12px',
-  borderRadius: 8,
-  border: `1px solid ${THEME.border}`,
-  fontSize: 13,
-  color: THEME.textPrimary,
-  background: '#FFF',
-};
-
-/* Mobile responsive styles */
-const ordersMobileStyles = `
-@media (max-width: 767px) {
-  .orders-type-filter {
-    justify-content: flex-start;
-  }
-  .orders-detail-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .orders-status-buttons {
-    flex-direction: column;
-  }
-  .orders-status-buttons button {
-    width: 100%;
-  }
-  .orders-tracking-grid {
-    grid-template-columns: 1fr !important;
-  }
-}
-`;
-
-if (typeof document !== 'undefined') {
-  const styleId = 'orders-mobile-styles';
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = ordersMobileStyles;
-    document.head.appendChild(style);
-  }
-}

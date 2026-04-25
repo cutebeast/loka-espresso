@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -13,15 +13,27 @@ router = APIRouter(prefix="/favorites", tags=["Favorites"])
 
 
 @router.get("")
-async def list_favorites(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Favorite).where(Favorite.user_id == user.id))
+async def list_favorites(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    count_q = select(func.count()).select_from(Favorite).where(Favorite.user_id == user.id)
+    total_result = await db.execute(count_q)
+    total = total_result.scalar() or 0
+
+    result = await db.execute(
+        select(Favorite).where(Favorite.user_id == user.id)
+        .offset((page - 1) * page_size).limit(page_size)
+    )
     out = []
     for fav in result.scalars().all():
         ir = await db.execute(select(MenuItem).where(MenuItem.id == fav.item_id))
         mi = ir.scalar_one_or_none()
         if mi:
             out.append(MenuItemOut.model_validate(mi).model_dump())
-    return out
+    return {"items": out, "total": total, "page": page, "page_size": page_size, "total_pages": max(1, (total + page_size - 1) // page_size)}
 
 
 @router.post("/{item_id}", status_code=201)

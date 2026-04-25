@@ -13,6 +13,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
+import { formatPrice } from '@/lib/tokens';
 import type { LoyaltyHistoryEntry, Transaction } from '@/lib/api';
 
 const container = {
@@ -24,10 +25,6 @@ const staggerItem = {
   hidden: { opacity: 0, y: 12 },
   show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 };
-
-function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
-}
 
 type Tab = 'loyalty' | 'wallet';
 

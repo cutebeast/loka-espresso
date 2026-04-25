@@ -15,9 +15,9 @@ cd /root/fnb-super-app/scripts
 
 Local scripted ports:
 
-- backend: `8765`
+- backend: `3002`
 - admin: `3001`
-- customer PWA: `3002`
+- customer PWA: `3003`
 
 ---
 
@@ -27,7 +27,7 @@ Local scripted ports:
 
 ```bash
 cat /tmp/fnb-backend.log
-fuser 8765/tcp
+fuser 3002/tcp
 grep DATABASE_URL /root/fnb-super-app/.env
 docker ps | grep fnb-db
 ```
@@ -57,7 +57,7 @@ cd /root/fnb-super-app/backend
 cat /tmp/fnb-admin.log
 cat /tmp/fnb-customer.log
 fuser 3001/tcp
-fuser 3002/tcp
+fuser 3003/tcp
 ```
 
 ### Fix
@@ -186,13 +186,13 @@ cd /root/fnb-super-app/backend
 
 ## Production-style Runtime Checks
 
-If you are troubleshooting a production-style deployment instead of local scripted mode, use the production service ports/config instead of `8765`.
+If you are troubleshooting a production-style deployment instead of local scripted mode, use the production service ports/config instead of `3002`.
 
 Typical checks:
 
 ```bash
 systemctl status fnb-backend fnb-admin fnb-app caddy
-ss -tlnp | grep -E '8000|3001|3002|5433|443'
+ss -tlnp | grep -E '8000|3001|3003|5433|443'
 journalctl -u fnb-backend -n 100
 ```
 
@@ -241,13 +241,13 @@ async def get_db():
 grep -A 8 "async def get_db" /root/fnb-super-app/backend/app/core/database.py
 
 # Quick test: save a config value and verify persistence
-curl -X PUT http://localhost:8765/api/v1/admin/config \
+curl -X PUT http://localhost:3002/api/v1/admin/config \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"key": "min_order_delivery", "value": "25.00"}'
 
 # Verify it persisted
-curl http://localhost:8765/api/v1/admin/config \
+curl http://localhost:3002/api/v1/admin/config \
   -H "Authorization: Bearer $TOKEN"
 ```
 

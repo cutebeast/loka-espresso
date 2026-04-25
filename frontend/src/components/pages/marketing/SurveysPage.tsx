@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { THEME } from '@/lib/theme';
+
 import { Select, Pagination } from '@/components/ui';
 
 export interface SurveyQuestion {
@@ -33,7 +33,6 @@ export const emptySurveyQuestion = (): SurveyQuestion => ({
   sort_order: 0,
 });
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primaryDark };
 
 interface SurveysPageProps {
   token: string;
@@ -236,17 +235,17 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
             <form onSubmit={surveyHandleSubmit}>
               <div className="sp-3">
                 <div>
-                  <label style={labelStyle}>Title *</label>
+                  <label className="form-label">Title *</label>
                   <input value={surveyTitle} onChange={e => setSurveyTitle(e.target.value)} required placeholder="e.g. Customer Satisfaction Survey" />
                 </div>
                 <div>
-                  <label style={labelStyle}>Reward Voucher</label>
+                  <label className="form-label">Reward Voucher</label>
                   <Select value={surveyRewardVoucherId} onChange={(val) => setSurveyRewardVoucherId(val)} options={[{ value: '', label: '— None —' }, ...surveyVouchers.map(v => ({ value: String(v.id), label: v.title || v.code }))]} />
                 </div>
               </div>
 
               <div className="sp-4">
-                <label style={labelStyle}>Description</label>
+                <label className="form-label">Description</label>
                 <textarea value={surveyDescription} onChange={e => setSurveyDescription(e.target.value)} placeholder="Survey description..." rows={2} className="sp-5" />
               </div>
 

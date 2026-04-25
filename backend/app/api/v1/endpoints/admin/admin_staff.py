@@ -517,20 +517,4 @@ async def reset_staff_password(
 
     temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
     linked_user.password_hash = hash_password(temp_password)
-    # Password is never returned in plaintext; admin must communicate reset link separately
     return {"email": staff.email}
-
-
-@router.post("/auth/change-password")
-async def change_own_password(request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    body = await request.json()
-    current_password = body.get("current_password")
-    new_password = body.get("new_password")
-    if not current_password or not new_password:
-        raise HTTPException(400, "current_password and new_password required")
-    if len(new_password) < 6:
-        raise HTTPException(400, "New password must be at least 6 characters")
-    if not user.password_hash or not verify_password(current_password, user.password_hash):
-        raise HTTPException(400, "Current password is incorrect")
-    user.password_hash = hash_password(new_password)
-    return {"detail": "Password changed successfully"}

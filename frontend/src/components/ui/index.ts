@@ -9,6 +9,5 @@ export { DateFilter, calcDateRange, type DatePreset } from './DateFilter';
 export { FilterBar } from './FilterBar';
 export { DataTable, DataTableExpandableRow, type ColumnDef } from './DataTable';
 export { BarChart, DonutChart, LineChart, SparkLine } from './Charts';
-export { PageHeader } from './PageHeader';
 export { KPICard, KPICards } from './KPICards';
 export { Pagination } from './Pagination';

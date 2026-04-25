@@ -4,10 +4,7 @@ import { motion } from 'framer-motion';
 import { ShoppingCart } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
-
-function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
-}
+import { formatPrice } from '@/lib/tokens';
 
 export default function FloatingCartBar() {
   const getItemCount = useCartStore((s) => s.getItemCount);

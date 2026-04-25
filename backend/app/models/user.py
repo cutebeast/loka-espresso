@@ -39,8 +39,8 @@ class User(Base):
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # ACL system: FK to lookup tables
-    user_type_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_types.id", ondelete="CASCADE"), nullable=False, default=4)
-    role_id: Mapped[int] = mapped_column(Integer, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False, default=6)
+    user_type_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_types.id", ondelete="RESTRICT"), nullable=False, default=4)
+    role_id: Mapped[int] = mapped_column(Integer, ForeignKey("roles.id", ondelete="RESTRICT"), nullable=False, default=6)
 
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     referral_code: Mapped[Optional[str]] = mapped_column(String(50), unique=True, nullable=True)

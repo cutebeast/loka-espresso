@@ -22,10 +22,7 @@ import TimeSlotPicker from '@/components/checkout/TimeSlotPicker';
 import DeliveryAddressCard from '@/components/checkout/DeliveryAddressCard';
 import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
 import OrderNotesField from '@/components/checkout/OrderNotesField';
-
-function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
-}
+import { formatPrice } from '@/lib/tokens';
 
 const ORDER_TYPES = [
   { key: 'pickup' as const, label: 'Pickup' },

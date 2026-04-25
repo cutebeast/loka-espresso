@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { PageId } from '@/lib/merchant-types';
 import type { MerchantStore } from '@/lib/merchant-types';
 import Image from 'next/image';
-import { THEME } from '@/lib/theme';
 
 // Page visibility by user_type_id
 const PAGE_VISIBILITY: Record<number, Set<string>> = {
@@ -20,7 +19,7 @@ const PAGE_VISIBILITY: Record<number, Set<string>> = {
     'menu', 'inventory', 'tables', 'staff', 'walletTopup', 'posterminal',
     'customers', 'rewards', 'vouchers', 'reports', 'marketingreports',
   ]),
-  3: new Set(['orders', 'kitchen', 'walletTopup', 'posterminal']),
+  3: new Set(['orders', 'kitchen', 'walletTopup', 'posterminal', 'tables']),
 };
 
 const navGroups = [
@@ -61,42 +60,6 @@ const navGroups = [
   ]},
 ];
 
-const tooltipStyles = `
-  .sidebar-tooltip:hover::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: calc(100% + 12px);
-    top: 50%;
-    transform: translateY(-50%);
-    background: ${THEME.primaryDark};
-    color: ${THEME.textLight};
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-    z-index: 100;
-    box-shadow: ${THEME.shadow.lg};
-    pointer-events: none;
-    animation: tooltipIn 0.2s ease;
-  }
-  .sidebar-tooltip:hover::before {
-    content: '';
-    position: absolute;
-    left: calc(100% + 6px);
-    top: 50%;
-    transform: translateY(-50%);
-    border: 6px solid transparent;
-    border-right-color: ${THEME.primaryDark};
-    z-index: 100;
-    pointer-events: none;
-  }
-  @keyframes tooltipIn {
-    from { opacity: 0; transform: translateY(-50%) translateX(-4px); }
-    to { opacity: 1; transform: translateY(-50%) translateX(0); }
-  }
-`;
-
 interface SidebarProps {
   page: PageId;
   setPage: (page: PageId) => void;
@@ -134,7 +97,6 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: tooltipStyles }} />
       <aside className={`sidebar${isOpen ? ' mobile-open' : ''} sb-aside ${collapsed ? 'sb-w-76' : 'sb-w-260'}`}>
       {/* Brand Header */}
       <div className={`sb-brand ${collapsed ? 'sb-justify-center' : 'sb-justify-start'}`}>

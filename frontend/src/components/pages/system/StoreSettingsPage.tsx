@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import type { MerchantStore } from '@/lib/merchant-types';
-import { THEME } from '@/lib/theme';
+
 
 // Opening hours day config
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
@@ -178,8 +178,6 @@ export default function StoreSettingsPage({ stores, token, onRefresh }: StoreSet
 
 // --- Add Store Form ---
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primary };
-const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.success, marginTop: 2 };
 
 function AddStoreForm({ token: _token, onClose }: { token: string; onClose: () => void }) {
   const [name, setName] = useState('');
@@ -364,49 +362,49 @@ function EditStoreForm({ store, token: _token, onClose }: { store: MerchantStore
         )}
         <form onSubmit={handleSubmit}>
           <div className="esf-48">
-            <label style={labelStyle}>Store Name *</label>
+            <label className="form-label">Store Name *</label>
             <input value={name} onChange={e => setName(e.target.value)} required />
           </div>
           <div className="esf-49">
-            <label style={labelStyle}>Slug</label>
+            <label className="form-label">Slug</label>
             <input value={store.slug} disabled className="esf-50" />
-            <div style={hintStyle}>Slug cannot be changed after creation</div>
+            <div className="form-hint">Slug cannot be changed after creation</div>
           </div>
           <div className="esf-51">
-            <label style={labelStyle}>Address</label>
+            <label className="form-label">Address</label>
             <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className="esf-52" />
           </div>
           <div className="esf-53">
             <div>
-              <label style={labelStyle}>Phone</label>
+              <label className="form-label">Phone</label>
               <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+60 3-XXXX XXXX" />
             </div>
             <div>
-              <label style={labelStyle}>Pickup Lead Time (minutes)</label>
+              <label className="form-label">Pickup Lead Time (minutes)</label>
               <input type="number" value={pickupLead} onChange={e => setPickupLead(e.target.value)} min={0} />
-              <div style={hintStyle}>How far in advance customers must order for pickup</div>
+              <div className="form-hint">How far in advance customers must order for pickup</div>
             </div>
           </div>
           <div className="esf-54">
             <div>
-              <label style={labelStyle}>Latitude</label>
+              <label className="form-label">Latitude</label>
               <input type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} placeholder="e.g. 3.1390" />
             </div>
             <div>
-              <label style={labelStyle}>Longitude</label>
+              <label className="form-label">Longitude</label>
               <input type="number" step="any" value={lng} onChange={e => setLng(e.target.value)} placeholder="e.g. 101.6869" />
             </div>
             <div>
-              <label style={labelStyle}>Delivery Radius (km)</label>
+              <label className="form-label">Delivery Radius (km)</label>
               <input type="number" step="any" value={deliveryRadius} onChange={e => setDeliveryRadius(e.target.value)} placeholder="e.g. 5.0" />
             </div>
           </div>
           <div className="esf-55">
-            <label style={labelStyle}>Image URL</label>
+            <label className="form-label">Image URL</label>
             <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
           </div>
           <div className="esf-56">
-            <label style={labelStyle}>Integrations</label>
+            <label className="form-label">Integrations</label>
             <div className="esf-57">
               <label className="esf-58">
                 <input type="checkbox" checked={posIntegration} onChange={e => setPosIntegration(e.target.checked)} className="esf-59" />
@@ -424,7 +422,7 @@ function EditStoreForm({ store, token: _token, onClose }: { store: MerchantStore
             </div>
           </div>
           <div className="esf-65">
-            <label style={labelStyle}>Opening Hours</label>
+            <label className="form-label">Opening Hours</label>
             <OpeningHoursEditor value={openingHours} onChange={setOpeningHours} />
           </div>
           <div className="esf-66">

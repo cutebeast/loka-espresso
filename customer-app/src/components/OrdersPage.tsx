@@ -10,10 +10,7 @@ import { useOrderStore } from '@/stores/orderStore';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { Order } from '@/lib/api';
-
-function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
-}
+import { formatPrice } from '@/lib/tokens';
 
 function getStatusClass(status: string): string {
   const s = status?.toLowerCase().replace(/\s+/g, '-');

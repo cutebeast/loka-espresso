@@ -82,17 +82,11 @@ export function formatPrice(val: number | string): string {
 const ADMIN_BASE = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin.loyaltysystem.uk';
 const APP_BASE = process.env.NEXT_PUBLIC_APP_URL || 'https://app.loyaltysystem.uk';
 
-/** Cache-bust helper for image URLs */
-function cacheBust(url: string): string {
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}v=${Date.now()}`;
-}
-
-/** Resolve an asset path to a full URL using the admin base, with cache busting */
+/** Resolve an asset path to a full URL using the admin base. */
 export function resolveAssetUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   const url = path.startsWith('http') ? path : `${ADMIN_BASE}${path}`;
-  return cacheBust(url);
+  return url;
 }
 
 /** Resolve the app URL for deep links */

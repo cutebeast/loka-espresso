@@ -227,30 +227,3 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
     </div>
   );
 }
-
-/* Mobile responsive styles */
-const walletTopUpMobileStyles = `
-@media (max-width: 767px) {
-  .wallet-topup-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .wallet-topup-customer {
-    flex-direction: column;
-    align-items: flex-start !important;
-  }
-  .wallet-topup-customer > div:last-child {
-    text-align: left !important;
-    width: 100%;
-  }
-}
-`;
-
-if (typeof document !== 'undefined') {
-  const styleId = 'wallet-topup-mobile-styles';
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = walletTopUpMobileStyles;
-    document.head.appendChild(style);
-  }
-}

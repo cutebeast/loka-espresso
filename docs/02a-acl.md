@@ -158,8 +158,23 @@ Scoped store assignments for store-level users (HQ users have global access, no 
 
 ---
 
+### Admin Frontend Page Visibility
+
+Page visibility is controlled by `user_type_id` in the admin frontend `Sidebar.tsx`:
+
+| user_type_id | Pages |
+|---|---|
+| 1 (HQ Management) | All pages |
+| 2 (Store Management) | Dashboard, Orders, Kitchen, Menu, Inventory, Tables, Staff, Wallet Top-Up, POS, Customers, Rewards, Vouchers, Reports |
+| 3 (Store / Service Crew) | Orders, Kitchen, Wallet Top-Up, POS Terminal, Tables |
+
+Service crew access the admin dashboard from mobile via `MobileBottomNav` (5 tabs: Orders, Station, POS, Tables, Wallet). The POS Terminal and Tables pages have mobile-responsive CSS overrides.
+
+---
+
 ## Notes
 
 - The `users` table references `user_types.id` and `roles.id` via `user_type_id` and `role_id` FK columns (see [02b-users.md](02b-users.md)).
 - Permission checks use the `require_permission("resource:action")` dependency which resolves user → role → permissions.
 - `user_store_access` is checked by the `get_user_store_ids()` dependency to scope dashboard queries to the user's assigned stores.
+- Tables endpoints use `require_store_access` (not role permissions) — service crew can view/manage tables for stores they're assigned to.
