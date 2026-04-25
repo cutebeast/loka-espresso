@@ -4,18 +4,7 @@ import { useState, useCallback } from 'react';
 import { Tag, Gift, CheckCircle2 } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import api from '@/lib/api';
-
-const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  success: '#85B085',
-  textPrimary: '#1B2023',
-  textMuted: '#6A7A8A',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  white: '#FFFFFF',
-};
+import { LOKA } from '@/lib/tokens';
 
 interface VoucherRewardSelectorProps {
   subtotal: number;
@@ -71,23 +60,23 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <div className="flex items-center gap-2 mb-3">
         <Tag size={16} color={LOKA.copper} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: LOKA.textPrimary }}>Voucher or Reward</span>
+        <span className="font-bold text-text-primary" style={{ fontSize: 13 }}>Voucher or Reward</span>
       </div>
 
       {selectedType === 'reward' ? (
-        <div style={{ padding: '12px 14px', background: LOKA.copperSoft, borderRadius: 12, marginBottom: 12 }}>
-          <p style={{ fontSize: 13, color: LOKA.textPrimary }}>
+        <div className="py-3 px-3.5 bg-copper-soft rounded-xl mb-3">
+          <p className="text-text-primary" style={{ fontSize: 13 }}>
             <strong>Reward selected:</strong> {selectedCode}
           </p>
-          <p style={{ fontSize: 11, color: LOKA.textMuted, marginTop: 4 }}>
+          <p className="text-[11px] text-text-muted mt-1">
             Remove reward to use a voucher code
           </p>
         </div>
       ) : (
         <>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div className="flex gap-2 mb-3">
             <input
               type="text"
               value={voucherInput}
@@ -97,41 +86,40 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                 setVoucherError('');
               }}
               placeholder="Enter voucher code"
+              className="flex-1 py-2.5 px-3.5 rounded-xl bg-white text-sm text-text-primary outline-none"
               style={{
-                flex: 1, padding: '10px 14px', borderRadius: 12,
                 border: `1px solid ${voucherError ? '#C75050' : LOKA.borderSubtle}`,
-                background: LOKA.white, fontSize: 14, color: LOKA.textPrimary,
-                outline: 'none', fontFamily: 'inherit',
+                fontFamily: 'inherit',
               }}
             />
             <button
               onClick={handleApplyVoucher}
               disabled={!voucherInput.trim() || voucherLoading}
+              className="py-2.5 px-4 rounded-xl text-white font-bold border-none cursor-pointer"
               style={{
-                padding: '10px 16px', borderRadius: 12,
+                fontSize: 13,
                 background: selectedType === 'voucher' ? LOKA.success : LOKA.primary,
-                color: LOKA.white, fontSize: 13, fontWeight: 700,
-                border: 'none', cursor: 'pointer', opacity: voucherLoading ? 0.7 : 1,
+                opacity: voucherLoading ? 0.7 : 1,
               }}
             >
               {voucherLoading ? '...' : selectedType === 'voucher' ? 'Applied' : 'Apply'}
             </button>
           </div>
           {voucherError && (
-            <p style={{ fontSize: 12, color: '#C75050', marginBottom: 8 }}>{voucherError}</p>
+            <p className="text-xs text-danger mb-2">{voucherError}</p>
           )}
         </>
       )}
       {voucherError && (
-        <p style={{ fontSize: 12, color: '#C75050', marginBottom: 8 }}>{voucherError}</p>
+        <p className="text-xs text-danger mb-2">{voucherError}</p>
       )}
 
       {availableVouchers.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: LOKA.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div className="mb-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">
             Your Vouchers
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="flex flex-col gap-1.5">
             {availableVouchers.slice(0, 3).map(v => {
               const isSelected = selectedType === 'voucher' && selectedCode === v.code;
               const discountVal = v.discount_type === 'percentage' 
@@ -141,23 +129,24 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                 <button
                   key={v.id}
                   onClick={() => handleSelectVoucher(v.code, Math.min(discountVal, v.max_discount || Infinity))}
+                  className="flex items-center gap-2.5 py-2.5 px-3 rounded-xl cursor-pointer text-left"
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                    borderRadius: 12, border: isSelected ? `2px solid ${LOKA.success}` : `1px solid ${LOKA.borderSubtle}`,
-                    background: isSelected ? '#F0F7EF' : LOKA.white, cursor: 'pointer', textAlign: 'left',
+                    border: isSelected ? `2px solid ${LOKA.success}` : `1px solid ${LOKA.borderSubtle}`,
+                    background: isSelected ? '#F0F7EF' : LOKA.white,
                   }}
                 >
-                  <div style={{
-                    width: 20, height: 20, borderRadius: 999,
-                    border: isSelected ? 'none' : '2px solid #E4EAEF',
-                    background: isSelected ? LOKA.success : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                    style={{
+                      border: isSelected ? 'none' : '2px solid #E4EAEF',
+                      background: isSelected ? LOKA.success : 'transparent',
+                    }}
+                  >
                     {isSelected && <CheckCircle2 size={12} color={LOKA.white} />}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: LOKA.textPrimary }}>{v.code}</p>
-                    <p style={{ fontSize: 11, color: LOKA.textMuted }}>
+                  <div className="flex-1">
+                    <p className="font-semibold text-text-primary" style={{ fontSize: 13 }}>{v.code}</p>
+                    <p className="text-[11px] text-text-muted">
                       {v.discount_type === 'percentage' ? `${v.discount_value}% off` : `${formatPrice(v.discount_value)} off`}
                       {v.min_spend ? ` · Min ${formatPrice(v.min_spend)}` : ''}
                     </p>
@@ -171,11 +160,11 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
       )}
 
       {availableRewards.length > 0 && selectedType === 'voucher' && (
-        <div style={{ padding: '12px 14px', background: LOKA.copperSoft, borderRadius: 12 }}>
-          <p style={{ fontSize: 13, color: LOKA.textPrimary }}>
+        <div className="py-3 px-3.5 bg-copper-soft rounded-xl">
+          <p className="text-text-primary" style={{ fontSize: 13 }}>
             <strong>Voucher selected:</strong> {selectedCode}
           </p>
-          <p style={{ fontSize: 11, color: LOKA.textMuted, marginTop: 4 }}>
+          <p className="text-[11px] text-text-muted mt-1">
             Remove voucher to use a reward
           </p>
         </div>
@@ -183,10 +172,10 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
 
       {availableRewards.length > 0 && selectedType !== 'voucher' && (
         <div>
-          <p style={{ fontSize: 11, fontWeight: 600, color: LOKA.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">
             Your Rewards
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="flex flex-col gap-1.5">
             {availableRewards.slice(0, 3).map(r => {
               const isSelected = selectedType === 'reward' && selectedCode === r.redemption_code;
               return (
@@ -199,23 +188,24 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                     }
                     handleSelectReward(r.redemption_code, discountValue);
                   }}
+                  className="flex items-center gap-2.5 py-2.5 px-3 rounded-xl cursor-pointer text-left"
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                    borderRadius: 12, border: isSelected ? `2px solid ${LOKA.success}` : `1px solid ${LOKA.borderSubtle}`,
-                    background: isSelected ? '#F0F7EF' : LOKA.white, cursor: 'pointer', textAlign: 'left',
+                    border: isSelected ? `2px solid ${LOKA.success}` : `1px solid ${LOKA.borderSubtle}`,
+                    background: isSelected ? '#F0F7EF' : LOKA.white,
                   }}
                 >
-                  <div style={{
-                    width: 20, height: 20, borderRadius: 999,
-                    border: isSelected ? 'none' : '2px solid #E4EAEF',
-                    background: isSelected ? LOKA.success : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                    style={{
+                      border: isSelected ? 'none' : '2px solid #E4EAEF',
+                      background: isSelected ? LOKA.success : 'transparent',
+                    }}
+                  >
                     {isSelected && <CheckCircle2 size={12} color={LOKA.white} />}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: LOKA.textPrimary }}>{r.reward_name}</p>
-                    <p style={{ fontSize: 11, color: LOKA.textMuted }}>{(() => { try { return r.reward_snapshot ? JSON.parse(r.reward_snapshot).description : 'Reward'; } catch { return 'Reward'; } })()}</p>
+                  <div className="flex-1">
+                    <p className="font-semibold text-text-primary" style={{ fontSize: 13 }}>{r.reward_name}</p>
+                    <p className="text-[11px] text-text-muted">{(() => { try { return r.reward_snapshot ? JSON.parse(r.reward_snapshot).description : 'Reward'; } catch { return 'Reward'; } })()}</p>
                   </div>
                   <Gift size={14} color={LOKA.copper} />
                 </button>

@@ -26,7 +26,7 @@ from app.schemas.admin_extras import (
     LoyaltyTierCreate,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Admin System"])
 
 
 # ---------------------------------------------------------------------------
@@ -339,14 +339,39 @@ async def send_broadcast(
         raise HTTPException(404, "Broadcast not found")
     if obj.status not in ("draft", "pending"):
         raise HTTPException(400, "Can only send draft broadcasts")
+
+    from app.models.user import DeviceToken
+    tokens_result = await db.execute(
+        select(DeviceToken).where(DeviceToken.is_active == True)
+    )
+    device_tokens = tokens_result.scalars().all()
+
+    sent_count = 0
+    for dt in device_tokens:
+        try:
+            notif = Notification(
+                user_id=dt.user_id,
+                title=obj.title,
+                body=obj.body,
+                type="broadcast",
+                data={"broadcast_id": obj.id, "image_url": obj.image_url},
+            )
+            db.add(notif)
+            sent_count += 1
+        except Exception:
+            continue
+
+    await db.flush()
     obj.status = "sent"
     obj.sent_at = datetime.now(timezone.utc)
-    obj.sent_count = 0
+    obj.sent_count = sent_count
     ip = get_client_ip(request)
-    await log_action(db, action="SEND_BROADCAST", user_id=user.id, entity_type="broadcast", entity_id=broadcast_id, details={"title": obj.title}, ip_address=ip)
+    await log_action(db, action="SEND_BROADCAST", user_id=user.id, entity_type="broadcast", entity_id=broadcast_id,
+                     details={"title": obj.title, "sent_count": sent_count, "total_devices": len(device_tokens)}, ip_address=ip)
     await db.flush()
     await db.refresh(obj)
-    return {"id": obj.id, "status": obj.status, "sent_at": obj.sent_at.isoformat() if obj.sent_at else None}
+    return {"id": obj.id, "status": obj.status, "sent_count": sent_count,
+            "sent_at": obj.sent_at.isoformat() if obj.sent_at else None}
 
 
 # ---------------------------------------------------------------------------
@@ -527,6 +552,7 @@ async def delete_loyalty_tier(
 @router.delete("/admin/system/reset")
 async def full_system_reset(
     request: Request,
+    confirmation: str = "",
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(RoleIDs.ADMIN)),
 ):
@@ -536,7 +562,14 @@ async def full_system_reset(
     - app_config
 
     Use with caution. This is irreversible.
+    Blocked in production. Requires confirmation="CONFIRM_RESET".
     """
+    from app.core.config import get_settings
+    settings = get_settings()
+    if settings.ENVIRONMENT.lower() == "production":
+        raise HTTPException(status_code=403, detail="System reset is not allowed in production")
+    if confirmation != "CONFIRM_RESET":
+        raise HTTPException(status_code=400, detail="Confirmation required: pass confirmation='CONFIRM_RESET'")
     try:
         _ALLOWED_RESET_TABLES = {
             "survey_answers", "survey_responses", "survey_questions",
@@ -638,7 +671,14 @@ async def full_system_reset(
             await db.execute(text(f"SELECT setval('{seq}', 1, false)"))
 
 
-        # No audit log for system reset — we wipe it anyway
+        # Audit log before wipe
+        ip = get_client_ip(request)
+        await log_action(
+            db, action="SYSTEM_RESET", user_id=user.id,
+            entity_type="system", entity_id=0,
+            details={"tables_cleared": len(tables_to_clear), "environment": settings.ENVIRONMENT},
+            ip_address=ip, status="success",
+        )
 
         return {
             "message": "Full system reset complete",
@@ -664,9 +704,10 @@ async def init_hq_store(
     This is idempotent — if HQ store already exists, returns 200.
 
     The HQ store is a sentinel used throughout the codebase for:
-    - Universal menu (all menu items under store_id=0)
     - HQ staff default store_id=0
     - Store operations that apply globally
+    - NOTE: Menu items and categories are now store-agnostic (universal).
+      The HQ store is no longer the menu container.
 
     Since POST /admin/stores uses auto-increment, we need a dedicated
     endpoint to create the HQ store with explicit id=0.
@@ -716,9 +757,14 @@ async def pwa_rebuild(
 ):
     """Trigger a new PWA build with incremented version.
     Updates manifest.json and service worker, then rebuilds.
+    Blocked in production.
     """
-    import subprocess
+    from app.core.config import get_settings
+    settings = get_settings()
+    if settings.ENVIRONMENT.lower() == "production":
+        raise HTTPException(status_code=403, detail="PWA rebuild is not allowed in production")
     import json
+    import asyncio
     from datetime import datetime, timezone
 
     customer_dir = "/root/fnb-super-app/customer-app"
@@ -762,16 +808,16 @@ async def pwa_rebuild(
 
     # Run build
     try:
-        result = subprocess.run(
-            ["npm", "run", "build"],
+        proc = await asyncio.create_subprocess_exec(
+            "npm", "run", "build",
             cwd=customer_dir,
-            capture_output=True,
-            text=True,
-            timeout=300
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"Build failed: {result.stderr}")
-    except subprocess.TimeoutExpired:
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
+        if proc.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Build failed: {stderr.decode()}")
+    except asyncio.TimeoutError:
         raise HTTPException(status_code=500, detail="Build timed out")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Build error: {str(e)}")
@@ -801,7 +847,12 @@ async def pwa_clear_cache(
 ):
     """Clear PWA build cache without rebuilding.
     Forces fresh content on next deployment.
+    Blocked in production.
     """
+    from app.core.config import get_settings
+    settings = get_settings()
+    if settings.ENVIRONMENT.lower() == "production":
+        raise HTTPException(status_code=403, detail="PWA cache clear is not allowed in production")
     import shutil
     import os
 

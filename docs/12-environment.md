@@ -57,10 +57,10 @@ Consolidated reference for all environment variables used across the FNB Super-A
 
 | Service | Internal Port | Exposed Port | Notes |
 |---------|---------------|--------------|-------|
-| `backend` | `8000` | `8765` | Local dev port mapping |
+| `backend` | `8000` | `3002` | uvicorn with 2 workers |
 | `postgres` | `5432` | `5433` | Avoids conflict with host PostgreSQL |
-| `admin` | `3000` | `3001` | Next.js dev server |
-| `customer` | `3000` | `3002` | Next.js dev server |
+| `admin` | `3000` | `3001` | Next.js admin frontend |
+| `customer` | `3001` | `3003` | Next.js customer PWA |
 
 ---
 
@@ -70,9 +70,9 @@ Used by `scripts/fnb-manage.sh`:
 
 | Service | Port |
 |---------|------|
-| Backend API | `8765` |
+| Backend API | `3002` |
 | Admin Frontend | `3001` |
-| Customer PWA | `3002` |
+| Customer PWA | `3003` |
 | PostgreSQL | `5433` |
 
 ---

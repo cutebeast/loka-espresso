@@ -102,6 +102,11 @@ class AuditLogOut(BaseModel):
     details: Optional[dict] = None
     ip_address: Optional[str] = None
     status: str
+    method: Optional[str] = None
+    path: Optional[str] = None
+    status_code: Optional[int] = None
+    user_agent: Optional[str] = None
+    request_id: Optional[str] = None
     created_at: Optional[datetime] = None
     user_email: Optional[str] = None
     store_name: Optional[str] = None
@@ -217,3 +222,39 @@ class LoyaltyTierCreate(BaseModel):
     points_multiplier: float = 1.0
     benefits: Optional[dict] = None
     sort_order: int = 0
+
+
+class InformationCardCreate(BaseModel):
+    title: str
+    slug: Optional[str] = None
+    short_description: Optional[str] = None
+    long_description: Optional[str] = None
+    icon: Optional[str] = None
+    content_type: str = "information"
+    image_url: Optional[str] = None
+    gallery_urls: Optional[dict] = None
+    action_url: Optional[str] = None
+    action_type: Optional[str] = None
+    action_label: Optional[str] = None
+    is_active: bool = True
+    position: int = 0
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+
+class InformationCardUpdate(BaseModel):
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    short_description: Optional[str] = None
+    long_description: Optional[str] = None
+    icon: Optional[str] = None
+    content_type: Optional[str] = None
+    image_url: Optional[str] = None
+    gallery_urls: Optional[dict] = None
+    action_url: Optional[str] = None
+    action_type: Optional[str] = None
+    action_label: Optional[str] = None
+    is_active: Optional[bool] = None
+    position: Optional[int] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None

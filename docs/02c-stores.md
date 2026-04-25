@@ -121,6 +121,6 @@ Tables use a **manual QR generation workflow** — QR codes are NOT auto-generat
 
 | Entity | Count | Details |
 |--------|-------|---------|
-| Stores | 6 | id=0 HQ (Headquarters), ids 2-6 physical stores |
-| Physical Stores | 5 | Loka Espresso KLCC (id=2, slug=le-klcc), Loka Espresso Pavilion (id=3, slug=le-pavilion), Loka Espresso Cheras (id=4, slug=le-cheras), Loka Espresso PJ (id=5, slug=le-pj), Loka Espresso Bangi (id=6, slug=le-bangi) |
+| Stores | 6 | id=0 HQ (Headquarters), ids 1-5 physical stores |
+| Physical Stores | 5 | Loka Espresso KLCC (id=1, slug=le-klcc), Loka Espresso Pavilion (id=2, slug=le-pavilion), Loka Espresso Cheras (id=3, slug=le-cheras), Loka Espresso PJ (id=4, slug=le-pj), Loka Espresso Bangi (id=5, slug=le-bangi) |
 | Tables | ~28 | 4-5 tables + PICKUP counter per store × 5 stores |

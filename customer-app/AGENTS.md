@@ -11,7 +11,9 @@
 | File | Purpose |
 |---|---|
 | `src/lib/tokens.ts` | All brand colors, semantic colors, shadows, alpha scales |
-| `src/app/globals.css` | Tailwind v4 theme + CSS utility classes |
+| `src/app/globals.css` | Imports all modular CSS files (zero framework dependency) |
+| `src/styles/utilities.css` | ~400 pure CSS utility classes (display, flex, padding, colors, etc.) |
+| `src/styles/components.css` | Component primitives (btn, chip, badge, guest-banner, etc.) |
 
 **Rule:** Never define local `LOKA` objects in components. Import from `src/lib/tokens.ts`.
 
@@ -28,25 +30,37 @@ Background:   #E4EAEF
 Card:         #FFFFFF
 ```
 
-### CSS Utility Classes (globals.css)
+### CSS Class Reference
 
+#### Typography (`globals.css`)
 | Class | Usage |
 |---|---|
-| `.loka-h1` through `.loka-h6` | Typography headings |
-| `.loka-body`, `.loka-body-sm`, `.loka-caption` | Body text |
-| `.loka-surface` | Standard white card with shadow |
-| `.loka-surface-elevated` | Card with stronger shadow |
-| `.loka-chip-*` | Status chips (success/warning/danger/info/primary/copper) |
-| `.loka-store-pill` | Primary-green store pill |
-| `.loka-btn-primary` | Full-width pill CTA |
+| `.loka-h1`–`.loka-h6` | Heading sizes |
+| `.loka-body`, `.loka-body-sm`, `.loka-caption` | Body text sizes |
+
+#### Layout Components (`globals.css`)
+| Class | Usage |
+|---|---|
 | `.loka-page-header` | Page header bar |
 | `.loka-back-btn` | Circular back button |
+
+#### Component Primitives (`components.css`)
+| Class | Usage |
+|---|---|
+| `.chip`, `.chip-primary`, `.chip-secondary`, `.chip-outline`, `.chip-ghost`, `.chip-copper`, `.chip-dark`, `.chip-green`, `.chip-blue` | Status chips |
+| `.btn`, `.btn-primary`, `.btn-copper`, `.btn-secondary`, `.btn-outline`, `.btn-ghost`, `.btn-pill` | Button variants |
+| `.badge`, `.badge-green`, `.badge-amber`, `.badge-red`, `.badge-dark` | Badge labels |
+| `.guest-banner`, `.guest-banner-text`, `.guest-banner-btn` | Guest mode banner |
+| `.guest-locked`, `.guest-locked-icon`, `.guest-locked-title`, `.guest-locked-desc`, `.guest-locked-btn` | Guest restricted CTA |
+
+#### Utilities (`utilities.css`)
+~400 Tailwind-compatible utility classes for display, flex, grid, padding, margin, width, height, typography, colors, borders, shadows, positioning, transitions, etc. See the file for full reference.
 
 ---
 
 ## 2. UI Primitives (`src/components/ui/`)
 
-All primitives use Tailwind classes + tokens. No inline styles.
+All primitives use pure CSS utility classes from `utilities.css` + design tokens from `variables.css`. No inline styles. **This project does NOT use Tailwind CSS.**
 
 | Component | File | Variants / Props |
 |---|---|---|
@@ -185,7 +199,7 @@ Scan QR (curiosity) → Splash screen → Login → Auto-open article → Regist
 ```
 customer-app/src/
 ├── app/
-│   ├── globals.css          # Design system CSS + Tailwind theme
+│   ├── globals.css          # Design system CSS (pure CSS, no framework)
 │   ├── layout.tsx           # Root layout
 │   └── page.tsx             # AppShell entry
 ├── components/
@@ -207,9 +221,10 @@ customer-app/src/
 
 ## 7. Rules for Next Agent
 
-1. **No inline styles for layout** — Use Tailwind utilities. Inline styles only for truly dynamic values (conditional colors, dynamic widths).
-2. **No local LOKA objects** — Always import from `@/lib/tokens`.
-3. **Use primitives** — Don't reinvent `SurfaceCard`, `StatusChip`, etc.
-4. **Images go to `uploads/information/`** for info cards, `uploads/marketing/` for promos.
-5. **Add `slug` when creating information cards** — Auto-generated but overridable.
-6. **Test Cloudflare cache** — New images may need cache-busting (rename files) if they 404 initially.
+1. **No Tailwind** — Zero Tailwind in this project. Use pure CSS utility classes from `utilities.css` (Tailwind-compatible naming). No `tailwind.config`, no `@tailwind` directives.
+2. **No inline styles for layout** — Use CSS utility classes from `utilities.css`. Inline styles only for truly dynamic values (conditional colors, dynamic widths).
+3. **No local LOKA objects** — Always import from `@/lib/tokens`. Do NOT redefine `LOKA` in checkout or other components.
+4. **Use primitives** — Don't reinvent `SurfaceCard`, `StatusChip`, etc.
+5. **Images go to `uploads/information/`** for info cards, `uploads/marketing/` for promos.
+6. **Add `slug` when creating information cards** — Auto-generated but overridable.
+7. **Test Cloudflare cache** — New images may need cache-busting (rename files) if they 404 initially.

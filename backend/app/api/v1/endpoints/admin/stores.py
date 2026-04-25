@@ -55,9 +55,6 @@ async def get_store(store_id: int, db: AsyncSession = Depends(get_db)):
     return store
 
 
-UNIVERSAL_MENU_STORE_ID = 0
-
-
 @router.get("/{store_id}/menu")
 async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Store).where(Store.id == store_id))
@@ -65,11 +62,10 @@ async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
 
-    # Universal menu: always serve from HQ (store_id=0)
-    # This ensures all stores show the same menu — like real Starbucks/ZUS
+    # Universal menu — same catalog for every store
     cat_result = await db.execute(
         select(MenuCategory)
-        .where(MenuCategory.store_id == UNIVERSAL_MENU_STORE_ID, MenuCategory.is_active == True)
+        .where(MenuCategory.is_active == True)
         .order_by(MenuCategory.display_order)
     )
     categories = cat_result.scalars().all()
@@ -79,7 +75,6 @@ async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
         items_result = await db.execute(
             select(MenuItem)
             .where(
-                MenuItem.store_id == UNIVERSAL_MENU_STORE_ID,
                 MenuItem.category_id.in_(cat_ids),
                 MenuItem.is_available == True,
             )

@@ -8,7 +8,7 @@ interface ChangePasswordModalProps {
   onClose: () => void;
 }
 
-export default function ChangePasswordModal({ token, onClose }: ChangePasswordModalProps) {
+export default function ChangePasswordModal({ token: _token, onClose }: ChangePasswordModalProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,7 +29,7 @@ export default function ChangePasswordModal({ token, onClose }: ChangePasswordMo
     setSaving(true);
     setError('');
     try {
-      const res = await apiFetch('/auth/change-password', token, {
+      const res = await apiFetch('/auth/change-password', undefined, {
         method: 'POST',
         body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
       });

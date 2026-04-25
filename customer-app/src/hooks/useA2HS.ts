@@ -12,26 +12,25 @@ interface A2HSState {
 
 const STORAGE_KEY = 'loka-a2hs-dismissed';
 
+function getInitialDismissed(): boolean {
+  try {
+    return !!localStorage.getItem(STORAGE_KEY);
+  } catch { /* ignore */ }
+  return false;
+}
+
+function getInitialInstalled(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(display-mode: standalone)').matches
+    || (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+}
+
 export function useA2HS(): A2HSState {
   const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(getInitialInstalled);
+  const [dismissed, setDismissed] = useState(getInitialDismissed);
 
   useEffect(() => {
-    // Check if already dismissed
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setDismissed(true);
-    } catch { /* ignore */ }
-
-    // Check if already installed (standalone or fullscreen display mode)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      || (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-    if (isStandalone) {
-      setIsInstalled(true);
-      return;
-    }
-
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -39,7 +38,6 @@ export function useA2HS(): A2HSState {
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    // Listen for appinstalled event
     const installedHandler = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
@@ -54,7 +52,6 @@ export function useA2HS(): A2HSState {
 
   const promptInstall = useCallback(async () => {
     if (!deferredPrompt) return;
-    // Cast to any because beforeinstallprompt event type isn't standard
     const promptEvent = deferredPrompt as unknown as { prompt: () => void; userChoice: Promise<{ outcome: string }> };
     promptEvent.prompt();
     const { outcome } = await promptEvent.userChoice;

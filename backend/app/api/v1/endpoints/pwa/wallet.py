@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
+from sqlalchemy import select
 
-from app.core.commerce import credit_wallet, settle_order_payment
+from app.core.commerce import credit_wallet, debit_wallet, settle_order_payment
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_hq_access
 from app.core.utils import to_float
 from app.core.webhooks import verify_webhook_request
 from app.core.config import get_settings
@@ -14,7 +14,7 @@ from app.core.audit import log_action
 from app.models.user import User
 from app.models.wallet import Wallet, WalletTransaction, WalletTxType
 from app.models.order import Order, Payment
-from app.schemas.wallet import WalletOut, WalletTopup, WalletTransactionOut
+from app.schemas.wallet import WalletOut, WalletTopup, WalletDeduct, WalletTransactionOut
 
 router = APIRouter(prefix="/wallet", tags=["Wallet"])
 
@@ -36,91 +36,74 @@ async def get_wallet(user: User = Depends(get_current_user), db: AsyncSession = 
 
 
 @router.post("/topup")
-async def topup_wallet(req: WalletTopup, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    import traceback, sys
+async def topup_wallet(req: WalletTopup, db: AsyncSession = Depends(get_db), user: User = Depends(require_hq_access())):
     try:
-        wallet = await _get_or_create_wallet(user.id, db)
-        # Strip timezone info to get naive datetime — required by asyncpg for TIMESTAMP columns
-        created_at_val = req.created_at.replace(tzinfo=None) if req.created_at else None
-
-        # Use RETURNING clause to get the exact new balance atomically
-        result = await db.execute(
-            text("""
-                UPDATE wallets
-                SET balance = balance + :amt
-                WHERE id = :wid
-                RETURNING balance
-            """),
-            {"amt": req.amount, "wid": wallet.id}
+        target_user_id = req.user_id or user.id
+        _, new_balance = await credit_wallet(
+            db,
+            target_user_id,
+            req.amount,
+            description=req.description or "Top up (admin)",
         )
-        row = result.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Wallet not found")
-        new_balance = row[0]
-
-        # Insert transaction record
-        await db.execute(
-            text("""
-                INSERT INTO wallet_transactions (wallet_id, user_id, amount, type, description, balance_after, created_at)
-                VALUES (:wid, :uid, :amt, 'topup', :desc, :bal_after, :cat)
-            """),
-            {"wid": wallet.id, "uid": user.id, "amt": req.amount,
-             "desc": req.description or "Top up", "bal_after": new_balance, "cat": created_at_val}
+        await log_action(
+            db,
+            action="wallet_topup",
+            user_id=user.id,
+            store_id=None,
+            entity_type="wallet",
+            entity_id=target_user_id,
+            details={"amount": req.amount, "target_user_id": target_user_id, "description": req.description or "Top up (admin)"},
+            ip_address=None,
+            status="success",
         )
         await db.flush()
         return {"message": "Top up successful", "new_balance": to_float(new_balance)}
     except HTTPException:
         raise
     except Exception as e:
-        sys.stderr.write(f"WALLET TOPUP ERROR user={user.id}: {e}\n")
-        traceback.print_exc(file=sys.stderr)
-        sys.stderr.flush()
+        await log_action(
+            db,
+            action="wallet_topup",
+            user_id=user.id,
+            store_id=None,
+            entity_type="wallet",
+            entity_id=req.user_id or user.id,
+            details={"amount": req.amount, "error": str(e)},
+            ip_address=None,
+            status="failure",
+        )
         raise
 
 
-class WalletDeduct(BaseModel):
-    amount: float
-    description: str = "Wallet deduction"
-
-
 @router.post("/deduct")
-async def deduct_wallet(req: WalletDeduct, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Deduct amount from customer wallet. Used for order payments."""
-    if req.amount <= 0:
-        raise HTTPException(status_code=400, detail="Amount must be positive")
+async def deduct_wallet(req: WalletDeduct, db: AsyncSession = Depends(get_db), user: User = Depends(require_hq_access())):
+    """Admin-only: Deduct amount from customer wallet."""
+    target_user_id = req.user_id
+    wallet = await _get_or_create_wallet(target_user_id, db)
 
-    wallet = await _get_or_create_wallet(user.id, db)
-
-    # Check sufficient balance
     if float(wallet.balance) < req.amount:
         raise HTTPException(
             status_code=400,
             detail=f"Insufficient balance. Available: {to_float(wallet.balance)}, Required: {req.amount}"
         )
 
-    # Deduct atomically using RETURNING
-    result = await db.execute(
-        text("""
-            UPDATE wallets
-            SET balance = balance - :amt
-            WHERE id = :wid
-            RETURNING balance
-        """),
-        {"amt": req.amount, "wid": wallet.id}
+    _, new_balance = await debit_wallet(
+        db,
+        target_user_id,
+        req.amount,
+        description=req.description,
     )
-    row = result.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Wallet not found")
-    new_balance = row[0]
 
-    # Record transaction
-    await db.execute(
-        text("""
-            INSERT INTO wallet_transactions (wallet_id, user_id, amount, type, description, balance_after, created_at)
-            VALUES (:wid, :uid, :amt, 'payment', :desc, :bal_after, NOW())
-        """),
-        {"wid": wallet.id, "uid": user.id, "amt": req.amount,
-         "desc": req.description, "bal_after": new_balance}
+    await log_action(
+        db,
+        action="wallet_deduct",
+        user_id=user.id,
+        store_id=None,
+        entity_type="wallet",
+        entity_id=target_user_id,
+        details={"amount": req.amount, "target_user_id": target_user_id, "description": req.description},
+        ip_address=None,
+        status="success",
     )
     await db.flush()
 

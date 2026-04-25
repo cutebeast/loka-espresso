@@ -119,10 +119,10 @@ export default function StoreSettingsPage({ stores, token, onRefresh }: StoreSet
     if (!confirm(`Are you sure you want to ${action} "${s.name}"?`)) return;
     try {
       if (s.is_active) {
-        const res = await apiFetch(`/admin/stores/${s.id}`, token, { method: 'DELETE' });
+        const res = await apiFetch(`/admin/stores/${s.id}`, undefined, { method: 'DELETE' });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Failed to deactivate'); return; }
       } else {
-        const res = await apiFetch(`/admin/stores/${s.id}/toggle`, token, { method: 'PATCH' });
+        const res = await apiFetch(`/admin/stores/${s.id}/toggle`, undefined, { method: 'PATCH' });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Failed to reactivate'); return; }
       }
       onRefresh();
@@ -201,7 +201,7 @@ export default function StoreSettingsPage({ stores, token, onRefresh }: StoreSet
 const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primary };
 const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.success, marginTop: 2 };
 
-function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }) {
+function AddStoreForm({ token: _token, onClose }: { token: string; onClose: () => void }) {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [address, setAddress] = useState('');
@@ -235,7 +235,7 @@ function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }
       payload.delivery_integration_enabled = deliveryIntegration;
       const ohJSON = openingHoursToJSON(openingHours);
       if (ohJSON) payload.opening_hours = ohJSON;
-      await apiFetch('/admin/stores', token, {
+      await apiFetch('/admin/stores', undefined, {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -323,7 +323,7 @@ function AddStoreForm({ token, onClose }: { token: string; onClose: () => void }
 }
 
 // --- Edit Store Form ---
-function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token: string; onClose: () => void }) {
+function EditStoreForm({ store, token: _token, onClose }: { store: MerchantStore; token: string; onClose: () => void }) {
   const [name, setName] = useState(store.name);
   const [address, setAddress] = useState(store.address || '');
   const [phone, setPhone] = useState(store.phone || '');
@@ -357,7 +357,7 @@ function EditStoreForm({ store, token, onClose }: { store: MerchantStore; token:
       payload.delivery_integration_enabled = deliveryIntegration;
       const ohJSON = openingHoursToJSON(openingHours);
       if (ohJSON) payload.opening_hours = ohJSON;
-      const res = await apiFetch(`/admin/stores/${store.id}`, token, {
+      const res = await apiFetch(`/admin/stores/${store.id}`, undefined, {
         method: 'PUT',
         body: JSON.stringify(payload),
       });

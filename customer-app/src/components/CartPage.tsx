@@ -10,17 +10,14 @@ import {
   Coffee,
   QrCode,
   X,
-  AlertTriangle,
   Pen,
   Trash2,
 } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useConfigStore } from '@/stores/configStore';
-import { Modal } from '@/components/ui/Modal';
 
-import { formatPrice } from '@/lib/tokens';
-import { cacheBust } from '@/lib/api';
+import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
 
 interface CustomizationStructure {
   options?: Array<{ id: number; name: string; price_adjustment: number }>;
@@ -45,11 +42,10 @@ const ORDER_MODES = [
 ];
 
 export default function CartPage() {
-  const { items, updateQuantity, getTotal, getItemCount, clearCart } = useCartStore();
-  const { orderMode, setOrderMode, selectedStore, dineInSession, setDineInSession, setPage, showToast, setShowStorePicker } = useUIStore();
+  const { items, updateQuantity, getTotal, getItemCount, clearCart, orderNote, setOrderNote } = useCartStore();
+  const { orderMode, setOrderMode, selectedStore, dineInSession, setDineInSession, setPage, showToast, setShowStorePicker, setCheckoutDraft } = useUIStore();
   const { config } = useConfigStore();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [orderNote, setOrderNote] = useState('');
 
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
@@ -69,14 +65,15 @@ export default function CartPage() {
   };
 
   const handleScanQR = useCallback(() => {
-    showToast('Use the QR scanner on the home screen', 'info');
-  }, [showToast]);
+    const event = new CustomEvent('open-qr-scanner');
+    window.dispatchEvent(event);
+  }, []);
 
   if (items.length === 0) {
     return (
       <div className="cart-empty">
         <div className="cart-empty-icon">
-          <ShoppingBag size={32} style={{ color: '#384B16', opacity: 0.6 }} />
+          <ShoppingBag size={32} color="#384B16" className="co-wallet-icon" />
         </div>
         <p className="cart-empty-title">Your cart is empty</p>
         <p className="cart-empty-text">Looks like you haven&apos;t added anything yet</p>
@@ -98,7 +95,7 @@ export default function CartPage() {
       </div>
 
       {/* Context card (store / dine-in info) */}
-      <div style={{ padding: '10px 20px', background: 'var(--loka-bg-card)', borderBottom: '1px solid var(--loka-border-light)' }}>
+      <div className="cart-context-wrapper">
         {orderMode === 'dine_in' && dineInSession ? (
           <div className="cart-context-card dinein">
             <div className="cart-context-icon copper">
@@ -135,7 +132,7 @@ export default function CartPage() {
       </div>
 
       {/* Order mode pills */}
-      <div style={{ padding: '12px 20px', background: 'var(--loka-bg-card)', borderBottom: '1px solid var(--loka-border-light)' }}>
+      <div className="cart-mode-wrapper">
         <div className="cart-mode-bar">
           {ORDER_MODES.map((m) => {
             const isActive = orderMode === m.key;
@@ -167,7 +164,7 @@ export default function CartPage() {
                 <div className="cart-item-thumb">
                   {item.image_url ? (
                     <img
-                      src={cacheBust(item.image_url.startsWith('http') ? item.image_url : `https://admin.loyaltysystem.uk${item.image_url}`)}
+                      src={resolveAssetUrl(item.image_url) || ''}
                       alt={item.name}
                       onError={(e) => {
                         const img = e.target as HTMLImageElement;
@@ -175,11 +172,11 @@ export default function CartPage() {
                       }}
                     />
                   ) : (
-                    <Coffee size={22} style={{ color: '#384B16' }} />
+                    <Coffee size={22} color="#384B16" />
                   )}
                 </div>
                 <div className="cart-item-details">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div className="cart-item-header">
                     <h4 className="cart-item-name">{item.name}</h4>
                     <span className="cart-item-price">{formatPrice(item.price * item.quantity)}</span>
                   </div>
@@ -257,7 +254,7 @@ export default function CartPage() {
       <div className="cart-footer">
         {orderMode === 'delivery' && config.min_order_delivery > 0 && subtotal < config.min_order_delivery && (
           <div className="cart-delivery-min">
-            <ShoppingBag size={16} style={{ color: '#7a4e18' }} />
+            <ShoppingBag size={16} color="#7a4e18" />
             <span>Add {formatPrice(config.min_order_delivery - subtotal)} more for delivery</span>
           </div>
         )}
@@ -269,7 +266,10 @@ export default function CartPage() {
         ) : (
           <button
             className="cart-checkout-btn"
-            onClick={() => setPage('checkout')}
+            onClick={() => {
+              setCheckoutDraft({ notes: orderNote });
+              setPage('checkout');
+            }}
             disabled={belowDeliveryMinimum}
           >
             Proceed to Checkout
@@ -278,33 +278,16 @@ export default function CartPage() {
       </div>
 
       {/* Clear Cart Confirmation Modal */}
-      <Modal isOpen={showClearConfirm} onClose={() => setShowClearConfirm(false)} title="Clear Cart?" variant="center">
-        <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
-          <div style={{ width: 56, height: 56, borderRadius: 999, background: 'rgba(209,142,56,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <AlertTriangle size={28} style={{ color: '#D18E38' }} />
+      <div className={`profile-modal-overlay ${showClearConfirm ? 'show' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setShowClearConfirm(false); }}>
+        <div className="profile-modal-box">
+          <h3>Clear cart?</h3>
+          <p>This will remove {itemCount} item{itemCount !== 1 ? 's' : ''} from your cart.</p>
+          <div className="profile-modal-btns">
+            <button className="profile-modal-btn profile-modal-btn-cancel" onClick={() => setShowClearConfirm(false)}>Keep Items</button>
+            <button className="profile-modal-btn profile-modal-btn-confirm" onClick={handleClearCart}>Clear Cart</button>
           </div>
-          <p style={{ fontSize: 15, color: '#3A4A5A', marginBottom: 8 }}>
-            This will remove <strong style={{ color: '#1B2023' }}>{itemCount} item{itemCount !== 1 ? 's' : ''}</strong> from your cart.
-          </p>
-          <p style={{ fontSize: 13, color: '#6A7A8A' }}>This action cannot be undone.</p>
         </div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-          <button
-            className="cart-empty-btn"
-            style={{ flex: 1, background: '#F5F7FA', color: '#1B2023' }}
-            onClick={() => setShowClearConfirm(false)}
-          >
-            Keep Items
-          </button>
-          <button
-            className="cart-empty-btn"
-            style={{ flex: 1, background: '#DC2626' }}
-            onClick={handleClearCart}
-          >
-            Clear Cart
-          </button>
-        </div>
-      </Modal>
+      </div>
     </div>
   );
 }

@@ -31,7 +31,7 @@ export default function PrimaryActionButton({
       onClick={disabled || loading ? undefined : onPress}
       disabled={disabled || loading}
       className={[
-        'w-full bg-primary hover:bg-primary-dark disabled:bg-primary/30 text-white font-semibold',
+        'w-full bg-primary hover:bg-primary-dark disabled:bg-primary-30 text-white font-semibold',
         'py-3.5 px-6 rounded-xl text-base tracking-wide transition-colors',
         'flex items-center justify-center gap-2',
         className,

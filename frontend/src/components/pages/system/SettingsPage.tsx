@@ -60,7 +60,7 @@ export default function SettingsPage({ token }: SettingsPageProps) {
       const allKeys = CONFIG_GROUPS.flatMap(g => g.items.map(i => i.key));
       const params = new URLSearchParams();
       for (const k of allKeys) { params.append('key', k); }
-      const res = await apiFetch(`/admin/config?${params.toString()}`, token);
+      const res = await apiFetch(`/admin/config?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         const configs = data.configs || {};
@@ -90,7 +90,7 @@ export default function SettingsPage({ token }: SettingsPageProps) {
       return next;
     });
     try {
-      const res = await apiFetch(`/admin/config?key=${encodeURIComponent(key)}`, token, {
+      const res = await apiFetch(`/admin/config?key=${encodeURIComponent(key)}`, undefined, {
         method: 'PUT',
         body: JSON.stringify(body),
       });

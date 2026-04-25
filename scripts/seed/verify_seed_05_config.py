@@ -36,6 +36,8 @@ CONFIG_KEYS = [
     {"key": "voucher_expiry_days",       "value": "30"},
     {"key": "points_redemption_rate",    "value": "0.01"},
     {"key": "referral_bonus_points",      "value": "100"},
+    {"key": "referral_reward_amount",     "value": "5.00"},
+    {"key": "referral_min_orders",        "value": "1"},
 ]
 
 

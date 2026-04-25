@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Plus, Home, Building2, Navigation, Edit3, Trash2, X, Check } from 'lucide-react';
+import { MapPin, Plus, Home, Building2, Navigation, Trash2, X, Check } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { PageHeader } from '@/components/shared';
 import api from '@/lib/api';

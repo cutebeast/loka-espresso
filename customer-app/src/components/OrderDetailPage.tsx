@@ -23,27 +23,29 @@ function formatPrice(val: number | string): string {
   return `RM ${Number(val).toFixed(2)}`;
 }
 
-const TIMELINE_STEPS = ['Confirmed', 'Preparing', 'Ready', 'Completed'];
-const DELIVERY_TIMELINE_STEPS = ['Confirmed', 'Preparing', 'Ready', 'On the way', 'Completed'];
+/* Timeline steps matching ordertrack.html reference */
+const PICKUP_STEPS = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed'];
+const DELIVERY_STEPS = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'On the way', 'Completed'];
 
 function getTimelineSteps(order: Order): string[] {
-  return order.order_type === 'delivery' ? DELIVERY_TIMELINE_STEPS : TIMELINE_STEPS;
+  return order.order_type === 'delivery' ? DELIVERY_STEPS : PICKUP_STEPS;
 }
 
 function getStatusStepIndex(status: string, orderType?: string): number {
   const s = status?.toLowerCase();
   const isDelivery = orderType === 'delivery';
 
-  if (s === 'pending' || s === 'confirmed') return 0;
-  if (s === 'preparing' || s === 'in_progress') return 1;
+  if (s === 'pending') return 0;
+  if (s === 'confirmed') return 1;
+  if (s === 'preparing' || s === 'in_progress') return 2;
 
   if (isDelivery) {
-    if (s === 'ready') return 2;
-    if (s === 'out_for_delivery' || s === 'driver_assigned') return 3;
-    if (s === 'completed' || s === 'delivered') return 4;
+    if (s === 'ready') return 3;
+    if (s === 'out_for_delivery' || s === 'driver_assigned') return 4;
+    if (s === 'completed' || s === 'delivered') return 5;
   } else {
-    if (s === 'ready') return 2;
-    if (s === 'completed' || s === 'picked_up') return 3;
+    if (s === 'ready') return 3;
+    if (s === 'completed' || s === 'picked_up') return 4;
   }
   return 0;
 }
@@ -81,20 +83,29 @@ export default function OrderDetailPage() {
   }, [setCurrentOrder, showToast]);
 
   useEffect(() => {
-    if (orderId && (!order || order.id !== orderId)) {
+    if (!orderId) {
+      setLoading(false);
+      setPage('orders');
+      return;
+    }
+    if (!order || order.id !== orderId) {
       fetchOrder(orderId);
     }
-  }, [orderId, order, fetchOrder]);
+  }, [orderId, order, fetchOrder, setPage]);
 
   const handleReorder = async () => {
     if (!order) return;
+    if (!order.store_id || order.store_id <= 0) {
+      showToast('Cannot reorder: store information missing', 'error');
+      return;
+    }
     setReordering(true);
     try {
       const res = await api.post(`/orders/${order.id}/reorder`);
       const cartItems = res.data?.items ?? [];
       clearCart();
       for (const item of cartItems) {
-        useCartStore.getState().addItem(item, order.store_id ?? 0);
+        useCartStore.getState().addItem(item, order.store_id);
       }
       showToast('Items added to cart', 'success');
       setPage('cart');
@@ -155,7 +166,7 @@ export default function OrderDetailPage() {
           </button>
           <h1 className="ot-title">Order Details</h1>
         </div>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6A7A8A' }}>
+        <div className="ot-loading">
           Loading…
         </div>
       </div>
@@ -223,7 +234,7 @@ export default function OrderDetailPage() {
               </div>
             </div>
             {order.delivery_tracking_url && (
-              <a href={order.delivery_tracking_url} target="_blank" rel="noreferrer" style={{ color: 'var(--loka-primary)', fontSize: 12, fontWeight: 600 }}>
+              <a className="ot-track-link" href={order.delivery_tracking_url} target="_blank" rel="noreferrer">
                 Track
               </a>
             )}
@@ -231,23 +242,23 @@ export default function OrderDetailPage() {
         )}
 
         {/* Order Type Info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6A7A8A' }}>
+        <div className="ot-type-info">
           {order.order_type === 'delivery' && <Truck size={14} />}
           {order.order_type === 'dine_in' && <UtensilsCrossed size={14} />}
           {order.order_type === 'pickup' && <ShoppingBag size={14} />}
           <span>{getOrderTypeLabel(order)}</span>
           {order.order_type === 'pickup' && order.pickup_time && (
             <>
-              <span>·</span>
+              <span className="ot-dot">·</span>
               <Clock size={14} />
               <span>Ready by {new Date(order.pickup_time).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}</span>
             </>
           )}
           {order.order_type === 'delivery' && order.delivery_address && (
             <>
-              <span>·</span>
+              <span className="ot-dot">·</span>
               <MapPin size={14} />
-              <span className="truncate">
+              <span className="ot-address">
                 {typeof order.delivery_address === 'string' ? order.delivery_address : (order.delivery_address as Record<string, string>)?.address || ''}
               </span>
             </>
@@ -278,9 +289,9 @@ export default function OrderDetailPage() {
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="ot-actions">
           <button
-            className="co-place-order-btn"
+            className="ot-reorder-btn"
             onClick={handleReorder}
             disabled={reordering}
           >
@@ -288,18 +299,16 @@ export default function OrderDetailPage() {
             {reordering ? 'Adding to cart…' : 'Reorder'}
           </button>
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="ot-action-row">
             <button
-              className="co-success-btn-secondary"
-              style={{ flex: 1 }}
+              className="ot-secondary-btn"
               onClick={handleShare}
             >
               <Share2 size={16} /> Share receipt
             </button>
             {['pending', 'confirmed'].includes(order.status?.toLowerCase()) && (
               <button
-                className="co-success-btn-secondary"
-                style={{ flex: 1, borderColor: '#C75050', color: '#C75050' }}
+                className="ot-secondary-btn ot-cancel-btn"
                 onClick={handleCancel}
                 disabled={cancelling}
               >

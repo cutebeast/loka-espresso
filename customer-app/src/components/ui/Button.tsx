@@ -27,9 +27,9 @@ export function Button({
   
   const variants = {
     primary: 'bg-primary text-white hover:bg-primary-dark active:bg-primary-dark',
-    secondary: 'bg-primary-light/10 text-primary hover:bg-primary-light/20',
+    secondary: 'bg-primary-light-10 text-primary hover:bg-primary-light-20',
     outline: 'border-2 border-primary text-primary hover:bg-primary hover:text-white',
-    ghost: 'text-primary hover:bg-primary/10',
+    ghost: 'text-primary hover:bg-primary-10',
   };
 
   const sizes = {

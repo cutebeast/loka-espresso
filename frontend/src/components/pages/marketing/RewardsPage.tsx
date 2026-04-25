@@ -1,9 +1,30 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
+import Image from 'next/image';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { Select, Pagination, Drawer } from '@/components/ui';
 import { THEME } from '@/lib/theme';
+
+interface RewardItem {
+  id: number;
+  code: string | null;
+  name: string;
+  short_description: string | null;
+  long_description: string | null;
+  image_url: string | null;
+  reward_type: string;
+  points_cost: number;
+  total_redeemed: number;
+  is_active: boolean;
+  stock_limit: number | null;
+  validity_days: number | null;
+  min_spend: number | null;
+  terms: string[] | null;
+  how_to_redeem: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
 
 interface RewardsPageProps {
   token: string;
@@ -13,23 +34,24 @@ const PAGE_SIZE = 20;
 
 export default function RewardsPage({ token }: RewardsPageProps) {
   // List state
-  const [rewards, setRewards] = useState<any[]>([]);
+  const [rewards, setRewards] = useState<RewardItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [error, setError] = useState('');
 
   // View mode: 'list' or 'form'
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
-  const [editingReward, setEditingReward] = useState<any | null>(null);
+  const [editingReward, setEditingReward] = useState<RewardItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fetchRewards = useCallback(async (p: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(p), page_size: String(PAGE_SIZE) });
-      const res = await apiFetch(`/admin/rewards?${params}`, token);
+      const res = await apiFetch(`/admin/rewards?${params}`);
       if (res.ok) {
         const data = await res.json();
         setRewards(data.rewards || []);
@@ -37,8 +59,8 @@ export default function RewardsPage({ token }: RewardsPageProps) {
         setTotalPages(data.total_pages || 1);
         setPage(p);
       }
-    } catch {} finally { setLoading(false); }
-  }, [token]);
+    } catch { setError('Failed to load rewards'); setRewards([]); setTotal(0); setTotalPages(1); } finally { setLoading(false); }
+  }, []);
 
   useEffect(() => { fetchRewards(1); }, [fetchRewards]);
 
@@ -48,7 +70,7 @@ export default function RewardsPage({ token }: RewardsPageProps) {
     setDrawerOpen(true);
   }
 
-  function openEdit(reward: any) {
+  function openEdit(reward: RewardItem) {
     setEditingReward(reward);
     setViewMode('form');
     setDrawerOpen(true);
@@ -61,22 +83,22 @@ export default function RewardsPage({ token }: RewardsPageProps) {
     fetchRewards(page);
   }
 
-  async function toggleActive(reward: any) {
+  async function toggleActive(reward: RewardItem) {
     try {
-      await apiFetch(`/admin/rewards/${reward.id}`, token, {
+      await apiFetch(`/admin/rewards/${reward.id}`, undefined, {
         method: 'PUT',
         body: JSON.stringify({ is_active: !reward.is_active }),
       });
       fetchRewards(page);
-    } catch {}
+    } catch { setError('Failed to toggle reward status'); }
   }
 
   async function handleDelete(id: number) {
     try {
-      await apiFetch(`/admin/rewards/${id}`, token, { method: 'DELETE' });
+      await apiFetch(`/admin/rewards/${id}`, undefined, { method: 'DELETE' });
       setConfirmDelete(null);
       fetchRewards(page);
-    } catch {}
+    } catch { setError('Failed to delete reward'); setConfirmDelete(null); }
   }
 
   const drawerTitle = editingReward ? 'Edit Reward' : 'New Reward';
@@ -88,6 +110,12 @@ export default function RewardsPage({ token }: RewardsPageProps) {
           <RewardFormPage token={token} existingReward={editingReward} onBack={closeForm} />
         )}
       </Drawer>
+
+      {error && (
+        <div className="badge badge-red" style={{ marginBottom: 12, display: 'inline-flex' }}>
+          <i className="fas fa-exclamation-circle" style={{ marginRight: 6 }}></i> {error}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
         <button className="btn btn-primary" onClick={openCreate}>
           <i className="fas fa-plus"></i> New Reward
@@ -139,7 +167,7 @@ export default function RewardsPage({ token }: RewardsPageProps) {
                 <tr key={reward.id}>
                   <td>
                     {reward.image_url ? (
-                      <img src={cacheBust(reward.image_url)} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} />
+                      <Image src={cacheBust(reward.image_url)} alt="" width={50} height={50} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8 }} />
                     ) : (
                       <div style={{ width: 50, height: 50, background: THEME.bgMuted, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.success, fontSize: 18 }}>
                         <i className="fas fa-gift"></i>
@@ -192,7 +220,7 @@ export default function RewardsPage({ token }: RewardsPageProps) {
 
 // ── Separate Form Page ────────────────────────────────────────────────────────
 
-function RewardFormPage({ token, existingReward, onBack }: { token: string; existingReward: any | null; onBack: () => void }) {
+function RewardFormPage({ token: _token, existingReward, onBack }: { token: string; existingReward: RewardItem | null; onBack: () => void }) {
   const isEdit = !!existingReward;
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -220,12 +248,12 @@ function RewardFormPage({ token, existingReward, onBack }: { token: string; exis
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await apiUpload('/upload/marketing-image', token, fd);
+      const res = await apiUpload('/upload/marketing-image', fd);
       if (res.ok) {
         const data = await res.json();
         setImageUrl(data.url);
       }
-    } catch {} finally { setUploading(false); }
+    } catch { setError('Image upload failed'); } finally { setUploading(false); }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -252,15 +280,15 @@ function RewardFormPage({ token, existingReward, onBack }: { token: string; exis
 
       const url = isEdit ? `/admin/rewards/${existingReward!.id}` : '/admin/rewards';
       const method = isEdit ? 'PUT' : 'POST';
-      const res = await apiFetch(url, token, { method, body: JSON.stringify(payload) });
+      const res = await apiFetch(url, undefined, { method, body: JSON.stringify(payload) });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.detail || `Failed (${res.status})`);
         return;
       }
       onBack();
-    } catch (err: any) {
-      setError(err.message || 'Network error');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Network error');
     } finally { setSaving(false); }
   }
 
@@ -351,7 +379,7 @@ function RewardFormPage({ token, existingReward, onBack }: { token: string; exis
               </button>
               {imageUrl && (
                 <>
-                  <img src={imageUrl} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} />
+                  <Image src={imageUrl} alt="" width={40} height={40} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} />
                   <button type="button" className="btn btn-sm" onClick={() => setImageUrl('')} style={{ color: '#EF4444' }}><i className="fas fa-times"></i></button>
                 </>
               )}

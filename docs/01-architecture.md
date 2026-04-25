@@ -158,9 +158,9 @@ Important backend env variables currently in use:
 - Scripted manager:
   - `scripts/fnb-manage.sh`
 - Current local ports used by that script:
-  - backend: `8765`
+  - backend: `3002`
   - admin: `3001`
-  - customer PWA: `3002`
+  - customer PWA: `3003`
 
 ### Production-style Deployment Docs
 - Some deployment examples still reference backend port `8000` for systemd/Caddy-style deployment

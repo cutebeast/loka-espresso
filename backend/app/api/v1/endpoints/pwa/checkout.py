@@ -29,6 +29,7 @@ from app.models.menu import MenuItem
 from app.models.voucher import Voucher, UserVoucher
 from app.models.reward import Reward, UserReward
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
+from app.models.order import CheckoutToken
 
 router = APIRouter(prefix="/checkout", tags=["Checkout"])
 
@@ -88,13 +89,19 @@ async def checkout(
         if ci.store_id != store_id:
             raise HTTPException(status_code=400, detail="All cart items must be from the same store")
 
-    # Calculate subtotal
+    # Calculate subtotal (including customization price adjustments)
     subtotal = 0.0
     for ci in cart_items:
-        ir = await db.execute(select(MenuItem).where(MenuItem.id == ci.item_id))
-        mi = ir.scalar_one_or_none()
-        if mi:
-            subtotal += to_float(ci.unit_price) * ci.quantity
+        base = to_float(ci.unit_price)
+        custom_adj = 0.0
+        if ci.customization_option_ids:
+            from app.models.marketing import CustomizationOption
+            opts_result = await db.execute(
+                select(CustomizationOption).where(CustomizationOption.id.in_(ci.customization_option_ids))
+            )
+            for opt in opts_result.scalars().all():
+                custom_adj += to_float(opt.price_adjustment)
+        subtotal += (base + custom_adj) * ci.quantity
 
     # Calculate delivery fee
     delivery_fee = 0.0
@@ -111,6 +118,15 @@ async def checkout(
     discount_type = None
     discount_amount = 0.0
     checkout_token = f"CHK-{uuid.uuid4().hex[:16].upper()}"
+    ctk = CheckoutToken(
+        token=checkout_token,
+        user_id=user.id,
+        store_id=store_id,
+        subtotal=round(subtotal, 2),
+        delivery_fee=round(delivery_fee, 2),
+        total=0,
+        expires_at=now_utc() + timedelta(minutes=15),
+    )
 
     # ── Apply Voucher ──────────────────────────────────────────────────
     if req.voucher_code:
@@ -149,6 +165,9 @@ async def checkout(
         # Reserve voucher for this checkout
         uv.status = "pending_checkout"
         uv.order_id = None  # Will be set when order is created
+        ctk.voucher_code = req.voucher_code
+        ctk.discount_type = "voucher"
+        ctk.discount_amount = discount_amount
 
     # ── Redeem Reward ─────────────────────────────────────────────────
     elif req.reward_id:
@@ -201,8 +220,13 @@ async def checkout(
 
         # Reserve reward for this checkout
         ur.status = "pending_checkout"
+        ctk.reward_id = req.reward_id
+        ctk.discount_type = "reward"
+        ctk.discount_amount = discount_amount
 
     total = round(subtotal + delivery_fee - discount_amount, 2)
+    ctk.total = total
+    db.add(ctk)
 
     await db.flush()
 

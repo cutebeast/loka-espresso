@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { PageId, Store, Category, MenuItem, OrderMode } from '@/lib/api';
 
 export interface PageParams {
@@ -19,6 +20,17 @@ export interface DineInSession {
   tableNumber: string;
 }
 
+export interface CheckoutDraft {
+  orderMode?: OrderMode;
+  selectedStore?: Store | null;
+  deliveryAddress?: { address: string; lat?: number; lng?: number } | null;
+  pickupTime?: string | null;
+  paymentMethod?: 'wallet' | 'pay_at_store' | 'cod' | 'cash';
+  notes?: string;
+  voucherCode?: string;
+  rewardCode?: string;
+}
+
 interface UIState {
   page: PageId;
   orderMode: OrderMode;
@@ -33,6 +45,9 @@ interface UIState {
   toast: { message: string; type: 'success' | 'error' | 'info' } | null;
   pageParams: PageParams;
   showStorePicker: boolean;
+  isGuest: boolean;
+  previousPage: PageId | null;
+  checkoutDraft: CheckoutDraft;
   setPage: (page: PageId, params?: PageParams) => void;
   setOrderMode: (mode: OrderMode) => void;
   setDineInSession: (session: DineInSession | null) => void;
@@ -46,50 +61,105 @@ interface UIState {
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   hideToast: () => void;
   setShowStorePicker: (show: boolean) => void;
+  setIsGuest: (guest: boolean) => void;
+  setPreviousPage: (page: PageId | null) => void;
+  setCheckoutDraft: (draft: Partial<CheckoutDraft>) => void;
+  clearCheckoutDraft: () => void;
+  resetAll: () => void;
 }
 
 // Hash-based routing: sync page state with URL hash
 function getHashPage(): PageId {
   if (typeof window === 'undefined') return 'home';
-  const hash = window.location.hash.replace('#', '');
+  const raw = window.location.hash.replace('#', '');
+  const pagePart = raw.split('?')[0];
   const validPages: PageId[] = [
     'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
     'wallet', 'history', 'promotions', 'information', 'my-rewards',
-    'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card',
+    'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail',
   ];
-  return validPages.includes(hash as PageId) ? (hash as PageId) : 'home';
+  return validPages.includes(pagePart as PageId) ? (pagePart as PageId) : 'home';
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  page: getHashPage(),
-  orderMode: 'pickup',
-  dineInSession: null,
-  selectedStore: null,
-  stores: [],
-  categories: [],
-  menuItems: [],
-  selectedCategoryId: null,
-  searchQuery: '',
-  isLoading: false,
-  toast: null,
-  pageParams: {},
-  showStorePicker: false,
-  setPage: (page, params) => {
-    if (typeof window !== 'undefined') {
-      window.location.hash = page;
+function getHashParams(): PageParams {
+  if (typeof window === 'undefined') return {};
+  const raw = window.location.hash.replace('#', '');
+  const queryPart = raw.split('?')[1];
+  if (!queryPart) return {};
+  const params = new URLSearchParams(queryPart);
+  const result: PageParams = {};
+  for (const [key, value] of params.entries()) {
+    if (key === 'orderId') result.orderId = parseInt(value, 10);
+    else if (key === 'selectedInfoId') result.selectedInfoId = parseInt(value, 10);
+    else if (key === 'selectedPromoId') result.selectedPromoId = parseInt(value, 10);
+    else (result as Record<string, unknown>)[key] = value;
+  }
+  return result;
+}
+
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      page: getHashPage(),
+      orderMode: 'pickup',
+      dineInSession: null,
+      selectedStore: null,
+      stores: [],
+      categories: [],
+      menuItems: [],
+      selectedCategoryId: null,
+      searchQuery: '',
+      isLoading: false,
+      toast: null,
+      pageParams: getHashParams(),
+      showStorePicker: false,
+      isGuest: false,
+      previousPage: null,
+      checkoutDraft: {},
+      setPage: (page, params) => {
+        if (typeof window !== 'undefined') {
+          const paramStr = params ? new URLSearchParams(
+            Object.entries(params).filter(([_, v]) => v != null).map(([k, v]) => [k, String(v)])
+          ).toString() : '';
+          window.location.hash = paramStr ? `${page}?${paramStr}` : page;
+        }
+        set((state) => ({ page, pageParams: params ?? {}, previousPage: state.page }));
+      },
+      setOrderMode: (orderMode) => set({ orderMode }),
+      setDineInSession: (dineInSession) => set({ dineInSession }),
+      setSelectedStore: (selectedStore) => set({ selectedStore }),
+      setStores: (stores) => set({ stores }),
+      setCategories: (categories) => set({ categories }),
+      setMenuItems: (menuItems) => set({ menuItems }),
+      setSelectedCategoryId: (selectedCategoryId) => set({ selectedCategoryId }),
+      setSearchQuery: (searchQuery) => set({ searchQuery }),
+      setIsLoading: (isLoading) => set({ isLoading }),
+      showToast: (message, type) => set({ toast: { message, type } }),
+      hideToast: () => set({ toast: null }),
+      setShowStorePicker: (showStorePicker) => set({ showStorePicker }),
+      setIsGuest: (isGuest) => set({ isGuest }),
+      setPreviousPage: (previousPage) => set({ previousPage }),
+      setCheckoutDraft: (draft) => set((state) => ({
+        checkoutDraft: { ...state.checkoutDraft, ...draft },
+      })),
+      clearCheckoutDraft: () => set({ checkoutDraft: {} }),
+      resetAll: () => set({
+        dineInSession: null,
+        selectedStore: null,
+        orderMode: 'pickup',
+        page: 'home',
+        pageParams: {},
+        isGuest: false,
+        previousPage: null,
+        checkoutDraft: {},
+      }),
+    }),
+    {
+      name: 'ui-store',
+      partialize: (state) => ({
+        checkoutDraft: state.checkoutDraft,
+        previousPage: state.previousPage,
+      }),
     }
-    set({ page, pageParams: params ?? {} });
-  },
-  setOrderMode: (orderMode) => set({ orderMode }),
-  setDineInSession: (dineInSession) => set({ dineInSession }),
-  setSelectedStore: (selectedStore) => set({ selectedStore }),
-  setStores: (stores) => set({ stores }),
-  setCategories: (categories) => set({ categories }),
-  setMenuItems: (menuItems) => set({ menuItems }),
-  setSelectedCategoryId: (selectedCategoryId) => set({ selectedCategoryId }),
-  setSearchQuery: (searchQuery) => set({ searchQuery }),
-  setIsLoading: (isLoading) => set({ isLoading }),
-  showToast: (message, type) => set({ toast: { message, type } }),
-  hideToast: () => set({ toast: null }),
-  setShowStorePicker: (showStorePicker) => set({ showStorePicker }),
-}));
+  )
+);

@@ -4,7 +4,7 @@
  * Build: 2026-04-23T20:22:55.000Z
  */
 
-const CACHE_VERSION = 'v1.0.1776989803';
+const CACHE_VERSION = 'v1.0.1776999697';
 const CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',
@@ -15,7 +15,7 @@ const STATIC_ASSETS = [
   '/offline.html'
 ];
 
-// Install event - cache static assets and activate the new worker immediately.
+// Install event - cache static assets, wait for user to apply update
 self.addEventListener('install', (event) => {
   console.log(`[SW] Installing ${CACHE_VERSION}`);
   
@@ -27,7 +27,6 @@ self.addEventListener('install', (event) => {
       })
       .then(() => {
         console.log('[SW] Installed — waiting for user activation');
-        return self.skipWaiting();
       })
       .catch((err) => {
         console.error('[SW] Cache failed:', err);
@@ -52,8 +51,7 @@ self.addEventListener('activate', (event) => {
         );
       })
       .then(() => {
-        console.log('[SW] Claiming clients');
-        return self.clients.claim();
+        console.log('[SW] Activated');
       })
   );
 });
@@ -89,7 +87,7 @@ self.addEventListener('fetch', (event) => {
 });
 
 function isStaticAsset(url) {
-  const staticExtensions = ['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2'];
+  const staticExtensions = ['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.json', '.webp'];
   return staticExtensions.some((ext) => url.pathname.endsWith(ext));
 }
 
@@ -163,26 +161,6 @@ async function updateCache(request, cache) {
   }
 }
 
-// Message handler
-self.addEventListener('message', (event) => {
-  console.log('[SW] Message received:', event.data);
-  
-  if (event.data === 'SKIP_WAITING') {
-    console.log('[SW] Skip waiting received');
-    self.skipWaiting();
-  }
-  
-  if (event.data === 'CHECK_VERSION') {
-    // Respond with current version
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        version: CACHE_VERSION,
-        cacheName: CACHE_NAME
-      });
-    }
-  }
-});
-
 // Push notification handler
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
@@ -218,3 +196,147 @@ self.addEventListener('notificationclick', (event) => {
       })
   );
 });
+
+// ── Background Sync for offline orders ──
+
+const DB_NAME = 'loka-offline-orders';
+const DB_VERSION = 1;
+const STORE_NAME = 'pending-orders';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function queueOrder(orderPayload) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const record = {
+      payload: orderPayload,
+      timestamp: Date.now(),
+      retryCount: 0,
+    };
+    const request = store.add(record);
+    request.onsuccess = () => {
+      db.close();
+      resolve(request.result);
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
+
+async function getPendingOrders() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAll();
+    request.onsuccess = () => {
+      db.close();
+      resolve(request.result);
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
+
+async function removeOrder(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.delete(id);
+    request.onsuccess = () => {
+      db.close();
+      resolve();
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
+
+// Listen for messages from the page to queue an offline order
+self.addEventListener('message', (event) => {
+  const data = event.data;
+  
+  if (data && data.type === 'QUEUE_ORDER') {
+    event.waitUntil(
+      queueOrder(data.payload)
+        .then(() => self.registration.sync.register('orders'))
+        .catch((err) => console.error('[SW] Failed to queue order:', err))
+    );
+    return;
+  }
+
+  if (data === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+
+  if (data === 'CHECK_VERSION') {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        version: CACHE_VERSION,
+        cacheName: CACHE_NAME
+      });
+    }
+  }
+});
+
+// Background Sync event: replay queued orders
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'orders') {
+    event.waitUntil(replayOrders());
+  }
+});
+
+async function replayOrders() {
+  const pendingOrders = await getPendingOrders();
+  if (pendingOrders.length === 0) return;
+
+  const API_BASE = self.location.origin + '/api/v1';
+
+  for (const record of pendingOrders) {
+    try {
+      const response = await fetch(`${API_BASE}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `sw-sync-${record.id}-${Date.now()}`,
+        },
+        body: JSON.stringify(record.payload),
+      });
+
+      if (response.ok || response.status === 409) {
+        await removeOrder(record.id);
+      } else if (response.status >= 500) {
+        break;
+      } else {
+        await removeOrder(record.id);
+      }
+    } catch (err) {
+      console.error('[SW] Replay failed for order', record.id, err);
+      break;
+    }
+  }
+}
+
+// Background Sync: replay queued orders complete

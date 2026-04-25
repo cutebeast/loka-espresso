@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Gift, Tag, Calendar, Clock } from 'lucide-react';
+import { resolveAssetUrl } from '@/lib/tokens';
 import TypePill from './TypePill';
 
 const LOKA = {
@@ -72,7 +73,7 @@ export default function ListCard({
           height: 100,
           flexShrink: 0,
           background: imageUrl
-            ? `url(${imageUrl.startsWith('http') ? imageUrl : `https://admin.loyaltysystem.uk${imageUrl}`}) center/cover`
+            ? `url(${resolveAssetUrl(imageUrl)}) center/cover`
             : `linear-gradient(135deg, ${LOKA.cream} 0%, ${LOKA.copper}30 100%)`,
           display: 'flex',
           alignItems: 'center',

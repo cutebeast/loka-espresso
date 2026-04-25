@@ -4,18 +4,13 @@ import { motion } from 'framer-motion';
 import { ShoppingCart } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
-
-const LOKA = {
-  primary: '#384B16',
-  white: '#FFFFFF',
-} as const;
+import { LOKA } from '@/lib/tokens';
 
 function formatPrice(val: number | string): string {
   return `RM ${Number(val).toFixed(2)}`;
 }
 
 export default function FloatingCartBar() {
-  const items = useCartStore((s) => s.items);
   const getItemCount = useCartStore((s) => s.getItemCount);
   const getTotal = useCartStore((s) => s.getTotal);
   const { setPage } = useUIStore();

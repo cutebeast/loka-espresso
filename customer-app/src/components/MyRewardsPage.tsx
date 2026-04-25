@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Gift, Ticket, Copy, Check, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Gift, Ticket, Copy, Check } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import type { UserReward, UserVoucher } from '@/lib/api';

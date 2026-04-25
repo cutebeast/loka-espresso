@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import "@/styles/theme.css";
 
 export const metadata: Metadata = {
   title: "Loka Espresso - Merchant Dashboard",
@@ -11,8 +10,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   themeColor: "#384B16",
 };
 

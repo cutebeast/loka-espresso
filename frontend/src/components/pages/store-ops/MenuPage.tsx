@@ -23,9 +23,9 @@ interface MenuPageProps {
 const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primary };
 const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.success, marginTop: 2 };
 
-export default function MenuPage({ categories, menuItems, selectedCategory, setSelectedCategory, selectedStore, storeObj, token, onRefresh, onCustomizeItem, userType = 1 }: MenuPageProps) {
+export default function MenuPage({ categories, menuItems, selectedCategory, setSelectedCategory, selectedStore, storeObj: _storeObj, token: _token, onRefresh, onCustomizeItem, userType = 1 }: MenuPageProps) {
   const isHQ = userType === 1;
-  const menuStoreId = '0'; // Universal menu lives on store_id=0 (HQ)
+  // Menu is universal (HQ-managed) — no store_id needed for menu CRUD
   // Item form
   const [showItemForm, setShowItemForm] = useState(false);
   const [editingItem, setEditingItem] = useState<MerchantMenuItem | null>(null);
@@ -102,8 +102,8 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
 
     try {
       const res = editingItem
-        ? await apiFetch(`/admin/stores/${menuStoreId}/items/${editingItem.id}`, token, { method: 'PUT', body: JSON.stringify(payload) })
-        : await apiFetch(`/admin/stores/${menuStoreId}/items`, token, { method: 'POST', body: JSON.stringify(payload) });
+        ? await apiFetch(`/admin/items/${editingItem.id}`, undefined, { method: 'PUT', body: JSON.stringify(payload) })
+        : await apiFetch(`/admin/items`, undefined, { method: 'POST', body: JSON.stringify(payload) });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -120,7 +120,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
   async function toggleItemAvailable(item: MerchantMenuItem) {
     setItemError('');
     try {
-      const res = await apiFetch(`/admin/stores/${menuStoreId}/items/${item.id}`, token, {
+      const res = await apiFetch(`/admin/items/${item.id}`, undefined, {
         method: 'PUT',
         body: JSON.stringify({ is_available: !item.is_available }),
       });
@@ -137,7 +137,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
 
   async function deleteItem(id: number) {
     try {
-      const res = await apiFetch(`/admin/stores/${menuStoreId}/items/${id}`, token, { method: 'DELETE' });
+      const res = await apiFetch(`/admin/items/${id}`, undefined, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setItemError(data.detail || 'Delete failed');
@@ -180,11 +180,11 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
 
     try {
       const res = editingCat
-        ? await apiFetch(`/admin/stores/${menuStoreId}/categories/${editingCat.id}`, token, {
+        ? await apiFetch(`/admin/categories/${editingCat.id}`, undefined, {
             method: 'PUT',
             body: JSON.stringify({ name: catName, slug, display_order: editingCat.display_order }),
           })
-        : await apiFetch(`/admin/stores/${menuStoreId}/categories`, token, {
+        : await apiFetch(`/admin/categories`, undefined, {
             method: 'POST',
             body: JSON.stringify({ name: catName, slug, display_order: 0, is_active: true }),
           });
@@ -203,7 +203,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
 
   async function deleteCat(id: number) {
     try {
-      const res = await apiFetch(`/admin/stores/${menuStoreId}/categories/${id}`, token, { method: 'DELETE' });
+      const res = await apiFetch(`/admin/categories/${id}`, undefined, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setCatError(data.detail || 'Delete failed');
@@ -269,7 +269,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                 <li key={c.id}>
                   {confirmDeleteCat === c.id ? (
                     <div style={{ padding: '8px 12px', background: '#FEF2F2', borderRadius: 8, textAlign: 'center' }}>
-                      <div style={{ fontSize: 12, marginBottom: 6, color: '#991B1B' }}>Delete "{c.name}"?</div>
+                      <div style={{ fontSize: 12, marginBottom: 6, color: '#991B1B' }}>Delete &quot;{c.name}&quot;?</div>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
                         <button className="btn btn-sm" style={{ background: '#EF4444', color: 'white', fontSize: 11 }} onClick={() => deleteCat(c.id)}>Yes</button>
                         <button className="btn btn-sm" style={{ fontSize: 11 }} onClick={() => setConfirmDeleteCat(null)}>No</button>

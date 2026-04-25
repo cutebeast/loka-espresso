@@ -37,7 +37,7 @@ const PAGE_SIZE = 10;
 export default function SurveyReportPage({ token }: SurveyReportPageProps) {
   const [surveys, setSurveys] = useState<SurveyListItem[]>([]);
   const [selectedSurvey, setSelectedSurvey] = useState<number | null>(null);
-  const [surveyTitle, setSurveyTitle] = useState('');
+  const [_surveyTitle, setSurveyTitle] = useState('');
   const [responses, setResponses] = useState<SurveyResponse[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -46,14 +46,14 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
 
   const fetchSurveys = useCallback(async () => {
     try {
-      const res = await apiFetch('/admin/surveys?page_size=200', token);
+      const res = await apiFetch('/admin/surveys?page_size=200');
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.surveys || []);
         setSurveys(list.filter((s: SurveyListItem) => s.response_count > 0));
       }
     } catch {}
-  }, [token]);
+  }, []);
 
   useEffect(() => { fetchSurveys(); }, [fetchSurveys]);
 

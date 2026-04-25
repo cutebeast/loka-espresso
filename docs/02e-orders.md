@@ -25,7 +25,6 @@ Main order table. HYBRID scope (user + store).
 | discount | numeric(10,2) | YES | 0 | Discount amount |
 | voucher_discount | numeric(10,2) | NO | 0.0 | Voucher discount amount applied |
 | reward_discount | numeric(10,2) | NO | 0.0 | Reward discount amount applied |
-| loyalty_discount | numeric(10,2) | NO | 0.0 | Kept for DB compatibility, always 0 |
 | voucher_code | varchar(100) | YES | | Applied voucher code reference |
 | reward_redemption_code | varchar(100) | YES | | Applied reward redemption code |
 | total | numeric(10,2) | NO | | Final amount |
@@ -53,8 +52,9 @@ Main order table. HYBRID scope (user + store).
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 
-**Indexes:** order_number (unique), user_id, store_id, table_id
+**Indexes:** order_number (unique), user_id, store_id, table_id, (store_id, status), (user_id, created_at), (store_id, created_at)
 **FKs:** user_id→users, store_id→stores, table_id→store_tables, pos_synced_by→users(id), delivery_dispatched_by→users(id)
+**Check constraints:** discount >= 0, delivery_fee >= 0, total >= 0
 
 ### `order_items`
 Normalized line items for structured queries.
@@ -67,11 +67,14 @@ Normalized line items for structured queries.
 | name | varchar(255) | NO | | Item name at time of order |
 | quantity | integer | NO | | |
 | unit_price | numeric(10,2) | NO | | Price per unit |
-| customizations | json | YES | | Customization details |
+| customizations | json | YES | | Customization shape: `{ options: [{id, name, price_adjustment}], note? }` |
 | line_total | numeric(10,2) | NO | | quantity × unit_price + adjustments |
+| note | text | YES | | Customer note for this line item |
 | created_at | timestamptz | YES | now() | |
 
 **FKs:** order_id→orders(id), menu_item_id→menu_items(id) ON DELETE SET NULL
+**Indexes:** (order_id, menu_item_id)
+**Check constraints:** quantity > 0, unit_price >= 0
 
 ### `order_status_history`
 Status change timeline for each order.
@@ -96,12 +99,38 @@ Shopping cart. One cart per user. HYBRID. Supports normalized customization opti
 | store_id | integer | NO | | FK→stores.id |
 | item_id | integer | NO | | FK→menu_items.id |
 | quantity | integer | NO | 1 | |
-| customizations | json | YES | | Resolved customization details |
-| customization_option_ids | integer[] | YES | | FK→customization_options.id (normalized references) |
+| customization_option_ids | json | YES | | Array of customization_option IDs (canonical) |
+| customization_hash | varchar(64) | YES | | SHA-256 of sorted option IDs for line identity |
 | unit_price | numeric(10,2) | NO | | Price at add time |
 | created_at | timestamptz | YES | now() | |
 
 **FKs:** user_id → users(id), store_id → stores(id), item_id → menu_items(id)
+**Unique:** `uq_cart_item_identity` on `(user_id, store_id, item_id, customization_hash)`
+
+> **Note on `store_id`:** The `store_id` on `cart_items` and `orders` records the **fulfillment store** (where the customer picks up or receives delivery from). Menu items themselves are **universal** — they have no `store_id` and are identical across all stores.
+
+### `checkout_tokens`
+Temporary checkout discount tokens. Created by `POST /checkout`, consumed by `POST /orders`. Expires after 15 minutes.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | integer | NO | auto | PK |
+| token | varchar(64) | NO | | Unique token string |
+| user_id | integer | NO | | FK→users.id |
+| store_id | integer | NO | | FK→stores.id |
+| voucher_code | varchar(100) | YES | | Applied voucher code |
+| reward_id | integer | YES | | Applied reward ID |
+| discount_type | varchar(20) | YES | | `percent`, `fixed`, `free_item` |
+| discount_amount | numeric(10,2) | NO | 0 | Discount value |
+| subtotal | numeric(10,2) | NO | | Before discount |
+| delivery_fee | numeric(10,2) | NO | 0 | Delivery charge |
+| total | numeric(10,2) | NO | | Final amount after discount |
+| is_used | boolean | NO | false | Whether token has been consumed |
+| expires_at | timestamptz | NO | | Token expiry |
+| created_at | timestamptz | YES | now() | |
+
+**FKs:** user_id→users(id), store_id→stores(id)
+**Indexes:** token (unique), user_id
 
 ### `payments`
 Payment records. One per order.
@@ -140,9 +169,9 @@ The system uses **flexible status transitions** that accommodate both pre-paid a
 ### Dine In — Pay at Counter
 
 ```
-pending → confirmed → preparing → ready → [mark paid] → completed
-          ↑                                           ↑
-          └─ Kitchen confirms order                   └─ Customer pays at counter
+pending → confirmed → preparing → ready → completed
+          ↑                                   ↑
+          └─ Kitchen confirms order           └─ Customer pays at counter, then marked completed
 ```
 
 **Payment:** Always "Pay at counter" — no wallet deduction at checkout.
@@ -150,8 +179,8 @@ pending → confirmed → preparing → ready → [mark paid] → completed
 2. Kitchen confirms → **confirmed**
 3. Kitchen prepares → **preparing**
 4. Food served → **ready**
-5. Customer pays at counter → admin marks **paid** via "Mark as Paid" button
-6. Order → **completed** (requires `payment_status == "paid"`)
+5. Customer pays at counter → admin marks **payment_status = "paid"**
+6. Order → **completed** (status transition; `payment_status` is tracked separately)
 
 ### Pickup — Pay at Store OR Wallet
 
@@ -177,6 +206,14 @@ pending → [pay or confirm] → confirmed → preparing → ready → out_for_d
 
 **Delivery tracking (manual):** Admin fills in courier name, phone, tracking URL, ETA via delivery tracking form on Orders page.
 
+### Order State Machine
+
+| Order Type | Valid Transitions |
+|------------|-------------------|
+| Pickup | `pending → confirmed → preparing → ready → completed` |
+| Delivery | `pending → confirmed → preparing → ready → out_for_delivery → completed` |
+| Dine-in | `pending → confirmed → preparing → ready → completed` | Payment marked separately via `payment_status` |
+
 ### Kitchen Display
 
 Dedicated page (`/kitchen`) for service crew to manage orders per store:
@@ -194,6 +231,7 @@ Dedicated page (`/kitchen`) for service crew to manage orders per store:
 - "Mark as Paid" button available on Orders page and Kitchen Display for any unpaid order
 - Cancel is valid from any non-terminal state
 - Table auto-released when dine-in order completes or is cancelled
+- Cart notes persist to checkout and order
 
 ### Status Enum Values
 

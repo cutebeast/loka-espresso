@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { StoreSelector, Select, DataTable, type ColumnDef, Pagination, Drawer, Input } from '@/components/ui';
+import { StoreSelector, Select, DataTable, Pagination, Drawer, Input } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantStaffMember, MerchantStore } from '@/lib/merchant-types';
 
@@ -48,7 +48,7 @@ const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display
 const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.textMuted, marginTop: 2 };
 const PAGE_SIZE = 20;
 
-export default function StaffPage({ selectedStore, storeObj, token, stores, onStoreChange }: StaffPageProps) {
+export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _token, stores, onStoreChange }: StaffPageProps) {
   const isHQ = selectedStore === 'all';
 
   // Staff list state
@@ -59,7 +59,7 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
   const [totalPages, setTotalPages] = useState(1);
 
   // View mode
-  const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
+  const [_viewMode, setViewMode] = useState<'list' | 'form'>('list');
   const [editingStaff, setEditingStaff] = useState<MerchantStaffMember | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [error, setError] = useState('');
@@ -91,7 +91,7 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
       const endpoint = isHQ
         ? `/admin/hq-staff?page=${p}&page_size=${PAGE_SIZE}`
         : `/admin/stores/${selectedStore}/staff?page=${p}&page_size=${PAGE_SIZE}`;
-      const res = await apiFetch(endpoint, token);
+      const res = await apiFetch(endpoint);
       if (res.ok) {
         const data = await res.json();
         setStaffList(Array.isArray(data) ? data : (data.staff || []));
@@ -102,7 +102,7 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
     } catch {
       setStaffList([]);
     } finally { setLoading(false); }
-  }, [token, isHQ, selectedStore]);
+  }, [isHQ, selectedStore]);
 
   useEffect(() => { fetchStaff(1); }, [fetchStaff]);
 
@@ -200,7 +200,7 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
 
     try {
       if (isHQ && !editingStaff) {
-        const res = await apiFetch('/admin/hq-staff', token, { method: 'POST', body: JSON.stringify(payload) });
+        const res = await apiFetch('/admin/hq-staff', undefined, { method: 'POST', body: JSON.stringify(payload) });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
         const data = await res.json();
         setViewMode('list');
@@ -209,11 +209,11 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
         fetchStaff(1);
       } else if (editingStaff) {
         if (isHQ) payload.store_ids = selectedStoreIds;
-        const res = await apiFetch(`/admin/staff/${editingStaff.id}`, token, { method: 'PUT', body: JSON.stringify(payload) });
+        const res = await apiFetch(`/admin/staff/${editingStaff.id}`, undefined, { method: 'PUT', body: JSON.stringify(payload) });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
         closeForm();
       } else {
-        const res = await apiFetch(`/admin/stores/${selectedStore}/staff`, token, { method: 'POST', body: JSON.stringify(payload) });
+        const res = await apiFetch(`/admin/stores/${selectedStore}/staff`, undefined, { method: 'POST', body: JSON.stringify(payload) });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
         const data = await res.json();
         setViewMode('list');
@@ -227,7 +227,7 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
   async function toggleActive(s: MerchantStaffMember) {
     setError('');
     try {
-      const res = await apiFetch(`/admin/staff/${s.id}`, token, { method: 'PUT', body: JSON.stringify({ is_active: !s.is_active }) });
+      const res = await apiFetch(`/admin/staff/${s.id}`, undefined, { method: 'PUT', body: JSON.stringify({ is_active: !s.is_active }) });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Failed to toggle'); return; }
       fetchStaff(page);
     } catch (err: any) { setError(err.message || 'Network error'); }
@@ -235,7 +235,7 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
 
   async function handleDelete(id: number) {
     try {
-      const res = await apiFetch(`/admin/staff/${id}`, token, { method: 'DELETE' });
+      const res = await apiFetch(`/admin/staff/${id}`, undefined, { method: 'DELETE' });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Delete failed'); return; }
       setConfirmDelete(null);
       fetchStaff(page);
@@ -245,14 +245,12 @@ export default function StaffPage({ selectedStore, storeObj, token, stores, onSt
   async function handleResetPassword(s: MerchantStaffMember) {
     setError('');
     try {
-      const res = await apiFetch(`/admin/staff/${s.id}/reset-password`, token, { method: 'POST' });
+      const res = await apiFetch(`/admin/staff/${s.id}/reset-password`, undefined, { method: 'POST' });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Reset failed'); return; }
       const data = await res.json();
       setResetPasswordResult({ name: s.name, email: data.email, password: data.temp_password });
     } catch (err: any) { setError(err.message || 'Network error'); }
   }
-
-  const pageTitle = isHQ ? 'Staff Management' : `Staff · ${storeObj?.name}`;
 
   function renderUserTypeBadge(s: MerchantStaffMember) {
     const utId = s.user_type_id ?? 3;

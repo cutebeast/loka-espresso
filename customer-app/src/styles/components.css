@@ -172,3 +172,90 @@
   background: var(--loka-border-light);
   margin: 0 20px;
 }
+
+/* Guest Banner — sticky top banner for guest users */
+.guest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #2C3E50, #3A5068);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+  z-index: 45;
+}
+.guest-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.guest-banner-btn {
+  padding: 6px 16px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.guest-banner-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+.guest-banner-btn:active {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Guest Locked CTA — shown when guest tries restricted action */
+.guest-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-light);
+  margin: 16px;
+}
+.guest-locked-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-primary-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--color-primary);
+}
+.guest-locked-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+.guest-locked-desc {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+  max-width: 280px;
+}
+.guest-locked-btn {
+  padding: 12px 32px;
+  border-radius: 100px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.guest-locked-btn:hover {
+  background: var(--color-primary-dark);
+}

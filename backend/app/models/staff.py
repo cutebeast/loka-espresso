@@ -3,7 +3,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime, timezone
 from typing import Optional, List
-from sqlalchemy import String, Boolean, DateTime, Enum, Text, Integer, ForeignKey
+from sqlalchemy import String, Boolean, DateTime, Enum, Text, Integer, ForeignKey, CheckConstraint, Index
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
@@ -21,7 +21,7 @@ class Staff(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
-    store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id"), nullable=False, default=0, index=True)
+    store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
@@ -30,6 +30,10 @@ class Staff(Base):
     pin_code: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_staff_store_active", "store_id", "is_active"),
+    )
 
     shifts: Mapped[List[StaffShift]] = relationship("StaffShift", back_populates="staff", cascade="all, delete-orphan")
     store_rel: Mapped[Store] = relationship("Store")
@@ -45,6 +49,10 @@ class StaffShift(Base):
     clock_out: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        CheckConstraint("(clock_out IS NULL) OR (clock_out > clock_in)", name="ck_shifts_clock_out_gt_clock_in"),
+    )
 
     staff: Mapped[Staff] = relationship("Staff", back_populates="shifts")
 

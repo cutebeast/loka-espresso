@@ -40,7 +40,7 @@ interface SurveysPageProps {
   onSwitchToPromotions?: () => void;
 }
 
-export default function SurveysPage({ token, onSwitchToPromotions }: SurveysPageProps) {
+export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPromotions }: SurveysPageProps) {
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
 
   // Survey pagination
@@ -67,7 +67,7 @@ export default function SurveysPage({ token, onSwitchToPromotions }: SurveysPage
     setSurveyLoading(true);
     try {
       const params = new URLSearchParams({ page: String(p), page_size: String(PAGE_SIZE) });
-      const res = await apiFetch(`/admin/surveys?${params}`, token);
+      const res = await apiFetch(`/admin/surveys?${params}`);
       if (res.ok) {
         const data = await res.json();
         setSurveyList(data.surveys || []);
@@ -76,7 +76,7 @@ export default function SurveysPage({ token, onSwitchToPromotions }: SurveysPage
         setSurveyPage(p);
       }
     } catch {} finally { setSurveyLoading(false); }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     if (viewMode === 'list') {
@@ -86,7 +86,7 @@ export default function SurveysPage({ token, onSwitchToPromotions }: SurveysPage
 
   useEffect(() => {
     if (viewMode === 'form') {
-      apiFetch('/admin/vouchers', token)
+      apiFetch('/admin/vouchers')
         .then(r => r.ok ? r.json() : { vouchers: [] })
         .then(d => setSurveyVouchers(Array.isArray(d) ? d : (d.vouchers ?? [])))
         .catch(() => {});
@@ -128,7 +128,7 @@ export default function SurveysPage({ token, onSwitchToPromotions }: SurveysPage
   async function surveyToggleActive(survey: Survey) {
     setSurveyError('');
     try {
-      const res = await apiFetch(`/admin/surveys/${survey.id}`, token, {
+      const res = await apiFetch(`/admin/surveys/${survey.id}`, undefined, {
         method: 'PUT',
         body: JSON.stringify({ is_active: !survey.is_active }),
       });
@@ -182,8 +182,8 @@ export default function SurveysPage({ token, onSwitchToPromotions }: SurveysPage
 
     try {
       const res = surveyEditing
-        ? await apiFetch(`/admin/surveys/${surveyEditing.id}`, token, { method: 'PUT', body: JSON.stringify(payload) })
-        : await apiFetch('/admin/surveys', token, { method: 'POST', body: JSON.stringify(payload) });
+        ? await apiFetch(`/admin/surveys/${surveyEditing.id}`, undefined, { method: 'PUT', body: JSON.stringify(payload) })
+        : await apiFetch('/admin/surveys', undefined, { method: 'POST', body: JSON.stringify(payload) });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -198,7 +198,7 @@ export default function SurveysPage({ token, onSwitchToPromotions }: SurveysPage
 
   async function surveyHandleDelete(id: number) {
     try {
-      const res = await apiFetch(`/admin/surveys/${id}`, token, { method: 'DELETE' });
+      const res = await apiFetch(`/admin/surveys/${id}`, undefined, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setSurveyError(data.detail || 'Delete failed');

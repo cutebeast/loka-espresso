@@ -137,11 +137,11 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
 
           <p className="auth-legal">
             By continuing you agree to our<br />
-            <button type="button" onClick={() => void openLegalSheet('terms')}>
+            <button type="button" className="auth-legal-link" onClick={() => void openLegalSheet('terms')}>
               Terms of Service
             </button>
             {' '}and{' '}
-            <button type="button" onClick={() => void openLegalSheet('privacy')}>
+            <button type="button" className="auth-legal-link" onClick={() => void openLegalSheet('privacy')}>
               Privacy Policy
             </button>
           </p>

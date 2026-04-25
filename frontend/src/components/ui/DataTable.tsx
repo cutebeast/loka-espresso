@@ -84,7 +84,7 @@ export function DataTable<T extends Record<string, any>>({
         overflow: 'hidden',
         boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
       }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="data-table">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F9F7F3' }}>
@@ -319,7 +319,7 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
         overflow: 'hidden',
         boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
       }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="data-table">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F9F7F3' }}>
@@ -353,6 +353,34 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
                   borderBottom: '1px solid #E5E0D8',
+                  width: 80,
+                }}>
+                  {expandColumnHeader}
+                </th>
+                {actions.length > 0 && (
+                  <th style={{
+                    padding: '12px 16px',
+                    textAlign: 'right',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#6B635E',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    borderBottom: '1px solid #E5E0D8',
+                    width: actions.length * 80,
+                  }}>
+                    Actions
+                  </th>
+                )}
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#6B635E',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  borderBottom: '1px solid #E5E0D8',
                   width: 100,
                 }}>
                   {expandColumnHeader}
@@ -375,7 +403,7 @@ export function DataTableExpandableRow<T extends Record<string, any>>({
               </tr>
             </thead>
             <tbody>
-              {data.map((row, idx) => (
+              {data.map((row, _idx) => (
                 <>
                   <tr
                     key={getRowId(row)}

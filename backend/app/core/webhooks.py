@@ -38,6 +38,6 @@ async def verify_webhook_request(
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
         return body
 
-    if request.headers.get("X-API-Key", "") != api_key:
+    if not api_key or request.headers.get("X-API-Key", "") != api_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return body

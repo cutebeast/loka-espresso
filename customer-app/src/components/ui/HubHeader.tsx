@@ -88,7 +88,7 @@ export function HubHeader({
           key="qr"
           whileTap={{ scale: 0.9 }}
           onClick={onQRScanClick}
-          className="w-9 h-9 rounded-xl bg-copper/10 flex items-center justify-center cursor-pointer border border-copper/30"
+          className="w-9 h-9 rounded-xl bg-copper-10 flex items-center justify-center cursor-pointer border border-copper-30"
           aria-label="Scan table QR"
           title="Scan table QR"
         >

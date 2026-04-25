@@ -46,6 +46,11 @@ async def log_action(
     details: dict | None = None,
     ip_address: str | None = None,
     status: str = "success",
+    method: str | None = None,
+    path: str | None = None,
+    status_code: int | None = None,
+    user_agent: str | None = None,
+    request_id: str | None = None,
 ):
     """Record an audit log entry. Call before commit or within the same transaction."""
     safe_details = _sanitize_details(details)
@@ -60,5 +65,10 @@ async def log_action(
         details=safe_details,
         ip_address=ip_address,
         status=status,
+        method=method,
+        path=path,
+        status_code=status_code,
+        user_agent=user_agent,
+        request_id=request_id,
     )
     db.add(entry)

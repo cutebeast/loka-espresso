@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.core.security import require_role
 from app.models.user import User, RoleIDs
 from app.models.content import InformationCard
+from app.schemas.admin_extras import InformationCardCreate, InformationCardUpdate
 
 router = APIRouter(prefix="/admin/content", tags=["Admin Content"])
 
@@ -61,6 +62,9 @@ async def list_cards(
                 "icon": c.icon,
                 "image_url": c.image_url,
                 "gallery_urls": c.gallery_urls,
+                "action_url": c.action_url,
+                "action_type": c.action_type,
+                "action_label": c.action_label,
                 "is_active": c.is_active,
                 "position": c.position,
                 "start_date": c.start_date.isoformat() if c.start_date else None,
@@ -94,6 +98,9 @@ async def get_card(
         "icon": card.icon,
         "image_url": card.image_url,
         "gallery_urls": card.gallery_urls,
+        "action_url": card.action_url,
+        "action_type": card.action_type,
+        "action_label": card.action_label,
         "is_active": card.is_active,
         "position": card.position,
         "start_date": card.start_date.isoformat() if card.start_date else None,
@@ -105,23 +112,27 @@ async def get_card(
 
 @router.post("/cards", status_code=201)
 async def create_card(
-    req: dict,
+    req: InformationCardCreate,
     user: User = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new information card."""
     card = InformationCard(
-        title=req.get("title", ""),
-        slug=req.get("slug") or _slugify(req.get("title", "")),
-        short_description=req.get("short_description"),
-        long_description=req.get("long_description"),
-        icon=req.get("icon"),
-        content_type=req.get("content_type", "promotion"),
-        image_url=req.get("image_url"),
-        is_active=req.get("is_active", True),
-        position=req.get("position", 0),
-        start_date=req.get("start_date"),
-        end_date=req.get("end_date"),
+        title=req.title,
+        slug=req.slug or _slugify(req.title),
+        short_description=req.short_description,
+        long_description=req.long_description,
+        icon=req.icon,
+        content_type=req.content_type,
+        image_url=req.image_url,
+        gallery_urls=req.gallery_urls,
+        action_url=req.action_url,
+        action_type=req.action_type,
+        action_label=req.action_label,
+        is_active=req.is_active,
+        position=req.position,
+        start_date=req.start_date,
+        end_date=req.end_date,
     )
     db.add(card)
     await db.flush()
@@ -137,7 +148,7 @@ async def create_card(
 @router.put("/cards/{card_id}")
 async def update_card(
     card_id: int,
-    req: dict,
+    req: InformationCardUpdate,
     user: User = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -147,16 +158,9 @@ async def update_card(
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
     
-    # Update allowed fields
-    allowed_fields = [
-        "title", "slug", "short_description", "long_description", "icon",
-        "content_type", "image_url", "gallery_urls", "is_active",
-        "position", "start_date", "end_date"
-    ]
-    
-    for field in allowed_fields:
-        if field in req:
-            setattr(card, field, req[field])
+    update_data = req.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(card, field, value)
     
     await db.flush()
     

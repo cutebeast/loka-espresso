@@ -2,8 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
+
 import TypePill from './TypePill';
-import { cacheBust } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/tokens';
 
 const LOKA = {
   primary: '#384B16',
@@ -20,7 +21,7 @@ interface HeroBannerProps {
 export default function HeroBanner({ imageUrl, tag, onBack, aspectRatio = 16 / 9 }: HeroBannerProps) {
   const bgStyle = imageUrl
     ? {
-        backgroundImage: `url(${cacheBust(imageUrl.startsWith('http') ? imageUrl : `https://admin.loyaltysystem.uk${imageUrl}`)})`,
+        backgroundImage: `url(${resolveAssetUrl(imageUrl)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }

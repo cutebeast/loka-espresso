@@ -28,7 +28,7 @@ interface OrderPreview {
 }
 
 export default function ProfilePage() {
-  const { user, token, refreshToken, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { points } = useWalletStore();
   const { setPage } = useUIStore();
 
@@ -51,14 +51,7 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     try {
-      if (token) {
-        await api.post('/auth/logout', {}, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            ...(refreshToken ? { 'X-Refresh-Token': refreshToken } : {}),
-          },
-        });
-      }
+      await api.post('/auth/logout');
     } catch { /* ignore */ }
     logout();
     setShowLogout(false);

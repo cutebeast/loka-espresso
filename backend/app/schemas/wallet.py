@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -15,8 +15,32 @@ class WalletOut(BaseModel):
 
 class WalletTopup(BaseModel):
     amount: float
+    user_id: Optional[int] = None
     description: Optional[str] = None
-    created_at: Optional[datetime] = None
+
+    @field_validator('amount')
+    @classmethod
+    def amount_positive(cls, v):
+        if v <= 0:
+            raise ValueError('amount must be positive')
+        if v > 10000:
+            raise ValueError('amount must be <= 10000')
+        return v
+
+
+class WalletDeduct(BaseModel):
+    amount: float
+    user_id: int
+    description: str = "Wallet deduction"
+
+    @field_validator('amount')
+    @classmethod
+    def amount_positive(cls, v):
+        if v <= 0:
+            raise ValueError('amount must be positive')
+        if v > 10000:
+            raise ValueError('amount must be <= 10000')
+        return v
 
 
 class WalletTransactionOut(BaseModel):

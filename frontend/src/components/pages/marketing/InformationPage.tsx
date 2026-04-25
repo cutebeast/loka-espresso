@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import { Pagination, Drawer } from '@/components/ui';
@@ -101,7 +102,7 @@ export default function InformationPage({ token }: InformationPageProps) {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(p), page_size: String(PAGE_SIZE) });
-      const res = await apiFetch(`/admin/content/cards?${params}`, token);
+      const res = await apiFetch(`/admin/content/cards?${params}`);
       if (res.ok) {
         const data = await res.json();
         setCards(data.cards || []);
@@ -110,7 +111,7 @@ export default function InformationPage({ token }: InformationPageProps) {
         setPage(p);
       }
     } catch {} finally { setLoading(false); }
-  }, [token]);
+  }, []);
 
   useEffect(() => { fetchCards(1); }, [fetchCards]);
 
@@ -171,12 +172,12 @@ export default function InformationPage({ token }: InformationPageProps) {
       setSaving(true);
       let res: Response;
       if (editingId) {
-        res = await apiFetch(`/admin/content/cards/${editingId}`, token, {
+        res = await apiFetch(`/admin/content/cards/${editingId}`, undefined, {
           method: 'PUT',
           body: JSON.stringify(payload),
         });
       } else {
-        res = await apiFetch('/admin/content/cards', token, {
+        res = await apiFetch('/admin/content/cards', undefined, {
           method: 'POST',
           body: JSON.stringify(payload),
         });
@@ -195,7 +196,7 @@ export default function InformationPage({ token }: InformationPageProps) {
   const handleDelete = async (id: number) => {
     setError('');
     try {
-      await apiFetch(`/admin/content/cards/${id}`, token, { method: 'DELETE' });
+      await apiFetch(`/admin/content/cards/${id}`, undefined, { method: 'DELETE' });
       setDeletingId(null);
       fetchCards(page);
     } catch (err: any) {
@@ -206,7 +207,7 @@ export default function InformationPage({ token }: InformationPageProps) {
   const handleToggleActive = async (card: InfoCard) => {
     setError('');
     try {
-      const res = await apiFetch(`/admin/content/cards/${card.id}`, token, {
+      const res = await apiFetch(`/admin/content/cards/${card.id}`, undefined, {
         method: 'PUT',
         body: JSON.stringify({ is_active: !card.is_active }),
       });
@@ -393,7 +394,7 @@ export default function InformationPage({ token }: InformationPageProps) {
               <tr key={card.id}>
                 <td>
                   {card.image_url ? (
-                    <img src={cacheBust(card.image_url)} alt="" style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 6 }} />
+                    <Image src={cacheBust(card.image_url)} alt="" width={60} height={40} style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 6 }} />
                   ) : (
                     <div style={{ width: 60, height: 40, background: THEME.bgMuted, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.primary, fontSize: 18 }}>
                       <i className={`fas fa-${card.icon || 'info'}`}></i>
@@ -447,7 +448,7 @@ export default function InformationPage({ token }: InformationPageProps) {
   );
 }
 
-function ImageUploadField({ label, imageUrl, token, onSet, hint }: { label: string; imageUrl: string; token: string; onSet: (url: string) => void; hint?: string }) {
+function ImageUploadField({ label, imageUrl, token: _token, onSet, hint }: { label: string; imageUrl: string; token: string; onSet: (url: string) => void; hint?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -458,7 +459,7 @@ function ImageUploadField({ label, imageUrl, token, onSet, hint }: { label: stri
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await apiUpload('/upload/information-image', token, fd);
+      const res = await apiUpload('/upload/information-image', fd);
       if (res.ok) {
         const data = await res.json();
         onSet(data.url);
@@ -476,7 +477,7 @@ function ImageUploadField({ label, imageUrl, token, onSet, hint }: { label: stri
         </button>
         {imageUrl && (
           <>
-            <img src={imageUrl} alt="" style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4 }} />
+            <Image src={imageUrl} alt="" width={60} height={40} style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4 }} />
             <button type="button" className="btn btn-sm" onClick={() => onSet('')} style={{ color: '#EF4444' }}><i className="fas fa-times"></i></button>
           </>
         )}
@@ -486,7 +487,7 @@ function ImageUploadField({ label, imageUrl, token, onSet, hint }: { label: stri
   );
 }
 
-function GalleryUploadField({ label, urls, token, onSet, hint }: { label: string; urls: string[]; token: string; onSet: (urls: string[]) => void; hint?: string }) {
+function GalleryUploadField({ label, urls, token: _token, onSet, hint }: { label: string; urls: string[]; token: string; onSet: (urls: string[]) => void; hint?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -499,7 +500,7 @@ function GalleryUploadField({ label, urls, token, onSet, hint }: { label: string
       for (const file of Array.from(files)) {
         const fd = new FormData();
         fd.append('file', file);
-        const res = await apiUpload('/upload/information-image', token, fd);
+        const res = await apiUpload('/upload/information-image', fd);
         if (res.ok) {
           const data = await res.json();
           newUrls.push(data.url);
@@ -523,7 +524,7 @@ function GalleryUploadField({ label, urls, token, onSet, hint }: { label: string
         </button>
         {urls.map((url, i) => (
           <div key={i} style={{ position: 'relative', display: 'inline-block' }}>
-            <img src={url} alt="" style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4 }} />
+            <Image src={url} alt="" width={60} height={40} style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 4 }} />
             <button
               type="button"
               onClick={() => removeUrl(i)}

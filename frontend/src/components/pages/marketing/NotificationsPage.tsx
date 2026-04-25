@@ -40,7 +40,7 @@ interface EditFormProps {
   onCancel: () => void;
 }
 
-function EditForm({ bc, token, onSave, onCancel }: EditFormProps) {
+function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
   const [title, setTitle] = useState(bc.title);
   const [body, setBody] = useState(bc.body || '');
   const [audience, setAudience] = useState(bc.audience);
@@ -67,7 +67,7 @@ function EditForm({ bc, token, onSave, onCancel }: EditFormProps) {
       if (scheduledDate && scheduledTime) {
         payload.scheduled_at = `${scheduledDate}T${scheduledTime}:00`;
       }
-      const res = await apiFetch(`/admin/broadcasts/${bc.id}`, token, {
+      const res = await apiFetch(`/admin/broadcasts/${bc.id}`, undefined, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -135,7 +135,7 @@ function EditForm({ bc, token, onSave, onCancel }: EditFormProps) {
   );
 }
 
-export default function NotificationsPage({ token, refreshKey, onNewBroadcast }: NotificationsPageProps) {
+export default function NotificationsPage({ token, refreshKey: _refreshKey, onNewBroadcast }: NotificationsPageProps) {
   const [broadcasts, setBroadcasts] = useState<MerchantBroadcast[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -158,7 +158,7 @@ export default function NotificationsPage({ token, refreshKey, onNewBroadcast }:
       });
       if (fromDate) params.set('from_date', fromDate + 'T00:00:00');
       if (toDate) params.set('to_date', toDate + 'T23:59:59');
-      const res = await apiFetch(`/admin/broadcasts?${params}`, token);
+      const res = await apiFetch(`/admin/broadcasts?${params}`);
       if (res.ok) {
         const data = await res.json();
         setBroadcasts(data.broadcasts || []);
@@ -166,18 +166,18 @@ export default function NotificationsPage({ token, refreshKey, onNewBroadcast }:
         setTotalPages(data.total_pages || 1);
       }
     } catch {} finally { setLoading(false); }
-  }, [token, page, notifTab, fromDate, toDate, refreshKey]);
+  }, [page, notifTab, fromDate, toDate]);
 
   useEffect(() => { fetchBroadcasts(); }, [fetchBroadcasts]);
   useEffect(() => { setPage(1); }, [notifTab, fromDate, toDate]);
 
   async function toggleArchive(id: number) {
-    await apiFetch(`/admin/broadcasts/${id}/archive`, token, { method: 'PATCH' });
+    await apiFetch(`/admin/broadcasts/${id}/archive`, undefined, { method: 'PATCH' });
     fetchBroadcasts();
   }
 
   async function deleteBroadcast(id: number) {
-    await apiFetch(`/admin/broadcasts/${id}`, token, { method: 'DELETE' });
+    await apiFetch(`/admin/broadcasts/${id}`, undefined, { method: 'DELETE' });
     setConfirmDeleteId(null);
     fetchBroadcasts();
   }

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
 from app.models.order import OrderType, OrderStatus
@@ -7,6 +7,7 @@ from app.models.order import OrderType, OrderStatus
 class OrderCreate(BaseModel):
     order_type: OrderType
     store_id: int
+    checkout_token: Optional[str] = None
     table_id: Optional[int] = None
     pickup_time: Optional[datetime] = None
     delivery_address: Optional[dict] = None
@@ -16,6 +17,20 @@ class OrderCreate(BaseModel):
     reward_redemption_code: Optional[str] = None
     delivery_provider: Optional[str] = None
     created_at: Optional[datetime] = None
+
+    @field_validator('store_id')
+    @classmethod
+    def store_id_positive(cls, v):
+        if v < 0:
+            raise ValueError('store_id must be non-negative')
+        return v
+
+    @field_validator('notes')
+    @classmethod
+    def notes_length(cls, v):
+        if v and len(v) > 2000:
+            raise ValueError('notes must be <= 2000 characters')
+        return v
 
 
 class OrderStatusUpdate(BaseModel):
@@ -52,7 +67,6 @@ class OrderOut(BaseModel):
     # Single discount at checkout (voucher OR reward):
     voucher_discount: float = 0.0
     reward_discount: float = 0.0
-    loyalty_discount: float = 0.0
     voucher_code: Optional[str] = None
     reward_redemption_code: Optional[str] = None
     total: float

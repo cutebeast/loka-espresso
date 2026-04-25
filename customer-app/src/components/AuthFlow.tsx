@@ -33,8 +33,15 @@ interface AuthFlowProps {
   onAuthDone: () => void;
 }
 
+async function fetchAndSetUser() {
+  try {
+    const me = await api.get('/users/me');
+    useAuthStore.getState().setUser(me.data);
+  } catch { /* user will be set on next loadAppData */ }
+}
+
 export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
-  const { token, isAuthenticated, setToken, setRefreshToken, setIsNewUser, setPhone, logout } = useAuthStore();
+  const { isAuthenticated, setIsNewUser, setPhone } = useAuthStore();
   const { showToast } = useUIStore();
   const reducedMotion = useReducedMotion();
 
@@ -53,9 +60,9 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
   }, []);
 
   const handleSplashFinish = useCallback(() => {
-    if (token && isAuthenticated) { onAuthDone(); setAuthStep('done'); }
+    if (isAuthenticated) { onAuthDone(); setAuthStep('done'); }
     else setAuthStep('phone');
-  }, [token, isAuthenticated, onAuthDone]);
+  }, [isAuthenticated, onAuthDone]);
 
   const handlePhoneSubmit = useCallback(async (phoneValue: string) => {
     setLoadingAuth(true);
@@ -65,25 +72,31 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
       const nextPhone = res.data?.phone || normalized;
       setPhoneNumber(nextPhone);
       setPhone(nextPhone);
-      setOtpSessionId(res.data?.session_id ?? null);
+      const sessionId = res.data?.session_id ?? null;
+      setOtpSessionId(sessionId);
       setOtpRetryAfter(Number(res.data?.retry_after_seconds ?? 60));
-      setAuthStep('otp');
+      if (process.env.NEXT_PUBLIC_OTP_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
+        const verifyRes = await api.post('/auth/verify-otp', { phone: nextPhone, code: '000000', session_id: sessionId });
+        const { is_new_user } = verifyRes.data;
+        if (is_new_user) { setIsNewUser(true); setAuthStep('profile'); }
+        else { await fetchAndSetUser(); setIsNewUser(false); onAuthDone(); setAuthStep('done'); }
+      } else {
+        setAuthStep('otp');
+      }
     } catch (error) {
-      showToast(getApiErrorMessage(error, 'Failed to send OTP. Please try again.'), 'error');
+      showToast(getApiErrorMessage(error, 'Failed to log in. Please try again.'), 'error');
     } finally {
       setLoadingAuth(false);
     }
-  }, [getApiErrorMessage, setPhone, showToast]);
+  }, [getApiErrorMessage, setPhone, setIsNewUser, onAuthDone, showToast]);
 
   const handleOTPSubmit = useCallback(async (code: string) => {
     setLoadingAuth(true);
     try {
       const res = await api.post('/auth/verify-otp', { phone: phoneNumber, code, session_id: otpSessionId });
-      const { access_token, refresh_token, is_new_user } = res.data;
-      setToken(access_token);
-      setRefreshToken(refresh_token ?? null);
+      const { is_new_user } = res.data;
       if (is_new_user) { setIsNewUser(true); setAuthStep('profile'); }
-      else { setIsNewUser(false); onAuthDone(); setAuthStep('done'); }
+      else { await fetchAndSetUser(); setIsNewUser(false); onAuthDone(); setAuthStep('done'); }
     } catch (error) {
       const message = getApiErrorMessage(error, 'Invalid OTP. Please try again.');
       showToast(message, 'error');
@@ -91,7 +104,7 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
     } finally {
       setLoadingAuth(false);
     }
-  }, [getApiErrorMessage, otpSessionId, phoneNumber, setIsNewUser, setRefreshToken, setToken, showToast, onAuthDone]);
+  }, [getApiErrorMessage, otpSessionId, phoneNumber, setIsNewUser, showToast, onAuthDone]);
 
   const handleResendOTP = useCallback(async () => {
     try {
@@ -109,9 +122,8 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
   const handleProfileSubmit = useCallback(async (data: { name: string; email?: string }) => {
     setLoadingAuth(true);
     try {
-      await api.post('/auth/register', { name: data.name, email: data.email }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.post('/auth/register', { name: data.name, email: data.email });
+      await fetchAndSetUser();
       setIsNewUser(false);
       onAuthDone();
       setAuthStep('done');
@@ -121,9 +133,10 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
     } finally {
       setLoadingAuth(false);
     }
-  }, [token, setIsNewUser, showToast, onAuthDone]);
+  }, [setIsNewUser, showToast, onAuthDone]);
 
-  const handleProfileSkip = useCallback(() => {
+  const handleProfileSkip = useCallback(async () => {
+    await fetchAndSetUser();
     setIsNewUser(false);
     onAuthDone();
     setAuthStep('done');

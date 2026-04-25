@@ -39,10 +39,10 @@ export default function StorePickerModal({ stores, selectedStore, onSelect, onCl
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50"
+      className="fixed inset-0 z-50 flex items-end justify-center"
       onClick={onClose}
-      style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
     >
+      {/* TODO: extract to CSS */}
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,19,23,0.55)', backdropFilter: 'blur(2px)' }} />
       <motion.div
         initial={{ y: '100%' }}
@@ -50,6 +50,7 @@ export default function StorePickerModal({ stores, selectedStore, onSelect, onCl
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 320 }}
         onClick={(e) => e.stopPropagation()}
+        /* TODO: extract to CSS */
         style={{
           position: 'relative', width: '100%', maxWidth: 430, background: '#FFFFFF',
           borderTopLeftRadius: 28, borderTopRightRadius: 28,
@@ -57,6 +58,7 @@ export default function StorePickerModal({ stores, selectedStore, onSelect, onCl
           display: 'flex', flexDirection: 'column', maxHeight: '82vh', overflow: 'hidden',
         }}
       >
+        {/* TODO: extract to CSS */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4 }}>
           <div style={{ width: 44, height: 4, borderRadius: 999, background: LOKA.border }} />
         </div>
@@ -75,7 +77,7 @@ export default function StorePickerModal({ stores, selectedStore, onSelect, onCl
             onClick={onClose}
             aria-label="Close"
             style={{
-              width: 36, height: 36, borderRadius: 999, background: LOKA.surface,
+              width: 44, height: 44, borderRadius: 999, background: LOKA.surface,
               border: 'none', display: 'inline-flex', alignItems: 'center',
               justifyContent: 'center', color: LOKA.textMuted, cursor: 'pointer',
             }}
@@ -84,6 +86,7 @@ export default function StorePickerModal({ stores, selectedStore, onSelect, onCl
           </motion.button>
         </div>
         <div style={{ padding: '0 22px 14px' }}>
+          {/* TODO: extract to CSS */}
           <div
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
@@ -108,6 +111,7 @@ export default function StorePickerModal({ stores, selectedStore, onSelect, onCl
             )}
           </div>
         </div>
+        {/* TODO: extract to CSS */}
         <div style={{ padding: '0 22px 8px', fontSize: 12, fontWeight: 700, color: LOKA.textMuted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           {storeSearch ? `${visible.length} result${visible.length === 1 ? '' : 's'}` : 'Nearest to you'}
         </div>

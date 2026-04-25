@@ -1,53 +1,59 @@
 import { create } from 'zustand';
 import type { UserProfile } from '@/lib/api';
-import { useCartStore } from '@/stores/cartStore';
-import { useUIStore } from '@/stores/uiStore';
-import { useWalletStore } from '@/stores/walletStore';
-import { useOrderStore } from '@/stores/orderStore';
 
 interface AuthState {
-  token: string | null;
-  refreshToken: string | null;
   user: UserProfile | null;
   isAuthenticated: boolean;
   isNewUser: boolean;
   phone: string;
-  setToken: (token: string | null) => void;
-  setRefreshToken: (refreshToken: string | null) => void;
   setUser: (user: UserProfile | null) => void;
   setIsNewUser: (value: boolean) => void;
   setPhone: (phone: string) => void;
   logout: () => void;
+  resetAllExceptCart: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   (set) => ({
-    token: null,
-    refreshToken: null,
     user: null,
     isAuthenticated: false,
     isNewUser: false,
     phone: '',
-    setToken: (token) => set({ token, isAuthenticated: !!token }),
-    setRefreshToken: (refreshToken) => set({ refreshToken }),
-    setUser: (user) => set({ user }),
+    setUser: (user) => set({ user, isAuthenticated: !!user }),
     setIsNewUser: (isNewUser) => set({ isNewUser }),
     setPhone: (phone) => set({ phone }),
-    logout: () => {
+    logout: async () => {
+      try {
+        const { default: api } = await import('@/lib/api');
+        await api.post('/auth/logout');
+      } catch {
+        // ignore — cookie will expire naturally
+      }
+      // Reset all domain stores without direct coupling
+      const { useCartStore } = await import('@/stores/cartStore');
+      const { useUIStore } = await import('@/stores/uiStore');
+      const { useWalletStore } = await import('@/stores/walletStore');
+      const { useOrderStore } = await import('@/stores/orderStore');
       useCartStore.getState().clearCart();
-      useUIStore.getState().setDineInSession(null);
-      useUIStore.getState().setSelectedStore(null);
-      useUIStore.getState().setOrderMode('pickup');
-      useUIStore.getState().setPage('home');
-      useWalletStore.getState().setBalance(0);
-      useWalletStore.getState().setPoints(0);
-      useWalletStore.getState().setTier('Bronze');
-      useWalletStore.getState().setRewards([]);
-      useWalletStore.getState().setVouchers([]);
-      useWalletStore.getState().setTransactions([]);
-      useOrderStore.getState().setOrders([]);
-      useOrderStore.getState().setCurrentOrder(null);
-      set({ token: null, refreshToken: null, user: null, isAuthenticated: false, isNewUser: false, phone: '' });
+      useUIStore.getState().resetAll();
+      useWalletStore.getState().resetAll();
+      useOrderStore.getState().resetAll();
+      set({ user: null, isAuthenticated: false, isNewUser: false, phone: '' });
+    },
+    resetAllExceptCart: async () => {
+      try {
+        const { default: api } = await import('@/lib/api');
+        await api.post('/auth/logout');
+      } catch {
+        // ignore
+      }
+      const { useUIStore } = await import('@/stores/uiStore');
+      const { useWalletStore } = await import('@/stores/walletStore');
+      const { useOrderStore } = await import('@/stores/orderStore');
+      useUIStore.getState().setIsGuest(false);
+      useWalletStore.getState().resetAll();
+      useOrderStore.getState().resetAll();
+      set({ user: null, isAuthenticated: false, isNewUser: false, phone: '' });
     },
   })
 );

@@ -178,7 +178,7 @@ python3 verify_seed_18_submit_feedback.py
 ### Admin login
 
 ```bash
-curl -s -X POST http://localhost:8765/api/v1/auth/login-password \
+curl -s -X POST http://localhost:3002/api/v1/auth/login-password \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@loyaltysystem.uk","password":"admin123"}'
 ```
@@ -186,29 +186,29 @@ curl -s -X POST http://localhost:8765/api/v1/auth/login-password \
 ### Config
 
 ```bash
-curl -s http://localhost:8765/api/v1/config
+curl -s http://localhost:3002/api/v1/config
 ```
 
 ### Customer wallet cash balance
 
 ```bash
-curl -s http://localhost:8765/api/v1/wallet \
+curl -s http://localhost:3002/api/v1/wallet \
   -H "Authorization: Bearer <customer-token>"
 ```
 
 ### Combined customer wallet
 
 ```bash
-curl -s http://localhost:8765/api/v1/me/wallet \
+curl -s http://localhost:3002/api/v1/me/wallet \
   -H "Authorization: Bearer <customer-token>"
 ```
 
 ### Merchant dashboard API health via local manager ports
 
 ```bash
-curl -s http://localhost:8765/health
+curl -s http://localhost:3002/health
 curl -I http://localhost:3001
-curl -I http://localhost:3002
+curl -I http://localhost:3003
 ```
 
 ---
@@ -220,6 +220,42 @@ curl -I http://localhost:3002
 3. Seed scripts are the active end-to-end verification surface.
 4. Conventional automated regression coverage is still limited.
 
+## Verification Commands
+
+### Backend
+```bash
+cd /root/fnb-super-app/backend
+# Import/startup check
+python3 -c "from app.main import app; print('OK')"
+# OpenAPI generation check
+python3 -c "from app.main import app; import json; print(json.dumps(app.openapi()))" > /tmp/openapi.json
+# Alembic chain check
+alembic heads
+alembic history --verbose
+```
+
+### Admin Frontend
+```bash
+cd /root/fnb-super-app/frontend
+npm run lint
+npm run build
+```
+
+### Customer PWA
+```bash
+cd /root/fnb-super-app/customer-app
+npm run lint
+npm run build
+```
+
+### CSS/Tailwind Guard
+```bash
+# Confirm no Tailwind in source
+cd /root/fnb-super-app
+! grep -rn "@tailwind" frontend/src/ customer-app/src/
+! grep -rn "tailwindcss" frontend/package.json customer-app/package.json
+```
+
 ## Pass Criteria Before Real Provider Work
 
 Treat the stack as ready for the next integration phase when all of the following are true:
@@ -229,3 +265,7 @@ Treat the stack as ready for the next integration phase when all of the followin
 3. mock provider services are reachable.
 4. base seed flow succeeds.
 5. customer journey flow succeeds without stale-contract failures.
+6. Admin `npm run lint` and `npm run build` pass.
+7. Customer PWA `npm run lint` and `npm run build` pass.
+8. Alembic has exactly one head and a valid migration chain.
+9. No `__pycache__` or `.pyc` files exist in source directories.

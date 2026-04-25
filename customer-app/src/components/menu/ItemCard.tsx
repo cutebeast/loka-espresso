@@ -3,8 +3,7 @@
 import { motion } from 'framer-motion';
 import { Plus, Coffee } from 'lucide-react';
 import type { MenuItem } from '@/lib/api';
-import { cacheBust } from '@/lib/api';
-import { formatPrice, LOKA } from '@/lib/tokens';
+import { formatPrice, LOKA, resolveAssetUrl } from '@/lib/tokens';
 
 interface ItemCardProps {
   item: MenuItem;
@@ -13,11 +12,7 @@ interface ItemCardProps {
 }
 
 export default function ItemCard({ item, onPress, onAdd }: ItemCardProps) {
-  const imgSrc = item.image_url
-    ? cacheBust(item.image_url.startsWith('http')
-      ? item.image_url
-      : `https://admin.loyaltysystem.uk${item.image_url}`)
-    : null;
+  const imgSrc = item.image_url ? resolveAssetUrl(item.image_url) : null;
 
   return (
     <motion.button

@@ -31,6 +31,9 @@ class InformationCardOut(BaseModel):
     icon: Optional[str] = None
     image_url: Optional[str] = None
     gallery_urls: Optional[List[str]] = None
+    action_url: Optional[str] = None
+    action_type: Optional[str] = None
+    action_label: Optional[str] = None
 
     class Config:
         from_attributes = True

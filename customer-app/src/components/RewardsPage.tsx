@@ -4,13 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, Crown, Star, ChevronRight, Gift, Calendar, List, Circle, CheckCircle } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
-import api, { cacheBust } from '@/lib/api';
+import api from '@/lib/api';
 import type { Reward, PromoBanner } from '@/lib/api';
-
-function resolveUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  return cacheBust(url.startsWith('http') ? url : `https://admin.loyaltysystem.uk${url}`);
-}
+import { resolveAssetUrl } from '@/lib/tokens';
 
 function getDaysLeft(end: string | null) {
   if (!end) return 'Ongoing';
@@ -22,7 +18,7 @@ function getDaysLeft(end: string | null) {
 type Tab = 'rewards' | 'vouchers';
 
 export default function RewardsPage() {
-  const { points, tier } = useWalletStore();
+  const { points } = useWalletStore();
   const { setPage, showToast } = useUIStore();
 
   const [activeTab, setActiveTab] = useState<Tab>('rewards');
@@ -83,10 +79,10 @@ export default function RewardsPage() {
 
   /* ── Detail view for a selected reward ── */
   if (selectedReward) {
-    const img = resolveUrl(selectedReward.image_url);
+    const img = resolveAssetUrl(selectedReward.image_url);
     const canRedeem = points >= selectedReward.points_cost;
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'white' }}>
+      <div className="rd-fullscreen">
         <div className="rd-hero">
           <div className="rd-hero-img" style={img ? { backgroundImage: `url(${img})` } : { background: 'linear-gradient(135deg, #F3EEE5, rgba(209,142,56,0.3))' }} />
           <div className="rd-hero-overlay" />
@@ -165,25 +161,23 @@ export default function RewardsPage() {
   /* ── Redemption code modal ── */
   if (redemptionCode) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'white', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ width: 64, height: 64, borderRadius: 20, background: '#E8EDE0', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+      <div className="rd-modal-code">
+        <div className="rd-modal-icon-circle">
           <Gift size={32} color="#384B16" />
         </div>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1B2023', marginBottom: 8 }}>Reward Redeemed!</h2>
-        <p style={{ fontSize: 14, color: '#6A7A8A', marginBottom: 24, textAlign: 'center' }}>Show this code to the cashier</p>
-        <div style={{ background: '#F5F7FA', borderRadius: 16, padding: '20px 32px', fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 24, fontWeight: 700, color: '#1B2023', letterSpacing: 2, marginBottom: 24 }}>
+        <h2 className="rd-modal-title">Reward Redeemed!</h2>
+        <p className="rd-modal-desc">Show this code to the cashier</p>
+        <div className="rd-modal-code-box">
           {redemptionCode}
         </div>
         <button
-          className="btn btn-primary btn-pill"
-          style={{ width: '100%', marginBottom: 12 }}
+          className="btn btn-primary btn-pill rd-btn-full-mb"
           onClick={() => { navigator.clipboard.writeText(redemptionCode); showToast('Code copied!', 'success'); }}
         >
           Copy Code
         </button>
         <button
-          className="btn btn-ghost"
-          style={{ width: '100%' }}
+          className="btn btn-ghost rd-btn-full"
           onClick={() => { setRedemptionCode(null); setSelectedReward(null); setRedemptionSuccess(false); }}
         >
           Close
@@ -234,16 +228,16 @@ export default function RewardsPage() {
           </>
         ) : activeTab === 'rewards' ? (
           rewards.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-              <Gift size={40} color="#D4DCE5" style={{ marginBottom: 12 }} />
-              <p style={{ fontSize: 16, fontWeight: 700, color: '#1B2023', marginBottom: 6 }}>No rewards available</p>
-              <p style={{ fontSize: 13, color: '#6A7A8A' }}>Check back soon for new rewards</p>
+            <div className="rd-empty">
+              <div className="rd-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
+              <p className="rd-empty-title">No rewards available</p>
+              <p className="rd-empty-text">Check back soon for new rewards</p>
             </div>
           ) : (
             <>
               <div className="rewards-section-label">Available Rewards</div>
               {rewards.map((reward) => {
-                const img = resolveUrl(reward.image_url);
+                const img = resolveAssetUrl(reward.image_url);
                 return (
                   <div key={reward.id} className="rewards-list-card" onClick={() => setSelectedReward(reward)}>
                     <div
@@ -271,16 +265,16 @@ export default function RewardsPage() {
             </>
           )
         ) : promos.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-            <Gift size={40} color="#D4DCE5" style={{ marginBottom: 12 }} />
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#1B2023', marginBottom: 6 }}>No vouchers or promos</p>
-            <p style={{ fontSize: 13, color: '#6A7A8A' }}>Check back soon for new offers</p>
+          <div className="rd-empty">
+            <div className="rd-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
+            <p className="rd-empty-title">No vouchers or promos</p>
+            <p className="rd-empty-text">Check back soon for new offers</p>
           </div>
         ) : (
           <>
             <div className="rewards-section-label">Available Vouchers</div>
             {promos.map((promo) => {
-              const img = resolveUrl(promo.image_url);
+              const img = resolveAssetUrl(promo.image_url);
               return (
                 <div key={promo.id} className="rewards-list-card" onClick={() => setPage('promotions', { selectedPromoId: promo.id })}>
                   <div

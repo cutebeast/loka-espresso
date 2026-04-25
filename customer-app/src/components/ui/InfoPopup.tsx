@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Info, X } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 interface InfoPopupProps {
   isOpen: boolean;

@@ -30,7 +30,7 @@ const ACTION_OPTIONS = [
   { value: 'import', label: 'Import' },
 ];
 
-export default function AuditLogPage({ stores, token }: AuditLogPageProps) {
+export default function AuditLogPage({ stores, token: _token }: AuditLogPageProps) {
   const [entries, setEntries] = useState<MerchantAuditEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -49,7 +49,7 @@ export default function AuditLogPage({ stores, token }: AuditLogPageProps) {
       let url = `/admin/audit-log?page=${p}&page_size=${PAGE_SIZE}`;
       if (actionFilter) url += `&action=${encodeURIComponent(actionFilter)}`;
       if (fromDate && toDate) url += `&from_date=${fromDate}T00:00:00&to_date=${toDate}T23:59:59`;
-      const res = await apiFetch(url, token);
+      const res = await apiFetch(url);
       if (res.ok) {
         const data: AuditLogResponse = await res.json();
         setEntries(data.entries || []);
@@ -58,7 +58,7 @@ export default function AuditLogPage({ stores, token }: AuditLogPageProps) {
         setTotalPages(data.total_pages || 1);
       }
     } catch {} finally { setLoading(false); }
-  }, [token, actionFilter, fromDate, toDate]);
+  }, [actionFilter, fromDate, toDate]);
 
   useEffect(() => {
     if (preset === 'CUSTOM') return;

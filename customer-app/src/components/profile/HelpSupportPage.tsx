@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
 
 export default function HelpSupportPage() {
   const { setPage, showToast } = useUIStore();
+  const storeId = useCartStore((s) => s.storeId);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -24,7 +26,7 @@ export default function HelpSupportPage() {
     setSending(true);
     try {
       await api.post('/feedback', {
-        store_id: 0,
+        store_id: storeId ?? undefined,
         rating: 5,
         comment: `Subject: ${subject}\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nMessage: ${message}`,
       });

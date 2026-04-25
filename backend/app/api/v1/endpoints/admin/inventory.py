@@ -142,9 +142,23 @@ async def list_inventory(
     q = q.order_by(InventoryItem.name)
     result = await db.execute(q)
     items = result.scalars().all()
+
+    cat_ids = {item.category_id for item in items if item.category_id}
+    cat_map = {}
+    if cat_ids:
+        cat_result = await db.execute(
+            select(InventoryCategory).where(InventoryCategory.id.in_(cat_ids))
+        )
+        cat_map = {c.id: c.name for c in cat_result.scalars().all()}
+
     out = []
     for item in items:
-        out.append(await _item_to_out(item, db))
+        out.append(InventoryItemOut(
+            id=item.id, store_id=item.store_id, name=item.name,
+            current_stock=to_float(item.current_stock), unit=item.unit,
+            reorder_level=to_float(item.reorder_level), is_active=item.is_active,
+            category_id=item.category_id, category_name=cat_map.get(item.category_id),
+        ))
     return out
 
 
@@ -379,10 +393,31 @@ async def store_ledger(
     
     result = await db.execute(q)
     movements = result.scalars().all()
-    
+
+    user_ids = {m.created_by for m in movements if m.created_by}
+    item_ids = {m.inventory_item_id for m in movements}
+
+    user_map = {}
+    if user_ids:
+        u_result = await db.execute(select(User).where(User.id.in_(user_ids)))
+        user_map = {u.id: u.name for u in u_result.scalars().all()}
+
+    item_map = {}
+    if item_ids:
+        i_result = await db.execute(select(InventoryItem).where(InventoryItem.id.in_(item_ids)))
+        item_map = {i.id: i.name for i in i_result.scalars().all()}
+
     out = []
     for m in movements:
-        out.append(await _build_movement_out(m, store_id, db))
+        out.append(InventoryMovementOut(
+            id=m.id, store_id=store_id, inventory_item_id=m.inventory_item_id,
+            inventory_item_name=item_map.get(m.inventory_item_id),
+            movement_type=m.movement_type.value,
+            quantity=to_float(m.quantity), balance_after=to_float(m.balance_after),
+            note=m.note, attachment_path=m.attachment_path,
+            created_by=m.created_by, created_by_name=user_map.get(m.created_by),
+            created_at=m.created_at.isoformat() if m.created_at else None,
+        ))
     
     total_pages = (total + page_size - 1) // page_size
     

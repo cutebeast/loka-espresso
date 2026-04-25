@@ -23,9 +23,12 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   overscroll-behavior: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-/* App container */
+/* App container — phone-frame on desktop, full-width on mobile */
 .app-container {
   width: 100%;
   height: 100vh;
@@ -37,6 +40,16 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+@media (min-width: 431px) {
+  .app-container {
+    max-width: 430px;
+    margin: 20px auto;
+    border-radius: 24px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 20px 60px rgba(0,0,0,0.15);
+    overflow: hidden;
+  }
 }
 
 /* Safe area */
@@ -149,3 +162,60 @@ textarea[disabled] {
 
 .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
 .animate-slideUp { animation: slideUp 0.4s ease-out; }
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Tablet layout (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-container {
+    max-width: 768px;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: auto;
+  }
+
+  .app-content {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .product-grid,
+  .rewards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .btn, .chip, .tab {
+    min-height: 44px;
+  }
+}
+
+/* Desktop layout (1024px+) */
+@media (min-width: 1024px) {
+  .app-container {
+    max-width: 1024px;
+    margin: 20px auto;
+    border-radius: 24px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 20px 60px rgba(0,0,0,0.15);
+    overflow: hidden;
+  }
+
+  .app-content {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .rewards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .orders-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Search, X, ArrowLeft, Plus, Coffee } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
-import api, { cacheBust } from '@/lib/api';
+import api from '@/lib/api';
 import type { Category, MenuItem, CustomizationOption } from '@/lib/api';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
-import { formatPrice } from '@/lib/tokens';
+import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
 
 interface SelectedOption {
   id: number;
@@ -17,24 +17,23 @@ interface SelectedOption {
   price_adjustment: number;
 }
 
-function resolveImg(path: string | null | undefined) {
-  if (!path) return null;
-  return cacheBust(path.startsWith('http') ? path : `https://admin.loyaltysystem.uk${path}`);
-}
-
 export default function MenuPage() {
   const {
     categories,
     menuItems,
     searchQuery,
+    selectedStore,
     setCategories,
     setMenuItems,
     setSearchQuery,
     setPage,
+    isGuest,
+    showToast,
   } = useUIStore();
 
   const addItem = useCartStore((s) => s.addItem);
-  const getItemCount = useCartStore((s) => s.getItemCount);
+
+  const storeId = selectedStore?.id ?? 0;
 
   const [loading, setLoading] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
@@ -52,14 +51,14 @@ export default function MenuPage() {
     setLoading(true);
     try {
       const [catRes, itemsRes] = await Promise.all([
-        api.get('/stores/0/categories'),
-        api.get('/stores/0/items', { params: { available_only: true } }),
+        api.get(`/menu/categories`),
+        api.get(`/menu/items`, { params: { available_only: true } }),
       ]);
       setCategories(Array.isArray(catRes.data) ? catRes.data : []);
       setMenuItems(Array.isArray(itemsRes.data) ? itemsRes.data : []);
     } catch {
       try {
-        const menuRes = await api.get('/stores/0/menu');
+        const menuRes = await api.get(`/stores/${storeId}/menu`);
         const data = menuRes.data;
         const cats = Array.isArray(data) ? data : (data?.categories ?? []);
         const allCategories: Category[] = [];
@@ -79,7 +78,7 @@ export default function MenuPage() {
     } finally {
       setLoading(false);
     }
-  }, [setCategories, setMenuItems]);
+  }, [setCategories, setMenuItems, storeId]);
 
   useEffect(() => {
     loadMenu();
@@ -110,7 +109,7 @@ export default function MenuPage() {
   const loadCustomizations = useCallback(async (item: MenuItem) => {
     setLoadingOptions(true);
     try {
-      const res = await api.get(`/stores/0/items/${item.id}/customizations`);
+      const res = await api.get(`/menu/items/${item.id}/customizations`);
       setAvailableOptions(res.data ?? []);
     } catch {
       setAvailableOptions(item.customization_options ?? []);
@@ -120,14 +119,18 @@ export default function MenuPage() {
   }, []);
 
   const openItem = useCallback((item: MenuItem) => {
+    if (isGuest) {
+      showToast('Sign in to order', 'info');
+      return;
+    }
     if (item.customization_options && item.customization_options.length > 0) {
       setDetailItem(item);
       setSheetOpen(true);
       loadCustomizations(item);
     } else {
-      addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {} });
+      addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {} }, storeId);
     }
-  }, [addItem, loadCustomizations]);
+  }, [addItem, loadCustomizations, isGuest, showToast, storeId]);
 
   const handleSheetAdd = useCallback(
     (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number) => {
@@ -137,28 +140,26 @@ export default function MenuPage() {
         price: totalPrice,
         quantity,
         customizations: customizations.length > 0
-          ? customizations.reduce<Record<string, unknown>>((acc, o) => {
-              acc[o.name] = { id: o.id, type: o.option_type, price: o.price_adjustment };
-              return acc;
-            }, {})
+          ? { options: customizations.map((o) => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) }
           : {},
-      });
+        customization_option_ids: customizations.length > 0 ? customizations.map((o) => o.id) : [],
+      }, storeId);
     },
-    [addItem],
+    [addItem, storeId],
   );
 
-  const filteredItems = menuItems.filter((item) => {
+  const filteredItems = useMemo(() => menuItems.filter((item) => {
     const matchesSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch && item.is_available;
-  });
+  }), [menuItems, searchQuery]);
 
-  const itemsByCategory = categories
+  const itemsByCategory = useMemo(() => categories
     .map((cat) => ({ category: cat, items: filteredItems.filter((item) => item.category_id === cat.id) }))
-    .filter((group) => group.items.length > 0);
+    .filter((group) => group.items.length > 0), [categories, filteredItems]);
 
-  const allCats = [{ id: null as number | null, name: 'All' }, ...categories.map((c) => ({ id: c.id, name: c.name }))];
+  const allCats = useMemo(() => [{ id: null as number | null, name: 'All' }, ...categories.map((c) => ({ id: c.id, name: c.name }))], [categories]);
 
-  const scrollToCategory = (categoryId: number | null) => {
+  const scrollToCategory = useCallback((categoryId: number | null) => {
     setActiveCategoryId(categoryId);
     if (categoryId === null) {
       const first = sectionRefs.current.get(categories[0]?.id);
@@ -167,17 +168,15 @@ export default function MenuPage() {
       const el = sectionRefs.current.get(categoryId);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  };
-
-  const hasCartItems = getItemCount() > 0;
+  }, [categories, setActiveCategoryId]);
 
   return (
     <div className="menu-screen">
       {/* Header */}
       <div className="menu-header">
         {showSearch ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', background: '#F5F7FA', borderRadius: 999, height: 36 }}>
+          <div className="menu-search-bar">
+            <div className="menu-search-input-wrap">
               <Search size={14} color="#6A7A8A" />
               <input
                 type="text"
@@ -185,17 +184,17 @@ export default function MenuPage() {
                 placeholder="Search items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: '#1B2023' }}
+                className="menu-search-input"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} style={{ background: 'transparent', border: 'none', padding: 0, color: '#6A7A8A', cursor: 'pointer', display: 'flex' }}>
+                <button onClick={() => setSearchQuery('')} className="menu-search-clear">
                   <X size={14} />
                 </button>
               )}
             </div>
             <button
               onClick={() => { setShowSearch(false); setSearchQuery(''); }}
-              style={{ fontSize: 13, fontWeight: 600, color: '#384B16', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0, padding: '4px 4px' }}
+              className="menu-search-cancel"
             >
               Cancel
             </button>
@@ -239,11 +238,11 @@ export default function MenuPage() {
             ))}
           </>
         ) : filteredItems.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, borderRadius: 999, background: '#F3EEE5', margin: '0 auto 16px' }}>
+          <div className="menu-empty-state">
+            <div className="menu-empty-icon">
               <Coffee size={24} color="#D18E38" strokeWidth={1.5} />
             </div>
-            <p style={{ fontSize: 15, fontWeight: 700, color: '#1B2023', marginBottom: 8 }}>
+            <p className="menu-empty-title">
               {searchQuery ? `No items match "${searchQuery}"` : 'No items available'}
             </p>
             {searchQuery && (
@@ -255,15 +254,15 @@ export default function MenuPage() {
         ) : (
           itemsByCategory.map(({ category, items }) => (
             <div key={category.id} ref={(el) => { sectionRefs.current.set(category.id, el); }} data-category-id={category.id}>
-              <div style={{ padding: '18px 16px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 4, height: 18, borderRadius: 999, background: '#D18E38', flexShrink: 0 }} />
-                <h2 style={{ fontSize: 15, fontWeight: 800, color: '#1B2023', letterSpacing: '-0.01em' }}>
+              <div className="menu-category-header">
+                <div className="menu-category-accent" />
+                <h2 className="menu-category-title">
                   {category.name}
                 </h2>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="menu-items-grid">
                 {items.map((item) => {
-                  const imgSrc = resolveImg(item.image_url);
+                  const imgSrc = resolveAssetUrl(item.image_url);
                   return (
                     <div
                       key={item.id}
@@ -275,7 +274,7 @@ export default function MenuPage() {
                         style={imgSrc ? { backgroundImage: `url(${imgSrc})` } : {}}
                       >
                         {!imgSrc && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                          <div className="menu-img-fallback">
                             <Coffee size={28} color="#C4CED8" strokeWidth={1.5} />
                           </div>
                         )}

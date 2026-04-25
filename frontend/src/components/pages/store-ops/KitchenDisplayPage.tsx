@@ -32,7 +32,7 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
       if (filterType) {
         url += `&order_type=${filterType}`;
       }
-      const res = await apiFetch(url, token);
+      const res = await apiFetch(url);
       if (!res.ok) return;
       const data = await res.json();
       // Client-side filter: only show active (non-completed, non-cancelled) orders
@@ -62,18 +62,18 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
   async function quickAction(orderId: number, action: string) {
     try {
       if (action === 'mark_paid') {
-        const res = await apiFetch(`/orders/${orderId}/payment-status`, token, {
+        const res = await apiFetch(`/orders/${orderId}/payment-status`, undefined, {
           method: 'PATCH', body: JSON.stringify({ payment_status: 'paid' }),
         });
         if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
       } else if (action === 'pos_synced') {
-        const res = await apiFetch(`/orders/${orderId}/pos-synced`, token, { method: 'POST' });
+        const res = await apiFetch(`/orders/${orderId}/pos-synced`, undefined, { method: 'POST' });
         if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
       } else if (action === 'delivery_dispatched') {
-        const res = await apiFetch(`/orders/${orderId}/delivery-dispatched`, token, { method: 'POST' });
+        const res = await apiFetch(`/orders/${orderId}/delivery-dispatched`, undefined, { method: 'POST' });
         if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
       } else {
-        const res = await apiFetch(`/orders/${orderId}/status`, token, {
+        const res = await apiFetch(`/orders/${orderId}/status`, undefined, {
           method: 'PATCH', body: JSON.stringify({ status: action }),
         });
         if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
@@ -238,7 +238,7 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
             <p style={{ margin: '0 0 6px' }}><strong>3. Click Start Preparing</strong> when the kitchen begins cooking the order.</p>
             <p style={{ margin: '0 0 6px' }}><strong>4. Click Ready</strong> when the order is packed and ready for pickup/delivery.</p>
             <p style={{ margin: '0 0 6px' }}><strong>5. Click Complete</strong> when the customer receives the order.</p>
-            <p style={{ margin: 0 }}><strong>For delivery orders:</strong> click "Out for Delivery" when the rider picks up, then "Delivered" when the customer receives it.</p>
+            <p style={{ margin: 0 }}><strong>For delivery orders:</strong> click &quot;Out for Delivery&quot; when the rider picks up, then &quot;Delivered&quot; when the customer receives it.</p>
           </div>
         )}
       </div>

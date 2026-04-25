@@ -18,7 +18,7 @@ from app.models.store import Store
 from app.models.acl import UserType as ACLUserType, Role, UserStoreAccess, Permission, RolePermission
 from app.schemas.admin_extras import StaffCreate, StaffUpdate, StaffShiftOut, ClockInRequest
 
-router = APIRouter()
+router = APIRouter(tags=["Admin Staff"])
 
 PIN_MAX_ATTEMPTS = 5
 PIN_WINDOW_MINUTES = 5
@@ -277,8 +277,7 @@ async def create_hq_staff(
         "is_active": data.is_active,
         "store_assignments": store_access.get(user_id, []) if user_id else [],
     }
-    if temp_password:
-        result["temp_password"] = temp_password
+    # Password is never returned in plaintext; admin must use reset-password flow
     return result
 
 
@@ -312,8 +311,9 @@ async def create_staff(
         user_id = new_user.id
 
     staff_role = StaffRole.barista
+    hashed_pin = hash_password(data.pin_code) if data.pin_code else None
     obj = Staff(store_id=store_id, user_id=user_id, name=data.name, email=data.email,
-                phone=data.phone, role=staff_role, is_active=data.is_active, pin_code=data.pin_code)
+                phone=data.phone, role=staff_role, is_active=data.is_active, pin_code=hashed_pin)
     db.add(obj)
 
     # Sync store assignments (URL store + any extras)
@@ -335,8 +335,7 @@ async def create_staff(
         "is_active": data.is_active, "store_name": store_name_map.get(store_id),
         "store_assignments": store_access.get(user_id, []) if user_id else [],
     }
-    if temp_password:
-        result["temp_password"] = temp_password
+    # Password is never returned in plaintext; admin must use reset-password flow
     return result
 
 
@@ -369,6 +368,8 @@ async def update_staff(
     changes = data.model_dump(exclude_unset=True)
     for skip in ('user_type_id', 'role_id', 'store_ids'):
         changes.pop(skip, None)
+    if 'pin_code' in changes and changes['pin_code']:
+        changes['pin_code'] = hash_password(changes['pin_code'])
     for key, value in changes.items():
         setattr(obj, key, value)
 
@@ -423,13 +424,17 @@ async def deactivate_staff(staff_id: int, db: AsyncSession = Depends(get_db), us
 # ---------------------------------------------------------------------------
 
 @router.post("/admin/staff/{staff_id}/clock-in")
-async def clock_in(staff_id: int, data: ClockInRequest, db: AsyncSession = Depends(get_db)):
+async def clock_in(staff_id: int, data: ClockInRequest, db: AsyncSession = Depends(get_db),
+                   user: User = Depends(get_current_user)):
     await _check_pin_rate_limit(staff_id, db)
     result = await db.execute(select(Staff).where(Staff.id == staff_id))
     staff = result.scalar_one_or_none()
     if not staff:
         raise HTTPException(404)
-    if staff.pin_code != data.pin_code:
+    from app.core.security import is_global_admin, can_access_store
+    if not is_global_admin(user) and not await can_access_store(user, staff.store_id, db):
+        raise HTTPException(status_code=403, detail="No access to this staff member's store")
+    if not staff.pin_code or not verify_password(data.pin_code, staff.pin_code):
         db.add(PinAttempt(staff_id=staff_id))
         await db.flush()
         raise HTTPException(400, detail="Invalid PIN")
@@ -441,9 +446,16 @@ async def clock_in(staff_id: int, data: ClockInRequest, db: AsyncSession = Depen
 @router.post("/admin/staff/{staff_id}/clock-out")
 async def clock_out(
     staff_id: int, 
-    user: User = Depends(require_store_access()),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    staff_result = await db.execute(select(Staff).where(Staff.id == staff_id))
+    staff = staff_result.scalar_one_or_none()
+    if not staff:
+        raise HTTPException(404, detail="Staff not found")
+    from app.core.security import is_global_admin, can_access_store
+    if not is_global_admin(user) and not await can_access_store(user, staff.store_id, db):
+        raise HTTPException(status_code=403, detail="No access to this staff member's store")
     result = await db.execute(
         select(StaffShift).where(StaffShift.staff_id == staff_id, StaffShift.clock_out.is_(None))
         .order_by(desc(StaffShift.clock_in)).limit(1)
@@ -486,16 +498,17 @@ async def reset_staff_password(
         if existing.scalar_one_or_none():
             raise HTTPException(400, f"User with email '{staff.email}' exists but not linked")
         temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
-        phone_val = (data.phone or "").strip() or None  # Normalize empty to None to avoid unique constraint clash
+        phone_val = (staff.phone or "").strip() or None
         new_user = User(
-            email=data.email, name=data.name, phone=phone_val,
+            email=staff.email, name=staff.name, phone=phone_val,
             password_hash=hash_password(temp_password),
-            user_type_id=ut_id, role_id=r_id, is_active=True,
+            user_type_id=UserTypeIDs.STORE, role_id=RoleIDs.STAFF, is_active=True,
         )
         db.add(new_user)
         await db.flush()
         staff.user_id = new_user.id
-        return {"temp_password": temp_password, "email": staff.email, "auto_created": True}
+        # Password is never returned in plaintext; admin must communicate reset link separately
+        return {"email": staff.email, "auto_created": True}
 
     uresult = await db.execute(select(User).where(User.id == staff.user_id))
     linked_user = uresult.scalar_one_or_none()
@@ -504,7 +517,8 @@ async def reset_staff_password(
 
     temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
     linked_user.password_hash = hash_password(temp_password)
-    return {"temp_password": temp_password, "email": staff.email}
+    # Password is never returned in plaintext; admin must communicate reset link separately
+    return {"email": staff.email}
 
 
 @router.post("/auth/change-password")

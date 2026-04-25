@@ -11,10 +11,12 @@ class Referral(Base):
     __tablename__ = "referrals"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    referrer_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    invitee_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    referrer_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    invitee_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     reward_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 2), nullable=True)
+    referrer_reward_paid: Mapped[bool] = mapped_column(default=False)
+    referred_user_order_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     referrer: Mapped[User] = relationship("User", foreign_keys=[referrer_id])
@@ -28,8 +30,8 @@ class Favorite(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    item_id: Mapped[int] = mapped_column(Integer, ForeignKey("menu_items.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    item_id: Mapped[int] = mapped_column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user: Mapped[User] = relationship("User")

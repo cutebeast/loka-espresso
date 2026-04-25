@@ -38,7 +38,7 @@ class MarketingCampaign(Base):
     image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     cta_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     audience: Mapped[str] = mapped_column(String(50), default="all", nullable=False)
-    store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id"), nullable=True)
+    store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id", ondelete="SET NULL"), nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="draft", nullable=False)
     provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     provider_campaign_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -52,7 +52,7 @@ class MarketingCampaign(Base):
     clicked_count: Mapped[int] = mapped_column(Integer, default=0)
     failed_count: Mapped[int] = mapped_column(Integer, default=0)
     cost: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 2), nullable=True)
-    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -67,7 +67,7 @@ class TableOccupancySnapshot(Base):
     __tablename__ = "table_occupancy_snapshot"
 
     table_id: Mapped[int] = mapped_column(Integer, ForeignKey("store_tables.id", ondelete="CASCADE"), primary_key=True)
-    store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id"), nullable=False)
+    store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False)
     is_occupied: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     current_order_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

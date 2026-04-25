@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, ReactNode } from 'react';
+import { useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CarouselProps {
@@ -24,19 +24,19 @@ export function Carousel({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const total = children.length;
 
-  const goTo = (i: number) => {
+  const goTo = useCallback((i: number) => {
     setCurrent(((i % total) + total) % total);
-  };
+  }, [total]);
 
-  const next = () => goTo(current + 1);
-  const prev = () => goTo(current - 1);
+  const next = useCallback(() => goTo(current + 1), [goTo, current]);
+  const prev = useCallback(() => goTo(current - 1), [goTo, current]);
 
   useEffect(() => {
     if (autoPlay && total > 1) {
       timerRef.current = setInterval(next, interval);
       return () => { if (timerRef.current) clearInterval(timerRef.current); };
     }
-  }, [autoPlay, interval, current, total]);
+  }, [autoPlay, interval, total, next]);
 
   if (total === 0) return null;
 

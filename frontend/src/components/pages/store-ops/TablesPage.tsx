@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import { StoreSelector } from '@/components/ui';
 import { THEME } from '@/lib/theme';
@@ -69,7 +70,7 @@ function useQrImages(tables: MerchantTableItem[], storeId: string, token: string
       await Promise.all(
         tables.filter(t => t.qr_code_url).map(async (t) => {
           try {
-            const res = await apiFetch(`/admin/stores/${storeId}/tables/${t.id}/qr-image`, token);
+            const res = await apiFetch(`/admin/stores/${storeId}/tables/${t.id}/qr-image`);
             if (res.ok && !cancelled) {
               const blob = await res.blob();
               newUrls[t.id] = URL.createObjectURL(blob);
@@ -145,8 +146,8 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
     };
     try {
       const res = editingTable
-        ? await apiFetch(`/admin/stores/${selectedStore}/tables/${editingTable.id}`, token, { method: 'PUT', body: JSON.stringify(payload) })
-        : await apiFetch(`/admin/stores/${selectedStore}/tables`, token, { method: 'POST', body: JSON.stringify(payload) });
+        ? await apiFetch(`/admin/stores/${selectedStore}/tables/${editingTable.id}`, undefined, { method: 'PUT', body: JSON.stringify(payload) })
+        : await apiFetch(`/admin/stores/${selectedStore}/tables`, undefined, { method: 'POST', body: JSON.stringify(payload) });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         setError(d.detail || `Failed (${res.status})`);
@@ -164,7 +165,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
   async function handleToggle(table: MerchantTableItem) {
     setError('');
     try {
-      const res = await apiFetch(`/admin/stores/${selectedStore}/tables/${table.id}`, token, {
+      const res = await apiFetch(`/admin/stores/${selectedStore}/tables/${table.id}`, undefined, {
         method: 'PUT',
         body: JSON.stringify({ is_active: !table.is_active }),
       });
@@ -181,7 +182,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
 
   async function handleDelete(id: number) {
     try {
-      const res = await apiFetch(`/admin/stores/${selectedStore}/tables/${id}`, token, { method: 'DELETE' });
+      const res = await apiFetch(`/admin/stores/${selectedStore}/tables/${id}`, undefined, { method: 'DELETE' });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         setError(d.detail || 'Delete failed');
@@ -196,7 +197,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
 
   async function downloadQR(table: MerchantTableItem) {
     try {
-      const res = await apiFetch(`/admin/stores/${selectedStore}/tables/${table.id}/qr-image`, token);
+      const res = await apiFetch(`/admin/stores/${selectedStore}/tables/${table.id}/qr-image`);
       if (!res.ok) return;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -212,7 +213,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
 
   async function generateQR(table: MerchantTableItem) {
     try {
-      const res = await apiFetch(`/admin/stores/${selectedStore}/tables/${table.id}/generate-qr`, token, { method: 'POST' });
+      const res = await apiFetch(`/admin/stores/${selectedStore}/tables/${table.id}/generate-qr`, undefined, { method: 'POST' });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         setError(d.detail || 'Failed to generate QR');
@@ -227,7 +228,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
   return (
     <div>
       {/* Header with StoreSelector always visible */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <StoreSelector
             stores={physicalStores}
@@ -238,7 +239,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
           />
         </div>
         {selectedStore !== 'all' && (
-          <button className="btn btn-primary" onClick={openCreate}>
+          <button className="btn btn-primary" onClick={openCreate} style={{ whiteSpace: 'nowrap' }}>
             <i className="fas fa-plus"></i> Add Table
           </button>
         )}
@@ -267,7 +268,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
               <i className="fas fa-info-circle" style={{ marginRight: 6 }}></i>
               Table QR Workflow — Read Before Use
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }} className="tables-workflow-grid">
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                 <span style={{ background: '#DBEAFE', color: '#1E40AF', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>1</span>
                 <div>
@@ -307,7 +308,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                 </div>
               )}
               <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }} className="tables-form-grid">
                   <div>
                     <label style={labelStyle}>Table Number *</label>
                     <input
@@ -330,7 +331,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                     <div style={hintStyle}>Number of seats</div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }} className="tables-form-actions">
                   <button type="submit" className="btn btn-primary" disabled={saving}>
                     {saving ? 'Saving...' : editingTable ? 'Update' : 'Create'}
                   </button>
@@ -352,7 +353,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }} className="tables-grid">
               {tables.map(table => (
                 <div
                   key={table.id}
@@ -432,9 +433,11 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                   {/* QR Code Image — loaded via blob URL with auth */}
                   {table.qr_code_url && qrImages[table.id] && (
                     <div style={{ textAlign: 'center', marginBottom: 8 }}>
-                      <img
+                      <Image
                         src={qrImages[table.id]}
                         alt={`QR code for table ${table.table_number}`}
+                        width={140}
+                        height={140}
                         style={{ width: 140, height: 140, borderRadius: 8, border: `1px solid ${THEME.border}` }}
                       />
                       {/* Expiry countdown timer — only show when QR is active and not expired */}
@@ -460,7 +463,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }} className="tables-card-actions">
                     {!table.qr_code_url ? (
                       <button className="btn btn-sm btn-primary" onClick={() => generateQR(table)} title="Generate QR code for this table">
                         <i className="fas fa-qrcode"></i> Generate QR
@@ -520,4 +523,45 @@ export default function TablesPage({ tables, selectedStore, storeObj, token, onR
       )}
     </div>
   );
+}
+
+/* Mobile responsive styles */
+const tablesMobileStyles = `
+@media (max-width: 767px) {
+  .tables-workflow-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .tables-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .tables-form-actions {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  .tables-form-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+  .tables-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .tables-card-actions {
+    justify-content: flex-start !important;
+  }
+  .tables-card-actions button {
+    flex: 1;
+    min-width: 44px;
+    justify-content: center;
+  }
+}
+`;
+
+if (typeof document !== 'undefined') {
+  const styleId = 'tables-mobile-styles';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = tablesMobileStyles;
+    document.head.appendChild(style);
+  }
 }

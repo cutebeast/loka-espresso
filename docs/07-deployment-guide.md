@@ -7,14 +7,14 @@
 ### 1. Local / verification workflow
 - primary control script: `scripts/fnb-manage.sh`
 - default ports used by that script:
-  - backend: `8765`
+  - backend: `3002`
   - admin: `3001`
-  - customer PWA: `3002`
+  - customer PWA: `3003`
 
 ### 2. Production-style deployment
 - backend commonly documented behind Caddy/systemd on `8000`
 - admin on `3001`
-- customer PWA on `3002`
+- customer PWA on `3003`
 - PostgreSQL on `5433`
 
 If there is any conflict between local scripted usage and production examples, use:
@@ -32,7 +32,7 @@ Minimum backend environment variables:
 DATABASE_URL=postgresql+asyncpg://fnb:<password>@localhost:5433/fnb
 JWT_SECRET=<strong-secret>
 JWT_ALGORITHM=HS256
-JWT_EXPIRE_MINUTES=10080
+JWT_EXPIRE_MINUTES=30
 CORS_ORIGINS=https://admin.loyaltysystem.uk,https://app.loyaltysystem.uk
 UPLOAD_DIR=/root/fnb-super-app/uploads
 WEBHOOK_API_KEY=<shared-webhook-key>
@@ -48,8 +48,7 @@ For the current pre-Twilio phase, OTP bypass may still be enabled intentionally 
 ## Database & Migrations
 
 ```bash
-cd /root/fnb-super-app/backend
-.venv/bin/alembic upgrade head
+docker compose exec backend alembic upgrade head
 ```
 
 After the latest hardening pass, ensure the newest migration is applied before startup.
@@ -84,9 +83,9 @@ Useful commands:
 For current pre-provider integration testing, run these separately when needed:
 
 ```bash
-/root/fnb-super-app/backend/.venv/bin/python3 /root/fnb-super-app/scripts/3rdparty_pg/mock_pg_server.py
-/root/fnb-super-app/backend/.venv/bin/python3 /root/fnb-super-app/scripts/3rdparty_delivery/mock_delivery_server.py
-/root/fnb-super-app/backend/.venv/bin/python3 /root/fnb-super-app/scripts/external_pos/mock_pos_server.py
+./fnb-manage.sh mock-pg
+./fnb-manage.sh mock-delivery
+./fnb-manage.sh mock-pos
 ```
 
 Default ports:
@@ -118,13 +117,15 @@ See `docs/04-testing-guide.md` for the current ordered sequence.
 
 ## Production-style Service Layout
 
+> **Note:** Docker-based deployment is the primary supported production method. The service layout below reflects `docker-compose.yml` port mappings.
+
 Typical service allocation:
 
 | Service | Purpose | Suggested Port |
 |--------|---------|----------------|
-| `fnb-backend` | FastAPI | `8000` |
+| `fnb-backend` | FastAPI | `3002` (host) → `8000` (container) |
 | `fnb-admin` | Merchant Next.js | `3001` |
-| `fnb-app` | Customer PWA Next.js | `3002` |
+| `fnb-app` | Customer PWA Next.js | `3003` |
 | `fnb-db` | PostgreSQL | `5433` |
 
 Reverse proxy examples should route:

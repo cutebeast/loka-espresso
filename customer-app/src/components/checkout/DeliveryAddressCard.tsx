@@ -2,17 +2,7 @@
 
 import { useState } from 'react';
 import { MapPin, Navigation } from 'lucide-react';
-
-const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  textPrimary: '#1B2023',
-  textMuted: '#6A7A8A',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  white: '#FFFFFF',
-};
+import { LOKA } from '@/lib/tokens';
 
 interface DeliveryAddressCardProps {
   value: { address: string; lat?: number; lng?: number } | null;
@@ -66,40 +56,34 @@ export default function DeliveryAddressCard({ value, onChange }: DeliveryAddress
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <div className="flex items-center gap-2 mb-3">
         <MapPin size={16} color={LOKA.copper} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: LOKA.textPrimary }}>Delivery Address</span>
+        <span className="font-bold text-text-primary" style={{ fontSize: 13 }}>Delivery Address</span>
       </div>
-      <div style={{ position: 'relative' }}>
+      <div className="relative">
         <textarea
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onBlur={handleBlur}
           placeholder="Enter delivery address"
           rows={2}
+          className="w-full px-3.5 py-3 rounded-[14px] border border-border-subtle bg-white text-sm text-text-primary resize-none outline-none"
           style={{
-            width: '100%', padding: '12px 14px', paddingRight: 44,
-            borderRadius: 14, border: `1px solid ${LOKA.borderSubtle}`,
-            background: LOKA.white, fontSize: 14, color: LOKA.textPrimary,
-            resize: 'none', outline: 'none', fontFamily: 'inherit',
+            paddingRight: 44,
+            fontFamily: 'inherit',
             boxSizing: 'border-box',
           }}
         />
         <button
           onClick={handleUseCurrentLocation}
-          style={{
-            position: 'absolute', right: 12, top: 12,
-            width: 32, height: 32, borderRadius: 8,
-            background: LOKA.copperSoft, border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
+          className="absolute right-3 top-3 w-8 h-8 rounded-lg bg-copper-soft border-none cursor-pointer flex items-center justify-center"
           aria-label="Use current location"
         >
           <Navigation size={16} color={LOKA.copper} />
         </button>
       </div>
       {error && (
-        <p style={{ marginTop: 8, fontSize: 12, color: '#C75050' }}>{error}</p>
+        <p className="mt-2 text-xs text-danger">{error}</p>
       )}
     </div>
   );

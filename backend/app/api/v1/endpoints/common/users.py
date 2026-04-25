@@ -59,11 +59,19 @@ async def update_me(req: UserUpdate, user: User = Depends(get_current_user), db:
 
 @router.put("/me/avatar", response_model=UserOut)
 async def upload_avatar(file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.api.v1.endpoints.common.upload import ALLOWED_MIME_TYPES, MAX_FILE_SIZE, _validate_magic_bytes
     settings = get_settings()
+    if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
+    if not _validate_magic_bytes(content, file.content_type):
+        raise HTTPException(status_code=400, detail="File content does not match declared image type")
     ext = os.path.splitext(file.filename or "image.jpg")[1]
     filename = f"{user.id}{ext}"
     path = os.path.join(settings.UPLOAD_DIR, "avatars", filename)
-    content = await file.read()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:
         f.write(content)
     user.avatar_url = f"/uploads/avatars/{filename}"

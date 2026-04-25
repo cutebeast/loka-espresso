@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { apiFetch, formatRM } from '@/lib/merchant-api'
 import { DonutChart, StoreSelector, DateFilter, calcDateRange, type DatePreset } from '@/components/ui'
 import { THEME } from '@/lib/theme'
+import type { MerchantStore } from '@/lib/merchant-types'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -21,7 +22,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 interface SalesReportsPageProps {
   token: string
-  stores: any[]
+  stores: MerchantStore[]
 }
 
 interface RevenueData {
@@ -31,7 +32,7 @@ interface RevenueData {
   by_day: { [key: string]: number }
 }
 
-export default function SalesReportsPage({ token, stores }: SalesReportsPageProps) {
+export default function SalesReportsPage({ token: _token, stores }: SalesReportsPageProps) {
   const [preset, setPreset] = useState<DatePreset>('MTD')
   const [localStore, setLocalStore] = useState<string>('all')
   const [fromDate, setFromDate] = useState('')
@@ -47,14 +48,15 @@ export default function SalesReportsPage({ token, stores }: SalesReportsPageProp
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const { from, to } = effectiveRange
+      const range = fromDate && toDate ? { from: fromDate, to: toDate } : calcDateRange(preset)
+      const { from, to } = range
       let url = `/admin/reports/revenue?from_date=${from}T00:00:00&to_date=${to}T23:59:59`
       if (!isAllStores) url += `&store_id=${localStore}`
       const ordParams = new URLSearchParams({ page: '1', page_size: '1', from_date: `${from}T00:00:00`, to_date: `${to}T23:59:59` })
       if (!isAllStores) ordParams.append('store_id', localStore)
       const [revRes, ordRes] = await Promise.all([
-        apiFetch(url, token),
-        apiFetch(`/admin/orders?${ordParams.toString()}`, token),
+        apiFetch(url),
+        apiFetch(`/admin/orders?${ordParams.toString()}`),
       ])
       if (!revRes.ok) throw new Error('Failed to fetch revenue report')
       setReport(await revRes.json())
@@ -65,14 +67,14 @@ export default function SalesReportsPage({ token, stores }: SalesReportsPageProp
     } catch (err: any) {
       setError(err.message || 'Failed to load data')
     } finally { setLoading(false) }
-  }, [token, effectiveRange.from, effectiveRange.to, localStore, isAllStores])
+  }, [preset, fromDate, toDate, localStore, isAllStores])
 
   useEffect(() => { fetchData() }, [fetchData])
 
   const byStoreEntries = report
     ? Object.entries(report.by_store || {})
         .map(([sid, rev]) => {
-          const s = stores.find((st: any) => st.id === Number(sid))
+          const s = stores.find((st) => st.id === Number(sid))
           return { name: s?.name || `Store ${sid}`, value: Number(rev) }
         })
         .sort((a, b) => b.value - a.value)
@@ -132,7 +134,7 @@ export default function SalesReportsPage({ token, stores }: SalesReportsPageProp
       {/* Filter Bar - Store and Date on left */}
       <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <StoreSelector
-          stores={stores.filter((s: any) => s.id !== 0).map((s: any) => ({ id: String(s.id), name: s.name }))}
+          stores={stores.filter((s) => s.id !== 0).map((s) => ({ id: String(s.id), name: s.name }))}
           selectedStore={localStore}
           onChange={setLocalStore}
         />

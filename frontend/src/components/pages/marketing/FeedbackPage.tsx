@@ -27,7 +27,7 @@ interface Feedback {
   created_at: string;
 }
 
-export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps) {
+export default function FeedbackPage({ token: _token, selectedStore }: FeedbackPageProps) {
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,8 +47,8 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
       const joinChar = storeParam ? '&' : '?';
       const range = fromDate && toDate ? `${joinChar}from_date=${fromDate}T00:00:00&to_date=${toDate}T23:59:59` : '';
       const [fbRes, statsRes] = await Promise.all([
-        apiFetch(`/admin/feedback${storeParam}${range}`, token),
-        apiFetch(`/admin/feedback/stats${storeParam}${range}`, token),
+        apiFetch(`/admin/feedback${storeParam}${range}`),
+        apiFetch(`/admin/feedback/stats${storeParam}${range}`),
       ]);
       if (fbRes.ok) {
         const fbData = await fbRes.json();
@@ -62,7 +62,7 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
     } finally {
       setLoading(false);
     }
-  }, [token, selectedStore, fromDate, toDate]);
+  }, [selectedStore, fromDate, toDate]);
 
   useEffect(() => {
     if (preset === 'CUSTOM') return;
@@ -103,7 +103,7 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
     try {
       const endpoint = `/admin/feedback/${modalFeedback.id}/reply`;
       const method = isEdit ? 'PUT' : 'POST';
-      await apiFetch(endpoint, token, {
+      await apiFetch(endpoint, undefined, {
         method,
         body: JSON.stringify({ admin_reply: replyText.trim() }),
       });
@@ -120,7 +120,7 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
   async function deleteReply(feedback: Feedback) {
     if (!confirm('Are you sure you want to delete this reply?')) return;
     try {
-      await apiFetch(`/admin/feedback/${feedback.id}/reply`, token, {
+      await apiFetch(`/admin/feedback/${feedback.id}/reply`, undefined, {
         method: 'PUT',
         body: JSON.stringify({ admin_reply: '' }),
       });
@@ -130,7 +130,6 @@ export default function FeedbackPage({ token, selectedStore }: FeedbackPageProps
   }
 
   const distribution = stats?.rating_distribution ?? {};
-  const maxDistCount = Math.max(...Object.values(distribution), 1);
 
   const ratingData = [5, 4, 3, 2, 1].map(star => ({
     label: `${star}★`,

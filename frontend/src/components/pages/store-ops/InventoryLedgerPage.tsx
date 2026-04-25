@@ -27,7 +27,7 @@ const MOVEMENT_COLORS: Record<string, { bg: string; color: string }> = {
   adjustment: { bg: '#F9FAFB', color: '#374151' },
 };
 
-export default function InventoryLedgerPage({ selectedStore, storeObj, token, stores, onStoreChange, fromDate, toDate, onDateChange }: InventoryLedgerPageProps) {
+export default function InventoryLedgerPage({ selectedStore, storeObj: _storeObj, token: _token, stores: _stores, onStoreChange: _onStoreChange, fromDate, toDate, onDateChange }: InventoryLedgerPageProps) {
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('');
@@ -49,7 +49,7 @@ export default function InventoryLedgerPage({ selectedStore, storeObj, token, st
       if (toDate) params.append('to_date', toDate + 'T23:59:59');
 
       const url = `/stores/${selectedStore}/inventory-ledger?${params.toString()}`;
-      const res = await apiFetch(url, token);
+      const res = await apiFetch(url);
       if (res.ok) {
         const data = await res.json();
         setMovements(Array.isArray(data) ? data : (data.entries || []));
@@ -58,7 +58,7 @@ export default function InventoryLedgerPage({ selectedStore, storeObj, token, st
         setPage(p);
       }
     } catch {} finally { setLoading(false); }
-  }, [selectedStore, token, filterType, fromDate, toDate]);
+  }, [selectedStore, filterType, fromDate, toDate]);
 
   useEffect(() => { fetchLedger(1); }, [fetchLedger]);
 

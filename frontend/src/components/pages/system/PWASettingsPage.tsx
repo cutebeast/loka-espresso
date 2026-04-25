@@ -14,12 +14,6 @@ interface PWAVersionInfo {
   cache_name: string;
 }
 
-const CONFIG_GROUPS: { label: string; icon: string }[] = [
-  { label: 'Authentication', icon: 'fa-shield-alt' },
-  { label: 'Phone Format', icon: 'fa-phone' },
-  { label: 'Version & Cache', icon: 'fa-sync-alt' },
-];
-
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <label style={{
@@ -83,8 +77,8 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
     setError('');
     try {
       const editableKeys = ['otp_bypass_enabled', 'otp_bypass_code', 'pwa_phone_country_code'];
-      const adminRes = await apiFetch(`/admin/config?${editableKeys.map((key) => `key=${encodeURIComponent(key)}`).join('&')}`, token);
-      const publicRes = await apiFetch('/config', token);
+      const adminRes = await apiFetch(`/admin/config?${editableKeys.map((key) => `key=${encodeURIComponent(key)}`).join('&')}`);
+      const publicRes = await apiFetch('/config');
       if (!adminRes.ok || !publicRes.ok) {
         setError('Failed to load config');
         return;
@@ -146,7 +140,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
     setCacheCleared(false);
     try {
       // Call backend to trigger build
-      const res = await apiFetch('/admin/pwa/rebuild', token, {
+      const res = await apiFetch('/admin/pwa/rebuild', undefined, {
         method: 'POST',
       });
       if (res.ok) {
@@ -172,7 +166,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
     setCacheCleared(false);
     try {
       // Call backend to clear cache
-      const res = await apiFetch('/admin/pwa/clear-cache', token, {
+      const res = await apiFetch('/admin/pwa/clear-cache', undefined, {
         method: 'POST',
       });
       if (res.ok) {
@@ -199,7 +193,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
       return next;
     });
     try {
-      const res = await apiFetch(`/admin/config?key=${encodeURIComponent(key)}`, token, {
+      const res = await apiFetch(`/admin/config?key=${encodeURIComponent(key)}`, undefined, {
         method: 'PUT',
         body: JSON.stringify(body),
       });

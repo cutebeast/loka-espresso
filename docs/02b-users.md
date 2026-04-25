@@ -123,26 +123,26 @@ OTP codes for phone-based authentication.
 
 | Email | Store |
 |-------|-------|
-| `mgr_klcc@fnb.com` | Loka Espresso KLCC (id=2) |
-| `astmgr_klcc@fnb.com` | Loka Espresso KLCC (id=2) |
-| `mgr_pavilion@fnb.com` | Loka Espresso Pavilion (id=3) |
-| `astmgr_pavilion@fnb.com` | Loka Espresso Pavilion (id=3) |
-| `mgr_cheras@fnb.com` | Loka Espresso Cheras (id=4) |
-| `mgr_pj@fnb.com` | Loka Espresso PJ (id=5) |
-| `mgr_bangi@fnb.com` | Loka Espresso Bangi (id=6) |
+| `mgr_klcc@fnb.com` | Loka Espresso KLCC (id=1) |
+| `astmgr_klcc@fnb.com` | Loka Espresso KLCC (id=1) |
+| `mgr_pavilion@fnb.com` | Loka Espresso Pavilion (id=2) |
+| `astmgr_pavilion@fnb.com` | Loka Espresso Pavilion (id=2) |
+| `mgr_cheras@fnb.com` | Loka Espresso Cheras (id=3) |
+| `mgr_pj@fnb.com` | Loka Espresso PJ (id=4) |
+| `mgr_bangi@fnb.com` | Loka Espresso Bangi (id=5) |
 
 ### Store Staff (seed_04)
 
 | Email | Store |
 |-------|-------|
-| `staff_klcc_1@fnb.com` | Loka Espresso KLCC (id=2) |
-| `staff_klcc_2@fnb.com` | Loka Espresso KLCC (id=2) |
-| `staff_klcc_3@fnb.com` | Loka Espresso KLCC (id=2) |
-| `staff_pavilion_1@fnb.com` | Loka Espresso Pavilion (id=3) |
-| `staff_pavilion_2@fnb.com` | Loka Espresso Pavilion (id=3) |
-| `staff_cheras_1@fnb.com` | Loka Espresso Cheras (id=4) |
-| `staff_cheras_2@fnb.com` | Loka Espresso Cheras (id=4) |
-| `staff_pj_1@fnb.com` | Loka Espresso PJ (id=5) |
-| `staff_bangi_1@fnb.com` | Loka Espresso Bangi (id=6) |
-| `staff_bangi_2@fnb.com` | Loka Espresso Bangi (id=6) |
-| `staff_bangi_3@fnb.com` | Loka Espresso Bangi (id=6) |
+| `staff_klcc_1@fnb.com` | Loka Espresso KLCC (id=1) |
+| `staff_klcc_2@fnb.com` | Loka Espresso KLCC (id=1) |
+| `staff_klcc_3@fnb.com` | Loka Espresso KLCC (id=1) |
+| `staff_pavilion_1@fnb.com` | Loka Espresso Pavilion (id=2) |
+| `staff_pavilion_2@fnb.com` | Loka Espresso Pavilion (id=2) |
+| `staff_cheras_1@fnb.com` | Loka Espresso Cheras (id=3) |
+| `staff_cheras_2@fnb.com` | Loka Espresso Cheras (id=3) |
+| `staff_pj_1@fnb.com` | Loka Espresso PJ (id=4) |
+| `staff_bangi_1@fnb.com` | Loka Espresso Bangi (id=5) |
+| `staff_bangi_2@fnb.com` | Loka Espresso Bangi (id=5) |
+| `staff_bangi_3@fnb.com` | Loka Espresso Bangi (id=5) |

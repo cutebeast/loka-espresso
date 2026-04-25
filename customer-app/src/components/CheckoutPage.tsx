@@ -6,7 +6,6 @@ import {
   Wallet,
   Banknote,
   CheckCircle2,
-  ShoppingBag,
   Loader2,
   Receipt,
   Truck,
@@ -35,18 +34,23 @@ const ORDER_TYPES = [
 ];
 
 export default function CheckoutPage() {
-  const { items, getTotal } = useCartStore();
-  const { orderMode, selectedStore, stores, dineInSession, setPage, showToast, setDineInSession, setOrderMode, setSelectedStore, setStores } = useUIStore();
+  const { items, getTotal, orderNote, setOrderNote } = useCartStore();
+  const {
+    orderMode, selectedStore, stores, dineInSession, setPage, showToast,
+    setOrderMode, setSelectedStore, setStores, checkoutDraft, setCheckoutDraft, clearCheckoutDraft,
+  } = useUIStore();
   const { balance, setBalance, refreshWallet } = useWalletStore();
   const { addOrder } = useOrderStore();
   const { config } = useConfigStore();
 
-  const [pickupTime, setPickupTime] = useState<string | null>(null);
-  const [deliveryAddress, setDeliveryAddress] = useState<{ address: string; lat?: number; lng?: number } | null>(null);
-  const [discountType, setDiscountType] = useState<'none' | 'voucher' | 'reward'>('none');
-  const [discountCode, setDiscountCode] = useState<string>('');
+  const [pickupTime, setPickupTime] = useState<string | null>(checkoutDraft.pickupTime ?? null);
+  const [deliveryAddress, setDeliveryAddress] = useState<{ address: string; lat?: number; lng?: number } | null>(checkoutDraft.deliveryAddress ?? null);
+  const [discountType, setDiscountType] = useState<'none' | 'voucher' | 'reward'>(
+    checkoutDraft.voucherCode ? 'voucher' : checkoutDraft.rewardCode ? 'reward' : 'none'
+  );
+  const [discountCode, setDiscountCode] = useState<string>(checkoutDraft.voucherCode || checkoutDraft.rewardCode || '');
   const [discountValue, setDiscountValue] = useState(0);
-  const [notes, setNotes] = useState('');
+  const notes = orderNote;
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
@@ -54,7 +58,7 @@ export default function CheckoutPage() {
   const [pointsEarned, setPointsEarned] = useState<number>(0);
 
   // Payment method: 'wallet' (prepaid), 'pay_at_store' (pickup), 'cod' (delivery), 'cash' (dine-in)
-  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash'>('wallet');
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash'>(checkoutDraft.paymentMethod ?? 'wallet');
 
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
@@ -83,7 +87,11 @@ export default function CheckoutPage() {
     setDiscountType(type);
     setDiscountCode(code || '');
     setDiscountValue(dv || 0);
-  }, []);
+    setCheckoutDraft({
+      voucherCode: type === 'voucher' ? code : undefined,
+      rewardCode: type === 'reward' ? code : undefined,
+    });
+  }, [setCheckoutDraft]);
 
   const handlePlaceOrder = async () => {
     if (items.length === 0) { showToast('Cart is empty', 'error'); return; }
@@ -122,6 +130,7 @@ export default function CheckoutPage() {
         await refreshWallet();
       }
       setSuccess(true);
+      clearCheckoutDraft();
       showToast('Order placed successfully!', 'success');
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string; message?: string } } })?.response?.data?.detail;
@@ -139,7 +148,7 @@ export default function CheckoutPage() {
           <CheckCircle2 size={40} color="white" strokeWidth={1.5} />
         </div>
         <h2 className="co-success-title">Order placed!</h2>
-        <p style={{ fontSize: 13, color: '#6A7A8A', marginBottom: 4 }}>Your order number is</p>
+        <p className="co-success-text">Your order number is</p>
         <p className="co-success-number">#{orderNumber}</p>
 
         <div className="co-success-card">
@@ -159,9 +168,9 @@ export default function CheckoutPage() {
             </p>
           )}
           {!requiresWallet && orderMode !== 'dine_in' && (
-            <div style={{ marginTop: 8, padding: '8px 14px', background: '#FFFBEB', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <div className="co-pay-later-note">
               <Banknote size={14} color="#92400E" />
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#92400E' }}>
+              <span>
                 {effectivePaymentMethod === 'cod' ? 'Cash on Delivery — pay the courier' : 'Pay at store when you pick up'}
               </span>
             </div>
@@ -172,7 +181,7 @@ export default function CheckoutPage() {
             </div>
           )}
           {!requiresWallet && (
-            <p style={{ fontSize: 12, color: '#6A7A8A', marginTop: 8 }}>Points will be awarded after payment</p>
+            <p className="co-points-note">Points will be awarded after payment</p>
           )}
         </div>
 
@@ -180,7 +189,7 @@ export default function CheckoutPage() {
           <button className="co-success-btn-primary" onClick={() => setPage('orders')}>
             Track Order →
           </button>
-          <button className="co-success-btn-secondary" onClick={() => { setSuccess(false); setPage('home'); }}>
+          <button className="co-success-btn-secondary" onClick={() => { setSuccess(false); setPage('home'); clearCheckoutDraft(); }}>
             Back to Home
           </button>
         </div>
@@ -192,7 +201,7 @@ export default function CheckoutPage() {
     <div className="checkout-screen">
       {/* Header */}
       <div className="checkout-header">
-        <button className="checkout-back-btn" onClick={() => setPage('cart')}>
+        <button className="checkout-back-btn" onClick={() => { setCheckoutDraft({ orderMode, selectedStore, deliveryAddress, pickupTime, paymentMethod, notes, voucherCode: discountType === 'voucher' ? discountCode : undefined, rewardCode: discountType === 'reward' ? discountCode : undefined }); setPage('cart'); }}>
           <ArrowLeft size={18} />
         </button>
         <h1 className="checkout-title">Checkout</h1>
@@ -213,18 +222,22 @@ export default function CheckoutPage() {
                   onClick={() => {
                     if (isDisabled) return;
                     setOrderMode(t.key);
+                    setCheckoutDraft({ orderMode: t.key });
                     // Adjust payment method for new order type
+                    let nextPayment = paymentMethod;
                     if (t.key === 'dine_in') {
-                      setPaymentMethod('cash');
+                      nextPayment = 'cash';
                     } else if (t.key === 'delivery') {
                       if (paymentMethod === 'pay_at_store' || paymentMethod === 'cash') {
-                        setPaymentMethod('wallet');
+                        nextPayment = 'wallet';
                       }
                     } else if (t.key === 'pickup') {
                       if (paymentMethod === 'cod' || paymentMethod === 'cash') {
-                        setPaymentMethod('wallet');
+                        nextPayment = 'wallet';
                       }
                     }
+                    setPaymentMethod(nextPayment);
+                    setCheckoutDraft({ paymentMethod: nextPayment });
                   }}
                   disabled={isDisabled}
                 >
@@ -253,7 +266,10 @@ export default function CheckoutPage() {
               onChange={(e) => {
                 const storeId = parseInt(e.target.value, 10);
                 const found = stores.find((s) => s.id === storeId);
-                if (found) setSelectedStore(found);
+                if (found) {
+                  setSelectedStore(found);
+                  setCheckoutDraft({ selectedStore: found });
+                }
               }}
             >
               <option value="" disabled>Choose a store…</option>
@@ -268,13 +284,13 @@ export default function CheckoutPage() {
         {orderMode === 'delivery' && (
           <div>
             <div className="co-section-title">Delivery Address</div>
-            <DeliveryAddressCard value={deliveryAddress} onChange={setDeliveryAddress} />
+            <DeliveryAddressCard value={deliveryAddress} onChange={(addr) => { setDeliveryAddress(addr); setCheckoutDraft({ deliveryAddress: addr }); }} />
             {selectedStore && !selectedStore.delivery_integration_enabled && (
-              <div style={{ marginTop: 10, padding: '10px 14px', background: '#FFFBEB', borderRadius: 12, border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="co-manual-delivery-banner">
                 <Truck size={18} color="#B45309" />
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#92400E', margin: 0 }}>Manual Delivery</p>
-                  <p style={{ fontSize: 12, color: '#B45309', margin: 0 }}>Our team will arrange delivery manually after preparing your order.</p>
+                  <p className="co-manual-delivery-text">Manual Delivery</p>
+                  <p className="co-manual-delivery-sub">Our team will arrange delivery manually after preparing your order.</p>
                 </div>
               </div>
             )}
@@ -287,7 +303,7 @@ export default function CheckoutPage() {
             <div className="co-section-title">Scheduled Time</div>
             <TimeSlotPicker
               value={pickupTime}
-              onChange={setPickupTime}
+              onChange={(time) => { setPickupTime(time); setCheckoutDraft({ pickupTime: time }); }}
               leadMinutes={config.pickup_lead_minutes}
             />
           </div>
@@ -305,7 +321,7 @@ export default function CheckoutPage() {
 
         {/* Order Notes */}
         <div>
-          <OrderNotesField value={notes} onChange={setNotes} orderMode={orderMode} />
+          <OrderNotesField value={notes} onChange={(val) => { setOrderNote(val); setCheckoutDraft({ notes: val }); }} orderMode={orderMode} />
         </div>
 
         {/* Payment Method */}
@@ -318,7 +334,7 @@ export default function CheckoutPage() {
               <div className="co-wallet-label">Loka Wallet</div>
               <div className="co-wallet-amount">{formatPrice(balance)}</div>
             </div>
-            <Wallet size={24} style={{ opacity: 0.6 }} />
+            <Wallet size={24} className="co-wallet-icon" />
           </div>
 
           <div className="co-payment-options">
@@ -328,6 +344,7 @@ export default function CheckoutPage() {
               onClick={() => {
                 if (orderMode === 'dine_in') return;
                 setPaymentMethod('wallet');
+                setCheckoutDraft({ paymentMethod: 'wallet' });
               }}
             >
               <div className="co-payment-radio" />
@@ -341,13 +358,16 @@ export default function CheckoutPage() {
             <button
               className={`co-payment-card ${(paymentMethod !== 'wallet' || orderMode === 'dine_in') ? 'selected' : ''}`}
               onClick={() => {
+                let next: 'wallet' | 'pay_at_store' | 'cod' | 'cash' = 'wallet';
                 if (orderMode === 'dine_in') {
-                  setPaymentMethod('cash');
+                  next = 'cash';
                 } else if (orderMode === 'delivery') {
-                  setPaymentMethod('cod');
+                  next = 'cod';
                 } else {
-                  setPaymentMethod('pay_at_store');
+                  next = 'pay_at_store';
                 }
+                setPaymentMethod(next);
+                setCheckoutDraft({ paymentMethod: next });
               }}
             >
               <div className="co-payment-radio" />
@@ -366,9 +386,9 @@ export default function CheckoutPage() {
         {/* Order Summary */}
         <div className="co-summary-card">
           <div className="co-section-title">Order Summary</div>
-          <div style={{ fontSize: 14, color: '#3A4A5A', marginBottom: 12 }}>
+          <div className="co-order-items-list">
             {items.map((item, i) => (
-              <div key={i} style={{ marginBottom: 4 }}>
+              <div key={i} className="co-order-item">
                 • {item.quantity}x {item.name}
               </div>
             ))}
@@ -408,7 +428,7 @@ export default function CheckoutPage() {
             disabled={placing || belowDeliveryMinimum}
           >
             {placing ? (
-              <><Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} /> Placing…</>
+              <><Loader2 size={18} className="animate-spin" /> Placing…</>
             ) : (
               <><Receipt size={18} />{orderMode === 'dine_in' ? 'Send to kitchen' : `Place Order · ${formatPrice(total)}`}</>
             )}

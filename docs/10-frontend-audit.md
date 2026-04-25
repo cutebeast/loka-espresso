@@ -48,7 +48,7 @@ This document lists **specific, actionable recommendations** before any implemen
 
 | # | Issue | Current State | Recommendation |
 |---|-------|---------------|----------------|
-| A4.1 | **Inline styles everywhere** | Massive `style={{...}}` objects mixed with Tailwind classes | Migrate to **Tailwind-only** or use CSS Modules. Inline styles prevent PurgeCSS optimization and are hard to maintain. |
+| A4.1 | **Inline styles everywhere** | Massive `style={{...}}` objects mixed with CSS classes | Migrate to CSS classes or CSS Modules. Inline styles are hard to maintain and override. |
 | A4.2 | **No loading skeletons** | Global `loading` spinner only; no per-page skeletons | Add skeleton loaders for Dashboard KPI cards, table rows, and charts. |
 | A4.3 | **Image optimization disabled** | `images.unoptimized: true` in `next.config.ts` | Enable Next.js Image Optimization. Use `<Image>` component with proper `sizes` and lazy loading. |
 | A4.4 | **Sidebar state not persisted** | Collapse/expand resets on refresh | Persist sidebar state to `localStorage`. |
@@ -131,7 +131,7 @@ This document lists **specific, actionable recommendations** before any implemen
 |---|---------|----------------|
 | B7.1 | **PWA install prompt** ✅ | Add custom "Add to Home Screen" banner using `beforeinstallprompt` event | **RESOLVED:** `useA2HS` hook captures `beforeinstallprompt`. Dismissible green install banner in AppShell. |
 | B7.2 | **Push permission UI** | Add a settings toggle that calls `Notification.requestPermission()` |
-| B7.3 | **Dark mode** | Add `prefers-color-scheme` listener and dark Tailwind variants |
+| B7.3 | **Dark mode** | Add `prefers-color-scheme` listener and dark CSS variables |
 | B7.4 | **Favorites / Recently Ordered** | Add "Add to Favorites" on menu items; show "Order Again" on home |
 | B7.5 | **Dietary filters** | Add vegetarian, vegan, gluten-free, halal filters to menu |
 | B7.6 | **Store open/closed status** | Parse `opening_hours` JSON and show "Open now / Closes at X" |
@@ -188,13 +188,13 @@ This document lists **specific, actionable recommendations** before any implemen
 
 ### C5. Styling Standardization
 
-**Current:** Both apps mix Tailwind utility classes with massive inline `style` objects.
+**Current:** Both apps use CSS classes with some inline `style` objects for dynamic values.
 
 **Recommended:**
-1. Remove all inline `style` objects
-2. Use Tailwind exclusively
-3. For dynamic values, use CSS variables or Tailwind's arbitrary values `[color:var(--primary)]`
-4. For theme values, extend `tailwind.config.ts` with brand colors
+1. Remove all inline `style` objects where static CSS classes can replace them
+2. Use CSS classes and CSS custom properties for theming
+3. For dynamic values, use CSS variables
+4. For theme values, maintain tokens in `tokens.ts` and mirror as CSS custom properties
 
 ### C6. Testing Strategy
 
@@ -237,7 +237,7 @@ This document lists **specific, actionable recommendations** before any implemen
 | P2.1 | Split monolithic stores | Medium | Both | State management hygiene |
 | P2.2 | Add stale-while-revalidate API caching | Medium | PWA | Better offline experience |
 | P2.3 | Add virtualized lists | Medium | Both | Performance at scale |
-| P2.4 | Remove inline styles → Tailwind-only | Medium | Both | Consistency, maintainability |
+| P2.4 | Remove inline styles → CSS classes | Medium | Both | Consistency, maintainability |
 | P2.5 | Add pull-to-refresh | Low | PWA | Mobile UX standard |
 | P2.6 | Fix landscape blocking | Low | PWA | Tablet users |
 | P2.7 | Add keyboard handling for sheets | Low | PWA | Mobile UX |

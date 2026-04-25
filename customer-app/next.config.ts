@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const API_PROXY = process.env.NEXT_PUBLIC_API_PROXY || "https://admin.loyaltysystem.uk";
+
 const nextConfig: NextConfig = {
   output: 'standalone',
   images: {
@@ -9,7 +11,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/v1/:path*",
-        destination: "https://admin.loyaltysystem.uk/api/v1/:path*",
+        destination: `${API_PROXY}/api/v1/:path*`,
       },
     ];
   },

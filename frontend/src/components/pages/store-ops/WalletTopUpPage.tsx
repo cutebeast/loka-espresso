@@ -17,7 +17,7 @@ interface WalletTopUpPageProps {
 
 const TOPUP_PRESETS = [20, 50, 100, 200, 300, 500];
 
-export default function WalletTopUpPage({ token }: WalletTopUpPageProps) {
+export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps) {
   const [phone, setPhone] = useState('');
   const [searching, setSearching] = useState(false);
   const [customer, setCustomer] = useState<CustomerResult | null>(null);
@@ -34,7 +34,7 @@ export default function WalletTopUpPage({ token }: WalletTopUpPageProps) {
     setCustomer(null);
     setResult(null);
     try {
-      const res = await apiFetch(`/admin/customers?search=${encodeURIComponent(phone.trim())}&page=1&page_size=10`, token);
+      const res = await apiFetch(`/admin/customers?search=${encodeURIComponent(phone.trim())}&page=1&page_size=10`);
       if (!res.ok) { setResult({ success: false, message: 'Search failed' }); return; }
       const data = await res.json();
       const items = data.customers || data.items || [];
@@ -65,7 +65,7 @@ export default function WalletTopUpPage({ token }: WalletTopUpPageProps) {
     setProcessing(true);
     setResult(null);
     try {
-      const res = await apiFetch('/admin/wallet/topup', token, {
+      const res = await apiFetch('/admin/wallet/topup', undefined, {
         method: 'POST',
         body: JSON.stringify({
           phone: customer.phone,
@@ -100,8 +100,8 @@ export default function WalletTopUpPage({ token }: WalletTopUpPageProps) {
       {/* Step 1: Search Customer */}
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: THEME.textSecondary }}>Step 1: Find Customer</h3>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-          <div style={{ flex: 1 }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMuted, display: 'block', marginBottom: 4 }}>Phone Number</label>
             <input
               value={phone}
@@ -110,13 +110,15 @@ export default function WalletTopUpPage({ token }: WalletTopUpPageProps) {
               style={{ width: '100%' }}
             />
           </div>
-          <button type="submit" className="btn btn-primary" disabled={searching}>
-            {searching ? 'Searching...' : 'Search'}
-          </button>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button type="submit" className="btn btn-primary" disabled={searching} style={{ minHeight: 44 }}>
+              {searching ? 'Searching...' : 'Search'}
+            </button>
+          </div>
         </form>
 
         {customer && (
-          <div style={{ marginTop: 16, padding: '14px 16px', background: THEME.bgMuted, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ marginTop: 16, padding: '14px 16px', background: THEME.bgMuted, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }} className="wallet-topup-customer">
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: THEME.textPrimary }}>{customer.name || 'Unnamed'}</div>
               <div style={{ fontSize: 13, color: THEME.textMuted }}>{customer.phone}</div>
@@ -150,7 +152,7 @@ export default function WalletTopUpPage({ token }: WalletTopUpPageProps) {
           </div>
 
           <form onSubmit={handleTopUp}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }} className="wallet-topup-grid">
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: THEME.textMuted, display: 'block', marginBottom: 4 }}>Amount (RM)</label>
                 <input
@@ -231,4 +233,31 @@ export default function WalletTopUpPage({ token }: WalletTopUpPageProps) {
       </div>
     </div>
   );
+}
+
+/* Mobile responsive styles */
+const walletTopUpMobileStyles = `
+@media (max-width: 767px) {
+  .wallet-topup-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .wallet-topup-customer {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  .wallet-topup-customer > div:last-child {
+    text-align: left !important;
+    width: 100%;
+  }
+}
+`;
+
+if (typeof document !== 'undefined') {
+  const styleId = 'wallet-topup-mobile-styles';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = walletTopUpMobileStyles;
+    document.head.appendChild(style);
+  }
 }

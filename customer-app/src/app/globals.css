@@ -1,90 +1,41 @@
-@import "tailwindcss";
-
 /* ============================================
    LOKA ESPRESSO — PWA DESIGN SYSTEM
-   Tailwind v4 with Custom Properties
-   ============================================ */
-
-@theme inline {
-  /* ── Brand Colors ── */
-  --color-primary: #384B16;
-  --color-primary-dark: #2A3910;
-  --color-primary-deep: #1F2C0B;
-  --color-primary-light: #4A6A1D;
-  --color-primary-50: #F5F7F0;
-  --color-primary-100: #E8EDE0;
-  --color-primary-200: #D1DBC1;
-
-  --color-copper: #D18E38;
-  --color-copper-light: #E5A559;
-  --color-copper-soft: rgba(209, 142, 56, 0.12);
-  --color-copper-mid: rgba(209, 142, 56, 0.25);
-
-  --color-brown: #57280D;
-  --color-brown-light: #7A4A2E;
-
-  --color-cream: #F3EEE5;
-
-  /* ── Text Colors ── */
-  --color-text-primary: #1B2023;
-  --color-text-secondary: #3A4A5A;
-  --color-text-muted: #6A7A8A;
-
-  /* ── Surfaces ── */
-  --color-bg: #E4EAEF;
-  --color-bg-light: #F5F7FA;
-  --color-bg-card: #F9FBFE;
-  --color-surface: #F5F7FA;
-  --color-surface-warm: #F5F7F0;
-
-  /* ── Borders ── */
-  --color-border: #C4CED8;
-  --color-border-light: #D4DCE5;
-  --color-border-subtle: #E4EAEF;
-
-  /* ── Semantic ── */
-  --color-success: #85B085;
-  --color-success-light: #E8F5E9;
-  --color-warning: #D18E38;
-  --color-warning-light: #FFF3E0;
-  --color-danger: #C75050;
-  --color-danger-light: #FFEBEE;
-  --color-info: #4A607A;
-  --color-info-light: #E3F2FD;
-
-  /* ── Border Radius ── */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 24px;
-  --radius-full: 9999px;
-
-  /* ── Shadows ── */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.10);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
-  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03);
-  --shadow-nav: 0 -4px 10px rgba(0, 0, 0, 0.02);
-  --shadow-primary: 0 8px 16px rgba(56, 75, 22, 0.25);
-  --shadow-primary-sm: 0 2px 8px rgba(56, 75, 22, 0.12);
-  --shadow-wallet: 0 18px 36px -14px rgba(31, 44, 11, 0.55);
-
-  /* ── Typography ── */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-}
-
-/* ============================================
-   IMPORT FOCUSED CSS FILES
+   Theme: variables.css (standard CSS variables)
+   Utilities: utilities.css (pure CSS, no framework)
    ============================================ */
 
 @import "../styles/variables.css";
+@import "../styles/utilities.css";
 @import "../styles/base.css";
 @import "../styles/components.css";
 @import "../styles/auth.css";
-@import "../styles/home.css";
+@import "../styles/home-header.css";
+@import "../styles/home-wallet.css";
+@import "../styles/home-carousel.css";
+@import "../styles/home-cards.css";
+@import "../styles/home-products.css";
+@import "../styles/home-bottom-nav.css";
+@import "../styles/menu-browse.css";
+/* ── Split from menu-browse.css ── */
+@import "../styles/qr-scanner.css";
+@import "../styles/menu-grid.css";
+@import "../styles/category-nav.css";
+@import "../styles/customize-sheet.css";
+@import "../styles/info-cards.css";
+@import "../styles/account.css";
+/* ── Split from account.css ── */
+@import "../styles/profile.css";
+@import "../styles/wallet.css";
+@import "../styles/my-rewards.css";
+@import "../styles/history.css";
+@import "../styles/payment-methods.css";
+@import "../styles/settings.css";
+@import "../styles/orders.css";
+/* ── Split from orders.css ── */
+@import "../styles/cart.css";
+@import "../styles/orders-list.css";
+@import "../styles/order-detail.css";
+@import "../styles/checkout.css";
 
 /* ============================================
    REMAINING UTILITY CLASSES (not in modules)
@@ -154,8 +105,8 @@
 }
 
 .sheet-close {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: #F5F7FA;
   border: none;
@@ -220,7 +171,7 @@
   padding: 24px;
 }
 
-@media (orientation: landscape) and (max-height: 500px) {
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 767px) {
   .app-container > :not(.rotate-prompt) { display: none !important; }
   .rotate-prompt { display: flex; }
   .rotate-prompt-inner {
@@ -261,4 +212,55 @@
 }
 .modal-overlay.show .modal-content {
   transform: translateY(0);
+}
+
+/* Opacity-modifier utility fallbacks */
+.bg-primary-5 { background-color: rgba(56, 75, 22, 0.05); }
+.bg-primary-10 { background-color: rgba(56, 75, 22, 0.1); }
+.bg-primary-30 { background-color: rgba(56, 75, 22, 0.3); }
+.text-primary-40 { color: rgba(56, 75, 22, 0.4); }
+.bg-primary-light-10 { background-color: rgba(74, 106, 29, 0.1); }
+.bg-primary-light-20 { background-color: rgba(74, 106, 29, 0.2); }
+.bg-copper-10 { background-color: rgba(209, 142, 56, 0.1); }
+.border-copper-25 { border-color: rgba(209, 142, 56, 0.25); }
+.border-copper-30 { border-color: rgba(209, 142, 56, 0.3); }
+.bg-danger-90 { background-color: rgba(199, 80, 80, 0.9); }
+.shadow-primary-25 { box-shadow: 0 8px 16px rgba(56, 75, 22, 0.25); }
+
+/* ── Loka Design System Typography ── */
+.loka-h1 { font-size: 30px; line-height: 36px; font-weight: 800; color: var(--color-text-primary); }
+.loka-h2 { font-size: 24px; line-height: 32px; font-weight: 700; color: var(--color-text-primary); }
+.loka-h3 { font-size: 20px; line-height: 28px; font-weight: 700; color: var(--color-text-primary); }
+.loka-h4 { font-size: 18px; line-height: 24px; font-weight: 700; color: var(--color-text-primary); }
+.loka-h5 { font-size: 16px; line-height: 22px; font-weight: 600; color: var(--color-text-primary); }
+.loka-h6 { font-size: 14px; line-height: 20px; font-weight: 600; color: var(--color-text-primary); }
+.loka-body { font-size: 16px; line-height: 24px; color: var(--color-text-primary); }
+.loka-body-sm { font-size: 14px; line-height: 20px; color: var(--color-text-secondary); }
+.loka-caption { font-size: 12px; line-height: 16px; color: var(--color-text-muted); }
+
+/* ── Loka Design System Components ── */
+.loka-page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--color-white, #FFFFFF);
+  border-bottom: 1px solid var(--color-border-subtle, #E4EAEF);
+  flex-shrink: 0;
+}
+
+.loka-back-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-bg-light, #F5F7FA);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.loka-back-btn:active {
+  background: var(--color-border-subtle, #E4EAEF);
 }

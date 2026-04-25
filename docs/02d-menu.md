@@ -9,26 +9,24 @@ Menu categories, menu items, customization options, inventory categories, invent
 ## Tables
 
 ### `menu_categories`
-Menu sections (Coffee, Non-Coffee, Food). **UNIVERSAL** — always lives on `store_id=0` (HQ), served to all physical stores.
+Menu sections (Coffee, Non-Coffee, Food). **UNIVERSAL** — managed by HQ, served identically to all physical stores.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
-| store_id | integer | NO | | FK→stores.id |
 | name | varchar(255) | NO | | Category name |
 | slug | varchar(100) | YES | | URL-safe slug |
 | display_order | integer | YES | 0 | Sort order (lowest to highest; 0=unsorted) |
 | is_active | boolean | NO | true | |
 
-**FKs:** store_id → stores(id)
+**No store_id** — menu categories are store-agnostic.
 
 ### `menu_items`
-Individual menu items. **UNIVERSAL** — always lives on `store_id=0` (HQ), served to all physical stores. Supports soft delete via `deleted_at`.
+Individual menu items. **UNIVERSAL** — managed by HQ, served identically to all physical stores. Supports soft delete via `deleted_at`.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
-| store_id | integer | NO | | FK→stores.id |
 | category_id | integer | NO | | FK→menu_categories.id |
 | name | varchar(255) | NO | | Item name |
 | description | text | YES | | Description |
@@ -41,7 +39,10 @@ Individual menu items. **UNIVERSAL** — always lives on `store_id=0` (HQ), serv
 | popularity | integer | YES | 0 | Order count |
 | deleted_at | timestamptz | YES | | Soft delete timestamp |
 
-**FKs:** store_id → stores(id), category_id → menu_categories(id)
+**FKs:** category_id → menu_categories(id)
+**Indexes:** `ix_menu_cat_avail` on `(category_id, is_available)`
+
+**No store_id** — menu items are store-agnostic. The `store_id` on `cart_items` and `orders` records the *fulfillment store*, not the menu item's owner.
 
 ### `customization_options`
 Normalized add-ons for menu items. Enables "revenue from add-ons" reporting.
@@ -113,13 +114,11 @@ Stock movement log. Tracks all inventory changes (received, waste, transfers, ad
 ## Display Order
 
 Categories and items are ordered by `display_order` ASC (lowest to highest). Default is `0` (unsorted). All GET endpoints automatically sort:
-- `GET /stores/{id}/categories` → `ORDER BY display_order`
-- `GET /stores/{id}/items` → `ORDER BY display_order`
-- `GET /stores/{id}/items/popular` → `ORDER BY display_order`
-- `GET /stores/{id}/items/search` → `ORDER BY display_order`
-- `GET /stores/{id}/menu` → categories and items both ordered by `display_order`
-
-This applies to all stores — the universal menu on `store_id=0` and all per-store inventory queries.
+- `GET /menu/categories` → `ORDER BY display_order`
+- `GET /menu/items` → `ORDER BY display_order`
+- `GET /menu/items/popular` → `ORDER BY display_order`
+- `GET /menu/items/search` → `ORDER BY display_order`
+- `GET /stores/{id}/menu` → categories and items both ordered by `display_order` (store validation only)
 
 ---
 
@@ -127,8 +126,8 @@ This applies to all stores — the universal menu on `store_id=0` and all per-st
 
 | Entity | Count | Details |
 |--------|-------|---------|
-| Menu Categories | 10 | Universal (store_id=0): Signature Coffee, Espresso Bar, Tea & Non-Coffee, Pastries & Toast, Specialties, Iced & Blended, Food & Sandwiches, Desserts, Merchandise, Coffee Beans & Packs |
-| Menu Items | 35 | Universal (store_id=0): served identically at all physical stores |
+| Menu Categories | 10 | Universal: Signature Coffee, Espresso Bar, Tea & Non-Coffee, Pastries & Toast, Specialties, Iced & Blended, Food & Sandwiches, Desserts, Merchandise, Coffee Beans & Packs |
+| Menu Items | 35 | Universal: served identically at all physical stores |
 | Inventory Categories | 50 | 10 per physical store (store id 2-6): Coffee Beans, Milk & Cream, Syrups & Sauces, Tea & Matcha, Bakery Supplies, Packaging, Food Ingredients, Cleaning Supplies, Merchandise Stock, Frozen & Chilled |
 | Inventory Items | 300 | ~60 per physical store, one RECEIVED ledger entry per item |
 | Inventory Ledger | 300 | Auto-created on inventory item creation (opening stock movement) |

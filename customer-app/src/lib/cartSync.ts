@@ -7,6 +7,14 @@ interface CustomizationStructure {
   note?: string;
 }
 
+interface ServerCartItem {
+  id: number;
+  menu_item_id?: number;
+  item_id?: number;
+  quantity: number;
+  [key: string]: unknown;
+}
+
 function createIdempotencyKey(prefix: string): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `${prefix}-${crypto.randomUUID()}`;
@@ -15,7 +23,7 @@ function createIdempotencyKey(prefix: string): string {
 }
 
 export async function syncCartToServer(items: CartItem[], storeId: number): Promise<void> {
-  let serverItems: any[] = [];
+  let serverItems: ServerCartItem[] = [];
   try {
     const res = await api.get('/cart');
     if (res.status === 200) {
@@ -26,10 +34,18 @@ export async function syncCartToServer(items: CartItem[], storeId: number): Prom
     // proceed with sync even if we can't read the cart
   }
 
-  const desiredMap = new Map(items.map(i => [i.menu_item_id, i]));
-  const serverMap = new Map(serverItems.map((i: any) => [i.menu_item_id ?? i.item_id, i]));
+  function cartItemKey(item: { menu_item_id: number; customization_option_ids?: number[] }): string {
+    const optKey = item.customization_option_ids && item.customization_option_ids.length > 0
+      ? JSON.stringify([...item.customization_option_ids].sort((a, b) => a - b))
+      : '';
+    return `${item.menu_item_id}:${optKey}`;
+  }
 
-  const toDelete = serverItems.filter((si: any) => !desiredMap.has(si.menu_item_id ?? si.item_id));
+  const desiredMap = new Map(items.map(i => [cartItemKey(i), i]));
+  const serverMap = new Map(serverItems.map((i: ServerCartItem) => [cartItemKey({ menu_item_id: i.menu_item_id ?? i.item_id ?? 0, customization_option_ids: Array.isArray(i.customization_option_ids) ? i.customization_option_ids : undefined }), i]));
+
+  const desiredKeys = new Set(desiredMap.keys());
+  const toDelete = serverItems.filter((si: ServerCartItem) => !desiredKeys.has(cartItemKey({ menu_item_id: si.menu_item_id ?? si.item_id ?? 0, customization_option_ids: Array.isArray(si.customization_option_ids) ? si.customization_option_ids : undefined })));
   for (const item of toDelete) {
     try {
       await api.delete(`/cart/items/${item.id}`);
@@ -38,8 +54,8 @@ export async function syncCartToServer(items: CartItem[], storeId: number): Prom
     }
   }
 
-  for (const [menuItemId, desired] of desiredMap) {
-    const existing = serverMap.get(menuItemId);
+  for (const [key, desired] of desiredMap) {
+    const existing = serverMap.get(key);
     try {
       if (existing) {
         if (existing.quantity !== desired.quantity) {
@@ -89,11 +105,40 @@ export async function placeOrder(params: {
 
   await syncCartToServer(items, params.storeId);
 
+  let checkoutToken: string | undefined;
+
+  if (params.voucherCode || params.rewardRedemptionCode) {
+    try {
+      const checkoutPayload: Record<string, unknown> = {
+        store_id: params.storeId,
+        order_type: params.orderType,
+      };
+      if (params.voucherCode) {
+        checkoutPayload.voucher_code = params.voucherCode;
+      }
+      if (params.rewardRedemptionCode) {
+        const rewardId = parseInt(params.rewardRedemptionCode, 10);
+        if (!isNaN(rewardId)) {
+          checkoutPayload.reward_id = rewardId;
+        }
+      }
+      const checkoutRes = await api.post('/checkout', checkoutPayload);
+      checkoutToken = checkoutRes.data?.checkout_token;
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      throw new Error(detail || 'Checkout discount validation failed');
+    }
+  }
+
   const orderPayload: Record<string, unknown> = {
     store_id: params.storeId,
     order_type: params.orderType,
     payment_method: params.paymentMethod,
   };
+
+  if (checkoutToken) {
+    orderPayload.checkout_token = checkoutToken;
+  }
 
   if (params.orderType === 'pickup' && params.pickupTime) {
     orderPayload.pickup_time = params.pickupTime;
@@ -107,11 +152,13 @@ export async function placeOrder(params: {
   if (params.notes) {
     orderPayload.notes = params.notes;
   }
-  if (params.voucherCode) {
-    orderPayload.voucher_code = params.voucherCode;
-  }
-  if (params.rewardRedemptionCode) {
-    orderPayload.reward_redemption_code = params.rewardRedemptionCode;
+  if (!checkoutToken) {
+    if (params.voucherCode) {
+      orderPayload.voucher_code = params.voucherCode;
+    }
+    if (params.rewardRedemptionCode) {
+      orderPayload.reward_redemption_code = params.rewardRedemptionCode;
+    }
   }
 
   const orderRes = await api.post('/orders', orderPayload, {
@@ -120,7 +167,6 @@ export async function placeOrder(params: {
   const newOrder = orderRes.data;
 
   try {
-    // Only process wallet payment for prepaid orders
     if (params.paymentMethod === 'wallet') {
       const intentRes = await api.post('/payments/create-intent', {
         order_id: newOrder.id,
@@ -136,8 +182,6 @@ export async function placeOrder(params: {
       newOrder.payment_status = confirmRes.data?.status || 'paid';
       newOrder.points_earned = confirmRes.data?.points_earned ?? newOrder.points_earned;
       newOrder.loyalty_points_earned = confirmRes.data?.points_earned ?? newOrder.loyalty_points_earned;
-      // Backend now auto-advances to confirmed for Flow A types after payment.
-      // Reflect that in the local order object so UI updates immediately.
       if (newOrder.order_type === 'pickup' || newOrder.order_type === 'delivery') {
         newOrder.status = 'confirmed';
       }
@@ -149,15 +193,12 @@ export async function placeOrder(params: {
           headers: { 'Idempotency-Key': createIdempotencyKey('order-cancel') },
         });
       } catch {
-        // Best-effort rollback. Backend cancel now restores wallet and discounts when possible.
+        // Best-effort rollback
       }
     }
     throw error;
   }
 
-  // For pay-later orders (pay_at_store / COD / cash), auto-confirm so the kitchen
-  // receives the order immediately. This aligns with the finalized customer journey:
-  // pending → confirmed for all order types after checkout.
   if (params.paymentMethod !== 'wallet' && newOrder?.id) {
     try {
       await api.post(`/orders/${newOrder.id}/confirm`, {}, {
@@ -165,8 +206,7 @@ export async function placeOrder(params: {
       });
       newOrder.status = 'confirmed';
     } catch {
-      // If confirm fails, the order stays at pending and kitchen/admin can confirm later.
-      // Customer will see "pending" until confirmed.
+      // Order stays at pending, kitchen/admin can confirm later
     }
   }
 

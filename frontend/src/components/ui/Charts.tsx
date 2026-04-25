@@ -124,16 +124,15 @@ export function DonutChart({ data, size = 160, formatValue, centerLabel }: Donut
   const strokeWidth = 24;
   const circumference = 2 * Math.PI * r;
 
-  let offset = 0;
-  const segments = data.map((d, i) => {
+  const segments = data.reduce<{ value: number; label: string; color?: string; offset: number; dash: number; gap: number; pct: number }[]>((acc, d, i) => {
     const pct = d.value / total;
     const dash = pct * circumference;
     const gap = circumference - dash;
     const color = d.color || BRAND_COLORS[i % BRAND_COLORS.length];
-    const seg = { ...d, offset, dash, gap, color, pct };
-    offset += dash;
-    return seg;
-  });
+    const currentOffset = acc.length > 0 ? acc[acc.length - 1].offset + acc[acc.length - 1].dash : 0;
+    acc.push({ ...d, offset: currentOffset, dash, gap, color, pct });
+    return acc;
+  }, []);
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>

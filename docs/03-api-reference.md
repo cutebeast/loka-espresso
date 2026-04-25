@@ -1,7 +1,7 @@
 # FNB Super-App — API Reference
 
 > Last updated: 2026-04-22 | Base URL: `https://admin.loyaltysystem.uk/api/v1`
-> This document is the current pre-provider-integration reference. It intentionally avoids stale endpoint counts.
+> This document is the current pre-provider-integration reference. ~231 route handlers total.
 
 ## Authentication
 
@@ -69,16 +69,17 @@ These are the customer-facing PWA menu endpoints.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/stores/{store_id}/categories` | List menu categories |
-| GET | `/stores/{store_id}/items` | List menu items |
-| GET | `/stores/{store_id}/items/search` | Search items |
-| GET | `/stores/{store_id}/items/popular` | Popular items |
-| GET | `/stores/{store_id}/items/{item_id}/customizations` | Public customization options |
+| GET | `/menu/categories` | List menu categories (universal) |
+| GET | `/menu/items` | List menu items (universal) |
+| GET | `/menu/items/search` | Search items |
+| GET | `/menu/items/popular` | Popular items |
+| GET | `/menu/items/{item_id}/customizations` | Public customization options |
 
 ### Menu Model Note
 
-- Customer/menu routes are store-addressed.
-- The effective menu source remains the universal HQ menu.
+- Menu is **universal** — same categories, items, and prices across all stores.
+- There is no `store_id` on `menu_categories` or `menu_items`.
+- The `store_id` on cart/checkout/order records the *fulfillment store*, not the menu source.
 
 ### Table Scan / Dine-in
 
@@ -127,7 +128,7 @@ These are the customer-facing PWA menu endpoints.
 | PATCH | `/orders/{order_id}/payment-status` | Update payment status directly |
 | POST | `/orders/{order_id}/pos-synced` | Staff marks order as manually re-keyed into POS |
 | POST | `/orders/{order_id}/delivery-dispatched` | Staff marks order as manually booked with courier |
-| GET | `/orders/tracking/{order_id}` | Public/current tracking summary |
+| GET | `/order-tracking/{order_id}/track` | Public/current tracking summary (actual tracking route; `/orders/tracking/{order_id}` is not used) |
 
 ### Order Flow Notes
 
@@ -292,8 +293,11 @@ These are the customer-facing PWA menu endpoints.
 | POST | `/admin/wallet/topup` | In-store wallet top-up (find by phone, atomic credit) |
 | DELETE | `/admin/customers/reset` | Reset all customer data |
 | GET | `/admin/reports/revenue` | Revenue report |
-| GET | `/admin/reports/sales` | Sales report |
+| GET | `/admin/reports/loyalty` | Loyalty report |
+| GET | `/admin/reports/inventory` | Inventory report |
 | GET | `/admin/reports/marketing` | Marketing report |
+| GET | `/admin/reports/marketing/paginated` | Marketing report (paginated) |
+| GET | `/admin/reports/csv` | CSV export |
 | GET | `/admin/audit-log` | Audit trail |
 | GET | `/admin/broadcasts` | Notification broadcasts |
 | POST | `/admin/broadcasts` | Create/send broadcast |
@@ -301,6 +305,21 @@ These are the customer-facing PWA menu endpoints.
 | PUT | `/admin/config` | Update app config |
 | POST | `/admin/system/init-hq` | Initialize HQ |
 | DELETE | `/admin/system/reset` | Reset data while preserving core structure |
+
+### Menu Management (Universal)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/admin/categories` | Create category |
+| PUT | `/admin/categories/{cat_id}` | Update category |
+| DELETE | `/admin/categories/{cat_id}` | Soft-delete category |
+| POST | `/admin/items` | Create menu item |
+| PUT | `/admin/items/{item_id}` | Update menu item |
+| DELETE | `/admin/items/{item_id}` | Soft-delete menu item |
+| GET | `/admin/items/{item_id}/customizations` | List customization options |
+| POST | `/admin/items/{item_id}/customizations` | Create customization option |
+| PUT | `/admin/customizations/{option_id}` | Update customization option |
+| DELETE | `/admin/customizations/{option_id}` | Deactivate customization option |
 
 ### Store & Table Management
 

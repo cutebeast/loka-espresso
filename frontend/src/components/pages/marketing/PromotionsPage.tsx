@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import { Select, Pagination, Drawer } from '@/components/ui';
@@ -67,7 +68,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
     setBannerLoading(true);
     try {
       const params = new URLSearchParams({ page: String(p), page_size: String(PAGE_SIZE) });
-      const res = await apiFetch(`/admin/banners?${params}`, token);
+      const res = await apiFetch(`/admin/banners?${params}`);
       if (res.ok) {
         const data = await res.json();
         setBanners(data.banners || []);
@@ -76,17 +77,17 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
         setBannerPage(p);
       }
     } catch {} finally { setBannerLoading(false); }
-  }, [token]);
+  }, []);
 
   useEffect(() => { fetchBanners(1); }, [fetchBanners]);
 
   useEffect(() => {
     if (viewMode === 'banner-form') {
-      apiFetch('/admin/surveys', token)
+      apiFetch('/admin/surveys')
         .then(r => r.ok ? r.json() : { surveys: [] })
         .then(d => setSurveys(Array.isArray(d) ? d : (d.surveys ?? [])))
         .catch(() => {});
-      apiFetch('/admin/vouchers', token)
+      apiFetch('/admin/vouchers')
         .then(r => r.ok ? r.json() : { vouchers: [] })
         .then(d => setVouchers(Array.isArray(d) ? d : (d.vouchers ?? [])))
         .catch(() => {});
@@ -153,12 +154,12 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
       setSaving(true);
       let res: Response;
       if (editingId) {
-        res = await apiFetch(`/admin/banners/${editingId}`, token, {
+        res = await apiFetch(`/admin/banners/${editingId}`, undefined, {
           method: 'PUT',
           body: JSON.stringify(payload),
         });
       } else {
-        res = await apiFetch('/admin/banners', token, {
+        res = await apiFetch('/admin/banners', undefined, {
           method: 'POST',
           body: JSON.stringify(payload),
         });
@@ -177,7 +178,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
   const handleDelete = async (id: string) => {
     setError('');
     try {
-      await apiFetch(`/admin/banners/${id}`, token, { method: 'DELETE' });
+      await apiFetch(`/admin/banners/${id}`, undefined, { method: 'DELETE' });
       setDeletingId(null);
       fetchBanners(bannerPage);
     } catch (err: any) {
@@ -188,7 +189,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
   const handleToggleActive = async (banner: any) => {
     setError('');
     try {
-      const res = await apiFetch(`/admin/banners/${banner.id}`, token, {
+      const res = await apiFetch(`/admin/banners/${banner.id}`, undefined, {
         method: 'PUT',
         body: JSON.stringify({ is_active: !banner.is_active }),
       });
@@ -288,7 +289,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
                     <div>
                       <label style={labelStyle}>Voucher to Redeem <span style={{ color: THEME.success, fontWeight: 400 }}>(optional)</span></label>
                       <Select value={form.voucher_id} onChange={(val) => setField('voucher_id', val)} options={[{ value: '', label: '— None (info only) —' }, ...vouchers.filter(v => v.is_active).map(v => ({ value: String(v.id), label: `${v.code} — ${v.title || v.description}` }))]} />
-                      <div style={{ fontSize: 11, color: THEME.success, marginTop: 2 }}>Customer can claim this voucher when they tap "Redeem". Leave empty for info-only banners.</div>
+                      <div style={{ fontSize: 11, color: THEME.success, marginTop: 2 }}>Customer can claim this voucher when they tap &quot;Redeem&quot;. Leave empty for info-only banners.</div>
                     </div>
                   )}
                 </div>
@@ -429,7 +430,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
                   <tr key={banner.id}>
                     <td>
                       {banner.image_url ? (
-                        <img src={cacheBust(banner.image_url)} alt="" style={{ width: 80, height: 45, objectFit: 'cover', borderRadius: 8 }} />
+                        <Image src={cacheBust(banner.image_url)} alt="" width={80} height={45} style={{ width: 80, height: 45, objectFit: 'cover', borderRadius: 8 }} />
                       ) : (
                         <div style={{ width: 80, height: 45, background: THEME.bgMuted, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.success, fontSize: 14 }}>
                           <i className="fas fa-image"></i>
@@ -510,7 +511,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
   );
 }
 
-function ImageUploadField({ label, imageUrl, token, onSet, hint }: { label: string; imageUrl: string; token: string; onSet: (url: string) => void; hint?: string }) {
+function ImageUploadField({ label, imageUrl, token: _token, onSet, hint }: { label: string; imageUrl: string; token: string; onSet: (url: string) => void; hint?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -521,7 +522,7 @@ function ImageUploadField({ label, imageUrl, token, onSet, hint }: { label: stri
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await apiUpload('/upload/marketing-image', token, fd);
+      const res = await apiUpload('/upload/marketing-image', fd);
       if (res.ok) {
         const data = await res.json();
         onSet(data.url);
@@ -539,7 +540,7 @@ function ImageUploadField({ label, imageUrl, token, onSet, hint }: { label: stri
         </button>
         {imageUrl && (
           <>
-            <img src={imageUrl} alt="" style={{ width: 40, height: 28, objectFit: 'cover', borderRadius: 4 }} />
+            <Image src={imageUrl} alt="" width={40} height={28} style={{ width: 40, height: 28, objectFit: 'cover', borderRadius: 4 }} />
             <button type="button" className="btn btn-sm" onClick={() => onSet('')} style={{ color: '#EF4444' }}><i className="fas fa-times"></i></button>
           </>
         )}

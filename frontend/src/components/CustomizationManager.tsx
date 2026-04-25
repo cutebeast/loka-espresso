@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { AddCustomizationForm } from '@/components/Modals';
 import type { MerchantMenuItem } from '@/lib/merchant-types';
@@ -16,18 +16,18 @@ export default function CustomizationManager({ storeId, item, token, onClose }: 
   const [options, setOptions] = useState<Array<{ id: number; name: string; price_adjustment: number; is_active: boolean }>>([]);
   const [loading, setLoading] = useState(true);
 
-  async function loadOptions() {
+  const loadOptions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiFetch(`/admin/stores/${storeId}/items/${item.id}/customizations`, token);
+      const res = await apiFetch(`/admin/items/${item.id}/customizations`);
       if (res.ok) setOptions(await res.json());
     } catch (err) { console.error('Failed to fetch customizations:', err); } finally { setLoading(false); }
-  }
+  }, [item.id]);
 
-  React.useEffect(() => { loadOptions(); }, [item.id]);
+  React.useEffect(() => { loadOptions(); }, [loadOptions]);
 
   async function deleteOption(optId: number) {
-    await apiFetch(`/admin/stores/${storeId}/customizations/${optId}`, token, { method: 'DELETE' });
+    await apiFetch(`/admin/customizations/${optId}`, undefined, { method: 'DELETE' });
     loadOptions();
   }
 

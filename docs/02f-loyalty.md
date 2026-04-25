@@ -126,7 +126,7 @@ Wallet movement log.
 | id | integer | NO | auto | PK |
 | wallet_id | integer | NO | | FK→wallets.id |
 | amount | numeric(10,2) | NO | | Transaction amount |
-| type | wallettxtype | NO | | `topup`, `payment`, `refund`, `cashback`, `promo_credit`, `admin_adjustment` |
+| type | wallettxtype | NO | | `topup`, `payment`, `refund`, `promo_credit`, `admin_adjustment` |
 | description | text | YES | | Reason |
 | user_id | integer | YES | | FK→users.id |
 | balance_after | numeric(10,2) | YES | | Balance after this transaction |

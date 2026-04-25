@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, ChevronRight, Info, Clock, Star } from 'lucide-react';
-import api, { cacheBust } from '@/lib/api';
+import api from '@/lib/api';
 import type { InformationCard as ApiInformationCard } from '@/lib/api';
 
 type InformationCard = ApiInformationCard;
@@ -13,9 +13,10 @@ interface InformationPageProps {
   preselectedSlug?: string;
 }
 
-function resolveUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  return cacheBust(url.startsWith('http') ? url : `https://admin.loyaltysystem.uk${url}`);
+import { resolveAssetUrl } from '@/lib/tokens';
+
+function resolveCardImage(card: InformationCard): string | null {
+  return resolveAssetUrl(card.image_url) || resolveAssetUrl(card.icon) || null;
 }
 
 function estimateReadTime(text: string | null | undefined): string {
@@ -74,8 +75,8 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
 
   /* ── Detail view ── */
   if (selectedCard) {
-    const img = resolveUrl(selectedCard.image_url);
-    const gallery = (selectedCard.gallery_urls || []).map(resolveUrl).filter(Boolean) as string[];
+    const img = resolveCardImage(selectedCard);
+    const gallery = (selectedCard.gallery_urls || []).map(resolveAssetUrl).filter(Boolean) as string[];
     const allImages = img ? [img, ...gallery] : gallery;
 
     return (
@@ -143,7 +144,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
           </div>
         ) : (
           cards.map((card) => {
-            const img = resolveUrl(card.image_url);
+            const img = resolveCardImage(card);
             return (
               <div key={card.id} className="info-exp-card" onClick={() => setSelectedCard(card)}>
                 <div
@@ -176,36 +177,56 @@ function ImageCarousel({ images }: { images: string[] }) {
   const [current, setCurrent] = useState(0);
   const total = images.length;
   const touchStartX = useRef(0);
+  const isDragging = useRef(false);
 
   const next = () => setCurrent((c) => (c + 1) % total);
   const prev = () => setCurrent((c) => (c - 1 + total) % total);
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    isDragging.current = true;
   };
   const onTouchEnd = (e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (diff > 40) next();
+    else if (diff < -40) prev();
+  };
+
+  /* Mouse drag for desktop */
+  const onMouseDown = (e: React.MouseEvent) => {
+    touchStartX.current = e.clientX;
+    isDragging.current = true;
+  };
+  const onMouseUp = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    const diff = touchStartX.current - e.clientX;
     if (diff > 40) next();
     else if (diff < -40) prev();
   };
 
   return (
     <div
-      className="relative w-full h-full"
+      className="carousel-wrap"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      onMouseDown={onMouseDown}
+      onMouseUp={onMouseUp}
     >
       <div
-        className="flex h-full transition-transform duration-300 ease-out"
+        className="carousel-track"
         style={{ transform: `translateX(-${current * 100}%)` }}
       >
         {images.map((src, i) => (
-          <div key={i} className="w-full h-full shrink-0">
+          <div key={i} className="carousel-slide">
             <img
               src={src}
               alt=""
-              className="w-full h-full object-cover"
+              className="carousel-img"
               loading={i === 0 ? 'eager' : 'lazy'}
+              draggable={false}
             />
           </div>
         ))}
@@ -213,34 +234,27 @@ function ImageCarousel({ images }: { images: string[] }) {
 
       {/* Dots */}
       {total > 1 && (
-        <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-1.5">
+        <div className="carousel-dots">
           {images.map((_, i) => (
             <button
               key={i}
+              className={`carousel-dot ${i === current ? 'active' : ''}`}
               onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
-              style={{
-                height: 6,
-                borderRadius: 999,
-                transition: 'all 0.2s',
-                border: 'none',
-                cursor: 'pointer',
-                width: i === current ? 16 : 6,
-                background: i === current ? 'white' : 'rgba(255,255,255,0.5)',
-              }}
+              aria-label={`Go to slide ${i + 1}`}
             />
           ))}
         </div>
       )}
 
-      {/* Arrow indicators (subtle) */}
+      {/* Arrow buttons */}
       {total > 1 && (
         <>
-          <div style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 24, height: 24, borderRadius: 999, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14 }}>
-            ‹
-          </div>
-          <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 24, height: 24, borderRadius: 999, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14 }}>
-            ›
-          </div>
+          <button className="carousel-arrow carousel-arrow-left" onClick={prev} aria-label="Previous">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <button className="carousel-arrow carousel-arrow-right" onClick={next} aria-label="Next">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
         </>
       )}
     </div>

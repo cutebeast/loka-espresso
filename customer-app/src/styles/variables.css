@@ -1,33 +1,93 @@
 /* ============================================
-   LOKA THEME VARIABLES
-   Shared across all pages
+   LOKA THEME VARIABLES — Single Source of Truth
+   Standard CSS custom properties. No framework lock-in.
    ============================================ */
 
 :root {
   /* Brand */
-  --loka-primary: #384B16;
-  --loka-primary-dark: #2A3910;
-  --loka-accent-copper: #D18E38;
-  --loka-accent-brown: #57280D;
+  --color-primary: #384B16;
+  --color-primary-dark: #2A3910;
+  --color-primary-deep: #1F2C0B;
+  --color-primary-light: #4A6A1D;
+  --color-primary-50: #F5F7F0;
+  --color-primary-100: #E8EDE0;
+
+  --color-copper: #D18E38;
+  --color-copper-light: #E5A559;
+  --color-copper-soft: rgba(209, 142, 56, 0.12);
+  --color-copper-mid: rgba(209, 142, 56, 0.25);
+
+  --color-brown: #57280D;
+  --color-brown-light: #7A4A2E;
+  --color-cream: #F3EEE5;
 
   /* Text */
-  --loka-text-primary: #1B2023;
-  --loka-text-secondary: #3A4A5A;
-  --loka-text-muted: #6A7A8A;
+  --color-text-primary: #1B2023;
+  --color-text-secondary: #3A4A5A;
+  --color-text-muted: #6A7A8A;
 
   /* Surfaces */
-  --loka-bg: #E4EAEF;
-  --loka-bg-light: #F9F7F2;
-  --loka-bg-card: #FFFFFF;
-  --loka-bg-dark: #1B2023;
+  --color-bg: #E4EAEF;
+  --color-bg-light: #F5F7FA;
+  --color-bg-card: #F9FBFE;
+  --color-surface: #F5F7FA;
+  --color-surface-warm: #F5F7F0;
+  --color-white: #FFFFFF;
 
   /* Borders */
-  --loka-border: #C4CED8;
-  --loka-border-light: #D4DCE5;
+  --color-border: #C4CED8;
+  --color-border-light: #D4DCE5;
+  --color-border-subtle: #E4EAEF;
 
   /* Semantic */
-  --loka-success: #85B085;
-  --loka-danger: #C75050;
+  --color-success: #85B085;
+  --color-success-light: #E8F5E9;
+  --color-warning: #D18E38;
+  --color-warning-light: #FFF3E0;
+  --color-danger: #C75050;
+  --color-danger-light: #FFEBEE;
+  --color-info: #4A607A;
+  --color-info-light: #E3F2FD;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadows (as CSS strings) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.10);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03);
+  --shadow-nav: 0 -4px 10px rgba(0, 0, 0, 0.02);
+  --shadow-primary: 0 8px 16px rgba(56, 75, 22, 0.25);
+  --shadow-primary-sm: 0 2px 8px rgba(56, 75, 22, 0.12);
+  --shadow-wallet: 0 18px 36px -14px rgba(31, 44, 11, 0.55);
+
+  /* Loka-branded aliases (used in CSS files and inline styles) */
+  --loka-primary: var(--color-primary);
+  --loka-primary-dark: var(--color-primary-dark);
+  --loka-accent-copper: var(--color-copper);
+  --loka-accent-brown: var(--color-brown);
+  --loka-text-primary: var(--color-text-primary);
+  --loka-text-secondary: var(--color-text-secondary);
+  --loka-text-muted: var(--color-text-muted);
+  --loka-bg: var(--color-bg);
+  --loka-bg-light: #F9F7F2;
+  --loka-bg-card: var(--color-white);
+  --loka-bg-dark: var(--color-text-primary);
+  --loka-border: var(--color-border);
+  --loka-border-light: var(--color-border-light);
+  --loka-success: var(--color-success);
+  --loka-danger: var(--color-danger);
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
   /* Safe area */
   --safe-bottom: env(safe-area-inset-bottom, 0px);

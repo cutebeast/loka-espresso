@@ -1,0 +1,34 @@
+/* ── Horizontal Category Navigation ────────────────────── */
+
+.category-bar {
+  display: flex;
+  gap: 6px;
+  padding: 12px 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  background: var(--loka-bg-light);
+}
+.category-bar::-webkit-scrollbar { display: none; }
+
+.cat-tab {
+  flex-shrink: 0;
+  padding: 8px 18px;
+  border-radius: 40px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--loka-border-light);
+  background: var(--loka-bg-card);
+  color: var(--loka-text-secondary);
+  transition: all 0.22s ease;
+  white-space: nowrap;
+}
+.cat-tab.active {
+  background: var(--loka-primary);
+  color: white;
+  border-color: var(--loka-primary);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(56,75,22,0.2);
+}
+.cat-tab:active { transform: scale(0.96); }

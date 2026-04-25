@@ -14,7 +14,7 @@ interface QRScannerProps {
 export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const scannerRef = useRef<InstanceType<QrScannerType['default']> | null>(null);
-  const [hasCamera, setHasCamera] = useState(true);
+  const [, setHasCamera] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
 

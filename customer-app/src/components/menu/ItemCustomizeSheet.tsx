@@ -4,25 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, ShoppingCart, Coffee, Star } from 'lucide-react';
 import type { MenuItem, CustomizationOption } from '@/lib/api';
-import { cacheBust } from '@/lib/api';
-
-const LOKA = {
-  primary: '#384B16',
-  primaryDark: '#2A3910',
-  copper: '#D18E38',
-  copperLight: '#E5A559',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  cream: '#F3EEE5',
-  brown: '#57280D',
-  textPrimary: '#1B2023',
-  textSecondary: '#3A4A5A',
-  textMuted: '#6A7A8A',
-  border: '#D4DCE5',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  bg: '#E4EAEF',
-  white: '#FFFFFF',
-} as const;
+import { LOKA, resolveAssetUrl } from '@/lib/tokens';
 
 interface SelectedOption {
   id: number;
@@ -58,7 +40,6 @@ export default function ItemCustomizeSheet({
 
   useEffect(() => {
     if (item) {
-      /* eslint-disable react-hooks/set-state-in-effect */
       setQuantity(1);
       setSelectedOptions([]);
       setNotes('');
@@ -95,11 +76,7 @@ export default function ItemCustomizeSheet({
     onClose();
   };
 
-  const imgSrc = item?.image_url
-    ? cacheBust(item.image_url.startsWith('http')
-      ? item.image_url
-      : `https://admin.loyaltysystem.uk${item.image_url}`)
-    : null;
+  const imgSrc = item?.image_url ? resolveAssetUrl(item.image_url) : null;
 
   return (
     <AnimatePresence>
@@ -109,6 +86,7 @@ export default function ItemCustomizeSheet({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
+          /* TODO: extract to CSS */
           style={{
             position: 'fixed',
             inset: 0,
@@ -125,22 +103,23 @@ export default function ItemCustomizeSheet({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxWidth: 430,
-              background: LOKA.white,
-              borderTopLeftRadius: 28,
-              borderTopRightRadius: 28,
-              maxHeight: '85vh',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
+          onClick={(e) => e.stopPropagation()}
+          /* TODO: extract to CSS */
+          style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: 430,
+            background: LOKA.white,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
           >
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
-              <div style={{ width: 44, height: 4, borderRadius: 999, background: LOKA.border }} />
+              <div style={{ width: 44, height: 4, borderRadius: 999, background: LOKA.borderLight }} />
             </div>
 
             <div style={{ position: 'relative', height: 180, background: '#F2F6EA', flexShrink: 0 }}>
@@ -236,7 +215,7 @@ export default function ItemCustomizeSheet({
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                   <div style={{
                                     width: 18, height: 18, borderRadius: 999,
-                                    border: isSelected ? `2px solid ${LOKA.primary}` : `1.5px solid ${LOKA.border}`,
+                                    border: isSelected ? `2px solid ${LOKA.primary}` : `1.5px solid ${LOKA.borderLight}`,
                                     background: isSelected ? LOKA.primary : 'transparent',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     flexShrink: 0,
@@ -270,13 +249,14 @@ export default function ItemCustomizeSheet({
                   style={{
                     width: '100%', padding: '12px 14px', borderRadius: 14,
                     border: `1px solid ${LOKA.borderSubtle}`,
-                    background: LOKA.surface, fontSize: 14, color: LOKA.textPrimary,
+                    background: LOKA.bgLight, fontSize: 14, color: LOKA.textPrimary,
                     resize: 'none', outline: 'none', fontFamily: 'inherit',
                   }}
                 />
               </div>
             </div>
 
+            {/* TODO: extract to CSS */}
             <div style={{
               padding: '16px 20px 24px',
               borderTop: `1px solid ${LOKA.borderSubtle}`,
@@ -287,8 +267,8 @@ export default function ItemCustomizeSheet({
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                   style={{
-                    width: 32, height: 32, borderRadius: 999,
-                    border: `1.5px solid ${LOKA.border}`,
+                    width: 44, height: 44, borderRadius: 999,
+                    border: `1.5px solid ${LOKA.borderLight}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: 'pointer', background: LOKA.white,
                   }}
@@ -302,8 +282,8 @@ export default function ItemCustomizeSheet({
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setQuantity((q) => q + 1)}
                   style={{
-                    width: 32, height: 32, borderRadius: 999,
-                    border: `1.5px solid ${LOKA.border}`,
+                    width: 44, height: 44, borderRadius: 999,
+                    border: `1.5px solid ${LOKA.borderLight}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: 'pointer', background: LOKA.white,
                   }}

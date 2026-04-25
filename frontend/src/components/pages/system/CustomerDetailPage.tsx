@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import type { CustomerDetail, CustomerWalletTransaction, CustomerLoyaltyTransaction, MerchantOrder } from '@/lib/merchant-types';
 import { THEME } from '@/lib/theme';
@@ -22,7 +22,7 @@ interface CustomerDetailPageProps {
 }
 
 // ── Action Dialog: Award Points ──
-function AwardPointsDialog({ customerId, token, onDone }: { customerId: number; token: string; onDone: () => void }) {
+function AwardPointsDialog({ customerId, token: _token, onDone }: { customerId: number; token: string; onDone: () => void }) {
   const [points, setPoints] = useState('');
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
@@ -35,7 +35,7 @@ function AwardPointsDialog({ customerId, token, onDone }: { customerId: number; 
     if (!pts) { setError('Enter a non-zero point value'); return; }
     setSaving(true); setError(''); setResult(null);
     try {
-      const res = await apiFetch(`/admin/customers/${customerId}/adjust-points`, token, {
+      const res = await apiFetch(`/admin/customers/${customerId}/adjust-points`, undefined, {
         method: 'POST',
         body: JSON.stringify({ points: pts, reason: reason || `Admin adjustment: ${pts > 0 ? '+' : ''}${pts} pts` }),
       });
@@ -81,7 +81,7 @@ function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number;
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiFetch('/admin/vouchers?is_active=true&page_size=100', token);
+        const res = await apiFetch('/admin/vouchers?is_active=true&page_size=100');
         if (res.ok) {
           const data = await res.json();
           setVouchers(data.vouchers || data.items || data || []);
@@ -96,7 +96,7 @@ function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number;
     if (!selectedVoucher) { setError('Select a voucher'); return; }
     setSaving(true); setError(''); setResult(null);
     try {
-      const res = await apiFetch(`/admin/customers/${customerId}/award-voucher`, token, {
+      const res = await apiFetch(`/admin/customers/${customerId}/award-voucher`, undefined, {
         method: 'POST',
         body: JSON.stringify({ voucher_id: parseInt(selectedVoucher), reason: reason || 'Admin awarded' }),
       });
@@ -140,7 +140,7 @@ function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number;
 }
 
 // ── Action Dialog: Set Tier ──
-function SetTierDialog({ customerId, currentTier, token, onDone }: { customerId: number; currentTier: string | null; token: string; onDone: () => void }) {
+function SetTierDialog({ customerId, currentTier, token: _token, onDone }: { customerId: number; currentTier: string | null; token: string; onDone: () => void }) {
   const [tier, setTier] = useState(currentTier || 'bronze');
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
@@ -151,7 +151,7 @@ function SetTierDialog({ customerId, currentTier, token, onDone }: { customerId:
     e.preventDefault();
     setSaving(true); setError(''); setResult(null);
     try {
-      const res = await apiFetch(`/admin/customers/${customerId}/set-tier`, token, {
+      const res = await apiFetch(`/admin/customers/${customerId}/set-tier`, undefined, {
         method: 'POST',
         body: JSON.stringify({ tier, reason: reason || `Admin set tier to ${tier}` }),
       });
@@ -187,7 +187,7 @@ function SetTierDialog({ customerId, currentTier, token, onDone }: { customerId:
 }
 
 // ── Action: Approve Profile ──
-function ApproveProfileButton({ customerId, token, onDone }: { customerId: number; token: string; onDone: () => void }) {
+function ApproveProfileButton({ customerId, token: _token, onDone }: { customerId: number; token: string; onDone: () => void }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<string | null>(null);
@@ -196,7 +196,7 @@ function ApproveProfileButton({ customerId, token, onDone }: { customerId: numbe
     if (!confirm('Approve this customer? This will verify their phone and activate their account.')) return;
     setSaving(true); setError(''); setResult(null);
     try {
-      const res = await apiFetch(`/admin/customers/${customerId}/approve-profile`, token, { method: 'POST' });
+      const res = await apiFetch(`/admin/customers/${customerId}/approve-profile`, undefined, { method: 'POST' });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || 'Failed'); return; }
       const data = await res.json().catch(() => ({}));
       setResult(data.note || 'Customer approved and activated');
@@ -244,14 +244,10 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
 
   const PAGE_SIZE = 10;
 
-  useEffect(() => {
-    fetchDetail();
-  }, [customerId]);
-
-  async function fetchDetail() {
+  const fetchDetail = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiFetch(`/admin/customers/${customerId}`, token);
+      const res = await apiFetch(`/admin/customers/${customerId}`);
       if (res.ok) {
         const d = await res.json();
         setDetail(d);
@@ -260,55 +256,59 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
         setEditEmail(d.email || '');
       }
     } catch {} finally { setLoading(false); }
-  }
+  }, [customerId]);
 
-  async function fetchOrders(page: number) {
+  useEffect(() => {
+    fetchDetail();
+  }, [fetchDetail]);
+
+  const fetchOrders = useCallback(async (page: number) => {
     try {
-      const res = await apiFetch(`/admin/customers/${customerId}/orders?page=${page}&page_size=${PAGE_SIZE}`, token);
+      const res = await apiFetch(`/admin/customers/${customerId}/orders?page=${page}&page_size=${PAGE_SIZE}`);
       if (res.ok) {
         const data = await res.json();
         setOrders(typeof data.total === 'number' ? data : { total: Array.isArray(data) ? data.length : 0, page, page_size: PAGE_SIZE, items: Array.isArray(data) ? data : (data.orders || []) });
       }
     } catch {}
-  }
+  }, [customerId]);
 
-  async function fetchLoyalty(page: number) {
+  const fetchLoyalty = useCallback(async (page: number) => {
     try {
-      const res = await apiFetch(`/admin/customers/${customerId}/loyalty-history?page=${page}&page_size=${PAGE_SIZE}`, token);
+      const res = await apiFetch(`/admin/customers/${customerId}/loyalty-history?page=${page}&page_size=${PAGE_SIZE}`);
       if (res.ok) {
         const data = await res.json();
         setLoyalty(typeof data.total === 'number' ? data : { total: Array.isArray(data) ? data.length : 0, page, page_size: PAGE_SIZE, items: Array.isArray(data) ? data : (data.history || []) });
       }
     } catch {}
-  }
+  }, [customerId]);
 
-  async function fetchWallet(page: number) {
+  const fetchWallet = useCallback(async (page: number) => {
     try {
-      const res = await apiFetch(`/admin/customers/${customerId}/wallet-history?page=${page}&page_size=${PAGE_SIZE}`, token);
+      const res = await apiFetch(`/admin/customers/${customerId}/wallet-history?page=${page}&page_size=${PAGE_SIZE}`);
       if (res.ok) {
         const data = await res.json();
         setWallet(typeof data.total === 'number' ? data : { total: Array.isArray(data) ? data.length : 0, page, page_size: PAGE_SIZE, items: Array.isArray(data) ? data : (data.transactions || []) });
       }
     } catch {}
-  }
+  }, [customerId]);
 
-  async function fetchCustomerWallet() {
+  const fetchCustomerWallet = useCallback(async () => {
     setLoadingWalletItems(true);
     try {
-      const res = await apiFetch(`/admin/customers/${customerId}/wallet`, token);
+      const res = await apiFetch(`/admin/customers/${customerId}/wallet`);
       if (res.ok) {
         const data = await res.json();
         setCustomerWallet({ rewards: data.rewards || [], vouchers: data.vouchers || [] });
       }
     } catch {} finally { setLoadingWalletItems(false); }
-  }
+  }, [customerId]);
 
   useEffect(() => {
     if (activeTab === 'orders') fetchOrders(ordersPage);
     else if (activeTab === 'loyalty') fetchLoyalty(loyaltyPage);
     else if (activeTab === 'wallet') fetchWallet(walletPage);
     else if (activeTab === 'vouchers') fetchCustomerWallet();
-  }, [activeTab, ordersPage, loyaltyPage, walletPage]);
+  }, [activeTab, ordersPage, loyaltyPage, walletPage, fetchOrders, fetchLoyalty, fetchWallet, fetchCustomerWallet]);
 
   async function handleEditSubmit(e: FormEvent) {
     e.preventDefault();
@@ -316,7 +316,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
     setEditSaving(true);
     setEditError('');
     try {
-      const res = await apiFetch(`/admin/customers/${detail.id}`, token, {
+      const res = await apiFetch(`/admin/customers/${detail.id}`, undefined, {
         method: 'PUT',
         body: JSON.stringify({ name: editName, phone: editPhone, email: editEmail }),
       });

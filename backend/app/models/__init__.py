@@ -1,7 +1,7 @@
 from app.models.user import User, UserAddress, OTPSession, DeviceToken, TokenBlacklist, UserTypeIDs, RoleIDs
 from app.models.store import Store, StoreTable
 from app.models.menu import MenuCategory, MenuItem, InventoryCategory, InventoryItem, InventoryMovement, MovementType
-from app.models.order import CartItem, Order, OrderItem, OrderStatusHistory, Payment, OrderType, OrderStatus
+from app.models.order import CartItem, Order, OrderItem, OrderStatusHistory, Payment, CheckoutToken, OrderType, OrderStatus
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction, LoyaltyTier
 from app.models.reward import Reward, UserReward, RewardType
 from app.models.voucher import Voucher, UserVoucher, DiscountType
@@ -22,7 +22,7 @@ __all__ = [
     "User", "UserAddress", "OTPSession", "DeviceToken", "TokenBlacklist", "UserTypeIDs", "RoleIDs",
     "Store", "StoreTable",
     "MenuCategory", "MenuItem", "InventoryCategory", "InventoryItem", "InventoryMovement", "MovementType",
-    "CartItem", "Order", "OrderItem", "OrderStatusHistory", "Payment", "OrderType", "OrderStatus",
+    "CartItem", "Order", "OrderItem", "OrderStatusHistory", "Payment", "CheckoutToken", "OrderType", "OrderStatus",
     "LoyaltyAccount", "LoyaltyTransaction", "LoyaltyTier",
     "Reward", "UserReward", "RewardType",
     "Voucher", "UserVoucher", "DiscountType",

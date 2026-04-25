@@ -13,6 +13,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.store import Store
+    from app.models.voucher import Voucher
 
 
 class PromoBanner(Base):
@@ -36,10 +37,10 @@ class PromoBanner(Base):
     action_type: Mapped[Optional[str]] = mapped_column(String(20), default="detail", nullable=True)
     terms: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     how_to_redeem: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    voucher_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vouchers.id"), nullable=True)
-    survey_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("surveys.id"), nullable=True)
+    voucher_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vouchers.id", ondelete="SET NULL"), nullable=True)
+    survey_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("surveys.id", ondelete="SET NULL"), nullable=True)
     position: Mapped[int] = mapped_column(Integer, default=0)
-    store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id"), nullable=True)
+    store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id", ondelete="SET NULL"), nullable=True)
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -47,3 +48,4 @@ class PromoBanner(Base):
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     store: Mapped[Optional["Store"]] = relationship("Store")
+    voucher: Mapped[Optional["Voucher"]] = relationship("Voucher", foreign_keys=[voucher_id])

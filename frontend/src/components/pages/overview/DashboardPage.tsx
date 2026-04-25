@@ -141,7 +141,7 @@ function generateChartData(
   return result;
 }
 
-export default function DashboardPage({ dashboard, loading, selectedStore, stores, onStoreChange, onDateChange, fromDate, toDate, chartMode }: DashboardPageProps) {
+export default function DashboardPage({ dashboard, loading, selectedStore, stores, onStoreChange, onDateChange, fromDate, toDate, chartMode: _chartMode }: DashboardPageProps) {
   const [preset, setPreset] = useState<DatePreset>('MTD');
 
   // Generate chart data based on preset
@@ -150,15 +150,6 @@ export default function DashboardPage({ dashboard, loading, selectedStore, store
     // Use the monthly data from API which now includes proper historical data based on chart_mode
     return generateChartData(preset, dashboard.monthly);
   }, [preset, dashboard]);
-
-  // Format date range for display
-  const dateRangeLabel = useMemo(() => {
-    if (!fromDate || !toDate) return '';
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    const days = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    return `${from.toLocaleDateString()} - ${to.toLocaleDateString()} (${days} days)`;
-  }, [fromDate, toDate]);
 
   // Early returns after all hooks
   if (loading) return null;

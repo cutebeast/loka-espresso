@@ -177,6 +177,15 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
             raise HTTPException(status_code=429, detail=f"Please wait {remaining}s before requesting another code")
 
     code = f"{random.randint(0, 999999):06d}"
+
+    # Send via Twilio if configured
+    from app.services.sms import get_sms_service
+    sms = get_sms_service()
+    sms_result = sms.send_otp(req.phone, code)
+    provider = "twilio" if sms_result["sent"] else "stub"
+    delivery_status = "sent" if sms_result["sent"] else "queued"
+    twilio_sid = sms_result.get("sid")
+
     otp = OTPSession(
         phone=req.phone,
         session_token=uuid.uuid4().hex,
@@ -185,8 +194,8 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
         verify_attempts=0,
         resend_available_at=now + timedelta(seconds=OTP_RESEND_SECONDS),
         expires_at=now + timedelta(seconds=OTP_TTL_SECONDS),
-        provider="stub",
-        delivery_status="queued",
+        provider=provider,
+        delivery_status=delivery_status,
     )
     db.add(otp)
     await db.flush()

@@ -10,6 +10,7 @@ interface HubLayoutProps {
   onNavigate: (id: PageId) => void;
   header?: ReactNode;
   className?: string;
+  isGuest?: boolean;
 }
 
 export function HubLayout({
@@ -18,6 +19,7 @@ export function HubLayout({
   onNavigate,
   header,
   className = '',
+  isGuest,
 }: HubLayoutProps) {
   return (
     <div className={`flex flex-col h-full bg-bg ${className}`}>
@@ -30,7 +32,7 @@ export function HubLayout({
       </main>
 
       <div className="shrink-0 safe-area-bottom">
-        <BottomNav page={page} onNavigate={onNavigate} />
+        <BottomNav page={page} onNavigate={onNavigate} isGuest={isGuest} />
       </div>
     </div>
   );

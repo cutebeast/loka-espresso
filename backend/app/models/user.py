@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, Text, Integer, ForeignKey, DECIMAL
+from sqlalchemy import String, Boolean, DateTime, Text, Integer, ForeignKey, DECIMAL, Index
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.acl import UserType, Role, UserStoreAccess
+    from app.models.user import User
 
 
 # Convenience constants for user_type_id and role_id lookups
@@ -38,12 +39,14 @@ class User(Base):
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # ACL system: FK to lookup tables
-    user_type_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_types.id"), nullable=False, default=4)
-    role_id: Mapped[int] = mapped_column(Integer, ForeignKey("roles.id"), nullable=False, default=6)
+    user_type_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_types.id", ondelete="CASCADE"), nullable=False, default=4)
+    role_id: Mapped[int] = mapped_column(Integer, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False, default=6)
 
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     referral_code: Mapped[Optional[str]] = mapped_column(String(50), unique=True, nullable=True)
-    referred_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    referred_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    referral_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    referral_earnings: Mapped[float] = mapped_column(DECIMAL(10, 2), default=0.00, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -61,13 +64,17 @@ class UserAddress(Base):
     __tablename__ = "user_addresses"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     label: Mapped[str] = mapped_column(String(100), nullable=False)
     address: Mapped[str] = mapped_column(Text, nullable=False)
     lat: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 7), nullable=True)
     lng: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 7), nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_address_user_default", "user_id", "is_default"),
+    )
 
     user: Mapped[User] = relationship("User", back_populates="addresses")
 
@@ -95,7 +102,7 @@ class DeviceToken(Base):
     __tablename__ = "device_tokens"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     token: Mapped[str] = mapped_column(String(500), nullable=False)
     platform: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -110,6 +117,8 @@ class TokenBlacklist(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     jti: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user: Mapped[Optional["User"]] = relationship("User", foreign_keys=[user_id])

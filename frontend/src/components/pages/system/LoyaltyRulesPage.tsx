@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import type { MerchantLoyaltyTier } from '@/lib/merchant-types';
-import { Modal, DataTable, type ColumnDef, Input } from '@/components/ui';
+import { Modal, DataTable, Input } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 
 interface LoyaltyRulesPageProps {
@@ -105,7 +105,7 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
                   style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: `1px solid ${THEME.accentLight}`, textAlign: 'center', fontSize: 13 }}
                   onChange={async (e) => {
                     const val = parseInt(e.target.value) || 0;
-                    await apiFetch(`/admin/loyalty-tiers/${t.id}`, token, {
+                    await apiFetch(`/admin/loyalty-tiers/${t.id}`, undefined, {
                       method: 'PUT',
                       body: JSON.stringify({ sort_order: val }),
                     });
@@ -119,7 +119,7 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
                   <button className="btn btn-sm" onClick={() => setEditingTier(t)}><i className="fas fa-edit"></i> Edit</button>
                   <button className="btn btn-sm" style={{ color: '#EF4444' }} onClick={async () => {
                     if (confirm(`Delete tier "${t.name}"? This cannot be undone.`)) {
-                      await apiFetch(`/admin/loyalty-tiers/${t.id}`, token, { method: 'DELETE' });
+                      await apiFetch(`/admin/loyalty-tiers/${t.id}`, undefined, { method: 'DELETE' });
                       onRefresh();
                     }
                   }}><i className="fas fa-trash"></i></button>
@@ -141,7 +141,7 @@ interface TierFormProps {
   title?: string;
 }
 
-function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
+function TierForm({ token: _token, onClose, existingTier, title }: TierFormProps) {
   const isEdit = !!existingTier;
   const b = existingTier?.benefits as Record<string, any> | null;
 
@@ -182,7 +182,7 @@ function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
         : '/admin/loyalty-tiers';
       const method = isEdit ? 'PUT' : 'POST';
 
-      const res = await apiFetch(url, token, {
+      const res = await apiFetch(url, undefined, {
         method,
         body: JSON.stringify(payload),
       });
@@ -236,7 +236,7 @@ function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <Input label="Birthday Reward" value={birthdayReward} onChange={e => setBirthdayReward(e.target.value)} placeholder="e.g. Free drink" />
-            <div style={hintStyle}>Special reward on customer's birthday</div>
+            <div style={hintStyle}>Special reward on customer&apos;s birthday</div>
           </div>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingTop: 6 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
@@ -261,5 +261,4 @@ function TierForm({ token, onClose, existingTier, title }: TierFormProps) {
   );
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.primary };
 const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.success, marginTop: 2 };

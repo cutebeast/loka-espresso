@@ -4,24 +4,24 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WifiOff, Wifi } from 'lucide-react';
 
+function getInitialOnline() {
+  if (typeof navigator === 'undefined') return true;
+  return navigator.onLine;
+}
+
 export default function OfflineBanner() {
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [showBanner, setShowBanner] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState<boolean>(getInitialOnline);
+  const [showBanner, setShowBanner] = useState<boolean>(() => !getInitialOnline());
 
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      // Keep banner visible briefly then hide
       setTimeout(() => setShowBanner(false), 2000);
     };
     const handleOffline = () => {
       setIsOnline(false);
       setShowBanner(true);
     };
-
-    // Set initial state
-    setIsOnline(navigator.onLine);
-    setShowBanner(!navigator.onLine);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -40,21 +40,11 @@ export default function OfflineBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -40, opacity: 0 }}
           transition={{ duration: 0.3 }}
+          className="fixed inset-x-0 top-0 flex items-center justify-center gap-2 py-2.5 px-4 text-white font-semibold"
           style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
             zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            padding: '10px 16px',
-            background: isOnline ? '#059669' : '#B91C1C',
-            color: '#FFFFFF',
             fontSize: 13,
-            fontWeight: 600,
+            background: isOnline ? '#059669' : '#B91C1C',
           }}
           role="status"
           aria-live="polite"

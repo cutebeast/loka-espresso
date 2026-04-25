@@ -18,8 +18,6 @@ class StoreOut(BaseModel):
     pos_integration_enabled: bool = False
     delivery_integration_enabled: bool = False
     is_active: bool = True
-    pos_integration_enabled: bool = False
-    delivery_integration_enabled: bool = False
 
     class Config:
         from_attributes = True

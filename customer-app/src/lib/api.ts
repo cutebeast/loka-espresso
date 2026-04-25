@@ -101,6 +101,7 @@ export interface InformationCard {
   gallery_urls?: string[] | null;
   action_url?: string | null;
   action_type?: string | null;
+  action_label?: string | null;
 }
 
 export interface CustomizationOption {
@@ -113,7 +114,6 @@ export interface CustomizationOption {
 
 export interface MenuItem {
   id: number;
-  store_id: number;
   category_id: number;
   name: string;
   description: string;
@@ -217,11 +217,18 @@ export interface Order {
    delivery_dispatched_at?: string;
    delivery_dispatched_by?: number;
    staff_notes?: string;
+  status_timeline?: Array<{
+    status: string;
+    timestamp: string;
+    note?: string;
+  }>;
+  /** @deprecated Use status_timeline */
   timeline?: Array<{
     status: string;
     timestamp: string;
     note?: string;
   }>;
+  loyalty_discount?: number;
 }
 
 export interface CartItem {
@@ -231,6 +238,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   customizations?: Record<string, unknown>;
+  customization_option_ids?: number[];
   image_url?: string;
 }
 

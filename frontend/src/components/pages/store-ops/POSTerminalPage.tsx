@@ -50,7 +50,7 @@ interface POSTerminalPageProps {
   token: string;
 }
 
-export default function POSTerminalPage({ token }: POSTerminalPageProps) {
+export default function POSTerminalPage({ token: _token }: POSTerminalPageProps) {
   const [phone, setPhone] = useState('');
   const [searching, setSearching] = useState(false);
   const [customer, setCustomer] = useState<CustomerResult | null>(null);
@@ -76,7 +76,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
     setResult(null);
     setScannedItem(null);
     try {
-      const res = await apiFetch(`/admin/customers?search=${encodeURIComponent(phone.trim())}&page=1&page_size=10`, token);
+      const res = await apiFetch(`/admin/customers?search=${encodeURIComponent(phone.trim())}&page=1&page_size=10`);
       if (!res.ok) { setResult({ success: false, message: 'Search failed' }); return; }
       const data = await res.json();
       const items = data.customers || data.items || [];
@@ -97,10 +97,10 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
     }
   }
 
-  async function fetchWallet(customerId: number) {
+  const fetchWallet = useCallback(async (customerId: number) => {
     setLoadingWallet(true);
     try {
-      const res = await apiFetch(`/admin/customers/${customerId}/wallet`, token);
+      const res = await apiFetch(`/admin/customers/${customerId}/wallet`);
       if (res.ok) {
         setWallet(await res.json());
       }
@@ -109,14 +109,14 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
     } finally {
       setLoadingWallet(false);
     }
-  }
+  }, []);
 
-  async function useReward(rewardId: number) {
+  async function applyReward(rewardId: number) {
     if (!customer) return;
     setProcessingId(`reward-${rewardId}`);
     setResult(null);
     try {
-      const res = await apiFetch(`/admin/customers/${customer.id}/use-reward/${rewardId}`, token, {
+      const res = await apiFetch(`/admin/customers/${customer.id}/use-reward/${rewardId}`, undefined, {
         method: 'POST',
         body: JSON.stringify({ store_id: null, notes: 'Used in-store via POS Terminal' }),
       });
@@ -134,12 +134,12 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
     }
   }
 
-  async function useVoucher(voucherId: number) {
+  async function applyVoucher(voucherId: number) {
     if (!customer) return;
     setProcessingId(`voucher-${voucherId}`);
     setResult(null);
     try {
-      const res = await apiFetch(`/admin/customers/${customer.id}/use-voucher/${voucherId}`, token, {
+      const res = await apiFetch(`/admin/customers/${customer.id}/use-voucher/${voucherId}`, undefined, {
         method: 'POST',
         body: JSON.stringify({ store_id: null, notes: 'Used in-store via POS Terminal' }),
       });
@@ -159,6 +159,82 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
 
   // ── QR Scanner ───────────────────────────────────────────────────────────
 
+  const stopScanner = useCallback(async () => {
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+    } catch {
+      // Ignore
+    }
+    setScanning(false);
+  }, []);
+
+  const validateScannedCode = useCallback(async (code: string) => {
+    setConfirmingScan(true);
+    setResult(null);
+    try {
+      let res = await apiFetch(`/scan/reward/${encodeURIComponent(code)}`, undefined, {
+        method: 'POST',
+        body: JSON.stringify({ store_id: null }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScannedItem({
+          type: 'reward',
+          code,
+          name: data.reward_name || 'Unknown Reward',
+          customer_id: data.customer_id,
+          detail: data,
+        });
+        if (data.customer_id) {
+          const cRes = await apiFetch(`/admin/customers/${data.customer_id}`);
+          if (cRes.ok) {
+            const c = await cRes.json();
+            setCustomer({ id: c.id, name: c.name, phone: c.phone });
+            await fetchWallet(c.id);
+          }
+        }
+        setConfirmingScan(false);
+        return;
+      }
+
+      res = await apiFetch(`/scan/voucher/${encodeURIComponent(code)}`, undefined, {
+        method: 'POST',
+        body: JSON.stringify({ store_id: null }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScannedItem({
+          type: 'voucher',
+          code,
+          name: data.reward_name || code,
+          customer_id: data.customer_id,
+          detail: data,
+        });
+        if (data.customer_id) {
+          const cRes = await apiFetch(`/admin/customers/${data.customer_id}`);
+          if (cRes.ok) {
+            const c = await cRes.json();
+            setCustomer({ id: c.id, name: c.name, phone: c.phone });
+            await fetchWallet(c.id);
+          }
+        }
+        setConfirmingScan(false);
+        return;
+      }
+
+      const errData = await res.json().catch(() => ({}));
+      setResult({ success: false, message: errData.detail || 'Code not found or already used' });
+      setConfirmingScan(false);
+    } catch {
+      setResult({ success: false, message: 'Network error validating code' });
+      setConfirmingScan(false);
+    }
+  }, [fetchWallet]);
+
   const startScanner = useCallback(async () => {
     setScanning(true);
     setScanError('');
@@ -176,105 +252,23 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (decodedText: string) => {
-          // Stop scanning on first successful scan
           await stopScanner();
           await validateScannedCode(decodedText.trim());
         },
         () => {
-          // Ignore scan errors (keeps trying)
         }
       );
     } catch (err: any) {
       setScanError(err.message || 'Unable to start camera. Please check permissions.');
       setScanning(false);
     }
-  }, []);
-
-  const stopScanner = useCallback(async () => {
-    try {
-      if (scannerRef.current) {
-        await scannerRef.current.stop();
-        await scannerRef.current.clear();
-        scannerRef.current = null;
-      }
-    } catch {
-      // Ignore
-    }
-    setScanning(false);
-  }, []);
+  }, [stopScanner, validateScannedCode]);
 
   useEffect(() => {
     return () => {
       stopScanner();
     };
   }, [stopScanner]);
-
-  async function validateScannedCode(code: string) {
-    setConfirmingScan(true);
-    setResult(null);
-    try {
-      // Try reward first
-      let res = await apiFetch(`/scan/reward/${encodeURIComponent(code)}`, token, {
-        method: 'POST',
-        body: JSON.stringify({ store_id: null }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setScannedItem({
-          type: 'reward',
-          code,
-          name: data.reward_name || 'Unknown Reward',
-          customer_id: data.customer_id,
-          detail: data,
-        });
-        // Also fetch customer's wallet to show context
-        if (data.customer_id) {
-          const cRes = await apiFetch(`/admin/customers/${data.customer_id}`, token);
-          if (cRes.ok) {
-            const c = await cRes.json();
-            setCustomer({ id: c.id, name: c.name, phone: c.phone });
-            await fetchWallet(c.id);
-          }
-        }
-        setConfirmingScan(false);
-        return;
-      }
-
-      // Try voucher
-      res = await apiFetch(`/scan/voucher/${encodeURIComponent(code)}`, token, {
-        method: 'POST',
-        body: JSON.stringify({ store_id: null }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setScannedItem({
-          type: 'voucher',
-          code,
-          name: data.reward_name || code,
-          customer_id: data.customer_id,
-          detail: data,
-        });
-        if (data.customer_id) {
-          const cRes = await apiFetch(`/admin/customers/${data.customer_id}`, token);
-          if (cRes.ok) {
-            const c = await cRes.json();
-            setCustomer({ id: c.id, name: c.name, phone: c.phone });
-            await fetchWallet(c.id);
-          }
-        }
-        setConfirmingScan(false);
-        return;
-      }
-
-      // Both failed
-      const errData = await res.json().catch(() => ({}));
-      setResult({ success: false, message: errData.detail || 'Code not found or already used' });
-      setConfirmingScan(false);
-    } catch {
-      setResult({ success: false, message: 'Network error validating code' });
-      setConfirmingScan(false);
-    }
-  }
 
   async function confirmScannedUse() {
     if (!scannedItem) return;
@@ -283,7 +277,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
       const endpoint = scannedItem.type === 'reward'
         ? `/scan/reward/${encodeURIComponent(scannedItem.code)}`
         : `/scan/voucher/${encodeURIComponent(scannedItem.code)}`;
-      const res = await apiFetch(endpoint, token, {
+      const res = await apiFetch(endpoint, undefined, {
         method: 'POST',
         body: JSON.stringify({ store_id: null }),
       });
@@ -330,23 +324,25 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
               style={{ width: '100%' }}
             />
           </div>
-          <button type="submit" className="btn btn-primary" disabled={searching} style={{ minHeight: 44, padding: '10px 20px' }}>
-            {searching ? 'Searching...' : 'Search'}
-          </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={startScanner}
-            disabled={scanning}
-            style={{ minHeight: 44, padding: '10px 20px', background: '#384B16', color: 'white' }}
-          >
-            <i className="fas fa-camera" style={{ marginRight: 6 }}></i>
-            {scanning ? 'Opening...' : 'Scan QR'}
-          </button>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button type="submit" className="btn btn-primary" disabled={searching} style={{ minHeight: 44, padding: '10px 20px' }}>
+              {searching ? 'Searching...' : 'Search'}
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={startScanner}
+              disabled={scanning}
+              style={{ minHeight: 44, padding: '10px 20px', background: '#384B16', color: 'white' }}
+            >
+              <i className="fas fa-camera" style={{ marginRight: 6 }}></i>
+              {scanning ? 'Opening...' : 'Scan QR'}
+            </button>
+          </div>
         </form>
 
         {customer && (
-          <div style={{ marginTop: 16, padding: '14px 16px', background: THEME.bgMuted, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ marginTop: 16, padding: '14px 16px', background: THEME.bgMuted, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }} className="pos-customer-card">
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: THEME.textPrimary }}>{customer.name || 'Unnamed'}</div>
               <div style={{ fontSize: 13, color: THEME.textMuted }}>{customer.phone}</div>
@@ -402,7 +398,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
       {/* Scanned Item Confirmation */}
       {scannedItem && (
         <div className="card" style={{ marginBottom: 20, background: '#F0FDF4', border: '2px solid #16A34A' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
             <i className="fas fa-check-circle" style={{ fontSize: 28, color: '#16A34A' }}></i>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#166534' }}>
@@ -411,7 +407,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
               <div style={{ fontSize: 14, color: '#166534' }}>{scannedItem.name}</div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }} className="pos-scan-actions">
             <button
               className="btn btn-primary"
               onClick={confirmScannedUse}
@@ -452,7 +448,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {wallet.rewards.map(r => (
-                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: THEME.bgMuted, borderRadius: 10, border: `1px solid ${THEME.border}` }}>
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: THEME.bgMuted, borderRadius: 10, border: `1px solid ${THEME.border}`, flexWrap: 'wrap', gap: 10 }} className="pos-wallet-item">
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textPrimary }}>{r.name}</div>
                       <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 2 }}>
@@ -464,7 +460,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
                     <button
                       className="btn btn-primary btn-sm"
                       disabled={processingId === `reward-${r.id}`}
-                      onClick={() => useReward(r.id)}
+                      onClick={() => applyReward(r.id)}
                       style={{ minHeight: 40, padding: '8px 16px' }}
                     >
                       {processingId === `reward-${r.id}` ? 'Applying...' : 'Use Reward'}
@@ -486,7 +482,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {wallet.vouchers.map(v => (
-                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: THEME.bgMuted, borderRadius: 10, border: `1px solid ${THEME.border}` }}>
+                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: THEME.bgMuted, borderRadius: 10, border: `1px solid ${THEME.border}`, flexWrap: 'wrap', gap: 10 }} className="pos-wallet-item">
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textPrimary }}>{v.title}</div>
                       <div style={{ fontSize: 12, color: THEME.textMuted, marginTop: 2 }}>
@@ -499,7 +495,7 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
                     <button
                       className="btn btn-primary btn-sm"
                       disabled={processingId === `voucher-${v.id}`}
-                      onClick={() => useVoucher(v.id)}
+                      onClick={() => applyVoucher(v.id)}
                       style={{ minHeight: 40, padding: '8px 16px' }}
                     >
                       {processingId === `voucher-${v.id}` ? 'Applying...' : 'Use Voucher'}
@@ -546,4 +542,42 @@ export default function POSTerminalPage({ token }: POSTerminalPageProps) {
       </div>
     </div>
   );
+}
+
+/* Mobile responsive styles */
+const posTerminalMobileStyles = `
+@media (max-width: 767px) {
+  .pos-customer-card {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  .pos-customer-card > div:last-child {
+    text-align: left !important;
+    width: 100%;
+  }
+  .pos-scan-actions {
+    flex-direction: column;
+  }
+  .pos-scan-actions button {
+    width: 100%;
+  }
+  .pos-wallet-item {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  .pos-wallet-item button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+`;
+
+if (typeof document !== 'undefined') {
+  const styleId = 'pos-terminal-mobile-styles';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = posTerminalMobileStyles;
+    document.head.appendChild(style);
+  }
 }

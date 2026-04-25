@@ -31,6 +31,7 @@ interface WalletState {
   setTransactions: (transactions: Transaction[]) => void;
   setIsLoading: (isLoading: boolean) => void;
   refreshWallet: () => Promise<void>;
+  resetAll: () => void;
 }
 
 export const useWalletStore = create<WalletState>((set, get) => ({
@@ -82,4 +83,12 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       set({ isLoading: false });
     }
   },
+  resetAll: () => set({
+    balance: 0,
+    points: 0,
+    tier: 'Bronze',
+    rewards: [],
+    vouchers: [],
+    transactions: [],
+  }),
 }));

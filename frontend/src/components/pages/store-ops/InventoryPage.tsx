@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { apiFetch, apiUpload } from '@/lib/merchant-api';
-import { StoreSelector, Select, FilterSelect, DateFilter, Pagination } from '@/components/ui';
+import { StoreSelector, Select } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import type { MerchantInventoryItem, MerchantInventoryCategory, MerchantStore } from '@/lib/merchant-types';
 import InventoryLedgerPage from '@/components/pages/store-ops/InventoryLedgerPage';
@@ -32,7 +32,7 @@ const MOVEMENT_TYPES = [
 const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4, color: THEME.textPrimary };
 const hintStyle: React.CSSProperties = { fontSize: 11, color: THEME.textMuted, marginTop: 2 };
 
-export default function InventoryPage({ inventory, selectedStore, storeObj, token, onRefresh, userRole, userType, stores, onStoreChange }: InventoryPageProps) {
+export default function InventoryPage({ inventory, selectedStore, storeObj: _storeObj, token, onRefresh, userRole: _userRole, userType, stores, onStoreChange }: InventoryPageProps) {
   const isHQ = userType === 1;
 
   const [categories, setCategories] = useState<MerchantInventoryCategory[]>([]);
@@ -72,7 +72,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
   // Fetch categories
   useEffect(() => {
     if (selectedStore === 'all') return;
-    apiFetch(`/stores/${selectedStore}/inventory-categories`, token)
+    apiFetch(`/stores/${selectedStore}/inventory-categories`)
       .then(r => r.ok ? r.json() : [])
       .then(data => {
         const cats = Array.isArray(data) ? data : [];
@@ -94,8 +94,8 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
     const slug = catName.toLowerCase().replace(/\s+/g, '-');
     try {
       const res = editingCat
-        ? await apiFetch(`/stores/${selectedStore}/inventory-categories/${editingCat.id}`, token, { method: 'PUT', body: JSON.stringify({ name: catName, slug, display_order: editingCat.display_order }) })
-        : await apiFetch(`/stores/${selectedStore}/inventory-categories`, token, { method: 'POST', body: JSON.stringify({ name: catName, slug, display_order: 0 }) });
+        ? await apiFetch(`/stores/${selectedStore}/inventory-categories/${editingCat.id}`, undefined, { method: 'PUT', body: JSON.stringify({ name: catName, slug, display_order: editingCat.display_order }) })
+        : await apiFetch(`/stores/${selectedStore}/inventory-categories`, undefined, { method: 'POST', body: JSON.stringify({ name: catName, slug, display_order: 0 }) });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setCatError(d.detail || 'Failed'); return; }
       closeCatForm();
       onRefresh();
@@ -132,8 +132,8 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
     };
     try {
       const res = editingItem
-        ? await apiFetch(`/stores/${selectedStore}/inventory/${editingItem.id}`, token, { method: 'PUT', body: JSON.stringify(payload) })
-        : await apiFetch(`/stores/${selectedStore}/inventory`, token, { method: 'POST', body: JSON.stringify(payload) });
+        ? await apiFetch(`/stores/${selectedStore}/inventory/${editingItem.id}`, undefined, { method: 'PUT', body: JSON.stringify(payload) })
+        : await apiFetch(`/stores/${selectedStore}/inventory`, undefined, { method: 'POST', body: JSON.stringify(payload) });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || `Failed (${res.status})`); return; }
       closeForm(); onRefresh();
     } catch (err: any) { setError(err.message || 'Network error'); } finally { setSaving(false); }
@@ -142,7 +142,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
   async function handleToggle(item: MerchantInventoryItem) {
     setError('');
     try {
-      const res = await apiFetch(`/stores/${selectedStore}/inventory/${item.id}/toggle`, token, { method: 'PATCH' });
+      const res = await apiFetch(`/stores/${selectedStore}/inventory/${item.id}/toggle`, undefined, { method: 'PATCH' });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || 'Toggle failed'); return; }
       onRefresh();
     } catch (err: any) { setError(err.message || 'Network error'); }
@@ -150,7 +150,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
 
   async function handleDelete(id: number) {
     try {
-      const res = await apiFetch(`/stores/${selectedStore}/inventory/${id}`, token, { method: 'DELETE' });
+      const res = await apiFetch(`/stores/${selectedStore}/inventory/${id}`, undefined, { method: 'DELETE' });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || 'Delete failed'); return; }
       setConfirmDelete(null); onRefresh();
     } catch { setError('Network error'); }
@@ -165,12 +165,12 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
       try {
         const formData = new FormData();
         formData.append('file', adjFile);
-        const upRes = await apiUpload('/upload/document', token, formData);
+        const upRes = await apiUpload('/upload/document', formData);
         if (upRes.ok) { const d = await upRes.json(); attachmentPath = d.url; }
       } catch {}
     }
     try {
-      const res = await apiFetch(`/stores/${selectedStore}/inventory/${adjustingItem.id}/adjust`, token, {
+      const res = await apiFetch(`/stores/${selectedStore}/inventory/${adjustingItem.id}/adjust`, undefined, {
         method: 'POST',
         body: JSON.stringify({ movement_type: adjType, quantity: parseFloat(adjQty), note: adjNote, attachment_path: attachmentPath }),
       });
@@ -183,7 +183,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <StoreSelector
             stores={physicalStores}
@@ -194,9 +194,9 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
           />
         </div>
         {selectedStore !== 'all' && isHQ && activeTab === 'stock' && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn" onClick={openCreateCat}><i className="fas fa-folder-plus"></i> Add Category</button>
-            <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Ingredient</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn" onClick={openCreateCat} style={{ whiteSpace: 'nowrap' }}><i className="fas fa-folder-plus"></i> Add Category</button>
+            <button className="btn btn-primary" onClick={openCreate} style={{ whiteSpace: 'nowrap' }}><i className="fas fa-plus"></i> New Ingredient</button>
           </div>
         )}
       </div>
@@ -211,7 +211,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
       {selectedStore !== 'all' && (<>
 
       {/* Tab Navigation */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: `1px solid ${THEME.border}` }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: `1px solid ${THEME.border}`, flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('stock')}
           style={{
@@ -267,7 +267,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
       />
       ) : (
 
-      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 220px) 1fr', gap: 24 }} className="inventory-grid">
         {/* Category Sidebar */}
         <div>
           {showCatForm && isHQ && (
@@ -333,7 +333,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
                 </div>
               )}
               <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }} className="inventory-form-grid">
                   <div>
                     <label style={labelStyle}>Ingredient Name *</label>
                     <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Arabica Coffee Beans" />
@@ -354,7 +354,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
                     <div style={hintStyle}>Measurement unit</div>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }} className="inventory-form-grid-2">
                   <div>
                     <label style={labelStyle}>Reorder Level <span style={{ fontWeight: 400, color: THEME.textMuted }}>(blank = never)</span></label>
                     <input type="number" step="0.01" value={reorderLevel} onChange={e => setReorderLevel(e.target.value)} placeholder="e.g. 5" />
@@ -370,7 +370,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
                     <div style={hintStyle}>Group ingredients for filtering</div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16, flexWrap: 'wrap' }} className="inventory-form-actions">
                   <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingItem ? 'Update' : 'Create'}</button>
                   <button type="button" className="btn" onClick={closeForm}>Cancel</button>
                 </div>
@@ -392,7 +392,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
                 </div>
               )}
               <form onSubmit={handleAdjust}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }} className="inventory-form-grid">
                   <div>
                     <label style={labelStyle}>Movement Type *</label>
                     <Select
@@ -420,7 +420,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
                   <input type="file" accept="image/*,.pdf,.csv,.xlsx" onChange={e => setAdjFile(e.target.files?.[0] || null)} style={{ fontSize: 13 }} />
                   <div style={hintStyle}>Receipt, delivery note, or waste photo (max 10MB)</div>
                 </div>
-                <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap' }} className="inventory-form-actions">
                   <button type="submit" className="btn btn-primary" disabled={savingAdj}>{savingAdj ? 'Processing...' : 'Submit Adjustment'}</button>
                   <button type="button" className="btn" onClick={closeAdjust}>Cancel</button>
                 </div>
@@ -454,7 +454,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
             border: `1px solid ${THEME.border}`,
             borderTop: 'none',
           }}>
-            <table>
+            <table className="inventory-table">
               <thead>
                 <tr><th>Ingredient</th><th>Category</th><th>Balance</th><th>Unit</th><th>Reorder Level</th><th>Status</th><th>Actions</th></tr>
               </thead>
@@ -478,7 +478,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
                       <td>{item.reorder_level}</td>
                       <td><span className={`badge ${!item.is_active ? 'badge-gray' : isLow ? 'badge-yellow' : 'badge-green'}`}>{!item.is_active ? 'Inactive' : isLow ? 'Low' : 'OK'}</span></td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} className="inventory-actions">
                           <button className="btn btn-sm" onClick={() => openAdjust(item)} title="Adjust qty"><i className="fas fa-right-left"></i></button>
                           {isHQ && (
                             <>
@@ -510,4 +510,46 @@ export default function InventoryPage({ inventory, selectedStore, storeObj, toke
     </>)}
     </div>
   );
+}
+
+/* Mobile responsive styles */
+const inventoryMobileStyles = `
+@media (max-width: 767px) {
+  .inventory-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .inventory-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .inventory-form-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .inventory-form-actions {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  .inventory-form-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+  .inventory-actions {
+    justify-content: flex-start;
+  }
+  .inventory-table th:nth-child(2),
+  .inventory-table td:nth-child(2),
+  .inventory-table th:nth-child(5),
+  .inventory-table td:nth-child(5) {
+    display: none;
+  }
+}
+`;
+
+if (typeof document !== 'undefined') {
+  const styleId = 'inventory-mobile-styles';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = inventoryMobileStyles;
+    document.head.appendChild(style);
+  }
 }

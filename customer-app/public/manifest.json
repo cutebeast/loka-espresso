@@ -2,11 +2,10 @@
   "name": "Loka Espresso",
   "short_name": "Loka",
   "description": "Artisan Coffee \u00b7 Community \u00b7 Culture",
-  "version": "1.0.1776989803",
-  "build_date": "2026-04-24T00:16:43.000Z",
-  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay"],
   "background_color": "#FCFAF7",
   "theme_color": "#384B16",
   "orientation": "portrait",
@@ -45,7 +44,7 @@
     {
       "name": "Menu",
       "short_name": "Menu",
-      "url": "/?page=menu",
+      "url": "/#menu",
       "icons": [
         {
           "src": "/icon-192.png",
@@ -56,7 +55,7 @@
     {
       "name": "My Orders",
       "short_name": "Orders",
-      "url": "/?page=orders",
+      "url": "/#orders",
       "icons": [
         {
           "src": "/icon-192.png",
@@ -67,13 +66,22 @@
     {
       "name": "Rewards",
       "short_name": "Rewards",
-      "url": "/?page=rewards",
+      "url": "/#rewards",
       "icons": [
         {
           "src": "/icon-192.png",
           "sizes": "192x192"
         }
       ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Loka Espresso"
     }
   ]
 }

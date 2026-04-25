@@ -5,7 +5,6 @@ from datetime import datetime
 
 class MenuCategoryOut(BaseModel):
     id: int
-    store_id: int
     name: str
     slug: Optional[str] = None
     display_order: int = 0
@@ -23,7 +22,6 @@ class CategoryCreate(BaseModel):
 
 class MenuItemOut(BaseModel):
     id: int
-    store_id: int
     category_id: int
     name: str
     description: Optional[str] = None

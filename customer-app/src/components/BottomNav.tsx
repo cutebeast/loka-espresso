@@ -3,12 +3,17 @@
 import { Home, Coffee, Crown, Clock, User } from 'lucide-react';
 import type { PageId } from '@/lib/api';
 
-const navItems: { id: PageId; label: string; icon: typeof Home }[] = [
+const allNavItems: { id: PageId; label: string; icon: typeof Home }[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'menu', label: 'Menu', icon: Coffee },
   { id: 'rewards', label: 'Rewards', icon: Crown },
   { id: 'orders', label: 'Orders', icon: Clock },
   { id: 'profile', label: 'Profile', icon: User },
+];
+
+const guestNavItems: { id: PageId; label: string; icon: typeof Home }[] = [
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'menu', label: 'Menu', icon: Coffee },
 ];
 
 function getActiveNavId(page: PageId): PageId {
@@ -24,10 +29,12 @@ function getActiveNavId(page: PageId): PageId {
 interface BottomNavProps {
   page: PageId;
   onNavigate: (id: PageId) => void;
+  isGuest?: boolean;
 }
 
-export default function BottomNav({ page, onNavigate }: BottomNavProps) {
+export default function BottomNav({ page, onNavigate, isGuest }: BottomNavProps) {
   const activeNavId = getActiveNavId(page);
+  const navItems = isGuest ? guestNavItems : allNavItems;
 
   return (
     <nav className="bottom-nav">

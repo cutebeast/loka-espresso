@@ -73,16 +73,21 @@ Unlike promo_banners, these have no voucher/survey action.
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
 | title | varchar(255) | NO | | Card headline |
+| slug | varchar(255) | YES | | URL-friendly slug for deep-linking |
 | short_description | varchar(500) | YES | | Card preview text (PWA listing) |
 | long_description | text | YES | | Full content (detail view) |
 | icon | varchar(50) | YES | | Lucide icon name (e.g., "coffee", "info") |
 | image_url | varchar(500) | YES | | Card thumbnail image |
+| gallery_urls | json | YES | | Product gallery image URLs |
 | store_id | integer | YES | | FK→stores.id (null=all stores) |
 | start_date | timestamptz | YES | | Visibility start |
 | end_date | timestamptz | YES | | Visibility end |
 | is_active | boolean | NO | true | |
 | position | integer | YES | 0 | Display order |
-| content_type | varchar(20) | NO | 'promotion' | `promotion` (PWA display) or `system` (T&C, Privacy) |
+| content_type | varchar(20) | NO | 'information' | `information`, `promotion`, `system` (T&C, Privacy) |
+| action_url | varchar(500) | YES | | CTA target URL |
+| action_type | varchar(20) | YES | | CTA behavior type |
+| action_label | varchar(100) | YES | | CTA button label |
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 

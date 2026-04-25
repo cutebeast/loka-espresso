@@ -1,3 +1,4 @@
+import hashlib
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -13,6 +14,14 @@ from app.models.store import Store
 from app.schemas.cart import CartItemCreate, CartItemUpdate, CartItemOut, CartOut
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
+
+
+def _hash_option_ids(option_ids: list[int] | None) -> str | None:
+    """Deterministic hash of sorted customization option IDs."""
+    if not option_ids:
+        return None
+    sorted_ids = sorted(int(o) for o in option_ids)
+    return hashlib.sha256(",".join(str(i) for i in sorted_ids).encode()).hexdigest()
 
 
 async def _validate_customization_options(
@@ -63,20 +72,36 @@ async def get_cart(user: User = Depends(get_current_user), db: AsyncSession = De
     else:
         menu_item_map = {}
 
+    all_option_ids = []
+    for ci in items:
+        if ci.customization_option_ids:
+            all_option_ids.extend(ci.customization_option_ids)
+
+    custom_options_map = {}
+    if all_option_ids:
+        opts_result = await db.execute(
+            select(CustomizationOption).where(CustomizationOption.id.in_(all_option_ids))
+        )
+        for opt in opts_result.scalars().all():
+            custom_options_map[opt.id] = {"id": opt.id, "name": opt.name, "price_adjustment": to_float(opt.price_adjustment)}
+
     subtotal = 0.0
     cart_items = []
     for ci in items:
         name = menu_item_map.get(ci.item_id, "Unknown")
         base = to_float(ci.unit_price)
+        resolved_customizations = None
         custom_total = 0.0
-        if ci.customizations and isinstance(ci.customizations, dict):
-            for opt in ci.customizations.get("options", []):
+        if ci.customization_option_ids:
+            resolved_options = [custom_options_map[oid] for oid in ci.customization_option_ids if oid in custom_options_map]
+            for opt in resolved_options:
                 custom_total += opt.get("price_adjustment", 0)
+            resolved_customizations = {"options": resolved_options}
         subtotal += (base + custom_total) * ci.quantity
         cart_items.append(CartItemOut(
             id=ci.id, user_id=ci.user_id, store_id=ci.store_id,
             item_id=ci.item_id, quantity=ci.quantity,
-            customizations=ci.customizations,
+            customizations=resolved_customizations,
             customization_option_ids=ci.customization_option_ids,
             unit_price=to_float(ci.unit_price),
             item_name=name, created_at=ci.created_at,
@@ -101,29 +126,26 @@ async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user
 
     # Validate and resolve customization_option_ids
     option_ids = req.customization_option_ids
-    resolved_customizations = req.customizations
     if option_ids:
-        resolved_customizations = {"options": await _validate_customization_options(option_ids, req.item_id, db)}
+        await _validate_customization_options(option_ids, req.item_id, db)
 
-    dupe = await db.execute(
-        select(CartItem).where(
-            CartItem.user_id == user.id,
-            CartItem.item_id == req.item_id,
-            CartItem.store_id == req.store_id,
-        )
+    # Find existing cart item with same item_id AND customization_hash
+    hash_val = _hash_option_ids(option_ids)
+    dupe_query = select(CartItem).where(
+        CartItem.user_id == user.id,
+        CartItem.item_id == req.item_id,
+        CartItem.store_id == req.store_id,
+        CartItem.customization_hash == hash_val,
     )
-    existing_cart = dupe.scalar_one_or_none()
+    dupe_result = await db.execute(dupe_query)
+    existing_cart = dupe_result.scalar_one_or_none()
     if existing_cart:
         existing_cart.quantity += req.quantity
-        if resolved_customizations:
-            existing_cart.customizations = resolved_customizations
-        if option_ids:
-            existing_cart.customization_option_ids = option_ids
         await db.flush()
         return CartItemOut(
             id=existing_cart.id, user_id=user.id, store_id=existing_cart.store_id,
             item_id=existing_cart.item_id, quantity=existing_cart.quantity,
-            customizations=existing_cart.customizations,
+            customizations=None,
             customization_option_ids=existing_cart.customization_option_ids,
             unit_price=to_float(existing_cart.unit_price),
             item_name=menu_item.name, created_at=existing_cart.created_at,
@@ -131,8 +153,9 @@ async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user
 
     ci = CartItem(
         user_id=user.id, store_id=req.store_id, item_id=req.item_id,
-        quantity=req.quantity, customizations=resolved_customizations,
+        quantity=req.quantity,
         customization_option_ids=option_ids,
+        customization_hash=hash_val,
         unit_price=menu_item.base_price,
     )
     db.add(ci)
@@ -140,7 +163,7 @@ async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user
     return CartItemOut(
         id=ci.id, user_id=user.id, store_id=ci.store_id,
         item_id=ci.item_id, quantity=ci.quantity,
-        customizations=ci.customizations,
+        customizations=None,
         customization_option_ids=ci.customization_option_ids,
         unit_price=to_float(ci.unit_price),
         item_name=menu_item.name, created_at=ci.created_at,
@@ -158,20 +181,16 @@ async def update_cart_item(item_id: int, req: CartItemUpdate, user: User = Depen
     if req.customization_option_ids is not None:
         option_ids = req.customization_option_ids
         if option_ids:
-            resolved = await _validate_customization_options(option_ids, ci.item_id, db)
-            ci.customizations = {"options": resolved}
-        else:
-            ci.customizations = None
-        ci.customization_option_ids = option_ids
-    elif req.customizations is not None:
-        ci.customizations = req.customizations
+            await _validate_customization_options(option_ids, ci.item_id, db)
+        ci.customization_option_ids = option_ids if option_ids else None
+        ci.customization_hash = _hash_option_ids(option_ids)
     await db.flush()
     item_result = await db.execute(select(MenuItem).where(MenuItem.id == ci.item_id))
     menu_item = item_result.scalar_one_or_none()
     return CartItemOut(
         id=ci.id, user_id=ci.user_id, store_id=ci.store_id,
         item_id=ci.item_id, quantity=ci.quantity,
-        customizations=ci.customizations,
+        customizations=None,
         customization_option_ids=ci.customization_option_ids,
         unit_price=to_float(ci.unit_price),
         item_name=menu_item.name if menu_item else "Unknown", created_at=ci.created_at,

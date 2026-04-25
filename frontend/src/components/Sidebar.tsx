@@ -111,7 +111,7 @@ interface SidebarProps {
   onToggleCollapse?: () => void;
 }
 
-export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGroups, onLogout, userType = 1, isOpen = true, collapsed = false, onToggleCollapse }: SidebarProps) {
+export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGroups, onLogout: _onLogout, userType = 1, isOpen = true, collapsed = false, onToggleCollapse }: SidebarProps) {
   const visiblePages = PAGE_VISIBILITY[userType ?? 1] || PAGE_VISIBILITY[1];
 
   function toggleGroup(label: string) {
@@ -127,7 +127,7 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
         onToggleCollapse();
       }
     }
-  }, []);
+  }, [collapsed, onToggleCollapse]);
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(collapsed));
@@ -136,7 +136,7 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: tooltipStyles }} />
-      <aside style={{
+      <aside className={`sidebar${isOpen ? ' mobile-open' : ''}`} style={{
         width: sidebarWidth,
         background: THEME.sidebar.bg,
         color: THEME.sidebar.textMuted,
@@ -148,7 +148,6 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
         overflowX: 'hidden',
         zIndex: 150,
         transition: 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease',
-        transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
       }}>
       {/* Brand Header */}
       <div style={{

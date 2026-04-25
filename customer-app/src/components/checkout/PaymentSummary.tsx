@@ -1,17 +1,7 @@
 'use client';
 
 import { Truck } from 'lucide-react';
-
-const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
-  success: '#85B085',
-  textPrimary: '#1B2023',
-  textMuted: '#6A7A8A',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  white: '#FFFFFF',
-};
+import { LOKA } from '@/lib/tokens';
 
 interface PaymentSummaryProps {
   subtotal: number;
@@ -26,38 +16,32 @@ function formatPrice(val: number | string): string {
 
 export default function PaymentSummary({ subtotal, deliveryFee, discount, total }: PaymentSummaryProps) {
   return (
-    <div style={{
-      background: LOKA.white, borderRadius: 20, padding: 16,
-      border: `1px solid ${LOKA.borderSubtle}`,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <span style={{ fontSize: 13, color: LOKA.textMuted }}>Subtotal</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: LOKA.textPrimary }}>{formatPrice(subtotal)}</span>
+    <div className="bg-white p-4 border border-border-subtle" style={{ borderRadius: 20 }}>
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="text-text-muted" style={{ fontSize: 13 }}>Subtotal</span>
+        <span className="font-semibold text-text-primary" style={{ fontSize: 13 }}>{formatPrice(subtotal)}</span>
       </div>
       
       {deliveryFee > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-1.5">
             <Truck size={14} color={LOKA.textMuted} />
-            <span style={{ fontSize: 13, color: LOKA.textMuted }}>Delivery fee</span>
+            <span className="text-text-muted" style={{ fontSize: 13 }}>Delivery fee</span>
           </div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: LOKA.textPrimary }}>{formatPrice(deliveryFee)}</span>
+          <span className="font-semibold text-text-primary" style={{ fontSize: 13 }}>{formatPrice(deliveryFee)}</span>
         </div>
       )}
       
       {discount > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 13, color: LOKA.success }}>Discount</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: LOKA.success }}>-{formatPrice(discount)}</span>
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="text-success" style={{ fontSize: 13 }}>Discount</span>
+          <span className="font-bold text-success" style={{ fontSize: 13 }}>-{formatPrice(discount)}</span>
         </div>
       )}
       
-      <div style={{ 
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginTop: 12, paddingTop: 12, borderTop: `1px solid ${LOKA.borderSubtle}`,
-      }}>
-        <span style={{ fontWeight: 800, fontSize: 16, color: LOKA.textPrimary }}>Total</span>
-        <span style={{ fontWeight: 800, fontSize: 20, color: LOKA.primary }}>{formatPrice(total)}</span>
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-border-subtle">
+        <span className="font-extrabold text-base text-text-primary">Total</span>
+        <span className="font-extrabold text-text-primary" style={{ fontSize: 20 }}>{formatPrice(total)}</span>
       </div>
     </div>
   );

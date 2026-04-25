@@ -12,7 +12,7 @@ from app.models.feedback import Feedback
 from app.models.store import Store
 from app.schemas.admin_extras import FeedbackCreate, FeedbackOut, FeedbackReply
 
-router = APIRouter()
+router = APIRouter(tags=["Admin Feedback"])
 
 
 @router.get("/admin/feedback")

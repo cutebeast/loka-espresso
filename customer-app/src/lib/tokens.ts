@@ -2,7 +2,7 @@
  * LOKA ESPRESSO — Single Source of Truth for Design Tokens
  * 
  * Import from here in every component. Do NOT define local LOKA objects.
- * For layout/spacing/radii/shadows, prefer Tailwind utilities from globals.css.
+ * For layout/spacing/radii/shadows, prefer CSS utilities from globals.css.
  * Use these tokens only for truly dynamic values (conditional colors, etc.).
  */
 
@@ -79,9 +79,23 @@ export function formatPrice(val: number | string): string {
   return `RM ${Number(val).toFixed(2)}`;
 }
 
-/** Resolve an asset path to a full URL */
+const ADMIN_BASE = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin.loyaltysystem.uk';
+const APP_BASE = process.env.NEXT_PUBLIC_APP_URL || 'https://app.loyaltysystem.uk';
+
+/** Cache-bust helper for image URLs */
+function cacheBust(url: string): string {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${Date.now()}`;
+}
+
+/** Resolve an asset path to a full URL using the admin base, with cache busting */
 export function resolveAssetUrl(path: string | null | undefined): string | null {
   if (!path) return null;
-  if (path.startsWith('http')) return path;
-  return `https://admin.loyaltysystem.uk${path}`;
+  const url = path.startsWith('http') ? path : `${ADMIN_BASE}${path}`;
+  return cacheBust(url);
+}
+
+/** Resolve the app URL for deep links */
+export function resolveAppUrl(path: string = ''): string {
+  return `${APP_BASE}${path}`;
 }

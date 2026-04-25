@@ -33,7 +33,7 @@ APIs Used by Flow Scripts:
 """
 import os
 
-API_BASE    = os.environ.get("API_BASE",    "https://admin.loyaltysystem.uk/api/v1")
+API_BASE    = os.environ.get("API_BASE",    "http://localhost:3002/api/v1")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@loyaltysystem.uk")
 ADMIN_PASS  = os.environ.get("ADMIN_PASS",  "admin123")
 

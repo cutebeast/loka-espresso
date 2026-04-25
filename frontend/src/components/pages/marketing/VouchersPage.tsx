@@ -5,6 +5,30 @@ import { apiFetch, formatRM } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import { Select, Pagination, Drawer } from '@/components/ui';
 
+interface VoucherItem {
+  id: number;
+  code: string;
+  title: string;
+  short_description: string | null;
+  long_description: string | null;
+  discount_type: string;
+  discount_value: number;
+  min_spend: number | null;
+  max_uses: number | null;
+  max_uses_per_user: number | null;
+  validity_days: number | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  promo_type: string;
+  is_active: boolean;
+  terms: string[] | null;
+  how_to_redeem: string | null;
+  used_count?: number;
+  times_used?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface VouchersPageProps {
   token: string;
 }
@@ -39,7 +63,7 @@ const emptyForm: VoucherForm = {
 const PAGE_SIZE = 20;
 
 export default function VouchersPage({ token }: VouchersPageProps) {
-  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -48,14 +72,14 @@ export default function VouchersPage({ token }: VouchersPageProps) {
   const [error, setError] = useState('');
 
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
-  const [editingVoucher, setEditingVoucher] = useState<any | null>(null);
+  const [editingVoucher, setEditingVoucher] = useState<VoucherItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fetchVouchers = useCallback(async (p: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(p), page_size: String(PAGE_SIZE) });
-      const res = await apiFetch(`/admin/vouchers?${params}`, token);
+      const res = await apiFetch(`/admin/vouchers?${params}`);
       if (res.ok) {
         const data = await res.json();
         setVouchers(data.vouchers || []);
@@ -63,8 +87,8 @@ export default function VouchersPage({ token }: VouchersPageProps) {
         setTotalPages(data.total_pages || 1);
         setPage(p);
       }
-    } catch {} finally { setLoading(false); }
-  }, [token]);
+    } catch { setError('Failed to load vouchers'); setVouchers([]); setTotal(0); setTotalPages(1); } finally { setLoading(false); }
+  }, []);
 
   useEffect(() => { fetchVouchers(1); }, [fetchVouchers]);
 
@@ -74,7 +98,7 @@ export default function VouchersPage({ token }: VouchersPageProps) {
     setDrawerOpen(true);
   }
 
-  function openEdit(v: any) {
+  function openEdit(v: VoucherItem) {
     setEditingVoucher(v);
     setViewMode('form');
     setDrawerOpen(true);
@@ -87,22 +111,22 @@ export default function VouchersPage({ token }: VouchersPageProps) {
     fetchVouchers(page);
   }
 
-  async function toggleActive(v: any) {
+  async function toggleActive(v: VoucherItem) {
     try {
-      await apiFetch(`/admin/vouchers/${v.id}`, token, { method: 'PUT', body: JSON.stringify({ is_active: !v.is_active }) });
+      await apiFetch(`/admin/vouchers/${v.id}`, undefined, { method: 'PUT', body: JSON.stringify({ is_active: !v.is_active }) });
       fetchVouchers(page);
-    } catch {}
+    } catch { setError('Failed to toggle voucher status'); }
   }
 
   async function handleDelete(id: number) {
     try {
-      await apiFetch(`/admin/vouchers/${id}`, token, { method: 'DELETE' });
+      await apiFetch(`/admin/vouchers/${id}`, undefined, { method: 'DELETE' });
       setConfirmDelete(null);
       fetchVouchers(page);
-    } catch {}
+    } catch { setError('Failed to delete voucher'); setConfirmDelete(null); }
   }
 
-  function renderDiscount(v: any) {
+  function renderDiscount(v: VoucherItem) {
     if (v.discount_type === 'percent') return `${v.discount_value}% off`;
     if (v.discount_type === 'free_item') return `Free item (up to ${formatRM(v.discount_value)})`;
     return `${formatRM(v.discount_value)} off`;
@@ -221,7 +245,7 @@ export default function VouchersPage({ token }: VouchersPageProps) {
 
 // ── Separate Form Page ────────────────────────────────────────────────────────
 
-function VoucherFormPage({ token, existingVoucher, onBack }: { token: string; existingVoucher: any | null; onBack: () => void }) {
+function VoucherFormPage({ token: _token, existingVoucher, onBack }: { token: string; existingVoucher: any | null; onBack: () => void }) {
   const isEdit = !!existingVoucher;
 
   function formFromVoucher(v: any): VoucherForm {
@@ -267,7 +291,7 @@ function VoucherFormPage({ token, existingVoucher, onBack }: { token: string; ex
       };
       const url = isEdit ? `/admin/vouchers/${existingVoucher!.id}` : '/admin/vouchers';
       const method = isEdit ? 'PUT' : 'POST';
-      const res = await apiFetch(url, token, { method, body: JSON.stringify(payload) });
+      const res = await apiFetch(url, undefined, { method, body: JSON.stringify(payload) });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
       onBack();
     } catch { setError('Network error'); } finally { setSaving(false); }

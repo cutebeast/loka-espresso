@@ -10,6 +10,7 @@ interface OrderState {
   setIsLoading: (isLoading: boolean) => void;
   addOrder: (order: Order) => void;
   updateOrder: (id: number, updates: Partial<Order>) => void;
+  resetAll: () => void;
 }
 
 export const useOrderStore = create<OrderState>((set) => ({
@@ -25,4 +26,5 @@ export const useOrderStore = create<OrderState>((set) => ({
       orders: state.orders.map((o) => (o.id === id ? { ...o, ...updates } : o)),
       currentOrder: state.currentOrder?.id === id ? { ...state.currentOrder, ...updates } : state.currentOrder,
     })),
+  resetAll: () => set({ orders: [], currentOrder: null }),
 }));

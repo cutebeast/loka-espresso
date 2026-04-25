@@ -36,7 +36,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   cod: 'Cash on Delivery',
 };
 
-export default function OrdersPage({ orders, loading, token, selectedStore, stores, total, page, pageSize, status, orderType, fromDate, toDate, onUpdate, onPageChange, onStatusChange, onOrderTypeChange, onStoreChange, onDateChange }: OrdersPageProps) {
+export default function OrdersPage({ orders, loading, token: _token, selectedStore, stores, total, page, pageSize, status, orderType, fromDate, toDate, onUpdate, onPageChange, onStatusChange, onOrderTypeChange, onStoreChange, onDateChange }: OrdersPageProps) {
   const [showModal, setShowModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<MerchantOrder | null>(null);
   const [preset, setPreset] = useState<DatePreset>('MTD');
@@ -54,7 +54,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
 
   async function updateOrderStatus(orderId: number, newStatus: string) {
     try {
-      const res = await apiFetch(`/orders/${orderId}/status`, token, {
+      const res = await apiFetch(`/orders/${orderId}/status`, undefined, {
         method: 'PATCH',
         body: JSON.stringify({ status: newStatus }),
       });
@@ -72,7 +72,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
   async function markAsPaid(order: MerchantOrder) {
     setMarkingPaid(true);
     try {
-      const res = await apiFetch(`/orders/${order.id}/payment-status`, token, {
+      const res = await apiFetch(`/orders/${order.id}/payment-status`, undefined, {
         method: 'PATCH',
         body: JSON.stringify({ payment_status: 'paid' }),
       });
@@ -102,7 +102,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
       if (trackingFields.eta_minutes) payload.delivery_eta_minutes = parseInt(trackingFields.eta_minutes);
       payload.delivery_status = 'driver_assigned';
 
-      const res = await apiFetch(`/admin/orders/${orderId}/delivery-tracking`, token, {
+      const res = await apiFetch(`/admin/orders/${orderId}/delivery-tracking`, undefined, {
         method: 'PATCH',
         body: JSON.stringify(payload),
       });
@@ -176,7 +176,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
   async function markPosSynced(order: MerchantOrder) {
     setMarkingPosSynced(true);
     try {
-      const res = await apiFetch(`/orders/${order.id}/pos-synced`, token, { method: 'POST' });
+      const res = await apiFetch(`/orders/${order.id}/pos-synced`, undefined, { method: 'POST' });
       if (!res.ok) { const data = await res.json().catch(() => ({})); alert(data.detail || 'Failed'); return; }
       onUpdate();
       setSelectedOrder(prev => prev ? { ...prev, pos_synced_at: new Date().toISOString() } : prev);
@@ -186,7 +186,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
   async function markDeliveryDispatched(order: MerchantOrder) {
     setMarkingDispatched(true);
     try {
-      const res = await apiFetch(`/orders/${order.id}/delivery-dispatched`, token, { method: 'POST' });
+      const res = await apiFetch(`/orders/${order.id}/delivery-dispatched`, undefined, { method: 'POST' });
       if (!res.ok) { const data = await res.json().catch(() => ({})); alert(data.detail || 'Failed'); return; }
       onUpdate();
       setSelectedOrder(prev => prev ? { ...prev, delivery_dispatched_at: new Date().toISOString() } : prev);
@@ -256,13 +256,13 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
       />
 
       {/* Order Type Filter Row */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }} className="orders-type-filter">
         {['', 'dine_in', 'pickup', 'delivery'].map(type => (
           <button
             key={type}
             className={`btn btn-sm ${orderType === type ? 'btn-primary' : ''}`}
             onClick={() => { onOrderTypeChange(type); onPageChange(1); }}
-            style={{ borderRadius: 20, fontSize: 13 }}
+            style={{ borderRadius: 20, fontSize: 13, whiteSpace: 'nowrap' }}
           >
             {type === '' ? 'All Types' : type === 'dine_in' ? <><i className="fas fa-utensils"></i> Dine In</> : type === 'pickup' ? <><i className="fas fa-shopping-bag"></i> Pickup</> : <><i className="fas fa-truck"></i> Delivery</>}
           </button>
@@ -279,6 +279,8 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
         border: `1px solid ${THEME.border}`,
         borderBottom: 'none',
         marginTop: 20,
+        flexWrap: 'wrap',
+        gap: 8,
       }}>
         <div style={{ fontSize: 14, color: THEME.textSecondary }}>
           <i className="fas fa-shopping-bag" style={{ marginRight: 8, color: THEME.primary }}></i>
@@ -303,7 +305,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
         <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={`Order ${selectedOrder.order_number}`}>
           <div style={{ maxHeight: '75vh', overflowY: 'auto', paddingRight: 4 }}>
             {/* Order Info */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px 16px' }} className="orders-detail-grid">
               <div><span style={{ fontSize: 12, color: THEME.textMuted }}>Type</span><p style={{ margin: 0, fontWeight: 600, textTransform: 'capitalize', color: THEME.textPrimary }}>{selectedOrder.order_type?.replace('_', ' ')}</p></div>
               <div><span style={{ fontSize: 12, color: THEME.textMuted }}>Status</span><p style={{ margin: 0 }}>{statusBadge(selectedOrder.status)}</p></div>
               <div><span style={{ fontSize: 12, color: THEME.textMuted }}>Total</span><p style={{ margin: 0, fontWeight: 700, color: THEME.accentCopper, fontSize: 18 }}>{formatRM(selectedOrder.total)}</p></div>
@@ -381,7 +383,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
               )}
 
               {/* Status Transition Buttons */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }} className="orders-status-buttons">
                 {getStatusButtons(selectedOrder).map(s => (
                   <button
                     key={s}
@@ -476,7 +478,7 @@ export default function OrdersPage({ orders, loading, token, selectedStore, stor
                   ) : (
                     <div style={{ padding: 12, border: `1px solid ${THEME.border}`, borderRadius: THEME.radius.md, background: '#FAFAFF' }}>
                       <strong style={{ fontSize: 13, color: THEME.textPrimary, display: 'block', marginBottom: 8 }}>Delivery Tracking Info</strong>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }} className="orders-tracking-grid">
                         <input placeholder="Courier Name" value={trackingFields.courier_name} onChange={e => setTrackingFields(p => ({ ...p, courier_name: e.target.value }))} style={inputStyle} />
                         <input placeholder="Courier Phone" value={trackingFields.courier_phone} onChange={e => setTrackingFields(p => ({ ...p, courier_phone: e.target.value }))} style={inputStyle} />
                         <input placeholder="Provider (Grab/Lalamove)" value={trackingFields.provider} onChange={e => setTrackingFields(p => ({ ...p, provider: e.target.value }))} style={inputStyle} />
@@ -516,3 +518,34 @@ const inputStyle: React.CSSProperties = {
   color: THEME.textPrimary,
   background: '#FFF',
 };
+
+/* Mobile responsive styles */
+const ordersMobileStyles = `
+@media (max-width: 767px) {
+  .orders-type-filter {
+    justify-content: flex-start;
+  }
+  .orders-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .orders-status-buttons {
+    flex-direction: column;
+  }
+  .orders-status-buttons button {
+    width: 100%;
+  }
+  .orders-tracking-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+`;
+
+if (typeof document !== 'undefined') {
+  const styleId = 'orders-mobile-styles';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = ordersMobileStyles;
+    document.head.appendChild(style);
+  }
+}

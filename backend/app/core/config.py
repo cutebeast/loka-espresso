@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     OTP_BYPASS_ALLOWED: bool = False
     ENVIRONMENT: str = "development"
 
+    # Twilio SMS
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_PHONE_NUMBER: str = ""  # E.164 format, e.g. +1234567890
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]

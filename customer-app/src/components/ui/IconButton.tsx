@@ -22,7 +22,7 @@ export function IconButton({
 }: IconButtonProps) {
   const variants = {
     default: 'bg-bg-light text-text-primary hover:bg-border-subtle',
-    primary: 'bg-copper-soft text-copper border border-copper/30 hover:bg-copper-mid',
+    primary: 'bg-copper-soft text-copper border border-copper-30 hover:bg-copper-mid',
     ghost:   'bg-transparent text-text-primary hover:bg-bg-light',
     subtle:  'bg-surface text-text-primary hover:bg-border-subtle',
   };

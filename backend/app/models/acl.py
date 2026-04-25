@@ -18,6 +18,8 @@ class UserType(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
     name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class Role(Base):
@@ -26,6 +28,8 @@ class Role(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
     name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     typical_user_type_id: Mapped[Optional[int]] = mapped_column(ForeignKey("user_types.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     typical_user_type: Mapped[Optional[UserType]] = relationship("UserType", foreign_keys=[typical_user_type_id])
     permissions: Mapped[List[Permission]] = relationship("Permission", secondary="role_permissions", back_populates="roles")
@@ -58,6 +62,8 @@ class Permission(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     resource: Mapped[str] = mapped_column(String(50), nullable=False)
     action: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     roles: Mapped[List[Role]] = relationship("Role", secondary="role_permissions", back_populates="permissions")
 

@@ -21,7 +21,7 @@ from app.models.user import User
 from app.models.order import Order, OrderStatusHistory, OrderStatus, OrderType
 from app.core.utils import to_float
 
-router = APIRouter(prefix="/orders", tags=["Orders"])
+router = APIRouter(prefix="/order-tracking", tags=["Order Tracking"])
 
 
 class OrderTrackResponse(BaseModel):
@@ -38,7 +38,6 @@ class OrderTrackResponse(BaseModel):
     discount: float = 0
     voucher_discount: float = 0.0
     reward_discount: float = 0.0
-    loyalty_discount: float = 0.0
     voucher_code: Optional[str] = None
     reward_redemption_code: Optional[str] = None
     total: float
@@ -123,7 +122,6 @@ async def track_order(
         discount=to_float(order.discount),
         voucher_discount=to_float(order.voucher_discount),
         reward_discount=to_float(order.reward_discount),
-        loyalty_discount=to_float(order.loyalty_discount),
         voucher_code=order.voucher_code,
         reward_redemption_code=order.reward_redemption_code,
         total=to_float(order.total),

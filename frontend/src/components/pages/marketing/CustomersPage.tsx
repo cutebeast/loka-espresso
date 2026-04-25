@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
-import { FilterSelect, StoreSelector, DateFilter, DataTable, type ColumnDef, calcDateRange, type DatePreset, Pagination } from '@/components/ui';
+import { FilterSelect, StoreSelector, DateFilter, DataTable, type DatePreset, Pagination } from '@/components/ui';
 import { THEME } from '@/lib/theme';
-import type { CustomerItem } from '@/lib/merchant-types';
+import type { CustomerItem, MerchantStore } from '@/lib/merchant-types';
 
 interface CustomersPageProps {
   token: string;
-  stores: any[];
+  stores: MerchantStore[];
   selectedStore: string;
   onStoreChange?: (storeId: string) => void;
   onEditCustomer: (customerId: number) => void;
@@ -16,7 +16,7 @@ interface CustomersPageProps {
 
 const PAGE_SIZE = 50;
 
-export default function CustomersPage({ token, stores, selectedStore, onStoreChange, onEditCustomer }: CustomersPageProps) {
+export default function CustomersPage({ token: _token, stores, selectedStore, onStoreChange, onEditCustomer }: CustomersPageProps) {
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -44,7 +44,7 @@ export default function CustomersPage({ token, stores, selectedStore, onStoreCha
       if (tier) params.set('tier', tier);
       if (fromDate) params.set('from_date', fromDate + 'T00:00:00');
       if (toDate) params.set('to_date', toDate + 'T23:59:59');
-      const res = await apiFetch(`/admin/customers?${params}`, token);
+      const res = await apiFetch(`/admin/customers?${params}`);
       if (res.ok) {
         const data = await res.json();
         setCustomers(data.customers || []);
@@ -53,7 +53,7 @@ export default function CustomersPage({ token, stores, selectedStore, onStoreCha
         setPage(p);
       }
     } catch {} finally { setLoading(false); }
-  }, [token, selectedStore, search, tier, sortBy, sortDir, fromDate, toDate]);
+  }, [selectedStore, search, tier, sortBy, sortDir, fromDate, toDate]);
 
   useEffect(() => { fetchCustomers(1); }, [fetchCustomers]);
 
@@ -79,7 +79,7 @@ export default function CustomersPage({ token, stores, selectedStore, onStoreCha
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {onStoreChange && (
             <StoreSelector
-              stores={stores.filter((s: any) => s.id !== 0).map((s: any) => ({ id: String(s.id), name: s.name }))}
+              stores={stores.filter((s) => s.id !== 0).map((s) => ({ id: String(s.id), name: s.name }))}
               selectedStore={selectedStore}
               onChange={onStoreChange}
             />

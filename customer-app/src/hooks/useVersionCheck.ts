@@ -24,47 +24,20 @@ export function useVersionCheck() {
       const data = res.data;
 
       if (data.requires_update) {
-        console.log('[PWA] Update required:', data.version);
-        
-        // Show update notification
-        showToast('New version available! Updating...', 'info');
+        console.log('[PWA] Update available:', data.version);
         
         // Store new version
         localStorage.setItem(STORAGE_KEY, data.version);
         
-        // Trigger service worker update
-        if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.ready;
-          
-          // Send skip waiting message to activate new service worker
-          if (registration.waiting) {
-            registration.waiting.postMessage('SKIP_WAITING');
-          }
-          
-          // Check for updates
-          await registration.update();
-        }
-        
-        // Fetch fresh data
-        await refreshAppData();
-        
-        // Reload to get new version
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        // Dispatch event so AppShell can show a user-facing update prompt
+        window.dispatchEvent(new CustomEvent('sw-update-available'));
       }
     } catch (err) {
       console.error('[PWA] Version check failed:', err);
     } finally {
       checkInProgress.current = false;
     }
-  }, [showToast]);
-
-  const refreshAppData = async () => {
-    // This will be called when update is detected
-    // Store timestamp so components know to refresh
-    localStorage.setItem('loka_last_update', Date.now().toString());
-  };
+  }, []);
 
   const checkNotifications = useCallback(async () => {
     try {

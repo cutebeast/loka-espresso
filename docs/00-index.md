@@ -1,5 +1,5 @@
 # FNB Super App - Documentation Index
-**Last Updated:** 2026-04-22 | **Status:** AppShell decomposed, hash routing active, admin auth cleaned up
+**Last Updated:** 2026-04-25 | **Status:** AppShell decomposed, hash routing active, admin auth cleaned up, CSS modularized, API endpoints split, responsive breakpoints added
 
 ---
 
@@ -57,6 +57,9 @@ Current pre-provider posture:
 20. **[11-ui-ux-guidelines.md](11-ui-ux-guidelines.md)** - brand colors, theming, and component guidelines
 21. **[12-environment.md](12-environment.md)** - consolidated environment variable reference
 22. **[08-post-pwa-roadmap.md](08-post-pwa-roadmap.md)** - planned features and enhancements
+23. **[17-api-audit.md](17-api-audit.md)** - API endpoint audit and modularity plan
+24. **[18-css-architecture.md](18-css-architecture.md)** - Pure CSS architecture and design tokens (no Tailwind)
+25. **[19-responsive-design-guide.md](19-responsive-design-guide.md)** - Responsive breakpoints and mobile-first patterns
 
 ---
 

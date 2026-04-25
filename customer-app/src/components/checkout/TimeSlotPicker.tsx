@@ -2,17 +2,7 @@
 
 import { useMemo } from 'react';
 import { Clock } from 'lucide-react';
-
-const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
-  copperSoft: 'rgba(209,142,56,0.12)',
-  textPrimary: '#1B2023',
-  textMuted: '#6A7A8A',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  white: '#FFFFFF',
-};
+import { LOKA } from '@/lib/tokens';
 
 interface TimeSlotPickerProps {
   value: string | null;
@@ -43,11 +33,11 @@ export default function TimeSlotPicker({ value, onChange, leadMinutes = 15 }: Ti
   
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <div className="flex items-center gap-2 mb-3">
         <Clock size={16} color={LOKA.copper} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: LOKA.textPrimary }}>Pickup Time</span>
+        <span className="font-bold text-text-primary" style={{ fontSize: 13 }}>Pickup Time</span>
       </div>
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {slots.map((slot, idx) => {
           const isSelected = value === slot;
           const isFirst = idx === 0;
@@ -55,18 +45,13 @@ export default function TimeSlotPicker({ value, onChange, leadMinutes = 15 }: Ti
             <button
               key={slot}
               onClick={() => onChange(slot)}
+              className="py-2.5 px-4 rounded-xl cursor-pointer whitespace-nowrap shrink-0 transition-all border-none"
               style={{
-                padding: '10px 16px',
-                borderRadius: 12,
                 fontSize: 13,
                 fontWeight: isSelected ? 700 : 600,
                 border: isSelected ? '2px solid #384B16' : '1.5px solid #E4EAEF',
                 background: isSelected ? '#F2F6EA' : LOKA.white,
                 color: isSelected ? LOKA.primary : LOKA.textPrimary,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                transition: 'all 0.15s ease',
               }}
             >
               {isFirst ? `ASAP · ~${formatTime(slot)}` : formatTime(slot)}

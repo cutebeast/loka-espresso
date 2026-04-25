@@ -60,7 +60,7 @@ export function ConfirmDialog({
               <button
                 onClick={onConfirm}
                 className={`flex-1 py-3 rounded-xl font-semibold text-sm text-white transition-colors active:scale-[0.97] ${
-                  isDestructive ? 'bg-danger hover:bg-danger/90' : 'bg-primary hover:bg-primary-dark'
+                  isDestructive ? 'bg-danger hover:bg-danger-90' : 'bg-primary hover:bg-primary-dark'
                 }`}
               >
                 {confirmLabel || (isDestructive ? 'Delete' : 'Confirm')}

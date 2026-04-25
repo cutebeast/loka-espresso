@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { apiFetch } from '@/lib/merchant-api'
-import { DonutChart, StoreSelector, DateFilter, Modal, DataTable, type ColumnDef, calcDateRange, type DatePreset } from '@/components/ui'
+import { DonutChart, StoreSelector, DateFilter, Modal, DataTable, calcDateRange, type DatePreset } from '@/components/ui'
 import { THEME } from '@/lib/theme'
+import type { MerchantStore } from '@/lib/merchant-types'
 
 interface MarketingReportsPageProps {
   token: string
-  stores: any[]
+  stores: MerchantStore[]
 }
 
 interface TopItems { [key: string]: number }
@@ -98,7 +99,7 @@ function RankingList({ items, maxVal, colorOffset, totalLabel, onShowAll }: {
 
 /* ── Main Component ── */
 
-export default function MarketingReportsPage({ token, stores }: MarketingReportsPageProps) {
+export default function MarketingReportsPage({ token: _token, stores }: MarketingReportsPageProps) {
   const [preset, setPreset] = useState<DatePreset>('MTD')
   const [localStore, setLocalStore] = useState<string>('all')
   const [fromDate, setFromDate] = useState('')
@@ -112,7 +113,7 @@ export default function MarketingReportsPage({ token, stores }: MarketingReports
   const [showFeedbackStoreModal, setShowFeedbackStoreModal] = useState(false)
 
   const isAllStores = localStore === 'all'
-  const storeObj = stores.find((s: any) => String(s.id) === localStore)
+  const storeObj = stores.find((s) => String(s.id) === localStore)
   const storeLabel = isAllStores ? 'All Stores' : storeObj?.name || `Store ${localStore}`
 
   const effectiveRange = fromDate && toDate ? { from: fromDate, to: toDate } : calcDateRange(preset)
@@ -120,16 +121,17 @@ export default function MarketingReportsPage({ token, stores }: MarketingReports
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const { from, to } = effectiveRange
+      const range = fromDate && toDate ? { from: fromDate, to: toDate } : calcDateRange(preset)
+      const { from, to } = range
       let url = `/admin/reports/marketing?from_date=${from}T00:00:00&to_date=${to}T23:59:59`
       if (!isAllStores) url += `&store_id=${localStore}`
-      const res = await apiFetch(url, token)
+      const res = await apiFetch(url)
       if (!res.ok) throw new Error('Failed to fetch marketing data')
       setData(await res.json())
     } catch (err: any) {
       setError(err.message || 'Failed to load data')
     } finally { setLoading(false) }
-  }, [token, effectiveRange.from, effectiveRange.to, localStore, isAllStores])
+  }, [preset, fromDate, toDate, localStore, isAllStores])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -170,7 +172,7 @@ export default function MarketingReportsPage({ token, stores }: MarketingReports
       {/* Filter Bar - Store and Date on left */}
       <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <StoreSelector
-          stores={stores.filter((s: any) => s.is_active && s.id !== 0).map((s: any) => ({ id: String(s.id), name: s.name }))}
+          stores={stores.filter((s) => s.is_active && s.id !== 0).map((s) => ({ id: String(s.id), name: s.name }))}
           selectedStore={localStore}
           onChange={setLocalStore}
         />

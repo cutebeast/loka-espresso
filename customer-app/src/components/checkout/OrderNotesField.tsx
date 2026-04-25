@@ -1,16 +1,7 @@
 'use client';
 
 import { MessageSquare } from 'lucide-react';
-
-const LOKA = {
-  primary: '#384B16',
-  copper: '#D18E38',
-  textPrimary: '#1B2023',
-  textMuted: '#6A7A8A',
-  borderSubtle: '#E4EAEF',
-  surface: '#F5F7FA',
-  white: '#FFFFFF',
-};
+import { LOKA } from '@/lib/tokens';
 
 interface OrderNotesFieldProps {
   value: string;
@@ -27,22 +18,17 @@ const PLACEHOLDERS: Record<string, string> = {
 export default function OrderNotesField({ value, onChange, orderMode }: OrderNotesFieldProps) {
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <div className="flex items-center gap-2 mb-3">
         <MessageSquare size={16} color={LOKA.copper} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: LOKA.textPrimary }}>Order Notes</span>
+        <span className="font-bold text-text-primary" style={{ fontSize: 13 }}>Order Notes</span>
       </div>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={PLACEHOLDERS[orderMode]}
         rows={2}
-        style={{
-          width: '100%', padding: '12px 14px', borderRadius: 14,
-          border: `1px solid ${LOKA.borderSubtle}`,
-          background: LOKA.white, fontSize: 14, color: LOKA.textPrimary,
-          resize: 'none', outline: 'none', fontFamily: 'inherit',
-          boxSizing: 'border-box',
-        }}
+        className="w-full py-3 px-3.5 rounded-[14px] border border-border-subtle bg-white text-sm text-text-primary resize-none outline-none"
+        style={{ fontFamily: 'inherit', boxSizing: 'border-box' }}
       />
     </div>
   );

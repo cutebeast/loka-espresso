@@ -1,6 +1,7 @@
 'use client';
 
 import { ButtonHTMLAttributes, ReactNode } from 'react';
+import { THEME } from '@/lib/theme';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -41,7 +42,7 @@ export function Button({
 
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: {
-      background: '#1a3e2f',
+      background: THEME.primary,
       color: 'white',
       boxShadow: '0 4px 12px rgba(26, 62, 47, 0.2)',
     },

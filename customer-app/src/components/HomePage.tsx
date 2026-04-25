@@ -15,15 +15,10 @@ import {
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
-import api, { cacheBust } from '@/lib/api';
+import api from '@/lib/api';
 import type { MenuItem, PromoBanner, InformationCard, CustomizationOption } from '@/lib/api';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
-import { formatPrice } from '@/lib/tokens';
-
-function resolveAssetUrl(path: string | null | undefined) {
-  if (!path) return null;
-  return cacheBust(path.startsWith('http') ? path : `https://admin.loyaltysystem.uk${path}`);
-}
+import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
 
 /* ── Memoized carousel cards to prevent re-render flash ── */
 const InfoCard = memo(function InfoCard({
@@ -85,8 +80,8 @@ const ProductCard = memo(function ProductCard({
         {imgSrc ? (
           <img src={imgSrc} alt="" className="card-bg-img" loading="lazy" />
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-            <Coffee size={24} strokeWidth={1.5} style={{ color: '#C4CED8' }} />
+        <div className="home-img-fallback">
+            <Coffee size={24} strokeWidth={1.5} color="#C4CED8" />
           </div>
         )}
       </div>
@@ -102,7 +97,7 @@ const ProductCard = memo(function ProductCard({
 });
 
 export default function HomePage() {
-  const { setPage, showToast } = useUIStore();
+  const { setPage, showToast, isGuest, selectedStore } = useUIStore();
   const addItem = useCartStore((s) => s.addItem);
   const { balance, points } = useWalletStore();
 
@@ -122,15 +117,17 @@ export default function HomePage() {
   const promoIndexRef = useRef(0);
   const infoIndexRef = useRef(0);
 
+  const storeId = selectedStore?.id ?? 0;
+
   const loadFeatured = useCallback(async () => {
     setLoadingFeatured(true);
     try {
-      const res = await api.get('/stores/0/items', {
+      const res = await api.get(`/menu/items`, {
         params: { featured: true, available_only: true, limit: 10 },
       });
       let list: MenuItem[] = Array.isArray(res.data) ? res.data : [];
       if (list.length === 0) {
-        const all = await api.get('/stores/0/items', {
+        const all = await api.get(`/menu/items`, {
           params: { available_only: true, limit: 8 },
         });
         list = Array.isArray(all.data) ? all.data : [];
@@ -225,6 +222,10 @@ export default function HomePage() {
   }, [infoCards.length]);
 
   const handleAddToCart = (item: MenuItem) => {
+    if (isGuest) {
+      showToast('Sign in to order', 'info');
+      return;
+    }
     if (item.customization_options && item.customization_options.length > 0) {
       setCustomizeItem(item);
       loadCustomizations(item);
@@ -237,7 +238,7 @@ export default function HomePage() {
           quantity: 1,
           customizations: {},
         },
-        0,
+        storeId,
       );
       showToast(`${item.name} added`, 'success');
     }
@@ -246,7 +247,7 @@ export default function HomePage() {
   const loadCustomizations = useCallback(async (item: MenuItem) => {
     setLoadingOptions(true);
     try {
-      const res = await api.get(`/stores/0/items/${item.id}/customizations`);
+      const res = await api.get(`/menu/items/${item.id}/customizations`);
       setAvailableOptions(res.data ?? []);
     } catch {
       setAvailableOptions(item.customization_options ?? []);
@@ -270,21 +271,15 @@ export default function HomePage() {
           quantity,
           customizations:
             customizations.length > 0
-              ? customizations.reduce<Record<string, unknown>>((acc, option) => {
-                  acc[option.name] = {
-                    id: option.id,
-                    type: option.option_type,
-                    price: option.price_adjustment,
-                  };
-                  return acc;
-                }, {})
+              ? { options: customizations.map((o) => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) }
               : {},
+          customization_option_ids: customizations.length > 0 ? customizations.map((o) => o.id) : [],
         },
-        0,
+        storeId,
       );
       showToast(`${item.name} added`, 'success');
     },
-    [addItem, showToast],
+    [addItem, showToast, storeId],
   );
 
   const visibleInfoCards = infoCards.slice(0, 3);
@@ -307,14 +302,33 @@ export default function HomePage() {
   return (
     <>
       <motion.div
-        style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '20px 16px 12px', background: 'var(--loka-bg-light)', minHeight: '100%' }}
+        className="home-main"
         variants={pageVariants}
         initial="hidden"
         animate="show"
       >
-        {/* Wallet Card */}
+        {/* Wallet Card — or guest sign-in prompt */}
         <motion.div variants={itemVariants}>
-          <div className="wallet-card" onClick={() => setPage('wallet')}>
+          {isGuest ? (
+            <div className="wallet-card wallet-card-guest" onClick={() => {
+              useUIStore.getState().setIsGuest(false);
+            }}>
+              <div className="wallet-row">
+                <span className="balance-label">
+                  <Wallet size={14} strokeWidth={2} /> Loka Wallet
+                </span>
+              </div>
+              <div className="wallet-row wallet-row-mt">
+                <span className="guest-wallet-text">Sign in to access wallet & rewards</span>
+              </div>
+              <div className="wallet-chip-row">
+                <span className="wallet-chip wallet-chip-signin">
+                  <ArrowRight size={12} strokeWidth={2} /> Sign In
+                </span>
+              </div>
+            </div>
+          ) : (
+            <>
             <div className="wallet-row">
               <span className="balance-label">
                 <Wallet size={14} strokeWidth={2} /> Loka Balance
@@ -326,7 +340,7 @@ export default function HomePage() {
                 Top Up <ChevronRight size={12} />
               </button>
             </div>
-            <div className="wallet-row" style={{ marginTop: 8 }}>
+            <div className="wallet-row wallet-row-mt">
               <span className="amount">{formatPrice(balance)}</span>
               <span className="points-badge">
                 <Crown size={12} strokeWidth={2} /> {points.toLocaleString()} pts
@@ -340,7 +354,8 @@ export default function HomePage() {
                 <Ticket size={12} strokeWidth={2} /> Vouchers
               </span>
             </div>
-          </div>
+            </>
+          )}
         </motion.div>
 
         {/* Information Carousel — plain div, no motion wrapper */}
@@ -401,12 +416,11 @@ export default function HomePage() {
 
         {/* Today's Picks */}
         <motion.div variants={itemVariants}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <h3 className="home-section-title">Today's picks</h3>
+          <div className="home-section-header">
+            <h3 className="home-section-title">Today&apos;s picks</h3>
             <button
               onClick={() => setPage('menu')}
-              className="link"
-              style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}
+              className="link home-see-all-link"
             >
               See all <ArrowRight size={12} />
             </button>
@@ -415,22 +429,22 @@ export default function HomePage() {
           {loadingFeatured ? (
             <div className="product-scroll">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="product-card" style={{ opacity: 0.6 }}>
+                <div key={i} className="product-card home-skeleton-card">
                   <div className="product-img">
-                    <div className="skeleton" style={{ width: '100%', height: '100%' }} />
+                    <div className="skeleton home-skeleton-img" />
                   </div>
                   <div className="product-info">
-                    <div className="skeleton" style={{ width: '80%', height: 14, marginBottom: 8 }} />
-                    <div className="skeleton" style={{ width: '50%', height: 12, marginBottom: 12 }} />
-                    <div className="skeleton" style={{ width: '100%', height: 32, borderRadius: 40 }} />
+                    <div className="skeleton home-skeleton-name" />
+                    <div className="skeleton home-skeleton-price" />
+                    <div className="skeleton home-skeleton-btn" />
                   </div>
                 </div>
               ))}
             </div>
           ) : featuredItems.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 16px', background: 'white', borderRadius: 20 }}>
-              <Coffee size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: '#C4CED8' }} />
-              <p style={{ fontSize: 14, color: '#6A7A8A' }}>No items available yet</p>
+            <div className="home-empty">
+              <div className="home-empty-icon"><Coffee size={32} strokeWidth={1.5} /></div>
+              <p className="home-empty-text">No items available yet</p>
             </div>
           ) : (
             <div className="product-scroll">

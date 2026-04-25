@@ -22,7 +22,7 @@ function formatPrice(val: number | string): string {
 const TOPUP_AMOUNTS = [20, 50, 100, 200];
 
 export default function WalletPage() {
-  const { balance, points, setBalance, transactions, setTransactions } = useWalletStore();
+  const { balance, setBalance, transactions, setTransactions } = useWalletStore();
   const { setPage, showToast } = useUIStore();
 
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
@@ -112,7 +112,7 @@ export default function WalletPage() {
             <div className="topup-balance-label">Loka Balance</div>
             <div className="topup-balance-amount">{formatPrice(balance)}</div>
           </div>
-          <Wallet size={28} style={{ opacity: 0.6 }} />
+          <Wallet size={28} className="co-wallet-icon" />
         </div>
 
         {/* Online Top Up */}
@@ -188,7 +188,7 @@ export default function WalletPage() {
               <div className="topup-empty-icon">
                 <Wallet size={24} style={{ color: '#C4CED8' }} />
               </div>
-              <p style={{ fontSize: 14, color: '#6A7A8A' }}>No transactions yet</p>
+              <p className="home-empty-text">No transactions yet</p>
             </div>
           ) : (
             <div className="topup-tx-list">

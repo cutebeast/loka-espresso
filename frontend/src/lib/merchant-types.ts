@@ -25,7 +25,6 @@ export interface MerchantCategory {
 
 export interface MerchantMenuItem {
   id: number;
-  store_id: number;
   category_id: number;
   name: string;
   description: string;
@@ -294,4 +293,4 @@ export interface CustomerLoyaltyTransaction {
   created_at: string;
 }
 
-export type PageId = 'dashboard' | 'orders' | 'kitchen' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'information' | 'feedback' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store' | 'settings' | 'pwa' | 'walletTopup' | 'posterminal' | 'customerDetail';
+export type PageId = 'dashboard' | 'orders' | 'kitchen' | 'menu' | 'inventory' | 'tables' | 'staff' | 'rewards' | 'vouchers' | 'promotions' | 'information' | 'feedback' | 'reports' | 'marketingreports' | 'customers' | 'notifications' | 'auditlog' | 'loyaltyrules' | 'store' | 'settings' | 'pwa' | 'walletTopup' | 'posterminal';

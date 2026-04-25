@@ -9,7 +9,7 @@
 - **Customer PWA**: Next.js 16 on port 3003 (Docker: `fnb-customer-app`)
 - **Domains**: `admin.loyaltysystem.uk`, `app.loyaltysystem.uk`
 - **Reverse Proxy**: Caddy (`/etc/caddy/sites/fnb-app.conf`)
-- **Tailwind**: v4 with `@theme inline` in `globals.css` (no `tailwind.config.js`)
+- **Styling**: Pure CSS with design tokens in `src/lib/tokens.ts` and CSS custom properties. No Tailwind.
 
 **Critical deployment note**: The customer PWA runs in a Docker container. File edits on the host filesystem do NOT affect the running app until:
 1. `docker compose build customer-app` (rebuilds image)
@@ -34,7 +34,7 @@
 - Orders: title + refresh icon
 - Profile: title + settings icon
 - Notification bell with unread badge on all variants except profile
-- Uses Tailwind classes only, no inline styles
+- Uses pure CSS classes, no inline styles
 
 ### 3. DashboardHeader Deprecated
 - **File**: `customer-app/src/components/ui/DashboardHeader.tsx`
@@ -50,7 +50,7 @@
 
 ### 5. Auth Components Partially Rewritten
 - **Files**: `SplashScreen.tsx`, `PhoneInput.tsx`, `OTPInput.tsx`, `ProfileSetup.tsx`
-- Migrated from inline styles to CSS classes + Tailwind
+- Migrated from inline styles to CSS classes
 - Local LOKA objects removed (single source of truth: `src/lib/tokens.ts`)
 
 ### 6. globals.css Fixed
@@ -100,7 +100,7 @@
 2. **No 3-dot menu**: Every feature has a proper home. A 3-dot with 1 item is poor UX.
 3. **Notifications are fully built**: Backend API, `NotificationsPage.tsx`, `Notification` model, `ServiceWorkerRegistrar`, `sw.js` with push handler.
 4. **PWA is full viewport**: Phone mockup frame removed. Targets actual mobile users.
-5. **Design tokens**: `src/lib/tokens.ts` is single source of truth. CSS custom properties in `@theme inline` mirror these values.
+5. **Design tokens**: `src/lib/tokens.ts` is single source of truth. CSS custom properties in `globals.css` mirror these values.
 
 ---
 

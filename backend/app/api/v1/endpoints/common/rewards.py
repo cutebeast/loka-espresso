@@ -18,7 +18,7 @@ from app.models.user import User, RoleIDs
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.reward import Reward, UserReward
 
-router = APIRouter(prefix="/rewards", tags=["PWA Rewards"])
+router = APIRouter(prefix="/rewards", tags=["Rewards"])
 
 
 # ---------------------------------------------------------------------------

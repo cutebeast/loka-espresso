@@ -164,8 +164,12 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
         body_hash = hashlib.sha256(body).hexdigest()
         
+        # Scope cache key by user identity (Authorization header or session cookie)
+        user_token = request.headers.get("Authorization") or request.cookies.get("session") or "anonymous"
+        token_hash = hashlib.sha256(user_token.encode()).hexdigest()[:12]
+        
         # Check cache (in production, use Redis)
-        cache_key = f"{request.method}:{request.url.path}:{idempotency_key}:{body_hash}"
+        cache_key = f"{request.method}:{request.url.path}:{idempotency_key}:{body_hash}:{token_hash}"
         
         # Clean expired entries
         now = time.time()

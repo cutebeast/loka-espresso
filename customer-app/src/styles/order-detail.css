@@ -1,0 +1,360 @@
+/* ═══════════════════════════════════════════════════════════
+   ORDER TRACKING / DETAIL
+   ═══════════════════════════════════════════════════════════ */
+.ot-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--loka-bg-light);
+}
+.ot-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  background: var(--loka-bg-card);
+  border-bottom: 1px solid var(--loka-border-light);
+  flex-shrink: 0;
+}
+.ot-back-btn {
+  background: none;
+  border: none;
+  color: var(--loka-text-primary);
+  font-size: 20px;
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  margin-right: 10px;
+}
+.ot-back-btn:active {
+  background: rgba(0,0,0,0.04);
+}
+.ot-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+}
+.ot-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ot-status-card {
+  background: var(--loka-bg-card);
+  border-radius: 24px;
+  padding: 20px;
+  border: 1px solid var(--loka-border-light);
+  text-align: center;
+}
+.ot-order-number {
+  font-size: 13px;
+  color: var(--loka-text-muted);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.ot-current-status {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--loka-primary);
+  margin-bottom: 16px;
+}
+.ot-progress-steps {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0 8px;
+}
+.ot-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
+  font-size: 11px;
+  color: var(--loka-text-muted);
+  font-weight: 500;
+}
+.ot-step.active {
+  color: var(--loka-primary);
+  font-weight: 600;
+}
+.ot-step.completed {
+  color: var(--loka-primary);
+}
+.ot-step-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--loka-border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  z-index: 2;
+}
+.ot-step.active .ot-step-icon,
+.ot-step.completed .ot-step-icon {
+  background: var(--loka-primary);
+  color: white;
+}
+.ot-step-connector {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--loka-border-light);
+  z-index: 1;
+}
+.ot-step:last-child .ot-step-connector {
+  display: none;
+}
+.ot-step.completed .ot-step-connector,
+.ot-step.active .ot-step-connector {
+  background: var(--loka-primary);
+}
+.ot-delivery-card {
+  background: var(--loka-bg-card);
+  border-radius: 20px;
+  padding: 16px;
+  border: 1px solid var(--loka-border-light);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ot-courier-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #EDF0F5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #4A607A;
+  flex-shrink: 0;
+}
+.ot-courier-details {
+  flex: 1;
+}
+.ot-courier-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--loka-text-primary);
+}
+.ot-courier-eta {
+  font-size: 12px;
+  color: var(--loka-text-muted);
+}
+.ot-summary-card {
+  background: var(--loka-bg-card);
+  border-radius: 20px;
+  padding: 16px;
+  border: 1px solid var(--loka-border-light);
+}
+.ot-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--loka-text-muted);
+  margin-bottom: 8px;
+}
+.ot-item-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--loka-text-secondary);
+  margin-bottom: 6px;
+}
+.ot-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--loka-text-primary);
+  border-top: 1px solid var(--loka-border-light);
+  padding-top: 12px;
+  margin-top: 8px;
+}
+.ot-payment-info {
+  font-size: 13px;
+  color: var(--loka-text-muted);
+  text-align: center;
+}
+
+/* Order Detail page additions */
+.ot-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--loka-text-muted);
+  font-size: 14px;
+}
+.ot-type-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--loka-text-muted);
+}
+.ot-dot {
+  color: var(--loka-border);
+}
+.ot-address {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+.ot-track-link {
+  color: var(--loka-primary);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.ot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ot-reorder-btn {
+  background: var(--loka-primary);
+  color: white;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 14px;
+  border-radius: 40px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(56,75,22,0.15);
+}
+.ot-reorder-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.ot-action-row {
+  display: flex;
+  gap: 10px;
+}
+.ot-secondary-btn {
+  flex: 1;
+  background: white;
+  color: var(--loka-text-primary);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px;
+  border-radius: 40px;
+  border: 1.5px solid var(--loka-border-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.ot-secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.ot-cancel-btn {
+  border-color: #C75050;
+  color: #C75050;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   IMAGE CAROUSEL (Information Detail)
+   ═══════════════════════════════════════════════════════════ */
+.carousel-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+}
+.carousel-track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.3s ease-out;
+}
+.carousel-slide {
+  width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+}
+.carousel-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  -webkit-user-drag: none;
+}
+
+/* Dots */
+.carousel-dots {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  z-index: 3;
+}
+.carousel-dot {
+  height: 6px;
+  border-radius: 999px;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 6px;
+  background: rgba(255,255,255,0.5);
+}
+.carousel-dot.active {
+  width: 16px;
+  background: white;
+}
+
+/* Arrows */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.35);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  z-index: 3;
+  transition: background 0.15s;
+  padding: 0;
+}
+.carousel-arrow:active {
+  background: rgba(0,0,0,0.55);
+}
+.carousel-arrow-left {
+  left: 8px;
+}
+.carousel-arrow-right {
+  right: 8px;
+}

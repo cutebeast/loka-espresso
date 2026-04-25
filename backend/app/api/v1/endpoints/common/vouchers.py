@@ -7,7 +7,7 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -17,7 +17,7 @@ from app.core.utils import to_float
 from app.models.user import User, RoleIDs
 from app.models.voucher import Voucher, UserVoucher
 
-router = APIRouter(prefix="/vouchers", tags=["PWA Vouchers"])
+router = APIRouter(prefix="/vouchers", tags=["Vouchers"])
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +389,6 @@ async def use_voucher(
     # Mark used
     uv.status = "used"
     uv.used_at = now
-    uv.is_used = True
     if req.order_id:
         uv.order_id = req.order_id
     if req.store_id:

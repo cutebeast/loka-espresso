@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Gift, ArrowLeft, ArrowRight, Calendar, Clock, Star, Tag, PenLine, HelpCircle, CheckCircle, Flame, List, Circle } from 'lucide-react';
 import { TypePill, RedemptionCodeModal } from '@/components/shared';
 import { useUIStore } from '@/stores/uiStore';
-import api, { cacheBust } from '@/lib/api';
+import api from '@/lib/api';
 import type { PromoBanner } from '@/lib/api';
 
 const LOKA = {
@@ -47,10 +47,7 @@ interface PromotionsPageProps {
   preselectedId?: number;
 }
 
-function resolveUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  return cacheBust(url.startsWith('http') ? url : `https://admin.loyaltysystem.uk${url}`);
-}
+import { resolveAssetUrl } from '@/lib/tokens';
 
 function formatDate(d: string | null) {
   if (!d) return '';
@@ -71,7 +68,7 @@ function getTagVariant(t: string | null): 'offer' | 'survey' | 'limited' | 'syst
 }
 
 export default function PromotionsPage({ onBack, preselectedId }: PromotionsPageProps) {
-  const { showToast, setPage } = useUIStore();
+  const { showToast, setPage, isGuest } = useUIStore();
   const [promotions, setPromotions] = useState<PromoBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPromo, setSelectedPromo] = useState<PromoBanner | null>(null);
@@ -131,6 +128,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
   }, [preselectedId, promotions, selectedPromo, loadSurveyQuestions]);
 
   const handleClaim = async (promo: PromoBanner) => {
+    if (isGuest) { showToast('Sign in to claim offers', 'info'); return; }
     setClaiming(promo.id);
     try {
       const res = await api.post(`/promos/banners/${promo.id}/claim`);
@@ -142,6 +140,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
   };
 
   const handleSubmitSurvey = async () => {
+    if (isGuest) { showToast('Sign in to submit surveys', 'info'); return; }
     if (!selectedPromo?.survey_id) return;
     const unanswered = surveyQuestions.filter((q) => q.is_required && !surveyAnswers[q.id]);
     if (unanswered.length > 0) {
@@ -196,7 +195,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
 
   if (selectedPromo) {
     const cta = getCTA(selectedPromo);
-    const img = resolveUrl(selectedPromo.image_url);
+    const img = resolveAssetUrl(selectedPromo.image_url);
     const tagText = selectedPromo.action_type === 'survey' ? 'Survey' : selectedPromo.action_type === 'detail' ? 'Offer' : 'Promo';
     const isSurvey = selectedPromo.action_type === 'survey';
     const status = bannerStatus[selectedPromo.id];
@@ -238,7 +237,14 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
           </p>
 
           {/* ── Survey Flow ── */}
-          {isSurvey && surveyQuestions.length > 0 && !surveyAlreadyDone && (
+          {isSurvey && isGuest && !surveyAlreadyDone && (
+            <div className="guest-locked">
+              <div className="guest-locked-icon"><Gift size={28} /></div>
+              <div className="guest-locked-title">Sign in to participate</div>
+              <div className="guest-locked-desc">Create an account to complete surveys and earn rewards.</div>
+            </div>
+          )}
+          {isSurvey && !isGuest && surveyQuestions.length > 0 && !surveyAlreadyDone && (
             <div className="survey-block">
               {surveyQuestions.map((q, qi) => (
                 <div key={q.id} style={{ marginBottom: qi < surveyQuestions.length - 1 ? 20 : 0 }}>
@@ -365,7 +371,15 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
             </>
           )}
 
-          {!isSurvey && !cta.disabled && (
+          {!isSurvey && isGuest && (
+            <div className="guest-locked">
+              <div className="guest-locked-icon"><Gift size={28} /></div>
+              <div className="guest-locked-title">Sign in to claim</div>
+              <div className="guest-locked-desc">Create an account to claim this offer and earn loyalty rewards.</div>
+            </div>
+          )}
+
+          {!isSurvey && !isGuest && !cta.disabled && (
             <>
               <button
                 className="rd-action-btn"
@@ -382,7 +396,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
             </>
           )}
 
-          {!isSurvey && cta.disabled && (
+          {!isSurvey && !isGuest && cta.disabled && (
             <button className="rd-action-btn" disabled>
               <span>{cta.text}</span>
             </button>
@@ -394,7 +408,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
           code={showVoucher || ''}
           title="Voucher Unlocked!"
           onClose={() => { setShowVoucher(null); setSelectedPromo(null); }}
-          onCopy={(code) => { showToast('Code copied!', 'success'); setPage('my-rewards'); }}
+          onCopy={(_code) => { showToast('Code copied!', 'success'); setPage('my-rewards'); }}
         />
       </div>
     );
@@ -425,7 +439,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {promotions.map((promo) => {
-              const img = resolveUrl(promo.image_url);
+              const img = resolveAssetUrl(promo.image_url);
               const tagText = promo.action_type === 'survey' ? 'Survey' : promo.action_type === 'detail' ? 'Offer' : 'Promo';
               return (
                 <motion.button

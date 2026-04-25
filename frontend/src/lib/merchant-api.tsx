@@ -31,7 +31,8 @@ async function refreshMerchantAccessToken(): Promise<boolean> {
   return refreshPromise;
 }
 
-export async function apiFetch(path: string, _token: string, options?: RequestInit) {
+// _unused is intentionally ignored — auth is via httpOnly session cookies
+export async function apiFetch(path: string, _unused?: string, options?: RequestInit) {
   const response = await fetch(`${API}${path}`, {
     ...options,
     credentials: 'include',
@@ -67,7 +68,8 @@ export async function apiFetch(path: string, _token: string, options?: RequestIn
  * Upload files via FormData. Unlike apiFetch, this does NOT set Content-Type
  * so the browser can set the correct multipart boundary automatically.
  */
-export async function apiUpload(path: string, _token: string, formData: FormData): Promise<Response> {
+// _unused is intentionally ignored — auth is via httpOnly session cookies
+export async function apiUpload(path: string, formData: FormData): Promise<Response> {
   const response = await fetch(`${API}${path}`, {
     method: 'POST',
     credentials: 'include',
