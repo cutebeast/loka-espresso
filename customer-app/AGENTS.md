@@ -14,6 +14,9 @@
 | `src/app/globals.css` | Imports all modular CSS files (zero framework dependency) |
 | `src/styles/utilities.css` | ~400 pure CSS utility classes (display, flex, padding, colors, etc.) |
 | `src/styles/components.css` | Component primitives (btn, chip, badge, guest-banner, etc.) |
+| `src/styles/modals.css` | Modal, bottom-sheet, and dialog styles |
+| `src/styles/notifications.css` | Toast, notification list, and badge styles |
+| `src/styles/sub-components.css` | Small shared sub-components (TypePill, VoucherRevealBlock, etc.) |
 
 **Rule:** Never define local `LOKA` objects in components. Import from `src/lib/tokens.ts`.
 
@@ -222,7 +225,7 @@ customer-app/src/
 ## 7. Rules for Next Agent
 
 1. **No Tailwind** — Zero Tailwind in this project. Use pure CSS utility classes from `utilities.css` (Tailwind-compatible naming). No `tailwind.config`, no `@tailwind` directives.
-2. **No inline styles for layout** — Use CSS utility classes from `utilities.css`. Inline styles only for truly dynamic values (conditional colors, dynamic widths).
+2. **No inline styles for layout** — Use CSS utility classes from `utilities.css` or dedicated CSS modules. Inline styles only for genuinely dynamic values: carousel `transform`, progress-bar `width`, bottom-sheet `maxHeight`, `aspectRatio`, and dynamic `backgroundImage`.
 3. **No local LOKA objects** — Always import from `@/lib/tokens`. Do NOT redefine `LOKA` in checkout or other components.
 4. **Use primitives** — Don't reinvent `SurfaceCard`, `StatusChip`, etc.
 5. **Images go to `uploads/information/`** for info cards, `uploads/marketing/` for promos.

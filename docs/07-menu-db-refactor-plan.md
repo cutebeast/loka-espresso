@@ -8,8 +8,8 @@ The codebase has a **schema-business contradiction** that causes repeated confus
 |---|---|
 | **Database schema** | `MenuCategory.store_id` and `MenuItem.store_id` are `NOT NULL` FK → "every menu item belongs to a specific store" |
 | **Business requirement** | One universal HQ menu. All stores show the same items, categories, and prices. |
-| **API implementation** | PWA endpoints `/stores/{store_id}/categories` and `/stores/{store_id}/items` **ignore** the path parameter and hardcode `store_id = 0` (HQ virtual store) |
-| **Admin implementation** | Admin endpoints `/admin/stores/{store_id}/categories` and `/admin/stores/{store_id}/items` **do** filter by `store_id`, forcing admins to manage menu under `store_id=0` |
+| **API implementation** | PWA endpoints moved to `/menu/categories` and `/menu/items` — no store parameter |
+| **Admin implementation** | Admin endpoints moved to `/admin/categories` and `/admin/items` — no store parameter |
 | **PWA frontend** | Home and Menu pages were recently blocked behind a "select a store first" guard (now reverted) |
 
 This contradiction is the **root cause** of the repeated back-and-forth. When the schema says "per-store" but the app says "universal", every developer (including AI agents) makes conflicting assumptions.

@@ -47,6 +47,27 @@ See `_archive/06-improvements-log-full.md` for detailed chronological history.
   - Eliminates the schema-business contradiction that caused repeated confusion
 - Dietary filtering uses parameterized JSONB instead of string interpolation
 - Alembic migration chain restored with Session 2 schema migrations
+- **CSS Modularization & Inline Style Cleanup**:
+  - Deleted 100% duplicate residue files (`orders.css` 38KB, `account.css` 23KB, `menu-browse.css` 12KB)
+  - Extracted `.notif-*` → `notifications.css`, `.rewards-*` → `my-rewards.css`
+  - PWA inline styles: 275 → 6 (only genuinely dynamic values)
+  - Admin inline styles: ~120 → 30 (mostly dynamic runtime values)
+  - Migrated 25+ components to dedicated CSS classes
+  - New CSS modules: `modals.css`, `notifications.css`, `sub-components.css`, `admin-extra.css`
+- **JWT & Runtime Security Hardening**:
+  - Tokens removed from JSON response bodies (`verify-otp`, `login-password`, `refresh`); httpOnly cookies only
+  - Added `@limiter.limit("30/minute")` to `/auth/refresh`
+  - Blacklist decode failures logged at `warning` level; DB errors propagate
+  - `PUT /admin/config` enforces `ALLOWED_CONFIG_KEYS` allowlist; `otp_bypass_code` removed from allowlist
+  - `GET /admin/config` filters sensitive keys; audit log redacts sensitive values as `***REDACTED***`
+  - CORS restricted to explicit methods and headers (was `"*"`)
+  - `JWT_REFRESH_EXPIRE_DAYS` configurable via env (default 30)
+  - Added database index `ix_token_blacklist_expires_at` for efficient cleanup
+- **Seed Script Security**:
+  - Removed hardcoded `admin123` default (now requires `ADMIN_PASS` env var)
+  - Removed weak OTP fallback codes (`123456`, `000000`, `111111`)
+  - Added `scripts/seed/seed_state.json` to `.gitignore`
+  - All seed scripts aligned with universal menu endpoints (`/menu/items`, `/menu/categories`, `/admin/items`, `/admin/categories`)
 
 ## Epochs
 

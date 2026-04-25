@@ -118,7 +118,7 @@ Categories and items are ordered by `display_order` ASC (lowest to highest). Def
 - `GET /menu/items` → `ORDER BY display_order`
 - `GET /menu/items/popular` → `ORDER BY display_order`
 - `GET /menu/items/search` → `ORDER BY display_order`
-- `GET /stores/{id}/menu` → categories and items both ordered by `display_order` (store validation only)
+- `GET /menu/categories` and `GET /menu/items` → universal menu, ordered by `display_order`
 
 ---
 
@@ -128,6 +128,6 @@ Categories and items are ordered by `display_order` ASC (lowest to highest). Def
 |--------|-------|---------|
 | Menu Categories | 10 | Universal: Signature Coffee, Espresso Bar, Tea & Non-Coffee, Pastries & Toast, Specialties, Iced & Blended, Food & Sandwiches, Desserts, Merchandise, Coffee Beans & Packs |
 | Menu Items | 35 | Universal: served identically at all physical stores |
-| Inventory Categories | 50 | 10 per physical store (store id 2-6): Coffee Beans, Milk & Cream, Syrups & Sauces, Tea & Matcha, Bakery Supplies, Packaging, Food Ingredients, Cleaning Supplies, Merchandise Stock, Frozen & Chilled |
+| Inventory Categories | 50 | 10 per physical store (IDs 1–5): Coffee Beans, Milk & Cream, Syrups & Sauces, Tea & Matcha, Bakery Supplies, Packaging, Food Ingredients, Cleaning Supplies, Merchandise Stock, Frozen & Chilled |
 | Inventory Items | 300 | ~60 per physical store, one RECEIVED ledger entry per item |
 | Inventory Ledger | 300 | Auto-created on inventory item creation (opening stock movement) |

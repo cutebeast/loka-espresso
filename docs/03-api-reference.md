@@ -59,7 +59,8 @@ Authorization: Bearer <access-token>
 |--------|------|-------------|
 | GET | `/stores` | List active stores |
 | GET | `/stores/{store_id}` | Get store details |
-| GET | `/stores/{store_id}/menu` | Full universal menu tree for a store |
+| GET | `/menu/categories` | List universal menu categories |
+| GET | `/menu/items` | List universal menu items |
 | GET | `/stores/{store_id}/pickup-slots` | Pickup slot suggestions |
 | GET | `/stores/{store_id}/tables` | List store tables |
 

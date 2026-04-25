@@ -16,8 +16,8 @@
 - Result: **5 physical stores = IDs 1, 2, 3, 4, 5**
 
 **Why this matters:**
-- Universal menu lives under `store_id=0` (HQ)
-- All physical stores share the HQ menu via `/stores/{id}/menu`
+- Universal menu has no `store_id`; all stores share the same menu
+- Menu accessed via `/menu/categories` and `/menu/items`
 - Staff assignments, inventory, and tables are per-store (1–5)
 - Any script hardcoding store IDs 2–6 was broken after the reset logic change
 
@@ -44,7 +44,7 @@
 | `verify_seed_01_stores.py:78` | IndentationError | Leading space before `def` | Removed extra space |
 | `verify_seed_01_stores.py` | Dine-in tables had no QR codes | Script created tables but never called `generate-qr` | Added QR generation loop after table creation |
 | `shared_config.py:50` | `STORE_IDS = [2,3,4,5,6]` | Outdated assumption about auto-increment | Changed to `[1,2,3,4,5]` |
-| `verify_seed_02_menu.py:219-230` | Hardcoded `/stores/2/menu` and `/stores/3/menu` | Assumed stores 2,3 exist | Dynamic lookup from `/stores` API, uses first 2 physical stores |
+| `verify_seed_02_menu.py:219-230` | Used old `/stores/{id}/menu` endpoint | Menu endpoints changed to universal `/menu/categories` and `/menu/items` | Updated to use new universal endpoints |
 | `verify_seed_03_inventory.py:19` | `STORE_IDS = [2,3,4,5,6]` | Same as shared_config | Changed to `[1,2,3,4,5]` |
 | `verify_seed_03_inventory.py:146-178` | Idempotency helpers broken | Expected nested `categories/items`; backend returns flat `InventoryItemOut` list | `_get_inv_cat_by_slug` now uses `/inventory-categories`; `_get_inv_item_by_name` iterates flat list |
 | `verify_seed_04_staff.py:17,28-49` | All `store_id` values off by +1 | Same outdated ID assumption | Updated all `store_id` references to 1–5 |
