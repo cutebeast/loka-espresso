@@ -5,14 +5,12 @@ import { idbStorage } from '@/lib/idbStorage';
 
 interface CartState {
   items: CartItem[];
-  storeId: number | null;
   orderNote: string;
   setOrderNote: (note: string) => void;
-  addItem: (item: CartItem, storeId?: number | null) => void;
+  addItem: (item: CartItem) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
   clearCart: () => void;
-  setStoreId: (storeId: number | null) => void;
   getTotal: () => number;
   getItemCount: () => number;
 }
@@ -21,15 +19,10 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      storeId: null,
       orderNote: '',
       setOrderNote: (note) => set({ orderNote: note }),
-      addItem: (item, storeId = null) =>
+      addItem: (item) =>
         set((state) => {
-          const resolvedStoreId = storeId && storeId > 0 ? storeId : state.storeId;
-          if (state.storeId && resolvedStoreId && state.storeId !== resolvedStoreId && state.items.length > 0) {
-            return { items: [item], storeId: resolvedStoreId };
-          }
           const optIds = (c: CartItem) => {
             if (c.customization_option_ids && Array.isArray(c.customization_option_ids)) {
               return JSON.stringify([...c.customization_option_ids].sort());
@@ -42,28 +35,24 @@ export const useCartStore = create<CartState>()(
           );
           if (existingIdx >= 0) {
             return {
-              storeId: resolvedStoreId,
               items: state.items.map((c, i) =>
                 i === existingIdx ? { ...c, quantity: c.quantity + item.quantity } : c
               ),
             };
           }
-          return { items: [...state.items, item], storeId: resolvedStoreId };
+          return { items: [...state.items, item] };
         }),
       removeItem: (index) =>
-        set((state) => {
-          const items = state.items.filter((_, i) => i !== index);
-          return { items, storeId: items.length > 0 ? state.storeId : null };
-        }),
+        set((state) => ({
+          items: state.items.filter((_, i) => i !== index),
+        })),
       updateQuantity: (index, quantity) =>
-        set((state) => {
-          const items = state.items
+        set((state) => ({
+          items: state.items
             .map((item, i) => (i === index ? { ...item, quantity: Math.max(0, quantity) } : item))
-            .filter((item) => item.quantity > 0);
-          return { items, storeId: items.length > 0 ? state.storeId : null };
-        }),
-      clearCart: () => set({ items: [], storeId: null, orderNote: '' }),
-      setStoreId: (storeId) => set({ storeId }),
+            .filter((item) => item.quantity > 0),
+        })),
+      clearCart: () => set({ items: [], orderNote: '' }),
       getTotal: () => get().items.reduce((sum, item) => sum + item.price * item.quantity, 0),
       getItemCount: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
     }),

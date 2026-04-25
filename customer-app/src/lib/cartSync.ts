@@ -22,7 +22,7 @@ function createIdempotencyKey(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export async function syncCartToServer(items: CartItem[], storeId: number): Promise<void> {
+export async function syncCartToServer(items: CartItem[]): Promise<void> {
   let serverItems: ServerCartItem[] = [];
   try {
     const res = await api.get('/cart');
@@ -78,7 +78,6 @@ export async function syncCartToServer(items: CartItem[], storeId: number): Prom
         customizationOptionIds.sort((a, b) => a - b);
 
         await api.post('/cart/items', {
-          store_id: storeId,
           item_id: desired.menu_item_id,
           quantity: desired.quantity,
           customization_option_ids: customizationOptionIds,
@@ -103,7 +102,7 @@ export async function placeOrder(params: {
 }) {
   const { items, clearCart } = useCartStore.getState();
 
-  await syncCartToServer(items, params.storeId);
+  await syncCartToServer(items);
 
   let checkoutToken: string | undefined;
 
