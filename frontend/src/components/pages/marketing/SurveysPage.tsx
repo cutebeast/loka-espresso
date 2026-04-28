@@ -21,6 +21,7 @@ export interface Survey {
   is_active: boolean;
   reward_voucher_id: number | null;
   questions: SurveyQuestion[];
+  question_count?: number;
   response_count?: number;
   created_at: string;
 }
@@ -102,18 +103,33 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
     setViewMode('form');
   }
 
-  function surveyOpenEdit(survey: Survey) {
+  async function surveyOpenEdit(survey: Survey) {
     setSurveyEditing(survey);
     setSurveyTitle(survey.title);
-    setSurveyDescription(survey.description || '');
+    setSurveyDescription('');
     setSurveyIsActive(survey.is_active);
     setSurveyRewardVoucherId(survey.reward_voucher_id != null ? String(survey.reward_voucher_id) : '');
-    setSurveyQuestions(survey.questions?.length ? survey.questions.map(q => ({
-      ...q,
-      options: Array.isArray(q.options) ? q.options.join(', ') : (q.options || ''),
-    })) : [emptySurveyQuestion()]);
+    setSurveyQuestions([emptySurveyQuestion()]);
     setSurveyError('');
     setViewMode('form');
+
+    try {
+      const res = await apiFetch(`/admin/surveys/${survey.id}`);
+      if (res.ok) {
+        const detail = await res.json();
+        setSurveyTitle(detail.title);
+        setSurveyDescription(detail.description || '');
+        setSurveyIsActive(detail.is_active);
+        setSurveyRewardVoucherId(detail.reward_voucher_id != null ? String(detail.reward_voucher_id) : '');
+        setSurveyQuestions(detail.questions?.length ? detail.questions.map((q: any) => ({
+          ...q,
+          options: Array.isArray(q.options) ? q.options.join(', ') : (q.options || ''),
+        })) : [emptySurveyQuestion()]);
+        setSurveyEditing(detail);
+      }
+    } catch (err: any) {
+      setSurveyError(err.message || 'Failed to load survey');
+    }
   }
 
   function surveyCloseForm() {
@@ -158,15 +174,19 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
   }
 
   async function surveyHandleSubmit() {
+    if (!surveyTitle.trim()) { setSurveyError('Title is required'); return; }
+    const filledQuestions = surveyQuestions.filter(q => q.question_text.trim());
+    if (filledQuestions.length === 0) { setSurveyError('Add at least one question with text'); return; }
+
     setSurveySaving(true);
     setSurveyError('');
 
     const payload = {
-      title: surveyTitle,
-      description: surveyDescription,
+      title: surveyTitle.trim(),
+      description: surveyDescription.trim(),
       is_active: surveyIsActive,
       reward_voucher_id: surveyRewardVoucherId ? Number(surveyRewardVoucherId) : null,
-      questions: surveyQuestions.map((q, i) => ({
+      questions: filledQuestions.map((q, i) => ({
         question_text: q.question_text,
         question_type: q.question_type,
         options: (q.question_type === 'single_choice' || q.question_type === 'dropdown')
@@ -206,8 +226,6 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
     } catch { setSurveyError('Network error'); }
   }
 
-  function handleViewResponses(_survey: Survey) {}
-
   const surveyRewardVoucherName = (id: number | null) => {
     if (!id) return '—';
     const v = surveyVouchers.find(v => v.id === id);
@@ -229,7 +247,7 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
       key: 'questions',
       header: 'Questions',
       render: (row) => (
-        <span className="badge badge-blue">{row.questions?.length ?? 0}</span>
+        <span className="badge badge-blue">{row.question_count ?? 0}</span>
       ),
     },
     {
@@ -238,23 +256,14 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
       render: (row) => <>{row.response_count ?? 0}</>,
     },
     {
-      key: 'status',
-      header: 'Status',
-      render: (row) => (
-        <button className="btn btn-sm sv-38" onClick={() => surveyToggleActive(row)}>
-          <span className={`badge ${row.is_active ? 'badge-green' : 'badge-gray'}`}>
-            {row.is_active ? 'Active' : 'Inactive'}
-          </span>
-        </button>
-      ),
-    },
-    {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
         <div className="sv-39">
+          <button className="btn btn-sm" onClick={() => surveyToggleActive(row)} title={row.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}>
+            <i className={`fas ${row.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: 20, color: row.is_active ? '#16A34A' : '#9CA3AF' }}></i>
+          </button>
           <button className="btn btn-sm" onClick={() => surveyOpenEdit(row)}><i className="fas fa-edit"></i></button>
-          <button className="btn btn-sm" onClick={() => handleViewResponses(row)}><i className="fas fa-reply"></i></button>
           {surveyConfirmDelete === row.id ? (
             <>
               <button className="btn btn-sm sv-40" onClick={() => surveyHandleDelete(row.id)}>Confirm</button>

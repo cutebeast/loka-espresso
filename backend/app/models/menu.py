@@ -111,9 +111,9 @@ class InventoryMovement(Base):
     balance_after: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
     note: Mapped[str] = mapped_column(Text, nullable=False)
     attachment_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("admin_users.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     store: Mapped["Store"] = relationship("Store")
     inventory_item: Mapped["InventoryItem"] = relationship("InventoryItem", back_populates="movements")
-    user: Mapped["User"] = relationship("User")
+    user: Mapped["AdminUser"] = relationship("AdminUser")

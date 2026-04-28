@@ -163,7 +163,42 @@ ALTER TABLE user_vouchers ADD COLUMN reserved_at TIMESTAMP WITH TIME ZONE;
 ```
 Fixes 500 error on wallet endpoint — model has the column but DB didn't.
 
+### Column Layout Convention (Phase 22)
+- **Active/inactive toggle**: Uses `fa-toggle-on`/`fa-toggle-off` icon (green `#16A34A` when active, gray `#9CA3AF` when inactive)
+- **Toggle is in Actions column** — not a separate Status column. Applies to: Information, Banners/Promotions, Vouchers, Rewards, Surveys
+- **All pages follow**: Image | Title(desc) | (metadata) | Actions(toggle+edit+delete) pattern
+- **Rewards**: Has Image column (was missing). Points + Type are separate columns.
+- **Promotions/Banners**: Type column shows dates below type badge. Dates column removed.
+- **Information**: Slug + Description columns removed. Short description shown under title.
+- **Vouchers**: Status column removed. Toggle in Actions.
+- **Surveys**: Status column removed. Toggle + chart-bar(removed) + edit + delete in Actions.
+- **Survey Reports tab**: Now always visible in PromotionsPage (`showTabs = true`). Previously disappeared when navigating to it.
+
+### Survey Create/Edit Fixes (Phase 22)
+- **Create**: Validates at least one question with non-empty text before POST
+- **Edit from list**: Fetches `GET /admin/surveys/{id}` to load full questions before opening edit drawer (list items have `question_count`, not `questions` array)
+- **Questions column**: Reads `question_count` (integer) instead of `questions?.length` (always 0 from list items)
+
+### Survey Feedback/Reply Button
+- **Removed** the reply button (`fa-chart-bar`) from Surveys Actions column. Redundant — use the Survey Reports tab instead.
+
+### Auth Session Check (Phase 22)
+- **`useAuth.checkAuth()`** now calls `GET /auth/session` instead of `GET /users/me` for initial auth check
+- `/auth/session` returns `{"authenticated": bool}` as 200 OK (never 401) — eliminates red console warnings on login page
+- **LoginScreen**: Added `autoComplete="current-password"` to password input (fixes Chrome DOM warning)
+
+### Backend / Admin API Fixes (Phase 22)
+- **Rewards/Vouchers/Surveys user names**: Fixed `AdminUser` → `Customer` model query for user name resolution (was returning "Unknown"/"Anonymous" for all customer names)
+- **Broadcasts**: Uses `CustomerDeviceToken` (`customer_device_tokens`) instead of legacy `DeviceToken` (`device_tokens`)
+- **System reset**: Targets `customers` table instead of legacy `users` table
+- **`/auth/device-token`**: Migrated from legacy `device_tokens` to `customer_device_tokens`
+- **`_blacklist_token`**: Fixed missing function that blocked logout + token refresh
+- **Order model**: Added `customer_id` column mapping alongside legacy `user_id`
+- **InventoryMovement + MarketingCampaign**: FK `created_by` changed `users.id` → `admin_users.id`
+- **Orphan cleanup**: Deleted `UserAddress` model (`user_addresses` table — data already in `customer_addresses`)
+
 ### Deleted Files (confirmed dead code)
 - `src/styles/history.css`
 - `src/styles/payment-methods.css`
 - `src/styles/admin-extra.css`
+- `src/components/modals/AddStaffModal.tsx` (pre-ACL staff form, replaced by StaffPage.tsx drawer)

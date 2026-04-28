@@ -4,6 +4,8 @@
 
 Staff member records, clock-in/out shift tracking, and PIN-based rate limiting.
 
+> **Phase 19 (2026-04-28):** `staff.user_id` FK updated from `users.id` to `admin_users.id`. Staff records link to `AdminUser` accounts (not the legacy `users` table). An `admin_user_id` column also exists in the DB as a redundant FK added by migration.
+
 ---
 
 ## Tables
@@ -14,7 +16,7 @@ Staff members at stores. PER-STORE. Same user can have records at multiple store
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
-| user_id | integer | YES | | FK→users.id (null if no dashboard access) |
+| user_id | integer | YES | | FK→admin_users.id (links to admin login account) |
 | store_id | integer | YES | 0 | FK→stores.id (nullable for HQ staff, 0=HQ) |
 | name | varchar(255) | NO | | Staff name |
 | email | varchar(255) | YES | | Staff email |

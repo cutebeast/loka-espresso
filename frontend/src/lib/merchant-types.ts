@@ -141,7 +141,9 @@ export interface MerchantOrder {
   delivery_dispatched_by?: number | null;
   staff_notes?: string | null;
   user_id: number;
+  customer_id: number;
 }
+
 
 export interface MerchantDashboardData {
   total_orders: number;
@@ -162,7 +164,7 @@ export interface StoreAssignment {
 export interface MerchantStaffMember {
   id: number | null;
   name: string;
-  role: string;                // legacy staff table role (barista, manager, etc.)
+  role: string;                // staff table role enum (barista, manager, etc.)
   phone: string;
   is_active: boolean;
   user_type_id?: number | null;  // FK to user_types lookup (1=HQ, 2=Store Mgmt, 3=Store, 4=Customer)
@@ -171,7 +173,7 @@ export interface MerchantStaffMember {
   user_role?: string | null;     // resolved name: "Admin", "Manager", "Staff", etc.
   email?: string | null;
   store_id?: number | null;
-  user_id?: number | null;
+  user_id?: number | null;      // FK to admin_users.id (the staff member's admin login account)
   store_name?: string | null;
   store_assignments?: StoreAssignment[];  // all stores this user is assigned to via user_store_access
   created_at?: string | null;

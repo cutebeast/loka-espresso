@@ -258,44 +258,22 @@ export default function InformationPage({ token }: InformationPageProps) {
       render: (row) => (
         <div>
           <strong>{row.title}</strong>
-          {(row.start_date || row.end_date) && (
-            <div style={{ fontSize: '0.8em', color: '#666', marginTop: 2 }}>
-              {row.start_date ? new Date(row.start_date).toLocaleDateString() : '—'} → {row.end_date ? new Date(row.end_date).toLocaleDateString() : '—'}
+          {row.short_description && (
+            <div style={{ fontSize: '0.85em', color: '#666', marginTop: 2 }}>
+              {row.short_description}
             </div>
           )}
         </div>
       ),
     },
     {
-      key: 'slug',
-      header: 'Slug',
-      render: (row) => (
-        <span style={{ fontFamily: 'monospace', fontSize: '0.85em' }}>
-          {row.slug || '-'}
-        </span>
-      ),
-    },
-    {
-      key: 'description',
-      header: 'Description',
-      render: (row) => (
-        <span style={{ display: 'block', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {row.short_description
-            ? (row.short_description.length > 80 ? row.short_description.slice(0, 80) + '...' : row.short_description)
-            : '-'}
-        </span>
-      ),
-    },
-    {
       key: 'actions',
       header: 'Actions',
-      width: '240px',
+      width: '200px',
       render: (row) => (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <button className="btn btn-sm" onClick={() => handleToggleActive(row)}>
-            <span className={`badge ${row.is_active ? 'badge-green' : 'badge-gray'}`}>
-              {row.is_active ? 'Active' : 'Inactive'}
-            </span>
+          <button className="btn btn-sm" onClick={() => handleToggleActive(row)} title={row.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}>
+            <i className={`fas ${row.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: 20, color: row.is_active ? '#16A34A' : '#9CA3AF' }}></i>
           </button>
           <button className="btn btn-sm" onClick={() => openEdit(row)}><i className="fas fa-edit"></i></button>
           {deletingId === row.id ? (

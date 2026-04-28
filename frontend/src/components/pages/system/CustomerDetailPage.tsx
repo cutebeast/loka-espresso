@@ -49,6 +49,10 @@ function AwardPointsDialog({ customerId, token: _token, onDone }: { customerId: 
   async function handleSubmit() {
     const pts = parseInt(points);
     if (!pts) { setError('Enter a non-zero point value'); return; }
+    const msg = pts > 0
+      ? `Award ${pts} points to this customer?`
+      : `Deduct ${Math.abs(pts)} points from this customer? This cannot be undone.`;
+    if (!confirm(msg)) return;
     setSaving(true); setError(''); setResult(null);
     try {
       const res = await apiFetch(`/admin/customers/${customerId}/adjust-points`, undefined, {
@@ -73,11 +77,11 @@ function AwardPointsDialog({ customerId, token: _token, onDone }: { customerId: 
             <label className="df-label">Points</label>
             <span className="df-hint">Negative to deduct</span>
           </div>
-          <input type="number" value={points} onChange={e => setPoints(e.target.value)} placeholder="+/- pts" />
+          <input type="number" value={points} onChange={e => setPoints(e.target.value)} placeholder="+/- pts" disabled={saving} />
         </div>
         <div className="cdp-action-field cdp-action-field-lg">
           <label className="df-label">Reason</label>
-          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Loyalty bonus" />
+          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Loyalty bonus" disabled={saving} />
         </div>
         <button onClick={handleSubmit} className="btn btn-primary btn-sm" disabled={saving || !points}>{saving ? 'Applying...' : 'Apply'}</button>
       </div>
@@ -109,6 +113,7 @@ function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number;
 
   async function handleSubmit() {
     if (!selectedVoucher) { setError('Select a voucher'); return; }
+    if (!confirm('Award this voucher to the customer?')) return;
     setSaving(true); setError(''); setResult(null);
     try {
       const res = await apiFetch(`/admin/customers/${customerId}/award-voucher`, undefined, {
@@ -135,7 +140,7 @@ function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number;
         <div className="cdp-action-row">
           <div className="cdp-action-field cdp-action-field-md">
             <label className="df-label">Voucher</label>
-            <select value={selectedVoucher} onChange={e => setSelectedVoucher(e.target.value)}>
+            <select value={selectedVoucher} onChange={e => setSelectedVoucher(e.target.value)} disabled={saving}>
               <option value="">Select voucher...</option>
               {vouchers.map(v => (
                 <option key={v.id} value={v.id}>{v.title || v.code} — {v.discount_type}: {v.discount_value}{v.discount_type === 'percent' ? '%' : ' RM'}</option>
@@ -144,7 +149,7 @@ function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number;
           </div>
           <div className="cdp-action-field cdp-action-field-lg">
             <label className="df-label">Reason</label>
-            <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Compensation" />
+            <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Compensation" disabled={saving} />
           </div>
           <button onClick={handleSubmit} className="btn btn-primary btn-sm" disabled={saving || !selectedVoucher}>{saving ? 'Awarding...' : 'Award'}</button>
         </div>
@@ -161,6 +166,7 @@ function SetTierDialog({ customerId, currentTier, token: _token, onDone }: { cus
   const [result, setResult] = useState<string | null>(null);
 
   async function handleSubmit() {
+    if (!confirm(`Override this customer's tier to "${tier}"? This will bypass the automatic tier calculation.`)) return;
     setSaving(true); setError(''); setResult(null);
     try {
       const res = await apiFetch(`/admin/customers/${customerId}/set-tier`, undefined, {
@@ -183,13 +189,13 @@ function SetTierDialog({ customerId, currentTier, token: _token, onDone }: { cus
       <div className="cdp-action-row">
         <div className="cdp-action-field cdp-action-field-sm">
           <label className="df-label">Tier</label>
-          <select value={tier} onChange={e => setTier(e.target.value)}>
+          <select value={tier} onChange={e => setTier(e.target.value)} disabled={saving}>
             {tiers.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
           </select>
         </div>
         <div className="cdp-action-field cdp-action-field-lg">
           <label className="df-label">Reason</label>
-          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. VIP upgrade" />
+          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. VIP upgrade" disabled={saving} />
         </div>
         <button onClick={handleSubmit} className="btn btn-primary btn-sm" disabled={saving}>{saving ? 'Setting...' : 'Set Tier'}</button>
       </div>
@@ -275,7 +281,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
       const res = await apiFetch(`/admin/customers/${customerId}/orders?page=${page}&page_size=${PAGE_SIZE}`);
       if (res.ok) {
         const data = await res.json();
-        setOrders(typeof data.total === 'number' ? data : { total: Array.isArray(data) ? data.length : 0, page, page_size: PAGE_SIZE, items: Array.isArray(data) ? data : (data.orders || []) });
+        setOrders(typeof data.total === 'number' ? data : { total: Array.isArray(data) ? data.length : 0, page, page_size: PAGE_SIZE, items: Array.isArray(data) ? data : (data.items || []) });
       }
     } catch { console.error('Failed to fetch orders'); }
   }, [customerId]);
@@ -285,7 +291,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
       const res = await apiFetch(`/admin/customers/${customerId}/loyalty-history?page=${page}&page_size=${PAGE_SIZE}`);
       if (res.ok) {
         const data = await res.json();
-        setLoyalty(typeof data.total === 'number' ? data : { total: Array.isArray(data) ? data.length : 0, page, page_size: PAGE_SIZE, items: Array.isArray(data) ? data : (data.history || []) });
+        setLoyalty(typeof data.total === 'number' ? data : { total: Array.isArray(data) ? data.length : 0, page, page_size: PAGE_SIZE, items: Array.isArray(data) ? data : (data.items || []) });
       }
     } catch { console.error('Failed to fetch loyalty'); }
   }, [customerId]);
@@ -295,7 +301,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
       const res = await apiFetch(`/admin/customers/${customerId}/wallet-history?page=${page}&page_size=${PAGE_SIZE}`);
       if (res.ok) {
         const data = await res.json();
-        setWallet(typeof data.total === 'number' ? data : { total: Array.isArray(data) ? data.length : 0, page, page_size: PAGE_SIZE, items: Array.isArray(data) ? data : (data.transactions || []) });
+        setWallet(typeof data.total === 'number' ? data : { total: Array.isArray(data) ? data.length : 0, page, page_size: PAGE_SIZE, items: Array.isArray(data) ? data : (data.items || []) });
       }
     } catch { console.error('Failed to fetch wallet'); }
   }, [customerId]);

@@ -53,20 +53,6 @@ class User(Base):
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
-class UserAddress(Base):
-    """Legacy — use CustomerAddress for new code."""
-    __tablename__ = "user_addresses"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    label: Mapped[str] = mapped_column(String(100), nullable=False)
-    address: Mapped[str] = mapped_column(String(500), nullable=False)
-    lat: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 7), nullable=True)
-    lng: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 7), nullable=True)
-    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-
 class OTPSession(Base):
     __tablename__ = "otp_sessions"
 

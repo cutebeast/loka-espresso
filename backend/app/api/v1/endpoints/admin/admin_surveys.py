@@ -192,7 +192,7 @@ async def delete_survey(
 # ============================================================================
 
 from app.models.survey import SurveyAnswer
-from app.models.admin_user import AdminUser as UserModel
+from app.models.customer import Customer
 
 
 @router.get("/surveys/{survey_id}/responses")
@@ -248,7 +248,7 @@ async def list_survey_responses(
         user_name = "Anonymous"
         user_email = None
         if r.user_id:
-            user_result = await db.execute(select(UserModel).where(UserModel.id == r.user_id))
+            user_result = await db.execute(select(Customer).where(Customer.id == r.user_id))
             u = user_result.scalar_one_or_none()
             if u:
                 user_name = u.name or "Anonymous"
@@ -311,7 +311,7 @@ async def export_survey_responses(
 
         user_name = "Anonymous"
         if r.user_id:
-            user_result = await db.execute(select(UserModel).where(UserModel.id == r.user_id))
+            user_result = await db.execute(select(Customer).where(Customer.id == r.user_id))
             u = user_result.scalar_one_or_none()
             if u:
                 user_name = u.name or "Anonymous"

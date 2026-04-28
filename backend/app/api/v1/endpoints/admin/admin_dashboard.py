@@ -196,6 +196,7 @@ async def list_all_orders(
             {
                 "id": o.id,
                 "user_id": o.user_id,
+                "customer_id": o.customer_id,
                 "store_id": o.store_id,
                 "table_id": o.table_id,
                 "order_number": o.order_number,

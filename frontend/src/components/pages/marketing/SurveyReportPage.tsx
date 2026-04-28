@@ -61,8 +61,7 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
     setLoading(true);
     try {
       const res = await apiFetch(
-        `/admin/surveys/${selectedSurvey}/responses?page=${p}&page_size=${PAGE_SIZE}`,
-        token
+        `/admin/surveys/${selectedSurvey}/responses?page=${p}&page_size=${PAGE_SIZE}`
       );
       if (res.ok) {
         const data = await res.json();

@@ -4,40 +4,63 @@
 
 Core user accounts, addresses, device tokens, JWT blacklist, and OTP sessions.
 
+> **Phase 19 (2026-04-28):** The original `users` table has been split into `admin_users` (staff/admin accounts) and `customers` (PWA users). The legacy `users` table still exists for backward compatibility with `OTPSession`, `DeviceToken`, and `TokenBlacklist`. JWT tokens carry a `user_type` claim (`"admin"` or `"customer"`) for polymorphic auth lookups.
+
 ---
 
 ## Tables
 
-### `users`
-Core user accounts. All authenticated users (customers, store owners, admins, staff).
+### `admin_users`
+Admin/staff login accounts. Used by dashboard and store operations.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | integer | NO | auto | Primary key |
+| email | varchar(255) | YES | | Email (unique, used for password login) |
+| name | varchar(255) | YES | | Display name |
+| password_hash | varchar(255) | YES | | bcrypt hash |
+| phone | varchar(20) | YES | | Phone number |
+| user_type_id | integer | NO | 1 | FK→user_types.id |
+| role_id | integer | NO | 1 | FK→roles.id |
+| is_active | boolean | NO | true | Account status |
+| created_at | timestamptz | YES | now() | |
+| updated_at | timestamptz | YES | now() | |
+
+**FKs:** user_type_id → user_types(id), role_id → roles(id)
+**Indexes:** email (unique)
+
+### `customers`
+PWA customer accounts. Login via OTP.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | Primary key |
 | phone | varchar(20) | YES | | Phone number (unique, used for OTP login) |
-| email | varchar(255) | YES | | Email (unique, used for password login) |
+| email | varchar(255) | YES | | Email (unique) |
 | name | varchar(255) | YES | | Display name |
-| password_hash | varchar(255) | YES | | bcrypt hash |
-| user_type_id | integer | NO | 4 | FK→user_types.id (default: Customer) |
-| role_id | integer | NO | 6 | FK→roles.id (default: Customer) |
 | avatar_url | varchar(500) | YES | | Profile image |
 | referral_code | varchar(50) | YES | | Unique referral code |
-| referred_by | integer | YES | | FK→users.id |
+| referred_by | integer | YES | | FK→customers.id |
+| referral_count | integer | NO | 0 | Successful referrals |
+| referral_earnings | numeric(10,2) | NO | 0.00 | Referral earnings |
 | is_active | boolean | NO | true | Account status |
 | phone_verified | boolean | NO | false | Whether phone was verified via OTP |
 | created_at | timestamptz | YES | now() | |
 | updated_at | timestamptz | YES | now() | |
 
-**FKs:** referred_by → users(id), user_type_id → user_types(id), role_id → roles(id)
+**FKs:** referred_by → customers(id)
 **Indexes:** phone (unique), email (unique), referral_code (unique)
 
-### `user_addresses`
+### `users` (legacy)
+⚠️ **LEGACY** — retained for `OTPSession`, `DeviceToken`, and `TokenBlacklist` compatibility. New code uses `admin_users` and `customers` instead.
+
+### `customer_addresses`
 Saved delivery addresses for customers.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
-| user_id | integer | NO | | FK→users.id |
+| customer_id | integer | NO | | FK→customers.id |
 | label | varchar(100) | NO | | "Home", "Office", etc. |
 | address | text | NO | | Full address string |
 | lat | numeric(10,7) | YES | | Latitude |
@@ -45,21 +68,24 @@ Saved delivery addresses for customers.
 | is_default | boolean | NO | false | Default address flag |
 | created_at | timestamptz | YES | now() | |
 
-**FKs:** user_id → users(id)
+**FKs:** customer_id → customers(id)
 
-### `device_tokens`
-Push notification tokens (FCM/APNs).
+### `customer_device_tokens`
+Push notification tokens for customers.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
-| user_id | integer | NO | | FK→users.id |
-| token | varchar(500) | NO | | Device push token |
+| customer_id | integer | NO | | FK→customers.id |
+| token | varchar(4096) | NO | | Device push token |
 | platform | varchar(20) | YES | | `ios`, `android`, `web` |
 | is_active | boolean | NO | true | Active token flag |
 | created_at | timestamptz | YES | now() | |
 
-**FKs:** user_id → users(id)
+**FKs:** customer_id → customers(id)
+
+### `device_tokens` (legacy)
+⚠️ **LEGACY** — replaced by `customer_device_tokens`.
 
 ### `token_blacklist`
 Revoked JWT tokens for proper logout. Checked on every authenticated request.
@@ -68,12 +94,12 @@ Revoked JWT tokens for proper logout. Checked on every authenticated request.
 |--------|------|----------|---------|-------------|
 | id | integer | NO | auto | PK |
 | jti | varchar(255) | NO | | JWT ID claim (unique) |
-| user_id | integer | NO | | FK→users.id |
+| user_id | integer | NO | | User ID (polymorphic — admin_users or customers) |
+| user_type | varchar(20) | YES | | `"admin"` or `"customer"` discriminator |
 | expires_at | timestamptz | NO | | When the token naturally expires |
 | created_at | timestamptz | YES | now() | When blacklisted |
 
-**FKs:** user_id → users(id)
-**Indexes:** jti (unique), user_id
+**Indexes:** jti (unique), user_id, user_type
 
 ### `otp_sessions`
 OTP codes for phone-based authentication.

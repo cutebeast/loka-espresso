@@ -2,7 +2,6 @@ export { AddItemForm } from './AddItemModal';
 export { AddTableForm } from './AddTableModal';
 export { AddRewardForm } from './AddRewardModal';
 export { AddVoucherForm } from './AddVoucherModal';
-export { AddStaffForm } from './AddStaffModal';
 export { AddBannerForm } from './AddBannerModal';
 export { AddBroadcastForm } from './AddBroadcastModal';
 export { FeedbackReplyForm } from './FeedbackReplyModal';

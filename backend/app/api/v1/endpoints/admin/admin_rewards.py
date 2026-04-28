@@ -9,7 +9,7 @@ from app.core.audit import log_action, get_client_ip
 from app.models.admin_user import AdminUser
 from app.models.user import RoleIDs
 from app.models.reward import Reward, UserReward
-from app.models.admin_user import AdminUser as UserModel
+from app.models.customer import Customer
 from app.schemas.reward import RewardOut, RewardCreate, RewardUpdate
 
 router = APIRouter(prefix="/admin", tags=["Admin Rewards"])
@@ -101,7 +101,7 @@ async def reward_redemptions(
     redemptions = result.scalars().all()
     out = []
     for r in redemptions:
-        user_result = await db.execute(select(UserModel).where(UserModel.id == r.user_id))
+        user_result = await db.execute(select(Customer).where(Customer.id == r.user_id))
         u = user_result.scalar_one_or_none()
         out.append({"user_id": r.user_id, "user_name": u.name if u else "Unknown", "redeemed_at": r.redeemed_at.isoformat() if r.redeemed_at else None, "store_id": r.store_id, "is_used": r.is_used})
     return {

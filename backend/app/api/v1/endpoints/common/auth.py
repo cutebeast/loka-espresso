@@ -15,7 +15,8 @@ from app.core.security import (
 )
 from app.core.config import get_settings
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User, OTPSession, DeviceToken, TokenBlacklist, UserTypeIDs, RoleIDs
+from app.models.user import User, OTPSession, TokenBlacklist, UserTypeIDs, RoleIDs
+from app.models.customer import CustomerDeviceToken, Customer
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt as pyjwt
 from jwt import PyJWTError
@@ -70,57 +71,47 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 OTP_TTL_SECONDS = 300
 OTP_RESEND_SECONDS = 60
-OTP_MAX_VERIFY_ATTEMPTS = 5
-OTP_MAX_SENDS_PER_WINDOW = 3
-OTP_WINDOW_MINUTES = 5
 
 
-def _normalize_phone(phone: str) -> str:
-    """Normalize Malaysian phone numbers to +60XXXXXXXXX format."""
-    digits = ''.join(c for c in phone if c.isdigit())
-    if digits.startswith('600'):
-        return '+60' + digits[3:]  # +600102905388 → +60102905388
-    if digits.startswith('60'):
-        return '+' + digits  # 60102905388 → +60102905388
-    if digits.startswith('01'):
-        return '+6' + digits  # 0102905388 → +60102905388
-    if digits.startswith('1'):
-        return '+60' + digits  # 102905388 → +60102905388
-    return '+60' + digits
-
-
-def _validate_phone(phone: str) -> None:
-    digits = ''.join(c for c in phone if c.isdigit())
-    if not digits.startswith('60') or len(digits) < 10 or len(digits) > 12:
-        raise HTTPException(status_code=400, detail="Please enter a valid Malaysian mobile number")
-
-
-async def _blacklist_token(raw_token: str | None, user_id: int, db: AsyncSession) -> None:
-    if not raw_token:
+async def _blacklist_token(token: str, user_id: int, db: AsyncSession) -> None:
+    """Extract jti from token and insert into token_blacklist. No-op if already blacklisted or decode fails."""
+    if not token:
         return
     try:
-        from app.core.security import _decode_token
-        payload = _decode_token(raw_token)
-        jti = payload.get("jti")
-        exp = payload.get("exp")
-    except Exception as exc:
-        logger.warning(f"Token decode failed during blacklist: {exc}")
+        payload = pyjwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except PyJWTError:
         return
-
-    if not jti or not exp:
+    jti = payload.get("jti")
+    if not jti:
         return
-
     existing = await db.execute(select(TokenBlacklist).where(TokenBlacklist.jti == jti))
     if existing.scalar_one_or_none():
         return
+    user_type: Optional[str] = payload.get("user_type")
+    expires_at = payload.get("exp")
+    expires_dt = datetime.fromtimestamp(expires_at, tz=timezone.utc) if expires_at else datetime.now(timezone.utc) + timedelta(days=30)
+    bl = TokenBlacklist(jti=jti, user_id=user_id, user_type=user_type, expires_at=expires_dt)
+    db.add(bl)
 
-    db.add(
-        TokenBlacklist(
-            jti=jti,
-            user_id=user_id,
-            expires_at=datetime.fromtimestamp(exp, tz=timezone.utc),
-        )
-    )
+
+@router.get("/session")
+async def check_session(request: Request, db: AsyncSession = Depends(get_db)):
+    """Soft session check — returns 200 always, never 401. Used by frontend on page load to avoid browser console errors."""
+    token = request.cookies.get("access_token")
+    if not token:
+        return JSONResponse({"authenticated": False})
+    try:
+        payload = pyjwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        if payload.get("type") != "access":
+            return JSONResponse({"authenticated": False})
+        jti = payload.get("jti")
+        if jti:
+            bl_result = await db.execute(select(TokenBlacklist).where(TokenBlacklist.jti == jti))
+            if bl_result.scalar_one_or_none():
+                return JSONResponse({"authenticated": False})
+        return JSONResponse({"authenticated": True})
+    except PyJWTError:
+        return JSONResponse({"authenticated": False})
 
 
 @router.post("/send-otp", response_model=SendOTPResponse)
@@ -423,22 +414,22 @@ async def logout(
 
 
 @router.post("/device-token")
-async def register_device_token(req: DeviceTokenRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def register_device_token(req: DeviceTokenRequest, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(DeviceToken).where(DeviceToken.user_id == user.id, DeviceToken.token == req.token)
+        select(CustomerDeviceToken).where(CustomerDeviceToken.customer_id == user.id, CustomerDeviceToken.token == req.token)
     )
     existing = result.scalar_one_or_none()
     if not existing:
-        dt = DeviceToken(user_id=user.id, token=req.token, platform=req.platform)
+        dt = CustomerDeviceToken(customer_id=user.id, token=req.token, platform=req.platform)
         db.add(dt)
         await db.flush()
     return {"message": "Device token registered"}
 
 
 @router.delete("/device-token")
-async def unregister_device_token(token: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def unregister_device_token(token: str, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(DeviceToken).where(DeviceToken.user_id == user.id, DeviceToken.token == token)
+        select(CustomerDeviceToken).where(CustomerDeviceToken.customer_id == user.id, CustomerDeviceToken.token == token)
     )
     dt = result.scalar_one_or_none()
     if dt:

@@ -77,11 +77,11 @@ export default function BannerManager({ token }: BannerManagerProps) {
   useEffect(() => {
     if (drawerOpen) {
       apiFetch('/admin/surveys')
-        .then(r => r.ok ? r.json() : { surveys: [] })
+        .then(r => r.ok ? r.json() : { items: [] })
         .then(d => setSurveys(Array.isArray(d) ? d : (d.items ?? [])))
         .catch(() => {});
       apiFetch('/admin/vouchers')
-        .then(r => r.ok ? r.json() : { vouchers: [] })
+        .then(r => r.ok ? r.json() : { items: [] })
         .then(d => setVouchers(Array.isArray(d) ? d : (d.items ?? [])))
         .catch(() => {});
     }
@@ -230,41 +230,29 @@ export default function BannerManager({ token }: BannerManagerProps) {
       key: 'type',
       header: 'Type',
       render: (row) => (
-        <span className={`badge ${row.action_type === 'survey' ? 'badge-blue' : 'badge-gray'}`}>
-          {row.action_type === 'survey' ? 'Open Survey' : 'Show Details'}
-        </span>
-      ),
-    },
-    {
-      key: 'dates',
-      header: 'Dates',
-      render: (row) => (
-        <span>
-          {(row.start_date || row.end_date) ? (
-            <>
-              {row.start_date ? new Date(row.start_date).toLocaleDateString() : '—'} → {row.end_date ? new Date(row.end_date).toLocaleDateString() : '—'}
-            </>
-          ) : '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => (
-        <button className="btn btn-sm" onClick={() => handleToggleActive(row)}>
-          <span className={`badge ${row.is_active ? 'badge-green' : 'badge-gray'}`}>
-            {row.is_active ? 'Active' : 'Inactive'}
+        <div>
+          <span className={`badge ${row.action_type === 'survey' ? 'badge-blue' : 'badge-gray'}`}>
+            {row.action_type === 'survey' ? 'Open Survey' : 'Show Details'}
           </span>
-        </button>
+          <div style={{ fontSize: '0.8em', color: '#888', marginTop: 2 }}>
+            {(row.start_date || row.end_date) ? (
+              <>
+                {row.start_date ? new Date(row.start_date).toLocaleDateString() : '—'} → {row.end_date ? new Date(row.end_date).toLocaleDateString() : '—'}
+              </>
+            ) : '—'}
+          </div>
+        </div>
       ),
     },
     {
       key: 'actions',
       header: 'Actions',
-      width: '140px',
+      width: '180px',
       render: (row) => (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button className="btn btn-sm" onClick={() => handleToggleActive(row)} title={row.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}>
+            <i className={`fas ${row.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: 20, color: row.is_active ? '#16A34A' : '#9CA3AF' }}></i>
+          </button>
           <button className="btn btn-sm" onClick={() => openEdit(row)}><i className="fas fa-edit"></i></button>
           {deletingId === row.id ? (
             <>

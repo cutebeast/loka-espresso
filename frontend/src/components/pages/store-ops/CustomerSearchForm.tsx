@@ -7,7 +7,7 @@ export interface CustomerResult {
   id: number;
   name: string | null;
   phone: string | null;
-  wallet_balance?: number;
+  wallet_balance?: number;  // from list endpoint (may be stale — refresh from detail endpoint)
 }
 
 interface CustomerSearchFormProps {

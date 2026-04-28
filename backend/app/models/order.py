@@ -59,7 +59,8 @@ class Order(Base):
     __tablename__ = "orders"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
+    customer_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # legacy column, kept for backward compat
     store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True)
     table_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("store_tables.id", ondelete="SET NULL"), nullable=True)
     order_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
@@ -108,6 +109,7 @@ class Order(Base):
         Index("ix_orders_type_status", "order_type", "status"),
     )
 
+    customer: Mapped["Customer"] = relationship("Customer", foreign_keys=[customer_id])
     status_history: Mapped[List["OrderStatusHistory"]] = relationship("OrderStatusHistory", back_populates="order", cascade="all, delete-orphan")
     payment: Mapped[Optional["Payment"]] = relationship("Payment", back_populates="order", uselist=False)
     order_items: Mapped[List["OrderItem"]] = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")

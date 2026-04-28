@@ -161,19 +161,13 @@ export default function VouchersPage({ token }: VouchersPageProps) {
       render: (row) => <>{renderUsage(row)}</>,
     },
     {
-      key: 'status',
-      header: 'Status',
-      render: (row) => (
-        <button className="btn btn-sm vp-16" onClick={() => toggleActive(row)}>
-          <span className={`badge ${row.is_active ? 'badge-green' : 'badge-gray'}`}>{row.is_active ? 'Active' : 'Inactive'}</span>
-        </button>
-      ),
-    },
-    {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
         <div className="vp-17">
+          <button className="btn btn-sm" onClick={() => toggleActive(row)} title={row.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}>
+            <i className={`fas ${row.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: 20, color: row.is_active ? '#16A34A' : '#9CA3AF' }}></i>
+          </button>
           <button className="btn btn-sm" onClick={() => openEdit(row)} title="Edit"><i className="fas fa-edit"></i></button>
           {confirmDelete === row.id ? (
             <>

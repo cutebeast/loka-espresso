@@ -50,11 +50,14 @@ export function useAuth() {
   useEffect(() => {
     async function checkAuth() {
       try {
-        const res = await fetch(`${API_BASE_URL}/users/me`, {
+        const res = await fetch(`${API_BASE_URL}/auth/session`, {
           credentials: 'include',
         });
         if (res.ok) {
-          setToken('cookie-auth');
+          const data = await res.json();
+          if (data.authenticated) {
+            setToken('cookie-auth');
+          }
         }
       } catch {
         // Not authenticated

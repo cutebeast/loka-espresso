@@ -39,8 +39,8 @@ _CUSTOMER_RESET_TABLES = [
     "wallet_transactions",
     "wallets",
     "loyalty_accounts",
-    "user_addresses",
-    "device_tokens",
+    "customer_addresses",
+    "customer_device_tokens",
     "notifications",
     "favorites",
     "referrals",
@@ -48,16 +48,16 @@ _CUSTOMER_RESET_TABLES = [
     "survey_responses",
     "audit_log",
     "token_blacklist",
-    "users",
+    "customers",
 ]
 
 _ALLOWED_CUSTOMER_RESET_TABLES = {
     "loyalty_transactions", "user_vouchers", "user_rewards", "cart_items",
     "order_items", "order_status_history", "payments", "feedback", "orders",
-    "wallet_transactions", "wallets", "loyalty_accounts", "user_addresses",
-    "device_tokens", "notifications", "favorites", "referrals",
+    "wallet_transactions", "wallets", "loyalty_accounts", "customer_addresses",
+    "customer_device_tokens", "notifications", "favorites", "referrals",
     "payment_methods", "survey_responses", "audit_log", "token_blacklist",
-    "users",
+    "customers",
 }
 
 
@@ -192,8 +192,6 @@ async def reset_all_customers(
             detail="This is a destructive operation. Pass confirm=true to proceed."
         )
 
-    CUSTOMER_ROLE_ID = 6
-
     deleted_counts = {}
 
     for table_name in _CUSTOMER_RESET_TABLES:
@@ -203,30 +201,24 @@ async def reset_all_customers(
         try:
             await db.execute(text(f"SAVEPOINT {savepoint_name}"))
 
-            if table_name == "users":
-                await db.execute(
-                    text(f"DELETE FROM {table_name} WHERE role_id = :role_id"),
-                    {"role_id": CUSTOMER_ROLE_ID}
-                )
+            if table_name == "customers":
+                await db.execute(text("DELETE FROM customers"))
             elif table_name == "referrals":
                 await db.execute(
                     text(f"""
                         DELETE FROM {table_name}
-                        WHERE referrer_id IN (SELECT id FROM users WHERE role_id = :role_id)
-                           OR invitee_id IN (SELECT id FROM users WHERE role_id = :role_id)
-                    """),
-                    {"role_id": CUSTOMER_ROLE_ID}
-                )
+                        WHERE referrer_id IN (SELECT id FROM customers)
+                           OR invitee_id IN (SELECT id FROM customers)
+                    """))
             elif table_name == "order_items":
                 await db.execute(
                     text("""
                         DELETE FROM order_items
                         WHERE order_id IN (
                             SELECT id FROM orders
-                            WHERE user_id IN (SELECT id FROM users WHERE role_id = :role_id)
+                            WHERE user_id IN (SELECT id FROM customers)
                         )
-                    """),
-                    {"role_id": CUSTOMER_ROLE_ID}
+                    """                )
                 )
             elif table_name in ("order_status_history", "payments"):
                 await db.execute(
@@ -234,10 +226,9 @@ async def reset_all_customers(
                         DELETE FROM {table_name}
                         WHERE order_id IN (
                             SELECT id FROM orders
-                            WHERE user_id IN (SELECT id FROM users WHERE role_id = :role_id)
+                            WHERE user_id IN (SELECT id FROM customers)
                         )
-                    """),
-                    {"role_id": CUSTOMER_ROLE_ID}
+                    """                    )
                 )
             elif table_name == "feedback":
                 await db.execute(
@@ -245,26 +236,23 @@ async def reset_all_customers(
                         DELETE FROM feedback
                         WHERE order_id IN (
                             SELECT id FROM orders
-                            WHERE user_id IN (SELECT id FROM users WHERE role_id = :role_id)
+                            WHERE user_id IN (SELECT id FROM customers)
                         )
-                    """),
-                    {"role_id": CUSTOMER_ROLE_ID}
+                    """                    )
                 )
             elif table_name == "audit_log":
                 await db.execute(
                     text("""
                         DELETE FROM audit_log
-                        WHERE user_id IN (SELECT id FROM users WHERE role_id = :role_id)
-                    """),
-                    {"role_id": CUSTOMER_ROLE_ID}
+                        WHERE user_id IN (SELECT id FROM customers)
+                    """                    )
                 )
             else:
                 await db.execute(
                     text(f"""
                         DELETE FROM {table_name}
-                        WHERE user_id IN (SELECT id FROM users WHERE role_id = :role_id)
-                    """),
-                    {"role_id": CUSTOMER_ROLE_ID}
+                        WHERE user_id IN (SELECT id FROM customers)
+                    """                    )
                 )
             deleted_counts[table_name] = "ok"
         except Exception as e:

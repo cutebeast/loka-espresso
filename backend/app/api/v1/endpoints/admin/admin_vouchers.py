@@ -9,7 +9,7 @@ from app.core.audit import log_action, get_client_ip
 from app.models.admin_user import AdminUser
 from app.models.user import RoleIDs
 from app.models.voucher import Voucher, UserVoucher
-from app.models.admin_user import AdminUser as UserModel
+from app.models.customer import Customer
 from app.schemas.voucher import VoucherOut, VoucherCreate, VoucherUpdate
 
 router = APIRouter(prefix="/admin", tags=["Admin Vouchers"])
@@ -106,7 +106,7 @@ async def voucher_usage(
     usages = result.scalars().all()
     out = []
     for uv in usages:
-        user_result = await db.execute(select(UserModel).where(UserModel.id == uv.user_id))
+        user_result = await db.execute(select(Customer).where(Customer.id == uv.user_id))
         u = user_result.scalar_one_or_none()
         out.append({"user_id": uv.user_id, "user_name": u.name if u else "Unknown", "applied_at": uv.applied_at.isoformat() if uv.applied_at else None, "order_id": uv.order_id, "store_id": uv.store_id})
     return {

@@ -8,7 +8,7 @@ from app.core.database import get_db
 from app.core.security import require_hq_access
 from app.core.audit import log_action, get_client_ip
 from app.models.admin_user import AdminUser
-from app.models.user import DeviceToken
+from app.models.customer import CustomerDeviceToken
 from app.models.notification import Notification, NotificationBroadcast
 from app.schemas.admin_extras import (
     BroadcastCreate,
@@ -206,7 +206,7 @@ async def send_broadcast(
         raise HTTPException(400, "Can only send draft broadcasts")
 
     tokens_result = await db.execute(
-        select(DeviceToken).where(DeviceToken.is_active == True)
+        select(CustomerDeviceToken).where(CustomerDeviceToken.is_active == True)
     )
     device_tokens = tokens_result.scalars().all()
 
@@ -214,7 +214,7 @@ async def send_broadcast(
     for dt in device_tokens:
         try:
             notif = Notification(
-                user_id=dt.user_id,
+                user_id=dt.customer_id,
                 title=obj.title,
                 body=obj.body,
                 type="broadcast",

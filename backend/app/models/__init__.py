@@ -1,4 +1,4 @@
-from app.models.user import User, UserAddress, OTPSession, DeviceToken, TokenBlacklist, UserTypeIDs, RoleIDs
+from app.models.user import User, OTPSession, DeviceToken, TokenBlacklist, UserTypeIDs, RoleIDs
 from app.models.admin_user import AdminUser
 from app.models.customer import Customer, CustomerAddress, CustomerDeviceToken
 from app.models.store import Store, StoreTable
@@ -22,7 +22,7 @@ from app.models.acl import UserType as ACLUserType, Role, RoleUserType, UserStor
 from app.models.compliance import Allergen, MenuItemAllergen, DeliveryZone, TaxRate, ModifierGroup, ModifierOption, TaxCategory, RecipeItem, Reservation
 
 __all__ = [
-    "User", "UserAddress", "OTPSession", "DeviceToken", "TokenBlacklist", "UserTypeIDs", "RoleIDs",
+    "User", "OTPSession", "DeviceToken", "TokenBlacklist", "UserTypeIDs", "RoleIDs",
     "AdminUser",
     "Customer", "CustomerAddress", "CustomerDeviceToken",
     "Store", "StoreTable",

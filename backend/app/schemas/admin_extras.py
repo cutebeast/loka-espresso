@@ -30,7 +30,7 @@ class StaffUpdate(BaseModel):
 
 
 class StaffOut(BaseModel):
-    id: int
+    id: Optional[int] = None
     store_id: Optional[int] = None
     user_id: Optional[int] = None
     name: str

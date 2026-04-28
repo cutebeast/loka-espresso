@@ -24,13 +24,11 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
     setViewMode(view);
   };
 
-  const showTabs = viewMode === 'promotions' || viewMode === 'surveys';
+  const showTabs = true;
 
   return (
     <div>
-      {showTabs && (
-        <BroadcastTabs activeTab={currentTab} onTabChange={handleTabChange} />
-      )}
+      <BroadcastTabs activeTab={currentTab} onTabChange={handleTabChange} />
 
       {currentTab === 'promotions' && (
         <BannerManager token={token} />

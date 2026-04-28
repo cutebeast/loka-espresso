@@ -1,95 +1,4 @@
-.sp-0 { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-.sp-1 { margin: 0px; }
-.sp-2 { background: #FEF2F2; color: #991B1B; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
-.sp-3 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-.sp-4 { margin-bottom: 16px; }
-.sp-5 { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #E2E8F0; font-size: 14px; resize: vertical; }
-.sp-6 { border-top: 1px solid #a0c0a0; padding-top: 16px; margin-bottom: 16px; }
-.sp-7 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.sp-8 { margin: 0px; }
-.sp-9 { display: flex; align-items: center; gap: 8px; }
-.sp-10 { font-size: 11px; color: var(--color-primary); }
-.sp-11 { background: var(--color-bg-muted); border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 1px solid #a0c0a0; }
-.sp-12 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.sp-13 { font-weight: 600; font-size: 13px; color: var(--color-primary); }
-.sp-14 { color: #EF4444; }
-.sp-15 { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-bottom: 8px; }
-.sp-16 { margin-bottom: 8px; }
-.sp-17 { width: 100%; }
-.sp-18 { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
-.sp-19 { width: 14px; height: 14px; }
-.sp-20 { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
-.sp-21 { flex: 1; }
-.sp-22 { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
-.sp-23 { width: 16px; height: 16px; }
-.sp-24 { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; }
-.sp-25 { background: #FEF2F2; color: #991B1B; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
-.sp-26 { text-align: center; padding: 40px; color: var(--color-primary); }
-.sp-27 { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--color-bg-muted); border-radius: 10px 10px 0 0; border: 1px solid #c4ced8; border-bottom: none; }
-.sp-28 { font-size: 14px; color: var(--color-text-secondary); }
-.sp-29 { margin-right: 8px; color: var(--color-primary); }
-.sp-30 { color: var(--color-bg-dark); }
-.sp-31 { font-size: 13px; color: var(--color-text-muted); }
-.sp-32 { overflow-x: auto; border-radius: 20px; background: white; border: 1px solid #c4ced8; border-top: none; }
-.sp-33 { text-align: center; color: var(--color-primary); padding: 40px; }
-.sp-34 { font-size: 40px; display: block; margin-bottom: 12px; }
-.sp-35 { font-weight: 600; }
-.sp-36 { font-size: 12px; color: var(--color-primary); margin-top: 2px; }
-.sp-37 { color: var(--color-primary); }
-.sp-38 { padding: 0px; border: none; background: none; cursor: pointer; }
-.sp-39 { display: flex; gap: 6px; }
-.sp-40 { background: #EF4444; color: white; }
-.sp-41 { color: #EF4444; }
-.sp-0 { position: fixed; inset: 0px; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.sp-1 { background: white; border-radius: 16px; padding: 24px; width: 400px; max-height: 80vh; overflow: auto; }
-.sp-2 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.sp-3 { margin: 0px; }
-.sp-4 { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; margin-bottom: 12px; }
-.sp-5 { width: 16px; height: 16px; }
-.sp-6 { font-size: 14px; font-weight: 500; }
-.sp-7 { text-align: center; color: var(--color-primary-light); padding: 20px; }
-.sp-8 { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-.sp-9 { background: #FEE2E2; color: #A83232; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
-.sp-10 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-.sp-11 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-.sp-12 { width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; }
-.sp-13 { color: var(--color-text-muted); }
-.sp-14 { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
-.sp-15 { flex: 1; }
-.sp-16 { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
-.sp-17 { width: 16px; height: 16px; }
-.sp-18 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.sp-19 { display: flex; align-items: center; gap: 12px; }
-.sp-20 { background: #FEE2E2; color: #A83232; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
-.sp-21 { background: #ECFDF5; color: #065F46; padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; border: 1px solid #A7F3D0; }
-.sp-22 { display: flex; justify-content: space-between; align-items: center; }
-.sp-23 { margin-top: 6px; font-family: monospace; font-size: 14px; background: white; padding: 6px 10px; border-radius: 6px; display: inline-block; }
-.sp-24 { background: var(--color-bg-muted); color: var(--color-primary); padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; border: 1px solid #a0c0a0; }
-.sp-25 { display: flex; justify-content: space-between; align-items: center; }
-.sp-26 { margin-top: 6px; font-family: monospace; font-size: 14px; background: white; padding: 6px 10px; border-radius: 6px; display: inline-block; }
-.sp-27 { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--color-bg-muted); border-radius: 10px 10px 0 0; border: 1px solid #c4ced8; border-bottom: none; margin-top: 20px; }
-.sp-28 { font-size: 14px; color: var(--color-text-secondary); }
-.sp-29 { margin-right: 8px; color: var(--color-primary); }
-.sp-30 { color: var(--color-bg-dark); }
-.sp-31 { color: var(--color-bg-dark); }
-.sp-32 { font-size: 13px; color: var(--color-text-muted); }
-.sp-33 { font-weight: 500; }
-.sp-34 { display: flex; flex-wrap: wrap; gap: 4px; }
-.sp-35 { font-size: 10px; }
-.sp-36 { color: var(--color-text-muted); }
-.sp-37 { margin-left: 6px; font-size: 10px; }
-.sp-38 { color: var(--color-text-muted); }
-.sp-39 { padding: 0px; border: none; background: none; cursor: pointer; }
-.sp-40 { display: flex; gap: 6px; }
-.sp-41 { background: #EF4444; color: white; }
-.sp-42 { color: #EF4444; }
-
-/* ── Action button overrides (sp-* class collisions) ── */
-.sp-actions { display: flex; gap: 6px; }
-.sp-delete { color: #991B1B; background: transparent; border: none; cursor: pointer; padding: 4px 8px; }
-.sp-confirm { background: #991B1B; color: white; border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
-.sp-39 { padding: 0; border: none; background: none; cursor: pointer; }
-.sp-0 { text-align: center; padding: 40px; color: var(--color-primary); }
+/* ── Staff page — status notice & empty states ── */
 .sp-1 { background: #FEF2F2; color: #991B1B; padding: 12px 16px; border-radius: 10px; }
 .sp-2 { max-width: 900px; }
 .sp-3 { display: grid; gap: 24px; }
@@ -99,13 +8,32 @@
 .sp-7 { margin: 0px; font-size: 16px; font-weight: 700; color: var(--color-primary); }
 .sp-8 { padding: 8px 24px 20px; }
 .sp-9 { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid #a0c0a0; }
-.sp-10 { flex: 1; min-width: 0px; }
-.sp-11 { font-weight: 600; font-size: 14px; color: var(--color-primary); margin-bottom: 2px; }
-.sp-12 { font-size: 12px; color: var(--color-primary); }
-.sp-13 { display: flex; align-items: center; gap: 10px; }
-.sp-14 { width: 140px; text-align: right; padding: 6px 10px; border-radius: 8px; border: 1px solid #a0c0a0; font-size: 14px; font-weight: 500; }
-.sp-15 { color: var(--color-primary); font-size: 12px; font-weight: 600; white-space: nowrap; }
-.sp-16 { color: #DC2626; font-size: 12px; font-weight: 600; white-space: nowrap; }
+
+/* ── Password reset notice box ── */
+.sp-21 { background: #ECFDF5; color: #065F46; padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; border: 1px solid #A7F3D0; }
+.sp-22 { display: flex; justify-content: space-between; align-items: center; }
+.sp-23 { margin-top: 6px; font-family: monospace; font-size: 14px; background: white; padding: 6px 10px; border-radius: 6px; display: inline-block; }
+.sp-24 { background: var(--color-bg-muted); color: var(--color-primary); padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; border: 1px solid #a0c0a0; }
+.sp-25 { display: flex; justify-content: space-between; align-items: center; }
+
+/* ── Table column helpers ── */
+.sp-30 { color: var(--color-bg-dark); }
+.sp-31 { color: var(--color-bg-dark); }
+.sp-34 { display: flex; flex-wrap: wrap; gap: 4px; }
+.sp-35 { font-weight: 500; }
+.sp-36 { color: var(--color-text-muted); }
+.sp-37 { margin-left: 8px; font-size: 11px; color: #EF4444; }
+.sp-38 { color: var(--color-text-muted); }
+.sp-40 { display: flex; gap: 6px; }
+.sp-41 { background: #EF4444; color: white; }
+.sp-42 { color: #EF4444; }
+
+/* ── Action buttons ── */
+.sp-actions { display: flex; gap: 6px; }
+.sp-delete { color: #991B1B; background: transparent; border: none; cursor: pointer; padding: 4px 8px; }
+.sp-confirm { background: #991B1B; color: white; border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+
+/* ── Form fields ── */
 .sp-label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; color: var(--color-text-primary); }
 .sp-hint { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
 .sp-badge { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
@@ -113,7 +41,6 @@
 .sp-save-btn { padding: 6px 14px; font-size: 13px; white-space: nowrap; }
 
 @media (min-width: 768px) {
-  /* Desktop adjustments — base styles above are mobile-first */
   .sp-3 { gap: 16px; }
   .sp-10 { grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
   .sp-11 { grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
@@ -122,7 +49,7 @@
   .sp-27 { padding: 16px 24px; }
 }
 
-/* ── Staff creation form overrides ── */
+/* ── Staff page layout (final effective values) ── */
 .sp-0 { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
 .sp-10 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 .sp-11 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
@@ -141,9 +68,6 @@
 .sp-29 { margin-right: 8px; color: var(--color-primary); }
 .sp-32 { overflow-x: auto; border-radius: 0 0 10px 10px; background: var(--color-bg-card); border: 1px solid #c4ced8; border-top: none; }
 .sp-33 { text-align: center; color: var(--color-text-muted); padding: 40px; }
-.sp-34 { font-size: 40px; display: block; margin-bottom: 12px; }
-.sp-35 { font-weight: 500; }
-.sp-37 { margin-left: 8px; font-size: 11px; color: #EF4444; }
 .sp-39 { padding: 0px; border: none; background: none; cursor: pointer; display: flex; }
 
 /* ── Store picker modal inside staff drawer ── */

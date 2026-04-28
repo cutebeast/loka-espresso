@@ -12,6 +12,7 @@ from app.core.security import require_role, require_hq_access
 from app.core.utils import to_float
 from app.models.admin_user import AdminUser
 from app.models.user import RoleIDs
+from app.models.customer import Customer
 from app.models.order import Order, OrderStatus
 from app.models.loyalty import LoyaltyTransaction, LoyaltyAccount
 from app.models.menu import InventoryItem
@@ -179,9 +180,9 @@ async def marketing_report(
 
     # --- Loyalty ---
     loyalty_result = await db.execute(
-        select(User, LoyaltyAccount)
-        .join(LoyaltyAccount, LoyaltyAccount.user_id == User.id, isouter=True)
-        .where(User.role_id == RoleIDs.CUSTOMER)
+        select(Customer, LoyaltyAccount)
+        .join(LoyaltyAccount, LoyaltyAccount.user_id == Customer.id, isouter=True)
+        .where(Customer.is_active == True)
     )
     loyalty_rows = loyalty_result.all()
     total_members = 0
@@ -320,9 +321,9 @@ async def marketing_report_paginated(
 
     # --- Loyalty ---
     loyalty_result = await db.execute(
-        select(User, LoyaltyAccount)
-        .join(LoyaltyAccount, LoyaltyAccount.user_id == User.id, isouter=True)
-        .where(User.role_id == RoleIDs.CUSTOMER)
+        select(Customer, LoyaltyAccount)
+        .join(LoyaltyAccount, LoyaltyAccount.user_id == Customer.id, isouter=True)
+        .where(Customer.is_active == True)
     )
     loyalty_rows = loyalty_result.all()
     total_members = 0

@@ -222,7 +222,8 @@ async def full_system_reset(
                 raise HTTPException(status_code=400, detail=f"Invalid table name: {table_name}")
             await db.execute(text(f"DELETE FROM {table_name}"))
 
-        await db.execute(text("DELETE FROM users WHERE id != 1"))
+        await db.execute(text("DELETE FROM admin_users WHERE id != 1"))
+        await db.execute(text("DELETE FROM customers"))
 
         sequences = [
             "stores_id_seq",

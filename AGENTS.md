@@ -151,6 +151,27 @@ docker compose up -d              # all services
 - Status toggle: removed from table (only via Edit form to prevent accidental deactivation)
 - Notice boxes: unified styling (`cdp-notice`), auto-fade after 2 minutes
 
+### Phase 22: Final Audit + Orphan Cleanup (2026-04-28)
+- **Backend — `_blacklist_token`**: Fixed missing function that blocked logout + token refresh (HTTP 500 → NameError)
+- **Backend — DeviceToken → CustomerDeviceToken**: Migrated `POST/DELETE /auth/device-token` from legacy `device_tokens` to `customer_device_tokens`
+- **Backend — InventoryMovement FK**: `created_by` FK changed `users.id` → `admin_users.id`
+- **Backend — MarketingCampaign FK**: `created_by` FK changed `users.id` → `admin_users.id`; `creator` relationship changed `User` → `AdminUser`
+- **Backend — UserAddress orphan**: Deleted unused model + `user_addresses` DB table reference (data already in `customer_addresses` after Phase 19 migration)
+- **Backend — `GET /auth/session`**: New endpoint returning `{"authenticated": bool}` (always 200, no 401) — frontend `checkAuth` now uses this instead of `/users/me` to eliminate browser console 401 warnings
+- **Frontend — LoginScreen**: Added `autoComplete="current-password"` to password input (fixes Chrome DOM warning)
+- **Frontend — Survey create validation**: Added empty question text check + at-least-one-filled guard
+- **Frontend — Survey list**: Questions column reads `question_count` (what backend actually sends) instead of `questions?.length`
+- **Frontend — Survey edit**: Fetches `GET /admin/surveys/{id}` to load full questions before populating edit form (prevents data loss)
+- **Frontend — Survey reply button**: Removed redundant `fa-chart-bar` button (Survey Reports tab serves same purpose)
+- **Frontend — CustomerDetailPage**: Stale fallback keys fixed (`data.orders`/`data.history`/`data.transactions` → `data.items`)
+- **Frontend — SurveyReportPage**: Fixed `apiFetch` call passing raw `token` string instead of `undefined`
+- **Frontend — BannerManager**: Misleading fallback shapes fixed (`{ surveys: [] }` → `{ items: [] }`)
+- **Frontend — Rewards/Vouchers/Surveys backend bug**: User name resolution now uses `Customer` model instead of `AdminUser` (was always returning "Unknown"/"Anonymous")
+- **Frontend — System reset**: Targets `customers` + `customer_addresses` + `customer_device_tokens` instead of legacy `users` + `user_addresses` + `device_tokens`
+- **Frontend — Broadcasts**: Uses `CustomerDeviceToken` instead of legacy `DeviceToken`
+- **CSS**: `staff-admin.css` deduplicated (~60 lines of overridden declarations removed), `promotions.css` sp-0/sp-10/sp-11/sp-15/sp-20 moved to `@media` block
+- **Docs updated**: `02b-users.md` (split tables), `02h-staff.md` (FK fix)
+
 ### Phase 11: CRM & Marketing Section Cleanup
 - Action bar alignment: all 6 drawer forms → shared `df-actions` (right-aligned buttons)
 - Dead response keys removed: `data.surveys`, `d.vouchers`, `data.cards`

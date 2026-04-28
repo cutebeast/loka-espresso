@@ -20,7 +20,7 @@ class Staff(Base):
     __tablename__ = "staff"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("admin_users.id"), nullable=True, index=True)
     store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
