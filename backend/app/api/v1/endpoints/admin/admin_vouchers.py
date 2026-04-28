@@ -6,20 +6,21 @@ from sqlalchemy import select, func, desc
 from app.core.database import get_db
 from app.core.security import require_role
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User, RoleIDs
+from app.models.admin_user import AdminUser
+from app.models.user import RoleIDs
 from app.models.voucher import Voucher, UserVoucher
-from app.models.user import User as UserModel
+from app.models.admin_user import AdminUser as UserModel
 from app.schemas.voucher import VoucherOut, VoucherCreate, VoucherUpdate
 
-router = APIRouter(prefix="/admin/vouchers", tags=["Admin Vouchers"])
+router = APIRouter(prefix="/admin", tags=["Admin Vouchers"])
 
 
-@router.get("")
+@router.get("/vouchers")
 async def list_vouchers_admin(
     include_deleted: bool = False,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     base = select(Voucher)
@@ -36,7 +37,7 @@ async def list_vouchers_admin(
     result = await db.execute(q)
     vouchers = result.scalars().all()
     return {
-        "vouchers": vouchers,
+        "items": vouchers,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -44,8 +45,8 @@ async def list_vouchers_admin(
     }
 
 
-@router.post("", status_code=201, response_model=VoucherOut)
-async def create_voucher(request: Request, req: VoucherCreate, user: User = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
+@router.post("/vouchers", status_code=201, response_model=VoucherOut)
+async def create_voucher(request: Request, req: VoucherCreate, user: AdminUser = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
     payload = req.model_dump()
     voucher = Voucher(**payload)
     db.add(voucher)
@@ -56,8 +57,8 @@ async def create_voucher(request: Request, req: VoucherCreate, user: User = Depe
     return voucher
 
 
-@router.put("/{voucher_id}")
-async def update_voucher(voucher_id: int, request: Request, req: VoucherUpdate, user: User = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
+@router.put("/vouchers/{voucher_id}")
+async def update_voucher(voucher_id: int, request: Request, req: VoucherUpdate, user: AdminUser = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Voucher).where(Voucher.id == voucher_id))
     voucher = result.scalar_one_or_none()
     if not voucher:
@@ -73,8 +74,8 @@ async def update_voucher(voucher_id: int, request: Request, req: VoucherUpdate, 
     return {"message": "Voucher updated"}
 
 
-@router.delete("/{voucher_id}")
-async def deactivate_voucher(voucher_id: int, request: Request, user: User = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
+@router.delete("/vouchers/{voucher_id}")
+async def deactivate_voucher(voucher_id: int, request: Request, user: AdminUser = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Voucher).where(Voucher.id == voucher_id))
     voucher = result.scalar_one_or_none()
     if not voucher:
@@ -86,12 +87,12 @@ async def deactivate_voucher(voucher_id: int, request: Request, user: User = Dep
     return {"message": "Voucher soft-deleted"}
 
 
-@router.get("/{voucher_id}/usage")
+@router.get("/vouchers/{voucher_id}/usage")
 async def voucher_usage(
     voucher_id: int,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     count_result = await db.execute(select(func.count()).select_from(UserVoucher).where(UserVoucher.voucher_id == voucher_id))
@@ -109,7 +110,7 @@ async def voucher_usage(
         u = user_result.scalar_one_or_none()
         out.append({"user_id": uv.user_id, "user_name": u.name if u else "Unknown", "applied_at": uv.applied_at.isoformat() if uv.applied_at else None, "order_id": uv.order_id, "store_id": uv.store_id})
     return {
-        "usages": out,
+        "items": out,
         "total": total,
         "page": page,
         "page_size": page_size,

@@ -88,7 +88,7 @@ export function HubHeader({
           key="qr"
           whileTap={{ scale: 0.9 }}
           onClick={onQRScanClick}
-          className="w-9 h-9 rounded-xl bg-copper-10 flex items-center justify-center cursor-pointer border border-copper-30"
+          className="w-11 h-11 rounded-xl bg-copper-10 flex items-center justify-center cursor-pointer border border-copper-30"
           aria-label="Scan table QR"
           title="Scan table QR"
         >
@@ -104,7 +104,7 @@ export function HubHeader({
           key="search"
           whileTap={{ scale: 0.9 }}
           onClick={onSearchClick}
-          className="w-9 h-9 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
+          className="w-11 h-11 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
           aria-label="Search menu"
         >
           <Search size={17} strokeWidth={1.8} className="text-text-primary" />
@@ -119,7 +119,7 @@ export function HubHeader({
           key="refresh"
           whileTap={{ scale: 0.9 }}
           onClick={onRefreshClick}
-          className="w-9 h-9 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
+          className="w-11 h-11 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
           aria-label="Refresh orders"
         >
           <RotateCcw size={17} strokeWidth={1.8} className="text-text-primary" />
@@ -134,7 +134,7 @@ export function HubHeader({
           key="settings"
           whileTap={{ scale: 0.9 }}
           onClick={onSettingsClick}
-          className="w-9 h-9 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
+          className="w-11 h-11 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
           aria-label="Settings"
         >
           <Settings2 size={17} strokeWidth={1.8} className="text-text-primary" />

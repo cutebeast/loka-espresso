@@ -12,7 +12,8 @@ from typing import Optional, List
 from app.core.database import get_db
 from app.core.security import require_role, now_utc, ensure_utc
 from app.core.utils import to_float
-from app.models.user import User, RoleIDs
+from app.models.customer import Customer
+from app.models.user import RoleIDs
 from app.models.reward import UserReward, Reward
 from app.models.voucher import UserVoucher, Voucher
 from app.models.wallet import Wallet
@@ -82,7 +83,7 @@ class CustomerWalletOut(BaseModel):
 
 @router.get("/wallet", response_model=CustomerWalletOut)
 async def get_customer_wallet(
-    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
+    user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -164,7 +165,7 @@ async def get_customer_wallet(
         cash_out = WalletCashOut(balance=to_float(wallet.balance), currency=wallet.currency)
 
     # ── Loyalty Points ───────────────────────────────────────────────────
-    from app.models.user import User  # loyalty_accounts imported via model
+    from app.models.customer import Customer  # loyalty_accounts imported via model
     from app.models.loyalty import LoyaltyAccount
     la_result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.user_id == user.id))
     la = la_result.scalar_one_or_none()

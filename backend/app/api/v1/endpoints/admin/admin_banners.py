@@ -7,7 +7,7 @@ from sqlalchemy import select, desc, func
 from app.core.database import get_db
 from app.core.security import require_hq_access
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User
+from app.models.admin_user import AdminUser
 from app.models.promotions import PromoBanner
 from app.schemas.admin_extras import (
     PromoBannerCreate,
@@ -15,15 +15,15 @@ from app.schemas.admin_extras import (
     PromoBannerOut,
 )
 
-router = APIRouter(tags=["Admin Banners"])
+router = APIRouter(prefix="/admin", tags=["Admin Banners"])
 
 
-@router.get("/admin/banners")
+@router.get("/banners")
 async def list_banners(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     count_q = select(func.count()).select_from(PromoBanner)
     total_result = await db.execute(count_q)
@@ -35,7 +35,7 @@ async def list_banners(
     )
     banners = result.scalars().all()
     return {
-        "banners": banners,
+        "items": banners,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -43,12 +43,12 @@ async def list_banners(
     }
 
 
-@router.post("/admin/banners", status_code=201, response_model=PromoBannerOut)
+@router.post("/banners", status_code=201, response_model=PromoBannerOut)
 async def create_banner(
     request: Request,
     data: PromoBannerCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     obj = PromoBanner(**data.model_dump())
     db.add(obj)
@@ -60,13 +60,13 @@ async def create_banner(
     return obj
 
 
-@router.put("/admin/banners/{banner_id}", response_model=PromoBannerOut)
+@router.put("/banners/{banner_id}", response_model=PromoBannerOut)
 async def update_banner(
     banner_id: int,
     request: Request,
     data: PromoBannerUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(PromoBanner).where(PromoBanner.id == banner_id))
     obj = result.scalar_one_or_none()
@@ -82,12 +82,12 @@ async def update_banner(
     return obj
 
 
-@router.delete("/admin/banners/{banner_id}")
+@router.delete("/banners/{banner_id}")
 async def delete_banner(
     banner_id: int,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(PromoBanner).where(PromoBanner.id == banner_id))
     obj = result.scalar_one_or_none()
@@ -97,4 +97,4 @@ async def delete_banner(
     await log_action(db, action="DELETE_BANNER", user_id=user.id, entity_type="banner", entity_id=banner_id, details={"title": obj.title}, ip_address=ip)
     await db.delete(obj)
     await db.flush()
-    return {"detail": "Banner deleted"}
+    return {"message": "Banner deleted"}

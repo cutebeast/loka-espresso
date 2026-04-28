@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
+    from app.models.customer import Customer
     from app.models.store import Store
 
 
@@ -20,7 +20,7 @@ class Feedback(Base):
     __tablename__ = "feedback"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True)
     store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True)
     order_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True)
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -35,4 +35,4 @@ class Feedback(Base):
     )
 
     store: Mapped["Store"] = relationship("Store")
-    user: Mapped[Optional["User"]] = relationship("User")
+    user: Mapped[Optional["Customer"]] = relationship("Customer")

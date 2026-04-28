@@ -22,7 +22,7 @@ export function AddRewardForm({ token: _token, onClose }: { token: string; onClo
         }),
       });
       onClose();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Modal save operation failed'); } finally { setSaving(false); }
   }
 
   return (

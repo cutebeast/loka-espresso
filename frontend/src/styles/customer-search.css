@@ -1,0 +1,24 @@
+/* ── Customer Search Form — shared by POS Terminal + Wallet Top-Up ── */
+.csf-card { margin-bottom: 16px; }
+.csf-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--color-text-secondary); }
+.csf-form { display: flex; flex-direction: column; gap: 10px; }
+.csf-input-wrap { flex: 1; min-width: 0; }
+.csf-label { font-size: 12px; font-weight: 600; color: var(--color-text-muted); display: block; margin-bottom: 4px; }
+.csf-input { width: 100%; }
+.csf-actions { display: flex; gap: 8px; align-items: flex-end; }
+.csf-btn { min-height: 44px; padding: 10px 20px; white-space: nowrap; }
+.csf-error { background: #FEF2F2; color: #991B1B; padding: 8px 12px; border-radius: 8px; margin-top: 10px; font-size: 13px; }
+.csf-results { margin-top: 12px; border: 1px solid #E5E7EB; border-radius: 10px; overflow: hidden; }
+.csf-results-header { padding: 8px 12px; background: #F9FAFB; font-size: 12px; font-weight: 600; color: var(--color-text-muted); border-bottom: 1px solid #E5E7EB; }
+.csf-results-header i { margin-right: 4px; }
+.csf-result-item { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 12px; background: white; border: none; border-bottom: 1px solid #F3F4F6; cursor: pointer; text-align: left; font-size: 14px; }
+.csf-result-item:last-child { border-bottom: none; }
+.csf-result-item:hover { background: #F0FDF4; }
+.csf-result-name { font-weight: 600; color: var(--color-bg-dark); }
+.csf-result-phone { font-size: 13px; color: var(--color-text-muted); }
+
+@media (min-width: 768px) {
+  .csf-form { flex-direction: row; gap: 12px; align-items: flex-end; }
+  .csf-input-wrap { min-width: 200px; }
+  .csf-actions { flex-wrap: wrap; }
+}

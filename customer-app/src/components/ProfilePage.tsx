@@ -18,6 +18,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import api from '@/lib/api';
 
 interface OrderPreview {
@@ -89,17 +90,18 @@ export default function ProfilePage() {
 
       {/* Content */}
       <div className="profile-scroll">
-        {/* User card */}
-        <div className="profile-user-card">
-          <div className="profile-avatar">{initials}</div>
-          <div className="profile-user-info">
-            <div className="profile-user-name">{user?.name || 'Guest'}</div>
-            <div className="profile-user-phone">{user?.phone || 'No phone'}</div>
-            <div className="profile-points-row">
-              <Crown size={14} /> {points.toLocaleString()} points
+        <GuestGate message="Sign in to view your profile, rewards, and order history.">
+          {/* User card */}
+          <div className="profile-user-card">
+            <div className="profile-avatar">{initials}</div>
+            <div className="profile-user-info">
+              <div className="profile-user-name">{user?.name || 'Guest'}</div>
+              <div className="profile-user-phone">{user?.phone || 'No phone'}</div>
+              <div className="profile-points-row">
+                <Crown size={14} /> {points.toLocaleString()} points
+              </div>
             </div>
           </div>
-        </div>
 
         {/* Recent orders */}
         <div>
@@ -167,6 +169,7 @@ export default function ProfilePage() {
             <ChevronRight size={16} color="#C75050" />
           </button>
         </div>
+        </GuestGate>
       </div>
 
       {/* Logout modal */}

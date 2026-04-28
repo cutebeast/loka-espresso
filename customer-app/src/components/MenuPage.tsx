@@ -28,17 +28,21 @@ export default function MenuPage() {
     setPage,
     isGuest,
     showToast,
+    triggerSignIn,
+    selectedStore,
   } = useUIStore();
 
   const addItem = useCartStore((s) => s.addItem);
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [availableOptions, setAvailableOptions] = useState<CustomizationOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [selectedDietaryTag, setSelectedDietaryTag] = useState<string | null>(null);
 
   const sectionRefs = useRef<Map<number, HTMLElement | null>>(new Map());
   const navRef = useRef<HTMLDivElement>(null);
@@ -46,6 +50,7 @@ export default function MenuPage() {
 
   const loadMenu = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [catRes, itemsRes] = await Promise.all([
         api.get(`/menu/categories`),
@@ -56,10 +61,12 @@ export default function MenuPage() {
     } catch {
       setCategories([]);
       setMenuItems([]);
+      setLoadError(true);
+      showToast('Failed to load menu. Check your connection.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [setCategories, setMenuItems]);
+  }, [setCategories, setMenuItems, showToast]);
 
   useEffect(() => {
     loadMenu();
@@ -100,18 +107,14 @@ export default function MenuPage() {
   }, []);
 
   const openItem = useCallback((item: MenuItem) => {
-    if (isGuest) {
-      showToast('Sign in to order', 'info');
-      return;
-    }
     if (item.customization_options && item.customization_options.length > 0) {
       setDetailItem(item);
       setSheetOpen(true);
       loadCustomizations(item);
     } else {
-      addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {} });
+      addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id });
     }
-  }, [addItem, loadCustomizations, isGuest, showToast]);
+  }, [addItem, loadCustomizations, selectedStore?.id]);
 
   const handleSheetAdd = useCallback(
     (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number) => {
@@ -120,19 +123,31 @@ export default function MenuPage() {
         name: item.name,
         price: totalPrice,
         quantity,
+        store_id: selectedStore?.id,
         customizations: customizations.length > 0
           ? { options: customizations.map((o) => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) }
           : {},
         customization_option_ids: customizations.length > 0 ? customizations.map((o) => o.id) : [],
       });
     },
-    [addItem],
+    [addItem, selectedStore],
   );
 
   const filteredItems = useMemo(() => menuItems.filter((item) => {
     const matchesSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch && item.is_available;
-  }), [menuItems, searchQuery]);
+    const matchesDietary = !selectedDietaryTag || (item.dietary_tags && item.dietary_tags.some((t: string) => t.toLowerCase() === selectedDietaryTag.toLowerCase()));
+    return matchesSearch && matchesDietary && item.is_available;
+  }), [menuItems, searchQuery, selectedDietaryTag]);
+
+  const availableDietaryTags = useMemo(() => {
+    const tags = new Set<string>();
+    menuItems.forEach((item) => {
+      if (item.dietary_tags) {
+        item.dietary_tags.forEach((t: string) => tags.add(t));
+      }
+    });
+    return Array.from(tags).sort();
+  }, [menuItems]);
 
   const itemsByCategory = useMemo(() => categories
     .map((cat) => ({ category: cat, items: filteredItems.filter((item) => item.category_id === cat.id) }))
@@ -210,6 +225,21 @@ export default function MenuPage() {
         </div>
       )}
 
+      {/* Dietary Filter Chips */}
+      {!showSearch && availableDietaryTags.length > 0 && (
+        <div className="dietary-chip-bar">
+          {availableDietaryTags.map((tag) => (
+            <button
+              key={tag}
+              className={`dietary-chip ${selectedDietaryTag === tag ? 'active' : ''}`}
+              onClick={() => setSelectedDietaryTag(selectedDietaryTag === tag ? null : tag)}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Product List */}
       <div className="menu-product-list scroll-container">
         {loading ? (
@@ -224,11 +254,16 @@ export default function MenuPage() {
               <Coffee size={24} color="#D18E38" strokeWidth={1.5} />
             </div>
             <p className="menu-empty-title">
-              {searchQuery ? `No items match "${searchQuery}"` : 'No items available'}
+              {searchQuery ? `No items match "${searchQuery}"` : loadError ? 'Unable to load menu' : 'No items available'}
             </p>
             {searchQuery && (
               <button className="btn btn-primary btn-pill" onClick={() => setSearchQuery('')}>
                 Clear search
+              </button>
+            )}
+            {loadError && (
+              <button className="btn btn-primary btn-pill mt-2" onClick={loadMenu}>
+                Retry
               </button>
             )}
           </div>

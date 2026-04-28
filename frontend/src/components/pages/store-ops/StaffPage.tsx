@@ -48,6 +48,7 @@ const USER_TYPE_COLORS: Record<number, { bg: string; text: string }> = {
 const PAGE_SIZE = 20;
 
 export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _token, stores, onStoreChange }: StaffPageProps) {
+  const activeStoreId = selectedStore !== 'all' && selectedStore ? selectedStore : '';
   const isHQ = selectedStore === 'all';
 
   // Staff list state
@@ -65,6 +66,13 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
   const [confirmDelete, setConfirmDelete] = useState<string | number | null>(null);
   const [tempPassword, setTempPassword] = useState<{ name: string; email: string; password: string } | null>(null);
   const [resetPasswordResult, setResetPasswordResult] = useState<{ name: string; email: string; password: string } | null>(null);
+
+  useEffect(() => {
+    if (tempPassword) { const t = setTimeout(() => setTempPassword(null), 120000); return () => clearTimeout(t); }
+  }, [tempPassword]);
+  useEffect(() => {
+    if (resetPasswordResult) { const t = setTimeout(() => setResetPasswordResult(null), 120000); return () => clearTimeout(t); }
+  }, [resetPasswordResult]);
 
   // Form fields (ACL integer-based)
   const [name, setName] = useState('');
@@ -85,15 +93,16 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
 
   // ── Fetch staff with pagination ──
   const fetchStaff = useCallback(async (p: number) => {
+    if (!isHQ && !activeStoreId) return;
     setLoading(true);
     try {
       const endpoint = isHQ
         ? `/admin/hq-staff?page=${p}&page_size=${PAGE_SIZE}`
-        : `/admin/stores/${selectedStore}/staff?page=${p}&page_size=${PAGE_SIZE}`;
+        : `/admin/stores/${activeStoreId}/staff?page=${p}&page_size=${PAGE_SIZE}`;
       const res = await apiFetch(endpoint);
       if (res.ok) {
         const data = await res.json();
-        setStaffList(Array.isArray(data) ? data : (data.staff || []));
+        setStaffList(Array.isArray(data) ? data : (data.items || []));
         setTotal(data.total || 0);
         setTotalPages(data.total_pages || 1);
         setPage(p);
@@ -182,8 +191,7 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
     );
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     setSaving(true); setError('');
 
     const payload: any = {
@@ -202,11 +210,10 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
         const res = await apiFetch('/admin/hq-staff', undefined, { method: 'POST', body: JSON.stringify(payload) });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
         const data = await res.json();
-        setViewMode('list');
-        setEditingStaff(null);
         if (data.temp_password && email) setTempPassword({ name, email, password: data.temp_password });
-        fetchStaff(1);
+        closeForm();
       } else if (editingStaff) {
+        if (!editingStaff.id) { setError('Staff record has no ID — create a new one instead'); return; }
         if (isHQ) payload.store_ids = selectedStoreIds;
         const res = await apiFetch(`/admin/staff/${editingStaff.id}`, undefined, { method: 'PUT', body: JSON.stringify(payload) });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
@@ -215,10 +222,8 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
         const res = await apiFetch(`/admin/stores/${selectedStore}/staff`, undefined, { method: 'POST', body: JSON.stringify(payload) });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
         const data = await res.json();
-        setViewMode('list');
-        setEditingStaff(null);
-        fetchStaff(1);
         if (data.temp_password && email) setTempPassword({ name, email, password: data.temp_password });
+        closeForm();
       }
     } catch (err: any) { setError(err.message || 'Network error'); } finally { setSaving(false); }
   }
@@ -233,8 +238,10 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
   }
 
   async function handleDelete(id: number) {
+    const deleteId = id || 0;
+    if (!deleteId) { setError('Cannot delete: no valid ID'); return; }
     try {
-      const res = await apiFetch(`/admin/staff/${id}`, undefined, { method: 'DELETE' });
+      const res = await apiFetch(`/admin/staff/${deleteId}`, undefined, { method: 'DELETE' });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Delete failed'); return; }
       setConfirmDelete(null);
       fetchStaff(page);
@@ -242,12 +249,14 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
   }
 
   async function handleResetPassword(s: MerchantStaffMember) {
+    const staffId = s.id || s.user_id;
+    if (!staffId) { setError('Staff record has no ID — cannot reset password'); return; }
     setError('');
     try {
-      const res = await apiFetch(`/admin/staff/${s.id}/reset-password`, undefined, { method: 'POST' });
+      const res = await apiFetch(`/admin/staff/${staffId}/reset-password`, undefined, { method: 'POST' });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Reset failed'); return; }
       const data = await res.json();
-      setResetPasswordResult({ name: s.name, email: data.email, password: data.temp_password });
+      setResetPasswordResult({ name: data.name || s.name, email: data.email, password: data.temp_password || data.password });
     } catch (err: any) { setError(err.message || 'Network error'); }
   }
 
@@ -256,7 +265,7 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
     const colors = USER_TYPE_COLORS[utId];
     const label = getDisplayUserType(s);
     if (colors) {
-      return <span className="sp-badge" style={{ background: colors.bg, color: colors.text }}>{label}</span>;
+      return <span className="stm-badge" style={{ background: colors.bg, color: colors.text }}>{label}</span>;
     }
     return <span className="badge badge-gray">{label}</span>;
   }
@@ -266,25 +275,25 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
 
   return (
     <div>
-      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} width={560}>
+      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle}>
         {/* Store picker modal */}
         {showStoreModal && (
-          <div className="sp-0" onClick={() => setShowStoreModal(false)}>
-            <div className="sp-1" onClick={e => e.stopPropagation()}>
-              <div className="sp-2">
-                <h4 className="sp-3">Assign to Stores</h4>
+           <div className="stm-0" onClick={() => setShowStoreModal(false)}>
+             <div className="stm-1" onClick={e => e.stopPropagation()}>
+               <div className="stm-2">
+                 <h4 className="stm-3">Assign to Stores</h4>
                 <button className="btn btn-sm" onClick={() => setShowStoreModal(false)}><i className="fas fa-times"></i></button>
               </div>
-              <div className="sp-4">Select which stores this staff member should have access to.</div>
+              <div className="stm-4">Select which stores this staff member should have access to.</div>
               {realStores.map(s => (
                 <label key={s.id} className="sp-store-row" style={{ background: selectedStoreIds.includes(s.id) ? THEME.bgMuted : 'white', border: `1px solid ${THEME.accentLight}` }}>
                   <input
                     type="checkbox"
                     checked={selectedStoreIds.includes(s.id)}
                     onChange={() => toggleStoreCheckbox(s.id)}
-                    className="sp-5"
+                    className="stm-5"
                   />
-                  <span className="sp-6">{s.name}</span>
+                  <span className="stm-6">{s.name}</span>
                 </label>
               ))}
               {realStores.length === 0 && (
@@ -300,69 +309,71 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
           </div>
         )}
 
-        <div className="card">
-          {error && (
-            <div className="sp-9">
-              <i className="fas fa-exclamation-circle"></i> {error}
+        {error && (
+          <div className="sp-9">
+            <i className="fas fa-exclamation-circle"></i> {error}
+          </div>
+        )}
+        <div className="df-section">
+          <div className="df-grid-2-wide-short">
+            <div className="df-field">
+              <label className="df-label">Name *</label>
+              <input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Ahmad bin Ali" />
+              <div className="df-hint">Full name of the staff member</div>
             </div>
-          )}
-          <form onSubmit={handleSubmit}>
-            <div className="sp-10">
-              <div>
-                <Input label="Name *" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Ahmad bin Ali" />
-                <div className="sp-hint">Full name of the staff member</div>
-              </div>
-              <div>
-                <label className="sp-label">User Type *</label>
-                <Select
-                  value={String(userTypeId)}
-                  onChange={(val) => handleUserTypeChange(parseInt(val))}
-                  options={USER_TYPES.map(t => ({ value: String(t.id), label: t.label }))}
-                />
-                <div className="sp-hint">Determines dashboard access level</div>
-              </div>
-              <div>
-                <label className="sp-label">Role *</label>
-                <Select
-                  value={String(roleId)}
-                  onChange={(val) => setRoleId(parseInt(val))}
-                  options={availableRoles.map(r => ({ value: String(r.id), label: r.label }))}
-                />
-                <div className="sp-hint">Specific position within the type</div>
-              </div>
+            <div className="df-field">
+              <label className="df-label">User Type *</label>
+              <Select
+                value={String(userTypeId)}
+                onChange={(val) => handleUserTypeChange(parseInt(val))}
+                options={USER_TYPES.map(t => ({ value: String(t.id), label: t.label }))}
+              />
+              <div className="df-hint">Dashboard access level</div>
             </div>
-            <div className="sp-11">
-              <div>
-                <label className="sp-label">Store Assignments</label>
-                <button type="button" className="btn sp-12" onClick={() => setShowStoreModal(true)} >
-                  <span>
-                    {selectedStoreIds.length === 0 ? 'No stores assigned' :
-                      selectedStoreIds.length === 1 ? realStores.find(s => s.id === selectedStoreIds[0])?.name || `${selectedStoreIds.length} store`
-                        : `${selectedStoreIds.length} stores selected`}
-                  </span>
-                  <span className="sp-13"><i className="fas fa-store"></i></span>
-                </button>
-                <div className="sp-hint">Click to select which stores this staff can access</div>
-              </div>
-              <div>
-                <Input label="Email (optional)" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="e.g. ahmad@zus.com" />
-                <div className="sp-hint">Adding email auto-creates a login account</div>
-              </div>
-              <div>
-                <Input label="PIN Code (optional)" value={pinCode} onChange={e => setPinCode(e.target.value)} placeholder="4-6 digit PIN" maxLength={6} />
-                <div className="sp-hint">{editingStaff ? 'Leave blank to keep current' : 'For POS clock-in'}</div>
-              </div>
+          </div>
+          <div className="df-grid">
+            <div className="df-field">
+              <label className="df-label">Email <span>(optional)</span></label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ahmad@zus.com" />
+              <div className="df-hint">Auto-creates login account</div>
             </div>
-            <div className="sp-14">
-              <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingStaff ? 'Update' : 'Create'}</button>
-              <button type="button" className="btn" onClick={closeForm}>Cancel</button>
-              <div className="sp-15" />
-              <label className="sp-16">
-                <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="sp-17" />
-                Active
-              </label>
+            <div className="df-field">
+              <label className="df-label">Role *</label>
+              <Select
+                value={String(roleId)}
+                onChange={(val) => setRoleId(parseInt(val))}
+                options={availableRoles.map(r => ({ value: String(r.id), label: r.label }))}
+              />
+              <div className="df-hint">Position</div>
             </div>
-          </form>
+          </div>
+          <div className="df-grid">
+            <div className="df-field">
+              <label className="df-label">Store Assignments</label>
+              <button className="btn" onClick={() => setShowStoreModal(true)} style={{ width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>
+                  {selectedStoreIds.length === 0 ? 'No stores assigned' :
+                    selectedStoreIds.length === 1 ? realStores.find(s => s.id === selectedStoreIds[0])?.name || `${selectedStoreIds.length} store`
+                      : `${selectedStoreIds.length} stores selected`}
+                </span>
+                <span><i className="fas fa-store"></i></span>
+              </button>
+              <div className="df-hint">Click to select stores</div>
+            </div>
+            <div className="df-field">
+              <label className="df-label">PIN Code <span>(optional)</span></label>
+              <input value={pinCode} onChange={e => setPinCode(e.target.value)} placeholder="4-6 digit" maxLength={6} />
+              <div className="df-hint">{editingStaff ? 'Leave blank to keep' : 'For POS clock-in'}</div>
+            </div>
+          </div>
+        </div>
+        <div className="df-actions">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, marginRight: 'auto' }}>
+            <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} style={{ width: 16, height: 16 }} />
+            Active
+          </label>
+          <button className="btn" onClick={closeForm}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>{saving ? 'Saving...' : editingStaff ? 'Update' : 'Create'}</button>
         </div>
       </Drawer>
 
@@ -386,30 +397,50 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
       )}
 
       {tempPassword && (
-        <div className="sp-21">
-          <div className="sp-22">
+        <div className="cdp-notice" style={{ opacity: 1, transition: 'opacity 0.5s', animation: 'fadeOut 2min forwards' }}>
+          <div className="cdp-notice-content">
             <div>
-              <strong><i className="fas fa-check-circle"></i> Staff account created!</strong>
-              <div className="sp-23">
-                Email: {tempPassword.email} &nbsp;|&nbsp; Password: <strong>{tempPassword.password}</strong>
+              <div className="cdp-notice-title">
+                <i className="fas fa-check-circle" style={{ color: '#16A34A', marginRight: 6 }}></i>
+                Staff account created: {tempPassword.name}
+              </div>
+              <div className="cdp-notice-body">
+                <span><strong>Email:</strong> {tempPassword.email}</span>
+                <span><strong>Password:</strong> <code style={{ background: '#DCFCE7', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>{tempPassword.password}</code></span>
               </div>
             </div>
-            <button className="btn btn-sm" onClick={() => setTempPassword(null)}><i className="fas fa-times"></i></button>
+            <button className="btn btn-sm" onClick={() => setTempPassword(null)} style={{ flexShrink: 0 }}><i className="fas fa-times"></i></button>
           </div>
+          <button className="cdp-notice-copy" onClick={() => {
+            const msg = `Your new login credentials:\nEmail: ${tempPassword.email}\nPassword: ${tempPassword.password}\n\nPlease change your password after first login.`;
+            navigator.clipboard.writeText(msg);
+          }}>
+            <i className="fas fa-copy" style={{ marginRight: 4 }}></i> Copy for WhatsApp / Email
+          </button>
         </div>
       )}
 
       {resetPasswordResult && (
-        <div className="sp-24">
-          <div className="sp-25">
+        <div className="cdp-notice" style={{ opacity: 1, transition: 'opacity 0.5s', animation: 'fadeOut 2min forwards' }}>
+          <div className="cdp-notice-content">
             <div>
-              <strong><i className="fas fa-key"></i> Password reset for {resetPasswordResult.name}</strong>
-              <div className="sp-26">
-                Email: {resetPasswordResult.email} &nbsp;|&nbsp; New Password: <strong>{resetPasswordResult.password}</strong>
+              <div className="cdp-notice-title">
+                <i className="fas fa-check-circle" style={{ color: '#16A34A', marginRight: 6 }}></i>
+                Password Reset: {resetPasswordResult.name}
+              </div>
+              <div className="cdp-notice-body">
+                <span><strong>Email:</strong> {resetPasswordResult.email}</span>
+                <span><strong>Password:</strong> <code style={{ background: '#DCFCE7', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>{resetPasswordResult.password}</code></span>
               </div>
             </div>
-            <button className="btn btn-sm" onClick={() => setResetPasswordResult(null)}><i className="fas fa-times"></i></button>
+            <button className="btn btn-sm" onClick={() => setResetPasswordResult(null)} style={{ flexShrink: 0 }}><i className="fas fa-times"></i></button>
           </div>
+          <button className="cdp-notice-copy" onClick={() => {
+            const msg = `Your new login credentials:\nEmail: ${resetPasswordResult.email}\nPassword: ${resetPasswordResult.password}\n\nPlease change your password after first login.`;
+            navigator.clipboard.writeText(msg);
+          }}>
+            <i className="fas fa-copy" style={{ marginRight: 4 }}></i> Copy for WhatsApp / Email
+          </button>
         </div>
       )}
 
@@ -427,41 +458,49 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
       <DataTable<MerchantStaffMember>
         data={staffList}
         columns={[
-          { key: 'name', header: 'Name', render: (s) => <span className="sp-33">{s.name}</span> },
-          { key: 'user_type_id', header: 'User Type', render: (s) => renderUserTypeBadge(s) },
-          { key: 'role', header: 'Role', render: (s) => <span className="badge badge-blue">{getDisplayRole(s)}</span> },
+          { key: 'name', header: 'Staff', render: (s) => (
+            <div>
+              <div style={{ fontWeight: 600 }}>{s.name}</div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                {renderUserTypeBadge(s)}
+                <span className="badge badge-blue">{getDisplayRole(s)}</span>
+              </div>
+            </div>
+          )},
+          { key: 'email', header: 'Contact', render: (s) => (
+            <div>
+              {s.email ? (
+                <div>{s.email} <span className="badge badge-green sp-37">Has Login</span></div>
+              ) : <div className="sp-38">No login</div>}
+              {s.phone && <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 2 }}>{s.phone}</div>}
+            </div>
+          )},
           { key: 'store_assignments', header: 'Stores', render: (s) => {
             const realAssignments = (s.store_assignments || []).filter(a => a.store_id > 0);
             return realAssignments.length > 0 ? (
               <div className="sp-34">
                 {realAssignments.map(a => (
-                  <span key={a.store_id} className="badge badge-gray sp-35" >{a.store_name}</span>
+                  <span key={a.store_id} className="badge badge-gray sp-35">{a.store_name}</span>
                 ))}
               </div>
             ) : <span className="sp-36">—</span>;
           }},
-          { key: 'email', header: 'Email', render: (s) => s.email ? (
-            <span>{s.email} <span className="badge badge-green sp-37" >Has Login</span></span>
-          ) : <span className="sp-38">No login</span> },
-          { key: 'phone', header: 'Phone', render: (s) => s.phone || '—' },
           { key: 'is_active', header: 'Status', render: (s) => (
-            <button onClick={() => toggleActive(s)} className="sp-39">
-              <span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? 'Active' : 'Inactive'}</span>
-            </button>
+            <span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? 'Active' : 'Inactive'}</span>
           )},
           { key: 'actions', header: 'Actions', render: (s) => {
-            const rowKey = s.id ?? `user-${s.user_id}`;
+            const rowKey = s.id ?? s.user_id ?? `user-${s.id}`;
             return (
-              <div className="sp-40">
+              <div className="sp-actions">
                 <button className="btn btn-sm" onClick={() => openEdit(s)} title="Edit"><i className="fas fa-edit"></i></button>
                 <button className="btn btn-sm" onClick={() => s.email ? handleResetPassword(s) : setError('Add an email to enable login access.')} title={s.email ? 'Reset password' : 'No login'}><i className="fas fa-key" style={{ color: s.email ? undefined : THEME.accentLight }}></i></button>
                 {confirmDelete === rowKey ? (
                   <>
-                    <button className="btn btn-sm sp-41"  onClick={() => handleDelete(s.id!)}>Confirm</button>
+                    <button className="btn btn-sm sp-confirm" onClick={() => handleDelete(s.id || s.user_id || 0)}>Confirm</button>
                     <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
                   </>
                 ) : (
-                  <button className="btn btn-sm sp-42"  onClick={() => setConfirmDelete(rowKey)} title="Deactivate"><i className="fas fa-trash"></i></button>
+                  <button className="btn btn-sm sp-delete" onClick={() => setConfirmDelete(rowKey)} title="Deactivate"><i className="fas fa-trash"></i></button>
                 )}
               </div>
             );

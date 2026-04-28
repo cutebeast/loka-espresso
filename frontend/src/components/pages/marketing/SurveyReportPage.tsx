@@ -48,10 +48,10 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
       const res = await apiFetch('/admin/surveys?page_size=200');
       if (res.ok) {
         const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.surveys || []);
+        const list = Array.isArray(data) ? data : (data.items || []);
         setSurveys(list.filter((s: SurveyListItem) => s.response_count > 0));
       }
-    } catch {}
+    } catch { console.error('Failed to fetch surveys'); }
   }, []);
 
   useEffect(() => { fetchSurveys(); }, [fetchSurveys]);
@@ -66,13 +66,13 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
       );
       if (res.ok) {
         const data = await res.json();
-        setResponses(data.responses || []);
+        setResponses(data.items || []);
         setTotalPages(data.total_pages || 1);
         setTotalResponses(data.total || 0);
         setSurveyTitle(data.survey_title || '');
         setPage(p);
       }
-    } catch {} finally { setLoading(false); }
+    } catch { console.error('Failed to fetch responses'); } finally { setLoading(false); }
   }, [selectedSurvey, token]);
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
       header: '#',
       render: (r) => {
         const idx = responses.findIndex(item => item.id === r.id);
-        return <span className="srp-1">{(page - 1) * PAGE_SIZE + idx + 1}</span>;
+        return <span className="srpt-idx">{(page - 1) * PAGE_SIZE + idx + 1}</span>;
       },
       width: '60px'
     },
@@ -113,16 +113,16 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
       key: 'user_name',
       header: 'Customer',
       render: (r) => (
-        <div>
-          <div className="srp-2">{r.user_name}</div>
-          {r.user_email && <div className="srp-3">{r.user_email}</div>}
-        </div>
+          <div className="srpt-customer">
+            <div className="srpt-name">{r.user_name}</div>
+            {r.user_email && <div className="srpt-email">{r.user_email}</div>}
+          </div>
       )
     },
     {
       key: 'created_at',
       header: 'Submitted',
-      render: (r) => <span className="srp-4">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</span>
+      render: (r) => <span className="srpt-date">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</span>
     },
     {
       key: 'rewarded',
@@ -158,13 +158,13 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
 
   return (
     <div>
-      <h3 className="srp-9">
-        <span className="srp-10"><i className="fas fa-chart-bar"></i></span>
+      <h3 className="srpt-title">
+        <span className="srpt-title-icon"><i className="fas fa-chart-bar"></i></span>
         Survey Responses
       </h3>
 
       {/* Survey Selector using standardized Select component */}
-      <div className="srp-11">
+      <div className="srpt-selector">
         <Select
           label="Select Survey"
           value={selectedSurvey ? String(selectedSurvey) : ''}
@@ -175,7 +175,7 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
           placeholder="— Select a survey —"
         />
         {surveys.length === 0 && (
-          <p className="srp-12">
+          <p className="srpt-empty">
             No surveys with responses yet.
           </p>
         )}
@@ -184,18 +184,18 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
       {selectedSurvey && (
         <>
           {/* Stats Bar */}
-          <div className="srp-13">
-            <div className="srp-14">
-              <span className="srp-15"><i className="fas fa-inbox"></i></span>
-              Showing <strong className="srp-16">{responses.length}</strong> of <strong className="srp-17">{totalResponses}</strong> responses
+          <div className="srpt-stats">
+            <div className="srpt-stats-left">
+              <span className="srpt-stats-icon"><i className="fas fa-inbox"></i></span>
+              Showing <strong className="srpt-stats-count">{responses.length}</strong> of <strong className="srpt-stats-total">{totalResponses}</strong> responses
             </div>
-            <div className="srp-18">
+            <div className="srpt-stats-page">
               Page {page} of {totalPages}
             </div>
           </div>
 
           {/* Responses Table - using DataTableExpandableRow */}
-          <div className="srp-19">
+          <div className="srpt-table">
             <DataTableExpandableRow
               data={responses}
               columns={responseColumns}

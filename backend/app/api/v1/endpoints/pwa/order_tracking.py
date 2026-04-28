@@ -17,7 +17,7 @@ from typing import Optional, List
 
 from app.core.database import get_db
 from app.core.security import get_current_user, is_global_admin, can_access_store
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.order import Order, OrderStatusHistory, OrderStatus, OrderType
 from app.core.utils import to_float
 
@@ -64,7 +64,7 @@ class OrderTrackResponse(BaseModel):
 @router.get("/{order_id}/track", response_model=OrderTrackResponse)
 async def track_order(
     order_id: int,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """

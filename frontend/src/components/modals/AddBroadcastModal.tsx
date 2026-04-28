@@ -24,59 +24,66 @@ export function AddBroadcastForm({ token: _token, onClose }: { token: string; on
         body: JSON.stringify(payload),
       });
       onClose();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Failed to create broadcast'); } finally { setSaving(false); }
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="abf-0">
-        <label className="abf-1">Title</label>
-        <input value={title} onChange={e => setTitle(e.target.value)} required />
-      </div>
-      <div className="abf-2">
-        <label className="abf-3">Message</label>
-        <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4} required className="abf-4" />
-      </div>
-      <div className="abf-5">
-        <label className="abf-6">Target Audience</label>
-        <select value={targetAudience} onChange={e => setTargetAudience(e.target.value)}>
-          <option value="all">All Users</option>
-          <option value="new">New Users</option>
-          <option value="loyal">Loyal Customers</option>
-          <option value="inactive">Inactive Users</option>
-        </select>
-      </div>
-      <div className="abf-7">
-        <label className="abf-8">
-          Schedule (optional)
-        </label>
-        <div className="abf-9">
-          <input
-            type="date"
-            value={scheduledDate}
-            onChange={e => setScheduledDate(e.target.value)}
-            min={((): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()}
-            className="abf-10"
-          />
-          <input
-            type="time"
-            value={scheduledTime}
-            onChange={e => setScheduledTime(e.target.value)}
-            className="abf-11"
-          />
-          {(scheduledDate || scheduledTime) && (
-            <button type="button" className="btn btn-sm" onClick={() => { setScheduledDate(''); setScheduledTime(''); }} title="Clear schedule">
-              <i className="fas fa-times"></i>
-            </button>
-          )}
+    <>
+      <div className="df-section">
+        <div className="df-grid">
+          <div className="df-field">
+            <label className="df-label">Title *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Broadcast title" />
+          </div>
+          <div className="df-field">
+            <label className="df-label">Target Audience</label>
+            <select value={targetAudience} onChange={e => setTargetAudience(e.target.value)}>
+              <option value="all">All Users</option>
+              <option value="new">New Users</option>
+              <option value="loyal">Loyal Customers</option>
+              <option value="inactive">Inactive Users</option>
+            </select>
+          </div>
         </div>
-        <div className="abf-12">
-          Leave empty to save as draft (no schedule)
+        <div className="df-field" style={{ marginBottom: 16 }}>
+          <label className="df-label">Message *</label>
+          <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4} required placeholder="Broadcast message..." />
+        </div>
+        <div className="df-grid">
+          <div className="df-field">
+            <label className="df-label">Schedule Date <span>(optional)</span></label>
+            <input
+              type="date"
+              value={scheduledDate}
+              onChange={e => setScheduledDate(e.target.value)}
+              min={((): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()}
+            />
+            <div className="df-hint">Leave empty to save as draft</div>
+          </div>
+          <div className="df-field">
+            <label className="df-label">Schedule Time</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="time"
+                value={scheduledTime}
+                onChange={e => setScheduledTime(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              {(scheduledDate || scheduledTime) && (
+                <button type="button" className="btn btn-sm" onClick={() => { setScheduledDate(''); setScheduledTime(''); }} title="Clear">
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-      <button type="submit" className="btn btn-primary abf-13"  disabled={saving}>
-        {saving ? 'Saving...' : 'Save Broadcast'}
-      </button>
-    </form>
+      <div className="df-actions">
+        <button className="btn" onClick={onClose} disabled={saving}>Cancel</button>
+        <button type="submit" className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+          {saving ? 'Saving...' : 'Create Broadcast'}
+        </button>
+      </div>
+    </>
   );
 }

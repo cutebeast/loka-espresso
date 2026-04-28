@@ -500,7 +500,8 @@ def upgrade() -> None:
         created_at TIMESTAMP WITH TIME ZONE NOT NULL,
         PRIMARY KEY (id),
         FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
-        FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE CASCADE
+        FOREIGN KEY(store_id) REFERENCES stores (id) ON DELETE CASCADE,
+        FOREIGN KEY(reward_id) REFERENCES rewards (id) ON DELETE SET NULL
     );"""))
 
     op.execute(text("""

@@ -1,0 +1,27 @@
+/* ── TypePill (.tp-) ── */
+.tp-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tp-offer {
+  background: #e7ddd2;
+  color: #3a2e26;
+}
+.tp-survey {
+  background: #d4e0d8;
+  color: #1a4e3a;
+}
+.tp-limited {
+  background: var(--color-copper-soft);
+  color: #57280D;
+}
+.tp-system {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}

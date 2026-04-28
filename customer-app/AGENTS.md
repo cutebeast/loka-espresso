@@ -16,7 +16,18 @@
 | `src/styles/components.css` | Component primitives (btn, chip, badge, guest-banner, etc.) |
 | `src/styles/modals.css` | Modal, bottom-sheet, and dialog styles |
 | `src/styles/notifications.css` | Toast, notification list, and badge styles |
-| `src/styles/sub-components.css` | Small shared sub-components (TypePill, VoucherRevealBlock, etc.) |
+| `src/styles/sub-components.css` | Small shared sub-components (ListCard, ProfileSetup, etc.) |
+| `src/styles/type-pill.css` | TypePill component styles (`.tp-*`) |
+| `src/styles/voucher-reveal.css` | VoucherRevealBlock styles (`.vrb-*`) |
+| `src/styles/redemption-code.css` | RedemptionCodeModal styles (`.rcm-*`) |
+| `src/styles/terms-list.css` | TermsList styles (`.tl-*`) |
+| `src/styles/info-cards.css` | Info cards shared + promotions + sub-page header |
+| `src/styles/info-cards-list.css` | Info cards list view styles |
+| `src/styles/info-cards-detail.css` | Info cards detail/article view styles |
+| `src/styles/checkout.css` | Checkout page layout + top-up + my-card + A2HS |
+| `src/styles/checkout-form.css` | Checkout form/input/payment/summary styles |
+| `src/styles/checkout-success.css` | Checkout success confirmation styles |
+| `src/styles/checkout-delivery.css` | Checkout delivery-specific styles |
 
 **Rule:** Never define local `LOKA` objects in components. Import from `src/lib/tokens.ts`.
 

@@ -83,7 +83,7 @@ export default function HistoryPage() {
       <motion.div variants={staggerItem} className="flex items-center gap-3 mb-5">
         <button
           onClick={() => setPage('profile')}
-          className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center"
         >
           <ArrowLeft size={18} className="text-gray-600" />
         </button>

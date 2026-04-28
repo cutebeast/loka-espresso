@@ -146,6 +146,24 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
             </button>
           </p>
 
+          <div className="pi-divider">
+            <span className="pi-divider-line" />
+            <span className="pi-divider-text">or</span>
+            <span className="pi-divider-line" />
+          </div>
+
+          <button
+            type="button"
+            className="pi-guest-btn"
+            onClick={() => {
+              const ui = useUIStore.getState();
+              ui.setPage('home');
+              ui.setIsGuest(true);
+            }}
+          >
+            Browse as Guest
+          </button>
+
           <div className="pi-spacer" />
         </form>
       </div>

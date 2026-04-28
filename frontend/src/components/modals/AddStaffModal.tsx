@@ -18,7 +18,7 @@ export function AddStaffForm({ storeId, token: _token, onClose }: { storeId: num
         body: JSON.stringify({ name, role, phone, is_active: true }),
       });
       onClose();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Modal save operation failed'); } finally { setSaving(false); }
   }
 
   return (

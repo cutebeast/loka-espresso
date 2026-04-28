@@ -15,7 +15,7 @@ export function AddInventoryItemForm({ storeId, token: _token, onClose }: { stor
     e.preventDefault();
     setSaving(true);
     try {
-      await apiFetch(`/stores/${storeId}/inventory`, undefined, {
+      await apiFetch(`/admin/stores/${storeId}/inventory`, undefined, {
         method: 'POST',
         body: JSON.stringify({
           name, current_stock: parseFloat(stock) || 0, unit,
@@ -24,7 +24,7 @@ export function AddInventoryItemForm({ storeId, token: _token, onClose }: { stor
         }),
       });
       onClose();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Modal save operation failed'); } finally { setSaving(false); }
   }
 
   return (

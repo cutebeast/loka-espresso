@@ -7,17 +7,18 @@ from sqlalchemy import select, desc, func
 from app.core.database import get_db
 from app.core.security import require_hq_access
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User, DeviceToken
+from app.models.admin_user import AdminUser
+from app.models.user import DeviceToken
 from app.models.notification import Notification, NotificationBroadcast
 from app.schemas.admin_extras import (
     BroadcastCreate,
     BroadcastOut,
 )
 
-router = APIRouter(tags=["Admin Broadcasts"])
+router = APIRouter(prefix="/admin", tags=["Admin Broadcasts"])
 
 
-@router.get("/admin/broadcasts")
+@router.get("/broadcasts")
 async def list_broadcasts(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -25,7 +26,7 @@ async def list_broadcasts(
     from_date: str | None = Query(None),
     to_date: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     query = select(NotificationBroadcast)
     count_query = select(func.count(NotificationBroadcast.id))
@@ -60,7 +61,7 @@ async def list_broadcasts(
     items = result.scalars().all()
 
     return {
-        "broadcasts": [
+        "items": [
             {
                 "id": b.id,
                 "title": b.title,
@@ -84,12 +85,12 @@ async def list_broadcasts(
     }
 
 
-@router.patch("/admin/broadcasts/{broadcast_id}/archive")
+@router.patch("/broadcasts/{broadcast_id}/archive")
 async def toggle_archive_broadcast(
     broadcast_id: int,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(NotificationBroadcast).where(NotificationBroadcast.id == broadcast_id))
     obj = result.scalar_one_or_none()
@@ -104,12 +105,38 @@ async def toggle_archive_broadcast(
     return {"id": obj.id, "is_archived": obj.is_archived}
 
 
-@router.post("/admin/broadcasts", response_model=BroadcastOut)
+@router.get("/broadcasts/{broadcast_id}")
+async def get_broadcast(
+    broadcast_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(require_hq_access()),
+):
+    result = await db.execute(select(NotificationBroadcast).where(NotificationBroadcast.id == broadcast_id))
+    obj = result.scalar_one_or_none()
+    if not obj:
+        raise HTTPException(404, "Broadcast not found")
+    return {
+        "id": obj.id,
+        "title": obj.title,
+        "body": obj.body,
+        "audience": obj.audience,
+        "store_id": obj.store_id,
+        "scheduled_at": obj.scheduled_at.isoformat() if obj.scheduled_at else None,
+        "sent_at": obj.sent_at.isoformat() if obj.sent_at else None,
+        "sent_count": obj.sent_count,
+        "open_count": obj.open_count,
+        "is_archived": obj.is_archived,
+        "status": obj.status,
+        "created_at": obj.created_at.isoformat() if obj.created_at else None,
+    }
+
+
+@router.post("/broadcasts", response_model=BroadcastOut)
 async def create_broadcast(
     request: Request,
     data: BroadcastCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     obj = NotificationBroadcast(created_by=user.id, status=data.status, **data.model_dump(exclude={"status"}))
     db.add(obj)
@@ -121,13 +148,13 @@ async def create_broadcast(
     return obj
 
 
-@router.put("/admin/broadcasts/{broadcast_id}")
+@router.put("/broadcasts/{broadcast_id}")
 async def update_broadcast(
     broadcast_id: int,
     request: Request,
     data: BroadcastCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(NotificationBroadcast).where(NotificationBroadcast.id == broadcast_id))
     obj = result.scalar_one_or_none()
@@ -144,12 +171,12 @@ async def update_broadcast(
     return obj
 
 
-@router.delete("/admin/broadcasts/{broadcast_id}")
+@router.delete("/broadcasts/{broadcast_id}")
 async def delete_broadcast(
     broadcast_id: int,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(NotificationBroadcast).where(NotificationBroadcast.id == broadcast_id))
     obj = result.scalar_one_or_none()
@@ -161,15 +188,15 @@ async def delete_broadcast(
     await log_action(db, action="DELETE_BROADCAST", user_id=user.id, entity_type="broadcast", entity_id=broadcast_id, details={"title": obj.title}, ip_address=ip)
     await db.delete(obj)
     await db.flush()
-    return {"detail": "Broadcast deleted"}
+    return {"message": "Broadcast deleted"}
 
 
-@router.post("/admin/broadcasts/{broadcast_id}/send")
+@router.post("/broadcasts/{broadcast_id}/send")
 async def send_broadcast(
     broadcast_id: int,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(NotificationBroadcast).where(NotificationBroadcast.id == broadcast_id))
     obj = result.scalar_one_or_none()

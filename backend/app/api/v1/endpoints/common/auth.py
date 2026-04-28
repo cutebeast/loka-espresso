@@ -275,15 +275,12 @@ async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
         otp.delivery_status = "verified"
         otp.failure_reason = None
 
-    result = await db.execute(select(User).where(User.phone == req.phone))
+    from app.models.customer import Customer
+    result = await db.execute(select(Customer).where(Customer.phone == req.phone))
     user = result.scalar_one_or_none()
     is_new_user = user is None
     if is_new_user:
-        user = User(
-            phone=req.phone,
-            user_type_id=UserTypeIDs.CUSTOMER,
-            role_id=RoleIDs.CUSTOMER,
-        )
+        user = Customer(phone=req.phone)
         db.add(user)
         await db.flush()
     # Treat first-time login (no name set yet) as "new user" too, so the
@@ -293,8 +290,8 @@ async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
         is_new_user = True
     user.phone_verified = True
 
-    access = create_access_token({"sub": str(user.id)})
-    refresh = create_refresh_token({"sub": str(user.id)})
+    access = create_access_token({"sub": str(user.id), "user_type": "customer"})
+    refresh = create_refresh_token({"sub": str(user.id), "user_type": "customer"})
     response = JSONResponse(content={
         "is_new_user": is_new_user,
     })
@@ -307,7 +304,8 @@ async def register(request: Request, req: RegisterRequest, user: User = Depends(
     if req.name:
         user.name = req.name
     if req.email:
-        existing = await db.execute(select(User).where(User.email == req.email))
+        from app.models.customer import Customer
+        existing = await db.execute(select(Customer).where(Customer.email == req.email))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email already registered")
         user.email = req.email
@@ -318,7 +316,8 @@ async def register(request: Request, req: RegisterRequest, user: User = Depends(
 @router.post("/login-password", response_model=TokenResponse)
 @limiter.limit("10/minute")
 async def login_password(request: Request, req: LoginPasswordRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == req.email))
+    from app.models.admin_user import AdminUser
+    result = await db.execute(select(AdminUser).where(AdminUser.email == req.email))
     user = result.scalar_one_or_none()
     if not user or not user.password_hash or not verify_password(req.password, user.password_hash):
         # Log failed login attempt
@@ -328,8 +327,8 @@ async def login_password(request: Request, req: LoginPasswordRequest, db: AsyncS
     if not user.is_active:
         raise HTTPException(status_code=403, detail="User account is inactive")
     await log_action(db, action="LOGIN", user_id=user.id, entity_type="user", entity_id=user.id, details={"email": req.email, "role_id": user.role_id}, ip_address=get_client_ip(request))
-    access = create_access_token({"sub": str(user.id)})
-    refresh = create_refresh_token({"sub": str(user.id)})
+    access = create_access_token({"sub": str(user.id), "user_type": "admin"})
+    refresh = create_refresh_token({"sub": str(user.id), "user_type": "admin"})
     response = JSONResponse(content={"message": "Login successful", "access_token": access, "refresh_token": refresh})
     _set_auth_cookies(response, access, refresh)
     return response
@@ -359,6 +358,7 @@ async def refresh_token(request: Request, req: RefreshRequest | None = None, db:
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
         user_id = payload.get("sub")
+        user_type = payload.get("user_type")
         jti = payload.get("jti")
         exp = payload.get("exp")
     except PyJWTError:
@@ -370,14 +370,33 @@ async def refresh_token(request: Request, req: RefreshRequest | None = None, db:
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=401, detail="Refresh token has been revoked")
 
-    user_result = await db.execute(select(User).where(User.id == int(user_id)))
-    user = user_result.scalar_one_or_none()
+    # Polymorphic lookup
+    user = None
+    if user_type == "admin":
+        from app.models.admin_user import AdminUser
+        user_result = await db.execute(select(AdminUser).where(AdminUser.id == int(user_id)))
+        user = user_result.scalar_one_or_none()
+    elif user_type == "customer":
+        from app.models.customer import Customer
+        user_result = await db.execute(select(Customer).where(Customer.id == int(user_id)))
+        user = user_result.scalar_one_or_none()
+    else:
+        # Legacy: try admin first
+        from app.models.admin_user import AdminUser
+        from app.models.customer import Customer
+        user_result = await db.execute(select(AdminUser).where(AdminUser.id == int(user_id)))
+        user = user_result.scalar_one_or_none()
+        if not user:
+            user_result = await db.execute(select(Customer).where(Customer.id == int(user_id)))
+            user = user_result.scalar_one_or_none()
+        user_type = "admin" if hasattr(user, 'password_hash') and user.password_hash else "customer"
+
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
     await _blacklist_token(refresh_token_value, user.id, db)
-    access = create_access_token({"sub": str(user_id)})
-    refresh = create_refresh_token({"sub": str(user_id)})
+    access = create_access_token({"sub": str(user_id), "user_type": user_type or "customer"})
+    refresh = create_refresh_token({"sub": str(user_id), "user_type": user_type or "customer"})
     response = JSONResponse(content={"message": "Token refreshed"})
     _set_auth_cookies(response, access, refresh)
     return response
@@ -451,4 +470,4 @@ async def change_password(
     ip = get_client_ip(request)
     await log_action(db, action="CHANGE_PASSWORD", user_id=user.id, entity_type="user", entity_id=user.id, details={"ip": ip}, ip_address=ip)
     await db.flush()
-    return {"detail": "Password changed successfully"}
+    return {"message": "Password changed successfully"}

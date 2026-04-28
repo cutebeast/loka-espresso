@@ -18,21 +18,28 @@
 @import "../styles/notifications.css";
 @import "../styles/qr-scanner.css";
 @import "../styles/menu-grid.css";
-@import "../styles/category-nav.css";
 @import "../styles/customize-sheet.css";
 @import "../styles/info-cards.css";
+@import "../styles/info-cards-list.css";
+@import "../styles/info-cards-detail.css";
 @import "../styles/profile.css";
 @import "../styles/wallet.css";
 @import "../styles/my-rewards.css";
-@import "../styles/history.css";
-@import "../styles/payment-methods.css";
+@import "../styles/my-rewards-detail.css";
 @import "../styles/settings.css";
 @import "../styles/cart.css";
 @import "../styles/orders-list.css";
 @import "../styles/order-detail.css";
 @import "../styles/checkout.css";
+@import "../styles/checkout-form.css";
+@import "../styles/checkout-success.css";
+@import "../styles/checkout-delivery.css";
 @import "../styles/modals.css";
 @import "../styles/sub-components.css";
+@import "../styles/type-pill.css";
+@import "../styles/voucher-reveal.css";
+@import "../styles/redemption-code.css";
+@import "../styles/terms-list.css";
 
 /* ============================================
    REMAINING UTILITY CLASSES (not in modules)

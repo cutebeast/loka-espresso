@@ -1,19 +1,15 @@
 'use client';
 
 import { Home, Coffee, Crown, Clock, User } from 'lucide-react';
+import { useCartStore } from '@/stores/cartStore';
 import type { PageId } from '@/lib/api';
 
-const allNavItems: { id: PageId; label: string; icon: typeof Home }[] = [
+const allNavItems: { id: PageId; label: string; icon: typeof Home; badgeKey?: string }[] = [
   { id: 'home', label: 'Home', icon: Home },
-  { id: 'menu', label: 'Menu', icon: Coffee },
+  { id: 'menu', label: 'Menu', icon: Coffee, badgeKey: 'cart' },
   { id: 'rewards', label: 'Rewards', icon: Crown },
   { id: 'orders', label: 'Orders', icon: Clock },
   { id: 'profile', label: 'Profile', icon: User },
-];
-
-const guestNavItems: { id: PageId; label: string; icon: typeof Home }[] = [
-  { id: 'home', label: 'Home', icon: Home },
-  { id: 'menu', label: 'Menu', icon: Coffee },
 ];
 
 function getActiveNavId(page: PageId): PageId {
@@ -29,17 +25,17 @@ function getActiveNavId(page: PageId): PageId {
 interface BottomNavProps {
   page: PageId;
   onNavigate: (id: PageId) => void;
-  isGuest?: boolean;
 }
 
-export default function BottomNav({ page, onNavigate, isGuest }: BottomNavProps) {
+export default function BottomNav({ page, onNavigate }: BottomNavProps) {
   const activeNavId = getActiveNavId(page);
-  const navItems = isGuest ? guestNavItems : allNavItems;
+  const cartCount = useCartStore((s) => s.items?.length ?? 0);
 
   return (
     <nav className="bottom-nav">
-      {navItems.map(({ id, label, icon: Icon }) => {
+      {allNavItems.map(({ id, label, icon: Icon, badgeKey }) => {
         const isActive = id === activeNavId;
+        const badgeCount = badgeKey === 'cart' ? cartCount : 0;
         return (
           <button
             key={id}
@@ -48,7 +44,12 @@ export default function BottomNav({ page, onNavigate, isGuest }: BottomNavProps)
             aria-label={label}
             aria-current={isActive ? 'page' : undefined}
           >
-            <Icon size={22} strokeWidth={isActive ? 2.4 : 1.8} />
+            <span className="nav-icon-wrap">
+              <Icon size={22} strokeWidth={isActive ? 2.4 : 1.8} />
+              {badgeCount > 0 && (
+                <span className="nav-badge">{badgeCount > 9 ? '9+' : badgeCount}</span>
+              )}
+            </span>
             <span>{label}</span>
           </button>
         );

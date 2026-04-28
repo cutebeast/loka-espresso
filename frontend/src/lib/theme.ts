@@ -32,11 +32,12 @@ export const THEME = {
   textLight: '#ffffff',      // White
   textCopper: '#d18e38',     // Mustard accent
   
-  // Status Colors
-  success: '#384b16',        // Olive Success
+  // Status Colors (aligned with PWA tokens.ts)
+  success: '#85B085',        // Sage Green (matches LOKA)
   warning: '#d18e38',        // Mustard Warning
-  error: '#8b2e2e',          // Muted Red
-  info: '#5a8a9a',           // Slate Blue
+  error: '#C75050',          // Red (matches LOKA danger)
+  danger: '#C75050',         // Alias for error (matches PWA LOKA.danger)
+  info: '#4A607A',           // Slate Blue (aligned with LOKA.info)
   
   // Sidebar
   sidebar: {

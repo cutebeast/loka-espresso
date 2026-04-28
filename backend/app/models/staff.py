@@ -36,7 +36,7 @@ class Staff(Base):
     )
 
     shifts: Mapped[List[StaffShift]] = relationship("StaffShift", back_populates="staff", cascade="all, delete-orphan")
-    store_rel: Mapped[Store] = relationship("Store")
+    store: Mapped[Store] = relationship("Store")
 
 
 class StaffShift(Base):

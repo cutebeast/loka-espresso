@@ -6,9 +6,10 @@ from app.core.database import get_db
 from app.core.security import require_hq_access
 from app.core.audit import log_action, get_client_ip
 from app.core.utils import to_float
-from app.models.user import User
+from app.models.admin_user import AdminUser
 from app.models.menu import MenuItem
 from app.models.marketing import CustomizationOption
+from app.schemas.menu import CustomizationCreate, CustomizationUpdate
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 @router.get("/items/{item_id}/customizations")
 async def list_customization_options(
     item_id: int,
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """List customization options for a menu item."""
@@ -33,8 +34,8 @@ async def list_customization_options(
 async def create_customization_option(
     item_id: int,
     request: Request,
-    req: dict,
-    user: User = Depends(require_hq_access()),
+    req: CustomizationCreate,
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """Add a customization option to a menu item."""
@@ -43,9 +44,9 @@ async def create_customization_option(
         raise HTTPException(status_code=404, detail="Menu item not found")
     opt = CustomizationOption(
         menu_item_id=item_id,
-        name=req.get("name"),
-        price_adjustment=req.get("price_adjustment", 0),
-        display_order=req.get("display_order", 0),
+        name=req.name,
+        price_adjustment=req.price_adjustment,
+        display_order=req.display_order,
     )
     db.add(opt)
     await db.flush()
@@ -58,8 +59,8 @@ async def create_customization_option(
 async def update_customization_option(
     option_id: int,
     request: Request,
-    req: dict,
-    user: User = Depends(require_hq_access()),
+    req: CustomizationUpdate,
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a customization option."""
@@ -67,7 +68,7 @@ async def update_customization_option(
     opt = result.scalar_one_or_none()
     if not opt:
         raise HTTPException(status_code=404, detail="Option not found")
-    for k, v in req.items():
+    for k, v in req.model_dump(exclude_none=True).items():
         if hasattr(opt, k):
             setattr(opt, k, v)
     ip = get_client_ip(request)
@@ -79,7 +80,7 @@ async def update_customization_option(
 async def delete_customization_option(
     option_id: int,
     request: Request,
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """Soft-delete a customization option."""

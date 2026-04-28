@@ -23,7 +23,7 @@ export function AddItemForm({ storeId: _storeId, categories, token: _token, onCl
         }),
       });
       onClose();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Modal save operation failed'); } finally { setSaving(false); }
   }
 
   return (

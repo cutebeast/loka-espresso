@@ -10,10 +10,10 @@ from app.core.database import get_db
 from app.core.security import get_current_user, is_global_admin, is_hq, can_access_store
 from app.core.audit import log_action
 from app.core.utils import to_float
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.order import Order, OrderStatusHistory, OrderStatus, Payment
 from app.models.notification import Notification
-from app.schemas.order import OrderStatusUpdate
+from app.schemas.order import OrderStatusUpdate, UpdatePaymentStatusRequest
 
 from .order_crud import VALID_TRANSITIONS, VALID_TRANSITIONS_BY_TYPE
 
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 @router.patch("/{order_id}/status")
 async def update_order_status(
     order_id: int, req: OrderStatusUpdate,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if is_global_admin(user) or is_hq(user):
@@ -132,8 +132,8 @@ async def update_order_status(
 @router.patch("/{order_id}/payment-status")
 async def update_order_payment_status(
     order_id: int,
-    req: dict,
-    user: User = Depends(get_current_user),
+    req: UpdatePaymentStatusRequest,
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -153,7 +153,7 @@ async def update_order_payment_status(
     if not has_access:
         raise HTTPException(status_code=403, detail="No access to update payment for this order")
 
-    payment_status = req.get("payment_status")
+    payment_status = req.payment_status
     if not payment_status:
         raise HTTPException(status_code=400, detail="payment_status is required")
 

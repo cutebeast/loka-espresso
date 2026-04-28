@@ -1,0 +1,36 @@
+.dp-0 { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.dp-1 { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--color-bg-muted); border-radius: 10px 10px 0 0; border: 1px solid #c4ced8; border-bottom: none; }
+.dp-2 { font-size: 14px; color: var(--color-text-secondary); }
+.dp-3 { margin-right: 8px; color: var(--color-primary); }
+.dp-4 { color: var(--color-bg-dark); }
+.dp-5 { color: var(--color-bg-dark); }
+.dp-6 { font-size: 13px; color: var(--color-text-muted); }
+.dp-7 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; }
+.dp-8 { background: var(--color-bg-card); border-radius: var(--radius-lg); border: 1px solid #c4ced8; padding: 20px; }
+.dp-9 { margin-bottom: 16px; color: var(--color-bg-dark); }
+.dp-10 { color: var(--color-accent-copper); margin-right: 8px; }
+.dp-11 { color: var(--color-text-muted); }
+.dp-12 { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #d4dce5; }
+.dp-13 { text-transform: capitalize; color: var(--color-text-secondary); }
+.dp-14 { color: var(--color-bg-dark); }
+.dp-15 { background: var(--color-bg-card); border-radius: var(--radius-lg); border: 1px solid #c4ced8; padding: 20px; }
+.dp-16 { margin-bottom: 16px; color: var(--color-bg-dark); }
+.dp-17 { font-size: 36px; font-weight: 700; color: var(--color-accent-copper); }
+.dp-18 { color: var(--color-text-muted); margin-top: 8px; }
+.dp-19 { margin-top: 24px; background: var(--color-bg-card); border-radius: var(--radius-lg); border: 1px solid #c4ced8; padding: 20px; }
+.dp-20 { margin-bottom: 16px; color: var(--color-bg-dark); }
+.dp-21 { color: var(--color-accent); margin-right: 8px; }
+.dp-22 { display: flex; align-items: flex-end; gap: 12px; height: 180px; padding: 0 10px; }
+.dp-23 { flex: 1; text-align: center; min-width: 60px; }
+.dp-24 { font-size: 12px; color: var(--color-text-muted); margin-top: 8px; font-weight: 500; }
+.dp-25 { margin-top: 16px; font-size: 12px; color: var(--color-text-muted); font-style: italic; text-align: center; }
+.dp-bar { border-radius: 4px; transition: height 0.3s ease; }
+.dp-bar-value { font-size: 14px; font-weight: 700; margin-top: 4px; }
+
+@media (min-width: 768px) {
+  /* Desktop adjustments — base styles above are mobile-first */
+  .dp-0 { gap: 16px; }
+  .dp-7 { gap: 32px; }
+  .dp-22 { gap: 16px; }
+  .dp-23 { min-width: 80px; }
+}

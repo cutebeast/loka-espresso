@@ -51,3 +51,4 @@ class UserOut(BaseModel):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
+    phone: Optional[str] = None

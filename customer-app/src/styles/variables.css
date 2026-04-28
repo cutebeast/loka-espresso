@@ -84,6 +84,8 @@
   --loka-border-light: var(--color-border-light);
   --loka-success: var(--color-success);
   --loka-danger: var(--color-danger);
+  --loka-cream: var(--color-cream);
+  --loka-white: #FFFFFF;
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

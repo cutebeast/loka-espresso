@@ -1,6 +1,6 @@
 # CSS Architecture
 
-> **Last Updated:** 2026-04-25
+> **Last Updated:** 2026-04-27
 
 ## No Framework
 
@@ -66,8 +66,37 @@ frontend/src/styles/
 ├── theme.css              # Theme variables (--color-primary, etc.)
 ├── base.css               # Reset, typography, form elements
 ├── layout.css             # Sidebar, content area, responsive breakpoints, admin shell
-└── components.css         # Buttons, cards, badges, tables, modals, forms, stats
+├── components.css         # Buttons, cards, badges, tables, modals, forms, stats
+├── mobile-guard.css       # MobilePageGuard "Desktop Only" styles
+├── dashboard.css          # DashboardPage (db-*)
+├── orders.css             # OrdersPage (op-*)
+├── menu-admin.css         # MenuPage (mp-*)
+├── tables-admin.css       # TablesPage, QRCodeGenerator (tp-*)
+├── kitchen-display.css    # KitchenDisplayPage (kdp-*)
+├── inventory-admin.css    # InventoryPage (ip-*)
+├── staff-admin.css        # StaffPage (sp-*)
+├── vouchers.css           # VouchersPage (vp-*)
+├── rewards.css            # RewardsPage (rp-*)
+├── promotions.css         # PromotionsPage, BannerManager (pp-*)
+├── customers.css          # CustomersPage (cp-*)
+├── feedback.css           # FeedbackPage (fb-*), SurveyReportPage (srp-*)
+├── notifications.css      # NotificationsPage (np-*)
+├── wallet-topup.css       # WalletTopUpPage (wtup-*)
+├── pos-terminal.css       # POSTerminalPage (ptp-*)
+├── information.css        # InformationPage (inf-*)
+├── reports.css            # SalesReportsPage (mrp-*), SurveysPage (sv-*)
+├── settings-admin.css     # SettingsPage (stp-*)
+├── sidebar.css            # Sidebar styles
+└── login.css              # LoginScreen styles
 ```
+
+### Admin CSS Conventions
+
+- **Prefix per page**: Each page has a unique numbered prefix (`kdp-*`, `ptp-*`, `tp-*`, `wtup-*`, etc.)
+- **No duplicate prefixes across pages**: Collision prevention (e.g., `ip-*` is InventoryPage only, InformationPage uses `inf-*`)
+- **Mobile-first**: Every class MUST have a mobile base style outside `@media`. Desktop overrides inside `@media (min-width: 768px)`
+- **No `!important` in page CSS files**: Layout overrides (`.tables-grid`, `.wallet-topup-grid`, etc.) live in `components.css` wrapped in `@media (max-width: 767px)`
+- **Named classes** for reusable patterns: `kdp-order-card`, `kdp-action-btn`, `tp-table-active`, `tp-qr-placeholder`
 
 ### Admin Layout Classes
 
@@ -76,14 +105,14 @@ frontend/src/styles/
 | `.admin-main-content` | Flex container with responsive margin-left for sidebar |
 | `.admin-header` | Top header bar with responsive padding |
 | `.admin-main` | Scrollable content area with mobile bottom padding |
-| `.mobile-menu-btn` | Hamburger toggle (hidden on desktop) |
-| `.sidebar-backdrop` | Overlay behind sidebar on mobile |
+| `.mobile-menu-btn` | Hamburger toggle — **hidden on mobile** (Service Crew can't access sidebar) |
+| `.sidebar-backdrop` | Overlay — **hidden on mobile** |
 
 ### Responsive Breakpoints (Admin)
 
 | Breakpoint | Behavior |
 |------------|----------|
-| < 768px | Sidebar hidden, bottom nav visible, stacked grids |
+| < 768px | Sidebar hidden, bottom nav (4 tabs), stacked grids, "Desktop Only" for non-service pages |
 | 768-1023px | Sidebar collapsed (icons only), 2-column grids |
 | ≥ 1024px | Full sidebar with labels, full grid layout |
 

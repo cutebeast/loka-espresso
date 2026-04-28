@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, Crown, Star, ChevronRight, Gift, Calendar, List, Circle, CheckCircle } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import api from '@/lib/api';
 import type { Reward, PromoBanner } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/tokens';
@@ -218,6 +219,7 @@ export default function RewardsPage() {
 
       {/* Card List */}
       <div className="rewards-card-list">
+        <GuestGate message="Sign in to view rewards, redeem points, and access special offers.">
         {loading ? (
           <>
             {[1, 2, 3].map((i) => (
@@ -307,6 +309,7 @@ export default function RewardsPage() {
             })}
           </>
         )}
+        </GuestGate>
       </div>
     </div>
   );

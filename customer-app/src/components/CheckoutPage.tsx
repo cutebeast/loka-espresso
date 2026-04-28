@@ -20,6 +20,7 @@ import { placeOrder } from '@/lib/cartSync';
 import api from '@/lib/api';
 import TimeSlotPicker from '@/components/checkout/TimeSlotPicker';
 import DeliveryAddressCard from '@/components/checkout/DeliveryAddressCard';
+import DineInTableCard from '@/components/checkout/DineInTableCard';
 import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
 import OrderNotesField from '@/components/checkout/OrderNotesField';
 import { formatPrice } from '@/lib/tokens';
@@ -216,6 +217,7 @@ export default function CheckoutPage() {
                 <button
                   key={t.key}
                   className={`co-type-pill ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
+                  title={isDisabled ? 'Scan table QR to enable' : undefined}
                   onClick={() => {
                     if (isDisabled) return;
                     setOrderMode(t.key);
@@ -246,10 +248,11 @@ export default function CheckoutPage() {
 
           {/* Dine-in info */}
           {orderMode === 'dine_in' && dineInSession && (
-            <div className="co-dinein-info">
-              <UtensilsCrossed size={16} />
-              <span>Table {dineInSession.tableNumber} · {dineInSession.storeName}</span>
-            </div>
+            <DineInTableCard
+              tableNumber={dineInSession.tableNumber}
+              storeName={dineInSession.storeName}
+              onScanDifferent={() => window.dispatchEvent(new CustomEvent('open-qr-scanner'))}
+            />
           )}
           {orderMode === 'dine_in' && !dineInSession && (
             <button
@@ -429,14 +432,14 @@ export default function CheckoutPage() {
           </button>
         ) : (
           <button
-            className="co-place-order-btn"
+            className={`co-place-order-btn${orderMode === 'dine_in' ? ' send-kitchen' : ''}`}
             onClick={handlePlaceOrder}
             disabled={placing || belowDeliveryMinimum}
           >
             {placing ? (
               <><Loader2 size={18} className="animate-spin" /> Placing…</>
             ) : (
-              <><Receipt size={18} />{orderMode === 'dine_in' ? 'Send to kitchen' : `Place Order · ${formatPrice(total)}`}</>
+              <>{orderMode === 'dine_in' ? '👨‍🍳 Send to kitchen' : <><Receipt size={18} />{`Place Order · ${formatPrice(total)}`}</>}</>
             )}
           </button>
         )}

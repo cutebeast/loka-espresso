@@ -6,7 +6,8 @@ from app.core.database import get_db
 from app.core.security import require_hq_access, now_utc
 from app.core.audit import log_action, get_client_ip
 from app.core.utils import to_float
-from app.models.user import User, RoleIDs
+from app.models.admin_user import AdminUser
+from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.voucher import Voucher, UserVoucher
 from app.models.wallet import Wallet, WalletTransaction
@@ -23,7 +24,7 @@ async def customer_loyalty_history(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     count_result = await db.execute(
         select(func.count()).select_from(LoyaltyTransaction).where(LoyaltyTransaction.user_id == user_id)
@@ -41,6 +42,7 @@ async def customer_loyalty_history(
         "total": total,
         "page": page,
         "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size),
         "items": [
             {
                 "id": t.id,
@@ -62,7 +64,7 @@ async def customer_wallet_history(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     wallet_subquery = select(Wallet.id).where(Wallet.user_id == user_id)
     count_result = await db.execute(
@@ -81,6 +83,7 @@ async def customer_wallet_history(
         "total": total,
         "page": page,
         "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size),
         "items": [
             {
                 "id": t.id,
@@ -100,7 +103,7 @@ async def adjust_customer_points(
     data: AdjustPointsRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.user_id == user_id))
     account = result.scalar_one_or_none()
@@ -142,10 +145,10 @@ async def award_voucher_to_customer(
     data: AwardVoucherRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     """Award a voucher to a customer. Admin action — bypasses promo claim flow."""
-    result = await db.execute(select(User).where(User.id == user_id, User.role_id == RoleIDs.CUSTOMER))
+    result = await db.execute(select(Customer).where(Customer.id == user_id))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -215,10 +218,10 @@ async def set_customer_tier(
     data: SetTierRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     """Manually override a customer's loyalty tier."""
-    result = await db.execute(select(User).where(User.id == user_id, User.role_id == RoleIDs.CUSTOMER))
+    result = await db.execute(select(Customer).where(Customer.id == user_id))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=404, detail="Customer not found")

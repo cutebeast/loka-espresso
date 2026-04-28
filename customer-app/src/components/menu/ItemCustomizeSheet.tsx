@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Minus, Plus, ShoppingCart, Coffee, Star } from 'lucide-react';
+import { X, Minus, Plus, ShoppingCart, Coffee } from 'lucide-react';
 import type { MenuItem, CustomizationOption } from '@/lib/api';
 import { resolveAssetUrl, formatPrice } from '@/lib/tokens';
 
@@ -125,10 +125,7 @@ export default function ItemCustomizeSheet({
                     <h2 className="ics-title">{item.name}</h2>
                     <p className="ics-desc">{item.description}</p>
                   </div>
-                  <div className="ics-rating">
-                    <Star size={12} color="#D18E38" fill="#D18E38" />
-                    <span className="ics-rating-text">4.8</span>
-                  </div>
+
                 </div>
                 <p className="ics-price">{formatPrice(item.base_price)}</p>
               </div>

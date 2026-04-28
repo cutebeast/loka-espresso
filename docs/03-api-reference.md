@@ -1,7 +1,11 @@
 # FNB Super-App — API Reference
 
-> Last updated: 2026-04-22 | Base URL: `https://admin.loyaltysystem.uk/api/v1`
-> This document is the current pre-provider-integration reference. ~231 route handlers total.
+> Last updated: 2026-04-26 (Sessions 4–5) | Base URL: `https://admin.loyaltysystem.uk/api/v1`
+> ~230 route handlers total. Session 4 added inventory management, wallet ledger, and compliance model tables (CRUD endpoints planned for Phase 2).
+
+## Validation
+
+All request bodies use **Pydantic v2 schemas** with `from_attributes = True`. Validation errors return `422 Unprocessable Entity` with structured error details.
 
 ## Authentication
 
@@ -45,6 +49,7 @@ Authorization: Bearer <access-token>
 |--------|------|-------------|
 | GET | `/users/me` | Get current user profile |
 | PUT | `/users/me` | Update current user profile |
+| DELETE | `/users/me` | Delete own account (soft-delete, sets `is_active=False`) |
 | PUT | `/users/me/avatar` | Update avatar |
 | GET | `/users/me/addresses` | List saved addresses |
 | POST | `/users/me/addresses` | Create saved address |
@@ -166,6 +171,7 @@ These are the customer-facing PWA menu endpoints.
 |--------|------|-------------|
 | GET | `/payments/methods` | List saved payment methods |
 | POST | `/payments/methods` | Add payment method metadata |
+| DELETE | `/payments/methods/{method_id}` | Delete payment method |
 | POST | `/payments/create-intent` | Create internal payment attempt |
 | POST | `/payments/confirm` | Confirm wallet payment |
 
@@ -221,6 +227,7 @@ These are the customer-facing PWA menu endpoints.
 | GET | `/vouchers/me` | Current user's voucher instances |
 | POST | `/vouchers/validate` | Validate voucher code |
 | POST | `/vouchers/use/{code}` | Consume voucher instance |
+| DELETE | `/vouchers/me/{voucher_instance_id}` | Discard own voucher |
 | GET | `/admin/vouchers` | Admin vouchers list |
 | POST | `/admin/vouchers` | Create voucher |
 | PUT | `/admin/vouchers/{voucher_id}` | Update voucher |
@@ -230,6 +237,9 @@ These are the customer-facing PWA menu endpoints.
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/splash` | Get current active splash content |
+| PUT | `/splash` | Update splash content |
+| DELETE | `/splash` | Deactivate splash content |
 | GET | `/promos/banners` | Active PWA banners |
 | GET | `/promos/banners/{banner_id}` | Banner detail |
 | GET | `/promos/banners/{banner_id}/status` | Banner interaction status |
@@ -266,6 +276,11 @@ These are the customer-facing PWA menu endpoints.
 | POST | `/feedback` | Submit customer feedback |
 | GET | `/admin/feedback` | List feedback |
 | GET | `/admin/feedback/stats` | Feedback summary |
+| GET | `/admin/feedback/{feedback_id}` | Get single feedback |
+| POST | `/admin/feedback/{feedback_id}/reply` | Admin reply to feedback |
+| PUT | `/admin/feedback/{feedback_id}/reply` | Update admin reply |
+| PUT | `/admin/feedback/{feedback_id}` | Update own feedback |
+| DELETE | `/admin/feedback/{feedback_id}` | Delete own feedback |
 | GET | `/notifications` | List own notifications |
 | PUT | `/notifications/read-all` | Mark all notifications read |
 | PUT | `/notifications/{id}/read` | Mark one notification read |
@@ -276,6 +291,43 @@ These are the customer-facing PWA menu endpoints.
 | DELETE | `/favorites/{item_id}` | Remove favorite |
 
 ## Admin / System / Reports
+
+### Admin Marketing
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/marketing/campaigns` | List marketing campaigns |
+| GET | `/admin/marketing/campaigns/{campaign_id}` | Get single campaign |
+| POST | `/admin/marketing/campaigns` | Create campaign |
+| PUT | `/admin/marketing/campaigns/{campaign_id}` | Update campaign |
+| DELETE | `/admin/marketing/campaigns/{campaign_id}` | Delete campaign |
+
+### Admin Surveys
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/surveys` | List surveys |
+| GET | `/admin/surveys/{survey_id}` | Get survey with questions |
+| POST | `/admin/surveys` | Create survey |
+| PUT | `/admin/surveys/{survey_id}` | Update survey |
+| DELETE | `/admin/surveys/{survey_id}` | Delete survey |
+| GET | `/admin/surveys/{survey_id}/responses` | List survey responses |
+| GET | `/admin/surveys/{survey_id}/responses/export` | Export responses as CSV |
+
+### Admin Staff
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/hq-staff` | List HQ staff |
+| POST | `/admin/hq-staff` | Create HQ staff member |
+| GET | `/admin/stores/{store_id}/staff` | List store staff |
+| POST | `/admin/stores/{store_id}/staff` | Create store staff member |
+| PUT | `/admin/staff/{staff_id}` | Update staff member |
+| DELETE | `/admin/staff/{staff_id}` | Deactivate staff member |
+| POST | `/admin/staff/{staff_id}/clock-in` | Clock in (PIN required) |
+| POST | `/admin/staff/{staff_id}/clock-out` | Clock out |
+| GET | `/admin/stores/{store_id}/shifts` | List staff shifts |
+| POST | `/admin/staff/{staff_id}/reset-password` | Reset staff password |
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -302,6 +354,10 @@ These are the customer-facing PWA menu endpoints.
 | GET | `/admin/audit-log` | Audit trail |
 | GET | `/admin/broadcasts` | Notification broadcasts |
 | POST | `/admin/broadcasts` | Create/send broadcast |
+| GET | `/admin/broadcasts/{broadcast_id}` | Get single broadcast |
+| PUT | `/admin/broadcasts/{broadcast_id}` | Update broadcast |
+| DELETE | `/admin/broadcasts/{broadcast_id}` | Delete broadcast (not if sent) |
+| POST | `/admin/broadcasts/{broadcast_id}/send` | Send a scheduled broadcast |
 | PATCH | `/admin/broadcasts/{id}/archive` | Archive broadcast |
 | PUT | `/admin/config` | Update app config |
 | POST | `/admin/system/init-hq` | Initialize HQ |
@@ -322,12 +378,63 @@ These are the customer-facing PWA menu endpoints.
 | PUT | `/admin/customizations/{option_id}` | Update customization option |
 | DELETE | `/admin/customizations/{option_id}` | Deactivate customization option |
 
+### Inventory Management (Session 4)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/stores/{store_id}/inventory-categories` | List inventory categories for a store |
+| POST | `/admin/stores/{store_id}/inventory-categories` | Create inventory category |
+| PUT | `/admin/stores/{store_id}/inventory-categories/{cat_id}` | Update inventory category |
+| DELETE | `/admin/stores/{store_id}/inventory-categories/{cat_id}` | Soft-delete inventory category |
+| GET | `/admin/stores/{store_id}/inventory` | List inventory items for a store (optional category_id filter) |
+| POST | `/admin/stores/{store_id}/inventory` | Create inventory item |
+| PUT | `/admin/stores/{store_id}/inventory/{item_id}` | Update inventory item |
+| PATCH | `/admin/stores/{store_id}/inventory/{item_id}/toggle` | Toggle item active/inactive |
+| DELETE | `/admin/stores/{store_id}/inventory/{item_id}` | Delete inventory item |
+| POST | `/admin/stores/{store_id}/inventory/{item_id}/adjust` | Adjust inventory quantity (received/waste/transfer/adjustment) — creates ledger entry |
+| GET | `/admin/stores/{store_id}/inventory/{item_id}/ledger` | Item-level inventory movement ledger |
+| GET | `/admin/stores/{store_id}/inventory-ledger` | Store-wide paginated inventory ledger (filters: from_date, to_date, movement_type) |
+| POST | `/admin/system/backfill-inventory-ledger` | Backfill inventory ledger entries for items missing history |
+| GET | `/admin/stores/{store_id}/inventory/low-stock` | List items below reorder level |
+
+### Wallet & Ledger (Admin)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/admin/wallet/topup` | In-store wallet top-up (find by phone, atomic credit) |
+| GET | `/admin/customers/{user_id}/wallet` | Customer wallet status with rewards and vouchers (POS view) |
+| GET | `/admin/customers/{user_id}/wallet-history` | Paginated wallet transaction history |
+| GET | `/admin/customers/{user_id}/loyalty-history` | Paginated loyalty transaction history |
+| POST | `/admin/customers/{user_id}/adjust-points` | Award/deduct loyalty points |
+| POST | `/admin/customers/{user_id}/award-voucher` | Award voucher to customer |
+| POST | `/admin/customers/{user_id}/set-tier` | Manually set loyalty tier |
+| POST | `/admin/customers/{user_id}/use-reward/{ur_id}` | Staff marks customer reward as used (POS) |
+| POST | `/admin/customers/{user_id}/use-voucher/{uv_id}` | Staff marks customer voucher as used (POS) |
+
+### Compliance Model Endpoints (Phase 2)
+
+The following models and DB migrations are complete (Sessions 4–5). CRUD route handlers are planned for Phase 2:
+
+| Model | Table | Status |
+|-------|-------|--------|
+| DeliveryZone | `delivery_zones` | Model + migration ready |
+| Allergen | `allergens` | Model + migration ready |
+| MenuItemAllergen | `menu_item_allergens` | Model + migration ready |
+| TaxRate | `tax_rates` | Model + migration ready |
+| ModifierGroup | `modifier_groups` | Model + migration ready |
+| ModifierOption | `modifier_options` | Model + migration ready |
+| RecipeItem | `recipe_items` | Model + migration ready |
+| Reservation | `reservations` | Model + migration ready |
+
 ### Store & Table Management
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/admin/stores` | List all stores |
 | POST | `/admin/stores` | Create store |
+| PUT | `/admin/stores/{store_id}` | Update store |
+| DELETE | `/admin/stores/{store_id}` | Deactivate store |
+| PATCH | `/admin/stores/{store_id}/toggle` | Toggle store active/inactive |
 | GET | `/admin/stores/{store_id}/tables` | List tables (sorted active-first, includes active_order per table) |
 | POST | `/admin/stores/{store_id}/tables` | Create table (no QR auto-generated) |
 | PUT | `/admin/stores/{store_id}/tables/{table_id}` | Update table |

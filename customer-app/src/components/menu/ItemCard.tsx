@@ -71,7 +71,7 @@ export default function ItemCard({ item, onPress, onAdd }: ItemCardProps) {
         <motion.button
           whileTap={{ scale: 0.85 }}
           onClick={(e) => { e.stopPropagation(); onAdd(); }}
-          className="w-8 h-8 shrink-0 rounded-full bg-primary border-none cursor-pointer flex items-center justify-center"
+          className="w-11 h-11 shrink-0 rounded-full bg-primary border-none cursor-pointer flex items-center justify-center"
         >
           <Plus size={15} color="white" strokeWidth={2.5} />
         </motion.button>

@@ -8,7 +8,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user, can_access_store
 from app.models.store import Store, StoreTable
 from app.models.marketing import TableOccupancySnapshot
-from app.models.user import User
+from app.models.customer import Customer
 from app.schemas.store import TableScanRequest
 
 router = APIRouter(prefix="/tables", tags=["Tables"])
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/tables", tags=["Tables"])
 @router.post("/scan")
 async def scan_qr(
     req: TableScanRequest,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Scan a table QR code. Requires authentication.
@@ -83,7 +83,7 @@ async def get_table(table_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("/{table_id}/release")
 async def release_table(
     table_id: int,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """

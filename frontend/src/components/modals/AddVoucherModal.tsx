@@ -26,7 +26,7 @@ export function AddVoucherForm({ token: _token, onClose }: { token: string; onCl
         }),
       });
       onClose();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Modal save operation failed'); } finally { setSaving(false); }
   }
 
   return (

@@ -108,7 +108,7 @@ export default function SettingsPage({ token }: SettingsPageProps) {
 
   if (loading) {
     return (
-      <div className="sp-0">
+      <div className="set-0">
         <i className="fas fa-spinner fa-spin"></i> Loading settings...
       </div>
     );
@@ -116,27 +116,27 @@ export default function SettingsPage({ token }: SettingsPageProps) {
 
   if (error) {
     return (
-      <div className="sp-1">
+      <div className="set-1">
         <i className="fas fa-exclamation-circle"></i> {error}
       </div>
     );
   }
 
   return (
-    <div className="sp-2">
-      <div className="sp-3">
+    <div className="set-2">
+      <div className="set-3">
         {CONFIG_GROUPS.map(group => (
           <div
             key={group.label}
-            className="sp-4"
+            className="set-4"
           >
             <div
-              className="sp-5"
+              className="set-5"
             >
-              <span className="sp-6"><i className={`fas ${group.icon}`}></i></span>
-              <h3 className="sp-7">{group.label}</h3>
+              <span className="set-6"><i className={`fas ${group.icon}`}></i></span>
+              <h3 className="set-7">{group.label}</h3>
             </div>
-            <div className="sp-8">
+            <div className="set-8">
               {group.items.map(item => {
                 const currentVal = editValues[item.key] ?? '';
                 const status = savedKeys[item.key];
@@ -146,15 +146,15 @@ export default function SettingsPage({ token }: SettingsPageProps) {
                 return (
                   <div
                     key={item.key}
-                    className="sp-9"
+                    className="set-9"
                   >
-                    <div className="sp-10">
-                      <div className="sp-11">
+                    <div className="set-10">
+                      <div className="set-11">
                         {item.label}
                       </div>
-                      <div className="sp-12">{item.description}</div>
+                      <div className="set-12">{item.description}</div>
                     </div>
-                    <div className="sp-13">
+                    <div className="set-13">
                       <input
                         type={item.type === 'number' ? 'number' : 'text'}
                         step={item.type === 'number' ? 'any' : undefined}
@@ -167,10 +167,10 @@ export default function SettingsPage({ token }: SettingsPageProps) {
                             return next;
                           });
                         }}
-                        className="sp-14"
+                        className="set-14"
                       />
                       <button
-                        className="btn btn-primary sp-save-btn"
+                        className="btn btn-primary set-save-btn"
                         style={{
                           opacity: !changed || saving ? 0.5 : 1,
                         }}
@@ -184,12 +184,12 @@ export default function SettingsPage({ token }: SettingsPageProps) {
                         )}
                       </button>
                       {status === 'ok' && (
-                        <span className="sp-15">
+                        <span className="set-15">
                           <i className="fas fa-check-circle"></i> Saved
                         </span>
                       )}
                       {status === 'err' && (
-                        <span className="sp-16">
+                        <span className="set-16">
                           <i className="fas fa-exclamation-circle"></i> Error
                         </span>
                       )}

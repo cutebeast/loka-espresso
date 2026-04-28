@@ -101,7 +101,7 @@ export function Modal({ isOpen, onClose, title, meta, children, footer, variant 
                   <button
                     onClick={onClose}
                     aria-label="Close"
-                    className="w-8 h-8 rounded-full bg-bg-light flex items-center justify-center hover:bg-border-subtle transition-colors"
+                    className="w-11 h-11 rounded-full bg-bg-light flex items-center justify-center hover:bg-border-subtle transition-colors"
                   >
                     <X size={18} className="text-text-secondary" />
                   </button>

@@ -1,0 +1,150 @@
+/* ── Kitchen Display — Mobile-First ── */
+.kdp-0 { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 16px; }
+.kdp-1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kdp-2 { font-size: 11px; color: var(--color-text-muted); }
+.kdp-3 { color: var(--color-primary); margin-right: 4px; }
+.kdp-4 { color: #16A34A; margin-left: 4px; font-size: 11px; }
+.kdp-5 { margin-left: 4px; font-size: 11px; }
+.kdp-6 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.kdp-7 { font-size: 12px; }
+.kdp-8 { margin-bottom: 12px; padding: 10px 12px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 10px; }
+.kdp-9 { display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-size: 13px; font-weight: 600; color: #166534; }
+.kdp-10 { margin-right: 6px; }
+.kdp-11 { margin-top: 8px; font-size: 12px; color: #166534; line-height: 1.6; }
+.kdp-12, .kdp-13, .kdp-14, .kdp-15, .kdp-16 { margin: 0 0 4px; font-size: 12px; }
+.kdp-17 { margin: 0px; font-size: 12px; }
+.kdp-18 { text-align: center; padding: 32px 16px; color: var(--color-text-muted); }
+.kdp-19 { font-size: 32px; margin-bottom: 12px; }
+.kdp-20 { font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
+.kdp-21 { font-size: 12px; color: var(--color-text-muted); }
+.kdp-22 { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.kdp-23 { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.kdp-24 { border-radius: 20px; font-size: 12px; padding: 4px 10px; }
+.kdp-25 { text-align: center; padding: 32px 16px; color: var(--color-text-muted); }
+.kdp-26 { font-size: 20px; }
+.kdp-27 { text-align: center; padding: 32px 16px; color: var(--color-text-muted); }
+.kdp-28 { font-size: 32px; color: #16A34A; }
+.kdp-29 { font-size: 14px; font-weight: 600; margin-top: 12px; }
+.kdp-30 { font-size: 12px; color: var(--color-text-muted); }
+.kdp-31 { display: grid; grid-template-columns: 1fr; gap: 10px; }
+
+/* Order Card Interior — Mobile Base */
+.kdp-32 { display: flex; align-items: center; gap: 6px; }
+.kdp-33 { font-size: 16px; }
+.kdp-34 { font-weight: 700; font-size: 13px; color: var(--color-bg-dark); }
+.kdp-35 { text-align: right; margin-left: auto; }
+.kdp-36 { font-weight: 700; font-size: 14px; color: var(--color-accent-copper); }
+.kdp-37 { padding: 6px 12px; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.kdp-38 { padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 700; background: #FEF3C7; color: #92400E; }
+.kdp-39 { padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 700; background: #DCFCE7; color: #166534; }
+.kdp-40 { padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 700; background: #FEE2E2; color: #B91C1C; }
+.kdp-41 { padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 700; background: #FEE2E2; color: #B91C1C; }
+.kdp-42 { padding: 4px 12px 6px; max-height: 100px; overflow-y: auto; }
+.kdp-43 { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; color: var(--color-bg-dark); }
+.kdp-44 { color: var(--color-text-muted); font-weight: 500; font-size: 12px; }
+.kdp-45 { margin: 0 12px 6px; padding: 5px 8px; background: #FFFBEB; border-radius: 6px; font-size: 11px; color: #92400E; }
+.kdp-46 { padding: 8px 12px 10px; border-top: 1px solid #c4ced8; display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Status Cards */
+.kdp-status-card { flex: 1; padding: 8px 6px; border-radius: 10px; text-align: center; min-width: 0; }
+.kdp-status-name { font-size: 10px; text-transform: capitalize; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kdp-status-count { font-size: 18px; font-weight: 800; }
+.kdp-status-count-empty { color: var(--color-text-muted); }
+.kdp-status-count-pending { color: #6B7280; }
+.kdp-status-count-paid { color: #2563EB; }
+.kdp-status-count-confirmed { color: #0891B2; }
+.kdp-status-count-preparing { color: #D97706; }
+.kdp-status-count-ready { color: #16A34A; }
+.kdp-status-count-out_for_delivery { color: #7C3AED; }
+.kdp-status-count-completed { color: #059669; }
+.kdp-status-count-cancelled { color: #DC2626; }
+.kdp-status-card-empty { background: var(--color-bg-muted); border: 1px solid var(--color-border); }
+.kdp-status-card-pending { background: #6B728015; border: 1px solid #6B728040; }
+.kdp-status-card-paid { background: #2563EB15; border: 1px solid #2563EB40; }
+.kdp-status-card-confirmed { background: #0891B215; border: 1px solid #0891B240; }
+.kdp-status-card-preparing { background: #D9770615; border: 1px solid #D9770640; }
+.kdp-status-card-ready { background: #16A34A15; border: 1px solid #16A34A40; }
+.kdp-status-card-out_for_delivery { background: #7C3AED15; border: 1px solid #7C3AED40; }
+.kdp-status-card-completed { background: #05966915; border: 1px solid #05966940; }
+.kdp-status-card-cancelled { background: #DC262615; border: 1px solid #DC262640; }
+
+/* Order Card Container */
+.kdp-order-card { border-radius: 12px; background: #FFF; overflow: hidden; margin-bottom: 10px; }
+.kdp-order-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; }
+.kdp-order-header-pending { background: #6B728010; border-bottom: 1px solid #6B728030; }
+.kdp-order-header-paid { background: #2563EB10; border-bottom: 1px solid #2563EB30; }
+.kdp-order-header-confirmed { background: #0891B210; border-bottom: 1px solid #0891B230; }
+.kdp-order-header-preparing { background: #D9770610; border-bottom: 1px solid #D9770630; }
+.kdp-order-header-ready { background: #16A34A10; border-bottom: 1px solid #16A34A30; }
+.kdp-order-header-out_for_delivery { background: #7C3AED10; border-bottom: 1px solid #7C3AED30; }
+.kdp-order-header-completed { background: #05966910; border-bottom: 1px solid #05966930; }
+.kdp-order-header-cancelled { background: #DC262610; border-bottom: 1px solid #DC262630; }
+.kdp-order-card-border-pending { border: 3px solid #6B7280; }
+.kdp-order-card-border-paid { border: 3px solid #2563EB; }
+.kdp-order-card-border-confirmed { border: 3px solid #0891B2; }
+.kdp-order-card-border-preparing { border: 3px solid #D97706; }
+.kdp-order-card-border-ready { border: 3px solid #16A34A; }
+.kdp-order-card-border-out_for_delivery { border: 3px solid #7C3AED; }
+.kdp-order-card-border-completed { border: 3px solid #059669; }
+.kdp-order-card-border-cancelled { border: 3px solid #DC2626; }
+.kdp-order-card-border-warn { border: 3px solid #D97706; }
+.kdp-order-card-border-default { border: 3px solid #c4ced8; }
+
+/* Status Badges */
+.kdp-order-type { font-size: 10px; text-transform: capitalize; color: var(--color-text-muted); margin-left: 4px; }
+.kdp-time-since { font-size: 10px; }
+.kdp-time-old { color: #DC2626; }
+.kdp-time-mid { color: #D97706; }
+.kdp-time-new { color: var(--color-text-muted); }
+.kdp-status-badge { padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: capitalize; }
+.kdp-status-badge-pending { background: #6B728020; color: #6B7280; }
+.kdp-status-badge-paid { background: #2563EB20; color: #2563EB; }
+.kdp-status-badge-confirmed { background: #0891B220; color: #0891B2; }
+.kdp-status-badge-preparing { background: #D9770620; color: #D97706; }
+.kdp-status-badge-ready { background: #16A34A20; color: #16A34A; }
+.kdp-status-badge-out_for_delivery { background: #7C3AED20; color: #7C3AED; }
+.kdp-status-badge-completed { background: #05966920; color: #059669; }
+.kdp-status-badge-cancelled { background: #DC262620; color: #DC2626; }
+
+/* Action Buttons */
+.kdp-action-btn { font-size: 11px; padding: 7px 10px; min-height: 40px; border-radius: 10px; font-weight: 600; cursor: pointer; min-width: fit-content; }
+.kdp-action-blue { border: 1px solid #2563EB; background: #2563EB10; color: #2563EB; }
+.kdp-action-orange { border: 1px solid #D97706; background: #D9770610; color: #D97706; }
+.kdp-action-green { border: 1px solid #16A34A; background: #16A34A10; color: #16A34A; }
+.kdp-action-purple { border: 1px solid #7C3AED; background: #7C3AED10; color: #7C3AED; }
+.kdp-action-teal { border: 1px solid #059669; background: #05966910; color: #059669; }
+
+@media (min-width: 768px) {
+  .kdp-0 { flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .kdp-1 { gap: 12px; }
+  .kdp-4 { margin-left: 8px; }
+  .kdp-5 { margin-left: 8px; }
+  .kdp-6 { gap: 8px; }
+  .kdp-8 { padding: 12px 16px; }
+  .kdp-18 { padding: 60px; margin-top: 40px; }
+  .kdp-19 { font-size: 48px; }
+  .kdp-22 { gap: 8px; margin-bottom: 16px; }
+  .kdp-23 { gap: 8px; margin-bottom: 16px; }
+  .kdp-25 { padding: 60px; }
+  .kdp-26 { font-size: 24px; }
+  .kdp-27 { padding: 60px; }
+  .kdp-28 { font-size: 40px; }
+  .kdp-31 { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .kdp-33 { font-size: 18px; }
+  .kdp-34 { font-size: 14px; }
+  .kdp-36 { font-size: 15px; }
+  .kdp-37 { padding: 8px 14px; }
+  .kdp-42 { padding: 4px 14px 8px; max-height: 120px; }
+  .kdp-43 { font-size: 13px; }
+  .kdp-45 { margin: 0 14px 8px; padding: 6px 10px; font-size: 12px; }
+  .kdp-46 { padding: 8px 14px 12px; }
+  .kdp-status-card { padding: 10px 12px; }
+  .kdp-status-name { font-size: 11px; }
+  .kdp-status-count { font-size: 24px; }
+  .kdp-order-card { border-radius: 16px; margin-bottom: 12px; }
+  .kdp-order-header { padding: 10px 14px; }
+  .kdp-action-btn { padding: 6px 12px; font-size: 12px; }
+  .kdp-status-badge { padding: 2px 10px; font-size: 11px; }
+  .kdp-order-type { font-size: 11px; margin-left: 6px; }
+  .kdp-time-since { font-size: 11px; }
+}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { FilterSelect, DateFilter, Pagination } from '@/components/ui';
+import { FilterSelect, DateFilter, Pagination, Drawer } from '@/components/ui';
 import { type DatePreset } from '@/components/ui/DateFilter';
 import type { MerchantBroadcast } from '@/lib/merchant-types';
 
@@ -72,65 +72,67 @@ function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
         body: JSON.stringify(payload),
       });
       if (res.ok) onSave();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Failed to save broadcast'); } finally { setSaving(false); }
   }
 
   return (
-    <div className="ef-0">
-      <div className="ef-1">
-          <div>
-            <label className="ef-2">Title</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} className="ef-3" />
+    <>
+      <div className="df-section">
+        <div className="df-grid">
+          <div className="df-field">
+            <label className="df-label">Title *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Broadcast title" />
           </div>
-          <div>
-            <label className="ef-4">Body</label>
-            <textarea value={body} onChange={e => setBody(e.target.value)} rows={3} className="ef-5" />
+          <div className="df-field">
+            <label className="df-label">Audience</label>
+            <FilterSelect
+              value={audience}
+              onChange={setAudience}
+              options={audienceOptions}
+              placeholder="Select audience..."
+            />
           </div>
-          <div>
-            <label className="ef-6">Audience</label>
-          <FilterSelect
-            value={audience}
-            onChange={setAudience}
-            options={audienceOptions}
-            placeholder="Select audience..."
-          />
         </div>
-          <div>
-            <label className="ef-7">
-              Schedule (optional)
-            </label>
-            <div className="ef-8">
-              <input
-                type="date"
-                value={scheduledDate}
-                onChange={e => setScheduledDate(e.target.value)}
-                min={((): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()}
-                className="ef-9"
-              />
+        <div className="df-field" style={{ marginBottom: 16 }}>
+          <label className="df-label">Body</label>
+          <textarea value={body} onChange={e => setBody(e.target.value)} rows={3} placeholder="Broadcast message..." />
+        </div>
+        <div className="df-grid">
+          <div className="df-field">
+            <label className="df-label">Schedule Date <span>(optional)</span></label>
+            <input
+              type="date"
+              value={scheduledDate}
+              onChange={e => setScheduledDate(e.target.value)}
+              min={((): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()}
+            />
+            <div className="df-hint">Leave empty to save as draft</div>
+          </div>
+          <div className="df-field">
+            <label className="df-label">Schedule Time</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input
                 type="time"
                 value={scheduledTime}
                 onChange={e => setScheduledTime(e.target.value)}
-                className="ef-10"
+                style={{ flex: 1 }}
               />
-            {(scheduledDate || scheduledTime) && (
-              <button type="button" className="btn btn-sm" onClick={() => { setScheduledDate(''); setScheduledTime(''); }} title="Clear schedule">
-                <i className="fas fa-times"></i>
-              </button>
-            )}
+              {(scheduledDate || scheduledTime) && (
+                <button type="button" className="btn btn-sm" onClick={() => { setScheduledDate(''); setScheduledTime(''); }} title="Clear">
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
+            </div>
           </div>
-          <div className="ef-11">
-            Leave empty to save as draft with no schedule
-          </div>
-        </div>
-        <div className="ef-12">
-          <button className="btn" onClick={onCancel} disabled={saving}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving || !title.trim()}>
-            {saving ? 'Saving...' : 'Save'}
-          </button>
         </div>
       </div>
-    </div>
+      <div className="df-actions">
+        <button className="btn" onClick={onCancel} disabled={saving}>Cancel</button>
+        <button className="btn btn-primary" onClick={handleSave} disabled={saving || !title.trim()}>
+          {saving ? 'Saving...' : 'Save'}
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -160,11 +162,11 @@ export default function NotificationsPage({ token, refreshKey: _refreshKey, onNe
       const res = await apiFetch(`/admin/broadcasts?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setBroadcasts(data.broadcasts || []);
+        setBroadcasts(data.items || []);
         setTotal(data.total || 0);
         setTotalPages(data.total_pages || 1);
       }
-    } catch {} finally { setLoading(false); }
+    } catch { console.error('Failed to fetch broadcasts'); } finally { setLoading(false); }
   }, [page, notifTab, fromDate, toDate]);
 
   useEffect(() => { fetchBroadcasts(); }, [fetchBroadcasts]);
@@ -191,8 +193,20 @@ export default function NotificationsPage({ token, refreshKey: _refreshKey, onNe
     { value: 'archived', label: 'Archived' },
   ];
 
+  const editingBroadcast = editingId ? broadcasts.find(bc => bc.id === editingId) : null;
+
   return (
     <div>
+      {editingBroadcast && (
+        <Drawer isOpen={true} onClose={() => setEditingId(null)} title={`Edit: ${editingBroadcast.title}`}>
+          <EditForm
+            bc={editingBroadcast}
+            token={token}
+            onSave={() => { setEditingId(null); fetchBroadcasts(); }}
+            onCancel={() => setEditingId(null)}
+          />
+        </Drawer>
+      )}
       <div className="np-13">
         <span className="np-14"><i className="fas fa-info-circle"></i></span>
         <div>
@@ -287,15 +301,8 @@ export default function NotificationsPage({ token, refreshKey: _refreshKey, onNe
                     </button>
                   </div>
                 </div>
-                {bc.body && <p className="np-38">{bc.body}</p>}
-                {editingId === bc.id && draft && (
-                  <EditForm
-                    bc={bc}
-                    token={token}
-                    onSave={() => { setEditingId(null); fetchBroadcasts(); }}
-                    onCancel={() => setEditingId(null)}
-                  />
-                )}
+              {bc.body && <p className="np-38">{bc.body}</p>}
+              
               </div>
             );
           })}

@@ -10,10 +10,35 @@
 .orders-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 14px 20px;
   background: var(--loka-bg-card);
   border-bottom: 1px solid var(--loka-border-light);
   flex-shrink: 0;
+}
+
+.orders-polling-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--loka-text-muted);
+  opacity: 0.7;
+  letter-spacing: 0.02em;
+}
+
+.orders-polling-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--loka-success);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 .orders-back-btn {
   background: none;

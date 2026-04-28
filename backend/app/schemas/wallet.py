@@ -53,3 +53,17 @@ class WalletTransactionOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AdminWalletTopupRequest(BaseModel):
+    phone: str
+    amount: float
+    payment_method: str = "cash"
+    notes: str = ""
+
+    @field_validator('amount')
+    @classmethod
+    def amount_positive(cls, v):
+        if v <= 0:
+            raise ValueError('amount must be positive')
+        return v

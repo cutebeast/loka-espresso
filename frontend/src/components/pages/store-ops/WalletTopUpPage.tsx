@@ -2,13 +2,8 @@
 
 import { useState, FormEvent } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
-
-interface CustomerResult {
-  id: number;
-  name: string | null;
-  phone: string | null;
-  wallet_balance: number;
-}
+import CustomerSearchForm from './CustomerSearchForm';
+import type { CustomerResult } from './CustomerSearchForm';
 
 interface WalletTopUpPageProps {
   token: string;
@@ -17,39 +12,26 @@ interface WalletTopUpPageProps {
 const TOPUP_PRESETS = [20, 50, 100, 200, 300, 500];
 
 export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps) {
-  const [phone, setPhone] = useState('');
-  const [searching, setSearching] = useState(false);
   const [customer, setCustomer] = useState<CustomerResult | null>(null);
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'paywave'>('cash');
   const [notes, setNotes] = useState('');
+  const [showGuide, setShowGuide] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; newBalance?: number } | null>(null);
 
-  async function handleSearch(e: FormEvent) {
-    e.preventDefault();
-    if (!phone.trim()) return;
-    setSearching(true);
-    setCustomer(null);
+  async function handleCustomerFound(c: CustomerResult) {
     setResult(null);
     try {
-      const res = await apiFetch(`/admin/customers?search=${encodeURIComponent(phone.trim())}&page=1&page_size=10`);
-      if (!res.ok) { setResult({ success: false, message: 'Search failed' }); return; }
-      const data = await res.json();
-      const items = data.customers || data.items || [];
-      // Normalize digits for flexible phone matching (+60 prefix optional)
-      const searchDigits = phone.trim().replace(/\D/g, '');
-      const exact = items.find((c: CustomerResult) => (c.phone || '').replace(/\D/g, '').includes(searchDigits));
-      const match = exact || items[0];
-      if (match) {
-        setCustomer(match);
+      const res = await apiFetch(`/admin/customers/${c.id}`);
+      if (res.ok) {
+        const detail = await res.json();
+        setCustomer({ ...c, wallet_balance: detail.wallet_balance ?? 0 });
       } else {
-        setResult({ success: false, message: `No customer found with phone ${phone}` });
+        setCustomer({ ...c, wallet_balance: 0 });
       }
     } catch {
-      setResult({ success: false, message: 'Network error searching customer' });
-    } finally {
-      setSearching(false);
+      setCustomer({ ...c, wallet_balance: 0 });
     }
   }
 
@@ -96,39 +78,38 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
         In-Store Wallet Top-Up
       </h2>
 
-      {/* Step 1: Search Customer */}
-      <div className="card wtup-2" >
-        <h3 className="wtup-3">Step 1: Find Customer</h3>
-        <form onSubmit={handleSearch} className="wtup-4">
-          <div className="wtup-5">
-            <label className="wtup-6">Phone Number</label>
-            <input
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="e.g. +60123456789"
-              className="wtup-7"
-            />
-          </div>
-          <div className="wtup-8">
-            <button type="submit" className="btn btn-primary wtup-9" disabled={searching} >
-              {searching ? 'Searching...' : 'Search'}
-            </button>
-          </div>
-        </form>
-
-        {customer && (
-          <div  className="wallet-topup-customer wtup-10">
-            <div>
-              <div className="wtup-11">{customer.name || 'Unnamed'}</div>
-              <div className="wtup-12">{customer.phone}</div>
-            </div>
-            <div className="wtup-13">
-              <div className="wtup-14">Current Balance</div>
-              <div className="wtup-15">{formatRM(customer.wallet_balance || 0)}</div>
-            </div>
+      {/* How it works — collapsible guide */}
+      <div className="card wtup-guide-card">
+        <div onClick={() => setShowGuide(!showGuide)} className="wtup-guide-header">
+          <span><span className="wtup-guide-icon"><i className="fas fa-circle-info"></i></span>How Wallet Top-Up works</span>
+          <i className={`fas fa-chevron-${showGuide ? 'up' : 'down'}`}></i>
+        </div>
+        {showGuide && (
+          <div className="wtup-guide-content">
+            <p><strong>1. Customer approaches counter</strong> — requests a wallet top-up.</p>
+            <p><strong>2. Search customer</strong> — enter their phone number to find their wallet.</p>
+            <p><strong>3. Collect payment</strong> — accept cash, card, or paywave from the customer.</p>
+            <p><strong>4. Enter amount &amp; Top Up</strong> — wallet is credited instantly.</p>
+            <p><strong>5. Customer confirms</strong> — they see the new balance in their app immediately.</p>
           </div>
         )}
       </div>
+
+      {/* Step 1: Search Customer */}
+      <CustomerSearchForm onCustomerFound={handleCustomerFound} />
+
+      {customer && (
+        <div className="wallet-topup-customer wtup-10">
+          <div>
+            <div className="wtup-11">{customer.name || 'Unnamed'}</div>
+            <div className="wtup-12">{customer.phone}</div>
+          </div>
+          <div className="wtup-13">
+            <div className="wtup-14">Current Balance</div>
+            <div className="wtup-15">{formatRM(customer.wallet_balance || 0)}</div>
+          </div>
+        </div>
+      )}
 
       {/* Step 2: Top-Up Form */}
       {customer && (
@@ -212,18 +193,6 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
           </div>
         </div>
       )}
-
-      {/* Instructions */}
-      <div className="wtup-28">
-        <strong><i className="fas fa-info-circle"></i> How it works:</strong>
-        <ol className="wtup-29">
-          <li>Customer comes to the counter and requests a wallet top-up</li>
-          <li>Staff searches customer by phone number</li>
-          <li>Staff collects payment (cash/card/paywave) from customer</li>
-          <li>Staff enters amount and clicks <strong>Top Up</strong> — wallet is credited instantly</li>
-          <li>Customer sees the new balance in their app immediately</li>
-        </ol>
-      </div>
     </div>
   );
 }

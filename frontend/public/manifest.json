@@ -8,14 +8,15 @@
   "theme_color": "#384B16",
   "icons": [
     {
-      "src": "/loka-logo.png",
-      "sizes": "192x192",
+      "src": "/logo.png",
+      "sizes": "190x60",
       "type": "image/png"
     },
     {
-      "src": "/loka-logo.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/logo.png",
+      "sizes": "190x60",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

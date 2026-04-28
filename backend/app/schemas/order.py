@@ -100,7 +100,21 @@ class OrderOut(BaseModel):
 
 
 class OrderListOut(BaseModel):
-    orders: list[OrderOut]
+    items: list[OrderOut]
     total: int
     page: int
     page_size: int
+    total_pages: int = 0
+
+
+class ApplyVoucherRequest(BaseModel):
+    voucher_code: str
+
+
+class UpdatePaymentStatusRequest(BaseModel):
+    payment_status: str
+    transaction_id: Optional[str] = None
+
+
+class StaffNotesRequest(BaseModel):
+    staff_notes: Optional[str] = None

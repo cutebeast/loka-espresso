@@ -303,33 +303,6 @@
   -webkit-user-drag: none;
 }
 
-/* Dots */
-.carousel-dots {
-  position: absolute;
-  bottom: 12px;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  z-index: 3;
-}
-.carousel-dot {
-  height: 6px;
-  border-radius: 999px;
-  transition: all 0.2s;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  width: 6px;
-  background: rgba(255,255,255,0.5);
-}
-.carousel-dot.active {
-  width: 16px;
-  background: white;
-}
-
 /* Arrows */
 .carousel-arrow {
   position: absolute;

@@ -12,7 +12,8 @@ from typing import Optional, List
 from app.core.database import get_db
 from app.core.security import require_role, now_utc, ensure_utc
 from app.core.sanitization import sanitize_text_field
-from app.models.user import User, RoleIDs
+from app.models.customer import Customer
+from app.models.user import RoleIDs
 from app.models.survey import Survey, SurveyQuestion, SurveyResponse, SurveyAnswer
 from app.models.voucher import Voucher, UserVoucher
 
@@ -109,7 +110,7 @@ async def get_survey_for_pwa(
 async def submit_survey(
     survey_id: int,
     data: SurveySubmitIn,
-    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
+    user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit survey answers. Auto-grants voucher if:

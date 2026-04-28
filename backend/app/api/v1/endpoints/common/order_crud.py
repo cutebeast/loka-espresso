@@ -19,7 +19,8 @@ from app.core.webhooks import verify_webhook_request
 from app.core.audit import log_action
 from app.core.utils import to_float
 from app.core.config import get_settings
-from app.models.user import User, UserTypeIDs, RoleIDs
+from app.models.customer import Customer
+from app.models.user import UserTypeIDs, RoleIDs
 from app.models.order import Order, OrderStatusHistory, OrderType, OrderStatus, CartItem, OrderItem, Payment, CheckoutToken
 from app.models.menu import MenuItem
 from app.models.store import Store
@@ -117,7 +118,7 @@ def _order_out(order: Order, timeline: list[dict] | None = None) -> OrderOut:
 @router.post("", response_model=OrderOut, status_code=201)
 async def create_order(
     req: OrderCreate,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     cart_result = await db.execute(select(CartItem).where(CartItem.user_id == user.id))
@@ -417,7 +418,7 @@ async def list_orders(
     page: int = 1, page_size: int = 20,
     store_id: int | None = None,
     status: str | None = None,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if is_global_admin(user) or is_hq(user):
@@ -434,13 +435,13 @@ async def list_orders(
     result = await db.execute(q.offset((page - 1) * page_size).limit(page_size))
     orders = result.scalars().all()
     out = [_order_out(o) for o in orders]
-    return OrderListOut(orders=out, total=total, page=page, page_size=page_size)
+    return OrderListOut(items=out, total=total, page=page, page_size=page_size, total_pages=max(1, (total + page_size - 1) // page_size))
 
 
 @router.get("/{order_id}", response_model=OrderOut)
 async def get_order(
     order_id: int,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Order).where(Order.id == order_id))
@@ -458,7 +459,7 @@ async def get_order(
 
 
 @router.post("/{order_id}/reorder")
-async def reorder(order_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def reorder(order_id: int, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalar_one_or_none()
     if not order:
@@ -505,7 +506,7 @@ async def reorder(order_id: int, user: User = Depends(get_current_user), db: Asy
 
 
 @router.post("/{order_id}/cancel")
-async def cancel_order(order_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def cancel_order(order_id: int, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalar_one_or_none()

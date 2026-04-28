@@ -17,20 +17,20 @@ export function AddCategoryForm({ storeId: _storeId, token: _token, onClose }: {
         body: JSON.stringify({ name, slug: slug || name.toLowerCase().replace(/\s+/g, '-'), display_order: 0, is_active: true }),
       });
       onClose();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Modal save operation failed'); } finally { setSaving(false); }
   }
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="acf-0">
-        <label className="acf-1">Category Name</label>
+      <div className="df-field" style={{ marginBottom: 16 }}>
+        <label className="df-label">Category Name *</label>
         <input value={name} onChange={e => { setName(e.target.value); if (!slug) setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-')); }} required placeholder="e.g. Smoothies" />
       </div>
-      <div className="acf-2">
-        <label className="acf-3">Slug (auto-generated)</label>
+      <div className="df-field" style={{ marginBottom: 16 }}>
+        <label className="df-label">Slug <span>(auto-generated if blank)</span></label>
         <input value={slug} onChange={e => setSlug(e.target.value)} placeholder="e.g. smoothies" />
       </div>
-      <button type="submit" className="btn btn-primary acf-4"  disabled={saving}>
+      <button type="submit" className="btn btn-primary" disabled={saving}>
         {saving ? 'Saving...' : 'Create Category'}
       </button>
     </form>

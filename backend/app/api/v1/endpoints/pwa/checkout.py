@@ -23,7 +23,7 @@ from typing import Optional
 from app.core.database import get_db
 from app.core.security import get_current_user, now_utc, ensure_utc
 from app.core.utils import to_float
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.order import CartItem
 from app.models.menu import MenuItem
 from app.models.voucher import Voucher, UserVoucher
@@ -62,7 +62,7 @@ class CheckoutResponse(BaseModel):
 @router.post("", response_model=CheckoutResponse)
 async def checkout(
     req: CheckoutRequest,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """

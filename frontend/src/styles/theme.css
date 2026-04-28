@@ -35,10 +35,10 @@
   --color-text-light: #ffffff;     /* White */
   --color-text-copper: #d18e38;    /* Mustard accent text */
   
-  /* Status Colors */
-  --color-success: #384b16;        /* Olive Success */
+  /* Status Colors (aligned with PWA tokens.ts) */
+  --color-success: #85B085;        /* Sage Green */
   --color-warning: #d18e38;        /* Mustard Warning */
-  --color-error: #8b2e2e;          /* Muted Red */
+  --color-error: #C75050;          /* Red */
   --color-info: #5a8a9a;           /* Slate Blue */
   
   /* Sidebar Specific */

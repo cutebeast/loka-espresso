@@ -27,10 +27,10 @@ class MenuItemOut(BaseModel):
     description: Optional[str] = None
     base_price: float
     image_url: Optional[str] = None
-    customization_options: Optional[dict] = None
     is_available: bool = True
     is_featured: bool = False
     display_order: int = 0
+    dietary_tags: Optional[list] = None
 
     class Config:
         from_attributes = True
@@ -42,7 +42,6 @@ class MenuItemCreate(BaseModel):
     description: Optional[str] = None
     base_price: float
     image_url: Optional[str] = None
-    customization_options: Optional[dict] = None
     is_available: bool = True
     is_featured: bool = False
     display_order: int = 0
@@ -54,7 +53,6 @@ class MenuItemUpdate(BaseModel):
     description: Optional[str] = None
     base_price: Optional[float] = None
     image_url: Optional[str] = None
-    customization_options: Optional[dict] = None
     is_available: Optional[bool] = None
     is_featured: Optional[bool] = None
     display_order: Optional[int] = None
@@ -133,3 +131,16 @@ class InventoryMovementOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CustomizationCreate(BaseModel):
+    name: str
+    price_adjustment: float = 0
+    display_order: int = 0
+
+
+class CustomizationUpdate(BaseModel):
+    name: Optional[str] = None
+    price_adjustment: Optional[float] = None
+    display_order: Optional[int] = None
+    is_active: Optional[bool] = None

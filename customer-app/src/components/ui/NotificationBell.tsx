@@ -13,7 +13,7 @@ export function NotificationBell({ unreadCount = 0, onClick }: NotificationBellP
     <motion.button
       whileTap={{ scale: 0.9 }}
       onClick={onClick}
-      className="relative w-9 h-9 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
+      className="relative w-11 h-11 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
       aria-label="Notifications"
       title="Notifications"
     >

@@ -1,0 +1,32 @@
+.np-13 { background: linear-gradient(135deg, #DBEAFE, #EFF6FF); border: 1px solid #93C5FD; border-radius: 16px; padding: 14px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; }
+.np-14 { font-size: 20px; color: #2563EB; }
+.np-15 { font-weight: 600; color: #1E40AF; font-size: 13px; margin-bottom: 2px; }
+.np-16 { font-size: 12px; color: #1E3A8A; }
+.np-17 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+.np-18 { display: flex; gap: 8px; align-items: center; }
+.np-19 { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--color-bg-muted); border-radius: 10px 10px 0 0; border: 1px solid #c4ced8; border-bottom: none; }
+.np-20 { font-size: 14px; color: var(--color-text-secondary); }
+.np-21 { margin-right: 8px; color: var(--color-primary); }
+.np-22 { color: var(--color-bg-dark); }
+.np-23 { color: var(--color-bg-dark); }
+.np-24 { font-size: 13px; color: var(--color-text-muted); }
+.np-25 { text-align: center; padding: 60px; color: var(--color-text-muted); }
+.np-26 { font-size: 40px; margin-bottom: 16px; }
+.np-27 { display: grid; gap: 12px; margin-bottom: 20px; border-radius: 0 0 10px 10px; background: var(--color-bg-card); border: 1px solid #c4ced8; border-top: none; padding: 16px 20px; }
+.np-28 { padding: 16px 20px; margin: 0px; }
+.np-29 { display: flex; justify-content: space-between; align-items: flex-start; }
+.np-30 { flex: 1; }
+.np-31 { display: flex; align-items: center; gap: 8px; }
+.np-32 { font-size: 15px; }
+.np-33 { font-size: 12px; color: var(--color-primary); margin-top: 4px; }
+.np-34 { display: flex; gap: 6px; align-items: center; }
+.np-35 { display: flex; gap: 4px; align-items: center; }
+.np-36 { background: #EF4444; color: #fff; border: none; }
+.np-37 { color: #EF4444; }
+.np-38 { margin-top: 8px; color: var(--color-primary); font-size: 14px; }
+
+@media (min-width: 768px) {
+  /* Desktop adjustments — base styles above are mobile-first */
+  .np-27 { padding: 20px 32px; }
+  .np-28 { padding: 20px 32px; }
+}

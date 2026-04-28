@@ -1,6 +1,6 @@
 # FNB Super-App — Database Schema
 
-> Last updated: 2026-04-25 | PostgreSQL 16 | Database: `fnb` | 54 tables | 85+ FKs | 1 trigger | Manual-mode POS/3PL columns added
+> Last updated: 2026-04-26 | PostgreSQL 16 | Database: `fnb` | 63 tables | 95+ FKs | 1 trigger
 
 ## Enums
 
@@ -31,8 +31,8 @@ The full schema is split into domain-specific files for maintainability:
 |------|--------|--------|
 | [02a-acl.md](02a-acl.md) | Access Control (ACL) | `user_types`, `roles`, `role_user_type`, `user_store_access`, `permissions`, `role_permissions` |
 | [02b-users.md](02b-users.md) | Users & Auth | `users`, `user_addresses`, `device_tokens`, `token_blacklist`, `otp_sessions` |
-| [02c-stores.md](02c-stores.md) | Stores & Tables | `stores`, `store_tables`, `table_occupancy_snapshot` |
-| [02d-menu.md](02d-menu.md) | Menu & Inventory | `menu_categories`, `menu_items`, `customization_options`, `inventory_categories`, `inventory_items`, `inventory_movements` |
+| [02c-stores.md](02c-stores.md) | Stores & Tables | `stores`, `store_tables`, `table_occupancy_snapshot`, `delivery_zones`, `reservations` |
+| [02d-menu.md](02d-menu.md) | Menu & Inventory | `menu_categories`, `menu_items`, `customization_options`, `modifier_groups`, `modifier_options`, `allergens`, `menu_item_allergens`, `inventory_categories`, `inventory_items`, `inventory_movements`, `tax_categories`, `tax_rates`, `recipe_items` |
 | [02e-orders.md](02e-orders.md) | Orders & Payments | `orders`, `order_items`, `order_status_history`, `cart_items`, `payments`, `checkout_tokens` |
 
 ### Session 2 Schema Additions
@@ -67,6 +67,15 @@ Content cards with `slug` (unique, URL-friendly identifier) and `gallery_urls` (
 | Menu Categories | 10 | Coffee, Tea, Pastries, Specialties |
 | Menu Items | 54 | Full drink/pastry menu |
 | Customization Options | 0 | — |
+| Modifier Groups | — | Groupings of modifier options for menu item customization |
+| Modifier Options | — | Individual add-on/modifier choices within modifier groups |
+| Allergens | — | Food allergens (milk, nuts, gluten, etc.) |
+| Menu Item Allergens | — | M2M linking menu items to allergens |
+| Delivery Zones | — | Geo-fenced delivery zones with postcode/polygon coverage |
+| Tax Categories | — | Tax category definitions (GST, SST, VAT, exempt) |
+| Tax Rates | — | Tax rate definitions by category |
+| Recipe Items | — | Component ingredients and quantities for menu items |
+| Reservations | — | Table reservations with time slots and status |
 | Checkout Tokens | — | Temporary checkout discount tokens |
 | Information Cards | — | Content cards with slug and gallery URLs |
 | Inventory Items | 300 | Stock levels |

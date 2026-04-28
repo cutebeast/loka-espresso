@@ -113,6 +113,7 @@
   color: var(--color-text-primary);
   box-shadow: 0 10px 24px -8px rgba(0,0,0,0.1), 0 4px 8px -4px rgba(0,0,0,0.06);
   cursor: pointer;
+  border-left: 3px solid var(--loka-accent-brown);
 }
 
 .wallet-card-guest .balance-label {
@@ -132,4 +133,23 @@
   border-color: transparent;
 }
 .wallet-chip-signin:hover { background: var(--color-primary-dark); }
+
+.wallet-tier-row {
+  margin-top: 14px;
+}
+
+.wallet-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(209, 142, 56, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(209, 142, 56, 0.35);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+}
 

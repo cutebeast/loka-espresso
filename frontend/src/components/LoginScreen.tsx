@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { API } from '@/lib/merchant-api';
+import { APP_NAME } from '@/lib/config';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -38,13 +39,13 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       <div className="card ls-1" >
         <div className="ls-2">
           <span className="ls-3"><i className="fas fa-mug-saucer"></i></span>
-          <h1 className="ls-4">Loka Espresso</h1>
+          <h1 className="ls-4">{APP_NAME}</h1>
           <p className="ls-5">Sign in to your dashboard</p>
         </div>
         <form onSubmit={handleLogin}>
           <div className="ls-6">
             <label className="ls-7">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@loyaltysystem.uk" required />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" required />
           </div>
           <div className="ls-8">
             <label className="ls-9">Password</label>

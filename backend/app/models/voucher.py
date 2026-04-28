@@ -3,12 +3,12 @@ from __future__ import annotations
 import enum
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, Enum, Text, Integer, ForeignKey, DECIMAL, JSON, CheckConstraint, UniqueConstraint
+from sqlalchemy import String, Boolean, DateTime, Enum, Text, Integer, ForeignKey, DECIMAL, JSON, CheckConstraint, UniqueConstraint, Index
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
+    from app.models.customer import Customer
     from app.models.store import Store
 
 
@@ -57,7 +57,7 @@ class UserVoucher(Base):
     __tablename__ = "user_vouchers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     voucher_id: Mapped[int] = mapped_column(Integer, ForeignKey("vouchers.id", ondelete="CASCADE"), nullable=False)
     store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id", ondelete="SET NULL"), nullable=True)
     applied_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -67,6 +67,7 @@ class UserVoucher(Base):
     status: Mapped[Optional[str]] = mapped_column(String(20), default="available", nullable=True)
     code: Mapped[Optional[str]] = mapped_column(String(50), unique=True, nullable=True)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    reserved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     discount_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     discount_value: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 2), nullable=True)
@@ -74,7 +75,8 @@ class UserVoucher(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "voucher_id", name="uq_user_voucher"),
+        Index("ix_user_vouchers_user_status", "user_id", "status"),
     )
 
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["Customer"] = relationship("Customer", foreign_keys=[user_id])
     voucher: Mapped["Voucher"] = relationship("Voucher", foreign_keys=[voucher_id])

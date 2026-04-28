@@ -7,8 +7,10 @@ from app.core.database import get_db
 from app.core.security import require_hq_access
 from app.core.audit import log_action
 from app.core.utils import to_float
-from app.models.user import User, RoleIDs
+from app.models.admin_user import AdminUser
+from app.models.customer import Customer
 from app.models.order import Order, OrderStatus, OrderType
+from app.schemas.admin_extras import DeliveryTrackingUpdate
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -19,7 +21,7 @@ async def dashboard(
     from_date: datetime = Query(None),
     to_date: datetime = Query(None),
     chart_mode: str = Query(None, description="Chart data mode: day, month, quarter, year"),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """Dashboard with optional store and date filtering.
@@ -53,7 +55,7 @@ async def dashboard(
     active_count = kpi_row.active_count
 
     customer_count_result = await db.execute(
-        select(func.count(User.id)).where(User.role_id == RoleIDs.CUSTOMER)
+        select(func.count(Customer.id))
     )
     total_customers = customer_count_result.scalar() or 0
 
@@ -158,7 +160,7 @@ async def list_all_orders(
     search: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """List all orders across all customers (merchant dashboard)."""
@@ -189,7 +191,8 @@ async def list_all_orders(
         "total": total,
         "page": page,
         "page_size": page_size,
-        "orders": [
+        "total_pages": max(1, (total + page_size - 1) // page_size),
+        "items": [
             {
                 "id": o.id,
                 "user_id": o.user_id,
@@ -226,8 +229,8 @@ async def list_all_orders(
 @router.patch("/orders/{order_id}/delivery-tracking")
 async def update_delivery_tracking(
     order_id: int,
-    req: dict,
-    user: User = Depends(require_hq_access()),
+    req: DeliveryTrackingUpdate,
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -246,13 +249,13 @@ async def update_delivery_tracking(
     updated = []
     for field in ("delivery_courier_name", "delivery_courier_phone", "delivery_tracking_url",
                    "delivery_provider", "delivery_eta_minutes", "delivery_external_id"):
-        val = req.get(field)
+        val = getattr(req, field, None)
         if val is not None:
             setattr(order, field, int(val) if field == "delivery_eta_minutes" else val)
             updated.append(field)
 
-    if req.get("delivery_status"):
-        order.delivery_status = req["delivery_status"]
+    if req.delivery_status:
+        order.delivery_status = req.delivery_status
         updated.append("delivery_status")
 
     order.delivery_last_event_at = datetime.now(timezone.utc)

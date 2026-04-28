@@ -7,25 +7,27 @@ from sqlalchemy import select, func, and_, text
 from app.core.database import get_db
 from app.core.security import require_hq_access, require_role
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User, OTPSession, RoleIDs
+from app.models.admin_user import AdminUser
+from app.models.customer import Customer
+from app.models.user import OTPSession, RoleIDs
 from app.models.audit import AuditLog
 from app.models.store import Store
 from app.schemas.admin_extras import (
     AuditLogOut,
 )
 
-router = APIRouter(tags=["Admin System"])
+router = APIRouter(prefix="/admin", tags=["Admin System"])
 
 
 # ---------------------------------------------------------------------------
 # OTP / Phone Lookup
 # ---------------------------------------------------------------------------
 
-@router.get("/admin/otps")
+@router.get("/otps")
 async def lookup_otp(
     phone: str = Query(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hq_access()),
+    current_user: AdminUser = Depends(require_hq_access()),
 ):
     from app.core.config import get_settings
     settings = get_settings()
@@ -53,33 +55,24 @@ async def lookup_otp(
 # User Lookup
 # ---------------------------------------------------------------------------
 
-@router.get("/admin/users/{user_id}")
+@router.get("/users/{user_id}")
 async def get_user_by_id(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hq_access()),
+    current_user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(
-        select(User).where(User.id == user_id)
+        select(Customer).where(Customer.id == user_id)
     )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
-    ut_result = await db.execute(text("SELECT name FROM user_types WHERE id = :tid"), {"tid": user.user_type_id})
-    ut_name = ut_result.scalar()
-    role_result = await db.execute(text("SELECT name FROM roles WHERE id = :rid"), {"rid": user.role_id})
-    role_name = role_result.scalar()
 
     return {
         "id": user.id,
         "name": user.name,
         "email": user.email,
         "phone": user.phone,
-        "user_type_id": user.user_type_id,
-        "role_id": user.role_id,
-        "user_type": ut_name,
-        "role": role_name,
         "avatar_url": user.avatar_url,
         "referral_code": user.referral_code,
         "is_active": user.is_active,
@@ -91,7 +84,7 @@ async def get_user_by_id(
 # Audit Log
 # ---------------------------------------------------------------------------
 
-@router.get("/admin/audit-log")
+@router.get("/audit-log")
 async def list_audit_log(
     user_id: int | None = None,
     store_id: int | None = None,
@@ -101,7 +94,7 @@ async def list_audit_log(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_hq_access()),
+    current_user: AdminUser = Depends(require_hq_access()),
 ):
     base_query = select(AuditLog)
     if user_id is not None:
@@ -138,12 +131,12 @@ async def list_audit_log(
 # System: Full Reset
 # ---------------------------------------------------------------------------
 
-@router.delete("/admin/system/reset")
+@router.delete("/system/reset")
 async def full_system_reset(
     request: Request,
     confirmation: str = "",
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
 ):
     from app.core.config import get_settings
     settings = get_settings()
@@ -272,10 +265,10 @@ async def full_system_reset(
 # System: Initialize HQ Store
 # ---------------------------------------------------------------------------
 
-@router.post("/admin/system/init-hq")
+@router.post("/system/init-hq")
 async def init_hq_store(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
 ):
     existing = await db.execute(select(Store).where(Store.id == 0))
     hq = existing.scalar_one_or_none()

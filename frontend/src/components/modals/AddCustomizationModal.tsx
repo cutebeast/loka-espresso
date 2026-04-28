@@ -17,7 +17,7 @@ export function AddCustomizationForm({ storeId: _storeId, itemId, token: _token,
         body: JSON.stringify({ name, price_adjustment: parseFloat(priceAdj), is_active: true, display_order: 0 }),
       });
       onClose();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Modal save operation failed'); } finally { setSaving(false); }
   }
 
   return (

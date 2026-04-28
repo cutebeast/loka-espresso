@@ -33,6 +33,8 @@ class StoreUpdate(BaseModel):
     opening_hours: Optional[dict] = None
     pickup_lead_minutes: Optional[int] = None
     delivery_radius_km: Optional[float] = None
+    delivery_fee: Optional[float] = None
+    min_order: Optional[float] = None
     is_active: Optional[bool] = None
     pos_integration_enabled: Optional[bool] = None
     delivery_integration_enabled: Optional[bool] = None
@@ -85,3 +87,7 @@ class TableScanRequest(BaseModel):
 class PickupSlotOut(BaseModel):
     time: str
     available: bool = True
+
+
+class SetTableOccupancyRequest(BaseModel):
+    is_occupied: bool

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, FormEvent } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 
-import { Select, Pagination, Drawer } from '@/components/ui';
+import { Select, Drawer, DataTable, type ColumnDef } from '@/components/ui';
 
 interface VoucherItem {
   id: number;
@@ -82,7 +82,7 @@ export default function VouchersPage({ token }: VouchersPageProps) {
       const res = await apiFetch(`/admin/vouchers?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setVouchers(data.vouchers || []);
+        setVouchers(data.items || []);
         setTotal(data.total || 0);
         setTotalPages(data.total_pages || 1);
         setPage(p);
@@ -137,11 +137,62 @@ export default function VouchersPage({ token }: VouchersPageProps) {
     return v.max_uses != null ? `${used}/${v.max_uses}` : `${used}/∞`;
   }
 
+  const columns: ColumnDef<VoucherItem>[] = [
+    {
+      key: 'code',
+      header: 'Code',
+      render: (row) => (
+        <div className="vp-12">
+          <div className="vp-13">
+            <i className="fas fa-ticket"></i>
+          </div>
+          <span>{row.code}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'discount',
+      header: 'Discount',
+      render: (row) => <>{renderDiscount(row)}</>,
+    },
+    {
+      key: 'usage_limit',
+      header: 'Usage Limit',
+      render: (row) => <>{renderUsage(row)}</>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => (
+        <button className="btn btn-sm vp-16" onClick={() => toggleActive(row)}>
+          <span className={`badge ${row.is_active ? 'badge-green' : 'badge-gray'}`}>{row.is_active ? 'Active' : 'Inactive'}</span>
+        </button>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        <div className="vp-17">
+          <button className="btn btn-sm" onClick={() => openEdit(row)} title="Edit"><i className="fas fa-edit"></i></button>
+          {confirmDelete === row.id ? (
+            <>
+              <button className="btn btn-sm vp-18" onClick={() => handleDelete(row.id)}>Confirm</button>
+              <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
+            </>
+          ) : (
+            <button className="btn btn-sm vp-19" onClick={() => setConfirmDelete(row.id)} title="Delete"><i className="fas fa-trash"></i></button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   const drawerTitle = editingVoucher ? 'Edit Voucher' : 'New Voucher';
 
   return (
     <div>
-      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} width={560}>
+      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} >
         {viewMode === 'form' && (
           <VoucherFormPage token={token} existingVoucher={editingVoucher} onBack={closeForm} />
         )}
@@ -156,7 +207,6 @@ export default function VouchersPage({ token }: VouchersPageProps) {
         </div>
       )}
 
-      {/* Stats Bar */}
       <div className="vp-2">
         <div className="vp-3">
           <span className="vp-4"><i className="fas fa-ticket-alt"></i></span>
@@ -167,62 +217,13 @@ export default function VouchersPage({ token }: VouchersPageProps) {
         </div>
       </div>
 
-      {loading && vouchers.length === 0 ? (
-        <div className="vp-8"><i className="fas fa-spinner fa-spin"></i> Loading...</div>
-      ) : vouchers.length === 0 ? (
-        <div className="card vp-9" >
-          <span className="vp-10"><i className="fas fa-ticket-alt"></i></span>
-          <p>No vouchers yet</p>
-        </div>
-      ) : (
-        <div className="vp-11">
-          <table>
-            <thead>
-                  <tr><th>Code</th><th>Title</th><th>Discount</th><th>Used/Max</th><th>Status</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {vouchers.map(v => (
-                <tr key={v.id}>
-                  <td>
-                    <div className="vp-12">
-                      <div className="vp-13">
-                        <i className="fas fa-ticket"></i>
-                      </div>
-                      <span>{v.code}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="vp-14">{v.title || '-'}</div>
-                    {v.short_description && <div className="vp-15">{v.short_description}</div>}
-                  </td>
-                  <td>{renderDiscount(v)}</td>
-                  <td>{renderUsage(v)}</td>
-                  <td>
-                    <button className="btn btn-sm vp-16" onClick={() => toggleActive(v)} >
-                      <span className={`badge ${v.is_active ? 'badge-green' : 'badge-gray'}`}>{v.is_active ? 'Active' : 'Inactive'}</span>
-                    </button>
-                  </td>
-                  <td>
-                    <div className="vp-17">
-                      <button className="btn btn-sm" onClick={() => openEdit(v)} title="Edit"><i className="fas fa-edit"></i></button>
-                      {confirmDelete === v.id ? (
-                        <>
-                          <button className="btn btn-sm vp-18"  onClick={() => handleDelete(v.id)}>Confirm</button>
-                          <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
-                        </>
-                      ) : (
-                        <button className="btn btn-sm vp-19"  onClick={() => setConfirmDelete(v.id)} title="Delete"><i className="fas fa-trash"></i></button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <Pagination page={page} totalPages={totalPages} onPageChange={fetchVouchers} loading={loading} />
+      <DataTable
+        data={vouchers}
+        columns={columns}
+        loading={loading}
+        emptyMessage="No vouchers yet"
+        pagination={{ page, pageSize: PAGE_SIZE, total, onPageChange: fetchVouchers }}
+      />
     </div>
   );
 }
@@ -257,8 +258,7 @@ function VoucherFormPage({ token: _token, existingVoucher, onBack }: { token: st
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     setSaving(true); setError('');
     try {
       const payload: Record<string, any> = {
@@ -289,7 +289,7 @@ function VoucherFormPage({ token: _token, existingVoucher, onBack }: { token: st
             <i className="fas fa-exclamation-circle"></i> {error}
           </div>
         )}
-        <form onSubmit={handleSubmit}>
+        <div>
           <div className="vfp-21">
             <div><label className="form-label">Title *</label><input value={form.title} onChange={e => updateField('title', e.target.value)} placeholder="e.g. Summer Sale" required /></div>
             <div><label className="form-label">Code *</label><input value={form.code} onChange={e => updateField('code', e.target.value.toUpperCase())} placeholder="e.g. SUMMER2026" className="vfp-22" required /><div className="form-hint">Unique catalog code</div></div>
@@ -307,18 +307,16 @@ function VoucherFormPage({ token: _token, existingVoucher, onBack }: { token: st
             <div className="vfp-29"><label className="form-label">Terms &amp; Conditions</label><textarea value={form.terms} onChange={e => updateField('terms', e.target.value)} placeholder="One per line" rows={3} className="vfp-30" /></div>
             <div className="vfp-31"><label className="form-label">How to Redeem</label><input value={form.how_to_redeem} onChange={e => updateField('how_to_redeem', e.target.value)} placeholder="e.g. Show this screen at checkout" /></div>
           </div>
-          <div className="vfp-32">
-            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}</button>
-            <button type="button" className="btn" onClick={onBack}>Cancel</button>
-            <div className="vfp-33" />
-            <label className="vfp-34">
+          <div className="df-actions">
+            <label className="vfp-34" style={{ marginRight: 'auto' }}>
               <input type="checkbox" checked={form.is_active} onChange={e => updateField('is_active', e.target.checked)} className="vfp-35" />
               Active
             </label>
+            <button className="btn" onClick={onBack}>Cancel</button>
+            <button onClick={handleSubmit} className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}</button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
 }
-

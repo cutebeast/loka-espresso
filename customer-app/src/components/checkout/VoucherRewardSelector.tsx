@@ -19,6 +19,17 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [voucherError, setVoucherError] = useState('');
 
+  const parseRewardSnapshot = useCallback((snapshot: string | null | undefined): { discount_value?: number; description?: string } => {
+    if (!snapshot) return {};
+    try {
+      const parsed = JSON.parse(snapshot);
+      if (typeof parsed === 'object' && parsed !== null) return parsed;
+      return {};
+    } catch {
+      return {};
+    }
+  }, []);
+
   const availableVouchers = vouchers.filter(v => v.status === 'available');
   const availableRewards = rewards.filter(r => r.status === 'available');
 
@@ -161,10 +172,8 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                 <button
                   key={r.id}
                   onClick={() => {
-                    let discountValue = 0;
-                    if (r.reward_snapshot) {
-                      try { discountValue = JSON.parse(r.reward_snapshot).discount_value || 0; } catch { discountValue = 0; }
-                    }
+                    const snap = parseRewardSnapshot(r.reward_snapshot);
+                    const discountValue = snap.discount_value || 0;
                     handleSelectReward(r.redemption_code, discountValue);
                   }}
                   className={`flex items-center gap-2.5 py-2.5 px-3 rounded-xl cursor-pointer text-left ${isSelected ? 'vrs-voucher-btn-selected' : 'vrs-voucher-btn'}`}
@@ -176,7 +185,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-text-primary vrs-code">{r.reward_name}</p>
-                    <p className="text-[11px] text-text-muted">{(() => { try { return r.reward_snapshot ? JSON.parse(r.reward_snapshot).description : 'Reward'; } catch { return 'Reward'; } })()}</p>
+                    <p className="text-[11px] text-text-muted">{parseRewardSnapshot(r.reward_snapshot).description || 'Reward'}</p>
                   </div>
                   <Gift size={14} color={LOKA.copper} />
                 </button>

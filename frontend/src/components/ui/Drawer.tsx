@@ -10,7 +10,7 @@ interface DrawerProps {
   width?: number;
 }
 
-export function Drawer({ isOpen, onClose, title, children, width = 500 }: DrawerProps) {
+export function Drawer({ isOpen, onClose, title, children, width = 720 }: DrawerProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';

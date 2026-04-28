@@ -16,7 +16,7 @@ export function FeedbackReplyForm({ feedbackId, token: _token, onClose }: { feed
         body: JSON.stringify({ admin_reply: reply }),
       });
       onClose();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Modal save operation failed'); } finally { setSaving(false); }
   }
 
   return (

@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.utils import to_float
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.order import CartItem
 from app.models.menu import MenuItem
 from app.models.marketing import CustomizationOption
@@ -52,7 +52,7 @@ async def _validate_customization_options(
 
 
 @router.get("", response_model=CartOut)
-async def get_cart(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_cart(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(CartItem).where(CartItem.user_id == user.id))
     items = result.scalars().all()
     if not items:
@@ -105,7 +105,7 @@ async def get_cart(user: User = Depends(get_current_user), db: AsyncSession = De
 
 
 @router.post("/items", response_model=CartItemOut, status_code=201)
-async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def add_to_cart(req: CartItemCreate, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     item_result = await db.execute(select(MenuItem).where(MenuItem.id == req.item_id))
     menu_item = item_result.scalar_one_or_none()
     if not menu_item:
@@ -157,7 +157,7 @@ async def add_to_cart(req: CartItemCreate, user: User = Depends(get_current_user
 
 
 @router.put("/items/{item_id}", response_model=CartItemOut)
-async def update_cart_item(item_id: int, req: CartItemUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def update_cart_item(item_id: int, req: CartItemUpdate, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(CartItem).where(CartItem.id == item_id, CartItem.user_id == user.id))
     ci = result.scalar_one_or_none()
     if not ci:
@@ -184,7 +184,7 @@ async def update_cart_item(item_id: int, req: CartItemUpdate, user: User = Depen
 
 
 @router.delete("/items/{item_id}")
-async def remove_cart_item(item_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def remove_cart_item(item_id: int, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(CartItem).where(CartItem.id == item_id, CartItem.user_id == user.id))
     ci = result.scalar_one_or_none()
     if not ci:
@@ -195,7 +195,7 @@ async def remove_cart_item(item_id: int, user: User = Depends(get_current_user),
 
 
 @router.delete("")
-async def clear_cart(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def clear_cart(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(CartItem).where(CartItem.user_id == user.id))
     for ci in result.scalars().all():
         await db.delete(ci)

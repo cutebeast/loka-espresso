@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
-import { Pagination, Drawer } from '@/components/ui';
+import { DataTable, Drawer, type ColumnDef } from '@/components/ui';
+import { APP_DOMAIN } from '@/lib/config';
 
 interface InformationPageProps {
   token: string;
@@ -110,12 +111,12 @@ export default function InformationPage({ token }: InformationPageProps) {
       const res = await apiFetch(`/admin/content/cards?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setCards(data.cards || []);
+        setCards(data.items || []);
         setTotal(data.total || 0);
         setTotalPages(data.total_pages || 1);
         setPage(p);
       }
-    } catch {} finally { setLoading(false); }
+    } catch { console.error('Failed to fetch cards'); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchCards(1); }, [fetchCards]);
@@ -157,8 +158,7 @@ export default function InformationPage({ token }: InformationPageProps) {
     fetchCards(page);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setError('');
 
     const payload: any = {
@@ -237,20 +237,96 @@ export default function InformationPage({ token }: InformationPageProps) {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const columns: ColumnDef<InfoCard>[] = [
+    {
+      key: 'image',
+      header: 'Image',
+      width: '80px',
+      render: (row) => (
+        row.image_url ? (
+          <Image src={cacheBust(row.image_url)} alt="" width={60} height={40} style={{ borderRadius: 4, objectFit: 'cover' }} />
+        ) : (
+          <div style={{ width: 60, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', borderRadius: 4 }}>
+            <i className={`fas fa-${row.icon || 'info'}`}></i>
+          </div>
+        )
+      ),
+    },
+    {
+      key: 'title',
+      header: 'Title',
+      render: (row) => (
+        <div>
+          <strong>{row.title}</strong>
+          {(row.start_date || row.end_date) && (
+            <div style={{ fontSize: '0.8em', color: '#666', marginTop: 2 }}>
+              {row.start_date ? new Date(row.start_date).toLocaleDateString() : '—'} → {row.end_date ? new Date(row.end_date).toLocaleDateString() : '—'}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'slug',
+      header: 'Slug',
+      render: (row) => (
+        <span style={{ fontFamily: 'monospace', fontSize: '0.85em' }}>
+          {row.slug || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'description',
+      header: 'Description',
+      render: (row) => (
+        <span style={{ display: 'block', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.short_description
+            ? (row.short_description.length > 80 ? row.short_description.slice(0, 80) + '...' : row.short_description)
+            : '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      width: '240px',
+      render: (row) => (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button className="btn btn-sm" onClick={() => handleToggleActive(row)}>
+            <span className={`badge ${row.is_active ? 'badge-green' : 'badge-gray'}`}>
+              {row.is_active ? 'Active' : 'Inactive'}
+            </span>
+          </button>
+          <button className="btn btn-sm" onClick={() => openEdit(row)}><i className="fas fa-edit"></i></button>
+          {deletingId === row.id ? (
+            <>
+              <button className="btn btn-sm" onClick={() => handleDelete(row.id)} style={{ background: '#dc3545', color: '#fff' }}>Confirm</button>
+              <button className="btn btn-sm" onClick={() => setDeletingId(null)}>Cancel</button>
+            </>
+          ) : (
+            <button className="btn btn-sm" onClick={() => setDeletingId(row.id)} style={{ color: '#dc3545' }}>
+              <i className="fas fa-trash"></i>
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   const drawerTitle = editingId ? 'Edit Information Card' : 'New Information Card';
 
   return (
     <div>
-      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} width={560}>
+      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} >
         <div className="card">
           {error && (
-            <div className="ip-0">
+            <div className="inf-0">
               <i className="fas fa-exclamation-circle"></i> {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="ip-1">
+          <div>
+            <div className="inf-1">
               <div>
                 <label className="iform-label">Title *</label>
                 <input type="text" required value={form.title} onChange={(e) => {
@@ -263,7 +339,7 @@ export default function InformationPage({ token }: InformationPageProps) {
               </div>
               <div>
                 <label className="iform-label">Icon</label>
-                <select value={form.icon} onChange={(e) => setField('icon', e.target.value)} className="ip-2">
+                <select value={form.icon} onChange={(e) => setField('icon', e.target.value)} className="inf-2">
                   {iconOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
@@ -271,9 +347,9 @@ export default function InformationPage({ token }: InformationPageProps) {
               </div>
             </div>
 
-            <div className="ip-3">
+            <div className="inf-3">
               <label className="iform-label">
-                Slug <span className="ip-4">(QR code URL — leave blank to auto-generate)</span>
+                Slug <span className="inf-4">(QR code URL — leave blank to auto-generate)</span>
               </label>
               <input
                 type="text"
@@ -282,29 +358,29 @@ export default function InformationPage({ token }: InformationPageProps) {
                 placeholder="e.g. baklava-art"
               />
               {form.slug && (
-                <div className="ip-5">
-                  QR URL: https://app.loyaltysystem.uk/?slug={form.slug}#information
+                <div className="inf-5">
+                  QR URL: https://{APP_DOMAIN}/?slug={form.slug}#information
                 </div>
               )}
             </div>
 
-            <div className="ip-6">
-              <label className="iform-label">Short Description <span className="ip-7">(card preview)</span></label>
+            <div className="inf-6">
+              <label className="iform-label">Short Description <span className="inf-7">(card preview)</span></label>
               <input type="text" value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} placeholder="Brief text shown on PWA card" />
             </div>
 
-            <div className="ip-8">
-              <label className="iform-label">Long Description <span className="ip-9">(detail view)</span></label>
+            <div className="inf-8">
+              <label className="iform-label">Long Description <span className="inf-9">(detail view)</span></label>
               <textarea
                 value={form.long_description}
                 onChange={(e) => setField('long_description', e.target.value)}
                 placeholder="Full content shown when customer taps to view details..."
                 rows={4}
-                className="ip-10"
+                className="inf-10"
               />
             </div>
 
-            <div className="ip-11">
+            <div className="inf-11">
               <ImageUploadField 
                 label="Card Image" 
                 imageUrl={form.image_url} 
@@ -314,7 +390,7 @@ export default function InformationPage({ token }: InformationPageProps) {
               />
             </div>
 
-            <div className="ip-12">
+            <div className="inf-12">
               <GalleryUploadField
                 label="Gallery Images"
                 urls={form.gallery_urls}
@@ -324,154 +400,80 @@ export default function InformationPage({ token }: InformationPageProps) {
               />
             </div>
 
-            <div className="ip-13">
+            <div className="inf-13">
               <label className="iform-label">Content Type</label>
-              <select value={form.content_type} onChange={(e) => setField('content_type', e.target.value)} className="ip-14">
+              <select value={form.content_type} onChange={(e) => setField('content_type', e.target.value)} className="inf-14">
                 {contentTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
 
             {form.content_type === 'promotion' && (
-              <div className="ip-15">
-                <label className="ip-16">Promotion CTA (optional)</label>
-                <div className="ip-17">
+              <div className="inf-15">
+                <label className="inf-16">Promotion CTA (optional)</label>
+                <div className="inf-17">
                   <div>
-                    <label className="ip-18">Action URL</label>
+                    <label className="inf-18">Action URL</label>
                     <input type="text" value={form.action_url} onChange={(e) => setField('action_url', e.target.value)} placeholder="https://..." />
                   </div>
                   <div>
-                    <label className="ip-19">Button Label</label>
+                    <label className="inf-19">Button Label</label>
                     <input type="text" value={form.action_label} onChange={(e) => setField('action_label', e.target.value)} placeholder="Learn More" />
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="ip-20">
+            <div className="inf-20">
               <div>
-                <label className="iform-label">Start Date <span className="ip-21">(blank = always)</span></label>
+                <label className="iform-label">Start Date <span className="inf-21">(blank = always)</span></label>
                 <input type="datetime-local" value={form.start_date} onChange={(e) => setField('start_date', e.target.value)} />
               </div>
               <div>
-                <label className="iform-label">End Date <span className="ip-22">(blank = unlimited)</span></label>
+                <label className="iform-label">End Date <span className="inf-22">(blank = unlimited)</span></label>
                 <input type="datetime-local" value={form.end_date} onChange={(e) => setField('end_date', e.target.value)} />
               </div>
             </div>
 
-            <div className="ip-23">
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? 'Saving...' : editingId ? 'Update' : 'Create'}
-              </button>
-              <button type="button" className="btn" onClick={closeForm}>
-                Cancel
-              </button>
-              <div className="ip-24" />
-              <label className="ip-25">
-                <input type="checkbox" checked={form.is_active} onChange={(e) => setField('is_active', e.target.checked)} className="ip-26" />
+            <div className="df-actions">
+              <label className="inf-25" style={{ marginRight: 'auto' }}>
+                <input type="checkbox" checked={form.is_active} onChange={(e) => setField('is_active', e.target.checked)} className="inf-26" />
                 Active
               </label>
+              <button className="btn" onClick={closeForm}>
+                Cancel
+              </button>
+              <button onClick={handleSubmit} className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving...' : editingId ? 'Update' : 'Create'}
+              </button>
             </div>
-          </form>
+          </div>
         </div>
       </Drawer>
 
-      <div className="ip-27">
+      <div className="inf-27">
         <button className="btn btn-primary" onClick={openNew}>
           <i className="fas fa-plus"></i> New Information Card
         </button>
       </div>
 
       {error && (
-        <div className="ip-28">
+        <div className="inf-28">
           <i className="fas fa-exclamation-circle"></i> {error}
         </div>
       )}
 
-      <div className="ip-29">
-        <div className="ip-30">
-          <span className="ip-31"><i className="fas fa-info-circle"></i></span>
-          Showing <strong className="ip-32">{cards.length}</strong> of <strong>{total}</strong> cards
-        </div>
-        <div className="ip-33">
-          Page {page} of {totalPages}
-        </div>
-      </div>
-
-      <div className="ip-34">
-        <table>
-          <thead>
-            <tr><th>Image</th><th>Title</th><th>Type</th><th>Slug / QR</th><th>Short Desc</th><th>Status</th><th>Period</th><th>Actions</th></tr>
-          </thead>
-          <tbody>
-            {cards.length === 0 ? (
-              <tr><td colSpan={8} className="ip-35">
-                <span className="ip-36"><i className="fas fa-info-circle"></i></span>
-                No information cards yet
-              </td></tr>
-            ) : cards.map(card => (
-              <tr key={card.id}>
-                <td>
-                  {card.image_url ? (
-                    <Image src={cacheBust(card.image_url)} alt="" width={60} height={40} className="ip-37" />
-                  ) : (
-                    <div className="ip-38">
-                      <i className={`fas fa-${card.icon || 'info'}`}></i>
-                    </div>
-                  )}
-                </td>
-                <td className="ip-39">{card.title}</td>
-                <td>
-                  <span className={`badge ${
-                    card.content_type === 'promotion' ? 'badge-copper' :
-                    card.content_type === 'system' ? 'badge-gray' :
-                    card.content_type === 'product' ? 'badge-green' :
-                    'badge-blue'
-                  } ip-40`} >
-                    {card.content_type || 'information'}
-                  </span>
-                </td>
-                <td className="ip-41">
-                  {card.slug ? (
-                    <span title={`QR: https://app.loyaltysystem.uk/?slug=${card.slug}#information`}>{card.slug}</span>
-                  ) : '-'}
-                </td>
-                <td className="ip-42">{card.short_description || '-'}</td>
-                <td>
-                  <button className="btn btn-sm ip-43" onClick={() => handleToggleActive(card)} >
-                    <span className={`badge ${card.is_active ? 'badge-green' : 'badge-gray'}`}>
-                      {card.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </button>
-                </td>
-                <td className="ip-44">
-                  {(card.start_date || card.end_date) ? (
-                    <>
-                      {card.start_date ? new Date(card.start_date).toLocaleDateString() : '—'} → {card.end_date ? new Date(card.end_date).toLocaleDateString() : '—'}
-                    </>
-                  ) : '—'}
-                </td>
-                <td>
-                  <div className="ip-45">
-                    <button className="btn btn-sm" onClick={() => openEdit(card)}><i className="fas fa-edit"></i></button>
-                    {deletingId === card.id ? (
-                      <>
-                        <button className="btn btn-sm ip-46"  onClick={() => handleDelete(card.id)}>Confirm</button>
-                        <button className="btn btn-sm" onClick={() => setDeletingId(null)}>Cancel</button>
-                      </>
-                    ) : (
-                      <button className="btn btn-sm ip-47"  onClick={() => setDeletingId(card.id)}>
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <Pagination page={page} totalPages={totalPages} onPageChange={fetchCards} loading={loading} />
+      <DataTable<InfoCard>
+        data={cards}
+        columns={columns}
+        emptyMessage="No information cards yet"
+        loading={loading}
+        pagination={{
+          page,
+          pageSize: PAGE_SIZE,
+          total,
+          onPageChange: fetchCards,
+        }}
+      />
     </div>
   );
 }
@@ -492,7 +494,7 @@ function ImageUploadField({ label, imageUrl, token: _token, onSet, hint }: { lab
         const data = await res.json();
         onSet(data.url);
       }
-    } catch {} finally { setUploading(false); }
+    } catch { console.error('Image upload failed'); } finally { setUploading(false); }
   }
 
   return (
@@ -535,7 +537,7 @@ function GalleryUploadField({ label, urls, token: _token, onSet, hint }: { label
         }
       }
       onSet([...urls, ...newUrls]);
-    } catch {} finally { setUploading(false); }
+    } catch { console.error('Image upload failed'); } finally { setUploading(false); }
   }
 
   function removeUrl(index: number) {

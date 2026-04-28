@@ -1,0 +1,82 @@
+/* ── NotificationsPage (.np-) ── */
+.np-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 360px;
+}
+.np-skeleton-item {
+  height: 80px;
+  border-radius: 20px;
+}
+.np-empty-icon {
+  color: var(--color-border-light);
+  margin: 0 auto 20px;
+}
+
+/* ── AccountDetailsPage (.ad-) ── */
+.ad-spacer {
+  width: 36px;
+}
+.ad-success-icon {
+  display: inline;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+/* ── HelpSupportPage (.hsp-) ── */
+.hsp-spacer {
+  width: 36px;
+}
+.hsp-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236A7A8A'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 20px;
+}
+.hsp-success-icon {
+  display: inline;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+/* ── SettingsPage (.st-) ── */
+.st-spacer {
+  width: 36px;
+}
+
+/* ── PaymentMethodsPage (.pm-) ── */
+.pm-spacer {
+  width: 36px;
+}
+.pm-wallet-icon {
+  display: inline;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.pm-skeleton {
+  height: 72px;
+  border-radius: 20px;
+}
+.pm-empty {
+  text-align: center;
+  padding: 32px 20px;
+  background: var(--color-white);
+  border-radius: 20px;
+  border: 1px solid var(--color-border-light);
+}
+.pm-empty-icon {
+  margin: 0 auto 10px;
+}
+.pm-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.pm-empty-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}

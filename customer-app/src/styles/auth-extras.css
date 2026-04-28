@@ -1,0 +1,78 @@
+/* ── OTPInput (.otp-) ── */
+.otp-phone {
+  color: var(--color-text-primary);
+}
+.otp-error {
+  color: var(--color-danger);
+  font-size: 12px;
+  margin-top: 12px;
+}
+.otp-spacer {
+  flex: 1;
+}
+
+/* ── PhoneInput (.pi-) ── */
+.pi-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.pi-error {
+  color: var(--color-danger);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.pi-spacer {
+  flex: 1;
+}
+.pi-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pi-skeleton-line {
+  height: 16px;
+  background: var(--color-bg);
+  border-radius: 4px;
+}
+.pi-skeleton-66 { width: 66%; }
+.pi-skeleton-83 { width: 83%; }
+.pi-skeleton-100 { width: 100%; }
+.pi-legal-error {
+  border-radius: 16px;
+  border: 1px solid rgba(199,80,80,0.2);
+  background: #FFEBEE;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--color-danger);
+}
+.pi-view-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+}
+
+/* ── SplashScreen (.ss-) ── */
+.ss-svg {
+  display: block;
+}
+.ss-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* ── BottomSheetLayout (.bsl-) ── */
+.bsl-sheet {
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}
+
+/* ── ScanFAB (.sf-) ── */
+.sf-btn {
+  box-shadow: 0 8px 24px rgba(56,75,22,0.35);
+}

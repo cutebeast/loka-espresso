@@ -49,14 +49,14 @@ export function DatePicker({ value, onChange, minDate, maxDate }: DatePickerProp
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => setViewDate(new Date(year, month - 1, 1))}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-bg-light transition-colors"
+          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-bg-light transition-colors"
         >
           <ChevronLeft size={18} className="text-text-secondary" />
         </button>
         <span className="text-sm font-bold text-text-primary">{MONTHS[month]} {year}</span>
         <button
           onClick={() => setViewDate(new Date(year, month + 1, 1))}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-bg-light transition-colors"
+          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-bg-light transition-colors"
         >
           <ChevronRight size={18} className="text-text-secondary" />
         </button>

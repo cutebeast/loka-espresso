@@ -1,0 +1,62 @@
+# FNB Super App — Caddy Reverse Proxy Configuration
+# Place at /etc/caddy/Caddyfile or run: caddy run --config infra/caddy/Caddyfile
+
+# Global settings
+{
+    email admin@example.com
+    admin off
+}
+
+# Admin Dashboard (Next.js frontend on port 3000)
+{$ADMIN_DOMAIN:admin.localhost} {
+    reverse_proxy frontend:3000
+
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
+# Customer PWA (Next.js customer-app on port 3001)
+{$APP_DOMAIN:app.localhost} {
+    reverse_proxy customer-app:3001
+
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
+# API Backend (FastAPI on port 8000)
+{$API_DOMAIN:api.localhost} {
+    reverse_proxy backend:8000
+
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    # CORS preflight caching
+    @options {
+        method OPTIONS
+    }
+    header @options {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization"
+        Access-Control-Max-Age "86400"
+    }
+
+    # Upload size limit
+    request_body {
+        max_size 20MB
+    }
+}
+
+# Static uploads served directly by Caddy
+{$UPLOADS_DOMAIN:uploads.localhost} {
+    root * /app/uploads
+    file_server browse
+}

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
-import { Select, Pagination, Drawer } from '@/components/ui';
+import { apiFetch, apiUpload } from '@/lib/merchant-api';
+import { Select, Drawer, DataTable, type ColumnDef } from '@/components/ui';
 
 interface RewardItem {
   id: number;
@@ -32,7 +32,6 @@ interface RewardsPageProps {
 const PAGE_SIZE = 20;
 
 export default function RewardsPage({ token }: RewardsPageProps) {
-  // List state
   const [rewards, setRewards] = useState<RewardItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -41,7 +40,6 @@ export default function RewardsPage({ token }: RewardsPageProps) {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [error, setError] = useState('');
 
-  // View mode: 'list' or 'form'
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
   const [editingReward, setEditingReward] = useState<RewardItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -53,7 +51,7 @@ export default function RewardsPage({ token }: RewardsPageProps) {
       const res = await apiFetch(`/admin/rewards?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setRewards(data.rewards || []);
+        setRewards(data.items || []);
         setTotal(data.total || 0);
         setTotalPages(data.total_pages || 1);
         setPage(p);
@@ -100,11 +98,70 @@ export default function RewardsPage({ token }: RewardsPageProps) {
     } catch { setError('Failed to delete reward'); setConfirmDelete(null); }
   }
 
+  const columns: ColumnDef<RewardItem>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      render: (row) => (
+        <div>
+          <div className="rp-16">{row.name}</div>
+          {row.short_description && (
+            <div className="rp-17">{row.short_description}</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'points',
+      header: 'Points',
+      render: (row) => (
+        <span className="badge badge-blue">{(row.points_cost ?? 0).toLocaleString()} pts</span>
+      ),
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      render: (row) => (
+        <span className="rp-18">{(row.reward_type || 'free_item').replace('_', ' ')}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => (
+        <button className="btn btn-sm rp-19" onClick={() => toggleActive(row)}>
+          <span className={`badge ${row.is_active ? 'badge-green' : 'badge-gray'}`}>
+            {row.is_active ? 'Active' : 'Inactive'}
+          </span>
+        </button>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        <div className="rp-20">
+          <button className="btn btn-sm" onClick={() => openEdit(row)}><i className="fas fa-edit"></i></button>
+          {confirmDelete === row.id ? (
+            <>
+              <button className="btn btn-sm rp-21" onClick={() => handleDelete(row.id)}>Confirm</button>
+              <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
+            </>
+          ) : (
+            <button className="btn btn-sm rp-22" onClick={() => setConfirmDelete(row.id)}>
+              <i className="fas fa-trash"></i>
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   const drawerTitle = editingReward ? 'Edit Reward' : 'New Reward';
 
   return (
     <div>
-      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} width={560}>
+      <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} >
         {viewMode === 'form' && (
           <RewardFormPage token={token} existingReward={editingReward} onBack={closeForm} />
         )}
@@ -121,7 +178,6 @@ export default function RewardsPage({ token }: RewardsPageProps) {
         </button>
       </div>
 
-      {/* Stats Bar */}
       <div className="rp-3">
         <div className="rp-4">
           <span className="rp-5"><i className="fas fa-gift"></i></span>
@@ -132,71 +188,13 @@ export default function RewardsPage({ token }: RewardsPageProps) {
         </div>
       </div>
 
-      {loading && rewards.length === 0 ? (
-        <div className="rp-9"><i className="fas fa-spinner fa-spin"></i> Loading...</div>
-      ) : rewards.length === 0 ? (
-        <div className="card rp-10" >
-          <span className="rp-11"><i className="fas fa-gift"></i></span>
-          <p>No rewards configured</p>
-        </div>
-      ) : (
-        <div className="rp-12">
-          <table>
-            <thead>
-              <tr><th>Image</th><th>Code</th><th>Name</th><th>Type</th><th>Points</th><th>Redeemed</th><th>Status</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {rewards.map(reward => (
-                <tr key={reward.id}>
-                  <td>
-                    {reward.image_url ? (
-                      <Image src={cacheBust(reward.image_url)} alt="" width={50} height={50} className="rp-13" />
-                    ) : (
-                      <div className="rp-14">
-                        <i className="fas fa-gift"></i>
-                      </div>
-                    )}
-                  </td>
-                  <td><span className="rp-15">{reward.code || '-'}</span></td>
-                  <td>
-                    <div className="rp-16">{reward.name}</div>
-                    {reward.short_description && (
-                      <div className="rp-17">{reward.short_description}</div>
-                    )}
-                  </td>
-                  <td className="rp-18">{(reward.reward_type || 'free_item').replace('_', ' ')}</td>
-                  <td><span className="badge badge-blue">{(reward.points_cost ?? 0).toLocaleString()} pts</span></td>
-                  <td>{reward.total_redeemed ?? 0}</td>
-                  <td>
-                    <button className="btn btn-sm rp-19" onClick={() => toggleActive(reward)} >
-                      <span className={`badge ${reward.is_active ? 'badge-green' : 'badge-gray'}`}>
-                        {reward.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </button>
-                  </td>
-                  <td>
-                    <div className="rp-20">
-                      <button className="btn btn-sm" onClick={() => openEdit(reward)}><i className="fas fa-edit"></i></button>
-                      {confirmDelete === reward.id ? (
-                        <>
-                          <button className="btn btn-sm rp-21"  onClick={() => handleDelete(reward.id)}>Confirm</button>
-                          <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
-                        </>
-                      ) : (
-                        <button className="btn btn-sm rp-22"  onClick={() => setConfirmDelete(reward.id)}>
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <Pagination page={page} totalPages={totalPages} onPageChange={fetchRewards} loading={loading} />
+      <DataTable
+        data={rewards}
+        columns={columns}
+        loading={loading}
+        emptyMessage="No rewards configured"
+        pagination={{ page, pageSize: PAGE_SIZE, total, onPageChange: fetchRewards }}
+      />
     </div>
   );
 }
@@ -239,8 +237,7 @@ function RewardFormPage({ token: _token, existingReward, onBack }: { token: stri
     } catch { setError('Image upload failed'); } finally { setUploading(false); }
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     setSaving(true);
     setError('');
     try {
@@ -284,7 +281,7 @@ function RewardFormPage({ token: _token, existingReward, onBack }: { token: stri
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <div>
           <div className="rfp-24">
             <div>
               <label className="rp-label">Name *</label>
@@ -357,33 +354,31 @@ function RewardFormPage({ token: _token, existingReward, onBack }: { token: stri
             <label className="rp-label">Image</label>
             <div className="rfp-39">
               <input type="file" ref={fileRef} accept="image/*" onChange={handleImageUpload} className="rfp-40" />
-              <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+              <button className="btn btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
                 {uploading ? 'Uploading...' : 'Upload Image'}
               </button>
               {imageUrl && (
                 <>
                   <Image src={imageUrl} alt="" width={40} height={40} className="rfp-41" />
-                  <button type="button" className="btn btn-sm rfp-42" onClick={() => setImageUrl('')} ><i className="fas fa-times"></i></button>
+                  <button className="btn btn-sm rfp-42" onClick={() => setImageUrl('')} ><i className="fas fa-times"></i></button>
                 </>
               )}
             </div>
             <div className="rp-hint"><span className="rfp-43"><i className="fas fa-info-circle"></i></span>Recommended: <strong>720 × 405 px (16:9)</strong> · WebP/PNG · Max 200 KB</div>
           </div>
 
-          <div className="rfp-44">
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
-            </button>
-            <button type="button" className="btn" onClick={onBack}>Cancel</button>
-            <div className="rfp-45" />
-            <label className="rfp-46">
+          <div className="df-actions">
+            <label className="rfp-46" style={{ marginRight: 'auto' }}>
               <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="rfp-47" />
               Active
             </label>
+            <button className="btn" onClick={onBack}>Cancel</button>
+            <button onClick={handleSubmit} className="btn btn-primary" disabled={saving}>
+              {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+            </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
 }
-

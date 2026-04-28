@@ -275,3 +275,45 @@ class InformationCardUpdate(BaseModel):
         if v is not None and v not in _VALID_CONTENT_TYPES:
             raise ValueError(f"content_type must be one of: {', '.join(sorted(_VALID_CONTENT_TYPES))}")
         return v
+
+
+class DeliveryTrackingUpdate(BaseModel):
+    delivery_courier_name: Optional[str] = None
+    delivery_courier_phone: Optional[str] = None
+    delivery_tracking_url: Optional[str] = None
+    delivery_provider: Optional[str] = None
+    delivery_eta_minutes: Optional[int] = None
+    delivery_external_id: Optional[str] = None
+    delivery_status: Optional[str] = None
+
+
+class MarketingCampaignCreate(BaseModel):
+    name: str
+    channel: str
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    image_url: Optional[str] = None
+    cta_url: Optional[str] = None
+    audience: str = "all"
+    store_id: Optional[int] = None
+    status: str = "draft"
+    provider: Optional[str] = None
+    provider_campaign_id: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+    total_recipients: int = 0
+
+
+class MarketingCampaignUpdate(BaseModel):
+    name: Optional[str] = None
+    channel: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    image_url: Optional[str] = None
+    cta_url: Optional[str] = None
+    audience: Optional[str] = None
+    store_id: Optional[int] = None
+    status: Optional[str] = None
+    provider: Optional[str] = None
+    provider_campaign_id: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+    total_recipients: Optional[int] = None

@@ -1,0 +1,92 @@
+'use client';
+
+import { memo } from 'react';
+import { Coffee } from 'lucide-react';
+import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
+import type { MenuItem } from '@/lib/api';
+import { Plus, ArrowRight } from 'lucide-react';
+
+const ProductCard = memo(function ProductCard({
+  item,
+  onAdd,
+}: {
+  item: MenuItem;
+  onAdd: () => void;
+}) {
+  const imgSrc = resolveAssetUrl(item.image_url);
+  return (
+    <div className="product-card">
+      <div className="product-img">
+        {imgSrc ? (
+          <img src={imgSrc} alt="" className="card-bg-img" loading="lazy" />
+        ) : (
+        <div className="home-img-fallback">
+            <Coffee size={24} strokeWidth={1.5} color="#C4CED8" />
+          </div>
+        )}
+      </div>
+      <div className="product-info">
+        <div className="product-name">{item.name}</div>
+        <div className="product-price">{formatPrice(item.base_price)}</div>
+        <button className="add-btn" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
+          <Plus size={12} strokeWidth={2.5} /> Add
+        </button>
+      </div>
+    </div>
+  );
+});
+
+interface PromotionsSectionProps {
+  featuredItems: MenuItem[];
+  loading: boolean;
+  onAddToCart: (item: MenuItem) => void;
+  onSeeAll: () => void;
+}
+
+export default function PromotionsSection({ featuredItems, loading, onAddToCart, onSeeAll }: PromotionsSectionProps) {
+  return (
+    <div>
+      <div className="home-section-header">
+        <h3 className="home-section-title">Today&apos;s picks</h3>
+        <button
+          onClick={onSeeAll}
+          className="link home-see-all-link"
+        >
+          See all <ArrowRight size={12} />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="product-scroll">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="product-card home-skeleton-card">
+              <div className="product-img">
+                <div className="skeleton home-skeleton-img" />
+              </div>
+              <div className="product-info">
+                <div className="skeleton home-skeleton-name" />
+                <div className="skeleton home-skeleton-price" />
+                <div className="skeleton home-skeleton-btn" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : featuredItems.length === 0 ? (
+        <div className="home-empty">
+          <div className="home-empty-icon"><Coffee size={32} strokeWidth={1.5} /></div>
+          <p className="home-empty-text">No items available yet</p>
+        </div>
+      ) : (
+        <div className="product-scroll">
+          {featuredItems.slice(0, 8).map((item) => (
+            <ProductCard
+              key={item.id}
+              item={item}
+              onAdd={() => onAddToCart(item)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

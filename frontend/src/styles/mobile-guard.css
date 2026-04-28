@@ -1,0 +1,8 @@
+.mpg-container { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 48px 24px; min-height: 60vh; }
+.mpg-icon { font-size: 56px; color: #D1D5DB; margin-bottom: 16px; }
+.mpg-title { font-size: 20px; font-weight: 700; color: #374151; margin: 0 0 8px; }
+.mpg-text { font-size: 14px; color: #6B7280; margin: 0 0 24px; max-width: 320px; line-height: 1.5; }
+.mpg-pages { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mpg-label { font-size: 12px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; }
+.mpg-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 320px; }
+.mpg-chip { padding: 4px 10px; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 16px; font-size: 11px; font-weight: 500; color: #6B7280; }

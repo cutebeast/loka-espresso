@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
+    from app.models.customer import Customer
 
 
 class WalletTxType(str, enum.Enum):
@@ -23,7 +23,7 @@ class Wallet(Base):
     __tablename__ = "wallets"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     balance: Mapped[float] = mapped_column(DECIMAL(10, 2), default=0, nullable=False)
     currency: Mapped[str] = mapped_column(String(10), default="MYR", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -33,7 +33,7 @@ class Wallet(Base):
         CheckConstraint("balance >= 0", name="ck_wallets_balance"),
     )
 
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["Customer"] = relationship("Customer", foreign_keys=[user_id])
 
 
 class WalletTransaction(Base):
@@ -41,7 +41,7 @@ class WalletTransaction(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     wallet_id: Mapped[int] = mapped_column(Integer, ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True)
     amount: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
     type: Mapped[WalletTxType] = mapped_column(Enum(WalletTxType), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -61,7 +61,7 @@ class PaymentMethod(Base):
     __tablename__ = "payment_methods"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     last4: Mapped[Optional[str]] = mapped_column(String(4), nullable=True)
@@ -69,4 +69,4 @@ class PaymentMethod(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["Customer"] = relationship("Customer", foreign_keys=[user_id])

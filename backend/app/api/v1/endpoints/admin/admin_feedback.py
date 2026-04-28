@@ -7,15 +7,16 @@ from app.core.database import get_db
 from app.core.security import get_current_user, require_hq_access
 from app.core.audit import log_action, get_client_ip
 from app.core.sanitization import sanitize_text_field
-from app.models.user import User
+from app.models.admin_user import AdminUser
+from app.models.customer import Customer
 from app.models.feedback import Feedback
 from app.models.store import Store
 from app.schemas.admin_extras import FeedbackCreate, FeedbackOut, FeedbackReply
 
-router = APIRouter(tags=["Admin Feedback"])
+router = APIRouter(prefix="/admin", tags=["Admin Feedback"])
 
 
-@router.get("/admin/feedback")
+@router.get("/feedback")
 async def list_feedback(
     store_id: int | None = None,
     from_date: datetime | None = None,
@@ -23,9 +24,9 @@ async def list_feedback(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
-    base = select(Feedback, User.name.label("user_name")).join(User, User.id == Feedback.user_id, isouter=True)
+    base = select(Feedback, Customer.name.label("user_name")).join(Customer, Customer.id == Feedback.user_id, isouter=True)
     if store_id is not None:
         base = base.where(Feedback.store_id == store_id)
     if from_date is not None:
@@ -76,11 +77,11 @@ async def list_feedback(
 
 
 # NOTE: /stats MUST be defined BEFORE /{feedback_id} to avoid route conflict
-@router.get("/admin/feedback/stats")
+@router.get("/feedback/stats")
 async def feedback_stats(
     store_id: int | None = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     query = select(Feedback)
     if store_id is not None:
@@ -104,15 +105,15 @@ async def feedback_stats(
     }
 
 
-@router.get("/admin/feedback/{feedback_id}")
+@router.get("/feedback/{feedback_id}")
 async def get_feedback(
     feedback_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(
-        select(Feedback, User.name.label("user_name"))
-        .join(User, User.id == Feedback.user_id, isouter=True)
+        select(Feedback, Customer.name.label("user_name"))
+        .join(Customer, Customer.id == Feedback.user_id, isouter=True)
         .where(Feedback.id == feedback_id)
     )
     row = result.first()
@@ -132,13 +133,13 @@ async def get_feedback(
     }
 
 
-@router.post("/admin/feedback/{feedback_id}/reply")
+@router.post("/feedback/{feedback_id}/reply")
 async def reply_to_feedback(
     feedback_id: int,
     request: Request,
     data: FeedbackReply,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
     feedback = result.scalar_one_or_none()
@@ -154,13 +155,13 @@ async def reply_to_feedback(
     return {"message": "Reply saved", "id": feedback.id}
 
 
-@router.put("/admin/feedback/{feedback_id}/reply")
+@router.put("/feedback/{feedback_id}/reply")
 async def update_feedback_reply(
     feedback_id: int,
     request: Request,
     data: FeedbackReply,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
     feedback = result.scalar_one_or_none()
@@ -183,7 +184,7 @@ async def update_feedback_reply(
 async def create_feedback(
     data: FeedbackCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: AdminUser = Depends(get_current_user),
 ):
     # Sanitize user input to prevent XSS
     sanitized_data = data.model_dump()
@@ -194,3 +195,44 @@ async def create_feedback(
     await db.flush()
     await db.refresh(obj)
     return obj
+
+
+@router.put("/feedback/{feedback_id}")
+async def update_feedback(
+    feedback_id: int,
+    request: Request,
+    data: FeedbackCreate,
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(get_current_user),
+):
+    """Customer edits own feedback."""
+    result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
+    feedback = result.scalar_one_or_none()
+    if not feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    if feedback.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Cannot edit another user's feedback")
+    feedback.rating = data.rating
+    if data.comment is not None:
+        feedback.comment = sanitize_text_field(data.comment, max_length=2000)
+    await db.flush()
+    return {"message": "Feedback updated", "id": feedback.id}
+
+
+@router.delete("/feedback/{feedback_id}")
+async def delete_feedback(
+    feedback_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(get_current_user),
+):
+    """Customer deletes own feedback."""
+    result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
+    feedback = result.scalar_one_or_none()
+    if not feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    if feedback.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Cannot delete another user's feedback")
+    await db.delete(feedback)
+    await db.flush()
+    return {"message": "Feedback deleted", "id": feedback_id}

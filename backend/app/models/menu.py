@@ -56,7 +56,6 @@ class MenuItem(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     base_price: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
     image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    customization_options: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     is_available: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # Admin-curated "featured / today's pick" flag – surfaces on the
     # customer home page ("Today's recommendations"). Per-user favorites
@@ -69,10 +68,13 @@ class MenuItem(Base):
 
     __table_args__ = (
         CheckConstraint("base_price >= 0", name="ck_menu_items_base_price"),
-        Index("ix_menu_cat_avail", "category_id", "is_available"),
+        Index("ix_menu_items_category_available", "category_id", "is_available", "display_order"),
     )
 
     category: Mapped["MenuCategory"] = relationship("MenuCategory", back_populates="items")
+    allergens: Mapped[List["Allergen"]] = relationship("Allergen", secondary="menu_item_allergens", back_populates="menu_items")
+    menu_item_allergen_associations: Mapped[List["MenuItemAllergen"]] = relationship("MenuItemAllergen", back_populates="menu_item", cascade="all, delete-orphan")
+    modifier_groups: Mapped[List["ModifierGroup"]] = relationship("ModifierGroup", back_populates="menu_item", cascade="all, delete-orphan")
 
 
 class InventoryItem(Base):

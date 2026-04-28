@@ -11,8 +11,11 @@ from app.core.audit import log_action, get_client_ip
 from app.core.utils import to_float
 from app.core.commerce import credit_wallet
 from app.core.config import get_settings
-from app.models.user import User, RoleIDs
+from app.models.admin_user import AdminUser
+from app.models.customer import Customer
+from app.models.user import RoleIDs
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
+from app.schemas.wallet import AdminWalletTopupRequest
 from app.models.order import Order
 from app.models.wallet import Wallet, WalletTransaction
 from app.models.voucher import Voucher, UserVoucher
@@ -68,7 +71,7 @@ async def approve_customer_profile(
     user_id: int,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     """Manually approve a customer profile.
 
@@ -76,7 +79,7 @@ async def approve_customer_profile(
     or phone not verified) and admin manually approves them to grant full access.
     Sets phone_verified=True and is_active=True regardless of profile completion.
     """
-    result = await db.execute(select(User).where(User.id == user_id, User.role_id == RoleIDs.CUSTOMER))
+    result = await db.execute(select(Customer).where(Customer.id == user_id))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -124,9 +127,9 @@ async def update_customer(
     request: Request,
     data: CustomerUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(Customer).where(Customer.id == user_id))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -136,12 +139,12 @@ async def update_customer(
         raise HTTPException(status_code=400, detail="No changes provided")
 
     if "phone" in changes and changes["phone"] != target.phone:
-        existing = await db.execute(select(User).where(User.phone == changes["phone"]))
+        existing = await db.execute(select(Customer).where(Customer.phone == changes["phone"]))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=409, detail="Phone number already in use by another account")
 
     if "email" in changes and changes["email"] and changes["email"] != target.email:
-        existing = await db.execute(select(User).where(User.email == changes["email"]))
+        existing = await db.execute(select(Customer).where(Customer.email == changes["email"]))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=409, detail="Email already in use by another account")
 
@@ -165,7 +168,7 @@ async def reset_all_customers(
     request: Request,
     confirm: bool = Query(False, description="Must pass confirm=true to execute this destructive operation"),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     """Delete ALL customers and all their associated data via API.
 
@@ -300,18 +303,18 @@ async def reset_all_customers(
 @router.post("/wallet/topup")
 async def admin_wallet_topup(
     request: Request,
-    data: dict,
+    data: AdminWalletTopupRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
 ):
     """
     In-store wallet top-up processed by staff at the counter.
     Customer hands over cash/card at the counter, staff credits their wallet instantly.
     """
-    phone = data.get("phone", "").strip()
-    amount = data.get("amount")
-    payment_method = data.get("payment_method", "cash")
-    notes = data.get("notes", "")
+    phone = data.phone.strip()
+    amount = data.amount
+    payment_method = data.payment_method
+    notes = data.notes
 
     if not phone:
         raise HTTPException(status_code=400, detail="Customer phone number is required")
@@ -320,7 +323,7 @@ async def admin_wallet_topup(
 
     phone_digits = ''.join(c for c in phone if c.isdigit())
     result = await db.execute(
-        select(User).where(func.regexp_replace(User.phone, r'\D', '', 'g').ilike(f"%{phone_digits}%"))
+        select(Customer).where(func.regexp_replace(Customer.phone, r'\D', '', 'g').ilike(f"%{phone_digits}%"))
     )
     customer = result.scalar_one_or_none()
     if not customer:
@@ -366,7 +369,7 @@ async def admin_wallet_topup(
 async def customer_wallet(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(RoleIDs.ADMIN, RoleIDs.BRAND_OWNER, RoleIDs.MANAGER, RoleIDs.ASSISTANT_MANAGER, RoleIDs.STAFF, RoleIDs.HQ_STAFF)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN, RoleIDs.BRAND_OWNER, RoleIDs.MANAGER, RoleIDs.ASSISTANT_MANAGER, RoleIDs.STAFF, RoleIDs.HQ_STAFF)),
 ):
     """
     Return a customer's available rewards and vouchers for in-store POS use.
@@ -374,7 +377,7 @@ async def customer_wallet(
     """
     now = now_utc()
 
-    customer_result = await db.execute(select(User).where(User.id == user_id, User.role_id == RoleIDs.CUSTOMER))
+    customer_result = await db.execute(select(Customer).where(Customer.id == user_id))
     customer = customer_result.scalar_one_or_none()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -443,7 +446,7 @@ async def use_customer_reward(
     req: UseItemRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(RoleIDs.ADMIN, RoleIDs.BRAND_OWNER, RoleIDs.MANAGER, RoleIDs.ASSISTANT_MANAGER, RoleIDs.STAFF, RoleIDs.HQ_STAFF)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN, RoleIDs.BRAND_OWNER, RoleIDs.MANAGER, RoleIDs.ASSISTANT_MANAGER, RoleIDs.STAFF, RoleIDs.HQ_STAFF)),
 ):
     """
     Staff marks a specific reward as used at the counter.
@@ -494,7 +497,6 @@ async def use_customer_reward(
     )
 
     return {
-        "success": True,
         "message": f"Reward used: {reward.name if reward else 'Unknown'}",
         "reward_name": reward.name if reward else (ur.reward_snapshot or {}).get("name"),
         "redemption_code": ur.redemption_code,
@@ -509,7 +511,7 @@ async def use_customer_voucher(
     req: UseItemRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(RoleIDs.ADMIN, RoleIDs.BRAND_OWNER, RoleIDs.MANAGER, RoleIDs.ASSISTANT_MANAGER, RoleIDs.STAFF, RoleIDs.HQ_STAFF)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN, RoleIDs.BRAND_OWNER, RoleIDs.MANAGER, RoleIDs.ASSISTANT_MANAGER, RoleIDs.STAFF, RoleIDs.HQ_STAFF)),
 ):
     """
     Staff marks a specific voucher as used at the counter.
@@ -561,7 +563,6 @@ async def use_customer_voucher(
     )
 
     return {
-        "success": True,
         "message": f"Voucher used: {voucher.title if voucher else uv.code}",
         "voucher_title": voucher.title if voucher else None,
         "code": uv.code,

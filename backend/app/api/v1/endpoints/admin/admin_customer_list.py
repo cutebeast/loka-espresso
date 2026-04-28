@@ -6,7 +6,8 @@ from sqlalchemy import select, func, desc, or_, and_, case, literal
 from app.core.database import get_db
 from app.core.security import require_hq_access
 from app.core.utils import to_float
-from app.models.user import User, RoleIDs
+from app.models.admin_user import AdminUser
+from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount
 from app.models.order import Order
 from app.models.wallet import Wallet
@@ -61,7 +62,7 @@ async def list_customers(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     order_stats_query = (
         select(
@@ -82,9 +83,9 @@ async def list_customers(
     normalized_tier_filter = _normalize_tier_name(tier)
 
     profile_complete_expr = and_(
-        User.phone_verified == True,
-        func.coalesce(func.trim(User.name), '') != '',
-        func.coalesce(func.trim(User.email), '') != '',
+        Customer.phone_verified == True,
+        func.coalesce(func.trim(Customer.name), '') != '',
+        func.coalesce(func.trim(Customer.email), '') != '',
     )
 
     effective_tier_case = case(
@@ -98,12 +99,12 @@ async def list_customers(
 
     data_query = (
         select(
-            User.id,
-            User.name,
-            User.email,
-            User.phone,
-            User.phone_verified,
-            User.created_at,
+            Customer.id,
+            Customer.name,
+            Customer.email,
+            Customer.phone,
+            Customer.phone_verified,
+            Customer.created_at,
             LoyaltyAccount.tier,
             LoyaltyAccount.points_balance,
             LoyaltyAccount.total_points_earned,
@@ -111,27 +112,26 @@ async def list_customers(
             func.coalesce(order_stats_subquery.c.total_spent, 0).label("total_spent"),
             effective_tier_case.label("effective_tier"),
         )
-        .join(LoyaltyAccount, LoyaltyAccount.user_id == User.id, isouter=True)
-        .join(order_stats_subquery, order_stats_subquery.c.user_id == User.id, isouter=True)
-        .where(User.role_id == RoleIDs.CUSTOMER)
+        .join(LoyaltyAccount, LoyaltyAccount.user_id == Customer.id, isouter=True)
+        .join(order_stats_subquery, order_stats_subquery.c.user_id == Customer.id, isouter=True)
     )
 
     if search:
         search_digits = ''.join(c for c in search if c.isdigit())
         conditions = [
-            User.name.ilike(f"%{search}%"),
-            User.email.ilike(f"%{search}%"),
+            Customer.name.ilike(f"%{search}%"),
+            Customer.email.ilike(f"%{search}%"),
         ]
         if search_digits:
-            conditions.append(func.regexp_replace(User.phone, r'\D', '', 'g').ilike(f"%{search_digits}%"))
+            conditions.append(func.regexp_replace(Customer.phone, r'\D', '', 'g').ilike(f"%{search_digits}%"))
         data_query = data_query.where(or_(*conditions))
 
     if normalized_tier_filter:
         data_query = data_query.where(effective_tier_case == normalized_tier_filter)
 
     sort_map = {
-        'name': User.name,
-        'created_at': User.created_at,
+        'name': Customer.name,
+        'created_at': Customer.created_at,
         'points_balance': LoyaltyAccount.points_balance,
         'total_spent': order_stats_subquery.c.total_spent,
     }
@@ -172,7 +172,7 @@ async def list_customers(
         "page": page,
         "page_size": page_size,
         "total_pages": max(1, (total + page_size - 1) // page_size),
-        "customers": customers,
+        "items": customers,
     }
 
 
@@ -180,9 +180,9 @@ async def list_customers(
 async def get_customer(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(Customer).where(Customer.id == user_id))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -254,7 +254,7 @@ async def customer_orders(
     from_date: datetime | None = None,
     to_date: datetime | None = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     base = select(Order).where(Order.user_id == user_id)
     if status:
@@ -281,6 +281,7 @@ async def customer_orders(
         "total": total,
         "page": page,
         "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size),
         "items": [
             {
                 "id": o.id,

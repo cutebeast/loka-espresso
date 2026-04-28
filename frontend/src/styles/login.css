@@ -1,0 +1,16 @@
+.ls-0 { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #F5F7FA; }
+.ls-1 { max-width: 400px; width: 100%; }
+.ls-2 { text-align: center; margin-bottom: 24px; }
+.ls-3 { font-size: 40px; color: var(--color-primary); }
+.ls-4 { font-size: 24px; font-weight: 700; color: var(--color-primary); margin-top: 8px; }
+.ls-5 { color: #64748B; font-size: 14px; }
+.ls-6 { margin-bottom: 16px; }
+.ls-7 { font-size: 13px; font-weight: 600; color: #334155; display: block; margin-bottom: 4px; }
+.ls-8 { margin-bottom: 16px; }
+.ls-9 { font-size: 13px; font-weight: 600; color: #334155; display: block; margin-bottom: 4px; }
+.ls-10 { color: #EF4444; font-size: 13px; margin-bottom: 12px; }
+.ls-11 { width: 100%; justify-content: center; padding: 12px 16px; }
+
+@media (min-width: 768px) {
+  /* Desktop adjustments — base styles above are mobile-first */
+}

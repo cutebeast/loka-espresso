@@ -11,7 +11,7 @@ from app.core.utils import to_float
 from app.core.webhooks import verify_webhook_request
 from app.core.config import get_settings
 from app.core.audit import log_action
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.wallet import Wallet, WalletTransaction, WalletTxType
 from app.models.order import Order, Payment
 from app.schemas.wallet import WalletOut, WalletTopup, WalletDeduct, WalletTransactionOut
@@ -30,13 +30,13 @@ async def _get_or_create_wallet(user_id: int, db: AsyncSession) -> Wallet:
 
 
 @router.get("", response_model=WalletOut)
-async def get_wallet(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_wallet(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     wallet = await _get_or_create_wallet(user.id, db)
     return wallet
 
 
 @router.post("/topup")
-async def topup_wallet(req: WalletTopup, db: AsyncSession = Depends(get_db), user: User = Depends(require_hq_access())):
+async def topup_wallet(req: WalletTopup, db: AsyncSession = Depends(get_db), user: Customer = Depends(require_hq_access())):
     try:
         target_user_id = req.user_id or user.id
         _, new_balance = await credit_wallet(
@@ -76,7 +76,7 @@ async def topup_wallet(req: WalletTopup, db: AsyncSession = Depends(get_db), use
 
 
 @router.post("/deduct")
-async def deduct_wallet(req: WalletDeduct, db: AsyncSession = Depends(get_db), user: User = Depends(require_hq_access())):
+async def deduct_wallet(req: WalletDeduct, db: AsyncSession = Depends(get_db), user: Customer = Depends(require_hq_access())):
     """Admin-only: Deduct amount from customer wallet."""
     target_user_id = req.user_id
     wallet = await _get_or_create_wallet(target_user_id, db)
@@ -114,7 +114,7 @@ async def deduct_wallet(req: WalletDeduct, db: AsyncSession = Depends(get_db), u
 async def wallet_transactions(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     wallet = await _get_or_create_wallet(user.id, db)

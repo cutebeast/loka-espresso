@@ -9,7 +9,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models import OrderItem, OrderStatusHistory, Payment, MenuItem
-    from app.models.user import User
+    from app.models.user import User, Customer, AdminUser
     from app.models.store import Store
     from app.models.menu import MenuItem
 
@@ -35,7 +35,8 @@ class CartItem(Base):
     __tablename__ = "cart_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
+    store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True)
     item_id: Mapped[int] = mapped_column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     customization_option_ids: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
@@ -46,10 +47,11 @@ class CartItem(Base):
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_cart_item_quantity_positive"),
         CheckConstraint("unit_price >= 0", name="ck_cart_item_unit_price_nonnegative"),
-        UniqueConstraint("user_id", "item_id", "customization_hash", name="uq_cart_item_identity"),
+        UniqueConstraint("user_id", "store_id", "item_id", "customization_hash", name="uq_cart_item_identity"),
     )
 
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["Customer"] = relationship("Customer", foreign_keys=[user_id])
+    store: Mapped["Store"] = relationship("Store", foreign_keys=[store_id])
     menu_item: Mapped["MenuItem"] = relationship("MenuItem", foreign_keys=[item_id])
 
 
@@ -57,7 +59,7 @@ class Order(Base):
     __tablename__ = "orders"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True)
     table_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("store_tables.id", ondelete="SET NULL"), nullable=True)
     order_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
@@ -88,9 +90,9 @@ class Order(Base):
     delivery_courier_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     delivery_last_event_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     pos_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    pos_synced_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    pos_synced_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("admin_users.id", ondelete="SET NULL"), nullable=True)
     delivery_dispatched_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    delivery_dispatched_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    delivery_dispatched_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("admin_users.id", ondelete="SET NULL"), nullable=True)
     staff_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -103,6 +105,7 @@ class Order(Base):
         Index("ix_orders_store_status_created", "store_id", "status", "created_at"),
         Index("ix_orders_user_created", "user_id", "created_at"),
         Index("ix_orders_store_created", "store_id", "created_at"),
+        Index("ix_orders_type_status", "order_type", "status"),
     )
 
     status_history: Mapped[List["OrderStatusHistory"]] = relationship("OrderStatusHistory", back_populates="order", cascade="all, delete-orphan")
@@ -179,10 +182,10 @@ class CheckoutToken(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False)
     voucher_code: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    reward_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    reward_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("rewards.id", ondelete="SET NULL"), nullable=True)
     discount_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     discount_amount: Mapped[float] = mapped_column(DECIMAL(10, 2), default=0)
     subtotal: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
@@ -192,5 +195,5 @@ class CheckoutToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["Customer"] = relationship("Customer", foreign_keys=[user_id])
     store: Mapped["Store"] = relationship("Store", foreign_keys=[store_id])

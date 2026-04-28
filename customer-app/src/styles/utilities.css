@@ -576,6 +576,3 @@
 .bg-gradient-to-br { background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)); }
 .from-primary { --tw-gradient-from: var(--color-primary); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
 .to-primary-light { --tw-gradient-to: var(--color-primary-light); }
-
-/* ── Touch target ── */
-.touch-target { min-width: 44px; min-height: 44px; }

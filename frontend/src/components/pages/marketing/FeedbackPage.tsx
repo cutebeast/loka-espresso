@@ -57,8 +57,7 @@ export default function FeedbackPage({ token: _token, selectedStore }: FeedbackP
         const statsData = await statsRes.json();
         setStats(statsData.data ?? statsData);
       }
-    } catch {
-    } finally {
+    } catch { console.error('Failed to fetch feedback'); } finally {
       setLoading(false);
     }
   }, [selectedStore, fromDate, toDate]);
@@ -110,8 +109,7 @@ export default function FeedbackPage({ token: _token, selectedStore }: FeedbackP
       setReplyText('');
       setModalFeedback(null);
       fetchData();
-    } catch {
-    } finally {
+    } catch { console.error('Failed to submit reply'); } finally {
       setSubmitting(false);
     }
   }
@@ -124,8 +122,7 @@ export default function FeedbackPage({ token: _token, selectedStore }: FeedbackP
         body: JSON.stringify({ admin_reply: '' }),
       });
       fetchData();
-    } catch {
-    }
+    } catch { console.error('Failed to delete reply'); }
   }
 
   const distribution = stats?.rating_distribution ?? {};

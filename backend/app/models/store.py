@@ -36,6 +36,9 @@ class Store(Base):
 
     tables: Mapped[List["StoreTable"]] = relationship("StoreTable", back_populates="store", cascade="all, delete-orphan")
     inventory_items: Mapped[List["InventoryItem"]] = relationship("InventoryItem", back_populates="store", cascade="all, delete-orphan")
+    delivery_zones: Mapped[List["DeliveryZone"]] = relationship("DeliveryZone", back_populates="store", cascade="all, delete-orphan")
+    tax_rates: Mapped[List["TaxRate"]] = relationship("TaxRate", back_populates="store")
+    reservations: Mapped[List["Reservation"]] = relationship("Reservation", back_populates="store")
 
 
 class StoreTable(Base):

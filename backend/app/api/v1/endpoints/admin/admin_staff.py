@@ -12,13 +12,14 @@ from app.core.security import (
     hash_password, verify_password, is_global_admin,
 )
 from app.core.audit import log_action
-from app.models.user import User, UserTypeIDs, RoleIDs
+from app.models.admin_user import AdminUser
+from app.models.user import UserTypeIDs, RoleIDs
 from app.models.staff import Staff, StaffShift, StaffRole, PinAttempt
 from app.models.store import Store
 from app.models.acl import UserType as ACLUserType, Role, UserStoreAccess, Permission, RolePermission
 from app.schemas.admin_extras import StaffCreate, StaffUpdate, StaffShiftOut, ClockInRequest
 
-router = APIRouter(tags=["Admin Staff"])
+router = APIRouter(prefix="/admin", tags=["Admin Staff"])
 
 PIN_MAX_ATTEMPTS = 5
 PIN_WINDOW_MINUTES = 5
@@ -28,7 +29,7 @@ PIN_WINDOW_MINUTES = 5
 # Permission check
 # ---------------------------------------------------------------------------
 
-def _can_modify_target(actor: User, target_user: User | None) -> bool:
+def _can_modify_target(actor: AdminUser, target_user: AdminUser | None) -> bool:
     """Check if actor can modify the target user's type/role.
     - Admin: can update everyone
     - Brand Owner: can update store_management & store only
@@ -72,7 +73,7 @@ async def _resolve_role_names(db: AsyncSession, user_ids: list[int]) -> dict:
     """Returns {user_id: {user_type, role, user_type_id, role_id}} with resolved names."""
     if not user_ids:
         return {}
-    result = await db.execute(select(User.id, User.user_type_id, User.role_id).where(User.id.in_(user_ids)))
+    result = await db.execute(select(AdminUser.id, AdminUser.user_type_id, AdminUser.role_id).where(AdminUser.id.in_(user_ids)))
     rows = result.all()  # Consume once
 
     ut_map: dict[int, set] = {}
@@ -138,19 +139,19 @@ async def _check_pin_rate_limit(staff_id: int, db: AsyncSession):
 # HQ Staff list — ALL users with user_type_id = HQ_MANAGEMENT
 # ---------------------------------------------------------------------------
 
-@router.get("/admin/hq-staff")
+@router.get("/hq-staff")
 async def list_hq_staff(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
-    count_q = select(func.count()).select_from(User).where(User.user_type_id == UserTypeIDs.HQ_MANAGEMENT)
+    count_q = select(func.count()).select_from(AdminUser).where(AdminUser.user_type_id == UserTypeIDs.HQ_MANAGEMENT)
     total_result = await db.execute(count_q)
     total = total_result.scalar() or 0
 
     result = await db.execute(
-        select(User).where(User.user_type_id == UserTypeIDs.HQ_MANAGEMENT).order_by(User.name)
+        select(AdminUser).where(AdminUser.user_type_id == UserTypeIDs.HQ_MANAGEMENT).order_by(AdminUser.name)
         .offset((page - 1) * page_size).limit(page_size)
     )
     hq_users = result.scalars().all()
@@ -171,7 +172,7 @@ async def list_hq_staff(
             "store_assignments": store_access.get(u.id, []),
         })
     return {
-        "staff": out,
+        "items": out,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -183,13 +184,13 @@ async def list_hq_staff(
 # Store-scoped staff list
 # ---------------------------------------------------------------------------
 
-@router.get("/admin/stores/{store_id}/staff")
+@router.get("/stores/{store_id}/staff")
 async def list_staff(
     store_id: int,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_store_access()),
+    user: AdminUser = Depends(require_store_access()),
 ):
     count_q = select(func.count()).select_from(Staff).where(Staff.store_id == store_id)
     total_result = await db.execute(count_q)
@@ -221,7 +222,7 @@ async def list_staff(
             "store_assignments": store_access.get(s.user_id, []) if s.user_id else [],
         })
     return {
-        "staff": out,
+        "items": out,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -233,10 +234,10 @@ async def list_staff(
 # Create HQ Staff
 # ---------------------------------------------------------------------------
 
-@router.post("/admin/hq-staff")
+@router.post("/hq-staff")
 async def create_hq_staff(
     data: StaffCreate, request: Request,
-    db: AsyncSession = Depends(get_db), user: User = Depends(require_hq_access()),
+    db: AsyncSession = Depends(get_db), user: AdminUser = Depends(require_hq_access()),
 ):
     temp_password = None
     user_id = None
@@ -245,12 +246,12 @@ async def create_hq_staff(
     r_id = data.role_id or RoleIDs.HQ_STAFF
 
     if data.email:
-        existing = await db.execute(select(User).where(User.email == data.email))
+        existing = await db.execute(select(AdminUser).where(AdminUser.email == data.email))
         if existing.scalar_one_or_none():
             raise HTTPException(400, detail=f"User with email '{data.email}' already exists")
         temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
         phone_val = (data.phone or "").strip() or None
-        new_user = User(
+        new_user = AdminUser(
             email=data.email, name=data.name, phone=phone_val,
             password_hash=hash_password(temp_password),
             user_type_id=ut_id, role_id=r_id, is_active=True,
@@ -276,8 +277,8 @@ async def create_hq_staff(
         "user_type_id": ut_id, "role_id": r_id,
         "is_active": data.is_active,
         "store_assignments": store_access.get(user_id, []) if user_id else [],
+        "temp_password": temp_password,
     }
-    # Password is never returned in plaintext; admin must use reset-password flow
     return result
 
 
@@ -285,10 +286,10 @@ async def create_hq_staff(
 # Create Store Staff
 # ---------------------------------------------------------------------------
 
-@router.post("/admin/stores/{store_id}/staff")
+@router.post("/stores/{store_id}/staff")
 async def create_staff(
     store_id: int, data: StaffCreate, request: Request,
-    db: AsyncSession = Depends(get_db), user: User = Depends(require_hq_access()),
+    db: AsyncSession = Depends(get_db), user: AdminUser = Depends(require_hq_access()),
 ):
     temp_password = None
     user_id = None
@@ -297,11 +298,11 @@ async def create_staff(
     r_id = data.role_id or RoleIDs.STAFF
 
     if data.email:
-        existing = await db.execute(select(User).where(User.email == data.email))
+        existing = await db.execute(select(AdminUser).where(AdminUser.email == data.email))
         if existing.scalar_one_or_none():
             raise HTTPException(400, detail=f"User with email '{data.email}' already exists")
         temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
-        new_user = User(
+        new_user = AdminUser(
             email=data.email, name=data.name, phone=data.phone,
             password_hash=hash_password(temp_password),
             user_type_id=ut_id, role_id=r_id, is_active=True,
@@ -334,8 +335,8 @@ async def create_staff(
         "user_type_id": ut_id, "role_id": r_id,
         "is_active": data.is_active, "store_name": store_name_map.get(store_id),
         "store_assignments": store_access.get(user_id, []) if user_id else [],
+        "temp_password": temp_password,
     }
-    # Password is never returned in plaintext; admin must use reset-password flow
     return result
 
 
@@ -343,10 +344,10 @@ async def create_staff(
 # Update Staff
 # ---------------------------------------------------------------------------
 
-@router.put("/admin/staff/{staff_id}")
+@router.put("/staff/{staff_id}")
 async def update_staff(
     staff_id: int, data: StaffUpdate, request: Request = None,
-    db: AsyncSession = Depends(get_db), actor: User = Depends(require_hq_access()),
+    db: AsyncSession = Depends(get_db), actor: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(Staff).where(Staff.id == staff_id))
     obj = result.scalar_one_or_none()
@@ -356,7 +357,7 @@ async def update_staff(
     # Get linked user
     target_user = None
     if obj.user_id:
-        uresult = await db.execute(select(User).where(User.id == obj.user_id))
+        uresult = await db.execute(select(AdminUser).where(AdminUser.id == obj.user_id))
         target_user = uresult.scalar_one_or_none()
 
     # Permission check
@@ -409,23 +410,32 @@ async def update_staff(
 # Deactivate / Delete
 # ---------------------------------------------------------------------------
 
-@router.delete("/admin/staff/{staff_id}")
-async def deactivate_staff(staff_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_hq_access())):
+@router.delete("/staff/{staff_id}")
+async def deactivate_staff(staff_id: int, db: AsyncSession = Depends(get_db), user: AdminUser = Depends(require_hq_access())):
+    # Try staff record first
     result = await db.execute(select(Staff).where(Staff.id == staff_id))
     obj = result.scalar_one_or_none()
-    if not obj:
-        raise HTTPException(404)
-    obj.is_active = False
-    return {"detail": "Staff deactivated"}
+    if obj:
+        obj.is_active = False
+        return {"message": "Staff deactivated"}
+
+    # Fall back to admin_users (HQ users without staff record)
+    uresult = await db.execute(select(AdminUser).where(AdminUser.id == staff_id))
+    admin_user = uresult.scalar_one_or_none()
+    if admin_user:
+        admin_user.is_active = False
+        return {"message": "User deactivated"}
+
+    raise HTTPException(404, detail="Staff not found")
 
 
 # ---------------------------------------------------------------------------
 # Clock In / Out
 # ---------------------------------------------------------------------------
 
-@router.post("/admin/staff/{staff_id}/clock-in")
+@router.post("/staff/{staff_id}/clock-in")
 async def clock_in(staff_id: int, data: ClockInRequest, db: AsyncSession = Depends(get_db),
-                   user: User = Depends(get_current_user)):
+                   user: AdminUser = Depends(get_current_user)):
     await _check_pin_rate_limit(staff_id, db)
     result = await db.execute(select(Staff).where(Staff.id == staff_id))
     staff = result.scalar_one_or_none()
@@ -440,13 +450,13 @@ async def clock_in(staff_id: int, data: ClockInRequest, db: AsyncSession = Depen
         raise HTTPException(400, detail="Invalid PIN")
     shift = StaffShift(staff_id=staff_id, store_id=staff.store_id, clock_in=datetime.now(timezone.utc))
     db.add(shift)
-    return {"detail": "Clocked in", "shift_id": shift.id}
+    return {"message": "Clocked in", "shift_id": shift.id}
 
 
-@router.post("/admin/staff/{staff_id}/clock-out")
+@router.post("/staff/{staff_id}/clock-out")
 async def clock_out(
     staff_id: int, 
-    user: User = Depends(get_current_user),
+    user: AdminUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     staff_result = await db.execute(select(Staff).where(Staff.id == staff_id))
@@ -464,12 +474,12 @@ async def clock_out(
     if not shift:
         raise HTTPException(404, detail="No active shift found")
     shift.clock_out = datetime.now(timezone.utc)
-    return {"detail": "Clocked out", "shift_id": shift.id}
+    return {"message": "Clocked out", "shift_id": shift.id}
 
 
-@router.get("/admin/stores/{store_id}/shifts", response_model=list[StaffShiftOut])
+@router.get("/stores/{store_id}/shifts", response_model=list[StaffShiftOut])
 async def list_shifts(store_id: int, db: AsyncSession = Depends(get_db),
-                      user: User = Depends(require_store_access())):
+                      user: AdminUser = Depends(require_store_access())):
     result = await db.execute(
         select(StaffShift).join(Staff).where(Staff.store_id == store_id)
         .order_by(desc(StaffShift.clock_in)).limit(100)
@@ -481,25 +491,39 @@ async def list_shifts(store_id: int, db: AsyncSession = Depends(get_db),
 # Password Management
 # ---------------------------------------------------------------------------
 
-@router.post("/admin/staff/{staff_id}/reset-password")
+@router.post("/staff/{staff_id}/reset-password")
 async def reset_staff_password(
     staff_id: int, request: Request,
-    db: AsyncSession = Depends(get_db), admin: User = Depends(require_hq_access()),
+    db: AsyncSession = Depends(get_db),
+    admin: AdminUser = Depends(require_hq_access()),
 ):
+    # Try staff record first, fall back to user_id for HQ staff without staff records
     result = await db.execute(select(Staff).where(Staff.id == staff_id))
     staff = result.scalar_one_or_none()
+    
     if not staff:
-        raise HTTPException(404, "Staff not found")
+        # Try looking up as a user_id directly (HQ staff without staff record)
+        uresult = await db.execute(select(AdminUser).where(AdminUser.id == staff_id))
+        user = uresult.scalar_one_or_none()
+        if not user:
+            raise HTTPException(404, "Staff not found")
+        if not user.email:
+            raise HTTPException(400, "User has no email — add an email first")
+        temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
+        user.password_hash = hash_password(temp_password)
+        await db.flush()
+        return {"email": user.email, "password": temp_password, "name": user.name, "user_id": user.id}
+
     if not staff.email:
         raise HTTPException(400, "Staff has no email — add an email first")
 
     if not staff.user_id:
-        existing = await db.execute(select(User).where(User.email == staff.email))
+        existing = await db.execute(select(AdminUser).where(AdminUser.email == staff.email))
         if existing.scalar_one_or_none():
             raise HTTPException(400, f"User with email '{staff.email}' exists but not linked")
         temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
         phone_val = (staff.phone or "").strip() or None
-        new_user = User(
+        new_user = AdminUser(
             email=staff.email, name=staff.name, phone=phone_val,
             password_hash=hash_password(temp_password),
             user_type_id=UserTypeIDs.STORE, role_id=RoleIDs.STAFF, is_active=True,
@@ -507,14 +531,13 @@ async def reset_staff_password(
         db.add(new_user)
         await db.flush()
         staff.user_id = new_user.id
-        # Password is never returned in plaintext; admin must communicate reset link separately
-        return {"email": staff.email, "auto_created": True}
+        return {"email": staff.email, "password": temp_password, "name": staff.name, "auto_created": True}
 
-    uresult = await db.execute(select(User).where(User.id == staff.user_id))
+    uresult = await db.execute(select(AdminUser).where(AdminUser.id == staff.user_id))
     linked_user = uresult.scalar_one_or_none()
     if not linked_user:
         raise HTTPException(404, "Linked user not found")
 
     temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
     linked_user.password_hash = hash_password(temp_password)
-    return {"email": staff.email}
+    return {"email": staff.email, "password": temp_password, "name": staff.name}

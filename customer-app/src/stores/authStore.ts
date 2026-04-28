@@ -6,9 +6,11 @@ interface AuthState {
   isAuthenticated: boolean;
   isNewUser: boolean;
   phone: string;
+  authDone: boolean;
   setUser: (user: UserProfile | null) => void;
   setIsNewUser: (value: boolean) => void;
   setPhone: (phone: string) => void;
+  setAuthDone: (done: boolean) => void;
   logout: () => void;
   resetAllExceptCart: () => void;
 }
@@ -19,9 +21,11 @@ export const useAuthStore = create<AuthState>()(
     isAuthenticated: false,
     isNewUser: false,
     phone: '',
+    authDone: false,
     setUser: (user) => set({ user, isAuthenticated: !!user }),
     setIsNewUser: (isNewUser) => set({ isNewUser }),
     setPhone: (phone) => set({ phone }),
+    setAuthDone: (authDone) => set({ authDone }),
     logout: async () => {
       try {
         const { default: api } = await import('@/lib/api');
@@ -38,7 +42,7 @@ export const useAuthStore = create<AuthState>()(
       useUIStore.getState().resetAll();
       useWalletStore.getState().resetAll();
       useOrderStore.getState().resetAll();
-      set({ user: null, isAuthenticated: false, isNewUser: false, phone: '' });
+      set({ user: null, isAuthenticated: false, isNewUser: false, phone: '', authDone: false });
     },
     resetAllExceptCart: async () => {
       try {
@@ -53,7 +57,7 @@ export const useAuthStore = create<AuthState>()(
       useUIStore.getState().setIsGuest(false);
       useWalletStore.getState().resetAll();
       useOrderStore.getState().resetAll();
-      set({ user: null, isAuthenticated: false, isNewUser: false, phone: '' });
+      set({ user: null, isAuthenticated: false, isNewUser: false, phone: '', authDone: false });
     },
   })
 );

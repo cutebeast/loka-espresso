@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import require_hq_access
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User
+from app.models.admin_user import AdminUser
 from app.models.loyalty import LoyaltyTier
 from app.schemas.admin_extras import (
     LoyaltyTierOut,
@@ -13,24 +13,24 @@ from app.schemas.admin_extras import (
     LoyaltyTierCreate,
 )
 
-router = APIRouter(tags=["Admin Loyalty Tiers"])
+router = APIRouter(prefix="/admin", tags=["Admin Loyalty Tiers"])
 
 
-@router.get("/admin/loyalty-tiers", response_model=list[LoyaltyTierOut])
+@router.get("/loyalty-tiers", response_model=list[LoyaltyTierOut])
 async def list_loyalty_tiers(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(LoyaltyTier).order_by(LoyaltyTier.sort_order, LoyaltyTier.min_points))
     return result.scalars().all()
 
 
-@router.post("/admin/loyalty-tiers", status_code=201, response_model=LoyaltyTierOut)
+@router.post("/loyalty-tiers", status_code=201, response_model=LoyaltyTierOut)
 async def create_loyalty_tier(
     request: Request,
     data: LoyaltyTierCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     obj = LoyaltyTier(**data.model_dump())
     db.add(obj)
@@ -42,13 +42,13 @@ async def create_loyalty_tier(
     return obj
 
 
-@router.put("/admin/loyalty-tiers/{tier_id}", response_model=LoyaltyTierOut)
+@router.put("/loyalty-tiers/{tier_id}", response_model=LoyaltyTierOut)
 async def update_loyalty_tier(
     tier_id: int,
     request: Request,
     data: LoyaltyTierUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(LoyaltyTier).where(LoyaltyTier.id == tier_id))
     obj = result.scalar_one_or_none()
@@ -64,12 +64,12 @@ async def update_loyalty_tier(
     return obj
 
 
-@router.delete("/admin/loyalty-tiers/{tier_id}")
+@router.delete("/loyalty-tiers/{tier_id}")
 async def delete_loyalty_tier(
     tier_id: int,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     result = await db.execute(select(LoyaltyTier).where(LoyaltyTier.id == tier_id))
     obj = result.scalar_one_or_none()

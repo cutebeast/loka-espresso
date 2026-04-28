@@ -1,0 +1,59 @@
+/* ── BottomSheet (.bs-) ── */
+.bs-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 160;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* ── ActionSheet (.as-) ── */
+.as-sheet {
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}
+
+/* ── ErrorBoundary (.eb-) ── */
+.eb-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: #FAFAF5;
+  color: #2D3B2D;
+}
+.eb-inner {
+  max-width: 340px;
+  text-align: center;
+  padding: 40px 24px;
+  background: var(--color-white);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.eb-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+.eb-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.eb-message {
+  font-size: 14px;
+  color: #6B7280;
+  margin-bottom: 24px;
+}
+.eb-btn {
+  padding: 10px 32px;
+  border-radius: 12px;
+  border: none;
+  background: #2D3B2D;
+  color: #D4A574;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}

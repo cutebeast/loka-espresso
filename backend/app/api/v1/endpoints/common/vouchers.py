@@ -14,7 +14,8 @@ from typing import Optional, List
 from app.core.database import get_db
 from app.core.security import get_current_user, require_role, now_utc, ensure_utc
 from app.core.utils import to_float
-from app.models.user import User, RoleIDs
+from app.models.customer import Customer
+from app.models.user import RoleIDs
 from app.models.voucher import Voucher, UserVoucher
 
 router = APIRouter(prefix="/vouchers", tags=["Vouchers"])
@@ -96,7 +97,7 @@ class UseRequest(BaseModel):
 
 @router.get("/me", response_model=List[VoucherWalletOut])
 async def my_vouchers(
-    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
+    user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all vouchers for the current customer (available + used + expired)."""
@@ -129,7 +130,7 @@ async def my_vouchers(
 @router.post("/validate", response_model=ValidateResult)
 async def validate_voucher(
     req: ValidateRequest,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Validate a voucher instance code before checkout.
@@ -222,7 +223,7 @@ async def validate_voucher(
 @router.post("/apply", response_model=ApplyResult)
 async def apply_voucher(
     req: ApplyRequest,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -277,9 +278,10 @@ async def apply_voucher(
         elif discount_type in ("fixed", "free_item"):
             discount = discount_value
 
-        # Mark voucher as used immediately
-        uv.status = "used"
-        uv.used_at = now
+        # Mark voucher as reserved during checkout
+        # Status is committed to "used" only after successful order creation in POST /orders
+        uv.status = "reserved"
+        uv.reserved_at = now
         await db.flush()
 
         return ApplyResult(
@@ -360,7 +362,7 @@ async def apply_voucher(
 async def use_voucher(
     code: str,
     req: UseRequest,
-    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN, RoleIDs.BRAND_OWNER)),
+    user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN, RoleIDs.BRAND_OWNER)),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -414,3 +416,26 @@ async def use_voucher(
         discount_type=discount_type,
         discount_value=discount_value,
     )
+
+
+@router.delete("/me/{voucher_instance_id}")
+async def discard_voucher(
+    voucher_instance_id: int,
+    user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Discard an unwanted voucher from the customer's wallet."""
+    result = await db.execute(
+        select(UserVoucher).where(
+            UserVoucher.id == voucher_instance_id,
+            UserVoucher.user_id == user.id,
+        )
+    )
+    uv = result.scalar_one_or_none()
+    if not uv:
+        raise HTTPException(status_code=404, detail="Voucher not found in your wallet")
+    if uv.status == "used":
+        raise HTTPException(status_code=400, detail="Cannot discard a used voucher")
+    uv.status = "discarded"
+    await db.flush()
+    return {"message": "Voucher discarded", "id": voucher_instance_id}

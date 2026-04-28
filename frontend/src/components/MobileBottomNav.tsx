@@ -11,11 +11,10 @@ interface NavTab {
 }
 
 const navTabs: NavTab[] = [
-  { id: 'orders', label: 'Orders', icon: 'fa-clipboard-list' },
+  { id: 'tables', label: 'Tables', icon: 'fa-chair' },
   { id: 'kitchen', label: 'Station', icon: 'fa-fire-burner' },
   { id: 'posterminal', label: 'POS', icon: 'fa-cash-register' },
-  { id: 'tables', label: 'Tables', icon: 'fa-chair' },
-  { id: 'walletTopup', label: 'Wallet', icon: 'fa-wallet' },
+  { id: 'walletTopup', label: 'Top Up', icon: 'fa-wallet' },
 ];
 
 interface MobileBottomNavProps {

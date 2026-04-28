@@ -46,12 +46,12 @@ export default function CustomersPage({ token: _token, stores, selectedStore, on
       const res = await apiFetch(`/admin/customers?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setCustomers(data.customers || []);
+        setCustomers(data.items || []);
         setTotal(data.total || 0);
         setTotalPages(data.total_pages || 1);
         setPage(p);
       }
-    } catch {} finally { setLoading(false); }
+    } catch { console.error('Failed to fetch customers'); } finally { setLoading(false); }
   }, [selectedStore, search, tier, sortBy, sortDir, fromDate, toDate]);
 
   useEffect(() => { fetchCustomers(1); }, [fetchCustomers]);
@@ -149,26 +149,42 @@ export default function CustomersPage({ token: _token, stores, selectedStore, on
       <DataTable<CustomerItem>
         data={customers}
         columns={[
-          { key: 'name', header: 'Name', render: (c) => <span className="cp-13">{c.name || '-'}</span> },
-          { key: 'phone', header: 'Phone', render: (c) => <span className="cp-14">{c.phone || '-'}</span> },
-          { key: 'email', header: 'Email', render: (c) => <span className="cp-15">{c.email || '-'}</span> },
-          { key: 'tier', header: 'Tier', render: (c) => (
-            c.tier ? (
-              <span className={`badge ${
-                c.tier === 'platinum' ? 'badge-purple' :
-                c.tier === 'gold' ? 'badge-yellow' :
-                c.tier === 'silver' ? 'badge-gray' : 'badge-gray'
-              }`}>
-                {c.tier.charAt(0).toUpperCase() + c.tier.slice(1)}
-              </span>
-            ) : (
-              <span className="badge badge-yellow">No Tier</span>
-            )
+          { key: 'name', header: 'Customer', render: (c) => (
+            <div>
+              <div style={{ fontWeight: 600 }}>{c.name || '—'}</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{c.phone || '—'}</div>
+            </div>
           )},
-          { key: 'points_balance', header: 'Points', render: (c) => <span className="cp-16">{c.points_balance?.toLocaleString() || 0} pts</span> },
-          { key: 'total_orders', header: 'Orders', render: (c) => <span className="cp-17">{c.total_orders}</span> },
-          { key: 'total_spent', header: 'Total Spent', render: (c) => <span className="cp-18">{formatRM(c.total_spent || 0)}</span> },
-          { key: 'created_at', header: 'Joined', render: (c) => <span className="cp-19">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}</span> },
+          { key: 'email', header: 'Contact', render: (c) => (
+            <div>
+              <div>{c.email || '—'}</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                Joined {c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}
+              </div>
+            </div>
+          )},
+          { key: 'tier', header: 'Tier & Points', render: (c) => (
+            <div>
+              {c.tier ? (
+                <span className={`badge ${
+                  c.tier === 'platinum' ? 'badge-purple' :
+                  c.tier === 'gold' ? 'badge-yellow' :
+                  c.tier === 'silver' ? 'badge-gray' : 'badge-gray'
+                }`}>
+                  {c.tier.charAt(0).toUpperCase() + c.tier.slice(1)}
+                </span>
+              ) : (
+                <span className="badge badge-yellow">No Tier</span>
+              )}
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{c.points_balance?.toLocaleString() || 0} pts</div>
+            </div>
+          )},
+          { key: 'total_spent', header: 'Activity', render: (c) => (
+            <div>
+              <div><strong>{formatRM(c.total_spent || 0)}</strong></div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{c.total_orders} orders</div>
+            </div>
+          )},
           { key: 'actions', header: 'Actions', render: (c) => (
             <button className="btn btn-sm" onClick={() => onEditCustomer(c.id)}>
               <i className="fas fa-eye"></i> View

@@ -11,11 +11,12 @@ from typing import Optional, List
 
 from app.core.database import get_db
 from app.core.security import require_role
-from app.models.user import User, RoleIDs
+from app.models.admin_user import AdminUser
+from app.models.user import RoleIDs
 from app.models.content import InformationCard
 from app.schemas.admin_extras import InformationCardCreate, InformationCardUpdate
 
-router = APIRouter(prefix="/admin/content", tags=["Admin Content"])
+router = APIRouter(prefix="/admin", tags=["Admin Content"])
 
 
 def _slugify(text: str) -> str:
@@ -27,11 +28,11 @@ def _slugify(text: str) -> str:
     return text[:255]
 
 
-@router.get("/cards")
+@router.get("/content/cards")
 async def list_cards(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """List all information cards with pagination."""
@@ -51,7 +52,7 @@ async def list_cards(
         "page": page,
         "page_size": page_size,
         "total_pages": total_pages,
-        "cards": [
+        "items": [
             {
                 "id": c.id,
                 "title": c.title,
@@ -76,10 +77,10 @@ async def list_cards(
     }
 
 
-@router.get("/cards/{card_id}")
+@router.get("/content/cards/{card_id}")
 async def get_card(
     card_id: int,
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Get single information card detail."""
@@ -110,10 +111,10 @@ async def get_card(
     }
 
 
-@router.post("/cards", status_code=201)
+@router.post("/content/cards", status_code=201)
 async def create_card(
     req: InformationCardCreate,
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new information card."""
@@ -145,11 +146,11 @@ async def create_card(
     }
 
 
-@router.put("/cards/{card_id}")
+@router.put("/content/cards/{card_id}")
 async def update_card(
     card_id: int,
     req: InformationCardUpdate,
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Update an information card."""
@@ -171,10 +172,10 @@ async def update_card(
     }
 
 
-@router.delete("/cards/{card_id}")
+@router.delete("/content/cards/{card_id}")
 async def delete_card(
     card_id: int,
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete an information card."""

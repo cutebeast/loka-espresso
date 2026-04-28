@@ -4,7 +4,7 @@ from sqlalchemy import select, update, func
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.notification import Notification
 from app.schemas.notification import NotificationOut
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 async def list_notifications(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     count_q = select(func.count()).select_from(Notification).where(Notification.user_id == user.id)
@@ -32,7 +32,7 @@ async def list_notifications(
 
 
 @router.put("/{notification_id}/read")
-async def mark_read(notification_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def mark_read(notification_id: int, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Notification).where(Notification.id == notification_id, Notification.user_id == user.id)
     )
@@ -44,7 +44,7 @@ async def mark_read(notification_id: int, user: User = Depends(get_current_user)
 
 
 @router.put("/read-all")
-async def mark_all_read(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def mark_all_read(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Notification).where(Notification.user_id == user.id, Notification.is_read == False)
     )

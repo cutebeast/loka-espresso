@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
+import { API_BASE_URL } from '@/lib/config';
 
 interface PWASettingsPageProps {
   token: string;
@@ -88,7 +89,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
     setVersionLoading(true);
     try {
       // Build the customer app URL from the same API base (replace admin subdomain)
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+      const apiBase = API_BASE_URL;
       // Derive customer app origin: strip /api/v1 and replace admin. with app.
       const adminOrigin = apiBase.replace(/\/api\/v1\/?$/, '');
       const appOrigin = adminOrigin.replace('//admin.', '//app.');

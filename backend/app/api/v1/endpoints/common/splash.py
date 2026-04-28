@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.security import require_role, require_hq_access, now_utc
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.splash import SplashContent
 from app.schemas.splash import SplashOut, SplashUpdate
 
@@ -47,7 +47,7 @@ async def get_splash(db: AsyncSession = Depends(get_db)):
 @router.put("")
 async def update_splash(
     req: SplashUpdate,
-    user: User = Depends(require_hq_access()),
+    user: Customer = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(SplashContent).order_by(SplashContent.id.desc()).limit(1))
@@ -59,3 +59,17 @@ async def update_splash(
         setattr(splash, k, v)
     await db.flush()
     return {"message": "Splash updated", "id": splash.id}
+
+
+@router.delete("")
+async def delete_splash(
+    user: Customer = Depends(require_hq_access()),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(SplashContent).order_by(SplashContent.id.desc()).limit(1))
+    splash = result.scalar_one_or_none()
+    if not splash:
+        raise HTTPException(status_code=404, detail="No splash content found")
+    splash.is_active = False
+    await db.flush()
+    return {"message": "Splash content deactivated", "id": splash.id}

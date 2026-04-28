@@ -1,0 +1,62 @@
+.inventory-grid { grid-template-columns: 1fr !important; }
+.inventory-form-grid { grid-template-columns: 1fr !important; }
+.inventory-form-grid-2 { grid-template-columns: 1fr !important; }
+.inventory-form-actions { flex-direction: column; align-items: stretch !important; }
+.inventory-form-actions button { width: 100%; justify-content: center; }
+.inventory-actions { justify-content: flex-start; }
+.inventory-table th:nth-child(2),
+.inventory-table td:nth-child(2),
+.inventory-table th:nth-child(5),
+.inventory-table td:nth-child(5) { display: none; }
+
+/* ── Inventory page header ── */
+.invp-0 { background: transparent; color: inherit; display: flex; justify-content: flex-start; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.invp-1 { flex: 0 1 auto; min-width: 200px; display: flex; align-items: center; }
+
+/* ── Toolbar inside Stock tab ── */
+.inv-toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+
+/* ── Mobile sidebar toggle ── */
+.inv-mobile-toggle { display: block; margin-bottom: 12px; }
+.inv-mobile-toggle button { min-width: 44px; min-height: 44px; }
+.inv-sidebar { display: none; }
+.inv-sidebar.inv-sidebar-open { display: block; margin-bottom: 16px; }
+
+@media (min-width: 768px) {
+  .inventory-grid { grid-template-columns: 240px 1fr !important; gap: 24px; }
+  .inventory-form-grid { grid-template-columns: 1fr 1fr 1fr !important; gap: 16px; }
+  .inventory-form-grid-2 { grid-template-columns: 1fr 1fr !important; gap: 16px; }
+  .inventory-form-actions { flex-direction: row; align-items: center !important; }
+  .inventory-form-actions button { width: auto; }
+  .inventory-actions { justify-content: flex-end; }
+  .inventory-table th:nth-child(2),
+  .inventory-table td:nth-child(2),
+  .inventory-table th:nth-child(5),
+  .inventory-table td:nth-child(5) { display: table-cell; }
+  .inv-mobile-toggle { display: none; }
+  .inv-sidebar { display: block !important; }
+
+  /* Inventory Ledger page */
+  .ilp-0 { font-size: 13px; white-space: nowrap; }
+  .ilp-1 { font-weight: 500; }
+  .ilp-2 { font-size: 13px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; color: var(--color-text-muted); }
+  .ilp-3 { font-size: 13px; color: var(--color-text-muted); }
+  .ilp-4 { color: #4A607A; font-size: 12px; }
+  .ilp-5 { color: var(--color-text-muted); }
+  .ilp-6 { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .ilp-7 { text-align: center; padding: 60px; color: var(--color-text-muted); margin-top: 40px; }
+  .ilp-8 { font-size: 48px; margin-bottom: 16px; }
+  .ilp-9 { font-size: 16px; }
+  .ilp-10 { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--color-bg-muted); border-radius: 10px 10px 0 0; border: 1px solid #c4ced8; border-bottom: none; margin-top: 20px; }
+  .ilp-11 { font-size: 14px; color: var(--color-text-secondary); }
+  .ilp-12 { margin-right: 8px; color: var(--color-primary); }
+  .ilp-13 { color: var(--color-bg-dark); }
+  .ilp-14 { color: var(--color-bg-dark); }
+  .ilp-15 { font-size: 13px; color: var(--color-text-muted); }
+  .ilp-badge { padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .ilp-qty { font-weight: 600; }
+}
+
+/* ── Merge DataTable with stats bar ── */
+.ip-48 .dt-8 { border: none; border-radius: 0; box-shadow: none; }
+.invp-stats-info { font-size: 13px; color: var(--color-text-secondary); }

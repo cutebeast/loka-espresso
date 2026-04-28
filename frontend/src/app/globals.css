@@ -14,4 +14,31 @@
 
 /* 4. Components: buttons, cards, badges, tables, modals, forms, stats, KPIs, filters, tabs, pagination, skeleton */
 @import "../styles/components.css";
-@import "../styles/admin-extra.css";
+
+/* 5. Page-specific styles */
+@import "../styles/dashboard.css";
+@import "../styles/orders.css";
+@import "../styles/kitchen-display.css";
+@import "../styles/pos-terminal.css";
+@import "../styles/menu-admin.css";
+@import "../styles/tables-admin.css";
+@import "../styles/inventory-admin.css";
+@import "../styles/staff-admin.css";
+@import "../styles/reports.css";
+@import "../styles/settings-admin.css";
+
+/* 6. Marketing pages */
+@import "../styles/customers.css";
+@import "../styles/rewards.css";
+@import "../styles/vouchers.css";
+@import "../styles/promotions.css";
+@import "../styles/notifications.css";
+@import "../styles/feedback.css";
+
+/* 7. Shared UI */
+@import "../styles/login.css";
+@import "../styles/sidebar.css";
+@import "../styles/wallet-topup.css";
+@import "../styles/information.css";
+@import "../styles/mobile-guard.css";
+@import "../styles/customer-search.css";

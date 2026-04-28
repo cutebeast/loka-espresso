@@ -10,11 +10,12 @@ from app.core.security import get_current_user, can_access_store
 from app.core.webhooks import verify_webhook_request
 from app.core.utils import to_float
 from app.core.config import get_settings
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.order import Order, OrderStatusHistory, OrderStatus, OrderType, Payment
 from app.models.notification import Notification
 
 from .order_crud import _order_out
+from app.schemas.order import StaffNotesRequest
 
 logger = logging.getLogger(__name__)
 
@@ -253,8 +254,8 @@ async def external_pos_webhook(
 @router.post("/{order_id}/pos-synced")
 async def mark_order_pos_synced(
     order_id: int,
-    req: dict | None = None,
-    user: User = Depends(get_current_user),
+    req: StaffNotesRequest | None = None,
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -275,7 +276,7 @@ async def mark_order_pos_synced(
     order.pos_synced_at = datetime.now(timezone.utc)
     order.pos_synced_by = user.id
 
-    note_text = req.get("staff_notes") if req else None
+    note_text = req.staff_notes if req else None
     if note_text:
         order.staff_notes = note_text
 
@@ -293,8 +294,8 @@ async def mark_order_pos_synced(
 @router.post("/{order_id}/delivery-dispatched")
 async def mark_order_delivery_dispatched(
     order_id: int,
-    req: dict | None = None,
-    user: User = Depends(get_current_user),
+    req: StaffNotesRequest | None = None,
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -318,7 +319,7 @@ async def mark_order_delivery_dispatched(
     order.delivery_dispatched_at = datetime.now(timezone.utc)
     order.delivery_dispatched_by = user.id
 
-    note_text = req.get("staff_notes") if req else None
+    note_text = req.staff_notes if req else None
     if note_text:
         order.staff_notes = note_text
 

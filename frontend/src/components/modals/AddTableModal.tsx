@@ -17,7 +17,7 @@ export function AddTableForm({ storeId, token: _token, onClose }: { storeId: num
         body: JSON.stringify({ table_number: number, capacity: parseInt(capacity) }),
       });
       onClose();
-    } catch {} finally { setSaving(false); }
+    } catch { console.error('Modal save operation failed'); } finally { setSaving(false); }
   }
 
   return (

@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
+    from app.models.admin_user import AdminUser
     from app.models.store import Store
 
 
@@ -45,14 +45,14 @@ class RoleUserType(Base):
 class UserStoreAccess(Base):
     __tablename__ = "user_store_access"
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("admin_users.id"), primary_key=True)
     store_id: Mapped[int] = mapped_column(ForeignKey("stores.id"), primary_key=True)
     assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    assigned_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    assigned_by: Mapped[Optional[int]] = mapped_column(ForeignKey("admin_users.id"), nullable=True)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
 
     store: Mapped["Store"] = relationship("Store")
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["AdminUser"] = relationship("AdminUser", foreign_keys=[user_id])
 
 
 class Permission(Base):

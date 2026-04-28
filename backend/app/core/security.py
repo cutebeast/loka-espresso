@@ -118,6 +118,7 @@ async def get_current_user(
         if payload.get("type") != "access":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
         user_id: Optional[int] = payload.get("sub")
+        user_type: Optional[str] = payload.get("user_type")
         jti: Optional[str] = payload.get("jti")
         if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -127,14 +128,38 @@ async def get_current_user(
     if jti and await _is_token_blacklisted(jti, db):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
 
-    from app.models.user import User
-    result = await db.execute(select(User).where(User.id == int(user_id)))
-    user = result.scalar_one_or_none()
-    if user is None:
+    # Polymorphic lookup: check admin_users first, then customers
+    if user_type == "admin":
+        from app.models.admin_user import AdminUser
+        result = await db.execute(select(AdminUser).where(AdminUser.id == int(user_id)))
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin user not found")
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin account is inactive")
+        return user
+    elif user_type == "customer":
+        from app.models.customer import Customer
+        result = await db.execute(select(Customer).where(Customer.id == int(user_id)))
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Customer not found")
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Customer account is inactive")
+        return user
+    else:
+        # Legacy tokens without user_type — try admin first, then customer
+        from app.models.admin_user import AdminUser
+        from app.models.customer import Customer
+        result = await db.execute(select(AdminUser).where(AdminUser.id == int(user_id)))
+        user = result.scalar_one_or_none()
+        if user and user.is_active:
+            return user
+        result = await db.execute(select(Customer).where(Customer.id == int(user_id)))
+        user = result.scalar_one_or_none()
+        if user and user.is_active:
+            return user
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User account is inactive")
-    return user
 
 
 # ---------------------------------------------------------------------------
@@ -143,16 +168,22 @@ async def get_current_user(
 
 def is_global_admin(user) -> bool:
     """Admin or Brand Owner — sees all stores, full access."""
+    if not hasattr(user, 'role_id'):
+        return False
     return user.role_id in (RoleIDs.ADMIN, RoleIDs.BRAND_OWNER)
 
 
 def is_hq(user) -> bool:
     """Any HQ Management user (Admin, Brand Owner, HQ Staff)."""
+    if not hasattr(user, 'user_type_id'):
+        return False
     return user.user_type_id == UserTypeIDs.HQ_MANAGEMENT
 
 
 def is_dashboard_user(user) -> bool:
     """Any non-customer user who can access the admin dashboard."""
+    if not hasattr(user, 'user_type_id'):
+        return False
     return user.user_type_id != UserTypeIDs.CUSTOMER
 
 

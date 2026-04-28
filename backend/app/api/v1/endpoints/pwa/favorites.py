@@ -4,7 +4,7 @@ from sqlalchemy import select, delete, func
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.social import Favorite
 from app.models.menu import MenuItem
 from app.schemas.menu import MenuItemOut
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/favorites", tags=["Favorites"])
 async def list_favorites(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     count_q = select(func.count()).select_from(Favorite).where(Favorite.user_id == user.id)
@@ -37,7 +37,7 @@ async def list_favorites(
 
 
 @router.post("/{item_id}", status_code=201)
-async def add_favorite(item_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def add_favorite(item_id: int, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     existing = await db.execute(
         select(Favorite).where(Favorite.user_id == user.id, Favorite.item_id == item_id)
     )
@@ -50,7 +50,7 @@ async def add_favorite(item_id: int, user: User = Depends(get_current_user), db:
 
 
 @router.delete("/{item_id}")
-async def remove_favorite(item_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def remove_favorite(item_id: int, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Favorite).where(Favorite.user_id == user.id, Favorite.item_id == item_id)
     )

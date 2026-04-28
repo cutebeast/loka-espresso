@@ -143,15 +143,6 @@
   border-color: var(--loka-primary);
 }
 
-/* ── Scroll Containers ────────────────────────────────── */
-
-.scroll-x {
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.scroll-x::-webkit-scrollbar { display: none; }
-
 .scroll-y {
   overflow-y: auto;
   scrollbar-width: none;
@@ -241,14 +232,25 @@
   bottom: 100px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--loka-text-primary);
+  background: var(--loka-bg-dark);
   color: white;
-  padding: 12px 20px;
-  border-radius: 12px;
+  padding: 14px 24px;
+  border-radius: 16px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   z-index: 9999;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 90vw;
+  white-space: nowrap;
+  text-align: center;
+  animation: toast-in 0.3s ease;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 /* ── Spinners ─────────────────────────────────────────── */
@@ -372,18 +374,6 @@
   margin-top: 2px;
 }
 
-/* ── App Container ────────────────────────────────────── */
-
-.app-container {
-  width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  background: var(--loka-bg);
-  overflow: hidden;
-  position: relative;
-}
 
 /* ── Page Container ───────────────────────────────────── */
 
@@ -431,6 +421,46 @@
 .offline-banner.offline {
   background: #B91C1C;
 }
+
+/* ── Service Worker Update Banner ─────────────────────── */
+.sw-update-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 16px;
+  padding-right: 16px;
+  background: var(--loka-accent-copper);
+  color: white;
+  font-weight: 600;
+  z-index: 9999;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.sw-update-text {
+  flex: 1;
+}
+
+.sw-update-btn {
+  background: rgba(255,255,255,0.25);
+  border: 1px solid rgba(255,255,255,0.4);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.sw-update-btn:hover { background: rgba(255,255,255,0.4); }
 
 /* ── Menu Page Skeleton ────────────────────────────────── */
 .menu-skeleton-card {
@@ -527,4 +557,41 @@
   border-style: solid;
   border-width: 0 22px 22px 0;
   border-color: transparent var(--loka-copper) transparent transparent;
+}
+
+/* ── Guest Banner ──────────────────────────────────────── */
+
+.guest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--loka-primary) 0%, var(--loka-primary-dark) 100%);
+  color: white;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.guest-banner-text {
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guest-banner-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  padding: 5px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.guest-banner-btn:active {
+  background: rgba(255, 255, 255, 0.3);
 }

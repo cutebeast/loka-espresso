@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
+    from app.models.customer import Customer
     from app.models.menu import MenuItem
 
 
@@ -56,7 +56,7 @@ class UserReward(Base):
     __tablename__ = "user_rewards"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     reward_id: Mapped[int] = mapped_column(Integer, ForeignKey("rewards.id", ondelete="CASCADE"), nullable=False)
     store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id", ondelete="SET NULL"), nullable=True)
     redeemed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -74,5 +74,5 @@ class UserReward(Base):
         UniqueConstraint("user_id", "reward_id", name="uq_user_reward"),
     )
 
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["Customer"] = relationship("Customer", foreign_keys=[user_id])
     reward: Mapped["Reward"] = relationship("Reward", foreign_keys=[reward_id])

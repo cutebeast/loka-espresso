@@ -48,16 +48,16 @@ export default function InventoryLedgerPage({ selectedStore, storeObj: _storeObj
       if (fromDate) params.append('from_date', fromDate + 'T00:00:00');
       if (toDate) params.append('to_date', toDate + 'T23:59:59');
 
-      const url = `/stores/${selectedStore}/inventory-ledger?${params.toString()}`;
+      const url = `/admin/stores/${selectedStore}/inventory-ledger?${params.toString()}`;
       const res = await apiFetch(url);
       if (res.ok) {
         const data = await res.json();
-        setMovements(Array.isArray(data) ? data : (data.entries || []));
+        setMovements(Array.isArray(data) ? data : (data.items || []));
         setTotal(data.total || data.length || 0);
         setTotalPages(data.total_pages || 1);
         setPage(p);
       }
-    } catch {} finally { setLoading(false); }
+    } catch { console.error('Operation failed'); } finally { setLoading(false); }
   }, [selectedStore, filterType, fromDate, toDate]);
 
   useEffect(() => { fetchLedger(1); }, [fetchLedger]);

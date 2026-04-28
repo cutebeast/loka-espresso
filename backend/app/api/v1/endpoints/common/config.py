@@ -5,7 +5,8 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import require_role
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User, RoleIDs
+from app.models.admin_user import AdminUser
+from app.models.user import RoleIDs
 from app.models.splash import AppConfig
 from app.schemas.admin import AppConfigOut, AppConfigUpdate
 
@@ -17,7 +18,7 @@ ALLOWED_CONFIG_KEYS = {
     "currency", "currency_symbol", "earn_rate", "pickup_lead_minutes",
     "loyalty_enabled", "loyalty_points_per_rmse", "max_vouchers_per_user",
     "voucher_expiry_days", "points_redemption_rate", "referral_bonus_points",
-    "otp_bypass_enabled", "pwa_phone_country_code",
+    "otp_bypass_enabled", "pwa_phone_country_code", "otp_bypass_code",
 }
 
 SENSITIVE_KEY_PATTERNS = {"secret", "password", "token", "api_key", "private", "jwt", "credential", "bypass_code"}
@@ -77,13 +78,14 @@ async def get_config(db: AsyncSession = Depends(get_db)):
 @router.get("/admin/config")
 async def get_admin_config(
     key: list[str] | None = Query(default=None),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     query = select(AppConfig)
     if key:
         # Filter out any requested keys that match sensitive patterns
-        allowed_keys = [k for k in key if not any(p in k.lower() for p in SENSITIVE_KEY_PATTERNS)]
+        # Exception: allow otp_ prefixed keys that are in ALLOWED_CONFIG_KEYS
+        allowed_keys = [k for k in key if k in ALLOWED_CONFIG_KEYS or not any(p in k.lower() for p in SENSITIVE_KEY_PATTERNS)]
         if allowed_keys:
             query = query.where(AppConfig.key.in_(allowed_keys))
         else:
@@ -92,7 +94,8 @@ async def get_admin_config(
     result = await db.execute(query)
     configs = {row.key: row.value for row in result.scalars().all()}
     # Double-filter results to ensure no sensitive keys leak
-    filtered = {k: v for k, v in configs.items() if not any(p in k.lower() for p in SENSITIVE_KEY_PATTERNS)}
+    # Exception: keys in ALLOWED_CONFIG_KEYS are safe to expose
+    filtered = {k: v for k, v in configs.items() if k in ALLOWED_CONFIG_KEYS or not any(p in k.lower() for p in SENSITIVE_KEY_PATTERNS)}
     return {"configs": filtered}
 
 
@@ -101,7 +104,7 @@ async def update_config(
     request: Request,
     key: str,
     req: AppConfigUpdate,
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     # Reject keys not in the allowlist
@@ -109,8 +112,9 @@ async def update_config(
         raise HTTPException(status_code=400, detail="This key is not allowed to be modified via admin config")
 
     # Reject keys that look like secrets or infrastructure
+    # Exception: keys explicitly in ALLOWED_CONFIG_KEYS bypass this check
     lower_key = key.lower()
-    if any(pattern in lower_key for pattern in SENSITIVE_KEY_PATTERNS):
+    if key not in ALLOWED_CONFIG_KEYS and any(pattern in lower_key for pattern in SENSITIVE_KEY_PATTERNS):
         raise HTTPException(status_code=400, detail="This key cannot be modified via admin config")
 
     result = await db.execute(select(AppConfig).where(AppConfig.key == key))

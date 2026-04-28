@@ -1,24 +1,24 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
-import { useCartStore } from '@/stores/cartStore';
-import { useWalletStore } from '@/stores/walletStore';
-import { useConfigStore } from '@/stores/configStore';
 
 import api from '@/lib/api';
-import { autoDetectStore, getDistanceToStore } from '@/lib/geolocation';
-import type { PageId, Store as StoreType, CartItem } from '@/lib/api';
+import type { Store as StoreType } from '@/lib/api';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
+import { useAuthFlow } from '@/hooks/useAuthFlow';
+import { usePageRouter, SUB_PAGES } from '@/hooks/usePageRouter';
+import { useNotifications } from '@/hooks/useNotifications';
 import { resolveAppUrl } from '@/lib/tokens';
-import OfflineBanner from '@/components/OfflineBanner';
+import OfflineBanner from '@/components/shared/OfflineBanner';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useA2HS } from '@/hooks/useA2HS';
 import PromotionPopup from '@/components/PromotionPopup';
 import StorePickerModal from '@/components/StorePickerModal';
+import { LoginModal } from '@/components/auth/LoginModal';
 
 import { HubLayout } from '@/components/layouts';
 import { HomeHeader } from '@/components/HomeHeader';
@@ -48,126 +48,33 @@ const SettingsPage = dynamic(() => import('./profile/SettingsPage'), { ssr: fals
 const MyCardPage = dynamic(() => import('./MyCardPage'), { ssr: false });
 const OrderDetailPage = dynamic(() => import('./OrderDetailPage'), { ssr: false });
 
-// Pages that don't show bottom nav (sub-pages)
-const SUB_PAGES: PageId[] = [
-  'cart', 'checkout', 'order-detail', 'wallet', 'history',
-  'promotions', 'information', 'my-rewards', 'account-details',
-  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card',
-];
-
-// Pages accessible to guest users without login
-const PUBLIC_PAGES: PageId[] = [
-  'home', 'menu', 'promotions', 'information', 'legal',
-];
-
-function isPublicPage(page: PageId): boolean {
-  return PUBLIC_PAGES.includes(page);
-}
-
 export default function AppShell() {
-  const { user, isAuthenticated, setUser, logout } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const {
-    page, selectedStore, stores, toast, pageParams, isGuest,
-    setPage, setSelectedStore, setStores, showToast, hideToast,
-    setIsLoading, showStorePicker, setShowStorePicker,
+    page, selectedStore, stores, toast, pageParams, isGuest, requestSignIn,
+    setPage, setSelectedStore, setStores, showToast,
+    showStorePicker, setShowStorePicker, triggerSignIn,
   } = useUIStore();
-  const { setBalance, setPoints, setTier, refreshWallet } = useWalletStore();
-  const { loadConfig } = useConfigStore();
   const reducedMotion = useReducedMotion();
   const a2hs = useA2HS();
 
-  const [authDone, setAuthDone] = useState(false);
+  const { authDone, handleAuthDone } = useAuthFlow();
+  const { handleNavClick } = usePageRouter();
+  const { unreadCount, fetchUnreadCount } = useNotifications();
+
   const [showStoreModal, setShowStoreModal] = useState(false);
   const [, setStoreSearch] = useState('');
   const [, setSelectedStoreDistance] = useState('');
   const [showQRScanner, setShowQRScanner] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingArticleId = useRef<number | null>(null);
-  const pendingArticleSlug = useRef<string | null>(null);
-  const pendingGuestPage = useRef<PageId | null>(null);
-  const savedGuestCart = useRef<CartItem[] | null>(null);
-
-  // Parse deep-link query params on mount (e.g., ?article=123 or ?slug=history-of-pide from QR code)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-
-    // Support ?article=123 (numeric ID)
-    const article = params.get('article');
-    if (article) {
-      const id = parseInt(article, 10);
-      if (!isNaN(id)) {
-        pendingArticleId.current = id;
-        setPage('information', { selectedInfoId: id });
-      }
-    }
-
-    // Support ?slug=history-of-pide (human-readable slug)
-    const slug = params.get('slug');
-    if (slug) {
-      pendingArticleSlug.current = slug;
-      setPage('information', { selectedInfoSlug: slug });
-    }
-
-    // Clean query params from URL without reloading
-    if (article || slug) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('article');
-      url.searchParams.delete('slug');
-      window.history.replaceState({}, '', url.toString());
-    }
-  }, [setPage]);
-
-  // When guest mode is enabled, allow browsing without auth
-  useEffect(() => {
-    if (isGuest && !authDone) {
-      setAuthDone(true);
-    }
-  }, [isGuest, authDone]);
-
-  // Redirect guest away from restricted pages — trigger auth flow
-  useEffect(() => {
-    if (isGuest && !isPublicPage(page) && authDone) {
-      pendingGuestPage.current = page;
-      const cart = useCartStore.getState();
-      savedGuestCart.current = [...cart.items];
-      useUIStore.getState().setIsGuest(false);
-      setAuthDone(false);
-      useAuthStore.getState().resetAllExceptCart();
-    }
-  }, [isGuest, page, authDone]);
-
-  // Hash-based routing: listen for back/forward browser navigation
-  useEffect(() => {
-    const handler = () => {
-      const raw = window.location.hash.replace('#', '');
-      const pagePart = raw.split('?')[0];
-      const valid: PageId[] = [
-        'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
-        'wallet', 'history', 'promotions', 'information', 'my-rewards',
-        'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail',
-      ];
-      if (valid.includes(pagePart as PageId)) {
-        const queryPart = raw.split('?')[1];
-        const params: Record<string, unknown> = {};
-        if (queryPart) {
-          new URLSearchParams(queryPart).forEach((v, k) => {
-            if (k === 'orderId' || k === 'selectedInfoId' || k === 'selectedPromoId') params[k] = parseInt(v, 10);
-            else params[k] = v;
-          });
-        }
-        setPage(pagePart as PageId, Object.keys(params).length > 0 ? params : undefined);
-      }
-    };
-    window.addEventListener('hashchange', handler);
-    return () => window.removeEventListener('hashchange', handler);
-  }, [setPage]);
+  const [swUpdateAvailable, setSwUpdateAvailable] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const prevRequestSignIn = useRef(requestSignIn);
 
   // Calculate store distance
   useEffect(() => {
     const calc = async () => {
       if (selectedStore && selectedStore.lat != null && selectedStore.lng != null) {
+        const { getDistanceToStore } = await import('@/lib/geolocation');
         const dist = await getDistanceToStore(selectedStore);
         setSelectedStoreDistance(dist || '');
       }
@@ -187,6 +94,11 @@ export default function AppShell() {
   // Version check
   useVersionCheck();
 
+  // Fetch unread notification count after auth
+  useEffect(() => {
+    if (authDone && !isGuest) fetchUnreadCount();
+  }, [authDone, isGuest, fetchUnreadCount]);
+
   // Listen for QR scanner open requests from child components (e.g. cart)
   useEffect(() => {
     const handler = () => setShowQRScanner(true);
@@ -194,127 +106,32 @@ export default function AppShell() {
     return () => window.removeEventListener('open-qr-scanner', handler);
   }, []);
 
-  // Toast auto-hide
+  // Listen for SW update notifications
   useEffect(() => {
-    if (toast) {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = setTimeout(() => hideToast(), 3000);
-    }
-    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
-  }, [toast, hideToast]);
+    const handler = () => setSwUpdateAvailable(true);
+    window.addEventListener('sw-update-available', handler);
+    return () => window.removeEventListener('sw-update-available', handler);
+  }, []);
 
-  // Load app data when authenticated
-  const loadAppData = useCallback(async () => {
-    try {
-      const [profileRes, loyaltyRes, walletRes, storesRes] = await Promise.allSettled([
-        api.get('/users/me'),
-        api.get('/loyalty/balance'),
-        api.get('/wallet'),
-        api.get('/stores'),
-      ]);
-
-      if (profileRes.status === 'fulfilled') setUser(profileRes.value.data);
-      if (loyaltyRes.status === 'fulfilled') {
-        const d = loyaltyRes.value.data;
-        if (d?.points_balance != null) setPoints(Number(d.points_balance));
-        if (d?.tier) setTier(d.tier);
-      }
-      if (walletRes.status === 'fulfilled') {
-        const d = walletRes.value.data;
-        if (d?.balance != null) setBalance(Number(d.balance));
-      }
-      if (storesRes.status === 'fulfilled') {
-        const list: StoreType[] = storesRes.value.data;
-        setStores(list);
-        if (!selectedStore && list.length > 0) {
-          const detected = await autoDetectStore(list);
-          setSelectedStore(detected);
-        }
-      }
-      refreshWallet();
-      loadConfig();
-      // Fetch unread notification count
-      try {
-        const notifRes = await api.get('/notifications');
-        const notifs = Array.isArray(notifRes.data) ? notifRes.data : [];
-        setUnreadCount(notifs.filter((n: { is_read?: boolean }) => !n.is_read).length);
-      } catch { /* ignore */ }
-    } catch {
-      showToast('Failed to load app data', 'error');
-    }
-  }, [setUser, setPoints, setTier, setBalance, setStores, setSelectedStore, selectedStore, showToast, refreshWallet, loadConfig]);
-
+  // When requestSignIn fires, open LoginModal instead of full-screen AuthFlow
   useEffect(() => {
-    if (isAuthenticated && authDone) loadAppData();
-  }, [isAuthenticated, authDone, loadAppData]);
-
-  // Validate session on mount via httpOnly cookie
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const abortCtrl = new AbortController();
-    const validate = async () => {
-      setIsLoading(true);
-      try {
-        const res = await api.get('/users/me', { signal: abortCtrl.signal });
-        setUser(res.data);
-        setAuthDone(true);
-      } catch (err) {
-        if ((err as Error)?.name === 'AbortError') return;
-        logout();
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    validate();
-    return () => abortCtrl.abort();
-  }, [logout, setIsLoading, setUser, isAuthenticated]);
-
-  const handleAuthDone = useCallback(() => {
-    setAuthDone(true);
-    // Restore guest cart that was saved before sign-in
-    if (savedGuestCart.current) {
-      const items = savedGuestCart.current;
-      savedGuestCart.current = null;
-      if (items.length > 0) {
-        const cart = useCartStore.getState();
-        cart.clearCart();
-        items.forEach((item) => cart.addItem(item));
-        useUIStore.getState().showToast('Cart restored', 'success');
-      }
+    if (requestSignIn > prevRequestSignIn.current) {
+      prevRequestSignIn.current = requestSignIn;
+      setShowLoginModal(true);
     }
-    // Navigate to pending page (guest wanted to go to checkout/cart etc.)
-    if (pendingGuestPage.current) {
-      const target = pendingGuestPage.current;
-      pendingGuestPage.current = null;
-      setTimeout(() => setPage(target), 100);
-    }
-    // If a QR code brought us here with an article ID or slug, navigate there after login
-    if (pendingArticleId.current != null) {
-      setPage('information', { selectedInfoId: pendingArticleId.current });
-      pendingArticleId.current = null;
-    } else if (pendingArticleSlug.current != null) {
-      setPage('information', { selectedInfoSlug: pendingArticleSlug.current });
-      pendingArticleSlug.current = null;
-    }
-  }, [setPage]);
-
-  const handleNavClick = (id: PageId) => {
-    if (id === page) return;
-    setPage(id);
-  };
+  }, [requestSignIn]);
 
   const renderPage = () => {
     switch (page) {
       case 'home': return (
-        <HubLayout
+          <HubLayout
           page={page}
           onNavigate={handleNavClick}
-          isGuest={isGuest}
           header={
             <HomeHeader
               userName={user?.name}
               unreadNotifications={unreadCount}
-              onNotificationClick={() => setPage('notifications')}
+              onNotificationClick={() => isGuest ? triggerSignIn() : setPage('notifications')}
               onQRScanClick={() => setShowQRScanner(true)}
             />
           }
@@ -323,22 +140,22 @@ export default function AppShell() {
         </HubLayout>
       );
       case 'menu': return (
-        <HubLayout page={page} onNavigate={handleNavClick} isGuest={isGuest}>
+        <HubLayout page={page} onNavigate={handleNavClick}>
           <MenuPage />
         </HubLayout>
       );
       case 'rewards': return (
-        <HubLayout page={page} onNavigate={handleNavClick} isGuest={isGuest}>
+        <HubLayout page={page} onNavigate={handleNavClick}>
           <RewardsPage />
         </HubLayout>
       );
       case 'orders': return (
-        <HubLayout page={page} onNavigate={handleNavClick} isGuest={isGuest}>
+        <HubLayout page={page} onNavigate={handleNavClick}>
           <OrdersPage />
         </HubLayout>
       );
       case 'profile': return (
-        <HubLayout page={page} onNavigate={handleNavClick} isGuest={isGuest}>
+        <HubLayout page={page} onNavigate={handleNavClick}>
           <ProfilePage />
         </HubLayout>
       );
@@ -373,30 +190,28 @@ export default function AppShell() {
   return (
     <div className="app-container">
       <OfflineBanner />
-      {page === 'home' && <PromotionPopup />}
-
-      {/* Guest banner — prompts sign-in for full access */}
-      {isGuest && authDone && (
-        <div className="guest-banner">
-          <div className="guest-banner-text">
-            <span>Browsing as guest</span>
-          </div>
+      {swUpdateAvailable && (
+        <motion.div
+          initial={{ opacity: 0, y: -40 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="sw-update-banner"
+        >
+          <span className="sw-update-text">A new version is available</span>
           <button
-            className="guest-banner-btn"
+            className="sw-update-btn"
             onClick={() => {
-              const cart = useCartStore.getState();
-              savedGuestCart.current = [...cart.items];
-              useUIStore.getState().setIsGuest(false);
-              setAuthDone(false);
-              useAuthStore.getState().resetAllExceptCart();
+              if (navigator.serviceWorker?.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+              }
+              window.location.reload();
             }}
           >
-            Sign in
+            Refresh
           </button>
-        </div>
+        </motion.div>
       )}
+      {page === 'home' && <PromotionPopup />}
 
-      {/* Information pages and other public pages can be accessed without login */}
       {/* Guest users skip auth flow entirely */}
       {!isGuest && !authDone ? (
         <AuthFlow onAuthDone={handleAuthDone} />
@@ -417,7 +232,7 @@ export default function AppShell() {
               >
                 <div className="flex items-center justify-between text-white pt-2">
                   <span className="text-sm font-medium flex-1">{toast.message}</span>
-                  <button onClick={hideToast} className="ml-3 p-1 rounded-full hover:bg-white/20 touch-target">
+                  <button onClick={() => useUIStore.getState().hideToast()} className="ml-3 p-1 rounded-full hover:bg-white/20 touch-target">
                     <span className="text-white">✕</span>
                   </button>
                 </div>
@@ -503,7 +318,6 @@ export default function AppShell() {
                   setSelectedStore(store);
                   setShowStoreModal(false);
                   setShowStorePicker(false);
-                  // store selection is tracked in uiStore.selectedStore only
                   setStoreSearch('');
                   showToast(`Switched to ${store.name}`, 'success');
                 }}
@@ -546,7 +360,6 @@ export default function AppShell() {
                 showToast('Invalid QR code format', 'error');
                 return;
               }
-              // Information / product deep-link QR
               if (articleSlug) {
                 setPage('information', { selectedInfoSlug: articleSlug });
                 return;
@@ -558,7 +371,7 @@ export default function AppShell() {
               try {
                 const res = await api.post('/tables/scan', { store_slug: storeSlug, table_id: tableId, qr_token: qrToken });
                 const data = res.data;
-                const { setOrderMode, setDineInSession, setSelectedStore } = useUIStore.getState();
+                const { setOrderMode, setDineInSession, setSelectedStore: setStore } = useUIStore.getState();
                 setDineInSession({
                   storeId: data.store_id,
                   storeName: data.store_name,
@@ -570,13 +383,20 @@ export default function AppShell() {
                 const storeRes = await api.get('/stores');
                 const storeList: StoreType[] = storeRes.data;
                 const found = storeList.find((s) => s.id === data.store_id);
-                if (found) setSelectedStore(found);
+                if (found) setStore(found);
                 showToast(`Table ${data.table_number} at ${data.store_name}`, 'success');
               } catch (err: unknown) {
                 const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Failed to scan table';
                 showToast(msg, 'error');
               }
             }}
+          />
+
+          {/* Login Modal — shown when guest triggers sign-in */}
+          <LoginModal
+            isOpen={showLoginModal}
+            onClose={() => setShowLoginModal(false)}
+            onAuthDone={handleAuthDone}
           />
         </>
       )}

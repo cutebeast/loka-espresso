@@ -1,6 +1,6 @@
 # API Audit
 
-> **Last Updated:** 2026-04-25
+> **Last Updated:** 2026-04-26
 
 ## Overview
 
@@ -51,3 +51,28 @@ Swagger UI available at `/docs`, ReDoc at `/redoc`.
 - ACL permissions are defined but most admin routes use coarse role checks
 - OTP bypass is enabled in Docker compose (`OTP_BYPASS_ALLOWED: "true"`) — disable in production
 - No automated test coverage exists; verification is limited to lint/build/import checks
+
+## Session 4 Findings (April 26, 2026)
+
+### Response Format Standardization
+- 8 endpoints standardized from legacy keys (`"detail"`, `"deleted"`, `"success"`) to `"message"`
+- Affected files: `admin_menu.py`, `admin_customer_actions.py`, `admin_staff.py`, `admin_banners.py`, `admin_broadcasts.py`
+
+### Pagination Inconsistency
+- Only 2/17 paginated endpoints use `"items"` key; remainder use resource-specific names (`"stores"`, `"orders"`, `"campaigns"`, etc.)
+
+### Router Prefix Inconsistency  
+- 6 files use sub-prefixes (`/admin/vouchers`, `/admin/rewards`, `/admin/marketing`, `/admin/surveys`, `/admin/content`, `/admin/reports`) instead of standard `prefix="/admin"`
+
+### New CRUD Endpoints Added
+- DELETE `/payments/methods/{id}` — delete payment method
+- DELETE `/splash/{id}` — delete splash content
+- DELETE `/users/me` — delete own account
+- PUT `/feedback/{id}` — update feedback (add admin reply)  
+- DELETE `/feedback/{id}` — delete feedback
+- GET `/campaigns/{id}` — get single campaign
+- GET `/broadcasts/{id}` — get single broadcast
+- DELETE `/vouchers/me/{voucher_id}` — delete own voucher
+
+### Pydantic Validation
+- All 8 admin_marketing.py endpoints converted from `req: dict` to Pydantic schemas

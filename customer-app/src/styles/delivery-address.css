@@ -1,0 +1,9 @@
+/* ── DeliveryAddressCard (.dac-) ── */
+.dac-title {
+  font-size: 13px;
+}
+.dac-textarea {
+  padding-right: 44px;
+  font-family: inherit;
+  box-sizing: border-box;
+}

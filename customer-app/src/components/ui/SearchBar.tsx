@@ -44,7 +44,7 @@ export function SearchBar({
       {value && (
         <button
           onClick={() => onChange('')}
-          className="w-5 h-5 rounded-full bg-border-subtle flex items-center justify-center shrink-0"
+          className="w-10 h-10 rounded-full bg-border-subtle flex items-center justify-center shrink-0"
         >
           <X size={12} className="text-text-muted" />
         </button>

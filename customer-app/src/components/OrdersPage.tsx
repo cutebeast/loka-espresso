@@ -5,6 +5,7 @@ import {
   RefreshCw,
   ShoppingBag,
   Receipt,
+  Wifi,
 } from 'lucide-react';
 import { useOrderStore } from '@/stores/orderStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -139,6 +140,13 @@ export default function OrdersPage() {
     <div className="orders-screen">
       <div className="orders-header">
         <h1 className="orders-page-title">Orders</h1>
+        {hasActive && (
+          <span className="orders-polling-indicator">
+            <Wifi size={10} />
+            <span className="orders-polling-dot" />
+            Auto-updating
+          </span>
+        )}
       </div>
 
       <div className="orders-scroll">

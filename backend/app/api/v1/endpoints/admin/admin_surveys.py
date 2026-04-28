@@ -6,18 +6,18 @@ from typing import List
 from app.core.database import get_db
 from app.core.security import require_hq_access
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User
+from app.models.admin_user import AdminUser
 from app.models.survey import Survey, SurveyQuestion, SurveyResponse
 from app.schemas.survey import SurveyCreate, SurveyUpdate, SurveyOut, SurveyListItem, SurveyQuestionOut
 
-router = APIRouter(prefix="/admin/surveys", tags=["Admin Surveys"])
+router = APIRouter(prefix="/admin", tags=["Admin Surveys"])
 
 
-@router.get("")
+@router.get("/surveys")
 async def list_surveys(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     count_q = select(func.count()).select_from(Survey)
@@ -41,7 +41,7 @@ async def list_surveys(
             created_at=s.created_at,
         ))
     return {
-        "surveys": items,
+        "items": items,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -49,10 +49,10 @@ async def list_surveys(
     }
 
 
-@router.get("/{survey_id}", response_model=SurveyOut)
+@router.get("/surveys/{survey_id}", response_model=SurveyOut)
 async def get_survey(
     survey_id: int,
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Survey).where(Survey.id == survey_id))
@@ -73,11 +73,11 @@ async def get_survey(
     )
 
 
-@router.post("", status_code=201, response_model=SurveyOut)
+@router.post("/surveys", status_code=201, response_model=SurveyOut)
 async def create_survey(
     data: SurveyCreate,
     request: Request,
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     if data.questions and len(data.questions) > 5:
@@ -115,12 +115,12 @@ async def create_survey(
     )
 
 
-@router.put("/{survey_id}", response_model=SurveyOut)
+@router.put("/surveys/{survey_id}", response_model=SurveyOut)
 async def update_survey(
     survey_id: int,
     data: SurveyUpdate,
     request: Request,
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Survey).where(Survey.id == survey_id))
@@ -170,11 +170,11 @@ async def update_survey(
     )
 
 
-@router.delete("/{survey_id}")
+@router.delete("/surveys/{survey_id}")
 async def delete_survey(
     survey_id: int,
     request: Request,
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Survey).where(Survey.id == survey_id))
@@ -192,15 +192,15 @@ async def delete_survey(
 # ============================================================================
 
 from app.models.survey import SurveyAnswer
-from app.models.user import User as UserModel
+from app.models.admin_user import AdminUser as UserModel
 
 
-@router.get("/{survey_id}/responses")
+@router.get("/surveys/{survey_id}/responses")
 async def list_survey_responses(
     survey_id: int,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all responses for a survey with answers and user info."""
@@ -266,7 +266,7 @@ async def list_survey_responses(
     return {
         "survey_id": survey_id,
         "survey_title": survey.title,
-        "responses": items,
+        "items": items,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -274,10 +274,10 @@ async def list_survey_responses(
     }
 
 
-@router.get("/{survey_id}/responses/export")
+@router.get("/surveys/{survey_id}/responses/export")
 async def export_survey_responses(
     survey_id: int,
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """Export all survey responses as JSON (no pagination)."""

@@ -6,20 +6,21 @@ from sqlalchemy import select, func, desc
 from app.core.database import get_db
 from app.core.security import require_role
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User, RoleIDs
+from app.models.admin_user import AdminUser
+from app.models.user import RoleIDs
 from app.models.reward import Reward, UserReward
-from app.models.user import User as UserModel
+from app.models.admin_user import AdminUser as UserModel
 from app.schemas.reward import RewardOut, RewardCreate, RewardUpdate
 
-router = APIRouter(prefix="/admin/rewards", tags=["Admin Rewards"])
+router = APIRouter(prefix="/admin", tags=["Admin Rewards"])
 
 
-@router.get("")
+@router.get("/rewards")
 async def list_rewards_admin(
     include_deleted: bool = False,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     base = select(Reward)
@@ -36,7 +37,7 @@ async def list_rewards_admin(
     result = await db.execute(q)
     rewards = result.scalars().all()
     return {
-        "rewards": rewards,
+        "items": rewards,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -44,8 +45,8 @@ async def list_rewards_admin(
     }
 
 
-@router.post("", status_code=201, response_model=RewardOut)
-async def create_reward(request: Request, req: RewardCreate, user: User = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
+@router.post("/rewards", status_code=201, response_model=RewardOut)
+async def create_reward(request: Request, req: RewardCreate, user: AdminUser = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
     reward = Reward(**req.model_dump())
     db.add(reward)
     await db.flush()
@@ -55,8 +56,8 @@ async def create_reward(request: Request, req: RewardCreate, user: User = Depend
     return reward
 
 
-@router.put("/{reward_id}")
-async def update_reward(reward_id: int, request: Request, req: RewardUpdate, user: User = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
+@router.put("/rewards/{reward_id}")
+async def update_reward(reward_id: int, request: Request, req: RewardUpdate, user: AdminUser = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Reward).where(Reward.id == reward_id))
     reward = result.scalar_one_or_none()
     if not reward:
@@ -68,8 +69,8 @@ async def update_reward(reward_id: int, request: Request, req: RewardUpdate, use
     return {"message": "Reward updated"}
 
 
-@router.delete("/{reward_id}")
-async def deactivate_reward(reward_id: int, request: Request, user: User = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
+@router.delete("/rewards/{reward_id}")
+async def deactivate_reward(reward_id: int, request: Request, user: AdminUser = Depends(require_role(RoleIDs.ADMIN)), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Reward).where(Reward.id == reward_id))
     reward = result.scalar_one_or_none()
     if not reward:
@@ -81,12 +82,12 @@ async def deactivate_reward(reward_id: int, request: Request, user: User = Depen
     return {"message": "Reward soft-deleted"}
 
 
-@router.get("/{reward_id}/redemptions")
+@router.get("/rewards/{reward_id}/redemptions")
 async def reward_redemptions(
     reward_id: int,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    user: User = Depends(require_role(RoleIDs.ADMIN)),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     count_result = await db.execute(select(func.count()).select_from(UserReward).where(UserReward.reward_id == reward_id))
@@ -104,7 +105,7 @@ async def reward_redemptions(
         u = user_result.scalar_one_or_none()
         out.append({"user_id": r.user_id, "user_name": u.name if u else "Unknown", "redeemed_at": r.redeemed_at.isoformat() if r.redeemed_at else None, "store_id": r.store_id, "is_used": r.is_used})
     return {
-        "redemptions": out,
+        "items": out,
         "total": total,
         "page": page,
         "page_size": page_size,

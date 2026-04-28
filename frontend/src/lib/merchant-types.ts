@@ -213,6 +213,7 @@ export interface BroadcastListResponse {
 export interface MerchantAuditEntry {
   id: number;
   timestamp: string;
+  created_at: string;
   user_email: string;
   action: string;
   ip_address: string;

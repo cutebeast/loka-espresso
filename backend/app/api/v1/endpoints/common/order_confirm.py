@@ -7,11 +7,12 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import get_current_user, is_global_admin, can_access_store
 from app.core.utils import to_float
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.order import Order, OrderStatusHistory, OrderStatus
 from app.models.store import Store
 from app.models.notification import Notification
 from app.models.voucher import UserVoucher
+from app.schemas.order import ApplyVoucherRequest
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ async def _send_order_to_pos(order: Order):
 @router.post("/{order_id}/confirm")
 async def confirm_order(
     order_id: int,
-    user: User = Depends(get_current_user),
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -116,15 +117,15 @@ async def confirm_order(
 @router.post("/{order_id}/apply-voucher")
 async def apply_voucher_to_order(
     order_id: int,
-    req: dict,
-    user: User = Depends(get_current_user),
+    req: ApplyVoucherRequest,
+    user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Apply a voucher to an existing order (before payment).
     This is used in checkout flow for orders that haven't been paid yet.
     """
-    voucher_code = req.get("voucher_code")
+    voucher_code = req.voucher_code
     if not voucher_code:
         raise HTTPException(status_code=400, detail="voucher_code is required")
 

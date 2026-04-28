@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
+import { API_BASE_URL } from '@/lib/config';
 
-const API = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+const API = API_BASE_URL;
 
 function notifyMerchantAuthExpired() {
   if (typeof window === 'undefined') return;
@@ -57,7 +58,7 @@ export async function apiFetch(path: string, _unused?: string, options?: Request
     notifyMerchantAuthExpired();
   }
 
-  if (!response.ok && response.status !== 401) {
+  if (!response.ok && response.status !== 401 && response.status !== 404) {
     const errorBody = await response.text().catch(() => '');
     console.error(`API error ${response.status} on ${path}:`, errorBody);
   }

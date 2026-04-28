@@ -7,7 +7,7 @@ from app.core.commerce import debit_wallet, settle_order_payment
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.utils import to_float
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.order import Order, Payment, OrderStatus
 from app.models.wallet import PaymentMethod
 from app.schemas.payment import PaymentIntentCreate, PaymentConfirm, PaymentMethodOut, PaymentMethodCreate
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
 @router.post("/create-intent")
-async def create_payment_intent(req: PaymentIntentCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def create_payment_intent(req: PaymentIntentCreate, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Order).where(Order.id == req.order_id, Order.user_id == user.id))
     order = result.scalar_one_or_none()
     if not order:
@@ -59,7 +59,7 @@ async def create_payment_intent(req: PaymentIntentCreate, user: User = Depends(g
 
 
 @router.post("/confirm")
-async def confirm_payment(req: PaymentConfirm, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def confirm_payment(req: PaymentConfirm, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Payment).where(Payment.id == req.payment_id))
     payment = result.scalar_one_or_none()
     if not payment:
@@ -110,13 +110,13 @@ async def confirm_payment(req: PaymentConfirm, user: User = Depends(get_current_
 
 
 @router.get("/methods", response_model=list[PaymentMethodOut])
-async def list_payment_methods(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_payment_methods(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(PaymentMethod).where(PaymentMethod.user_id == user.id))
     return result.scalars().all()
 
 
 @router.post("/methods", response_model=PaymentMethodOut, status_code=201)
-async def add_payment_method(req: PaymentMethodCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def add_payment_method(req: PaymentMethodCreate, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if req.is_default:
         await db.execute(
             update(PaymentMethod)
@@ -127,3 +127,18 @@ async def add_payment_method(req: PaymentMethodCreate, user: User = Depends(get_
     db.add(pm)
     await db.flush()
     return pm
+
+
+@router.delete("/methods/{method_id}")
+async def delete_payment_method(
+    method_id: int,
+    user: Customer = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(PaymentMethod).where(PaymentMethod.id == method_id, PaymentMethod.user_id == user.id))
+    pm = result.scalar_one_or_none()
+    if not pm:
+        raise HTTPException(status_code=404, detail="Payment method not found")
+    await db.delete(pm)
+    await db.flush()
+    return {"message": "Payment method deleted", "id": method_id}

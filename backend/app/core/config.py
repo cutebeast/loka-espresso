@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     JWT_AUDIENCE: str = "fnb-app"
     CORS_ORIGINS: str = ""
     UPLOAD_DIR: str = "/root/fnb-super-app/uploads"
+    CUSTOMER_APP_DIR: str = "/root/fnb-super-app/customer-app"
     WEBHOOK_API_KEY: str = ""
     WEBHOOK_SIGNING_SECRET: str = ""
     POS_API_URL: str = ""  # External POS integration endpoint (e.g. https://pos-provider.com/api/orders). Leave empty for manual mode.

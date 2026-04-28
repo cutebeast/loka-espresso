@@ -28,21 +28,21 @@ export function Select({
   ...props
 }: SelectProps) {
   return (
-    <div className="s-0">
+    <div className="sel-0">
       {label && (
-        <label className="s-1">
+        <label className="sel-1">
           {label}
         </label>
       )}
-      <div className="s-2">
+      <div className="sel-2">
         {icon && (
-          <span className="s-3"><i className={`fas ${icon}`} /></span>
+          <span className="sel-3"><i className={`fas ${icon}`} /></span>
         )}
         <select
           {...props}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
-          className={`s-select ${icon ? 's-select-pad-icon' : 's-select-pad-noicon'} ${error ? 's-select-error' : 's-select-normal'}`}
+          className={`sel-select ${icon ? 'sel-select-pad-icon' : 'sel-select-pad-noicon'} ${error ? 'sel-select-error' : 'sel-select-normal'}`}
         >
           {placeholder && !value && <option value="">{placeholder}</option>}
           {options.map((opt) => (

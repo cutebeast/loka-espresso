@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
+    from app.models.admin_user import AdminUser
     from app.models.store import Store
 
 
@@ -20,7 +20,7 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("admin_users.id"), nullable=True, index=True)
     store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id"), nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     entity_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -41,5 +41,5 @@ class AuditLog(Base):
         Index("ix_audit_log_entity", "entity_type", "entity_id"),
     )
 
-    user: Mapped[Optional["User"]] = relationship("User")
+    user: Mapped[Optional["AdminUser"]] = relationship("AdminUser")
     store: Mapped[Optional["Store"]] = relationship("Store")

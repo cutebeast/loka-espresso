@@ -15,7 +15,7 @@ interface AuditLogResponse {
   page: number;
   page_size: number;
   total_pages: number;
-  entries: MerchantAuditEntry[];
+  items: MerchantAuditEntry[];
 }
 
 const ACTION_OPTIONS = [
@@ -35,6 +35,7 @@ export default function AuditLogPage({ stores, token: _token }: AuditLogPageProp
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [actionFilter, setActionFilter] = useState('');
   const [preset, setPreset] = useState<DatePreset>('MTD');
   const [fromDate, setFromDate] = useState('');
@@ -51,12 +52,12 @@ export default function AuditLogPage({ stores, token: _token }: AuditLogPageProp
       const res = await apiFetch(url);
       if (res.ok) {
         const data: AuditLogResponse = await res.json();
-        setEntries(data.entries || []);
+        setEntries(data.items || []);
         setTotal(data.total || 0);
         setPage(data.page || p);
         setTotalPages(data.total_pages || 1);
       }
-    } catch {} finally { setLoading(false); }
+    } catch (err: any) { setLoadError('Failed to load audit log. Please try again.'); } finally { setLoading(false); }
   }, [actionFilter, fromDate, toDate]);
 
   useEffect(() => {
@@ -70,20 +71,17 @@ export default function AuditLogPage({ stores, token: _token }: AuditLogPageProp
 
   const columns: ColumnDef<MerchantAuditEntry>[] = [
     { key: 'timestamp', header: 'Timestamp', render: (entry) => (
-      <span className="alp-0">
-        {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '-'}
-      </span>
+      <div>
+        <span className="alp-0">
+          {entry.created_at ? new Date(entry.created_at).toLocaleString() : '-'}
+        </span>
+        {entry.ip_address && entry.ip_address !== '-' && (
+          <div className="alp-3" style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{entry.ip_address}</div>
+        )}
+      </div>
     )},
     { key: 'user_email', header: 'Who', render: (entry) => (
       <span className="alp-1">{entry.user_email || 'System'}</span>
-    )},
-    { key: 'action', header: 'Action', render: (entry) => (
-      <span className="badge badge-blue alp-2" >{entry.action}</span>
-    )},
-    { key: 'ip_address', header: 'IP', render: (entry) => (
-      <span className="alp-3">
-        {entry.ip_address && entry.ip_address !== '-' ? entry.ip_address : <span className="alp-4">—</span>}
-      </span>
     )},
     { key: 'store_id', header: 'Location', render: (entry) => {
       const storeName = entry.store_id
@@ -91,16 +89,22 @@ export default function AuditLogPage({ stores, token: _token }: AuditLogPageProp
         : 'All Stores';
       return <span className="alp-5">{storeName}</span>;
     }},
-    { key: 'status', header: 'Status', render: (entry) => (
-      <span className={`badge ${
-        entry.status === 'success' ? 'badge-green' :
-        entry.status === 'failed' ? 'badge-red' : 'badge-yellow'
-      }`}>{entry.status}</span>
+    { key: 'action', header: 'Action', render: (entry) => (
+      <div>
+        <span className="badge badge-blue alp-2">{entry.action}</span>
+        <div style={{ marginTop: 4 }}>
+          <span className={`badge ${
+            entry.status === 'success' ? 'badge-green' :
+            entry.status === 'failed' ? 'badge-red' : 'badge-yellow'
+          }`}>{entry.status}</span>
+        </div>
+      </div>
     )},
   ];
 
   return (
     <div>
+      {loadError && <div className="alp-17"><i className="fas fa-exclamation-circle"></i> {loadError}</div>}
       <div className="alp-6">
         <DateFilter
           preset={preset}

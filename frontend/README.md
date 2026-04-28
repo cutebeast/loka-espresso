@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FNB Super App — Admin Frontend
+
+Admin dashboard for managing stores, menus, orders, staff, inventory, customers, and marketing for the Loka Espresso loyalty platform.
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Styling**: Pure CSS (modular, no framework)
+- **State**: React hooks + `useAuth`/`useHashRouter`
+- **API**: FastAPI backend at `/api/v1`
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+cp .env.example .env.local
+# Edit .env.local with your API URL
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api/v1` | Backend API base URL |
+| `NEXT_PUBLIC_APP_NAME` | `Loka Espresso` | Brand name |
+| `NEXT_PUBLIC_LOGO_URL` | `/logo.png` | Logo path |
+| `NEXT_PUBLIC_APP_DOMAIN` | `app.loyaltysystem.uk` | Customer PWA domain |
+| `NEXT_PUBLIC_ADMIN_DOMAIN` | `admin.loyaltysystem.uk` | Admin domain |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Architecture
 
-## Learn More
+- **Single-page app** with hash-based routing (`#dashboard`, `#orders`, etc.)
+- **AuthGuard** component handles auth state and redirects
+- **Modular CSS** in `src/styles/` — one file per page/feature
+- **API layer** in `src/lib/merchant-api.tsx` with auto-refresh token handling
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/              # App entry (page.tsx, layout.tsx, globals.css)
+├── components/       # Page components organized by feature
+│   └── pages/        # Dashboard, orders, menu, staff, settings, etc.
+├── hooks/            # useAuth, useHashRouter
+├── lib/              # config.ts, merchant-api.tsx
+└── styles/           # CSS modules (no framework)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Related Documentation
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Admin Frontend Guide](../docs/20-admin-frontend-guide.md)
+- [Environment Configuration](../docs/12-environment.md)
+- [API Reference](../docs/03-api-reference.md)

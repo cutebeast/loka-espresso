@@ -174,7 +174,9 @@ async def get_pwa_version(
     - cache_name: Service worker cache name
     - requires_update: True if client needs to refresh
     """
-    manifest_path = "/root/fnb-super-app/customer-app/public/manifest.json"
+    from app.core.config import get_settings
+    settings = get_settings()
+    manifest_path = os.path.join(settings.CUSTOMER_APP_DIR, "public", "manifest.json")
     
     try:
         with open(manifest_path, 'r') as f:

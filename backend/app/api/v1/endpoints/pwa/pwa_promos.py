@@ -13,7 +13,8 @@ from typing import Optional, List
 
 from app.core.database import get_db
 from app.core.security import require_role, now_utc, ensure_utc
-from app.models.user import User, RoleIDs
+from app.models.customer import Customer
+from app.models.user import RoleIDs
 from app.models.promotions import PromoBanner
 from app.models.voucher import Voucher, UserVoucher
 
@@ -197,7 +198,7 @@ async def get_banner_detail(banner_id: int, db: AsyncSession = Depends(get_db)):
 @router.get("/{banner_id}/status", response_model=PromoStatusOut)
 async def get_banner_status(
     banner_id: int,
-    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
+    user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Check the current user's interaction status with a promo banner.
@@ -277,7 +278,7 @@ async def get_banner_status(
 @router.post("/{banner_id}/claim", response_model=ClaimResult)
 async def claim_promo_voucher(
     banner_id: int,
-    user: User = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
+    user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """Claim voucher from a "detail" type promotion.

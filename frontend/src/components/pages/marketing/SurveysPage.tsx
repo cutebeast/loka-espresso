@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 
-import { Select, Pagination } from '@/components/ui';
+import { Select, DataTable, type ColumnDef, Drawer } from '@/components/ui';
 
 export interface SurveyQuestion {
   id?: number;
@@ -42,7 +42,6 @@ interface SurveysPageProps {
 export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPromotions }: SurveysPageProps) {
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
 
-  // Survey pagination
   const [surveyList, setSurveyList] = useState<Survey[]>([]);
   const [surveyPage, setSurveyPage] = useState(1);
   const [surveyTotal, setSurveyTotal] = useState(0);
@@ -69,12 +68,12 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
       const res = await apiFetch(`/admin/surveys?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setSurveyList(data.surveys || []);
+        setSurveyList(data.items || []);
         setSurveyTotal(data.total || 0);
         setSurveyTotalPages(data.total_pages || 1);
         setSurveyPage(p);
       }
-    } catch {} finally { setSurveyLoading(false); }
+    } catch { console.error('Failed to fetch surveys'); } finally { setSurveyLoading(false); }
   }, []);
 
   useEffect(() => {
@@ -86,8 +85,8 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
   useEffect(() => {
     if (viewMode === 'form') {
       apiFetch('/admin/vouchers')
-        .then(r => r.ok ? r.json() : { vouchers: [] })
-        .then(d => setSurveyVouchers(Array.isArray(d) ? d : (d.vouchers ?? [])))
+        .then(r => r.ok ? r.json() : { items: [] })
+        .then(d => setSurveyVouchers(Array.isArray(d) ? d : (d.items ?? [])))
         .catch(() => {});
     }
   }, [viewMode, token]);
@@ -158,8 +157,7 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
     setSurveyQuestions(prev => prev.map((q, i) => i === index ? { ...q, [field]: value } : q));
   }
 
-  async function surveyHandleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function surveyHandleSubmit() {
     setSurveySaving(true);
     setSurveyError('');
 
@@ -208,180 +206,171 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
     } catch { setSurveyError('Network error'); }
   }
 
+  function handleViewResponses(_survey: Survey) {}
+
   const surveyRewardVoucherName = (id: number | null) => {
     if (!id) return '—';
     const v = surveyVouchers.find(v => v.id === id);
     return v ? v.title || v.code : `#${id}`;
   };
 
+  const surveyColumns: ColumnDef<Survey>[] = [
+    {
+      key: 'title',
+      header: 'Title',
+      render: (row) => (
+        <div>
+          <div className="sv-35">{row.title}</div>
+          {row.description && <div className="sv-36">{row.description}</div>}
+        </div>
+      ),
+    },
+    {
+      key: 'questions',
+      header: 'Questions',
+      render: (row) => (
+        <span className="badge badge-blue">{row.questions?.length ?? 0}</span>
+      ),
+    },
+    {
+      key: 'responses',
+      header: 'Responses',
+      render: (row) => <>{row.response_count ?? 0}</>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => (
+        <button className="btn btn-sm sv-38" onClick={() => surveyToggleActive(row)}>
+          <span className={`badge ${row.is_active ? 'badge-green' : 'badge-gray'}`}>
+            {row.is_active ? 'Active' : 'Inactive'}
+          </span>
+        </button>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        <div className="sv-39">
+          <button className="btn btn-sm" onClick={() => surveyOpenEdit(row)}><i className="fas fa-edit"></i></button>
+          <button className="btn btn-sm" onClick={() => handleViewResponses(row)}><i className="fas fa-reply"></i></button>
+          {surveyConfirmDelete === row.id ? (
+            <>
+              <button className="btn btn-sm sv-40" onClick={() => surveyHandleDelete(row.id)}>Confirm</button>
+              <button className="btn btn-sm" onClick={() => setSurveyConfirmDelete(null)}>Cancel</button>
+            </>
+          ) : (
+            <button className="btn btn-sm sv-41" onClick={() => setSurveyConfirmDelete(row.id)}><i className="fas fa-trash"></i></button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <>
-      {viewMode === 'form' ? (
-        <>
-          <div className="sp-0">
-            <button className="btn btn-sm" onClick={surveyCloseForm}>
-              <i className="fas fa-arrow-left"></i> Back to Surveys
-            </button>
-            <h3 className="sp-1">{surveyEditing ? 'Edit Survey' : 'New Survey'}</h3>
+    <div>
+      <Drawer isOpen={viewMode === 'form'} onClose={surveyCloseForm} title={surveyEditing ? 'Edit Survey' : 'New Survey'}>
+        {surveyError && (
+          <div className="sv-2">
+            <i className="fas fa-exclamation-circle"></i> {surveyError}
+          </div>
+        )}
+
+        <div className="df-section">
+          <div className="df-grid">
+            <div className="df-field">
+              <label className="df-label">Title *</label>
+              <input value={surveyTitle} onChange={e => setSurveyTitle(e.target.value)} required placeholder="e.g. Customer Satisfaction Survey" />
+            </div>
+            <div className="df-field">
+              <label className="df-label">Reward Voucher</label>
+              <Select value={surveyRewardVoucherId} onChange={(val) => setSurveyRewardVoucherId(val)} options={[{ value: '', label: '— None —' }, ...surveyVouchers.map(v => ({ value: String(v.id), label: v.title || v.code }))]} />
+            </div>
+          </div>
+          <div className="df-field" style={{ marginBottom: 16 }}>
+            <label className="df-label">Description</label>
+            <textarea value={surveyDescription} onChange={e => setSurveyDescription(e.target.value)} placeholder="Survey description..." rows={2} />
           </div>
 
-          <div className="card">
-            {surveyError && (
-              <div className="sp-2">
-                <i className="fas fa-exclamation-circle"></i> {surveyError}
-              </div>
-            )}
-
-            <form onSubmit={surveyHandleSubmit}>
-              <div className="sp-3">
-                <div>
-                  <label className="form-label">Title *</label>
-                  <input value={surveyTitle} onChange={e => setSurveyTitle(e.target.value)} required placeholder="e.g. Customer Satisfaction Survey" />
-                </div>
-                <div>
-                  <label className="form-label">Reward Voucher</label>
-                  <Select value={surveyRewardVoucherId} onChange={(val) => setSurveyRewardVoucherId(val)} options={[{ value: '', label: '— None —' }, ...surveyVouchers.map(v => ({ value: String(v.id), label: v.title || v.code }))]} />
-                </div>
-              </div>
-
-              <div className="sp-4">
-                <label className="form-label">Description</label>
-                <textarea value={surveyDescription} onChange={e => setSurveyDescription(e.target.value)} placeholder="Survey description..." rows={2} className="sp-5" />
-              </div>
-
-              <div className="sp-6">
-                <div className="sp-7">
-                  <h4 className="sp-8">Questions ({surveyQuestions.length}/5)</h4>
-                  <div className="sp-9">
-                    {surveyQuestions.length >= 5 && <span className="sp-10">Maximum 5 questions</span>}
-                    <button type="button" className="btn btn-sm btn-primary" onClick={surveyAddQuestion} disabled={surveyQuestions.length >= 5}>
-                      <i className="fas fa-plus"></i> Add Question
-                    </button>
-                  </div>
-                </div>
-
-                {surveyQuestions.map((q, i) => (
-                  <div key={i} className="sp-11">
-                    <div className="sp-12">
-                      <span className="sp-13">Q{i + 1}</span>
-                      {surveyQuestions.length > 1 && (
-                        <button type="button" className="btn btn-sm sp-14"  onClick={() => surveyRemoveQuestion(i)}>
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      )}
-                    </div>
-                    <div className="sp-15">
-                      <input value={q.question_text} onChange={e => surveyUpdateQuestion(i, 'question_text', e.target.value)} placeholder="Question text" required />
-                      <Select value={q.question_type} onChange={(val) => surveyUpdateQuestion(i, 'question_type', val)} options={[{ value: 'text', label: 'Text' }, { value: 'single_choice', label: 'Single Choice' }, { value: 'rating', label: 'Rating' }, { value: 'dropdown', label: 'Dropdown' }]} />
-                    </div>
-                    {(q.question_type === 'single_choice' || q.question_type === 'dropdown') && (
-                      <div className="sp-16">
-                        <input value={q.options} onChange={e => surveyUpdateQuestion(i, 'options', e.target.value)} placeholder="Options (comma-separated, e.g. Good, Okay, Bad)" className="sp-17" />
-                      </div>
-                    )}
-                    <label className="sp-18">
-                      <input type="checkbox" checked={q.required} onChange={e => surveyUpdateQuestion(i, 'required', e.target.checked)} className="sp-19" />
-                      Required
-                    </label>
-                  </div>
-                ))}
-              </div>
-
-              <div className="sp-20">
-                <button type="submit" className="btn btn-primary" disabled={surveySaving}>
-                  {surveySaving ? 'Saving...' : surveyEditing ? 'Update' : 'Create'}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h4 className="cdp-section-title" style={{ margin: 0 }}>Questions ({surveyQuestions.length}/5)</h4>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {surveyQuestions.length >= 5 && <span style={{ fontSize: 12, color: '#DC2626' }}>Maximum 5</span>}
+                <button className="btn btn-sm btn-primary" onClick={surveyAddQuestion} disabled={surveyQuestions.length >= 5}>
+                  <i className="fas fa-plus"></i> Add
                 </button>
-                <button type="button" className="btn" onClick={surveyCloseForm}>Cancel</button>
-                <div className="sp-21" />
-                <label className="sp-22">
-                  <input type="checkbox" checked={surveyIsActive} onChange={e => setSurveyIsActive(e.target.checked)} className="sp-23" />
-                  Active
+              </div>
+            </div>
+
+            {surveyQuestions.map((q, i) => (
+              <div key={i} className="sv-11">
+                <div className="sv-12">
+                  <span className="sv-13">Q{i + 1}</span>
+                  {surveyQuestions.length > 1 && (
+                    <button className="btn btn-sm sv-14" onClick={() => surveyRemoveQuestion(i)}>
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  )}
+                </div>
+                <div className="sv-15">
+                  <input value={q.question_text} onChange={e => surveyUpdateQuestion(i, 'question_text', e.target.value)} placeholder="Question text" required />
+                  <Select value={q.question_type} onChange={(val) => surveyUpdateQuestion(i, 'question_type', val)} options={[{ value: 'text', label: 'Text' }, { value: 'single_choice', label: 'Single Choice' }, { value: 'rating', label: 'Rating' }, { value: 'dropdown', label: 'Dropdown' }]} />
+                </div>
+                {(q.question_type === 'single_choice' || q.question_type === 'dropdown') && (
+                  <div className="sv-16">
+                    <input value={q.options} onChange={e => surveyUpdateQuestion(i, 'options', e.target.value)} placeholder="Options (comma-separated, e.g. Good, Okay, Bad)" className="sv-17" />
+                  </div>
+                )}
+                <label className="sv-18">
+                  <input type="checkbox" checked={q.required} onChange={e => surveyUpdateQuestion(i, 'required', e.target.checked)} className="sv-19" />
+                  Required
                 </label>
               </div>
-            </form>
+            ))}
           </div>
-        </>
-      ) : (
-        <>
-          <div className="sp-24">
-            <button className="btn btn-primary" onClick={surveyOpenCreate}><i className="fas fa-plus"></i> New Survey</button>
-          </div>
+        </div>
 
-          {surveyError && (
-            <div className="sp-25">
-              <i className="fas fa-exclamation-circle"></i> {surveyError}
-            </div>
-          )}
+        <div className="df-actions">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, marginRight: 'auto' }}>
+            <input type="checkbox" checked={surveyIsActive} onChange={e => setSurveyIsActive(e.target.checked)} style={{ width: 16, height: 16 }} />
+            Active
+          </label>
+          <button className="btn" onClick={surveyCloseForm}>Cancel</button>
+          <button onClick={surveyHandleSubmit} className="btn btn-primary" disabled={surveySaving}>
+            {surveySaving ? 'Saving...' : surveyEditing ? 'Update' : 'Create'}
+          </button>
+        </div>
+      </Drawer>
 
-          {surveyLoading ? (
-            <div className="sp-26">Loading surveys...</div>
-          ) : (
-          <>
-            <div className="sp-27">
-              <div className="sp-28">
-                <span className="sp-29"><i className="fas fa-clipboard-list"></i></span>
-                Showing <strong className="sp-30">{surveyList.length}</strong> of <strong>{surveyTotal}</strong> surveys
-              </div>
-              <div className="sp-31">
-                Page {surveyPage} of {surveyTotalPages}
-              </div>
-            </div>
+      <div className="sv-24">
+        <button className="btn btn-primary" onClick={surveyOpenCreate}><i className="fas fa-plus"></i> New Survey</button>
+      </div>
 
-            <div className="sp-32">
-              <table>
-                <thead>
-                  <tr><th>Title</th><th>Questions</th><th>Responses</th><th>Reward Voucher</th><th>Status</th><th>Actions</th></tr>
-                </thead>
-                <tbody>
-                  {surveyList.length === 0 ? (
-                    <tr><td colSpan={6} className="sp-33">
-                      <span className="sp-34"><i className="fas fa-clipboard-list"></i></span>
-                      No surveys yet. Create one to start collecting feedback.
-                    </td></tr>
-                  ) : surveyList.map(survey => (
-                    <tr key={survey.id}>
-                      <td>
-                        <div className="sp-35">{survey.title}</div>
-                        {survey.description && <div className="sp-36">{survey.description}</div>}
-                      </td>
-                      <td><span className="badge badge-blue">{survey.questions?.length ?? 0}</span></td>
-                      <td>{survey.response_count ?? 0}</td>
-                      <td>
-                        {survey.reward_voucher_id ? (
-                          <span className="badge badge-green">{surveyRewardVoucherName(survey.reward_voucher_id)}</span>
-                        ) : <span className="sp-37">None</span>}
-                      </td>
-                      <td>
-                        <button className="btn btn-sm sp-38" onClick={() => surveyToggleActive(survey)} >
-                          <span className={`badge ${survey.is_active ? 'badge-green' : 'badge-gray'}`}>
-                            {survey.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </button>
-                      </td>
-                      <td>
-                        <div className="sp-39">
-                          <button className="btn btn-sm" onClick={() => surveyOpenEdit(survey)}><i className="fas fa-edit"></i></button>
-                          {surveyConfirmDelete === survey.id ? (
-                            <>
-                              <button className="btn btn-sm sp-40"  onClick={() => surveyHandleDelete(survey.id)}>Confirm</button>
-                              <button className="btn btn-sm" onClick={() => setSurveyConfirmDelete(null)}>Cancel</button>
-                            </>
-                          ) : (
-                            <button className="btn btn-sm sp-41"  onClick={() => setSurveyConfirmDelete(survey.id)}><i className="fas fa-trash"></i></button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-          )}
-
-          <Pagination page={surveyPage} totalPages={surveyTotalPages} onPageChange={fetchSurveyList} loading={surveyLoading} />
-        </>
+      {surveyError && (
+        <div className="sv-25">
+          <i className="fas fa-exclamation-circle"></i> {surveyError}
+        </div>
       )}
-    </>
+
+      <div className="sv-27">
+        <div className="sv-28">
+          <span className="sv-29"><i className="fas fa-clipboard-list"></i></span>
+          Showing <strong className="sv-30">{surveyList.length}</strong> of <strong>{surveyTotal}</strong> surveys
+        </div>
+        <div className="sv-31">
+          Page {surveyPage} of {surveyTotalPages}
+        </div>
+      </div>
+
+      <DataTable
+        data={surveyList}
+        columns={surveyColumns}
+        loading={surveyLoading}
+        emptyMessage="No surveys yet. Create one to start collecting feedback."
+        pagination={{ page: surveyPage, pageSize: PAGE_SIZE, total: surveyTotal, onPageChange: fetchSurveyList }}
+      />
+    </div>
   );
 }

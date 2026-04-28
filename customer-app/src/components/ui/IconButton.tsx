@@ -28,7 +28,7 @@ export function IconButton({
   };
 
   const sizes = {
-    sm: 'w-8 h-8 rounded-[10px]',
+    sm: 'w-10 h-10 rounded-[10px]',
     md: 'w-10 h-10 rounded-xl',
     lg: 'w-12 h-12 rounded-xl',
   };

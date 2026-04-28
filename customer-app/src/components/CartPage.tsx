@@ -43,7 +43,7 @@ const ORDER_MODES = [
 
 export default function CartPage() {
   const { items, updateQuantity, getTotal, getItemCount, clearCart, orderNote, setOrderNote } = useCartStore();
-  const { orderMode, setOrderMode, selectedStore, dineInSession, setDineInSession, setPage, showToast, setShowStorePicker, setCheckoutDraft } = useUIStore();
+  const { orderMode, setOrderMode, selectedStore, dineInSession, setDineInSession, setPage, showToast, setShowStorePicker, setCheckoutDraft, isGuest, triggerSignIn } = useUIStore();
   const { config } = useConfigStore();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -143,6 +143,7 @@ export default function CartPage() {
                 className={`cart-mode-btn ${isActive ? 'active' : ''}`}
                 onClick={() => handleOrderModeChange(m.key)}
                 disabled={isDisabled}
+                title={isDisabled ? 'Scan table QR to enable' : undefined}
               >
                 {m.label}
               </button>
@@ -267,6 +268,10 @@ export default function CartPage() {
           <button
             className="cart-checkout-btn"
             onClick={() => {
+              if (isGuest) {
+                triggerSignIn();
+                return;
+              }
               setCheckoutDraft({ notes: orderNote });
               setPage('checkout');
             }}

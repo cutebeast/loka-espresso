@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { PageId } from '@/lib/merchant-types';
 import type { MerchantStore } from '@/lib/merchant-types';
 import Image from 'next/image';
+import { APP_NAME, LOGO_URL } from '@/lib/config';
 
 // Page visibility by user_type_id
 const PAGE_VISIBILITY: Record<number, Set<string>> = {
@@ -19,7 +20,7 @@ const PAGE_VISIBILITY: Record<number, Set<string>> = {
     'menu', 'inventory', 'tables', 'staff', 'walletTopup', 'posterminal',
     'customers', 'rewards', 'vouchers', 'reports', 'marketingreports',
   ]),
-  3: new Set(['orders', 'kitchen', 'walletTopup', 'posterminal', 'tables']),
+  3: new Set(['kitchen', 'tables', 'walletTopup', 'posterminal']),
 };
 
 const navGroups = [
@@ -27,15 +28,15 @@ const navGroups = [
     { id: 'dashboard' as PageId, icon: 'fa-chart-pie', label: 'Dashboard' },
   ]},
   { label: 'Counter Operations', icon: 'fa-cash-register', items: [
-    { id: 'orders' as PageId, icon: 'fa-clipboard-list', label: 'Orders' },
+    { id: 'tables' as PageId, icon: 'fa-chair', label: 'Tables' },
     { id: 'kitchen' as PageId, icon: 'fa-fire-burner', label: 'Order Station' },
-    { id: 'walletTopup' as PageId, icon: 'fa-wallet', label: 'Wallet Top-Up' },
     { id: 'posterminal' as PageId, icon: 'fa-cash-register', label: 'POS Terminal' },
+    { id: 'walletTopup' as PageId, icon: 'fa-wallet', label: 'Wallet Top-Up' },
   ]},
   { label: 'Store Management', icon: 'fa-store', items: [
+    { id: 'orders' as PageId, icon: 'fa-clipboard-list', label: 'Orders' },
     { id: 'menu' as PageId, icon: 'fa-mug-hot', label: 'Menu Management' },
     { id: 'inventory' as PageId, icon: 'fa-boxes-stacked', label: 'Inventory', hasSubmenu: true },
-    { id: 'tables' as PageId, icon: 'fa-chair', label: 'Tables' },
     { id: 'staff' as PageId, icon: 'fa-user-tie', label: 'Staff' },
   ]},
   { label: 'CRM & Marketing', icon: 'fa-bullhorn', items: [
@@ -82,14 +83,13 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
   }
 
   
+  // Sync localStorage on mount only — don't react to collapsed changes
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
-    if (saved && onToggleCollapse) {
-      if (saved === 'true' && !collapsed) {
-        onToggleCollapse();
-      }
+    if (saved === 'true' && !collapsed && onToggleCollapse) {
+      onToggleCollapse();
     }
-  }, [collapsed, onToggleCollapse]);
+  }, []); // empty deps: runs once on mount
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(collapsed));
@@ -101,36 +101,22 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
       {/* Brand Header */}
       <div className={`sb-brand ${collapsed ? 'sb-justify-center' : 'sb-justify-start'}`}>
         {collapsed ? (
-          <div className="s-0">
+          <div className="s-0" onClick={onToggleCollapse} style={{ cursor: 'pointer' }}>
             <Image
-              src="/loka-logo.png"
-              alt="Loka Espresso"
+              src={LOGO_URL}
+              alt={APP_NAME}
               fill
               className="s-1"
             />
           </div>
         ) : (
           <div className="s-2">
-            <div className="s-3">
-              <Image
-                src="/loka-logo.png"
-                alt="Loka Espresso"
-                fill
-                className="s-4"
-              />
+            <div className="sb-hamburger-toggle" onClick={onToggleCollapse} title="Toggle sidebar">
+              <i className="fas fa-bars"></i>
             </div>
-            <span className="sb-brand-name">Loka Espresso</span>
+            <span className="sb-brand-name">{APP_NAME}</span>
           </div>
         )}
-        
-        {/* Toggle Button */}
-        <div
-          onClick={onToggleCollapse}
-          title="Toggle sidebar"
-          className={`sb-toggle ${collapsed ? 'sb-toggle-collapsed' : 'sb-toggle-open'}`}
-        >
-          <span className="s-5"><i className="fas fa-chevron-left"></i></span>
-        </div>
       </div>
       
       {/* Navigation */}

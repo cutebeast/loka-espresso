@@ -10,6 +10,7 @@ const api = axios.create({
 
 // Prevents multiple simultaneous refresh attempts from triggering multiple reloads
 let _refreshFailed = false;
+let _refreshPromise: Promise<any> | null = null;
 
 api.interceptors.response.use(
   (res) => res,
@@ -20,21 +21,27 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        // Refresh token is sent automatically via httpOnly cookie
-        const response = await axios.post(`${API_BASE}/auth/refresh`, {}, {
-          withCredentials: true,
-        });
+        // Deduplicate concurrent 401s — only one refresh call at a time
+        if (!_refreshPromise) {
+          _refreshPromise = axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
+        }
+        const response = await _refreshPromise;
+        _refreshPromise = null;
 
         if (response.data?.access_token) {
-          // New access token is set via httpOnly cookie by the backend
-          // Just retry the original request
           return api(originalRequest);
         }
-      } catch (refreshError) {
+      } catch (refreshError: any) {
+        _refreshPromise = null;
+        // 422 means no refresh token (guest user) — just reject, don't reload
+        if (refreshError?.response?.status === 422) {
+          return Promise.reject(error);
+        }
         console.error('Token refresh failed:', refreshError);
       }
 
       // Only clear and reload once per page load to prevent infinite loops
+      // Skip reload if user is in guest mode (no auth cookie at all)
       if (!_refreshFailed) {
         _refreshFailed = true;
         if (typeof window !== 'undefined') {
@@ -122,6 +129,7 @@ export interface MenuItem {
   is_available: boolean;
   is_featured?: boolean;
   display_order?: number;
+  dietary_tags?: string[];
   customization_options?: CustomizationOption[];
 }
 
@@ -237,6 +245,7 @@ export interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  store_id?: number;
   customizations?: Record<string, unknown>;
   customization_option_ids?: number[];
   image_url?: string;

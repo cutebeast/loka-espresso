@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.commerce import credit_wallet
 from app.core.utils import to_float
-from app.models.user import User
+from app.models.customer import Customer
 from app.models.social import Referral
 from app.models.notification import Notification
 from app.models.splash import AppConfig
@@ -22,7 +22,7 @@ DEFAULT_MIN_ORDERS = 1
 
 
 @router.get("/code")
-async def get_referral_code(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_referral_code(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Referral).where(Referral.referrer_id == user.id))
     ref = result.scalar_one_or_none()
     if not ref:
@@ -48,7 +48,7 @@ async def get_referral_code(user: User = Depends(get_current_user), db: AsyncSes
 
 
 @router.post("/apply")
-async def apply_referral(code: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def apply_referral(code: str, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     existing = await db.execute(
         select(Referral).where(Referral.invitee_id == user.id)
     )
@@ -83,7 +83,7 @@ async def apply_referral(code: str, user: User = Depends(get_current_user), db: 
 
 
 @router.get("/stats")
-async def referral_stats(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def referral_stats(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Get detailed referral stats for the current user."""
     result = await db.execute(
         select(Referral).where(

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Text, Boolean, JSON, Integer, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy import String, Text, Boolean, JSON, Integer, ForeignKey, DateTime, UniqueConstraint, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
+    from app.models.customer import Customer
     from app.models.voucher import Voucher
 
 
@@ -46,16 +46,17 @@ class SurveyResponse(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     survey_id: Mapped[int] = mapped_column(Integer, ForeignKey("surveys.id", ondelete="CASCADE"), nullable=False)
-    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("customers.id", ondelete="SET NULL"), nullable=True)
     rewarded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
         UniqueConstraint("survey_id", "user_id", name="uq_survey_response"),
+        Index("ix_survey_responses_survey_created", "survey_id", "created_at"),
     )
 
     survey: Mapped["Survey"] = relationship("Survey", foreign_keys=[survey_id])
-    user: Mapped[Optional["User"]] = relationship("User", foreign_keys=[user_id])
+    user: Mapped[Optional["Customer"]] = relationship("Customer", foreign_keys=[user_id])
 
 
 class SurveyAnswer(Base):

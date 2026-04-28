@@ -7,12 +7,11 @@ import { useUIStore } from '@/stores/uiStore';
 import { formatPrice } from '@/lib/tokens';
 
 export default function FloatingCartBar() {
-  const getItemCount = useCartStore((s) => s.getItemCount);
-  const getTotal = useCartStore((s) => s.getTotal);
+  const items = useCartStore((s) => s.items);
   const { setPage } = useUIStore();
 
-  const count = getItemCount();
-  const total = getTotal();
+  const count = items.reduce((sum, item) => sum + item.quantity, 0);
+  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   if (count === 0) return null;
 

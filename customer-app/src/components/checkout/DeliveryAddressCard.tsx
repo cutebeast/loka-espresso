@@ -1,8 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { MapPin, Navigation } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, Navigation, ChevronDown } from 'lucide-react';
 import { LOKA } from '@/lib/tokens';
+import { useAuthStore } from '@/stores/authStore';
+import api from '@/lib/api';
+
+interface SavedAddress {
+  id: number;
+  label: string;
+  address: string;
+  lat?: number;
+  lng?: number;
+}
 
 interface DeliveryAddressCardProps {
   value: { address: string; lat?: number; lng?: number } | null;
@@ -12,6 +22,19 @@ interface DeliveryAddressCardProps {
 export default function DeliveryAddressCard({ value, onChange }: DeliveryAddressCardProps) {
   const [inputValue, setInputValue] = useState(value?.address || '');
   const [error, setError] = useState('');
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [showSaved, setShowSaved] = useState(false);
+  const user = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    if (user) {
+      api.get('/me/addresses')
+        .then((res) => {
+          if (Array.isArray(res.data)) setSavedAddresses(res.data);
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -54,6 +77,12 @@ export default function DeliveryAddressCard({ value, onChange }: DeliveryAddress
     onChange({ address: nextAddress, lat: keepCoordinates ? value?.lat : undefined, lng: keepCoordinates ? value?.lng : undefined });
   };
 
+  const handleUseSaved = (saved: SavedAddress) => {
+    setInputValue(saved.address);
+    onChange({ address: saved.address, lat: saved.lat, lng: saved.lng });
+    setShowSaved(false);
+  };
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -71,12 +100,37 @@ export default function DeliveryAddressCard({ value, onChange }: DeliveryAddress
         />
         <button
           onClick={handleUseCurrentLocation}
-          className="absolute right-3 top-3 w-8 h-8 rounded-lg bg-copper-soft border-none cursor-pointer flex items-center justify-center"
+          className="absolute right-3 top-3 w-10 h-10 rounded-lg bg-copper-soft border-none cursor-pointer flex items-center justify-center"
           aria-label="Use current location"
         >
           <Navigation size={16} color={LOKA.copper} />
         </button>
       </div>
+      {savedAddresses.length > 0 && (
+        <div className="mt-2">
+          <button
+            onClick={() => setShowSaved(!showSaved)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary border-none bg-transparent cursor-pointer"
+          >
+            <ChevronDown size={12} style={{ transform: showSaved ? 'rotate(180deg)' : undefined, transition: 'transform 0.2s' }} />
+            Use a saved address ({savedAddresses.length})
+          </button>
+          {showSaved && (
+            <div className="mt-2 flex flex-col gap-1.5">
+              {savedAddresses.map((saved) => (
+                <button
+                  key={saved.id}
+                  onClick={() => handleUseSaved(saved)}
+                  className="text-left py-2.5 px-3 rounded-xl border border-border-subtle bg-surface text-sm text-text-primary cursor-pointer transition-colors hover:border-copper dac-saved-btn"
+                >
+                  <span className="font-semibold">{saved.label}</span>
+                  <span className="text-text-muted text-xs block mt-0.5">{saved.address}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {error && (
         <p className="mt-2 text-xs text-danger">{error}</p>
       )}

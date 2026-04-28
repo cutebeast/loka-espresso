@@ -1,3 +1,12 @@
+/* Home cards section — warm cream background */
+.home-cards-section {
+  background: var(--loka-cream);
+  padding: 16px 0;
+  margin: 0 -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
 /* Information cards */
 .info-card {
   flex: 0 0 100%;

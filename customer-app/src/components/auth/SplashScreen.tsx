@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useUIStore } from '@/stores/uiStore';
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -13,11 +12,6 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
     return () => clearTimeout(timer);
   }, [onFinish]);
 
-  const handleGuest = () => {
-    useUIStore.getState().setIsGuest(true);
-    // Don't call onFinish — AppShell's useEffect will set authDone
-  };
-
   return (
     <div className="splash-page">
       <div className="splash-page-inner">
@@ -28,12 +22,6 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         </div>
         <div className="splash-title">LOKA</div>
         <div className="splash-tagline">Espresso · since 2026</div>
-
-        <div className="splash-actions">
-          <button className="splash-guest-btn" onClick={handleGuest}>
-            Browse as Guest
-          </button>
-        </div>
 
         <div className="splash-loading">
           <svg

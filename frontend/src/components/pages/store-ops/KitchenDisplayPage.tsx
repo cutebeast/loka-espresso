@@ -21,31 +21,30 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [showGuide, setShowGuide] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   const physicalStores = stores.filter(s => String(s.id) !== '0');
   const activeStoreId = selectedStore !== 'all' ? selectedStore : '';
 
   const fetchActiveOrders = useCallback(async () => {
-    if (!token || !activeStoreId) return;
+    if (!token || !activeStoreId) { setLoading(false); return; }
+    setLoading(true);
     try {
       let url = `/admin/orders?store_id=${activeStoreId}&page=1&page_size=200`;
-      if (filterType) {
-        url += `&order_type=${filterType}`;
-      }
+      if (filterType) url += `&order_type=${filterType}`;
       const res = await apiFetch(url);
-      if (!res.ok) return;
+      if (!res.ok) { setLoading(false); return; }
       const data = await res.json();
-      // Client-side filter: only show active (non-completed, non-cancelled) orders
-      const active = (data.orders || []).filter(
+      const active = (data.items || []).filter(
         (o: MerchantOrder) => !['completed', 'cancelled'].includes(o.status)
       );
       setOrders(active);
+      setLoadError('');
       setLastRefresh(new Date());
     } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
+      setOrders([]);
+      setLoadError('Failed to load orders');
+    } finally { setLoading(false); }
   }, [token, activeStoreId, filterType]);
 
   useEffect(() => {
@@ -244,6 +243,9 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
       )}
 
       {activeStoreId && (<>
+      {/* Error Banner */}
+      {loadError && <div className="kdp-30"><i className="fas fa-exclamation-triangle"></i> {loadError} — <button className="btn btn-sm" onClick={() => { setLoadError(''); fetchActiveOrders(); }}>Retry</button></div>}
+
       {/* Status Summary Bar */}
       <div className="kdp-22">
         {Object.entries(counts).map(([status, count]) => (

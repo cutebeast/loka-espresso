@@ -10,25 +10,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import require_hq_access
 from app.core.audit import log_action, get_client_ip
-from app.models.user import User
+from app.models.admin_user import AdminUser
 
-router = APIRouter(tags=["Admin PWA Management"])
+router = APIRouter(prefix="/admin", tags=["Admin PWA Management"])
 
 
-@router.post("/admin/pwa/rebuild")
+@router.post("/pwa/rebuild")
 async def pwa_rebuild(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     from app.core.config import get_settings
     settings = get_settings()
     if settings.ENVIRONMENT.lower() == "production":
         raise HTTPException(status_code=403, detail="PWA rebuild is not allowed in production")
 
-    customer_dir = "/root/fnb-super-app/customer-app"
-    manifest_path = f"{customer_dir}/public/manifest.json"
-    sw_path = f"{customer_dir}/public/sw.js"
+    customer_dir = settings.CUSTOMER_APP_DIR
+    manifest_path = os.path.join(customer_dir, "public", "manifest.json")
+    sw_path = os.path.join(customer_dir, "public", "sw.js")
 
     timestamp = int(datetime.now(timezone.utc).timestamp())
     version = f"1.0.{timestamp}"
@@ -91,18 +91,18 @@ async def pwa_rebuild(
     }
 
 
-@router.post("/admin/pwa/clear-cache")
+@router.post("/pwa/clear-cache")
 async def pwa_clear_cache(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
     from app.core.config import get_settings
     settings = get_settings()
     if settings.ENVIRONMENT.lower() == "production":
         raise HTTPException(status_code=403, detail="PWA cache clear is not allowed in production")
 
-    customer_dir = "/root/fnb-super-app/customer-app"
+    customer_dir = settings.CUSTOMER_APP_DIR
     next_dir = f"{customer_dir}/.next"
 
     cleared = False
@@ -124,11 +124,13 @@ async def pwa_clear_cache(
     }
 
 
-@router.get("/admin/pwa/version")
+@router.get("/pwa/version")
 async def pwa_get_version(
-    user: User = Depends(require_hq_access()),
+    user: AdminUser = Depends(require_hq_access()),
 ):
-    manifest_path = "/root/fnb-super-app/customer-app/public/manifest.json"
+    from app.core.config import get_settings
+    settings = get_settings()
+    manifest_path = os.path.join(settings.CUSTOMER_APP_DIR, "public", "manifest.json")
 
     try:
         with open(manifest_path, 'r') as f:

@@ -46,6 +46,7 @@ interface UIState {
   pageParams: PageParams;
   showStorePicker: boolean;
   isGuest: boolean;
+  requestSignIn: number;
   previousPage: PageId | null;
   checkoutDraft: CheckoutDraft;
   setPage: (page: PageId, params?: PageParams) => void;
@@ -62,6 +63,7 @@ interface UIState {
   hideToast: () => void;
   setShowStorePicker: (show: boolean) => void;
   setIsGuest: (guest: boolean) => void;
+  triggerSignIn: () => void;
   setPreviousPage: (page: PageId | null) => void;
   setCheckoutDraft: (draft: Partial<CheckoutDraft>) => void;
   clearCheckoutDraft: () => void;
@@ -114,6 +116,7 @@ export const useUIStore = create<UIState>()(
       pageParams: getHashParams(),
       showStorePicker: false,
       isGuest: false,
+      requestSignIn: 0,
       previousPage: null,
       checkoutDraft: {},
       setPage: (page, params) => {
@@ -138,6 +141,7 @@ export const useUIStore = create<UIState>()(
       hideToast: () => set({ toast: null }),
       setShowStorePicker: (showStorePicker) => set({ showStorePicker }),
       setIsGuest: (isGuest) => set({ isGuest }),
+      triggerSignIn: () => set((s) => ({ requestSignIn: s.requestSignIn + 1, isGuest: false })),
       setPreviousPage: (previousPage) => set({ previousPage }),
       setCheckoutDraft: (draft) => set((state) => ({
         checkoutDraft: { ...state.checkoutDraft, ...draft },
