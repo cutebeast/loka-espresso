@@ -53,8 +53,8 @@ export default function OrdersPage() {
     setIsLoading(true);
     try {
       const res = await api.get('/orders', { params: { page_size: 20 } });
-      setOrders(Array.isArray(res.data) ? res.data : (res.data?.orders ?? []));
-    } catch {
+      setOrders(Array.isArray(res.data) ? res.data : (res.data?.items ?? []));
+    } catch { console.error('Failed to load orders');
       showToast('Failed to load orders', 'error');
     } finally {
       setIsLoading(false);

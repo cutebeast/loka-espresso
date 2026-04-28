@@ -96,8 +96,11 @@ export function useAuthFlow() {
     const validate = async () => {
       setIsLoading(true);
       try {
-        const res = await api.get('/users/me', { signal: abortCtrl.signal });
-        setUser(res.data);
+        const res = await api.get('/auth/session', { signal: abortCtrl.signal });
+        if (res.data?.authenticated) {
+          const userRes = await api.get('/users/me', { signal: abortCtrl.signal });
+          setUser(userRes.data);
+        }
         setAuthDone(true);
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;

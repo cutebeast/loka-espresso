@@ -61,7 +61,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       const map: Record<number, BannerStatus> = {};
       statuses.forEach((s) => { if (s) map[s.id] = s.status; });
       setBannerStatus(map);
-    } catch { setPromotions([]); }
+    } catch { console.error("Failed to load promotions"); setPromotions([]); }
     finally { setLoading(false); }
   }, []);
 
@@ -73,7 +73,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
     try {
       const res = await api.get(`/surveys/${surveyId}`);
       setSurveyQuestions(res.data.questions || []);
-    } catch {
+    } catch (err: any) { console.error("Failed to load");
       setSurveyQuestions([]);
     }
   }, []);
@@ -99,7 +99,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       const code = res.data?.voucher_code || res.data?.redemption_code || '';
       if (code) { setShowVoucher(code); await loadPromotions(); }
       else showToast('Offer claimed! Check your vouchers.', 'success');
-    } catch { showToast('Failed to claim offer', 'error'); }
+    } catch { console.error("Claim failed"); showToast('Failed to claim offer', 'error'); }
     finally { setClaiming(null); }
   };
 
@@ -131,7 +131,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         setSurveyCompleted(true);
         await loadPromotions();
       }
-    } catch {
+    } catch (err: any) { console.error("Failed to load");
       showToast('Failed to submit survey', 'error');
     } finally {
       setSubmittingSurvey(false);

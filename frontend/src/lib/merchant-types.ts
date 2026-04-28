@@ -277,6 +277,7 @@ export interface CustomerDetail {
   total_points_earned: number;
   phone_verified?: boolean;
   is_profile_complete?: boolean;
+  date_of_birth?: string | null;
   created_at: string;
 }
 

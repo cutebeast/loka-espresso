@@ -107,10 +107,6 @@ export default function StoreSettingsPage({ stores, token, onRefresh }: StoreSet
                 <div className="ssp-9">{s.name} {!s.is_active && <span className="ssp-10">(Inactive)</span>}</div>
                 <div className="ssp-11">{s.address}</div>
                 <div className="ssp-12">Slug: <code>{s.slug}</code> · Phone: {s.phone || '-'} · Pickup lead: {s.pickup_lead_minutes || '-'} min</div>
-                <div className="ssp-13">
-                  <span className={`ss-badge ${s.pos_integration_enabled ? 'ss-badge-green' : 'ss-badge-yellow'}`}>POS: {s.pos_integration_enabled ? 'API' : 'Manual'}</span>
-                  <span className={`ss-badge ${s.delivery_integration_enabled ? 'ss-badge-green' : 'ss-badge-yellow'}`}>Delivery: {s.delivery_integration_enabled ? 'API' : 'Manual'}</span>
-                </div>
               </div>
               <div className="ssp-14">
                 <button className="btn btn-sm" onClick={() => openEdit(s)}><i className="fas fa-edit"></i> Edit</button>
@@ -143,8 +139,6 @@ function StoreForm({ token: _token, onClose, existingStore }: { token: string; o
   const [deliveryRadius, setDeliveryRadius] = useState(existingStore?.delivery_radius_km != null ? String(existingStore.delivery_radius_km) : '');
   const [imageUrl, setImageUrl] = useState(existingStore?.image_url || '');
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [posIntegration, setPosIntegration] = useState(existingStore?.pos_integration_enabled || false);
-  const [deliveryIntegration, setDeliveryIntegration] = useState(existingStore?.delivery_integration_enabled || false);
   const [openingHours, setOpeningHours] = useState<OpeningHoursState>(parseOpeningHours(existingStore?.opening_hours));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -168,8 +162,6 @@ function StoreForm({ token: _token, onClose, existingStore }: { token: string; o
       if (lng) payload.lng = parseFloat(lng);
       if (deliveryRadius) payload.delivery_radius_km = parseFloat(deliveryRadius);
       if (uploadedUrl) payload.image_url = uploadedUrl;
-      payload.pos_integration_enabled = posIntegration;
-      payload.delivery_integration_enabled = deliveryIntegration;
       const ohJSON = openingHoursToJSON(openingHours);
       if (ohJSON) payload.opening_hours = ohJSON;
       const url = isEdit ? `/admin/stores/${existingStore!.id}` : '/admin/stores';
@@ -237,27 +229,6 @@ function StoreForm({ token: _token, onClose, existingStore }: { token: string; o
           )}
           {!existingStore?.image_url && <div className="df-hint">Upload a store photo</div>}
         </div>
-      </div>
-
-      <div className="df-section">
-        <h4 className="cdp-section-title"><i className="fas fa-plug" style={{ marginRight: 8 }}></i>Integrations</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-            <input type="checkbox" checked={posIntegration} onChange={e => setPosIntegration(e.target.checked)} style={{ width: 16, height: 16 }} />
-            <div>
-              <div style={{ fontWeight: 600 }}>POS API Integration</div>
-              <div className="df-hint">Auto-sync orders to POS/KDS</div>
-            </div>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-            <input type="checkbox" checked={deliveryIntegration} onChange={e => setDeliveryIntegration(e.target.checked)} style={{ width: 16, height: 16 }} />
-            <div>
-              <div style={{ fontWeight: 600 }}>Delivery API Integration</div>
-              <div className="df-hint">Auto-dispatch to Grab/Lalamove/etc</div>
-            </div>
-          </label>
-        </div>
-        <div className="df-hint" style={{ marginTop: 8 }}><i className="fas fa-info-circle"></i> When disabled, staff must manually sync orders. Default is Manual (recommended for launch).</div>
       </div>
 
       <div className="df-section">

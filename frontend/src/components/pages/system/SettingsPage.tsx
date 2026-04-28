@@ -11,7 +11,7 @@ interface ConfigDef {
   key: string;
   label: string;
   description: string;
-  type: 'number' | 'string';
+  type: 'number' | 'string' | 'boolean';
 }
 
 const CONFIG_GROUPS: { label: string; icon: string; items: ConfigDef[] }[] = [
@@ -29,6 +29,23 @@ const CONFIG_GROUPS: { label: string; icon: string; items: ConfigDef[] }[] = [
     icon: 'fa-medal',
     items: [
       { key: 'earn_rate', label: 'Earn Rate', description: 'Points earned per RM1 spent', type: 'number' },
+    ],
+  },
+  {
+    label: 'Referral Settings',
+    icon: 'fa-user-plus',
+    items: [
+      { key: 'referral_reward_points', label: 'Reward Points', description: 'Loyalty points awarded to referrer when referral places first order', type: 'number' },
+      { key: 'referral_min_orders', label: 'Min Orders', description: 'Minimum orders the referred user must place before referrer gets reward', type: 'number' },
+    ],
+  },
+  {
+    label: 'Integrations',
+    icon: 'fa-plug',
+    items: [
+      { key: 'pos_integration_enabled', label: 'POS Integration', description: 'Enable POS API integration (applies to all stores)', type: 'boolean' },
+      { key: 'delivery_integration_enabled', label: 'Delivery Integration', description: 'Enable delivery API integration (applies to all stores)', type: 'boolean' },
+      { key: 'payment_gateway_provider', label: 'Payment Gateway', description: 'Provider name (e.g. stripe, touchngo, none)', type: 'string' },
     ],
   },
   {
@@ -155,20 +172,38 @@ export default function SettingsPage({ token }: SettingsPageProps) {
                       <div className="set-12">{item.description}</div>
                     </div>
                     <div className="set-13">
-                      <input
-                        type={item.type === 'number' ? 'number' : 'text'}
-                        step={item.type === 'number' ? 'any' : undefined}
-                        value={currentVal}
-                        onChange={e => {
-                          setEditValues(prev => ({ ...prev, [item.key]: e.target.value }));
-                          setSavedKeys(prev => {
-                            const next = { ...prev };
-                            delete next[item.key];
-                            return next;
-                          });
-                        }}
-                        className="set-14"
-                      />
+                      {item.type === 'boolean' ? (
+                        <select
+                          value={currentVal}
+                          onChange={e => {
+                            setEditValues(prev => ({ ...prev, [item.key]: e.target.value }));
+                            setSavedKeys(prev => {
+                              const next = { ...prev };
+                              delete next[item.key];
+                              return next;
+                            });
+                          }}
+                          className="set-14"
+                        >
+                          <option value="true">Enabled</option>
+                          <option value="false">Disabled</option>
+                        </select>
+                      ) : (
+                        <input
+                          type={item.type === 'number' ? 'number' : 'text'}
+                          step={item.type === 'number' ? 'any' : undefined}
+                          value={currentVal}
+                          onChange={e => {
+                            setEditValues(prev => ({ ...prev, [item.key]: e.target.value }));
+                            setSavedKeys(prev => {
+                              const next = { ...prev };
+                              delete next[item.key];
+                              return next;
+                            });
+                          }}
+                          className="set-14"
+                        />
+                      )}
                       <button
                         className="btn btn-primary set-save-btn"
                         style={{

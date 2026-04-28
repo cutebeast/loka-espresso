@@ -7,7 +7,7 @@ from sqlalchemy.sql import text
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.core.commerce import credit_wallet
+from app.core.commerce import credit_referral_points
 from app.core.utils import to_float
 from app.models.customer import Customer
 from app.models.social import Referral
@@ -17,7 +17,7 @@ from app.models.splash import AppConfig
 router = APIRouter(prefix="/referral", tags=["Referral"])
 
 REFERRAL_MAX_AGE_DAYS = 7
-DEFAULT_REWARD_AMOUNT = 5.00
+DEFAULT_REWARD_POINTS = 50
 DEFAULT_MIN_ORDERS = 1
 
 
@@ -42,7 +42,7 @@ async def get_referral_code(user: Customer = Depends(get_current_user), db: Asyn
     return {
         "code": ref.code,
         "referrals": referral_count,
-        "earnings": to_float(user.referral_earnings),
+        "points_earned": to_float(user.referral_earnings),
         "reward_paid": ref.referrer_reward_paid,
     }
 
@@ -100,7 +100,7 @@ async def referral_stats(user: Customer = Depends(get_current_user), db: AsyncSe
     invited_users = []
     for r in referrals:
         if r.invitee_id:
-            u_result = await db.execute(select(User).where(User.id == r.invitee_id))
+            u_result = await db.execute(select(Customer).where(Customer.id == r.invitee_id))
             invitee = u_result.scalar_one_or_none()
             invited_users.append({
                 "name": invitee.name if invitee else "Unknown",
@@ -145,24 +145,23 @@ async def award_referrer_on_order(invitee_id: int, db: AsyncSession) -> None:
         return
 
     reward_result = await db.execute(
-        select(AppConfig).where(AppConfig.key == "referral_reward_amount")
+        select(AppConfig).where(AppConfig.key == "referral_reward_points")
     )
-    reward_amount = to_float(reward_result.scalar_one_or_none().value) if reward_result.scalar_one_or_none() else DEFAULT_REWARD_AMOUNT
+    reward_points = int(reward_result.scalar_one_or_none().value) if reward_result.scalar_one_or_none() else DEFAULT_REWARD_POINTS
 
     ref.referrer_reward_paid = True
-    ref.reward_amount = reward_amount
+    ref.reward_amount = reward_points
 
-    referrer_result = await db.execute(select(User).where(User.id == ref.referrer_id))
+    referrer_result = await db.execute(select(Customer).where(Customer.id == ref.referrer_id))
     referrer = referrer_result.scalar_one_or_none()
     if referrer:
-        await credit_wallet(db, referrer.id, reward_amount, "referral_reward",
-                           f"Referral reward for inviting user #{invitee_id}")
+        await credit_referral_points(db, referrer.id, reward_points, invitee_id)
         referrer.referral_count = (referrer.referral_count or 0) + 1
-        referrer.referral_earnings = to_float(referrer.referral_earnings) + reward_amount
+        referrer.referral_earnings = to_float(referrer.referral_earnings or 0) + reward_points
 
         notif = Notification(
             user_id=referrer.id, title="Referral Reward!",
-            body=f"You earned RM{reward_amount:.2f} for your referral!",
+            body=f"You earned {reward_points} loyalty points for your referral!",
             type="referral",
         )
         db.add(notif)

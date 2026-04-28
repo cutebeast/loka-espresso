@@ -268,6 +268,47 @@ async def award_loyalty_for_paid_order(db: AsyncSession, order: Order) -> int:
     return points
 
 
+async def credit_referral_points(
+    db: AsyncSession,
+    user_id: int,
+    points: int,
+    invitee_id: int,
+) -> None:
+    """Credit loyalty points to referrer when their referral places an order."""
+    la_result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.user_id == user_id))
+    account = la_result.scalar_one_or_none()
+
+    if account:
+        stmt = (
+            sa_update(LoyaltyAccount)
+            .where(LoyaltyAccount.id == account.id)
+            .values(
+                points_balance=func.round(LoyaltyAccount.points_balance + points, 0),
+                total_points_earned=func.round(LoyaltyAccount.total_points_earned + points, 0),
+            )
+        )
+        await db.execute(stmt)
+        await db.refresh(account)
+    else:
+        account = LoyaltyAccount(
+            user_id=user_id,
+            points_balance=points,
+            total_points_earned=points,
+            tier="bronze",
+        )
+        db.add(account)
+        await db.flush()
+
+    db.add(
+        LoyaltyTransaction(
+            user_id=user_id,
+            points=points,
+            type="earn",
+            description=f"Referral reward for inviting user #{invitee_id}",
+        )
+    )
+
+
 async def settle_order_payment(
     db: AsyncSession,
     order: Order,

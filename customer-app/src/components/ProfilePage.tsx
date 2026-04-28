@@ -8,6 +8,7 @@ import {
   Ticket,
   CreditCard,
   MapPin,
+  Users,
   SlidersHorizontal,
   Headset,
   LogOut,
@@ -37,9 +38,9 @@ export default function ProfilePage() {
   const [recentOrders, setRecentOrders] = useState<OrderPreview[]>([]);
 
   useEffect(() => {
-    api.get('/orders?limit=2')
+    api.get('/orders?page_size=2')
       .then((res) => {
-        const data = Array.isArray(res.data) ? res.data : (res.data?.orders ?? []);
+        const data = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
         setRecentOrders(data.slice(0, 2).map((o: { id: number; items?: { name?: string }[]; created_at?: string; status?: string }) => ({
           id: o.id,
           items: o.items?.map(i => i.name).filter(Boolean).join(', ') || 'Order #' + o.id,
@@ -51,9 +52,6 @@ export default function ProfilePage() {
   }, []);
 
   const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch { /* ignore */ }
     logout();
     setShowLogout(false);
   };
@@ -63,6 +61,7 @@ export default function ProfilePage() {
   const menuItems = [
     { id: 'rewards', icon: Gift, label: 'My Rewards', iconClass: 'profile-icon-reward', onClick: () => setPage('my-rewards', { initialTab: 'rewards' }) },
     { id: 'vouchers', icon: Ticket, label: 'My Vouchers', iconClass: 'profile-icon-voucher', onClick: () => setPage('my-rewards', { initialTab: 'vouchers' }) },
+    { id: 'referral', icon: Users, label: 'Referral', iconClass: 'profile-icon-referral', onClick: () => setPage('referral') },
     { id: 'payment', icon: CreditCard, label: 'Payment Methods', iconClass: 'profile-icon-payment', onClick: () => setPage('payment-methods') },
     { id: 'addresses', icon: MapPin, label: 'Saved Addresses', iconClass: 'profile-icon-address', onClick: () => setPage('saved-addresses') },
     { id: 'card', icon: IdCard, label: 'My Card', iconClass: 'profile-icon-card', onClick: () => setPage('my-card') },

@@ -17,7 +17,10 @@ ALLOWED_CONFIG_KEYS = {
     "delivery_fee", "min_order_delivery", "min_order", "min_order_amount",
     "currency", "currency_symbol", "earn_rate", "pickup_lead_minutes",
     "loyalty_enabled", "loyalty_points_per_rmse", "max_vouchers_per_user",
-    "voucher_expiry_days", "points_redemption_rate", "referral_bonus_points",
+    "voucher_expiry_days", "points_redemption_rate",
+    "referral_reward_points", "referral_min_orders",
+    "pos_integration_enabled", "delivery_integration_enabled",
+    "payment_gateway_provider",
     "otp_bypass_enabled", "pwa_phone_country_code", "otp_bypass_code",
 }
 
@@ -40,7 +43,8 @@ PUBLIC_CONFIG_KEYS = {
     "max_vouchers_per_user",
     "voucher_expiry_days",
     "points_redemption_rate",
-    "referral_bonus_points",
+    "referral_reward_points",
+    "referral_min_orders",
 }
 
 

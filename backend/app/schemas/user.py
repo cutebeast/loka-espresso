@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 
 
 class AddressCreate(BaseModel):
@@ -42,6 +42,7 @@ class UserOut(BaseModel):
     role: Optional[str] = None       # Resolved name from roles table
     avatar_url: Optional[str] = None
     referral_code: Optional[str] = None
+    date_of_birth: Optional[date] = None
     created_at: Optional[datetime] = None
 
     class Config:
@@ -52,3 +53,4 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    date_of_birth: Optional[date] = None

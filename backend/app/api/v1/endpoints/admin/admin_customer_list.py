@@ -231,6 +231,7 @@ async def get_customer(
         "wallet_balance": to_float(wallet.balance) if wallet else 0.0,
         "created_at": target.created_at,
         "phone_verified": target.phone_verified,
+        "date_of_birth": target.date_of_birth.isoformat() if target.date_of_birth else None,
         "is_profile_complete": _is_customer_profile_complete(target.name, target.email, bool(target.phone_verified)),
         "recent_orders": [
             {

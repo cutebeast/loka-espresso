@@ -45,7 +45,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         <form onSubmit={handleLogin}>
           <div className="ls-6">
             <label className="ls-7">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" required />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" required autoComplete="username" />
           </div>
           <div className="ls-8">
             <label className="ls-9">Password</label>

@@ -12,7 +12,7 @@ export default function AccountDetailsPage() {
 
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
-  const [address, setAddress] = useState('');
+  const [dob, setDob] = useState(user?.date_of_birth || '');
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -33,11 +33,12 @@ export default function AccountDetailsPage() {
     }
     setSaving(true);
     try {
-      const res = await api.put('/users/me', { name: name.trim(), email: email.trim() || undefined });
+      const res = await       api.put('/users/me', { name: name.trim(), email: email.trim() || undefined, date_of_birth: dob || undefined });
       setUser(res.data);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
     } catch {
+      console.error('Failed to update profile');
       showToast('Failed to update profile', 'error');
     } finally {
       setSaving(false);
@@ -80,12 +81,12 @@ export default function AccountDetailsPage() {
         </div>
 
         <div className="edit-input-group">
-          <label className="edit-input-label">Delivery Address</label>
-          <textarea
+          <label className="edit-input-label">Date of Birth</label>
+          <input
+            type="date"
             className="edit-input-field"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Unit, Street, City, Postcode"
+            value={dob}
+            onChange={(e) => setDob(e.target.value)}
           />
         </div>
 

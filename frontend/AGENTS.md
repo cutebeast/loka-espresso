@@ -202,3 +202,10 @@ Fixes 500 error on wallet endpoint — model has the column but DB didn't.
 - `src/styles/payment-methods.css`
 - `src/styles/admin-extra.css`
 - `src/components/modals/AddStaffModal.tsx` (pre-ACL staff form, replaced by StaffPage.tsx drawer)
+
+### Store Management Consistency (Phase 23)
+- **All Store Management pages use toggle icon** (`fa-toggle-on`/`fa-toggle-off`, green/gray) in Actions column
+- **MenuPage**: Add-ons as separate column (Manage button for HQ). Status badge removed → toggle in Actions. Removed `mp-53` hidden badge.
+- **InventoryPage**: Removed duplicate Status column (stock level badge). "Inactive" label and "Low" badge moved to Stock column inline.
+- **StaffPage**: Status badge column removed → toggle icon added to Actions.
+- **OrdersPage**: Unchanged — uses order status badges (not YES/NO toggle), correct behavior.

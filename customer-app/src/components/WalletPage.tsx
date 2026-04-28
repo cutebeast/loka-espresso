@@ -31,7 +31,7 @@ export default function WalletPage() {
     try {
       const res = await api.get('/wallet');
       setBalance(res.data?.balance ?? balance);
-    } catch {
+    } catch { console.error("Wallet operation failed");
       // keep existing
     }
   }, [balance, setBalance]);
@@ -41,7 +41,7 @@ export default function WalletPage() {
     try {
       const res = await api.get('/wallet/transactions', { params: { page_size: 20 } });
       setTransactions(Array.isArray(res.data) ? res.data : []);
-    } catch {
+    } catch { console.error("Wallet operation failed");
       // keep existing
     } finally {
       setLoadingTx(false);
@@ -84,7 +84,7 @@ export default function WalletPage() {
       await fetchTransactions();
       setSelectedAmount(null);
       setCustomAmount('');
-    } catch {
+    } catch { console.error("Wallet operation failed");
       showToast('Top-up failed. Please try again.', 'error');
     } finally {
       setToppingUp(false);

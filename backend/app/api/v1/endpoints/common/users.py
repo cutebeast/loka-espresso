@@ -25,6 +25,7 @@ def _user_to_out(user, ut_name: str = None, role_name: str = None) -> dict:
         "role": role_name,
         "avatar_url": getattr(user, 'avatar_url', None),
         "referral_code": getattr(user, 'referral_code', None),
+        "date_of_birth": getattr(user, 'date_of_birth', None),
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 

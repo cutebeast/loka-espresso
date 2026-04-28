@@ -255,6 +255,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editDob, setEditDob] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
@@ -270,6 +271,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
         setEditName(d.name || '');
         setEditPhone(d.phone || '');
         setEditEmail(d.email || '');
+        setEditDob(d.date_of_birth || '');
       }
     } catch { console.error('Failed to load customer'); } finally { setLoading(false); }
   }, [customerId]);
@@ -331,7 +333,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
     try {
       const res = await apiFetch(`/admin/customers/${detail.id}`, undefined, {
         method: 'PUT',
-        body: JSON.stringify({ name: editName, phone: editPhone, email: editEmail }),
+        body: JSON.stringify({ name: editName, phone: editPhone, email: editEmail, date_of_birth: editDob || null }),
       });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setEditError(data.detail || `Failed (${res.status})`); return; }
       setEditingCustomer(false);
@@ -407,6 +409,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
             editName={editName}
             editPhone={editPhone}
             editEmail={editEmail}
+            editDob={editDob}
             editSaving={editSaving}
             editError={editError}
             onStartEdit={() => setEditingCustomer(true)}
@@ -415,6 +418,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
             setEditName={setEditName}
             setEditPhone={setEditPhone}
             setEditEmail={setEditEmail}
+            setEditDob={setEditDob}
           />
         )}
 

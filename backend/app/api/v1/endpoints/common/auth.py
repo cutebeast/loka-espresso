@@ -71,6 +71,30 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 OTP_TTL_SECONDS = 300
 OTP_RESEND_SECONDS = 60
+OTP_WINDOW_MINUTES = 15
+OTP_MAX_SENDS_PER_WINDOW = 3
+OTP_MAX_VERIFY_ATTEMPTS = 3
+
+
+def _normalize_phone(phone: str) -> str:
+    """Strip whitespace and ensure Malaysian format if possible."""
+    phone = phone.strip()
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone number is required")
+    if phone.startswith('+'):
+        return phone
+    if phone.startswith('0'):
+        return '+6' + phone
+    if phone.isdigit():
+        return '+' + phone
+    return phone
+
+
+def _validate_phone(phone: str) -> None:
+    """Basic phone validation — raise if clearly invalid."""
+    digits = ''.join(c for c in phone if c.isdigit())
+    if len(digits) < 8 or len(digits) > 15:
+        raise HTTPException(status_code=400, detail="Invalid phone number")
 
 
 async def _blacklist_token(token: str, user_id: int, db: AsyncSession) -> None:
@@ -455,7 +479,9 @@ async def change_password(
 ):
     if len(body.new_password) < 6:
         raise HTTPException(400, "New password must be at least 6 characters")
-    if not user.password_hash or not verify_password(body.current_password, user.password_hash):
+    if not hasattr(user, 'password_hash') or not user.password_hash:
+        raise HTTPException(400, "This account does not use password authentication")
+    if not verify_password(body.current_password, user.password_hash):
         raise HTTPException(400, "Current password is incorrect")
     user.password_hash = hash_password(body.new_password)
     ip = get_client_ip(request)

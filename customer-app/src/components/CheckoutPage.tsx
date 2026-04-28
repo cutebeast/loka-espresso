@@ -86,6 +86,7 @@ export default function CheckoutPage() {
     setDiscountCode(code || '');
     setDiscountValue(dv || 0);
     setCheckoutDraft({
+      ...checkoutDraft,
       voucherCode: type === 'voucher' ? code : undefined,
       rewardCode: type === 'reward' ? code : undefined,
     });

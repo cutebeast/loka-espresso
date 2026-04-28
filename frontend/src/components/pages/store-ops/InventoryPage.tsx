@@ -47,6 +47,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
   const [catModal, setCatModal] = useState(false);
   const [editingCat, setEditingCat] = useState<MerchantInventoryCategory | null>(null);
   const [catName, setCatName] = useState('');
+  const [catSlug, setCatSlug] = useState('');
   const [catSaving, setCatSaving] = useState(false);
   const [catError, setCatError] = useState('');
 
@@ -86,13 +87,13 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
   const filteredItems = selectedCat ? inventory.filter(i => i.category_id === selectedCat) : inventory;
 
   // --- Category CRUD ---
-  function openCreateCat() { setEditingCat(null); setCatName(''); setCatError(''); setCatModal(true); }
-  function openEditCat(c: MerchantInventoryCategory) { setEditingCat(c); setCatName(c.name); setCatError(''); setCatModal(true); }
+  function openCreateCat() { setEditingCat(null); setCatName(''); setCatSlug(''); setCatError(''); setCatModal(true); }
+  function openEditCat(c: MerchantInventoryCategory) { setEditingCat(c); setCatName(c.name); setCatSlug(c.slug || ''); setCatError(''); setCatModal(true); }
   function closeCatModal() { setCatModal(false); setEditingCat(null); setCatError(''); }
 
   async function handleCatSubmit() {
     setCatSaving(true); setCatError('');
-    const slug = catName.toLowerCase().replace(/\s+/g, '-');
+    const slug = catSlug || catName.toLowerCase().replace(/\s+/g, '-');
     try {
       const res = editingCat
         ? await apiFetch(`/admin/stores/${activeStoreId}/inventory-categories/${editingCat.id}`, undefined, { method: 'PUT', body: JSON.stringify({ name: catName, slug, display_order: editingCat.display_order }) })
@@ -168,7 +169,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
       header: 'Ingredient',
       render: (item) => (
         <div>
-          <div>{item.name}{!item.is_active && <span className="ip-52"> Inactive</span>}</div>
+          <div>{item.name}</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{item.category_name || '—'}</div>
         </div>
       ),
@@ -176,21 +177,17 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
     {
       key: 'current_stock',
       header: 'Stock',
-      render: (item) => (
-        <div>
-          <div><strong>{item.current_stock}</strong> {item.unit}</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>Reorder: {item.reorder_level || '—'}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
       render: (item) => {
         const isLow = item.current_stock <= item.reorder_level && item.is_active;
-        const badgeClass = !item.is_active ? 'badge-gray' : isLow ? 'badge-yellow' : 'badge-green';
-        const label = !item.is_active ? 'Inactive' : isLow ? 'Low' : 'OK';
-        return <span className={`badge ${badgeClass}`}>{label}</span>;
+        return (
+          <div>
+            <div><strong>{item.current_stock}</strong> {item.unit}{!item.is_active && <span className="ip-52"> Inactive</span>}</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+              Reorder: {item.reorder_level || '—'}
+              {isLow && <span className="badge badge-yellow" style={{ marginLeft: 6, fontSize: 10 }}>Low</span>}
+            </div>
+          </div>
+        );
       },
     },
     {
@@ -339,7 +336,8 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
       <Modal isOpen={catModal} onClose={closeCatModal} title={editingCat ? 'Edit Category' : 'New Category'}>
         {catError && <div className="ip-17">{catError}</div>}
         <div>
-          <input value={catName} onChange={e => setCatName(e.target.value)} required placeholder="Category name" className="ip-18" autoFocus />
+          <input value={catName} onChange={e => { setCatName(e.target.value); if (!catSlug) setCatSlug(e.target.value.toLowerCase().replace(/\s+/g, '-')); }} required placeholder="Category name" className="ip-18" autoFocus />
+          <input value={catSlug} onChange={e => setCatSlug(e.target.value)} placeholder="slug (auto)" className="ip-18" style={{ marginTop: 8 }} />
           <div className="inventory-form-actions ip-32" style={{marginTop:12}}>
             <button className="btn btn-primary" disabled={catSaving} onClick={handleCatSubmit}>{catSaving ? '...' : editingCat ? 'Update' : 'Create'}</button>
             <button className="btn" onClick={closeCatModal}>Cancel</button>

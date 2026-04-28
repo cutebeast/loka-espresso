@@ -256,10 +256,13 @@ def require_role(*role_ids: int):
     If UserTypeIDs.CUSTOMER is matched by user_type_id, also allows for PWA endpoints.
     """
     async def role_checker(user=Depends(get_current_user)):
-        if user.role_id in role_ids:
-            return user
-        # Allow global admins through any role check
         if is_global_admin(user):
+            return user
+        if not hasattr(user, 'role_id'):
+            if RoleIDs.CUSTOMER in role_ids:
+                return user
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Customer accounts don't have roles")
+        if user.role_id in role_ids:
             return user
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
     return role_checker

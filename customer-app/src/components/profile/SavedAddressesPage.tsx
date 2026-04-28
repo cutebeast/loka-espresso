@@ -70,7 +70,7 @@ export default function SavedAddressesPage() {
       setShowAdd(false);
       setNewAddress('');
       fetchAddresses();
-    } catch {
+    } catch { console.error('Failed to load addresses');
       showToast('Failed to save address', 'error');
     } finally {
       setSaving(false);
@@ -82,7 +82,7 @@ export default function SavedAddressesPage() {
       await api.delete(`/users/me/addresses/${id}`);
       showToast('Address deleted', 'success');
       fetchAddresses();
-    } catch {
+    } catch { console.error('Failed to load addresses');
       showToast('Failed to delete address', 'error');
     }
   };

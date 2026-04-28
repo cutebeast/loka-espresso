@@ -485,13 +485,13 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
               </div>
             ) : <span className="sp-36">—</span>;
           }},
-          { key: 'is_active', header: 'Status', render: (s) => (
-            <span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? 'Active' : 'Inactive'}</span>
-          )},
           { key: 'actions', header: 'Actions', render: (s) => {
             const rowKey = s.id ?? s.user_id ?? `user-${s.id}`;
             return (
               <div className="sp-actions">
+                <button className="btn btn-sm" onClick={() => toggleActive(s)} title={s.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}>
+                  <i className={`fas ${s.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: 20, color: s.is_active ? '#16A34A' : '#9CA3AF' }}></i>
+                </button>
                 <button className="btn btn-sm" onClick={() => openEdit(s)} title="Edit"><i className="fas fa-edit"></i></button>
                 <button className="btn btn-sm" onClick={() => s.email ? handleResetPassword(s) : setError('Add an email to enable login access.')} title={s.email ? 'Reset password' : 'No login'}><i className="fas fa-key" style={{ color: s.email ? undefined : THEME.accentLight }}></i></button>
                 {confirmDelete === rowKey ? (

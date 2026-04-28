@@ -124,32 +124,23 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
         <div>
           <strong>{item.name}</strong>
           {item.is_featured && <span className="mp-54"><i className="fas fa-star"></i> Featured</span>}
-          {!item.is_available && <span className="mp-53">Hidden</span>}
           {item.description && <p className="mp-55">{item.description}</p>}
         </div>
+      ),
+    },
+    {
+      key: 'options',
+      header: 'Add-ons',
+      render: (item: MerchantMenuItem) => isHQ ? (
+        <button className="btn btn-sm" onClick={() => onCustomizeItem(item)} title="Manage add-ons"><i className="fas fa-sliders-h"></i> Manage</button>
+      ) : (
+        <span className="badge badge-gray">—</span>
       ),
     },
     {
       key: 'price',
       header: 'Price (RM)',
       render: (item) => <span>{formatRM(item.base_price)}</span>,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (item) => (
-        isHQ ? (
-          <button onClick={() => toggleItemAvailable(item)} className="mp-60">
-            <span className={`badge ${item.is_available ? 'badge-green' : 'badge-gray'}`}>
-              {item.is_available ? 'Available' : 'Hidden'}
-            </span>
-          </button>
-        ) : (
-          <span className={`badge ${item.is_available ? 'badge-green' : 'badge-gray'}`}>
-            {item.is_available ? 'Available' : 'Hidden'}
-          </span>
-        )
-      ),
     },
     ...(isHQ ? [{
       key: 'actions',
@@ -162,7 +153,9 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
           </div>
         ) : (
           <div className="mp-56">
-            <button className="btn btn-sm" onClick={() => onCustomizeItem(item)} title="Manage add-ons"><i className="fas fa-sliders-h"></i> Options</button>
+            <button className="btn btn-sm" onClick={() => toggleItemAvailable(item)} title={item.is_available ? 'Available — click to hide' : 'Hidden — click to show'}>
+              <i className={`fas ${item.is_available ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: 20, color: item.is_available ? '#16A34A' : '#9CA3AF' }}></i>
+            </button>
             <button className="btn btn-sm" onClick={() => openEditItem(item)} title="Edit item"><i className="fas fa-edit"></i></button>
             <button className="btn btn-sm mp-59" onClick={() => setConfirmDeleteItem(item.id)} title="Delete item"><i className="fas fa-trash"></i></button>
           </div>

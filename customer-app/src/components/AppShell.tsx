@@ -45,6 +45,7 @@ const NotificationsPage = dynamic(() => import('./profile/NotificationsPage'), {
 const HelpSupportPage = dynamic(() => import('./profile/HelpSupportPage'), { ssr: false });
 const LegalPage = dynamic(() => import('./LegalPage'), { ssr: false });
 const SettingsPage = dynamic(() => import('./profile/SettingsPage'), { ssr: false });
+const ReferralPage = dynamic(() => import('./profile/ReferralPage'), { ssr: false });
 const MyCardPage = dynamic(() => import('./MyCardPage'), { ssr: false });
 const OrderDetailPage = dynamic(() => import('./OrderDetailPage'), { ssr: false });
 
@@ -173,6 +174,7 @@ export default function AppShell() {
       case 'help-support': return <HelpSupportPage />;
       case 'legal': return <LegalPage />;
       case 'settings': return <SettingsPage />;
+      case 'referral': return <ReferralPage />;
       case 'my-card': return <MyCardPage />;
       case 'order-detail': return <OrderDetailPage />;
       default: return <HomePage />;

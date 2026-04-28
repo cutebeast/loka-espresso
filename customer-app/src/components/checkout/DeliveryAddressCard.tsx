@@ -28,7 +28,7 @@ export default function DeliveryAddressCard({ value, onChange }: DeliveryAddress
 
   useEffect(() => {
     if (user) {
-      api.get('/me/addresses')
+      api.get('/users/me/addresses')
         .then((res) => {
           if (Array.isArray(res.data)) setSavedAddresses(res.data);
         })

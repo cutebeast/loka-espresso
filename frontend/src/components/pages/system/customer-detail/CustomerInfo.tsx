@@ -10,6 +10,7 @@ interface CustomerInfoProps {
   editName: string;
   editPhone: string;
   editEmail: string;
+  editDob: string;
   editSaving: boolean;
   editError: string;
   onStartEdit: () => void;
@@ -18,6 +19,7 @@ interface CustomerInfoProps {
   setEditName: (v: string) => void;
   setEditPhone: (v: string) => void;
   setEditEmail: (v: string) => void;
+  setEditDob: (v: string) => void;
 }
 
 export default function CustomerInfo({
@@ -26,6 +28,7 @@ export default function CustomerInfo({
   editName,
   editPhone,
   editEmail,
+  editDob,
   editSaving,
   editError,
   onStartEdit,
@@ -34,6 +37,7 @@ export default function CustomerInfo({
   setEditName,
   setEditPhone,
   setEditEmail,
+  setEditDob,
 }: CustomerInfoProps) {
   if (editingCustomer) {
     return (
@@ -47,15 +51,22 @@ export default function CustomerInfo({
             <div className="df-hint">Customer's full name</div>
           </div>
           <div className="df-field">
+            <label className="df-label">Date of Birth</label>
+            <input type="date" value={editDob} onChange={e => setEditDob(e.target.value)} />
+            <div className="df-hint">Used for birthday gifts/vouchers</div>
+          </div>
+        </div>
+        <div className="df-grid">
+          <div className="df-field">
             <label className="df-label">Phone</label>
             <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="+60 12-345 6789" />
             <div className="df-hint">Used for passwordless login</div>
           </div>
-        </div>
-        <div className="df-field" style={{ marginBottom: 16 }}>
-          <label className="df-label">Email</label>
-          <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="customer@email.com" />
-          <div className="df-hint">Recovery channel</div>
+          <div className="df-field">
+            <label className="df-label">Email</label>
+            <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="customer@email.com" />
+            <div className="df-hint">Recovery channel</div>
+          </div>
         </div>
         <div className="df-actions">
           <button type="button" className="btn" onClick={onCancelEdit}>Cancel</button>
@@ -76,6 +87,7 @@ export default function CustomerInfo({
           <div className="cdp-field-row"><span className="cdp-field-label">Phone Verified</span><span>{detail.phone_verified ? <span className="cdp-text-success">Yes</span> : <span className="cdp-text-error">No</span>}</span></div>
           <div className="cdp-field-row"><span className="cdp-field-label">Profile Complete</span><span>{detail.is_profile_complete ? <span className="cdp-text-success">Yes</span> : <span className="cdp-text-error">No ({detail.phone_verified ? 'name still required' : 'phone not verified'})</span>}</span></div>
           <div className="cdp-field-row"><span className="cdp-field-label">Joined</span><span>{detail.created_at ? new Date(detail.created_at).toLocaleDateString() : '-'}</span></div>
+          <div className="cdp-field-row"><span className="cdp-field-label">Date of Birth</span><span>{detail.date_of_birth ? new Date(detail.date_of_birth).toLocaleDateString() : <span className="cdp-text-muted">Not set</span>}</span></div>
         </div>
         <button className="btn btn-sm" onClick={onStartEdit} style={{ marginTop: 12 }}>
           <i className="fas fa-edit"></i> Edit Profile

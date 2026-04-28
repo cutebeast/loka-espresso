@@ -45,7 +45,7 @@ export default function RewardsPage() {
         if (!b.start_date || !b.end_date) return true;
         return new Date(b.start_date) <= now && new Date(b.end_date) >= now;
       }));
-    } catch {
+    } catch { console.error('Failed to load rewards');
       setRewards([]);
       setPromos([]);
     } finally {
@@ -71,7 +71,7 @@ export default function RewardsPage() {
         setRedemptionSuccess(true);
         showToast('Reward redeemed!', 'success');
       }
-    } catch {
+    } catch { console.error('Failed to load rewards');
       showToast('Failed to redeem', 'error');
     } finally {
       setRedeeming(null);
