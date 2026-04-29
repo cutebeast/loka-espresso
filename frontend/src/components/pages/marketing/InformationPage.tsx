@@ -378,6 +378,7 @@ export default function InformationPage({ token }: InformationPageProps) {
                 token={token} 
                 onSet={(url) => setField('image_url', url)} 
                 hint="Cover image shown on PWA card and article header."
+                folder={form.content_type}
               />
             </div>
 
@@ -484,7 +485,7 @@ export default function InformationPage({ token }: InformationPageProps) {
   );
 }
 
-function ImageUploadField({ label, imageUrl, token: _token, onSet, hint }: { label: string; imageUrl: string; token: string; onSet: (url: string) => void; hint?: string }) {
+function ImageUploadField({ label, imageUrl, token: _token, onSet, hint, folder }: { label: string; imageUrl: string; token: string; onSet: (url: string) => void; hint?: string; folder?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -495,7 +496,8 @@ function ImageUploadField({ label, imageUrl, token: _token, onSet, hint }: { lab
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await apiUpload('/upload/information-image', fd);
+      const endpoint = folder === 'product' ? '/upload/products-image' : folder === 'event' ? '/upload/events-image' : '/upload/information-image';
+      const res = await apiUpload(endpoint, fd);
       if (res.ok) {
         const data = await res.json();
         onSet(data.url);

@@ -92,6 +92,40 @@ async def upload_information_image(
     return _save_upload(content, file.filename, "information", settings)
 
 
+@router.post("/products-image")
+async def upload_products_image(
+    file: UploadFile = File(...),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """Upload an image for product cards."""
+    settings = get_settings()
+    if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
+    if not _validate_magic_bytes(content, file.content_type):
+        raise HTTPException(status_code=400, detail="File content does not match declared image type")
+    return _save_upload(content, file.filename, "products", settings)
+
+
+@router.post("/events-image")
+async def upload_events_image(
+    file: UploadFile = File(...),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """Upload an image for event popups (full-screen, 88vw×85vh)."""
+    settings = get_settings()
+    if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
+    if not _validate_magic_bytes(content, file.content_type):
+        raise HTTPException(status_code=400, detail="File content does not match declared image type")
+    return _save_upload(content, file.filename, "events", settings)
+
+
 @router.post("/document")
 async def upload_document(
     file: UploadFile = File(...),

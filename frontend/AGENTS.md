@@ -108,6 +108,9 @@ All use shared `df-*` CSS pattern in `components.css`. Default width: **720px**.
 - Menu items: `apiUpload('/upload/image')` → `uploads/menu/`
 - Marketing (banners, rewards, store): `apiUpload('/upload/marketing-image')` → `uploads/marketing/`
 - Information: `apiUpload('/upload/information-image')` → `uploads/information/`
+- Products: `apiUpload('/upload/products-image')` → `uploads/products/`
+- Events: `apiUpload('/upload/events-image')` → `uploads/events/`
+- Marketing (banners, rewards, store): `apiUpload('/upload/marketing-image')` → `uploads/marketing/`
 
 ### Date Input Convention
 - `type="date"` → `slice(0, 10)` format (`YYYY-MM-DD`)
