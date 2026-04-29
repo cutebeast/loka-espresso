@@ -11,7 +11,7 @@ import { autoDetectStore } from '@/lib/geolocation';
 import type { PageId, Store as StoreType, CartItem } from '@/lib/api';
 
 const PUBLIC_PAGES: PageId[] = [
-  'home', 'menu', 'promotions', 'information', 'legal',
+  'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings',
 ];
 
 function isPublicPage(page: PageId): boolean {

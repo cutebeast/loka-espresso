@@ -213,9 +213,9 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
         if (data.temp_password && email) setTempPassword({ name, email, password: data.temp_password });
         closeForm();
       } else if (editingStaff) {
-        if (!editingStaff.id) { setError('Staff record has no ID — create a new one instead'); return; }
-        if (isHQ) payload.store_ids = selectedStoreIds;
-        const res = await apiFetch(`/admin/staff/${editingStaff.id}`, undefined, { method: 'PUT', body: JSON.stringify(payload) });
+        const staffId = editingStaff.id || editingStaff.user_id;
+        if (!staffId) { setError('Staff record has no ID — create a new one instead'); return; }
+        const res = await apiFetch(`/admin/staff/${staffId}`, undefined, { method: 'PUT', body: JSON.stringify(payload) });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
         closeForm();
       } else {
@@ -229,9 +229,11 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
   }
 
   async function toggleActive(s: MerchantStaffMember) {
+    const staffId = s.id || s.user_id;
+    if (!staffId) { setError('Cannot toggle: no valid ID'); return; }
     setError('');
     try {
-      const res = await apiFetch(`/admin/staff/${s.id}`, undefined, { method: 'PUT', body: JSON.stringify({ is_active: !s.is_active }) });
+      const res = await apiFetch(`/admin/staff/${staffId}`, undefined, { method: 'PUT', body: JSON.stringify({ is_active: !s.is_active }) });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Failed to toggle'); return; }
       fetchStaff(page);
     } catch (err: any) { setError(err.message || 'Network error'); }

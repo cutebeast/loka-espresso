@@ -5,6 +5,7 @@ import { formatPrice } from '@/lib/tokens';
 
 interface WalletCardProps {
   isGuest: boolean;
+  isAuthenticated: boolean;
   balance: number;
   points: number;
   tier: string;
@@ -14,8 +15,8 @@ interface WalletCardProps {
   onSignIn: () => void;
 }
 
-export default function WalletCard({ isGuest, balance, points, tier, onTopUp, onRewards, onVouchers, onSignIn }: WalletCardProps) {
-  if (isGuest) {
+export default function WalletCard({ isGuest, isAuthenticated, balance, points, tier, onTopUp, onRewards, onVouchers, onSignIn }: WalletCardProps) {
+  if (!isAuthenticated) {
     return (
       <div className="wallet-card wallet-card-guest" onClick={onSignIn}>
         <div className="wallet-row">

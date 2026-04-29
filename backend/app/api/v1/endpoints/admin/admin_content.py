@@ -32,11 +32,14 @@ def _slugify(text: str) -> str:
 async def list_cards(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    content_type: str = Query(None, description="Filter by content type"),
     user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     """List all information cards with pagination."""
     q = select(InformationCard).order_by(InformationCard.position, InformationCard.created_at.desc())
+    if content_type:
+        q = q.where(InformationCard.content_type == content_type)
     
     total_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = total_result.scalar() or 0

@@ -63,6 +63,8 @@ async def update_category(
     if req.slug:
         cat.slug = req.slug
     cat.display_order = req.display_order
+    if req.is_active is not None:
+        cat.is_active = req.is_active
     ip = get_client_ip(request)
     await log_action(db, action="UPDATE_CATEGORY", user_id=user.id, entity_type="menu_category", entity_id=cat_id, details={"name": cat.name}, ip_address=ip)
     return {"id": cat.id, "name": cat.name}

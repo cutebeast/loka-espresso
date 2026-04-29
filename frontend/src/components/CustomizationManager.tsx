@@ -13,7 +13,7 @@ interface CustomizationManagerProps {
 }
 
 export default function CustomizationManager({ storeId, item, token, onClose }: CustomizationManagerProps) {
-  const [options, setOptions] = useState<Array<{ id: number; name: string; price_adjustment: number; is_active: boolean }>>([]);
+  const [options, setOptions] = useState<Array<{ id: number; name: string; option_type: string; price_adjustment: number; is_active: boolean }>>([]);
   const [loading, setLoading] = useState(true);
 
   const loadOptions = useCallback(async () => {
@@ -26,8 +26,8 @@ export default function CustomizationManager({ storeId, item, token, onClose }: 
 
   React.useEffect(() => { loadOptions(); }, [loadOptions]);
 
-  async function deleteOption(optId: number) {
-    await apiFetch(`/admin/customizations/${optId}`, undefined, { method: 'DELETE' });
+  async function toggleOption(optId: number, currentActive: boolean) {
+    await apiFetch(`/admin/customizations/${optId}`, undefined, { method: 'PUT', body: JSON.stringify({ is_active: !currentActive }) });
     loadOptions();
   }
 
@@ -43,12 +43,14 @@ export default function CustomizationManager({ storeId, item, token, onClose }: 
             {options.map(opt => (
               <div key={opt.id} className="cm-5">
                 <div>
+                  {opt.option_type && <span className="badge badge-blue cm-7">{opt.option_type}</span>}
                   <span className="cm-6">{opt.name}</span>
                   {opt.price_adjustment > 0 && <span className="cm-7">+RM {opt.price_adjustment.toFixed(2)}</span>}
                 </div>
                 <div className="cm-8">
-                  <span className={`badge ${opt.is_active ? 'badge-green' : 'badge-gray'}`}>{opt.is_active ? 'Active' : 'Inactive'}</span>
-                  <button className="btn btn-sm cm-9"  onClick={() => deleteOption(opt.id)}><i className="fas fa-trash"></i></button>
+                  <button className="btn btn-sm" onClick={() => toggleOption(opt.id, opt.is_active)} title={opt.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}>
+                    <i className={`fas ${opt.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: 20, color: opt.is_active ? '#16A34A' : '#9CA3AF' }}></i>
+                  </button>
                 </div>
               </div>
             ))}

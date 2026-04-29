@@ -24,7 +24,6 @@ async def list_customization_options(
     result = await db.execute(
         select(CustomizationOption).where(
             CustomizationOption.menu_item_id == item_id,
-            CustomizationOption.is_active == True,
         ).order_by(CustomizationOption.display_order)
     )
     return result.scalars().all()
@@ -45,6 +44,7 @@ async def create_customization_option(
     opt = CustomizationOption(
         menu_item_id=item_id,
         name=req.name,
+        option_type=req.option_type,
         price_adjustment=req.price_adjustment,
         display_order=req.display_order,
     )
@@ -52,7 +52,7 @@ async def create_customization_option(
     await db.flush()
     ip = get_client_ip(request)
     await log_action(db, action="CREATE_CUSTOMIZATION", user_id=user.id, entity_type="customization_option", entity_id=opt.id, details={"name": opt.name, "item_id": item_id}, ip_address=ip)
-    return {"id": opt.id, "name": opt.name, "price_adjustment": to_float(opt.price_adjustment)}
+    return {"id": opt.id, "name": opt.name, "option_type": opt.option_type, "price_adjustment": to_float(opt.price_adjustment)}
 
 
 @router.put("/customizations/{option_id}")

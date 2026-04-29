@@ -7,17 +7,22 @@ import {
   Minus,
   Plus,
   ArrowRight,
+  ArrowLeft,
   Coffee,
   QrCode,
   X,
   Pen,
   Trash2,
+  Sliders,
 } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useConfigStore } from '@/stores/configStore';
 
 import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
+import api from '@/lib/api';
+import type { MenuItem, CustomizationOption as ApiCustomOption } from '@/lib/api';
+import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 
 interface CustomizationStructure {
   options?: Array<{ id: number; name: string; price_adjustment: number }>;
@@ -46,6 +51,10 @@ export default function CartPage() {
   const { orderMode, setOrderMode, selectedStore, dineInSession, setDineInSession, setPage, showToast, setShowStorePicker, setCheckoutDraft, isGuest, triggerSignIn } = useUIStore();
   const { config } = useConfigStore();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [editingItem, setEditingItem] = useState<number | null>(null); // cart item index
+  const [editItem, setEditItem] = useState<MenuItem | null>(null);
+  const [editOptions, setEditOptions] = useState<ApiCustomOption[]>([]);
+  const [editLoading, setEditLoading] = useState(false);
 
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
@@ -56,12 +65,40 @@ export default function CartPage() {
   const handleClearCart = () => {
     clearCart();
     setShowClearConfirm(false);
-    showToast('Cart cleared', 'info');
   };
 
   const handleOrderModeChange = (mode: 'pickup' | 'delivery' | 'dine_in') => {
-    if (mode === 'dine_in' && !dineInSession) return;
     setOrderMode(mode);
+    if (mode !== 'dine_in') setDineInSession(null);
+  };
+
+  const openCustomize = async (index: number) => {
+    const item = items[index];
+    if (!item) return;
+    try {
+      setEditLoading(true);
+      const res = await api.get(`/menu/items/${item.menu_item_id}/customizations`);
+      const options = Array.isArray(res.data) ? res.data : [];
+      setEditOptions(options);
+      setEditItem({ id: item.menu_item_id, name: item.name, base_price: item.price, category_id: 0 } as MenuItem);
+      setEditingItem(index);
+    } catch { /* ignore */ }
+    finally { setEditLoading(false); }
+  };
+
+  const handleCustomizeConfirm = (item: MenuItem, quantity: number, customizations: { id: number; name: string; price_adjustment: number }[], totalPrice: number) => {
+    if (editingItem === null) return;
+    updateQuantity(editingItem, quantity);
+    // Update the item price with customizations
+    const currentItem = items[editingItem];
+    if (currentItem) {
+      currentItem.price = totalPrice;
+      currentItem.customizations = { options: customizations.map(o => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) };
+      currentItem.customization_option_ids = customizations.map(o => o.id);
+    }
+    setEditingItem(null);
+    setEditItem(null);
+    setEditOptions([]);
   };
 
   const handleScanQR = useCallback(() => {
@@ -88,7 +125,10 @@ export default function CartPage() {
     <div className="cart-screen">
       {/* Header */}
       <div className="cart-header">
-        <h3 className="cart-header-title">Your Cart ({itemCount})</h3>
+        <button className="cart-back-btn" onClick={() => setPage('menu')} aria-label="Back">
+          <ArrowLeft size={20} />
+        </button>
+        <h3 className="cart-header-title">Your Cart</h3>
         <button className="cart-header-clear" onClick={() => setShowClearConfirm(true)}>
           Clear
         </button>
@@ -125,7 +165,7 @@ export default function CartPage() {
               className="cart-context-action copper"
               onClick={() => setShowStorePicker(true)}
             >
-              Change
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Select Store
             </button>
           </div>
         )}
@@ -178,44 +218,48 @@ export default function CartPage() {
                 </div>
                 <div className="cart-item-details">
                   <div className="cart-item-header">
-                    <h4 className="cart-item-name">{item.name}</h4>
-                    <span className="cart-item-price">{formatPrice(item.price * item.quantity)}</span>
+                    <div className="cart-item-title-group">
+                      <h4 className="cart-item-name">{item.name}</h4>
+                      <span className="cart-item-price">{formatPrice(item.price * item.quantity)}</span>
+                    </div>
+                    <button
+                      className="cart-remove-btn"
+                      onClick={() => updateQuantity(index, 0)}
+                      aria-label={`Remove ${item.name}`}
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                   {tags.length > 0 && (
                     <div className="cart-custom-tags">
                       {tags.map((tag, i) => (
                         <span key={i} className="cart-custom-tag">{tag}</span>
                       ))}
-                      <button className="cart-edit-btn">
-                        <Pen size={12} /> Edit
-                      </button>
                     </div>
                   )}
-                  <div className="cart-qty-control">
-                    <button
-                      className="cart-qty-btn"
-                      onClick={() => updateQuantity(index, item.quantity - 1)}
-                      aria-label={`Decrease ${item.name} quantity`}
-                    >
-                      <Minus size={13} />
+                  <div className="cart-item-row">
+                    <button className="cart-edit-btn" onClick={() => openCustomize(index)}>
+                      <Sliders size={12} /> Add-ons
                     </button>
-                    <span className="cart-qty-value">{item.quantity}</span>
-                    <button
-                      className="cart-qty-btn"
-                      onClick={() => updateQuantity(index, item.quantity + 1)}
-                      aria-label={`Increase ${item.name} quantity`}
-                    >
-                      <Plus size={13} />
-                    </button>
+                    <div className="cart-qty-control">
+                      <button
+                        className="cart-qty-btn"
+                        onClick={() => updateQuantity(index, item.quantity - 1)}
+                        aria-label={`Decrease ${item.name} quantity`}
+                      >
+                        <Minus size={13} />
+                      </button>
+                      <span className="cart-qty-value">{item.quantity}</span>
+                      <button
+                        className="cart-qty-btn"
+                        onClick={() => updateQuantity(index, item.quantity + 1)}
+                        aria-label={`Increase ${item.name} quantity`}
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <button
-                  className="cart-remove-btn"
-                  onClick={() => updateQuantity(index, 0)}
-                  aria-label={`Remove ${item.name}`}
-                >
-                  <Trash2 size={16} />
-                </button>
               </div>
             );
           })}
@@ -293,6 +337,18 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* Customization Sheet */}
+      {editItem && (
+        <ItemCustomizeSheet
+          item={editItem}
+          isOpen={editingItem !== null}
+          onClose={() => { setEditingItem(null); setEditItem(null); setEditOptions([]); }}
+          onAdd={handleCustomizeConfirm}
+          loadingOptions={editLoading}
+          customizations={editOptions}
+        />
+      )}
     </div>
   );
 }

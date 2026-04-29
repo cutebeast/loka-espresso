@@ -31,7 +31,7 @@
 .sub-back-btn:active { background: rgba(0,0,0,0.04); }
 .sub-page-title {
   font-family: 'Playfair Display', serif;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--loka-text-primary);
 }
@@ -91,8 +91,9 @@
   color: var(--color-primary);
 }
 
-.promo-title {
-  font-size: 28px;
+.promo-detail .promo-title,
+.promo-screen .promo-title {
+  font-size: 20px;
   font-weight: 800;
   color: var(--color-text-primary);
   letter-spacing: -0.02em;

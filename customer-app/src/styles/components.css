@@ -595,3 +595,46 @@
 .guest-banner-btn:active {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* ── Guest Locked (auth-required CTA) ─────────────────── */
+.guest-locked {
+  text-align: center;
+  padding: 32px 20px;
+}
+
+.guest-locked-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--loka-bg-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.guest-locked-icon:hover {
+  background: var(--loka-border-subtle);
+}
+
+.guest-locked-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--loka-text-primary);
+  margin-bottom: 6px;
+}
+
+.guest-locked-desc {
+  font-size: 13px;
+  color: var(--loka-text-secondary);
+  margin-bottom: 16px;
+  max-width: 260px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.guest-locked-btn {
+  margin-top: 8px;
+}

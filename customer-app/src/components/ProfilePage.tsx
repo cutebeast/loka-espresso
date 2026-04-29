@@ -38,6 +38,7 @@ export default function ProfilePage() {
   const [recentOrders, setRecentOrders] = useState<OrderPreview[]>([]);
 
   useEffect(() => {
+    if (!useAuthStore.getState().isAuthenticated) return;
     api.get('/orders?page_size=2')
       .then((res) => {
         const data = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);

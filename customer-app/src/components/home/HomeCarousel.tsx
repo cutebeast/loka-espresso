@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState, memo } from 'react';
+import { useCallback, useRef, useState, memo, useMemo } from 'react';
 import { resolveAssetUrl } from '@/lib/tokens';
 import type { PromoBanner, InformationCard } from '@/lib/api';
 
@@ -16,7 +16,7 @@ const InfoCard = memo(function InfoCard({
     <div className="info-card" onClick={onClick}>
       {cardImage && <img src={cardImage} alt="" className="card-bg-img" loading="lazy" />}
       <div className="info-content">
-        <span className="info-badge">Discover</span>
+        <span className="info-badge">{card.content_type === 'product' ? 'Product' : 'Experience'}</span>
         <div className="info-title">{card.title}</div>
         {card.short_description && <div className="info-desc">{card.short_description}</div>}
         <button className="info-btn" onClick={(e) => { e.stopPropagation(); onClick(); }}>
@@ -53,22 +53,33 @@ interface HomeCarouselProps {
   banners: PromoBanner[];
   loadingBanners: boolean;
   infoCards: InformationCard[];
+  productCards: InformationCard[];
   loadingInfo: boolean;
   onPromoClick: (id: number) => void;
-  onInfoClick: (id: number) => void;
+  onInfoClick: (id: number, contentType?: string) => void;
 }
 
-export default function HomeCarousel({ banners, loadingBanners, infoCards, loadingInfo, onPromoClick, onInfoClick }: HomeCarouselProps) {
+export default function HomeCarousel({ banners, loadingBanners, infoCards, productCards, loadingInfo, onPromoClick, onInfoClick }: HomeCarouselProps) {
   const promoScrollRef = useRef<HTMLDivElement>(null);
-  const infoScrollRef = useRef<HTMLDivElement>(null);
+  const discoverScrollRef = useRef<HTMLDivElement>(null);
   const [promoIndex, setPromoIndex] = useState(0);
-  const [infoIndex, setInfoIndex] = useState(0);
+  const [discoverIndex, setDiscoverIndex] = useState(0);
   const promoIndexRef = useRef(0);
-  const infoIndexRef = useRef(0);
+  const discoverIndexRef = useRef(0);
 
-  const visibleInfoCards = infoCards.slice(0, 3);
+  // Interleave info and product cards: info[0], product[0], info[1], product[1], ...
+  const discoverCards = useMemo(() => {
+    const result: InformationCard[] = [];
+    const maxLen = Math.max(infoCards.length, productCards.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (i < infoCards.length) result.push(infoCards[i]);
+      if (i < productCards.length) result.push(productCards[i]);
+    }
+    return result.slice(0, 6);
+  }, [infoCards, productCards]);
+
   const showPromos = !loadingBanners && banners.length > 0;
-  const showInfoCards = !loadingInfo && visibleInfoCards.length > 0;
+  const showDiscover = !loadingInfo && discoverCards.length > 0;
 
   const handlePromoScroll = useCallback(() => {
     const el = promoScrollRef.current;
@@ -81,38 +92,38 @@ export default function HomeCarousel({ banners, loadingBanners, infoCards, loadi
     }
   }, [banners.length]);
 
-  const handleInfoScroll = useCallback(() => {
-    const el = infoScrollRef.current;
+  const handleDiscoverScroll = useCallback(() => {
+    const el = discoverScrollRef.current;
     if (!el) return;
     const index = Math.round(el.scrollLeft / el.clientWidth);
-    const clamped = Math.min(Math.max(index, 0), Math.min(infoCards.length, 3) - 1);
-    if (clamped !== infoIndexRef.current) {
-      infoIndexRef.current = clamped;
-      setInfoIndex(clamped);
+    const clamped = Math.min(Math.max(index, 0), discoverCards.length - 1);
+    if (clamped !== discoverIndexRef.current) {
+      discoverIndexRef.current = clamped;
+      setDiscoverIndex(clamped);
     }
-  }, [infoCards.length]);
+  }, [discoverCards.length]);
 
   return (
     <>
-      {/* Information Carousel */}
-      {showInfoCards && (
+      {/* Combined Discover Carousel (info + product alternating) — no title */}
+      {showDiscover && (
         <div>
-          <div className="carousel" ref={infoScrollRef} onScroll={handleInfoScroll}>
-            {visibleInfoCards.map((card) => (
+          <div className="carousel" ref={discoverScrollRef} onScroll={handleDiscoverScroll}>
+            {discoverCards.map((card) => (
               <InfoCard
                 key={card.id}
                 card={card}
-                onClick={() => onInfoClick(card.id)}
+                onClick={() => onInfoClick(card.id, card.content_type || undefined)}
               />
             ))}
           </div>
           <div className="carousel-dots">
-            {visibleInfoCards.map((_, i) => (
+            {discoverCards.map((_, i) => (
               <button
                 key={i}
-                className={`dot ${i === infoIndex ? 'active' : ''}`}
+                className={`dot ${i === discoverIndex ? 'active' : ''}`}
                 onClick={() => {
-                  const el = infoScrollRef.current;
+                  const el = discoverScrollRef.current;
                   if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
                 }}
                 aria-label={`Go to slide ${i + 1}`}
@@ -122,7 +133,7 @@ export default function HomeCarousel({ banners, loadingBanners, infoCards, loadi
         </div>
       )}
 
-      {/* Promotion Carousel */}
+      {/* Promotion Carousel — no title */}
       {showPromos && (
         <div>
           <div className="carousel" ref={promoScrollRef} onScroll={handlePromoScroll}>

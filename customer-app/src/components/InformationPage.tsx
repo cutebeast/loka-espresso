@@ -11,6 +11,7 @@ interface InformationPageProps {
   onBack: () => void;
   preselectedId?: number;
   preselectedSlug?: string;
+  contentType?: string;
 }
 
 import { resolveAssetUrl } from '@/lib/tokens';
@@ -26,16 +27,18 @@ function estimateReadTime(text: string | null | undefined): string {
   return `${mins} min read`;
 }
 
-export default function InformationPage({ onBack, preselectedId, preselectedSlug }: InformationPageProps) {
+export default function InformationPage({ onBack, preselectedId, preselectedSlug, contentType }: InformationPageProps) {
   const [cards, setCards] = useState<InformationCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<InformationCard | null>(null);
   const preselectedConsumed = useRef(false);
+  const isProduct = contentType === 'product';
+  const pageLabel = isProduct ? 'Products' : 'Experiences';
 
   const loadCards = useCallback(async () => {
-    setLoading(true);
+    const type = contentType || 'information';
     try {
-      const res = await api.get('/content/information?limit=20&content_type=information');
+      const res = await api.get(`/content/information?limit=20&content_type=${type}`);
       const data = Array.isArray(res.data) ? res.data : [];
       setCards(data);
       return data;
@@ -132,7 +135,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
         <button className="info-back-btn" onClick={onBack} aria-label="Back">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="info-page-title">Experiences</h1>
+        <h1 className="info-page-title">{pageLabel}</h1>
       </div>
 
       <div className="info-card-list">
@@ -145,7 +148,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
         ) : cards.length === 0 ? (
           <div className="info-empty">
             <Info size={40} className="info-empty-icon" />
-            <p className="info-empty-title">No articles available</p>
+            <p className="info-empty-title">{isProduct ? 'No products available' : 'No articles available'}</p>
             <p className="info-empty-desc">Check back soon for updates</p>
           </div>
         ) : (

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import api from '@/lib/api';
+import { useUIStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
 import type { InformationCard } from '@/lib/api';
 import { idbStorage } from '@/lib/idbStorage';
 import { resolveAssetUrl } from '@/lib/tokens';
@@ -33,23 +35,27 @@ interface PromotionPopupProps {
 }
 
 export default function PromotionPopup({ splashMode = false }: PromotionPopupProps) {
-  const [popup, setPopup] = useState<InformationCard | null>(null);
+  const page = useUIStore((s) => s.page);
+  const [popups, setPopups] = useState<InformationCard[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
   const checkPopup = useCallback(async () => {
+    // Only show after auth flow completes (user either logged in or chose guest)
+    const state = useAuthStore.getState();
+    if (!state.authDone) return;
     try {
-      const res = await api.get('/content/information?content_type=promotion&limit=1');
+      const res = await api.get('/content/information?content_type=event&limit=1');
       const data = Array.isArray(res.data) ? res.data : [];
       if (data.length === 0) return;
       const card = data[0] as InformationCard;
       const dismissed = await getDismissedIds();
       if (!dismissed.includes(card.id)) {
-        setPopup(card);
+        setPopups([card]);
+        setCurrentIndex(0);
         setIsOpen(true);
       }
-    } catch {
-      // silently fail — popup is non-critical
-    }
+    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -62,14 +68,19 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
   }, [checkPopup, splashMode]);
 
   const handleClose = async () => {
-    setIsOpen(false);
-    if (popup) {
-      await dismissPopup(popup.id);
+    if (popups.length === 0) return;
+    const current = popups[currentIndex];
+    await dismissPopup(current.id);
+    if (currentIndex + 1 < popups.length) {
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      setIsOpen(false);
     }
   };
 
-  if (!popup) return null;
+  if (popups.length === 0) return null;
 
+  const popup = popups[currentIndex];
   const imageUrl = resolveAssetUrl(popup.image_url);
 
   // If no image, don't show anything — promotion popups are image-only
@@ -99,16 +110,16 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
             className="fixed inset-0 z-[61] flex items-center justify-center p-5 pointer-events-none"
           >
             <div
-              className="relative w-full max-w-xs pointer-events-auto overflow-hidden rounded-2xl shadow-2xl"
+              className="relative w-[88vw] max-w-lg h-[85vh] pointer-events-auto overflow-hidden rounded-2xl"
               role="dialog"
               aria-modal="true"
             >
-              {/* Full-bleed promotion image */}
-              <div className="relative w-full aspect-[3/4] bg-gray-100">
+              {/* Centered image on transparent background */}
+              <div className="relative w-full h-full flex items-center justify-center bg-transparent">
                 <img
                   src={imageUrl}
-                  alt={popup.title || 'Promotion'}
-                  className="w-full h-full object-cover"
+                  alt={popup.title || 'Event'}
+                  className="max-w-full max-h-full object-contain"
                   loading="eager"
                 />
 
@@ -120,21 +131,6 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
                 >
                   <X size={18} />
                 </button>
-
-                {/* Optional CTA overlay at bottom */}
-                {popup.action_url && (
-                  <a
-                    href={popup.action_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-12 pb-5 px-5"
-                    onClick={handleClose}
-                  >
-                    <span className="block w-full text-center bg-white text-[#1B2023] font-semibold py-3 rounded-xl text-sm">
-                      {popup.action_label || 'Learn More'}
-                    </span>
-                  </a>
-                )}
               </div>
             </div>
           </motion.div>

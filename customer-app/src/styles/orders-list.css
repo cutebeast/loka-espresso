@@ -57,7 +57,7 @@
 .orders-back-btn:active { background: rgba(0,0,0,0.04); }
 .orders-page-title {
   font-family: 'Playfair Display', serif;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--loka-text-primary);
 }

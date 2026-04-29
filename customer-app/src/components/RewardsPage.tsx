@@ -4,9 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, Crown, Star, ChevronRight, Gift, Calendar, List, Circle, CheckCircle } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
-import { GuestGate } from '@/components/auth/GuestGate';
 import api from '@/lib/api';
-import type { Reward, PromoBanner } from '@/lib/api';
+import type { Reward } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/tokens';
 
 function getDaysLeft(end: string | null) {
@@ -24,7 +23,6 @@ export default function RewardsPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('rewards');
   const [rewards, setRewards] = useState<Reward[]>([]);
-  const [promos, setPromos] = useState<PromoBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [redeeming, setRedeeming] = useState<number | null>(null);
@@ -34,28 +32,20 @@ export default function RewardsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [rewardsRes, promosRes] = await Promise.all([
-        api.get('/rewards'),
-        api.get('/promos/banners'),
-      ]);
+      const rewardsRes = await api.get('/rewards');
       setRewards(Array.isArray(rewardsRes.data) ? rewardsRes.data : []);
-      const promoData = Array.isArray(promosRes.data) ? promosRes.data : [];
-      const now = new Date();
-      setPromos(promoData.filter((b: PromoBanner) => {
-        if (!b.start_date || !b.end_date) return true;
-        return new Date(b.start_date) <= now && new Date(b.end_date) >= now;
-      }));
-    } catch { console.error('Failed to load rewards');
-      setRewards([]);
-      setPromos([]);
-    } finally {
-      setLoading(false);
-    }
+    } catch { console.error('Failed to load rewards'); setRewards([]); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleRedeem = async (reward: Reward) => {
+    const isGuest = useUIStore.getState().isGuest;
+    if (isGuest) {
+      useUIStore.getState().triggerSignIn();
+      return;
+    }
     if (points < reward.points_cost) {
       showToast('Insufficient points', 'error');
       return;
@@ -151,9 +141,9 @@ export default function RewardsPage() {
                 <ArrowLeft size={20} />
               </button>
             </div>
-          )}
-        </div>
+        )}
       </div>
+    </div>
     );
   }
 
@@ -211,7 +201,7 @@ export default function RewardsPage() {
         </button>
         <button
           className={`rewards-tab ${activeTab === 'vouchers' ? 'active' : ''}`}
-          onClick={() => setActiveTab('vouchers')}
+          onClick={() => setPage('promotions')}
         >
           Vouchers & Promos
         </button>
@@ -219,14 +209,13 @@ export default function RewardsPage() {
 
       {/* Card List */}
       <div className="rewards-card-list">
-        <GuestGate message="Sign in to view rewards, redeem points, and access special offers.">
         {loading ? (
           <>
             {[1, 2, 3].map((i) => (
               <div key={i} className="skeleton rewards-skeleton-card" />
             ))}
           </>
-        ) : activeTab === 'rewards' ? (
+        ) : (
           rewards.length === 0 ? (
             <div className="rd-empty">
               <div className="rd-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
@@ -267,49 +256,7 @@ export default function RewardsPage() {
                 );
               })}
             </>
-          )
-        ) : promos.length === 0 ? (
-          <div className="rd-empty">
-            <div className="rd-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
-            <p className="rd-empty-title">No vouchers or promos</p>
-            <p className="rd-empty-text">Check back soon for new offers</p>
-          </div>
-        ) : (
-          <>
-            <div className="rewards-section-label">Available Vouchers</div>
-            {promos.map((promo) => {
-              const img = resolveAssetUrl(promo.image_url);
-              return (
-                <div key={promo.id} className="rewards-list-card" onClick={() => setPage('promotions', { selectedPromoId: promo.id })}>
-                  <div
-                    className="rewards-card-thumb"
-                    style={img ? { backgroundImage: `url(${img})` } : {}}
-                  >
-                    {!img && (
-                      <span className="rewards-card-fallback-icon">
-                        <Gift size={24} color="#C4CED8" strokeWidth={1.5} />
-                      </span>
-                    )}
-                    <span className="rewards-thumb-badge rewards-badge-source">{promo.action_type === 'survey' ? 'Survey' : 'Promo'}</span>
-                  </div>
-                  <div className="rewards-card-body">
-                    <div className="rewards-card-title">{promo.title}</div>
-                    {promo.short_description && (
-                      <div className="rewards-card-desc">{promo.short_description}</div>
-                    )}
-                    <div className="rewards-card-meta">
-                      <Star size={10} color="#D18E38" /> {getDaysLeft(promo.end_date)}
-                    </div>
-                  </div>
-                  <div className="rewards-card-arrow">
-                    <ChevronRight size={16} />
-                  </div>
-                </div>
-              );
-            })}
-          </>
-        )}
-        </GuestGate>
+          ))}
       </div>
     </div>
   );

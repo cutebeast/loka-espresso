@@ -104,7 +104,6 @@ export default function OrderDetailPage() {
       for (const item of cartItems) {
         useCartStore.getState().addItem(item);
       }
-      showToast('Items added to cart', 'success');
       setPage('cart');
     } catch {
       showToast('Failed to reorder', 'error');

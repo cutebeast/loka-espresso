@@ -105,6 +105,8 @@ async def update_inventory_category(
     if req.slug:
         cat.slug = req.slug
     cat.display_order = req.display_order
+    if req.is_active is not None:
+        cat.is_active = req.is_active
     await log_action(db, action="UPDATE_INVENTORY_CATEGORY", user_id=user.id, store_id=store_id,
                      entity_type="inventory_category", entity_id=cat_id, details={"name": cat.name}, ip_address=get_client_ip(request))
     return cat

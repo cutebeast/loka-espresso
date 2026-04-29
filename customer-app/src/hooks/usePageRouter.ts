@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useUIStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
 import type { PageId } from '@/lib/api';
 
 const VALID_PAGES: PageId[] = [
@@ -16,8 +17,11 @@ export const SUB_PAGES: PageId[] = [
   'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card',
 ];
 
+const GUEST_RESTRICTED: PageId[] = ['profile', 'orders', 'wallet', 'checkout', 'payment-methods', 'notifications', 'my-rewards', 'account-details', 'saved-addresses', 'my-card', 'referral', 'order-detail', 'history', 'settings'];
+
 export function usePageRouter() {
   const setPage = useUIStore((s) => s.setPage);
+  const triggerSignIn = useUIStore((s) => s.triggerSignIn);
 
   // Hash-based routing: listen for back/forward browser navigation
   useEffect(() => {
@@ -42,8 +46,12 @@ export function usePageRouter() {
 
   const handleNavClick = useCallback((id: PageId) => {
     if (id === useUIStore.getState().page) return;
+    if (GUEST_RESTRICTED.includes(id) && !useAuthStore.getState().isAuthenticated) {
+      triggerSignIn();
+      return;
+    }
     setPage(id);
-  }, [setPage]);
+  }, [setPage, triggerSignIn]);
 
   return { handleNavClick };
 }

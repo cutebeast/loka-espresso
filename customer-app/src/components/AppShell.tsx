@@ -13,6 +13,7 @@ import { useAuthFlow } from '@/hooks/useAuthFlow';
 import { usePageRouter, SUB_PAGES } from '@/hooks/usePageRouter';
 import { useNotifications } from '@/hooks/useNotifications';
 import { resolveAppUrl } from '@/lib/tokens';
+import { getBrowserLocation } from '@/lib/geolocation';
 import OfflineBanner from '@/components/shared/OfflineBanner';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useA2HS } from '@/hooks/useA2HS';
@@ -54,7 +55,7 @@ export default function AppShell() {
   const {
     page, selectedStore, stores, toast, pageParams, isGuest, requestSignIn,
     setPage, setSelectedStore, setStores, showToast,
-    showStorePicker, setShowStorePicker, triggerSignIn,
+    showStorePicker, setShowStorePicker, triggerSignIn, userLocation, setUserLocation,
   } = useUIStore();
   const reducedMotion = useReducedMotion();
   const a2hs = useA2HS();
@@ -85,12 +86,19 @@ export default function AppShell() {
 
   // Load stores when modal opens
   useEffect(() => {
-    if (showStoreModal && stores.length === 0) {
-      api.get('/stores')
+    if ((showStoreModal || showStorePicker) && stores.length === 0) {
+      api.get('/content/stores')
         .then((res) => setStores(res.data))
         .catch(() => showToast('Failed to load stores', 'error'));
     }
-  }, [showStoreModal, stores.length, setStores, showToast]);
+  }, [showStoreModal, showStorePicker, stores.length, setStores, showToast]);
+
+  // Prefetch user location at startup for instant distance display
+  useEffect(() => {
+    getBrowserLocation().then((loc) => {
+      if (loc) setUserLocation(loc);
+    });
+  }, []);
 
   // Version check
   useVersionCheck();
@@ -165,7 +173,7 @@ export default function AppShell() {
       case 'wallet': return <WalletPage />;
       case 'history': return <HistoryPage />;
       case 'promotions': return <PromotionsPage onBack={() => setPage('home')} preselectedId={pageParams.selectedPromoId as number | undefined} />;
-      case 'information': return <InformationPage onBack={() => setPage('home')} preselectedId={pageParams.selectedInfoId as number | undefined} preselectedSlug={pageParams.selectedInfoSlug as string | undefined} />;
+      case 'information': return <InformationPage onBack={() => setPage('home')} preselectedId={pageParams.selectedInfoId as number | undefined} preselectedSlug={pageParams.selectedInfoSlug as string | undefined} contentType={pageParams.selectedInfoContentType as string | undefined} />;
       case 'my-rewards': return <MyRewardsPage onBack={() => setPage('profile')} initialTab={pageParams.initialTab as 'rewards' | 'vouchers' | undefined} />;
       case 'account-details': return <AccountDetailsPage />;
       case 'payment-methods': return <PaymentMethodsPage />;
@@ -316,6 +324,7 @@ export default function AppShell() {
               <StorePickerModal
                 stores={stores}
                 selectedStore={selectedStore}
+                userLocation={userLocation}
                 onSelect={(store) => {
                   setSelectedStore(store);
                   setShowStoreModal(false);

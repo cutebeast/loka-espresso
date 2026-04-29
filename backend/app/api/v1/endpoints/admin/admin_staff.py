@@ -352,6 +352,16 @@ async def update_staff(
     result = await db.execute(select(Staff).where(Staff.id == staff_id))
     obj = result.scalar_one_or_none()
     if not obj:
+        # Fallback: try AdminUser directly (HQ staff without a Store staff record)
+        aresult = await db.execute(select(AdminUser).where(AdminUser.id == staff_id))
+        admin_user = aresult.scalar_one_or_none()
+        if not admin_user:
+            raise HTTPException(404)
+        if data.is_active is not None:
+            admin_user.is_active = data.is_active
+        await db.flush()
+        return {"id": staff_id, "user_id": staff_id, "is_active": admin_user.is_active}
+    if not obj:
         raise HTTPException(404)
 
     # Get linked user

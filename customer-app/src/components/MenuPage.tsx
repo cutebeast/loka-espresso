@@ -107,14 +107,8 @@ export default function MenuPage() {
   }, []);
 
   const openItem = useCallback((item: MenuItem) => {
-    if (item.customization_options && item.customization_options.length > 0) {
-      setDetailItem(item);
-      setSheetOpen(true);
-      loadCustomizations(item);
-    } else {
-      addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id });
-    }
-  }, [addItem, loadCustomizations, selectedStore?.id]);
+    addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id });
+  }, [addItem, selectedStore?.id]);
 
   const handleSheetAdd = useCallback(
     (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number) => {
@@ -300,9 +294,6 @@ export default function MenuPage() {
                       <div className="menu-product-info">
                         <div>
                           <div className="menu-product-name">{item.name}</div>
-                          {item.description && (
-                            <div className="menu-product-desc">{item.description}</div>
-                          )}
                         </div>
                         <div className="menu-product-bottom">
                           <span className="menu-product-price">{formatPrice(item.base_price)}</span>

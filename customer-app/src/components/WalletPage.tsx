@@ -11,6 +11,8 @@ import {
   MapPin,
 } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
+import { useAuthStore } from '@/stores/authStore';
+import { GuestGate } from '@/components/auth/GuestGate';
 import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
@@ -28,6 +30,7 @@ export default function WalletPage() {
   const [loadingTx, setLoadingTx] = useState(false);
 
   const fetchBalance = useCallback(async () => {
+    if (!useAuthStore.getState().isAuthenticated) return;
     try {
       const res = await api.get('/wallet');
       setBalance(res.data?.balance ?? balance);
@@ -103,6 +106,7 @@ export default function WalletPage() {
 
       {/* Scrollable Content */}
       <div className="topup-scroll">
+        <GuestGate message="Sign in to manage your Loka wallet and top up balance.">
         {/* Balance Card */}
         <div className="topup-balance-card">
           <div>
@@ -221,6 +225,7 @@ export default function WalletPage() {
             </div>
           )}
         </div>
+        </GuestGate>
       </div>
     </div>
   );

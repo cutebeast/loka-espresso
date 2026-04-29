@@ -160,22 +160,17 @@ export async function getDistanceToStore(
  */
 export async function getStoresWithDistance(
   stores: Store[],
-  preferBrowserLocation = true
+  userLoc: { lat: number; lng: number } | null = null
 ): Promise<Array<Store & { distance: string; distanceKm: number }>> {
-  let userLoc: IPLocation | null = null;
-  
-  if (preferBrowserLocation) {
+  if (!userLoc) {
     userLoc = await getBrowserLocation();
   }
-  
   if (!userLoc) {
     userLoc = await detectIPLocation();
   }
-  
   if (!userLoc) {
     return stores.map(s => ({ ...s, distance: '', distanceKm: Infinity }));
   }
-  
   return stores
     .filter(s => s.id !== 0 && s.lat != null && s.lng != null)
     .map(s => {

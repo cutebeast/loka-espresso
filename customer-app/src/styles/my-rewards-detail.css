@@ -338,7 +338,7 @@
 
 .rewards-page-title {
   font-family: 'Playfair Display', serif;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--loka-text-primary);
   letter-spacing: -0.3px;
@@ -354,6 +354,7 @@
   border-radius: 40px;
   font-size: 13px;
   font-weight: 600;
+  min-width: 150px;
 }
 
 .rewards-calendar-meta {
@@ -380,4 +381,26 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+/* Empty state */
+.rd-empty {
+  text-align: center;
+  padding: 48px 20px;
+  background: var(--color-white);
+  border-radius: var(--radius-xl);
+}
+.rd-empty-icon {
+  display: inline-block;
+  margin-bottom: 12px;
+}
+.rd-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+.rd-empty-text {
+  font-size: 13px;
+  color: var(--color-text-muted);
 }

@@ -2,6 +2,7 @@
 
 import { Gift, ArrowLeft, ArrowRight, Calendar, Clock, Star, Tag, PenLine, HelpCircle, CheckCircle, Flame, List, Circle } from 'lucide-react';
 import { RedemptionCodeModal } from '@/components/shared';
+import { useUIStore } from '@/stores/uiStore';
 import { resolveAssetUrl } from '@/lib/tokens';
 import type { PromoBanner } from '@/lib/api';
 
@@ -121,9 +122,10 @@ export default function VoucherSection({
         {/* ── Survey Flow ── */}
         {isSurvey && isGuest && !surveyAlreadyDone && (
           <div className="guest-locked">
-            <div className="guest-locked-icon"><Gift size={28} /></div>
+            <div className="guest-locked-icon" onClick={() => useUIStore.getState().triggerSignIn()} role="button" tabIndex={0}><Gift size={28} /></div>
             <div className="guest-locked-title">Sign in to participate</div>
             <div className="guest-locked-desc">Create an account to complete surveys and earn rewards.</div>
+            <button className="guest-locked-btn" onClick={() => useUIStore.getState().triggerSignIn()}>Sign In</button>
           </div>
         )}
         {isSurvey && !isGuest && surveyQuestions.length > 0 && !surveyAlreadyDone && (
@@ -234,9 +236,10 @@ export default function VoucherSection({
 
         {!isSurvey && isGuest && (
           <div className="guest-locked">
-            <div className="guest-locked-icon"><Gift size={28} /></div>
+            <div className="guest-locked-icon" onClick={() => useUIStore.getState().triggerSignIn()} role="button" tabIndex={0}><Gift size={28} /></div>
             <div className="guest-locked-title">Sign in to claim</div>
             <div className="guest-locked-desc">Create an account to claim this offer and earn loyalty rewards.</div>
+            <button className="guest-locked-btn btn btn-primary" onClick={() => useUIStore.getState().triggerSignIn()}>Sign In</button>
           </div>
         )}
 

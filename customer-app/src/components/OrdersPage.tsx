@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useOrderStore } from '@/stores/orderStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
 import type { Order } from '@/lib/api';
 import { formatPrice } from '@/lib/tokens';
@@ -50,6 +51,7 @@ export default function OrdersPage() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchOrders = useCallback(async () => {
+    if (!useAuthStore.getState().isAuthenticated) return;
     setIsLoading(true);
     try {
       const res = await api.get('/orders', { params: { page_size: 20 } });

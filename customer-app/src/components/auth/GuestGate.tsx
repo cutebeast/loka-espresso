@@ -15,7 +15,7 @@ export function GuestGate({ children, message, fallback }: GuestGateProps) {
   const isGuest = useUIStore((s) => s.isGuest);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  if (!isGuest || isAuthenticated) {
+  if (isAuthenticated) {
     return <>{children}</>;
   }
 
@@ -34,7 +34,7 @@ export function GuestGate({ children, message, fallback }: GuestGateProps) {
       </p>
       <button
         className="btn btn-primary h-11 px-6 rounded-xl text-sm font-semibold"
-        onClick={() => useUIStore.getState().triggerSignIn()}
+          onClick={() => useUIStore.getState().triggerSignIn()}
       >
         Sign In
       </button>

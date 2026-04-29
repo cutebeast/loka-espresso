@@ -91,6 +91,15 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
   function openEditCat(c: MerchantInventoryCategory) { setEditingCat(c); setCatName(c.name); setCatSlug(c.slug || ''); setCatError(''); setCatModal(true); }
   function closeCatModal() { setCatModal(false); setEditingCat(null); setCatError(''); }
 
+  async function toggleCatActive(c: MerchantInventoryCategory) {
+    try {
+      await apiFetch(`/admin/stores/${activeStoreId}/inventory-categories/${c.id}`, undefined, {
+        method: 'PUT', body: JSON.stringify({ name: c.name, slug: c.slug, display_order: c.display_order, is_active: !c.is_active })
+      });
+      setCategories(prev => prev.map(cat => cat.id === c.id ? { ...cat, is_active: !c.is_active } : cat));
+    } catch { console.error('Failed to toggle category'); }
+  }
+
   async function handleCatSubmit() {
     setCatSaving(true); setCatError('');
     const slug = catSlug || catName.toLowerCase().replace(/\s+/g, '-');
@@ -297,7 +306,12 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
                       {!c.is_active && <span className="ip-23">Inactive</span>}
                     </span>
                     {isHQ && (
-                      <button onClick={(e) => { e.stopPropagation(); openEditCat(c); }} className="ip-24"><i className="fas fa-edit"></i></button>
+                      <div className="ip-24" style={{ display: 'flex', gap: 4 }}>
+                        <button onClick={(e) => { e.stopPropagation(); toggleCatActive(c); }} title={c.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'} style={{ color: c.is_active ? '#16A34A' : '#9CA3AF', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18 }}>
+                          <i className={`fas ${c.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); openEditCat(c); }}><i className="fas fa-edit"></i></button>
+                      </div>
                     )}
                   </div>
                 </li>

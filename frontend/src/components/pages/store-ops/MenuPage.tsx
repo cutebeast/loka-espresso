@@ -72,6 +72,13 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
     try { const res = await apiFetch(`/admin/categories/${id}`, undefined, { method: 'DELETE' }); if (res.ok) { setConfirmDeleteCat(null); onRefresh(); } } catch { console.error('Failed to delete category'); }
   }
 
+  async function toggleCatActive(c: MerchantCategory) {
+    try {
+      await apiFetch(`/admin/categories/${c.id}`, undefined, { method: 'PUT', body: JSON.stringify({ name: c.name, slug: c.slug, display_order: c.display_order, is_active: !c.is_active }) });
+      onRefresh();
+    } catch { console.error('Failed to toggle category'); }
+  }
+
   // --- Item CRUD ---
   function openCreateItem() {
     setEditingItem(null); setItemName(''); setItemDesc(''); setItemPrice(''); setItemCatId(selectedCategory || categories[0]?.id || 0);
@@ -198,15 +205,6 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
             <ul className="mp-15">
               {categories.map(c => (
                 <li key={c.id}>
-                  {confirmDeleteCat === c.id ? (
-                    <div className="mp-16">
-                      <div className="mp-17">Delete &quot;{c.name}&quot;?</div>
-                      <div className="mp-18">
-                        <button className="btn btn-sm mp-19" onClick={() => deleteCat(c.id)}>Yes</button>
-                        <button className="btn btn-sm mp-20" onClick={() => setConfirmDeleteCat(null)}>No</button>
-                      </div>
-                    </div>
-                  ) : (
                     <div
                       className="mp-cat-item"
                       style={{
@@ -220,14 +218,15 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                         {c.name}
                         {!c.is_active && <span className="mp-22">Inactive</span>}
                       </span>
-                      <div className="mp-23">
+                       <div className="mp-23">
                         {isHQ && (<>
+                          <button onClick={(e) => { e.stopPropagation(); toggleCatActive(c); }} title={c.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'} className="mp-24" style={{ color: c.is_active ? '#16A34A' : '#9CA3AF' }}>
+                            <i className={`fas ${c.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: 18 }}></i>
+                          </button>
                           <button onClick={(e) => { e.stopPropagation(); openEditCat(c); }} className="mp-24"><i className="fas fa-edit"></i></button>
-                          <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteCat(c.id); }} className="mp-25"><i className="fas fa-trash"></i></button>
                         </>)}
                       </div>
                     </div>
-                  )}
                 </li>
               ))}
             </ul>

@@ -255,3 +255,12 @@ async def get_pwa_notifications(
         "total": len(notifications),
         "server_time": datetime.now(timezone.utc).isoformat()
     }
+
+@router.get("/stores")
+async def list_stores_public(db: AsyncSession = Depends(get_db)):
+    """Public endpoint: list all active stores."""
+    from app.models.store import Store
+    result = await db.execute(select(Store).where(Store.is_active == True).order_by(Store.name))
+    stores = result.scalars().all()
+    return [{"id": s.id, "name": s.name, "address": s.address, "slug": s.slug, "lat": float(s.lat) if s.lat else None, "lng": float(s.lng) if s.lng else None}
+            for s in stores]

@@ -45,7 +45,7 @@ class InformationCard(Base):
     __table_args__ = (
         UniqueConstraint("store_id", "slug", name="uq_info_card_slug"),
         CheckConstraint(
-            "content_type IN ('system', 'information', 'product', 'promotion')",
+            "content_type IN ('system', 'information', 'product', 'event')",
             name="ck_info_card_content_type"
         ),
     )

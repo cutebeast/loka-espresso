@@ -233,3 +233,70 @@ See `docs/00-index.md` for full documentation index.
 - Caddy handles HTTPS and reverse proxy in production
 - Deploy frontend: `docker compose up -d --build frontend`
 - Deploy backend: `docker compose up -d --build backend`
+- **Auto-migration on deploy:** `docker-entrypoint.sh` runs `alembic upgrade head` before starting FastAPI
+
+### Phase 23: Customer PWA Guest Journey + Store Management + Referral (2026-04-29)
+
+#### Guest Journey Fixes
+- `useAuthFlow.ts`: `PUBLIC_PAGES` now includes `cart`, `rewards`, `help-support`, `settings` (guest access without sign-in)
+- `usePageRouter.ts`: `GUEST_RESTRICTED` covers all 14 auth-only pages; bottom nav triggers sign-in sheet instead of navigating
+- `GuestGate.tsx`: Checks only `isAuthenticated` (not `isGuest`) — content only renders after login completes
+- `WalletCard`: Uses `isAuthenticated` check — stays guest view until actual login
+- `useNotifications.ts`: Only fetches unread count when `isAuthenticated` (no 401 for guests)
+- `api.ts`: interceptor no longer reloads page on 422 refresh failures (guest users)
+- 11 pages: unguarded API calls on mount now check `isAuthenticated` first
+
+#### Store Management UI Consistency
+- All pages: active/inactive uses `fa-toggle-on`/`fa-toggle-off` icon (green #16A34A / gray #9CA3AF) in Actions column
+- MenuPage: Add-ons as separate column, status merged into Actions with toggle icon
+- InventoryPage: duplicate Status column removed, stock status inline in Stock column
+- StaffPage: Status badge column removed, toggle icon added to Actions; null ID fallback for HQ staff
+- Menu/Inventory categories: toggle icon on each category row, delete button removed (soft-delete via toggle)
+- Menu page cards: description removed, add button compact pill, price nowrap
+- Dead code removed: `AddStaffModal.tsx`, `UserAddress` model, `ItemCard.tsx`
+
+#### Referral System (Loyalty Points)
+- Reward changed from wallet credit (RM) to loyalty points
+- `commerce.py`: `credit_referral_points()` credits `LoyaltyAccount` + logs `LoyaltyTransaction`
+- Config keys: `referral_reward_points` (default 50), `referral_min_orders` (default 1)
+- PWA: `ReferralPage` with share code, stats, invited users list, copy/share buttons
+- PWA navigation: `#referral` page accessible from Profile menu
+- Backend: `require_role()` fixed for Customer users (no `role_id` column — uses `hasattr` guard)
+
+#### Content Type System
+- Renamed `content_type = 'promotion'` → `'event'` (avoiding confusion with promo banners)
+- Admin InformationPage: Type column filter + content_type dropdown in form
+- PWA homepage: separate Experiences + Products carousels (interleaved: info→product→info)
+- `PromotionPopup` (splash): fetches `content_type=event`, shows 1 latest event card, transparent bg, 88vw×85vh
+- PWA InformationPage: `contentType` prop filters listing by type, dynamic page title ("Products" vs "Experiences")
+- Event form: hides all non-essential fields (image + title + is_active only)
+
+#### DOB + Customization System
+- `customers.date_of_birth` column added (migration `fb37140f30b8`)
+- Admin CustomerDetail: DOB field in profile + edit form
+- PWA AccountDetails: DOB date picker + `UserUpdate` schema
+- `customization_options.option_type` column added (migration `f58ca7da748d`)
+- Admin CustomizationManager: Option Type dropdown (Size, Milk, Sweetness, Add-on, Temperature, General)
+- PWA: add-to-cart immediate (no sheet), "Add-ons" button per cart item opens customize sheet
+- PWA: `customization_count` returned in menu items list for feature detection
+
+#### CSS Cleanup
+- `staff-admin.css`: ~60 lines of overridden CSS removed, merged into single block
+- `cart.css`: qty buttons 32×32 (was 44×44), remove button moved to header, add-ons button + qty same row
+- `menu-grid.css`: add button compact pill, price `white-space: nowrap`, add-ons column
+- `home-cards.css`: promo title white text with Playfair Display, stronger text-shadow, darker overlay
+- `profile.css`: modal overlay `display: none` (was `opacity: 0` — fixed backdrop-filter leak)
+- `my-rewards-detail.css`: `rd-empty` empty state CSS added (was unstyled)
+
+#### Backend Fixes
+- `docker-entrypoint.sh`: auto-runs `alembic upgrade head` before FastAPI startup
+- `Auth: _blacklist_token()` implemented (was missing — blocked logout)
+- `Auth: _normalize_phone()`, `_validate_phone()` defined (were missing — crashed OTP login)
+- `Auth: OTP rate-limit constants` defined (were missing — crashed OTP verify)
+- `Auth: DeviceToken` → `CustomerDeviceToken` for device-token endpoints
+- `referral.py`: `User` → `Customer` model queries (2x NameError fix)
+- `GET /content/stores`: new public endpoint returning active stores with lat/lng
+- `change-password`: `hasattr` guard for Customer (no `password_hash`)
+- `InventoryMovement` + `MarketingCampaign`: FK `users.id` → `admin_users.id`
+- PWA overlays: all CSS backdrops verified — no residual blur leaks
+- CSP header: added `worker-src 'self' blob:` for QR scanner web workers

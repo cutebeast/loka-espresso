@@ -9,21 +9,18 @@ import type { Store as StoreType } from '@/lib/api';
 interface StorePickerModalProps {
   stores: StoreType[];
   selectedStore: StoreType | null;
+  userLocation: { lat: number; lng: number } | null;
   onSelect: (store: StoreType) => void;
   onClose: () => void;
 }
 
-export default function StorePickerModal({ stores, selectedStore, onSelect, onClose }: StorePickerModalProps) {
+export default function StorePickerModal({ stores, selectedStore, userLocation, onSelect, onClose }: StorePickerModalProps) {
   const [storeSearch, setStoreSearch] = useState('');
   const [storesWithDist, setStoresWithDist] = useState<Array<StoreType & { distance?: string; distanceKm?: number }>>([]);
 
   useEffect(() => {
-    const calc = async () => {
-      const sorted = await getStoresWithDistance(stores);
-      setStoresWithDist(sorted);
-    };
-    calc();
-  }, [stores]);
+    getStoresWithDistance(stores, userLocation).then(setStoresWithDist);
+  }, [stores, userLocation]);
 
   const visible = storesWithDist
     .filter((s) => s.id !== 0)

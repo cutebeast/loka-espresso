@@ -37,11 +37,13 @@ api.interceptors.response.use(
         if (refreshError?.response?.status === 422) {
           return Promise.reject(error);
         }
-        console.error('Token refresh failed:', refreshError);
+        // 404 or other refresh errors — reject silently, don't reload
+        console.error('Token refresh failed:', refreshError?.response?.status || refreshError.message);
+        return Promise.reject(error);
       }
 
       // Only clear and reload once per page load to prevent infinite loops
-      // Skip reload if user is in guest mode (no auth cookie at all)
+      // (should rarely reach here — only if refresh succeeded but no access_token returned)
       if (!_refreshFailed) {
         _refreshFailed = true;
         if (typeof window !== 'undefined') {
@@ -130,6 +132,7 @@ export interface MenuItem {
   is_featured?: boolean;
   display_order?: number;
   dietary_tags?: string[];
+  customization_count?: number;
   customization_options?: CustomizationOption[];
 }
 

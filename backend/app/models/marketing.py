@@ -16,6 +16,7 @@ class CustomizationOption(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     menu_item_id: Mapped[int] = mapped_column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    option_type: Mapped[str] = mapped_column(String(50), default="", nullable=False)
     price_adjustment: Mapped[float] = mapped_column(DECIMAL(10, 2), default=0, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, default=0)

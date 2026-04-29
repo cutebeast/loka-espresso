@@ -18,6 +18,7 @@ class CategoryCreate(BaseModel):
     name: str
     slug: Optional[str] = None
     display_order: int = 0
+    is_active: Optional[bool] = None
 
 
 class MenuItemOut(BaseModel):
@@ -31,6 +32,7 @@ class MenuItemOut(BaseModel):
     is_featured: bool = False
     display_order: int = 0
     dietary_tags: Optional[list] = None
+    customization_count: int = 0
 
     class Config:
         from_attributes = True
@@ -74,6 +76,7 @@ class InventoryCategoryCreate(BaseModel):
     name: str
     slug: Optional[str] = None
     display_order: int = 0
+    is_active: Optional[bool] = None
 
 
 class InventoryItemOut(BaseModel):
@@ -135,12 +138,14 @@ class InventoryMovementOut(BaseModel):
 
 class CustomizationCreate(BaseModel):
     name: str
+    option_type: str = ""
     price_adjustment: float = 0
     display_order: int = 0
 
 
 class CustomizationUpdate(BaseModel):
     name: Optional[str] = None
+    option_type: Optional[str] = None
     price_adjustment: Optional[float] = None
     display_order: Optional[int] = None
     is_active: Optional[bool] = None

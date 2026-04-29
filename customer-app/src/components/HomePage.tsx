@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Coffee } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
-import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
 import type { MenuItem, PromoBanner, InformationCard, CustomizationOption } from '@/lib/api';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
@@ -14,7 +14,8 @@ import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import { HomeCarousel, WalletCard, PromotionsSection } from './home';
 
 export default function HomePage() {
-  const { setPage, showToast, isGuest, triggerSignIn } = useUIStore();
+  const { setPage, showToast, isGuest, triggerSignIn, selectedStore } = useUIStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const addItem = useCartStore((s) => s.addItem);
   const { balance, points, tier } = useWalletStore();
   const user = useAuthStore((s) => s.user);
@@ -24,6 +25,7 @@ export default function HomePage() {
   const [banners, setBanners] = useState<PromoBanner[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
   const [infoCards, setInfoCards] = useState<InformationCard[]>([]);
+  const [productCards, setProductCards] = useState<InformationCard[]>([]);
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
   const [availableOptions, setAvailableOptions] = useState<CustomizationOption[]>([]);
@@ -71,8 +73,12 @@ export default function HomePage() {
   const loadInfoCards = useCallback(async () => {
     setLoadingInfo(true);
     try {
-      const res = await api.get('/content/information?limit=3&content_type=information');
-      setInfoCards(Array.isArray(res.data) ? res.data : []);
+      const [infoRes, prodRes] = await Promise.all([
+        api.get('/content/information?limit=3&content_type=information'),
+        api.get('/content/information?limit=3&content_type=product'),
+      ]);
+      setInfoCards(Array.isArray(infoRes.data) ? infoRes.data : []);
+      setProductCards(Array.isArray(prodRes.data) ? prodRes.data : []);
     } catch {
       try {
         const res = await api.get('/promos/banners');
@@ -112,19 +118,7 @@ export default function HomePage() {
     if (isGuest) {
       // Guests can add to cart — login only required at checkout
     }
-    if (item.customization_options && item.customization_options.length > 0) {
-      setCustomizeItem(item);
-      loadCustomizations(item);
-    } else {
-      addItem({
-        menu_item_id: item.id,
-        name: item.name,
-        price: item.base_price,
-        quantity: 1,
-        customizations: {},
-      });
-      showToast(`${item.name} added`, 'success');
-    }
+      addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id });
   };
 
   const loadCustomizations = useCallback(async (item: MenuItem) => {
@@ -157,9 +151,8 @@ export default function HomePage() {
             : {},
         customization_option_ids: customizations.length > 0 ? customizations.map((o) => o.id) : [],
       });
-      showToast(`${item.name} added`, 'success');
     },
-    [addItem, showToast],
+    [addItem],
   );
 
   const pageVariants = {
@@ -201,6 +194,7 @@ export default function HomePage() {
         <motion.div variants={itemVariants}>
           <WalletCard
             isGuest={isGuest}
+            isAuthenticated={isAuthenticated}
             balance={balance}
             points={points}
             tier={tier}
@@ -216,9 +210,10 @@ export default function HomePage() {
           banners={banners}
           loadingBanners={loadingBanners}
           infoCards={infoCards}
+          productCards={productCards}
           loadingInfo={loadingInfo}
           onPromoClick={(id) => setPage('promotions', { selectedPromoId: id })}
-          onInfoClick={(id) => setPage('information', { selectedInfoId: id })}
+          onInfoClick={(id, contentType) => setPage('information', { selectedInfoId: id, selectedInfoContentType: contentType })}
         />
 
         {/* Today's Picks */}

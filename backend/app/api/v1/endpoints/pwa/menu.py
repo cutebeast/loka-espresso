@@ -18,6 +18,7 @@ router = APIRouter(prefix="/menu", tags=["Menu"])
 async def list_categories(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(MenuCategory)
+        .where(MenuCategory.is_active == True)
         .order_by(MenuCategory.display_order)
     )
     return result.scalars().all()
@@ -42,6 +43,8 @@ async def list_items(
       - limit: cap the number of results
     """
     q = select(MenuItem).where(MenuItem.deleted_at.is_(None))
+    # Only show items from active categories
+    q = q.join(MenuCategory, MenuItem.category_id == MenuCategory.id).where(MenuCategory.is_active == True)
     if category:
         q = q.where(MenuItem.category_id == category)
     if featured is True:
@@ -58,7 +61,26 @@ async def list_items(
     if limit:
         q = q.limit(limit)
     result = await db.execute(q)
-    return result.scalars().all()
+    items = result.scalars().all()
+
+    # Attach customization_count to each item
+    item_ids = [item.id for item in items]
+    if item_ids:
+        from sqlalchemy import func as sa_func
+
+        count_result = await db.execute(
+            select(CustomizationOption.menu_item_id, sa_func.count(CustomizationOption.id))
+            .where(
+                CustomizationOption.menu_item_id.in_(item_ids),
+                CustomizationOption.is_active == True,
+            )
+            .group_by(CustomizationOption.menu_item_id)
+        )
+        counts = {row.menu_item_id: row.count for row in count_result.all()}  # type: ignore
+        for item in items:
+            item.customization_count = counts.get(item.id, 0)  # type: ignore
+
+    return items
 
 
 @router.get("/items/search", response_model=list[MenuItemOut])
@@ -98,4 +120,16 @@ async def list_customizations_public(item_id: int, db: AsyncSession = Depends(ge
         )
         .order_by(CustomizationOption.display_order)
     )
-    return [{"id": c.id, "name": c.name, "price_adjustment": to_float(c.price_adjustment)} for c in result.scalars().all()]
+    return [{"id": c.id, "name": c.name, "option_type": c.option_type, "price_adjustment": to_float(c.price_adjustment)} for c in result.scalars().all()]
+
+@router.get("/stores")
+async def list_stores_public(db: AsyncSession = Depends(get_db)):
+    """Public endpoint: list all active stores."""
+    from app.models.store import Store
+    from sqlalchemy import select as sa_select
+    result = await db.execute(
+        sa_select(Store).where(Store.is_active == True).order_by(Store.name)
+    )
+    stores = result.scalars().all()
+    return [{"id": s.id, "name": s.name, "address": s.address, "slug": s.slug}
+            for s in stores]

@@ -101,6 +101,7 @@ export default function InformationPage({ token }: InformationPageProps) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [contentTypeFilter, setContentTypeFilter] = useState('');
 
   const PAGE_SIZE = 20;
 
@@ -108,6 +109,7 @@ export default function InformationPage({ token }: InformationPageProps) {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(p), page_size: String(PAGE_SIZE) });
+      if (contentTypeFilter) params.set('content_type', contentTypeFilter);
       const res = await apiFetch(`/admin/content/cards?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -117,7 +119,7 @@ export default function InformationPage({ token }: InformationPageProps) {
         setPage(p);
       }
     } catch { console.error('Failed to fetch cards'); } finally { setLoading(false); }
-  }, []);
+  }, [contentTypeFilter]);
 
   useEffect(() => { fetchCards(1); }, [fetchCards]);
 
@@ -267,6 +269,16 @@ export default function InformationPage({ token }: InformationPageProps) {
       ),
     },
     {
+      key: 'content_type',
+      header: 'Type',
+      width: '110px',
+      render: (row) => (
+        <span className={`badge ${row.content_type === 'product' ? 'badge-blue' : row.content_type === 'event' ? 'badge-yellow' : row.content_type === 'system' ? 'badge-gray' : 'badge-green'}`}>
+          {row.content_type === 'product' ? 'Product' : row.content_type === 'event' ? 'Event' : row.content_type === 'system' ? 'System' : 'Info'}
+        </span>
+      ),
+    },
+    {
       key: 'actions',
       header: 'Actions',
       width: '200px',
@@ -325,6 +337,7 @@ export default function InformationPage({ token }: InformationPageProps) {
               </div>
             </div>
 
+            {form.content_type !== 'event' && (<>
             <div className="inf-3">
               <label className="iform-label">
                 Slug <span className="inf-4">(QR code URL — leave blank to auto-generate)</span>
@@ -368,6 +381,7 @@ export default function InformationPage({ token }: InformationPageProps) {
               />
             </div>
 
+            {form.content_type !== 'event' && (
             <div className="inf-12">
               <GalleryUploadField
                 label="Gallery Images"
@@ -377,6 +391,7 @@ export default function InformationPage({ token }: InformationPageProps) {
                 hint="Additional images shown as a swipeable gallery inside the article."
               />
             </div>
+            )}
 
             <div className="inf-13">
               <label className="iform-label">Content Type</label>
@@ -385,7 +400,7 @@ export default function InformationPage({ token }: InformationPageProps) {
               </select>
             </div>
 
-            {form.content_type === 'promotion' && (
+            {form.content_type === 'event' && (
               <div className="inf-15">
                 <label className="inf-16">Promotion CTA (optional)</label>
                 <div className="inf-17">
@@ -411,6 +426,7 @@ export default function InformationPage({ token }: InformationPageProps) {
                 <input type="datetime-local" value={form.end_date} onChange={(e) => setField('end_date', e.target.value)} />
               </div>
             </div>
+            </>)}
 
             <div className="df-actions">
               <label className="inf-25" style={{ marginRight: 'auto' }}>
@@ -429,6 +445,18 @@ export default function InformationPage({ token }: InformationPageProps) {
       </Drawer>
 
       <div className="inf-27">
+        <select
+          value={contentTypeFilter}
+          onChange={e => setContentTypeFilter(e.target.value)}
+          className="inf-14"
+          style={{ maxWidth: 160 }}
+        >
+          <option value="">All Types</option>
+          <option value="information">Information</option>
+          <option value="product">Product</option>
+          <option value="event">Event</option>
+          <option value="system">System</option>
+        </select>
         <button className="btn btn-primary" onClick={openNew}>
           <i className="fas fa-plus"></i> New Information Card
         </button>

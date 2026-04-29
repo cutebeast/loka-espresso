@@ -49,6 +49,8 @@ interface UIState {
   requestSignIn: number;
   previousPage: PageId | null;
   checkoutDraft: CheckoutDraft;
+  userLocation: { lat: number; lng: number } | null;
+  setUserLocation: (loc: { lat: number; lng: number } | null) => void;
   setPage: (page: PageId, params?: PageParams) => void;
   setOrderMode: (mode: OrderMode) => void;
   setDineInSession: (session: DineInSession | null) => void;
@@ -119,6 +121,7 @@ export const useUIStore = create<UIState>()(
       requestSignIn: 0,
       previousPage: null,
       checkoutDraft: {},
+      userLocation: null,
       setPage: (page, params) => {
         if (typeof window !== 'undefined') {
           const paramStr = params ? new URLSearchParams(
@@ -147,6 +150,7 @@ export const useUIStore = create<UIState>()(
         checkoutDraft: { ...state.checkoutDraft, ...draft },
       })),
       clearCheckoutDraft: () => set({ checkoutDraft: {} }),
+      setUserLocation: (loc) => set({ userLocation: loc }),
       resetAll: () => set({
         dineInSession: null,
         selectedStore: null,
@@ -155,7 +159,8 @@ export const useUIStore = create<UIState>()(
         pageParams: {},
         isGuest: false,
         previousPage: null,
-        checkoutDraft: {},
+      checkoutDraft: {},
+      userLocation: null,
       }),
     }),
     {

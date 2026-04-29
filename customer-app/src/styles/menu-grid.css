@@ -44,9 +44,10 @@
 }
 .menu-back-btn:active { background: rgba(0,0,0,0.04); }
 
+
 .menu-title {
   font-family: 'Playfair Display', serif;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--loka-text-primary);
   letter-spacing: -0.3px;
@@ -142,41 +143,35 @@
   margin-bottom: 2px;
 }
 
-.menu-product-desc {
-  font-size: 12px;
-  color: var(--loka-text-muted);
-  line-height: 1.4;
-  margin-bottom: 6px;
-}
-
-.menu-product-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: auto;
-}
-
-.menu-product-price {
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--loka-primary);
-}
-
 .menu-add-btn {
   background: var(--loka-primary);
   color: white;
   border: none;
   border-radius: 40px;
-  padding: 10px 20px;
+  padding: 6px 14px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 5px;
-  min-height: 44px;
-  min-width: 44px;
-  transition: background 0.2s, transform 0.1s;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.menu-add-btn:active {
+  background: var(--loka-primary-dark);
+  transform: scale(0.95);
+}
+.menu-product-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.menu-product-price {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--loka-primary);
+  white-space: nowrap;
 }
 .menu-add-btn:active {
   background: var(--loka-primary-dark);

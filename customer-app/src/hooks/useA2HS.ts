@@ -32,7 +32,6 @@ export function useA2HS(): A2HSState {
 
   useEffect(() => {
     const handler = (e: Event) => {
-      e.preventDefault();
       setDeferredPrompt(e);
     };
 
