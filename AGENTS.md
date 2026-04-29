@@ -229,6 +229,10 @@ See `docs/00-index.md` for full documentation index.
 ## Important
 
 - Docker mounts `./uploads:/app/uploads` from project root
+- **UPLOAD_DIR = `/app/uploads`** (Docker-compatible path in `.env` and `config.py`)
+- Images organized by type: `/uploads/information/`, `/uploads/products/`, `/uploads/menu/`, `/uploads/marketing/`, `/uploads/avatars/`, `/uploads/splash/`, `/uploads/inventory/`
+- **Filenames use UUID** (`uuid4().hex + extension`) — no collision risk
+- **No image processing** on upload (resize/crop not implemented) — recommend 1200px wide JPEG/PNG for best results
 - OTP bypass enabled in dev — disable in production
 - Caddy handles HTTPS and reverse proxy in production
 - Deploy frontend: `docker compose up -d --build frontend`

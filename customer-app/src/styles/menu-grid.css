@@ -82,32 +82,46 @@
 /* Menu Product Card */
 .menu-product-card {
   background: var(--loka-bg-card);
-  border-radius: 20px;
+  border-radius: 16px;
   display: flex;
   overflow: hidden;
   border: 1px solid var(--loka-border-light);
   transition: transform 0.15s, box-shadow 0.15s;
   cursor: pointer;
-  height: 140px;
+  padding: 16px;
+  gap: 10px;
 }
 .menu-product-card:active {
   transform: scale(0.985);
   box-shadow: 0 6px 16px rgba(0,0,0,0.06);
 }
-
 .menu-product-img {
-  width: 140px;
+  width: 100px;
+  min-height: 100px;
   flex-shrink: 0;
-  background-size: cover;
-  background-position: center;
+  border-radius: 16px;
+  overflow: hidden;
   background-color: #F3EEE5;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.menu-product-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.menu-product-img-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .menu-img-badge {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 6px;
+  left: 6px;
   background: rgba(0,0,0,0.65);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -116,33 +130,23 @@
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 20px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
 }
-
-.badge-pop { background: #C62828 !important; color: white !important; }
-.badge-veg { background: #2E7D32 !important; color: white !important; }
-.badge-vgn { background: #1B5E20 !important; color: white !important; }
-.badge-gf  { background: #E65100 !important; color: white !important; }
 
 .menu-product-info {
   flex: 1;
-  padding: 12px 16px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: space-evenly;
 }
 
 .menu-product-name {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--loka-text-primary);
   margin-bottom: 2px;
+  line-height: 1.2;
 }
-
 .menu-add-btn {
   background: var(--loka-primary);
   color: white;
@@ -172,10 +176,6 @@
   font-size: 13px;
   color: var(--loka-primary);
   white-space: nowrap;
-}
-.menu-add-btn:active {
-  background: var(--loka-primary-dark);
-  transform: scale(0.95);
 }
 
 /* Menu Search Bar */
@@ -293,7 +293,7 @@
    ============================================ */
 
 .menu-skeleton {
-  height: 140px;
+  height: 100px;
   border-radius: var(--radius-xl);
 }
 

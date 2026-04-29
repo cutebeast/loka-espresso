@@ -43,6 +43,7 @@ export default function MenuPage() {
   const [availableOptions, setAvailableOptions] = useState<CustomizationOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [selectedDietaryTag, setSelectedDietaryTag] = useState<string | null>(null);
+  const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
 
   const sectionRefs = useRef<Map<number, HTMLElement | null>>(new Map());
   const navRef = useRef<HTMLDivElement>(null);
@@ -280,8 +281,8 @@ export default function MenuPage() {
                       onClick={() => openItem(item)}
                     >
                       <div className="menu-product-img">
-                        {imgSrc ? (
-                          <img src={imgSrc} alt={item.name} className="menu-product-img-bg" />
+                        {imgSrc && !brokenImages.has(item.id) ? (
+                          <img src={imgSrc} alt={item.name} className="menu-product-img-bg" onError={() => { setBrokenImages(prev => new Set(prev).add(item.id)); }} />
                         ) : (
                           <div className="menu-img-fallback">
                             <Coffee size={28} color="#C4CED8" strokeWidth={1.5} />

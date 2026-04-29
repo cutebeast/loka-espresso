@@ -32,6 +32,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<InformationCard | null>(null);
   const preselectedConsumed = useRef(false);
+  const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
   const isProduct = contentType === 'product';
   const pageLabel = isProduct ? 'Products' : 'Experiences';
 
@@ -89,8 +90,8 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
             <ImageCarousel images={allImages} />
           ) : (
             <>
-              {img ? (
-                <img src={img} alt="" className="info-detail-hero-img info-detail-hero-img-fill" />
+              {img && !brokenImages.has(selectedCard.id) ? (
+                <img src={img} alt="" className="info-detail-hero-img info-detail-hero-img-fill" onError={() => { setBrokenImages(prev => new Set(prev).add(selectedCard.id)); }} />
               ) : (
                 <div className="info-detail-hero-img info-detail-hero-img-fallback" />
               )}
@@ -157,8 +158,8 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
             return (
               <div key={card.id} className="info-exp-card" onClick={() => setSelectedCard(card)}>
                 <div className="info-card-thumb">
-                  {img ? (
-                    <img src={img} alt="" className="info-card-thumb-img" />
+                  {img && !brokenImages.has(card.id) ? (
+                    <img src={img} alt="" className="info-card-thumb-img" onError={() => { setBrokenImages(prev => new Set(prev).add(card.id)); }} />
                   ) : (
                     <div className="info-card-thumb-fallback">
                       <Info size={24} strokeWidth={1.5} className="info-card-fallback-icon" />

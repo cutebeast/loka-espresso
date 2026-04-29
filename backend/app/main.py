@@ -146,6 +146,8 @@ app.add_middleware(SlowAPIMiddleware)
 
 # Create upload directories
 upload_dir = settings.UPLOAD_DIR
+os.makedirs(os.path.join(upload_dir, "information"), exist_ok=True)
+os.makedirs(os.path.join(upload_dir, "products"), exist_ok=True)
 os.makedirs(os.path.join(upload_dir, "menu"), exist_ok=True)
 os.makedirs(os.path.join(upload_dir, "splash"), exist_ok=True)
 os.makedirs(os.path.join(upload_dir, "avatars"), exist_ok=True)

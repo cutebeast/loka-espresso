@@ -57,10 +57,12 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         return new Date(b.start_date) <= now && new Date(b.end_date) >= now;
       });
       setPromotions(active);
-      const statuses = await Promise.all(active.map((p: PromoBanner) => api.get(`/promos/banners/${p.id}/status`).then((r) => ({ id: p.id, status: r.data })).catch(() => null)));
-      const map: Record<number, BannerStatus> = {};
-      statuses.forEach((s) => { if (s) map[s.id] = s.status; });
-      setBannerStatus(map);
+      if (!isGuest) {
+        const statuses = await Promise.all(active.map((p: PromoBanner) => api.get(`/promos/banners/${p.id}/status`).then((r) => ({ id: p.id, status: r.data })).catch(() => null)));
+        const map: Record<number, BannerStatus> = {};
+        statuses.forEach((s) => { if (s) map[s.id] = s.status; });
+        setBannerStatus(map);
+      }
     } catch { console.error("Failed to load promotions"); setPromotions([]); }
     finally { setLoading(false); }
   }, []);

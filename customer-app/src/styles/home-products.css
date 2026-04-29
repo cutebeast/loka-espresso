@@ -21,19 +21,22 @@
   background: white;
   border-radius: 20px;
   overflow: hidden;
-  width: 148px;
+  width: 158px;
   flex-shrink: 0;
-  box-shadow: 0 8px 20px -6px rgba(0,0,0,0.08);
-  cursor: pointer;
-  transition: transform 0.15s;
+  height: min-content;
+  padding: 16px;
 }
 .product-card:active { transform: scale(0.97); }
 
 .product-img {
-  height: 110px;
+  height: 100px;
+  border-radius: 16px;
   background-color: #F3EEE5;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .product-img .card-bg-img {
   position: absolute;
@@ -44,7 +47,7 @@
   z-index: 0;
 }
 
-.product-info { padding: 12px; }
+.product-info { padding: 8px; }
 
 .product-name {
   font-weight: 700;

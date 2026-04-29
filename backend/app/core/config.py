@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     JWT_ISSUER: str = "fnb-api"
     JWT_AUDIENCE: str = "fnb-app"
     CORS_ORIGINS: str = ""
-    UPLOAD_DIR: str = "/root/fnb-super-app/uploads"
+    UPLOAD_DIR: str = "/app/uploads"
     CUSTOMER_APP_DIR: str = "/root/fnb-super-app/customer-app"
     WEBHOOK_API_KEY: str = ""
     WEBHOOK_SIGNING_SECRET: str = ""
