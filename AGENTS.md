@@ -230,7 +230,8 @@ See `docs/00-index.md` for full documentation index.
 
 - Docker mounts `./uploads:/app/uploads` from project root
 - **UPLOAD_DIR = `/app/uploads`** (Docker-compatible path in `.env` and `config.py`)
-- Images organized by type: `/uploads/information/`, `/uploads/products/`, `/uploads/menu/`, `/uploads/marketing/`, `/uploads/avatars/`, `/uploads/splash/`, `/uploads/inventory/`
+- Images organized by type (folders with admin UI): `information/`, `products/`, `events/`, `menu/`, `marketing/`, `inventory/`
+- `avatars/` folder exists for backend profile picture upload (no admin UI needed)
 - **Filenames use UUID** (`uuid4().hex + extension`) — no collision risk
 - **No image processing** on upload (resize/crop not implemented) — recommend 1200px wide JPEG/PNG for best results
 - OTP bypass enabled in dev — disable in production
