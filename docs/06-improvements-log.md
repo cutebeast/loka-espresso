@@ -138,3 +138,15 @@ See `_archive/06-improvements-log-full.md` for detailed chronological history.
 - Created shared `.form-label`/`.form-hint` CSS classes, replacing 9 duplicated style constants across 6 files (TablesPage, StoreSettingsPage, VouchersPage, SurveysPage, LoyaltyRulesPage, OrdersPage)
 - Removed unused `THEME` imports from 8 files (Sidebar, TablesPage, StoreSettingsPage, VouchersPage, SurveysPage, LoyaltyRulesPage, OrdersPage, Button)
 - Zero JS-injected `<style>` tags remain in admin frontend
+
+### Phase 23 (2026-04-29 to 2026-04-30)
+- **Guest Journey:** restricted pages trigger sign-in sheet instead of navigating; cart/rewards public browsing; GuestGate checks `isAuthenticated`
+- **Store Management Consistency:** all pages use `fa-toggle-on`/`fa-toggle-off` in Actions column; menu cards compact; category soft-delete
+- **Referral System:** wallet credit → loyalty points; `ReferralPage` on PWA with share/copy; config keys `referral_reward_points` + `referral_min_orders`
+- **Content Types:** `promotion` → `event`; separate Experiences + Products carousels; admin filter dropdown; type-specific upload folders
+- **DOB + Customization:** `customers.date_of_birth`; `customization_options.option_type` with type dropdown
+- **Upload System:** 9 dedicated endpoints → 9 folders (zero orphans); Pillow image processing (resize 1200px, JPEG only, strip EXIF); MIME type registration
+- **Image Audit:** all webp→jpg converted; DB paths fixed; corrupt files removed; Cloudflare cache bypassed
+- **CSS:** promos white text + Playfair; overlay `display:none` fix; cart qty/remove restructured; menu card compact + fallback images
+- **Backend fixes:** `_blacklist_token`, `_normalize_phone`/`_validate_phone`, OTP constants, `require_role` Customer guard, DeviceToken→CustomerDeviceToken, FK migrations
+- **Dead code removed:** `AddStaffModal.tsx`, `UserAddress` model, `ItemCard.tsx`

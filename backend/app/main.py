@@ -8,6 +8,11 @@ from slowapi.middleware import SlowAPIMiddleware
 from contextlib import asynccontextmanager
 import os
 import asyncio
+import mimetypes
+
+# Register missing MIME types
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("image/avif", ".avif")
 import logging
 from datetime import datetime
 

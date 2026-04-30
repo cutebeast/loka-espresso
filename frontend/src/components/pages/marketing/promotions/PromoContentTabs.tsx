@@ -5,15 +5,15 @@ import { THEME } from '@/lib/theme';
 import SurveysPage from '../SurveysPage';
 import SurveyReportPage from '../SurveyReportPage';
 
-export type BroadcastView = 'surveys' | 'survey-form' | 'reports';
+export type PromoView = 'surveys' | 'survey-form' | 'reports';
 
-interface BroadcastManagerProps {
+interface PromoContentTabsProps {
   token: string;
-  activeView: BroadcastView;
-  onViewChange: (view: BroadcastView) => void;
+  activeView: PromoView;
+  onViewChange: (view: PromoView) => void;
 }
 
-export default function BroadcastManager({ token, activeView, onViewChange }: BroadcastManagerProps) {
+export default function PromoContentTabs({ token, activeView, onViewChange }: PromoContentTabsProps) {
   return (
     <>
       {(activeView === 'surveys' || activeView === 'survey-form') && (
@@ -30,12 +30,12 @@ export default function BroadcastManager({ token, activeView, onViewChange }: Br
   );
 }
 
-interface BroadcastTabsProps {
+interface PromoTabsProps {
   activeTab: 'promotions' | 'surveys' | 'reports';
   onTabChange: (tab: 'promotions' | 'surveys' | 'reports') => void;
 }
 
-export function BroadcastTabs({ activeTab, onTabChange }: BroadcastTabsProps) {
+export function PromoTabs({ activeTab, onTabChange }: PromoTabsProps) {
   return (
     <div className="pp-25">
       <button

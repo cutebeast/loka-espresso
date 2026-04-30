@@ -1,5 +1,6 @@
 import os
 import uuid
+from io import BytesIO
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.core.security import require_role, get_current_user
 from app.core.config import get_settings
@@ -10,16 +11,17 @@ router = APIRouter(prefix="/upload", tags=["Upload"])
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 MAX_DOC_SIZE = 10 * 1024 * 1024  # 10MB
-ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-ALLOWED_DOC_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf",
+MAX_IMAGE_WIDTH = 1200  # px
+MAX_IMAGE_HEIGHT = 1200  # px
+JPEG_QUALITY = 85
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png"}
+ALLOWED_DOC_TYPES = {"image/jpeg", "image/png", "application/pdf",
                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                      "application/vnd.ms-excel", "text/csv"}
 
 MAGIC_BYTES = {
     "image/jpeg": [(b"\xff\xd8\xff",)],
     "image/png": [(b"\x89PNG\r\n\x1a\n",)],
-    "image/gif": [(b"GIF87a",), (b"GIF89a",)],
-    "image/webp": [(b"RIFF", b"WEBP")],
     "application/pdf": [(b"%PDF",)],
 }
 
@@ -32,8 +34,40 @@ def _validate_magic_bytes(content: bytes, expected_mime: str) -> bool:
     return False
 
 
+async def _process_image(content: bytes, filename: str) -> bytes:
+    """Resize, strip EXIF, convert to JPEG. Returns processed JPEG bytes."""
+    from PIL import Image
+
+    img = Image.open(BytesIO(content))
+
+    # Convert RGBA/P to RGB (white background)
+    if img.mode in ('RGBA', 'P'):
+        bg = Image.new('RGB', img.size, (255, 255, 255))
+        if img.mode == 'RGBA':
+            bg.paste(img, mask=img.split()[-1])
+        else:
+            bg.paste(img)
+        img = bg
+    elif img.mode != 'RGB':
+        img = img.convert('RGB')
+
+    # Resize if too large (maintain aspect ratio)
+    w, h = img.size
+    if w > MAX_IMAGE_WIDTH or h > MAX_IMAGE_HEIGHT:
+        ratio = min(MAX_IMAGE_WIDTH / w, MAX_IMAGE_HEIGHT / h)
+        img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+
+    # Save as optimized JPEG (strips EXIF metadata)
+    out = BytesIO()
+    img.save(out, 'JPEG', quality=JPEG_QUALITY, optimize=True)
+    return out.getvalue()
+
+
 def _save_upload(content: bytes, filename: str | None, folder: str, settings) -> dict:
-    ext = os.path.splitext(filename or "image.jpg")[1]
+    ext = os.path.splitext(filename or "image.jpg")[1].lower()
+    # Force .jpg for all image uploads
+    if ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
+        ext = '.jpg'
     fname = f"{uuid.uuid4().hex}{ext}"
     dir_path = os.path.join(settings.UPLOAD_DIR, folder)
     os.makedirs(dir_path, exist_ok=True)
@@ -44,15 +78,20 @@ def _save_upload(content: bytes, filename: str | None, folder: str, settings) ->
 
 
 async def _upload_validated(file: UploadFile, folder: str) -> dict:
-    """Shared validation + save for image upload endpoints."""
+    """Validate, process (resize/optimize), and save uploaded image."""
     settings = get_settings()
     if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
+        raise HTTPException(status_code=400, detail="Only JPEG and PNG images accepted")
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
-    if not _validate_magic_bytes(content, file.content_type):
-        raise HTTPException(status_code=400, detail="File content does not match declared image type")
+
+    # Process: resize, optimize, convert to JPEG
+    try:
+        content = await _process_image(content, file.filename or "image.jpg")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Image processing failed: {str(e)}")
+
     return _save_upload(content, file.filename, folder, settings)
 
 
@@ -61,52 +100,8 @@ async def upload_image(
     file: UploadFile = File(...),
     user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
 ):
-    settings = get_settings()
-    if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
-    if not _validate_magic_bytes(content, file.content_type):
-        raise HTTPException(status_code=400, detail="File content does not match declared image type")
-    return _save_upload(content, file.filename, "menu", settings)
-
-
-@router.post("/reward-image")
-async def upload_reward_image(
-    file: UploadFile = File(...),
-    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
-):
-    """Upload an image for rewards."""
-    return _upload_validated(file, "rewards")
-
-
-@router.post("/banner-image")
-async def upload_banner_image(
-    file: UploadFile = File(...),
-    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
-):
-    """Upload an image for promo banners."""
-    return _upload_validated(file, "promos")
-
-
-@router.post("/store-image")
-async def upload_store_image(
-    file: UploadFile = File(...),
-    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
-):
-    """Upload an image for store logos/photos."""
-    return _upload_validated(file, "stores")
-
-
-# Legacy — kept for backward compatibility
-@router.post("/marketing-image")
-async def upload_marketing_image(
-    file: UploadFile = File(...),
-    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
-):
-    """Upload an image (legacy — use /store-image for stores)."""
-    return _upload_validated(file, "stores")
+    """Upload menu item image."""
+    return await _upload_validated(file, "menu")
 
 
 @router.post("/information-image")
@@ -114,16 +109,8 @@ async def upload_information_image(
     file: UploadFile = File(...),
     user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
 ):
-    """Upload an image for information cards / product gallery."""
-    settings = get_settings()
-    if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
-    if not _validate_magic_bytes(content, file.content_type):
-        raise HTTPException(status_code=400, detail="File content does not match declared image type")
-    return _save_upload(content, file.filename, "information", settings)
+    """Upload information card image."""
+    return await _upload_validated(file, "information")
 
 
 @router.post("/products-image")
@@ -131,16 +118,8 @@ async def upload_products_image(
     file: UploadFile = File(...),
     user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
 ):
-    """Upload an image for product cards."""
-    settings = get_settings()
-    if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
-    if not _validate_magic_bytes(content, file.content_type):
-        raise HTTPException(status_code=400, detail="File content does not match declared image type")
-    return _save_upload(content, file.filename, "products", settings)
+    """Upload product card image."""
+    return await _upload_validated(file, "products")
 
 
 @router.post("/events-image")
@@ -148,16 +127,44 @@ async def upload_events_image(
     file: UploadFile = File(...),
     user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
 ):
-    """Upload an image for event popups (full-screen, 88vw×85vh)."""
-    settings = get_settings()
-    if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
-    if not _validate_magic_bytes(content, file.content_type):
-        raise HTTPException(status_code=400, detail="File content does not match declared image type")
-    return _save_upload(content, file.filename, "events", settings)
+    """Upload event popup image (full-screen)."""
+    return await _upload_validated(file, "events")
+
+
+@router.post("/reward-image")
+async def upload_reward_image(
+    file: UploadFile = File(...),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """Upload reward image."""
+    return await _upload_validated(file, "rewards")
+
+
+@router.post("/banner-image")
+async def upload_banner_image(
+    file: UploadFile = File(...),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """Upload promo banner image."""
+    return await _upload_validated(file, "promos")
+
+
+@router.post("/store-image")
+async def upload_store_image(
+    file: UploadFile = File(...),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """Upload store image."""
+    return await _upload_validated(file, "stores")
+
+
+@router.post("/marketing-image")
+async def upload_marketing_image(
+    file: UploadFile = File(...),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """Legacy: upload store image."""
+    return await _upload_validated(file, "stores")
 
 
 @router.post("/document")

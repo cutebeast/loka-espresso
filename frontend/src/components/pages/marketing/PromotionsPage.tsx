@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { BannerManager, BroadcastManager, BroadcastTabs } from './promotions';
-import type { BroadcastView } from './promotions';
+import { PromoBannerEditor, PromoContentTabs, PromoTabs } from './promotions';
+import type { PromoView } from './promotions';
 
-type ViewMode = 'promotions' | 'banner-form' | BroadcastView;
+type ViewMode = 'promotions' | 'banner-form' | PromoView;
 
 interface PromotionsPageProps {
   token: string;
@@ -20,7 +20,7 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
     setViewMode(tab);
   };
 
-  const handleBroadcastViewChange = (view: BroadcastView) => {
+  const handlePromoViewChange = (view: PromoView) => {
     setViewMode(view);
   };
 
@@ -28,17 +28,17 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
 
   return (
     <div>
-      <BroadcastTabs activeTab={currentTab} onTabChange={handleTabChange} />
+      <PromoTabs activeTab={currentTab} onTabChange={handleTabChange} />
 
       {currentTab === 'promotions' && (
-        <BannerManager token={token} />
+        <PromoBannerEditor token={token} />
       )}
 
       {currentTab !== 'promotions' && (
-        <BroadcastManager
+        <PromoContentTabs
           token={token}
-          activeView={viewMode as BroadcastView}
-          onViewChange={handleBroadcastViewChange}
+          activeView={viewMode as PromoView}
+          onViewChange={handlePromoViewChange}
         />
       )}
     </div>
