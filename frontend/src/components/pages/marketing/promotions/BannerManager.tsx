@@ -419,7 +419,7 @@ function ImageUploadField({ label, imageUrl, token: _token, onSet, hint }: { lab
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await apiUpload('/upload/marketing-image', fd);
+      const res = await apiUpload('/upload/banner-image', fd);
       if (res.ok) {
         const data = await res.json();
         onSet(data.url);

@@ -390,6 +390,7 @@ export default function InformationPage({ token }: InformationPageProps) {
                 token={token}
                 onSet={(urls) => setField('gallery_urls', urls)}
                 hint="Additional images shown as a swipeable gallery inside the article."
+                folder={form.content_type}
               />
             </div>
             )}
@@ -525,7 +526,7 @@ function ImageUploadField({ label, imageUrl, token: _token, onSet, hint, folder 
   );
 }
 
-function GalleryUploadField({ label, urls, token: _token, onSet, hint }: { label: string; urls: string[]; token: string; onSet: (urls: string[]) => void; hint?: string }) {
+function GalleryUploadField({ label, urls, token: _token, onSet, hint, folder }: { label: string; urls: string[]; token: string; onSet: (urls: string[]) => void; hint?: string; folder?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -538,7 +539,8 @@ function GalleryUploadField({ label, urls, token: _token, onSet, hint }: { label
       for (const file of Array.from(files)) {
         const fd = new FormData();
         fd.append('file', file);
-        const res = await apiUpload('/upload/information-image', fd);
+        const endpoint = folder === 'product' ? '/upload/products-image' : folder === 'event' ? '/upload/events-image' : '/upload/information-image';
+        const res = await apiUpload(endpoint, fd);
         if (res.ok) {
           const data = await res.json();
           newUrls.push(data.url);

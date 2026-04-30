@@ -235,7 +235,7 @@ function RewardFormPage({ token: _token, existingReward, onBack }: { token: stri
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await apiUpload('/upload/marketing-image', fd);
+      const res = await apiUpload('/upload/reward-image', fd);
       if (res.ok) {
         const data = await res.json();
         setImageUrl(data.url);

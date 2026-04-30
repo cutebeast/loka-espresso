@@ -43,6 +43,19 @@ def _save_upload(content: bytes, filename: str | None, folder: str, settings) ->
     return {"url": f"/uploads/{folder}/{fname}", "filename": fname}
 
 
+async def _upload_validated(file: UploadFile, folder: str) -> dict:
+    """Shared validation + save for image upload endpoints."""
+    settings = get_settings()
+    if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
+    if not _validate_magic_bytes(content, file.content_type):
+        raise HTTPException(status_code=400, detail="File content does not match declared image type")
+    return _save_upload(content, file.filename, folder, settings)
+
+
 @router.post("/image")
 async def upload_image(
     file: UploadFile = File(...),
@@ -59,20 +72,41 @@ async def upload_image(
     return _save_upload(content, file.filename, "menu", settings)
 
 
+@router.post("/reward-image")
+async def upload_reward_image(
+    file: UploadFile = File(...),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """Upload an image for rewards."""
+    return _upload_validated(file, "rewards")
+
+
+@router.post("/banner-image")
+async def upload_banner_image(
+    file: UploadFile = File(...),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """Upload an image for promo banners."""
+    return _upload_validated(file, "promos")
+
+
+@router.post("/store-image")
+async def upload_store_image(
+    file: UploadFile = File(...),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """Upload an image for store logos/photos."""
+    return _upload_validated(file, "stores")
+
+
+# Legacy — kept for backward compatibility
 @router.post("/marketing-image")
 async def upload_marketing_image(
     file: UploadFile = File(...),
     user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
 ):
-    settings = get_settings()
-    if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF images allowed")
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
-    if not _validate_magic_bytes(content, file.content_type):
-        raise HTTPException(status_code=400, detail="File content does not match declared image type")
-    return _save_upload(content, file.filename, "marketing", settings)
+    """Upload an image (legacy — use /store-image for stores)."""
+    return _upload_validated(file, "stores")
 
 
 @router.post("/information-image")

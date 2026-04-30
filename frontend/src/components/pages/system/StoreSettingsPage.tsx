@@ -150,7 +150,7 @@ function StoreForm({ token: _token, onClose, existingStore }: { token: string; o
       if (imageFile) {
         const fd = new FormData();
         fd.append('file', imageFile);
-        const uploadRes = await apiUpload('/upload/marketing-image', fd);
+        const uploadRes = await apiUpload('/upload/store-image', fd);
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json();
           uploadedUrl = uploadData.url || uploadData.image_url || '';

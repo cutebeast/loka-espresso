@@ -17,7 +17,7 @@ export function AddBannerForm({ token: _token, onClose }: { token: string; onClo
     try {
       const fd = new FormData();
       fd.append('file', imageFile);
-      const uploadRes = await apiUpload('/upload/marketing-image', fd);
+      const uploadRes = await apiUpload('/upload/banner-image', fd);
       if (!uploadRes.ok) { setError('Image upload failed'); return; }
       const uploadData = await uploadRes.json();
       const imageUrl = uploadData.url || '';
