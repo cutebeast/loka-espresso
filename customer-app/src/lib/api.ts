@@ -187,9 +187,10 @@ export interface OrderItem {
   menu_item_id?: number;
   name: string;
   price: number;
-   unit_price?: number;
+  unit_price?: number;
   quantity: number;
   customizations?: Record<string, unknown>;
+  image_url?: string;
 }
 
 export interface Order {
@@ -212,6 +213,8 @@ export interface Order {
   pickup_time?: string;
   delivery_address?: Record<string, unknown> | string;
   notes?: string;
+  recipient_name?: string;
+  recipient_phone?: string;
   payment_method?: string;
   payment_status?: string;
   loyalty_points_earned?: number;

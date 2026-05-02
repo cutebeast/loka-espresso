@@ -1,54 +1,47 @@
 'use client';
 
-import { useEffect, useCallback, useRef } from 'react';
-import {
-  RefreshCw,
-  ShoppingBag,
-  Receipt,
-  Wifi,
-} from 'lucide-react';
+import { useEffect, useCallback, useRef, useState } from 'react';
+import { RefreshCw, ShoppingBag, Receipt, Clock, RotateCcw } from 'lucide-react';
 import { useOrderStore } from '@/stores/orderStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
 import type { Order } from '@/lib/api';
-import { formatPrice } from '@/lib/tokens';
+import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
+import { Coffee } from 'lucide-react';
 
-function getStatusClass(status: string): string {
-  const s = status?.toLowerCase().replace(/\s+/g, '-');
-  const map: Record<string, string> = {
-    pending: 'status-pending',
-    confirmed: 'status-confirmed',
-    preparing: 'status-preparing',
-    ready: 'status-ready',
-    'out-for-delivery': 'status-out-for-delivery',
-    completed: 'status-completed',
-    delivered: 'status-completed',
-    cancelled: 'status-cancelled',
-  };
-  return map[s] || 'status-confirmed';
+function getStatusBadge(status: string): { label: string; cls: string } {
+  const s = status?.toLowerCase();
+  if (s === 'delivered' || s === 'completed') return { label: 'Delivered', cls: 'delivered' };
+  if (s === 'cancelled') return { label: 'Cancelled', cls: 'cancelled' };
+  return { label: status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || '', cls: '' };
 }
 
-function formatOrderDate(createdAt: string): string {
-  const d = new Date(createdAt);
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
   const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const isYesterday = d.toDateString() === yesterday.toDateString();
+  if (d.toDateString() === now.toDateString()) return `Today, ${d.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}`;
+  return d.toLocaleDateString('en-MY', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
-  const timeStr = d.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' });
+const ACTIVE = ['pending', 'confirmed', 'preparing', 'in_progress', 'ready', 'out_for_delivery', 'driver_assigned'];
+const STEPS = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed'];
 
-  if (isToday) return `Today, ${timeStr}`;
-  if (isYesterday) return `Yesterday, ${timeStr}`;
-  return d.toLocaleDateString('en-MY', { month: 'short', day: 'numeric', year: 'numeric' });
+function activeStepIdx(status: string): number {
+  const s = status?.toLowerCase();
+  if (s === 'pending') return 0;
+  if (s === 'confirmed') return 1;
+  if (s === 'preparing' || s === 'in_progress') return 2;
+  if (s === 'ready') return 3;
+  if (s === 'completed' || s === 'delivered') return 4;
+  return 0;
 }
 
 export default function OrdersPage() {
   const { orders, setOrders, setCurrentOrder, isLoading, setIsLoading } = useOrderStore();
   const { setPage, showToast } = useUIStore();
-
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
 
   const fetchOrders = useCallback(async () => {
     if (!useAuthStore.getState().isAuthenticated) return;
@@ -56,120 +49,123 @@ export default function OrdersPage() {
     try {
       const res = await api.get('/orders', { params: { page_size: 20 } });
       setOrders(Array.isArray(res.data) ? res.data : (res.data?.items ?? []));
-    } catch { console.error('Failed to load orders');
-      showToast('Failed to load orders', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [setOrders, showToast, setIsLoading]);
+    } catch { showToast('Failed to load orders', 'error'); }
+    finally { setIsLoading(false); }
+  }, []);
 
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+  useEffect(() => { fetchOrders(); }, []);
 
-  const activeStatuses = ['pending', 'confirmed', 'preparing', 'in_progress', 'ready', 'out_for_delivery', 'driver_assigned'];
-  const hasActive = orders.some((o) => activeStatuses.includes(o.status?.toLowerCase()));
+  const hasActive = orders.some(o => ACTIVE.includes(o.status?.toLowerCase()));
 
   useEffect(() => {
     if (pollingRef.current) clearInterval(pollingRef.current);
-    if (hasActive) {
-      pollingRef.current = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-          api.get('/orders', { params: { page_size: 20 } })
-            .then((res) => setOrders(Array.isArray(res.data) ? res.data : (res.data?.orders ?? [])))
-            .catch(() => {});
-        }
-      }, 30000);
-    }
+    if (hasActive) pollingRef.current = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchOrders();
+    }, 30000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
-  }, [hasActive, setOrders]);
+  }, [hasActive]);
 
-  const handleOpenDetail = (order: Order) => {
+  const openDetail = (order: Order) => {
     setCurrentOrder(order);
     setPage('order-detail', { orderId: order.id });
   };
 
-  const activeOrders = orders.filter((o) => activeStatuses.includes(o.status?.toLowerCase()));
-  const pastOrders = orders.filter((o) => !activeStatuses.includes(o.status?.toLowerCase()));
+  const activeOrders = orders.filter(o => ACTIVE.includes(o.status?.toLowerCase()));
+  const pastOrders = orders.filter(o => !ACTIVE.includes(o.status?.toLowerCase()));
 
   if (!isLoading && orders.length === 0) {
     return (
       <div className="orders-screen">
-        <div className="orders-header">
-          <h1 className="orders-page-title">Orders</h1>
-        </div>
-        <div className="orders-scroll orders-scroll-center">
-          <div className="order-empty">
-            <div className="order-empty-icon">
-              <ShoppingBag size={32} color="#384B16" className="co-wallet-icon" />
-            </div>
-            <p className="order-empty-title">No orders yet</p>
-            <p className="order-empty-text">Your order history will appear here</p>
-            <button className="order-empty-btn" onClick={() => setPage('menu')}>
-              Start Ordering
-            </button>
+        <div className="orders-header"><h1 className="orders-title">Orders</h1></div>
+        <div className="orders-scroll" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="orders-empty">
+            <div className="orders-empty-icon"><ShoppingBag size={32} color="#D4DCE5" /></div>
+            <p className="orders-empty-title">No orders yet</p>
+            <p className="orders-empty-text">Your order history will appear here</p>
+            <button className="orders-empty-btn" onClick={() => setPage('menu')}>Start Ordering</button>
           </div>
         </div>
       </div>
     );
   }
 
-  const renderOrderCard = (order: Order) => {
-    const itemSummary = order.items?.map((i) => i.name).join(', ') || '';
-    const dateStr = formatOrderDate(order.created_at);
-
-    return (
-      <div key={order.id} className="order-card" onClick={() => handleOpenDetail(order)}>
-        <div className="order-card-header">
-          <span className="order-card-number">
-            <Receipt size={16} color="#D18E38" />
-            Order #{order.order_number}
-          </span>
-          <span className="order-card-date">{dateStr}</span>
-        </div>
-        <div className="order-card-items">{itemSummary}</div>
-        <div className="order-card-footer">
-          <span className="order-card-total">{formatPrice(order.total)}</span>
-          <span className={`order-card-status ${getStatusClass(order.status)}`}>
-            {order.status}
-          </span>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="orders-screen">
       <div className="orders-header">
-        <h1 className="orders-page-title">Orders</h1>
+        <h1 className="orders-title">Orders</h1>
         {hasActive && (
-          <span className="orders-polling-indicator">
-            <Wifi size={10} />
-            <span className="orders-polling-dot" />
-            Auto-updating
-          </span>
+          <span className="orders-auto-badge"><span className="orders-pulse-dot" /> Auto-updating</span>
         )}
       </div>
 
       <div className="orders-scroll">
-        {/* Active Orders */}
+        <div className="orders-pull-refresh">
+          {isLoading ? <span className="orders-refresh-icon" /> : <RefreshCw size={14} />}
+          Pull down to refresh
+        </div>
+
         {activeOrders.length > 0 && (
           <>
-            <div className="orders-section-title">Active order</div>
-            {activeOrders.map((order) => renderOrderCard(order))}
+            <div className="orders-section-label">Active Orders</div>
+            {activeOrders.map(order => {
+              const step = activeStepIdx(order.status);
+              const itemList = order.items?.map(i => i.name).join(', ') || '';
+              return (
+                <div key={order.id} className="orders-active-card" onClick={() => openDetail(order)}>
+                  <div className="orders-active-header">
+                    <div className="orders-active-icon"><Receipt size={20} color="#fff" /></div>
+                    <div style={{ flex: 1 }}>
+                      <div className="orders-active-number">Order #{order.order_number}</div>
+                      <div className="orders-active-date">{formatDate(order.created_at)}</div>
+                    </div>
+                    <span className="orders-active-status-chip">{order.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                  </div>
+                  <div className="orders-progress-mini">
+                    {STEPS.map((s, i) => (
+                      <div key={s} className={`orders-progress-step${i < step ? ' filled' : ''}${i === step ? ' current' : ''}`} />
+                    ))}
+                  </div>
+                  <div className="orders-eta-row">
+                    <div className="orders-eta-icon"><Clock size={14} color="#fff" /></div>
+                    Estimated ready in ~{5 + (4 - step) * 5} min
+                  </div>
+                  <div className="orders-active-items">{itemList}</div>
+                  <div className="orders-active-footer">
+                    <span className="orders-active-total">{formatPrice(order.total)}</span>
+                    <button className="orders-track-btn" onClick={e => { e.stopPropagation(); openDetail(order); }}>Track Order</button>
+                  </div>
+                </div>
+              );
+            })}
           </>
         )}
 
-        {/* Past Orders */}
         {pastOrders.length > 0 && (
           <>
-            <div className="orders-section-header">
-              <div className="orders-section-title">Past orders</div>
-              <button className="orders-refresh-btn" onClick={fetchOrders}>
-                <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-              </button>
-            </div>
-            {pastOrders.map((order) => renderOrderCard(order))}
+            <div className="orders-section-label">Past Orders</div>
+            {pastOrders.map(order => {
+              const badge = getStatusBadge(order.status);
+              const firstItem = order.items?.[0];
+              const itemPreview = order.items?.map(i => i.name).slice(0, 2).join(', ') || '';
+              return (
+                <div key={order.id} className="orders-past-card" onClick={() => openDetail(order)}>
+                  <div className="orders-past-thumb">
+                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /> : <Coffee size={20} color="#384B16" />}
+                  </div>
+                  <div className="orders-past-info">
+                    <div className="orders-past-number">Order #{order.order_number}</div>
+                    <div className="orders-past-date">{formatDate(order.created_at)} · {itemPreview}</div>
+                    <div className="orders-past-bottom">
+                      <span className="orders-past-total">{formatPrice(order.total)}</span>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span className={`orders-status-badge ${badge.cls}`}>{badge.label}</span>
+                        <button className="orders-reorder-btn" onClick={e => { e.stopPropagation(); /* reorder logic */ }}><RotateCcw size={12} /> Reorder</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </>
         )}
       </div>

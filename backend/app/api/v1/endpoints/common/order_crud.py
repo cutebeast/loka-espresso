@@ -360,7 +360,7 @@ async def create_order(
     order_number = f"ORD-{uuid.uuid4().hex[:8].upper()}"
 
     order = Order(
-        user_id=user.id, store_id=store_id, table_id=req.table_id,
+        user_id=user.id, customer_id=user.id, store_id=store_id, table_id=req.table_id,
         order_number=order_number, order_type=req.order_type,
         items=order_items, subtotal=round(subtotal, 2),
         delivery_fee=round(delivery_fee, 2), discount=round(discount, 2),
@@ -371,6 +371,7 @@ async def create_order(
         total=total, status=OrderStatus.pending,
         pickup_time=req.pickup_time, delivery_address=delivery_address,
         payment_method=req.payment_method, notes=req.notes,
+        recipient_name=req.recipient_name, recipient_phone=req.recipient_phone,
         delivery_provider=delivery_provider,
         delivery_status=delivery_status,
     )
@@ -403,7 +404,7 @@ async def create_order(
         await db.delete(ci)
 
     notif = Notification(
-        user_id=user.id, title="Order Placed",
+        user_id=user.id, customer_id=user.id, title="Order Placed",
         body=f"Your order {order_number} has been placed!",
         type="order", is_read=False,
     )

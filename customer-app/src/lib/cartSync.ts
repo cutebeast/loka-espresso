@@ -80,12 +80,15 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
 
         const storeId = useUIStore.getState().selectedStore?.id;
 
-        await api.post('/cart/items', {
+        const payload = {
           item_id: desired.menu_item_id,
           quantity: desired.quantity,
           customization_option_ids: customizationOptionIds,
           store_id: storeId,
-        });
+        };
+        console.log('[cartSync] POST /cart/items payload:', JSON.stringify(payload));
+
+        await api.post('/cart/items', payload);
       }
     } catch (err) {
       console.error('Failed to sync cart item:', err);
@@ -103,6 +106,9 @@ export async function placeOrder(params: {
   voucherCode?: string;
   rewardRedemptionCode?: string;
   paymentMethod: 'wallet' | 'cash' | 'pay_at_store' | 'cod';
+  recipientName?: string;
+  recipientPhone?: string;
+  deliveryInstructions?: string;
 }) {
   const { items, clearCart } = useCartStore.getState();
 
@@ -154,6 +160,15 @@ export async function placeOrder(params: {
   }
   if (params.notes) {
     orderPayload.notes = params.notes;
+  }
+  if (params.recipientName) {
+    orderPayload.recipient_name = params.recipientName;
+  }
+  if (params.recipientPhone) {
+    orderPayload.recipient_phone = params.recipientPhone;
+  }
+  if (params.deliveryInstructions) {
+    orderPayload.delivery_instructions = params.deliveryInstructions;
   }
   if (!checkoutToken) {
     if (params.voucherCode) {

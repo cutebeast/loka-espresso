@@ -30,6 +30,13 @@
   font-size: 13px; font-weight: 600; color: var(--loka-text-muted);
   text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px;
 }
+.checkout-section.error {
+  border-color: var(--loka-danger);
+  box-shadow: 0 0 0 1px var(--loka-danger);
+}
+.checkout-section.error .co-section-title {
+  color: var(--loka-danger);
+}
 
 /* ── Order type pills ── */
 .co-type-pills { display: flex; gap: 8px; }

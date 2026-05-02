@@ -24,7 +24,7 @@ const ICONS: Record<string, React.ReactNode> = {
 
 export default function Toast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => void }) {
   useEffect(() => {
-    const timer = setTimeout(onDismiss, toast.primaryAction ? 5000 : 4000);
+    const timer = setTimeout(onDismiss, toast.primaryAction ? 6000 : 5000);
     return () => clearTimeout(timer);
   }, [onDismiss, toast.primaryAction]);
 

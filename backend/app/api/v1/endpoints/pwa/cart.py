@@ -106,6 +106,7 @@ async def get_cart(user: Customer = Depends(get_current_user), db: AsyncSession 
 
 @router.post("/items", response_model=CartItemOut, status_code=201)
 async def add_to_cart(req: CartItemCreate, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    print(f"[cart] add_to_cart: user_id={user.id}, item_id={req.item_id}, qty={req.quantity}, store_id={req.store_id}, options={req.customization_option_ids}")
     item_result = await db.execute(select(MenuItem).where(MenuItem.id == req.item_id))
     menu_item = item_result.scalar_one_or_none()
     if not menu_item:
@@ -139,6 +140,7 @@ async def add_to_cart(req: CartItemCreate, user: Customer = Depends(get_current_
 
     ci = CartItem(
         user_id=user.id,
+        customer_id=user.id,
         store_id=req.store_id or 0,
         item_id=req.item_id,
         quantity=req.quantity,

@@ -36,6 +36,7 @@ class CartItem(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
+    customer_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True)
     item_id: Mapped[int] = mapped_column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -77,6 +78,8 @@ class Order(Base):
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), default=OrderStatus.pending, nullable=False)
     pickup_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     delivery_address: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    recipient_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    recipient_phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     payment_method: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     payment_status: Mapped[str] = mapped_column(String(50), default="pending")
     loyalty_points_earned: Mapped[int] = mapped_column(Integer, default=0)

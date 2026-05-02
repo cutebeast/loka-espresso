@@ -16,6 +16,9 @@ class OrderCreate(BaseModel):
     voucher_code: Optional[str] = None
     reward_redemption_code: Optional[str] = None
     delivery_provider: Optional[str] = None
+    recipient_name: Optional[str] = None
+    recipient_phone: Optional[str] = None
+    delivery_instructions: Optional[str] = None
     created_at: Optional[datetime] = None
 
     @field_validator('store_id')

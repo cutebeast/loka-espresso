@@ -18,7 +18,7 @@
 | Store Picker | ✅ Complete | `store-picker-v2.css` |
 | Toast | ✅ Complete | `toast-v2.css` |
 | **Saved Addresses** | ✅ Complete | `saved-addresses-v2.css` |
-| **Checkout** | ✅ Complete (address sheet, order items, payment) | `checkout-v2.css` |
+| **Checkout** | ✅ Complete | `checkout-v2.css` |
 | Orders List | ⏳ Needs audit | `orders-list-v2.css` |
 | Order Detail | ⏳ Needs audit | `order-detail-v2.css` |
 

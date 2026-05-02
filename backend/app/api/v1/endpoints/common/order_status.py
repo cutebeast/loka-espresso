@@ -94,7 +94,8 @@ async def update_order_status(
         history.created_at = req.completed_at
     db.add(history)
     notif = Notification(
-        user_id=order.user_id, title=f"Order {new_status}",
+        user_id=order.user_id, customer_id=order.user_id,
+        title=f"Order {new_status}",
         body=f"Your order {order.order_number} is now {new_status}",
         type="order",
     )

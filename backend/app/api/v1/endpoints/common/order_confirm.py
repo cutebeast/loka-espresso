@@ -98,6 +98,7 @@ async def confirm_order(
 
     notif = Notification(
         user_id=order.user_id,
+        customer_id=order.user_id,
         title="Order Confirmed",
         body=f"Your order {order.order_number} has been sent to the kitchen!",
         type="order",

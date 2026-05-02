@@ -74,7 +74,8 @@ async def apply_referral(code: str, user: Customer = Depends(get_current_user), 
     user.referred_by = ref.referrer_id
 
     notif = Notification(
-        user_id=ref.referrer_id, title="Referral Applied",
+        user_id=ref.referrer_id, customer_id=ref.referrer_id,
+        title="Referral Applied",
         body=f"Your referral code was used!", type="referral",
     )
     db.add(notif)
@@ -160,7 +161,8 @@ async def award_referrer_on_order(invitee_id: int, db: AsyncSession) -> None:
         referrer.referral_earnings = to_float(referrer.referral_earnings or 0) + reward_points
 
         notif = Notification(
-            user_id=referrer.id, title="Referral Reward!",
+            user_id=referrer.id, customer_id=referrer.id,
+            title="Referral Reward!",
             body=f"You earned {reward_points} loyalty points for your referral!",
             type="referral",
         )

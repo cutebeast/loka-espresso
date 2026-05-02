@@ -19,6 +19,7 @@ class Notification(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
+    customer_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)

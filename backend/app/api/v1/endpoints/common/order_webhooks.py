@@ -132,6 +132,7 @@ async def delivery_provider_webhook(
 
             notif = Notification(
                 user_id=order.user_id,
+                customer_id=order.user_id,
                 title="Order Delivered",
                 body=f"Your order {order.order_number} has been delivered!",
                 type="order",
@@ -140,6 +141,7 @@ async def delivery_provider_webhook(
         elif delivery_status == "out_for_delivery":
             notif = Notification(
                 user_id=order.user_id,
+                customer_id=order.user_id,
                 title="Out for Delivery",
                 body=f"Your order {order.order_number} is on the way!",
                 type="order",
@@ -148,6 +150,7 @@ async def delivery_provider_webhook(
         elif delivery_status == "driver_assigned":
             notif = Notification(
                 user_id=order.user_id,
+                customer_id=order.user_id,
                 title="Driver Assigned",
                 body=f"A courier has been assigned to order {order.order_number}.",
                 type="order",

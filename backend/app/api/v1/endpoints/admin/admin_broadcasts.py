@@ -215,6 +215,7 @@ async def send_broadcast(
         try:
             notif = Notification(
                 user_id=dt.customer_id,
+                customer_id=dt.customer_id,
                 title=obj.title,
                 body=obj.body,
                 type="broadcast",

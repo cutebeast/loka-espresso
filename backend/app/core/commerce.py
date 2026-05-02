@@ -260,6 +260,7 @@ async def award_loyalty_for_paid_order(db: AsyncSession, order: Order) -> int:
     db.add(
         Notification(
             user_id=order.user_id,
+            customer_id=order.user_id,
             title="Payment successful",
             body=f"Payment confirmed for order {order.order_number}. +{points} points earned!",
             type="order",
