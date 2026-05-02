@@ -123,7 +123,7 @@ async def get_or_create_wallet(user_id: int, db: AsyncSession) -> Wallet:
     result = await db.execute(select(Wallet).where(Wallet.user_id == user_id))
     wallet = result.scalar_one_or_none()
     if wallet is None:
-        wallet = Wallet(user_id=user_id)
+        wallet = Wallet(user_id=user_id, customer_id=user_id)
         db.add(wallet)
         await db.flush()
     return wallet
@@ -228,6 +228,7 @@ async def award_loyalty_for_paid_order(db: AsyncSession, order: Order) -> int:
     else:
         account = LoyaltyAccount(
             user_id=order.user_id,
+            customer_id=order.user_id,
             points_balance=points,
             total_points_earned=points,
             tier=tier_name,
@@ -237,6 +238,7 @@ async def award_loyalty_for_paid_order(db: AsyncSession, order: Order) -> int:
     db.add(
         LoyaltyTransaction(
             user_id=order.user_id,
+            customer_id=order.user_id,
             order_id=order.id,
             store_id=order.store_id,
             points=points,
@@ -293,6 +295,7 @@ async def credit_referral_points(
     else:
         account = LoyaltyAccount(
             user_id=user_id,
+            customer_id=user_id,
             points_balance=points,
             total_points_earned=points,
             tier="bronze",
@@ -303,6 +306,7 @@ async def credit_referral_points(
     db.add(
         LoyaltyTransaction(
             user_id=user_id,
+            customer_id=user_id,
             points=points,
             type="earn",
             description=f"Referral reward for inviting user #{invitee_id}",

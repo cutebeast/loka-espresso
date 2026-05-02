@@ -23,7 +23,7 @@ async def _get_or_create_wallet(user_id: int, db: AsyncSession) -> Wallet:
     result = await db.execute(select(Wallet).where(Wallet.user_id == user_id))
     wallet = result.scalar_one_or_none()
     if not wallet:
-        wallet = Wallet(user_id=user_id)
+        wallet = Wallet(user_id=user_id, customer_id=user_id)
         db.add(wallet)
         await db.flush()
     return wallet

@@ -93,6 +93,7 @@ async def _grant_voucher(
 
     uv = UserVoucher(
         user_id=user_id,
+        customer_id=user_id,
         voucher_id=voucher_id,
         source=source,
         source_id=source_id,

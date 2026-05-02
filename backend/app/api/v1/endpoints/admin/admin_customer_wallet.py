@@ -108,7 +108,7 @@ async def adjust_customer_points(
     result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.user_id == user_id))
     account = result.scalar_one_or_none()
     if not account:
-        account = LoyaltyAccount(user_id=user_id, points_balance=0, tier="bronze")
+        account = LoyaltyAccount(user_id=user_id, customer_id=user_id, points_balance=0, tier="bronze")
         db.add(account)
         await db.flush()
     values = {"points_balance": LoyaltyAccount.points_balance + data.points}
@@ -126,7 +126,7 @@ async def adjust_customer_points(
             update(LoyaltyAccount).where(LoyaltyAccount.user_id == user_id).values(tier=new_tier)
         )
     txn = LoyaltyTransaction(
-        user_id=user_id,
+        user_id=user_id, customer_id=user_id,
         points=data.points,
         type="earn" if data.points > 0 else "redeem",
         created_by=user.id,
@@ -179,6 +179,7 @@ async def award_voucher_to_customer(
 
     uv = UserVoucher(
         user_id=user_id,
+        customer_id=user_id,
         voucher_id=data.voucher_id,
         source="admin_award",
         source_id=user.id,
@@ -234,7 +235,7 @@ async def set_customer_tier(
     result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.user_id == user_id))
     account = result.scalar_one_or_none()
     if not account:
-        account = LoyaltyAccount(user_id=user_id, points_balance=0, tier=tier, total_points_earned=0)
+        account = LoyaltyAccount(user_id=user_id, customer_id=user_id, points_balance=0, tier=tier, total_points_earned=0)
         db.add(account)
     else:
         account.tier = tier

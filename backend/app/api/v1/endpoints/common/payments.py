@@ -123,7 +123,7 @@ async def add_payment_method(req: PaymentMethodCreate, user: Customer = Depends(
             .where(PaymentMethod.user_id == user.id)
             .values(is_default=False)
         )
-    pm = PaymentMethod(user_id=user.id, type=req.type, provider=req.provider, last4=req.last4, is_default=1 if req.is_default else 0)
+    pm = PaymentMethod(user_id=user.id, customer_id=user.id, type=req.type, provider=req.provider, last4=req.last4, is_default=1 if req.is_default else 0)
     db.add(pm)
     await db.flush()
     return pm

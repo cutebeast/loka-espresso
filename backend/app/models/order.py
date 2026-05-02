@@ -189,6 +189,7 @@ class CheckoutToken(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
+    customer_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False)
     voucher_code: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     reward_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("rewards.id", ondelete="SET NULL"), nullable=True)

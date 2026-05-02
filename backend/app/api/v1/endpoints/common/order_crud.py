@@ -606,7 +606,7 @@ async def cancel_order(order_id: int, user: Customer = Depends(get_current_user)
                 )
             )
             lt = LoyaltyTransaction(
-                user_id=order.user_id, order_id=order.id, store_id=order.store_id,
+                user_id=order.user_id, customer_id=order.user_id, order_id=order.id, store_id=order.store_id,
                 points=-order.loyalty_points_earned, type="redeem",
                 description=f"Points reversed: order {order.order_number} cancelled",
             )

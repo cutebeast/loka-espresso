@@ -16,7 +16,7 @@ async def get_balance(user: Customer = Depends(get_current_user), db: AsyncSessi
     result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.user_id == user.id))
     la = result.scalar_one_or_none()
     if not la:
-        la = LoyaltyAccount(user_id=user.id)
+        la = LoyaltyAccount(user_id=user.id, customer_id=user.id)
         db.add(la)
         await db.flush()
     return la

@@ -117,6 +117,7 @@ async def checkout(
     ctk = CheckoutToken(
         token=checkout_token,
         user_id=user.id,
+        customer_id=user.id,
         store_id=store_id,
         subtotal=round(subtotal, 2),
         delivery_fee=round(delivery_fee, 2),
@@ -207,7 +208,7 @@ async def checkout(
 
         # Record redemption transaction
         lt = LoyaltyTransaction(
-            user_id=user.id,
+            user_id=user.id, customer_id=user.id,
             points=reward.points_cost,
             type="redeem",
             description=f"Redeemed for checkout: {reward.name}",

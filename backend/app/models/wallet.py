@@ -24,6 +24,7 @@ class Wallet(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    customer_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     balance: Mapped[float] = mapped_column(DECIMAL(10, 2), default=0, nullable=False)
     currency: Mapped[str] = mapped_column(String(10), default="MYR", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -62,6 +63,7 @@ class PaymentMethod(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
+    customer_id: Mapped[int] = mapped_column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     last4: Mapped[Optional[str]] = mapped_column(String(4), nullable=True)

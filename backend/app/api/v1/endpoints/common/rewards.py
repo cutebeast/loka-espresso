@@ -182,7 +182,7 @@ async def redeem_reward(
 
     # Record loyalty transaction
     lt = LoyaltyTransaction(
-        user_id=user.id,
+        user_id=user.id, customer_id=user.id,
         points=reward.points_cost,
         type="redeem",
         description=f"Redeemed: {reward.name}",
@@ -192,6 +192,7 @@ async def redeem_reward(
     # Create user_reward
     ur = UserReward(
         user_id=user.id,
+        customer_id=user.id,
         reward_id=reward.id,
         status="available",
         redeemed_at=now,

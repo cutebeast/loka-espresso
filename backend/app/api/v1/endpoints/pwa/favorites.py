@@ -43,7 +43,7 @@ async def add_favorite(item_id: int, user: Customer = Depends(get_current_user),
     )
     if existing.scalar_one_or_none():
         return {"message": "Already favorited"}
-    fav = Favorite(user_id=user.id, item_id=item_id)
+    fav = Favorite(user_id=user.id, customer_id=user.id, item_id=item_id)
     db.add(fav)
     await db.flush()
     return {"message": "Added to favorites"}

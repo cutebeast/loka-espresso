@@ -219,6 +219,7 @@ async def submit_survey(
 
                 uv = UserVoucher(
                     user_id=user.id,
+                    customer_id=user.id,
                     voucher_id=voucher_id,
                     source="survey",
                     source_id=response.id,
