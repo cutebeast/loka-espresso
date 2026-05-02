@@ -113,6 +113,7 @@ class Order(Base):
     )
 
     customer: Mapped["Customer"] = relationship("Customer", foreign_keys=[customer_id])
+    store: Mapped["Store"] = relationship("Store", foreign_keys=[store_id])
     status_history: Mapped[List["OrderStatusHistory"]] = relationship("OrderStatusHistory", back_populates="order", cascade="all, delete-orphan")
     payment: Mapped[Optional["Payment"]] = relationship("Payment", back_populates="order", uselist=False)
     order_items: Mapped[List["OrderItem"]] = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
