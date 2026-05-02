@@ -156,3 +156,22 @@
   letter-spacing: 0.5px;
   padding: 8px 20px 6px;
 }
+
+/* ── From modals.css (consolidated) ── */
+.store-picker-overlay { position: absolute; inset: 0; background: rgba(15,19,23,0.55); backdrop-filter: blur(2px); }
+.store-picker-handle-bar { display: flex; justify-content: center; padding-top: 10px; padding-bottom: 4px; }
+.store-picker-handle { width: 44px; height: 4px; border-radius: var(--radius-full); background: var(--color-border); }
+.store-picker-label { font-size: 11px; font-weight: 700; color: var(--color-copper); letter-spacing: 0.1em; text-transform: uppercase; }
+.store-picker-label-icon { display: inline; margin-right: 4px; }
+.store-picker-title { font-size: 22px; font-weight: 800; color: var(--color-text-primary); margin-top: 2px; letter-spacing: -0.01em; }
+.store-picker-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
+.store-picker-search-input { flex: 1; border: none; outline: none; background: transparent; font-size: 14px; color: var(--color-text-primary); }
+.store-picker-search-clear { background: transparent; border: none; padding: 0; color: var(--color-text-muted); cursor: pointer; display: inline-flex; }
+.store-picker-item.selected { background: rgba(56,75,22,0.06); border-color: var(--color-primary); }
+.store-picker-item.selected .store-picker-item-icon-wrap { background: var(--color-primary); }
+.store-picker-item-icon { color: var(--color-copper); }
+.store-picker-item.selected .store-picker-item-icon { color: #FFFFFF; }
+.store-picker-item-meta { margin-top: 6px; display: inline-flex; align-items: center; gap: 10px; font-size: 11px; color: var(--color-text-muted); }
+.store-picker-item-status-dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: #5C8A3E; }
+.store-picker-item-distance { font-weight: 600; color: var(--color-copper); }
+.store-picker-empty { text-align: center; padding: 40px 20px; color: var(--color-text-muted); font-size: 14px; }

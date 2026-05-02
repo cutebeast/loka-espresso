@@ -82,8 +82,6 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-
 /* ── Section label ── */
 .orders-section-label {
   font-size: 13px;
