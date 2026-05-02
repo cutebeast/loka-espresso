@@ -48,6 +48,25 @@
 .inf-46 { background: #EF4444; color: white; }
 .inf-47 { color: #EF4444; }
 
+/* ── Sections editor (system content_type) ── */
+.inf-48 { margin-top: 12px; }
+.inf-50 { color: var(--color-primary); font-weight: 400; }
+.inf-51 { margin-bottom: 12px; padding: 14px; background: #F9FAFB; border-radius: 10px; border: 1px solid #E5E7EB; }
+.inf-52 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.inf-53 { font-size: 14px; font-weight: 600; color: var(--color-text); }
+.inf-54 { font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid #FCA5A5; background: #FEF2F2; color: #DC2626; cursor: pointer; }
+.inf-55 { margin-bottom: 8px; }
+.inf-56 { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #a0c0a0; font-size: 14px; }
+.inf-57 { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #a0c0a0; font-size: 14px; resize: vertical; }
+.inf-58 { margin-top: 8px; padding-top: 8px; border-top: 1px solid #E5E7EB; }
+.inf-59 { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); display: block; margin-bottom: 6px; }
+.inf-60 { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.inf-61 { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid #D1D5DB; font-size: 13px; }
+.inf-62 { font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid #FCA5A5; background: #FEF2F2; color: #DC2626; cursor: pointer; }
+.inf-63 { margin-top: 4px; }
+.inf-64 { font-size: 12px; padding: 6px 12px; border-radius: 8px; border: 1px dashed #9CA3AF; background: transparent; color: var(--color-primary); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.inf-65 { margin-top: 8px; }
+
 .ra-0 { color: var(--color-bg-dark); }
 .rec-5 { display: flex; flex-direction: column; gap: 12px; }
 .rec-6 { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 4px; }

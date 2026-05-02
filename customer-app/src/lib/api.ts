@@ -119,6 +119,7 @@ export interface CustomizationOption {
   option_type: string;
   price_adjustment: number;
   is_active: boolean;
+  is_popular: boolean;
 }
 
 export interface MenuItem {
@@ -247,10 +248,12 @@ export interface CartItem {
   menu_item_id: number;
   name: string;
   price: number;
+  base_price?: number;
   quantity: number;
   store_id?: number;
   customizations?: Record<string, unknown>;
   customization_option_ids?: number[];
+  customization_count?: number;
   image_url?: string;
 }
 

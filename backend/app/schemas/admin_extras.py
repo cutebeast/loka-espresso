@@ -239,6 +239,7 @@ class InformationCardCreate(BaseModel):
     action_url: Optional[str] = None
     action_type: Optional[str] = None
     action_label: Optional[str] = None
+    sections: Optional[list] = None
     is_active: bool = True
     position: int = 0
     start_date: Optional[datetime] = None
@@ -264,6 +265,7 @@ class InformationCardUpdate(BaseModel):
     action_url: Optional[str] = None
     action_type: Optional[str] = None
     action_label: Optional[str] = None
+    sections: Optional[list] = None
     is_active: Optional[bool] = None
     position: Optional[int] = None
     start_date: Optional[datetime] = None

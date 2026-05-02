@@ -119,7 +119,7 @@ export function useAuthFlow() {
         api.get('/users/me'),
         api.get('/loyalty/balance'),
         api.get('/wallet'),
-        api.get('/stores'),
+        api.get('/content/stores'),
       ]);
 
       if (profileRes.status === 'fulfilled') setUser(profileRes.value.data);
@@ -166,6 +166,14 @@ export function useAuthFlow() {
     if (pendingGuestPage.current) {
       const target = pendingGuestPage.current;
       pendingGuestPage.current = null;
+      // If navigating to checkout without a store, show store picker first
+      if (target === 'checkout') {
+        const ui = useUIStore.getState();
+        if (!ui.selectedStore && ui.orderMode !== 'dine_in') {
+          ui.setShowStorePicker(true);
+          return;
+        }
+      }
       setTimeout(() => setPage(target), 100);
     }
     if (pendingArticleId.current != null) {

@@ -1,8 +1,9 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useRef } from 'react';
 import { Coffee } from 'lucide-react';
 import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
+import { useFitText } from '@/hooks/useFitText';
 import type { MenuItem } from '@/lib/api';
 import { Plus, ArrowRight } from 'lucide-react';
 
@@ -14,6 +15,8 @@ const ProductCard = memo(function ProductCard({
   onAdd: () => void;
 }) {
   const imgSrc = resolveAssetUrl(item.image_url);
+  const priceRef = useRef<HTMLDivElement>(null);
+  useFitText(priceRef, [item.base_price], 10, 0.5);
   return (
     <div className="product-card">
       <div className="product-img">
@@ -27,7 +30,7 @@ const ProductCard = memo(function ProductCard({
       </div>
       <div className="product-info">
         <div className="product-name">{item.name}</div>
-        <div className="product-price">{formatPrice(item.base_price)}</div>
+        <div className="product-price" ref={priceRef}>{formatPrice(item.base_price)}</div>
         <button className="add-btn" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
           <Plus size={12} strokeWidth={2.5} /> Add
         </button>

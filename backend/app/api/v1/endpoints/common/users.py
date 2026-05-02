@@ -97,10 +97,15 @@ async def upload_avatar(file: UploadFile = File(...), user=Depends(get_current_u
 
 @router.get("/me/addresses", response_model=list[AddressOut])
 async def list_addresses(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    # Addresses are customer-only
-    if not hasattr(user, 'addresses'):
+    # Addresses are customer-only — use explicit query to avoid lazy-load in async
+    if not hasattr(user, 'id'):
         return []
-    return user.addresses or []
+    from app.models.customer import CustomerAddress
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(CustomerAddress).where(CustomerAddress.customer_id == user.id)
+    )
+    return result.scalars().all()
 
 
 @router.post("/me/addresses", response_model=AddressOut, status_code=201)

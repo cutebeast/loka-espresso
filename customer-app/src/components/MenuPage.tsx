@@ -108,7 +108,7 @@ export default function MenuPage() {
   }, []);
 
   const openItem = useCallback((item: MenuItem) => {
-    addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id });
+    addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, base_price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id, customization_count: item.customization_count ?? 0 });
   }, [addItem, selectedStore?.id]);
 
   const handleSheetAdd = useCallback(
@@ -117,6 +117,7 @@ export default function MenuPage() {
         menu_item_id: item.id,
         name: item.name,
         price: totalPrice,
+        base_price: item.base_price,
         quantity,
         store_id: selectedStore?.id,
         customizations: customizations.length > 0
@@ -160,6 +161,15 @@ export default function MenuPage() {
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [categories, setActiveCategoryId]);
+
+  // Auto-scroll active tab into view in the horizontal category bar
+  useEffect(() => {
+    if (!navRef.current || activeCategoryId === null) return;
+    const activeTab = navRef.current.querySelector('.menu-cat-tab.active');
+    if (activeTab) {
+      activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeCategoryId]);
 
   return (
     <div className="menu-screen">
@@ -207,11 +217,11 @@ export default function MenuPage() {
 
       {/* Category Tabs */}
       {!showSearch && categories.length > 0 && (
-        <div className="category-bar" ref={navRef}>
+        <div className="menu-cat-bar" ref={navRef}>
           {allCats.map((cat) => (
             <button
               key={cat.id ?? 'all'}
-              className={`cat-tab ${activeCategoryId === cat.id ? 'active' : ''}`}
+              className={`menu-cat-tab ${activeCategoryId === cat.id ? 'active' : ''}`}
               onClick={() => scrollToCategory(cat.id)}
             >
               {cat.name}
@@ -222,11 +232,11 @@ export default function MenuPage() {
 
       {/* Dietary Filter Chips */}
       {!showSearch && availableDietaryTags.length > 0 && (
-        <div className="dietary-chip-bar">
+        <div className="menu-dietary-bar">
           {availableDietaryTags.map((tag) => (
             <button
               key={tag}
-              className={`dietary-chip ${selectedDietaryTag === tag ? 'active' : ''}`}
+              className={`menu-dietary-chip ${selectedDietaryTag === tag ? 'active' : ''}`}
               onClick={() => setSelectedDietaryTag(selectedDietaryTag === tag ? null : tag)}
             >
               {tag}
@@ -289,12 +299,22 @@ export default function MenuPage() {
                           </div>
                         )}
                         {item.is_featured && (
-                          <span className="menu-img-badge">⭐ Popular</span>
+                          <span className="menu-img-badge">⭐</span>
                         )}
                       </div>
                       <div className="menu-product-info">
                         <div>
                           <div className="menu-product-name">{item.name}</div>
+                          {item.description && (
+                            <div className="menu-product-desc">{item.description}</div>
+                          )}
+                          {item.dietary_tags && item.dietary_tags.length > 0 && (
+                            <div className="menu-product-tags">
+                              {item.dietary_tags.map((tag: string) => (
+                                <span key={tag} className={`menu-product-tag ${tag === 'Vegan' || tag === 'Vegetarian' || tag === 'Gluten-Free' || tag === 'Dairy-Free' || tag === 'Sugar-Free' ? 'menu-tag-teal' : tag === 'Hot' || tag === 'Iced' || tag === 'Caffeinated' || tag === 'Decaf' ? 'menu-tag-green' : 'menu-tag-copper'}`}>{tag}</span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="menu-product-bottom">
                           <span className="menu-product-price">{formatPrice(item.base_price)}</span>

@@ -1,0 +1,388 @@
+/* ============================================
+   menu-page-v2 — ✅ Phase 1 Complete
+   Self-contained. No old CSS references.
+   ============================================ */
+.menu-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #E4EAEF;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--loka-border-light);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.menu-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-back-btn {
+  background: none;
+  border: none;
+  color: var(--loka-text-primary);
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.menu-back-btn:active { background: rgba(0,0,0,0.04); }
+
+.menu-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+}
+
+.menu-search-btn {
+  background: none;
+  border: none;
+  color: var(--loka-text-primary);
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.menu-search-btn:active { background: rgba(0,0,0,0.04); }
+
+/* ── Search bar ── */
+.menu-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.menu-search-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: #F5F7FA;
+  border-radius: 999px;
+  height: 36px;
+}
+
+.menu-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--loka-text-primary);
+}
+
+.menu-search-clear {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--loka-text-muted);
+  cursor: pointer;
+  display: flex;
+}
+
+.menu-search-cancel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--loka-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 4px;
+}
+
+/* ── Category tabs ── */
+.menu-cat-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 16px;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  background: #E4EAEF;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.menu-cat-bar::-webkit-scrollbar { display: none; }
+
+.menu-cat-tab {
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--loka-border);
+  background: #fff;
+  color: var(--loka-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 38px;
+  font-family: var(--font-sans);
+}
+.menu-cat-tab.active {
+  background: var(--loka-primary);
+  color: #fff;
+  border-color: var(--loka-primary);
+  font-weight: 600;
+}
+.menu-cat-tab:active { transform: scale(0.97); }
+
+/* ── Dietary filter chips ── */
+.menu-dietary-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 20px 4px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.menu-dietary-bar::-webkit-scrollbar { display: none; }
+
+.menu-dietary-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid var(--loka-border-light);
+  background: #fff;
+  color: var(--loka-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-sans);
+}
+.menu-dietary-chip:active { transform: scale(0.97); }
+.menu-dietary-chip.active {
+  background: var(--loka-primary);
+  color: #fff;
+  border-color: var(--loka-primary);
+}
+
+/* ── Product list ── */
+.menu-product-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 16px 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Category header ── */
+.menu-category-header {
+  padding: 14px 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.menu-category-accent {
+  width: 3px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--loka-accent-copper);
+  flex-shrink: 0;
+}
+
+.menu-category-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--loka-text-primary);
+}
+
+/* ── Product card ── */
+.menu-product-card {
+  background: #fff;
+  border-radius: 14px;
+  display: flex;
+  border: 1px solid var(--loka-border);
+  padding: 12px;
+  gap: 10px;
+  transition: transform 0.15s;
+  cursor: pointer;
+}
+.menu-product-card:active { transform: scale(0.985); }
+
+.menu-product-img {
+  width: 80px;
+  min-height: 80px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--loka-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.menu-product-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.menu-img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.menu-product-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  min-width: 0;
+}
+
+.menu-product-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--loka-text-primary);
+  line-height: 1.2;
+}
+
+/* Description preview — 1-line truncation */
+.menu-product-desc {
+  font-size: 11px;
+  color: var(--loka-text-muted);
+  margin: 2px 0 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Dietary / feature tags */
+.menu-product-tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.menu-product-tag {
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+}
+.menu-tag-green { background: #F2F6EA; color: var(--loka-primary); }
+.menu-tag-copper { background: rgba(209,142,56,0.12); color: var(--loka-accent-brown); }
+.menu-tag-teal { background: rgba(133,176,133,0.15); color: #4a7a4a; }
+
+/* Bottom row: price + add btn */
+.menu-product-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.menu-product-price {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--loka-primary);
+  white-space: nowrap;
+}
+
+.menu-add-btn {
+  background: var(--loka-primary);
+  color: #fff;
+  border: none;
+  border-radius: 40px;
+  padding: 5px 12px;
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+}
+.menu-add-btn:active {
+  background: var(--loka-primary-dark);
+  transform: scale(0.95);
+}
+
+/* ── Image overlay badge ── */
+.menu-img-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-family: var(--font-sans);
+}
+
+/* ── Items grid ── */
+.menu-items-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Empty state ── */
+.menu-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.menu-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--loka-cream);
+  margin: 0 auto 16px;
+}
+
+.menu-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+  margin-bottom: 8px;
+}
+
+/* ── Skeleton ── */
+.menu-skeleton-card {
+  height: 104px;
+  border-radius: 14px;
+}

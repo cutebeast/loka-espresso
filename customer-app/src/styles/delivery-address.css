@@ -1,9 +1,141 @@
-/* ── DeliveryAddressCard (.dac-) ── */
-.dac-title {
-  font-size: 13px;
+/* ═══════════════════════════════════════════
+   DeliveryAddressCard (.dac-)
+   Display card + bottom sheet form
+   ═══════════════════════════════════════════ */
+
+/* ── Display card (grey, read-only) ── */
+.dac-display-card {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px;
+  background: var(--loka-bg); border-radius: 10px;
 }
-.dac-textarea {
-  padding-right: 44px;
-  font-family: inherit;
-  box-sizing: border-box;
+.dac-display-icon {
+  width: 32px; height: 32px; border-radius: 8px; background: var(--loka-accent-copper);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
+.dac-display-info { flex: 1; min-width: 0; }
+.dac-display-label { font-size: 13px; font-weight: 600; color: var(--loka-text-primary); margin-bottom: 2px; }
+.dac-display-address { font-size: 13px; color: var(--loka-text-primary); line-height: 1.4; }
+.dac-change-btn {
+  font-size: 12px; font-weight: 600; color: var(--loka-accent-copper); margin-top: 4px;
+  background: none; border: none; cursor: pointer; padding: 0; font-family: var(--font-sans);
+}
+
+/* ── Empty state ── */
+.dac-empty-card {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  background: var(--loka-bg); border-radius: 10px; border: 1.5px dashed var(--loka-border-light);
+}
+.dac-empty-icon {
+  width: 36px; height: 36px; border-radius: 10px; background: rgba(209,142,56,0.12);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.dac-empty-text { flex: 1; font-size: 13px; color: var(--loka-text-muted); }
+.dac-empty-btn {
+  padding: 6px 14px; background: var(--loka-primary); color: #fff; border: none;
+  border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-sans);
+}
+
+/* ── Saved addresses section ── */
+.dac-sheet-section { margin-bottom: 6px; }
+.dac-toggle-saved {
+  display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+  color: var(--loka-text-secondary); background: none; border: none; cursor: pointer;
+  font-family: var(--font-sans); padding: 0 0 10px;
+}
+.dac-saved-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.dac-saved-item {
+  text-align: left; padding: 12px 14px; border: 1.5px solid var(--loka-border-light);
+  border-radius: 12px; background: #fff; cursor: pointer; font-family: var(--font-sans);
+  transition: border-color 0.15s, background 0.15s;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.dac-saved-item.active { border-color: var(--loka-primary); background: rgba(56,75,22,0.04); }
+.dac-saved-item-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dac-saved-label { font-size: 13px; font-weight: 600; color: var(--loka-text-primary); }
+.dac-saved-address {
+  font-size: 12px; color: var(--loka-text-muted); line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dac-saved-none {
+  font-size: 12px; color: var(--loka-text-muted); padding: 8px 0; text-align: center;
+}
+
+/* ── Divider ── */
+.dac-sheet-divider {
+  display: flex; align-items: center; gap: 12px; margin: 14px 0 16px;
+  color: var(--loka-text-muted); font-size: 12px; font-weight: 500;
+}
+.dac-sheet-divider::before, .dac-sheet-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--loka-border-light);
+}
+
+/* ── Label selector pills ── */
+.dac-label-row { display: flex; gap: 8px; margin-bottom: 18px; }
+.dac-label-pill {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 12px; border: 1.5px solid var(--loka-border-light); border-radius: 24px;
+  font-size: 13px; font-weight: 500; color: var(--loka-text-muted); background: #fff;
+  cursor: pointer; font-family: var(--font-sans); transition: all 0.15s; position: relative;
+}
+.dac-label-pill svg { width: 15px; height: 15px; flex-shrink: 0; }
+.dac-label-pill.active { background: var(--loka-primary); color: #fff; border-color: var(--loka-primary); }
+.dac-label-count {
+  position: absolute; top: -6px; right: -4px;
+  min-width: 18px; height: 18px; border-radius: 9px;
+  background: var(--loka-accent-copper); color: #fff;
+  font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+}
+.dac-label-pill.active .dac-label-count { background: #fff; color: var(--loka-primary); }
+
+/* ── Form fields ── */
+.dac-sheet-field { margin-bottom: 16px; }
+.dac-sheet-label {
+  font-size: 12px; font-weight: 500; color: var(--loka-text-muted); margin-bottom: 6px; display: block;
+}
+.dac-input {
+  width: 100%; padding: 14px 16px; border: 1.5px solid var(--loka-border-light);
+  border-radius: 10px; font-family: var(--font-sans); font-size: 14px;
+  color: var(--loka-text-primary); outline: none; background: #fff;
+  box-sizing: border-box; transition: border-color 0.15s;
+}
+.dac-input:focus { border-color: var(--loka-primary); }
+.dac-input::placeholder { color: #c0c8d0; }
+
+/* Textarea */
+.dac-textarea-input {
+  width: 100%; padding: 14px 16px; border: 1.5px solid var(--loka-border-light);
+  border-radius: 10px; font-family: var(--font-sans); font-size: 14px;
+  color: var(--loka-text-primary); outline: none; background: #fff;
+  box-sizing: border-box; transition: border-color 0.15s;
+  resize: none; min-height: 60px; line-height: 1.5;
+}
+.dac-textarea-input:focus { border-color: var(--loka-primary); }
+.dac-textarea-input::placeholder { color: #c0c8d0; }
+
+/* Select (State dropdown) */
+.dac-select {
+  width: 100%; padding: 14px 16px; border: 1.5px solid var(--loka-border-light);
+  border-radius: 10px; font-family: var(--font-sans); font-size: 14px;
+  color: var(--loka-text-primary); outline: none; background: #fff;
+  box-sizing: border-box; transition: border-color 0.15s;
+  appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236A7A8A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; padding-right: 44px;
+}
+.dac-select:focus { border-color: var(--loka-primary); }
+
+/* Side-by-side row (postcode + city) */
+.dac-sheet-row { display: flex; gap: 12px; }
+.dac-sheet-field-half { flex: 1; }
+
+/* Error */
+.dac-error { font-size: 12px; color: var(--loka-danger); margin-bottom: 8px; }
+
+/* Save button */
+.dac-save-btn {
+  width: 100%; padding: 14px; background: var(--loka-primary); color: #fff;
+  border: none; border-radius: 12px; font-family: var(--font-sans);
+  font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 4px; transition: opacity 0.15s;
+}
+.dac-save-btn:active { opacity: 0.9; }
+.dac-save-btn:disabled { background: var(--loka-border-light); cursor: not-allowed; }

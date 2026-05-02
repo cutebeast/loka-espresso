@@ -17,7 +17,7 @@ interface IPLocation {
 /**
  * Haversine distance in km between two lat/lng points
  */
-function haversineKm(
+export function haversineKm(
   lat1: number, lng1: number,
   lat2: number, lng2: number,
 ): number {
@@ -96,13 +96,16 @@ export function findNearestStore(
 }
 
 /**
- * One-shot: detect IP location → find nearest store.
+ * One-shot: detect location (prefer cached GPS, fall back to IP) → find nearest store.
  * Returns null if anything fails (caller shows "Select Store").
  */
 export async function autoDetectStore(
   stores: Store[],
+  cachedLocation?: IPLocation | null,
 ): Promise<Store | null> {
-  const loc = await detectIPLocation();
+  let loc = cachedLocation ?? null;
+  if (!loc) loc = await getBrowserLocation();
+  if (!loc) loc = await detectIPLocation();
   if (!loc) return null;
   return findNearestStore(stores, loc);
 }

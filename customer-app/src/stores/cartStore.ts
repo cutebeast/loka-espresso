@@ -10,6 +10,7 @@ interface CartState {
   addItem: (item: CartItem) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
+  updateItem: (index: number, updates: Partial<CartItem>) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
@@ -51,6 +52,10 @@ export const useCartStore = create<CartState>()(
           items: state.items
             .map((item, i) => (i === index ? { ...item, quantity: Math.max(0, quantity) } : item))
             .filter((item) => item.quantity > 0),
+        })),
+      updateItem: (index, updates) =>
+        set((state) => ({
+          items: state.items.map((item, i) => (i === index ? { ...item, ...updates } : item)),
         })),
       clearCart: () => set({ items: [], orderNote: '' }),
       getTotal: () => get().items.reduce((sum, item) => sum + item.price * item.quantity, 0),

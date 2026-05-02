@@ -26,6 +26,16 @@ interface InfoCard {
   end_date: string | null;
 }
 
+interface Section {
+  title: string;
+  body: string;
+  list: string[];
+}
+
+function emptySection(): Section {
+  return { title: '', body: '', list: [] };
+}
+
 interface InfoCardForm {
   title: string;
   slug: string;
@@ -42,6 +52,7 @@ interface InfoCardForm {
   end_date: string;
   is_active: boolean;
   position: number;
+  sections: Section[];
 }
 
 const emptyForm: InfoCardForm = {
@@ -60,6 +71,7 @@ const emptyForm: InfoCardForm = {
   end_date: '',
   is_active: true,
   position: 0,
+  sections: [],
 };
 
 function slugify(text: string): string {
@@ -130,6 +142,15 @@ export default function InformationPage({ token }: InformationPageProps) {
     setDrawerOpen(true);
   };
 
+  const parseSections = (raw: any): Section[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch { return []; }
+    }
+    return [];
+  };
+
   const openEdit = (card: InfoCard) => {
     setEditingId(card.id);
     setForm({
@@ -148,6 +169,7 @@ export default function InformationPage({ token }: InformationPageProps) {
       end_date: card.end_date ? card.end_date.slice(0, 16) : '',
       is_active: card.is_active ?? true,
       position: card.position || 0,
+      sections: parseSections((card as any).sections),
     });
     setError('');
     setDrawerOpen(true);
@@ -180,6 +202,9 @@ export default function InformationPage({ token }: InformationPageProps) {
       is_active: form.is_active,
       position: form.position,
     };
+    if (form.content_type === 'system') {
+      payload.sections = form.sections;
+    }
 
     try {
       setSaving(true);
@@ -237,6 +262,48 @@ export default function InformationPage({ token }: InformationPageProps) {
 
   const setField = (field: keyof InfoCardForm, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const addSection = () => {
+    setForm((prev) => ({ ...prev, sections: [...prev.sections, emptySection()] }));
+  };
+
+  const removeSection = (index: number) => {
+    setForm((prev) => ({ ...prev, sections: prev.sections.filter((_, i) => i !== index) }));
+  };
+
+  const updateSection = (index: number, field: keyof Section, value: any) => {
+    setForm((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s, i) => (i === index ? { ...s, [field]: value } : s)),
+    }));
+  };
+
+  const addListItem = (sectionIndex: number) => {
+    setForm((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s, i) =>
+        i === sectionIndex ? { ...s, list: [...s.list, ''] } : s
+      ),
+    }));
+  };
+
+  const removeListItem = (sectionIndex: number, itemIndex: number) => {
+    setForm((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s, i) =>
+        i === sectionIndex ? { ...s, list: s.list.filter((_, j) => j !== itemIndex) } : s
+      ),
+    }));
+  };
+
+  const updateListItem = (sectionIndex: number, itemIndex: number, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s, i) =>
+        i === sectionIndex ? { ...s, list: s.list.map((li, j) => (j === itemIndex ? value : li)) } : s
+      ),
+    }));
   };
 
   const columns: ColumnDef<InfoCard>[] = [
@@ -360,6 +427,66 @@ export default function InformationPage({ token }: InformationPageProps) {
               <input type="text" value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} placeholder="Brief text shown on PWA card" />
             </div>
 
+            {form.content_type === 'system' ? (
+            <div className="inf-48">
+              <label className="iform-label">Sections <span className="inf-50">(structured content)</span></label>
+              {form.sections.map((section, si) => (
+                <div key={si} className="inf-51">
+                  <div className="inf-52">
+                    <span className="inf-53">Section {si + 1}</span>
+                    <button type="button" className="inf-54" onClick={() => removeSection(si)}>
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <div className="inf-55">
+                    <input
+                      type="text"
+                      className="inf-56"
+                      placeholder="Section title"
+                      value={section.title}
+                      onChange={(e) => updateSection(si, 'title', e.target.value)}
+                    />
+                  </div>
+                  <div className="inf-55">
+                    <textarea
+                      className="inf-57"
+                      placeholder="Section body"
+                      rows={3}
+                      value={section.body}
+                      onChange={(e) => updateSection(si, 'body', e.target.value)}
+                    />
+                  </div>
+                  <div className="inf-58">
+                    <label className="inf-59">List Items</label>
+                    {section.list.map((item, li) => (
+                      <div key={li} className="inf-60">
+                        <input
+                          type="text"
+                          className="inf-61"
+                          placeholder={`List item ${li + 1}`}
+                          value={item}
+                          onChange={(e) => updateListItem(si, li, e.target.value)}
+                        />
+                        <button type="button" className="inf-62" onClick={() => removeListItem(si, li)}>
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    ))}
+                    <div className="inf-63">
+                      <button type="button" className="inf-64" onClick={() => addListItem(si)}>
+                        <i className="fas fa-plus"></i> Add list item
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="inf-65">
+                <button type="button" className="inf-64" onClick={addSection}>
+                  <i className="fas fa-plus"></i> Add section
+                </button>
+              </div>
+            </div>
+            ) : (
             <div className="inf-8">
               <label className="iform-label">Long Description <span className="inf-9">(detail view)</span></label>
               <textarea
@@ -370,6 +497,7 @@ export default function InformationPage({ token }: InformationPageProps) {
                 className="inf-10"
               />
             </div>
+            )}
 
             <div className="inf-11">
               <ImageUploadField 

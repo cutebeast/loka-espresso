@@ -120,7 +120,7 @@ async def list_customizations_public(item_id: int, db: AsyncSession = Depends(ge
         )
         .order_by(CustomizationOption.display_order)
     )
-    return [{"id": c.id, "name": c.name, "option_type": c.option_type, "price_adjustment": to_float(c.price_adjustment)} for c in result.scalars().all()]
+    return [{"id": c.id, "name": c.name, "option_type": c.option_type, "price_adjustment": to_float(c.price_adjustment), "is_popular": c.is_popular} for c in result.scalars().all()]
 
 @router.get("/stores")
 async def list_stores_public(db: AsyncSession = Depends(get_db)):

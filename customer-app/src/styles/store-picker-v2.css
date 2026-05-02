@@ -1,0 +1,158 @@
+/* ============================================
+   store-picker-v2 — ✅ Phase 1 Complete
+   Overrides modals.css. Hero, pickup badge, distance.
+   ============================================ */
+
+/* ── Hero image ── */
+.store-picker-hero {
+  width: 100%;
+  height: 160px;
+  background: var(--loka-cream);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.store-picker-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.store-picker-hero-fallback {
+  color: var(--loka-text-muted);
+  opacity: 0.3;
+}
+
+/* ── Sheet ── */
+.store-picker-sheet {
+  border-radius: 20px 20px 0 0;
+  max-height: 85vh;
+}
+
+/* ── Header ── */
+.store-picker-header {
+  padding: 16px 20px 12px;
+  justify-content: space-between;
+}
+
+.store-picker-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #E4EAEF;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ── Search ── */
+.store-picker-search-wrap {
+  padding: 16px 20px 12px;
+  flex-shrink: 0;
+}
+
+.store-picker-search-box {
+  border: 1.5px solid var(--loka-border-light);
+  border-radius: 12px;
+  background: #E4EAEF;
+  padding: 10px 14px;
+}
+
+.store-picker-search-input::placeholder { color: var(--loka-text-muted); }
+
+/* ── Store card ── */
+.store-picker-item {
+  padding: 16px;
+  gap: 14px;
+  border: 1.5px solid var(--loka-border-light);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  background: #fff;
+  position: relative;
+  transition: border-color 0.2s, background 0.2s;
+}
+.store-picker-item.selected {
+  border-color: var(--loka-success);
+  background: rgba(133,176,133,0.04);
+}
+
+.store-picker-item-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--loka-cream);
+}
+
+/* ── Pickup time badge ── */
+.store-picker-pickup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--loka-cream);
+  padding: 4px 8px;
+  border-radius: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--loka-accent-copper);
+}
+
+/* ── Distance ── */
+.store-picker-distance {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--loka-text-primary);
+  margin-top: 4px;
+}
+
+/* ── Item info ── */
+.store-picker-item-name { font-size: 15px; font-weight: 600; }
+.store-picker-item-address { font-size: 13px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+.store-picker-item-status { font-size: 12px; }
+
+/* ── Checkmark ── */
+.store-picker-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--loka-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Scroll ── */
+.store-picker-scroll {
+  padding: 0 20px 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--loka-border-light) transparent;
+}
+
+.store-picker-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.store-picker-scroll::-webkit-scrollbar-thumb {
+  background: var(--loka-border-light);
+  border-radius: 2px;
+}
+
+/* ── Section label ── */
+.store-picker-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--loka-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 20px 6px;
+}

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Store, MapPin, Check, X } from 'lucide-react';
+import { Store, MapPin, Check, X, Clock, Navigation } from 'lucide-react';
 import { getStoresWithDistance } from '@/lib/geolocation';
+import { resolveAssetUrl } from '@/lib/tokens';
 import type { Store as StoreType } from '@/lib/api';
 
 interface StorePickerModalProps {
@@ -43,6 +44,10 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
+        drag="y"
+        dragConstraints={{ top: 0 }}
+        dragElastic={0.15}
+        onDragEnd={(_e, info) => { if (info.offset.y > 100) onClose(); }}
         transition={{ type: 'spring', damping: 28, stiffness: 320 }}
         onClick={(e) => e.stopPropagation()}
         className="store-picker-sheet"
@@ -67,6 +72,15 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
             <X size={18} />
           </motion.button>
         </div>
+        {/* Store image hero */}
+        <div className="store-picker-hero">
+          {selectedStore?.image_url ? (
+            <img src={resolveAssetUrl(selectedStore.image_url) || undefined} alt="" className="store-picker-hero-img" />
+          ) : (
+            <Store size={48} strokeWidth={1} className="store-picker-hero-fallback" />
+          )}
+        </div>
+
         <div className="store-picker-search-wrap">
           <div className="store-picker-search-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="store-picker-search-icon" aria-hidden>
@@ -109,13 +123,19 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
                 <div className="store-picker-item-info">
                   <div className="store-picker-item-name">{store.name}</div>
                   {store.address && <div className="store-picker-item-address">{store.address}</div>}
-                  <div className="store-picker-item-meta">
-                    <span className="store-picker-item-status">
-                      <span className="store-picker-item-status-dot" />Open now
-                    </span>
-                    {store.distance && <span className="store-picker-item-distance">· {store.distance}</span>}
-                    {store.pickup_lead_minutes != null && <span>· Pickup in ~{store.pickup_lead_minutes} min</span>}
-                  </div>
+                  <span className="store-picker-item-status">Open now</span>
+                  {store.pickup_lead_minutes != null && (
+                    <div className="store-picker-pickup-badge">
+                      <Clock size={12} />
+                      <span>Ready in ~{store.pickup_lead_minutes} min</span>
+                    </div>
+                  )}
+                  {store.distance && (
+                    <div className="store-picker-distance">
+                      <Navigation size={12} />
+                      {store.distance} away
+                    </div>
+                  )}
                 </div>
                 {isSelected && (
                   <div className="store-picker-check">

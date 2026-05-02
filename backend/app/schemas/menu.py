@@ -47,6 +47,7 @@ class MenuItemCreate(BaseModel):
     is_available: bool = True
     is_featured: bool = False
     display_order: int = 0
+    dietary_tags: Optional[list] = None
 
 
 class MenuItemUpdate(BaseModel):
@@ -58,6 +59,7 @@ class MenuItemUpdate(BaseModel):
     is_available: Optional[bool] = None
     is_featured: Optional[bool] = None
     display_order: Optional[int] = None
+    dietary_tags: Optional[list] = None
 
 
 class InventoryCategoryOut(BaseModel):

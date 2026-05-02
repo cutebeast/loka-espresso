@@ -1,50 +1,90 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
 export function SplashScreen({ onFinish }: SplashScreenProps) {
+  const reducedMotion = useReducedMotion();
+
   useEffect(() => {
-    const timer = setTimeout(onFinish, 2200);
+    const timer = setTimeout(onFinish, reducedMotion ? 800 : 3000);
     return () => clearTimeout(timer);
-  }, [onFinish]);
+  }, [onFinish, reducedMotion]);
 
   return (
-    <div className="splash-page">
-      <div className="splash-page-inner">
-        <div className="splash-icon">
-          <svg width="56" height="61" viewBox="0 0 384 416" fill="none" xmlns="http://www.w3.org/2000/svg" className="ss-svg">
-            <path d="M16 32c0-8.837 7.163-16 16-16h224c8.837 0 16 7.163 16 16v224c0 70.692-57.308 128-128 128S16 326.692 16 256V32zm336 64c17.673 0 32 14.327 32 32v32c0 70.692-57.308 128-128 128h0v-32c53.019 0 96-42.981 96-96V128c0-17.673 14.327-32 32-32z" fill="currentColor"/>
+    <div className="splash-page-v2">
+      <div className="splash-page-inner-v2">
+        {/* Turkish Coffee Cup with Smoke */}
+        <div className={`splash-logo-v2 ${reducedMotion ? '' : 'animate-fade-scale'}`}>
+          <svg width="80" height="100" viewBox="0 0 80 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Smoke wisps */}
+            {!reducedMotion && (
+              <>
+                <path
+                  className="smoke-wisp smoke-wisp-1"
+                  d="M32 18c0-4 2-8 4-10s2-6 0-8"
+                  stroke="#D18E38"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  fill="none"
+                  opacity="0.6"
+                />
+                <path
+                  className="smoke-wisp smoke-wisp-2"
+                  d="M40 16c0-5 3-9 2-13s-1-7 2-9"
+                  stroke="#D18E38"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  fill="none"
+                  opacity="0.5"
+                />
+                <path
+                  className="smoke-wisp smoke-wisp-3"
+                  d="M48 18c0-3 1-7 3-9s3-5 1-7"
+                  stroke="#D18E38"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  fill="none"
+                  opacity="0.4"
+                />
+              </>
+            )}
+            {/* Cup body */}
+            <path
+              d="M20 32c0-2 2-4 4-4h32c2 0 4 2 4 4v4c0 14-8 26-20 26S20 50 20 36v-4z"
+              fill="#57280D"
+            />
+            {/* Cup rim */}
+            <ellipse cx="40" cy="32" rx="20" ry="4" fill="#7A4A2E" />
+            {/* Coffee surface */}
+            <ellipse cx="40" cy="33" rx="16" ry="3" fill="#3D2517" />
+            {/* Handle */}
+            <path
+              d="M58 38c6 0 10 4 10 10s-4 10-10 10"
+              stroke="#57280D"
+              strokeWidth="4"
+              strokeLinecap="round"
+              fill="none"
+            />
+            {/* Saucer */}
+            <ellipse cx="40" cy="64" rx="24" ry="6" fill="#D4C4B0" />
+            <ellipse cx="40" cy="63" rx="16" ry="4" fill="#C4B4A0" />
           </svg>
         </div>
-        <div className="splash-title">LOKA</div>
-        <div className="splash-tagline">Espresso · since 2026</div>
 
-        <div className="splash-loading">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#D18E38"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="ss-spinner"
-          >
-            <line x1="12" y1="2" x2="12" y2="6" />
-            <line x1="12" y1="18" x2="12" y2="22" />
-            <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
-            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
-            <line x1="2" y1="12" x2="6" y2="12" />
-            <line x1="18" y1="12" x2="22" y2="12" />
-            <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
-            <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
-          </svg>
-          preparing…
+        <div className={`splash-title-v2 ${reducedMotion ? '' : 'animate-fade-up-1'}`}>
+          LOKA
+        </div>
+        <div className={`splash-tagline-v2 ${reducedMotion ? '' : 'animate-fade-up-2'}`}>
+          Espresso · since 2026
+        </div>
+
+        <div className={`splash-progress-wrap ${reducedMotion ? '' : 'animate-fade-up-3'}`}>
+          <div className={`splash-progress-track ${reducedMotion ? '' : 'animate-fill-progress'}`} />
         </div>
       </div>
     </div>

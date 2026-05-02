@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -11,6 +11,12 @@ interface BottomSheetProps {
   children: ReactNode;
   footer?: ReactNode;
 }
+
+/* ============================================
+   PHASE 1 — UI/UX v2: BottomSheet
+   Supports swipe-to-dismiss via drag on handle
+   Used by: country picker, terms, policies
+   ============================================ */
 
 export function BottomSheet({ isOpen, onClose, title, children, footer }: BottomSheetProps) {
   return (
@@ -25,6 +31,12 @@ export function BottomSheet({ isOpen, onClose, title, children, footer }: Bottom
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
+            drag="y"
+            dragConstraints={{ top: 0 }}
+            dragElastic={0.15}
+            onDragEnd={(_e, info) => {
+              if (info.offset.y > 100) onClose();
+            }}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -32,7 +44,7 @@ export function BottomSheet({ isOpen, onClose, title, children, footer }: Bottom
             className="sheet-content"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Handle */}
+            {/* Handle — drags the sheet */}
             <div className="sheet-handle" />
 
             {/* Header */}

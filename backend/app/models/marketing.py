@@ -19,6 +19,7 @@ class CustomizationOption(Base):
     option_type: Mapped[str] = mapped_column(String(50), default="", nullable=False)
     price_adjustment: Mapped[float] = mapped_column(DECIMAL(10, 2), default=0, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_popular: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

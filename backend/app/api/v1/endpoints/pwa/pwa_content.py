@@ -111,7 +111,9 @@ class SystemContentOut(BaseModel):
     id: int
     title: str
     long_description: Optional[str] = None
+    sections: Optional[list] = None
     content_type: str = "system"
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -146,7 +148,9 @@ async def get_legal_content(
         id=card.id,
         title=card.title,
         long_description=card.long_description,
-        content_type=card.content_type
+        sections=card.sections,
+        content_type=card.content_type,
+        updated_at=card.updated_at,
     )
 
 

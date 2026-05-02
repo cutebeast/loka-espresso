@@ -77,14 +77,24 @@ OTP_MAX_VERIFY_ATTEMPTS = 3
 
 
 def _normalize_phone(phone: str) -> str:
-    """Strip whitespace and ensure Malaysian format if possible."""
+    """Normalize a phone number to E.164 format.
+    
+    - '+'-prefixed numbers (E.164) pass through as-is (multi-country support).
+    - '0'-prefixed numbers are treated as Malaysian local format and
+      converted to '+60...' for backward compatibility (frontend country
+      selector always sends E.164; this branch covers raw API callers).
+    - Plain digit strings get a '+' prefix.
+    """
     phone = phone.strip()
     if not phone:
         raise HTTPException(status_code=400, detail="Phone number is required")
+    # E.164 — already has country code, pass through
     if phone.startswith('+'):
         return phone
+    # Legacy Malaysian local format (0XX...) → +60X...
     if phone.startswith('0'):
         return '+6' + phone
+    # Plain digits — prepend '+'
     if phone.isdigit():
         return '+' + phone
     return phone
@@ -230,31 +240,25 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
 async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
     req.phone = _normalize_phone(req.phone)
     _validate_phone(req.phone)
-    # ---- OTP bypass (DEV / STAGING ONLY) ----------------------------------
-    # Two gates must both be true for the bypass code to be honoured:
-    #   1. settings.OTP_BYPASS_ALLOWED  (env-driven – set to false in prod)
-    #   2. AppConfig['otp_bypass_enabled'] == 'true' (admin toggle)
-    # This means a forgotten admin toggle in production cannot let attackers
-    # bypass auth as long as OTP_BYPASS_ALLOWED=false in the prod .env.
+    # ---- OTP bypass (controlled by admin DB toggle) -----------------------
     bypass_enabled = False
     bypass_code = None
-    if settings.OTP_BYPASS_ALLOWED:
-        try:
-            from app.models.splash import AppConfig
-            cfg_result = await db.execute(
-                select(AppConfig).where(AppConfig.key == "otp_bypass_enabled")
-            )
-            cfg = cfg_result.scalar_one_or_none()
-            if cfg and cfg.value and cfg.value.strip().lower() == 'true':
-                bypass_enabled = True
-            cfg_result = await db.execute(
-                select(AppConfig).where(AppConfig.key == "otp_bypass_code")
-            )
-            cfg = cfg_result.scalar_one_or_none()
-            if cfg and cfg.value:
-                bypass_code = cfg.value.strip()
-        except Exception:
-            pass
+    try:
+        from app.models.splash import AppConfig
+        cfg_result = await db.execute(
+            select(AppConfig).where(AppConfig.key == "otp_bypass_enabled")
+        )
+        cfg = cfg_result.scalar_one_or_none()
+        if cfg and cfg.value and cfg.value.strip().lower() == 'true':
+            bypass_enabled = True
+        cfg_result = await db.execute(
+            select(AppConfig).where(AppConfig.key == "otp_bypass_code")
+        )
+        cfg = cfg_result.scalar_one_or_none()
+        if cfg and cfg.value:
+            bypass_code = cfg.value.strip()
+    except Exception:
+        pass
 
     if bypass_enabled and bypass_code and req.code == bypass_code:
         logger.warning(

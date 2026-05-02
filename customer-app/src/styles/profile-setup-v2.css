@@ -1,0 +1,163 @@
+/* ============================================
+   profile-setup-v2 — ✅ Phase 1 Complete
+   Self-contained. No old CSS references.
+   ============================================ */
+/* ── Page container ── */
+.auth-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 48px 24px 32px;
+  padding-top: max(48px, env(safe-area-inset-top));
+  padding-bottom: max(32px, env(safe-area-inset-bottom));
+  background: #fff;
+}
+
+/* ── Heading ── */
+.auth-heading {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.auth-subheading {
+  font-size: 13px;
+  color: var(--loka-text-muted);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+/* ── Button ── */
+.auth-btn {
+  width: 100%;
+  padding: 15px;
+  height: auto;
+  border-radius: 12px;
+  background: var(--loka-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.auth-btn:disabled { opacity: 0.4; }
+.auth-btn:active { transform: scale(0.97); }
+
+.auth-btn-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin: 0 auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Avatar ── */
+.ps-avatar-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.ps-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--loka-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--loka-accent-copper);
+  font-size: 28px;
+  color: var(--loka-text-muted);
+  overflow: hidden;
+}
+
+.ps-avatar.ps-avatar-filled {
+  background: linear-gradient(135deg, var(--color-primary, #384B16), #5a7a2a);
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+/* ── Form ── */
+.auth-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--loka-text-muted);
+  margin-bottom: 6px;
+  display: block;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ps-optional {
+  font-size: 11px;
+  color: var(--loka-text-muted);
+  font-weight: 400;
+}
+
+/* Input fields — reuse phone-wrapper pattern */
+.ps-form .phone-wrapper {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--loka-border);
+  border-radius: 12px;
+  padding: 0;
+  background: #fff;
+  height: auto;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.ps-form .phone-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  color: var(--loka-text-primary);
+  background: transparent;
+  font-weight: 500;
+  padding: 14px;
+  width: 100%;
+}
+.ps-form .phone-input::placeholder { color: var(--loka-text-muted); }
+
+/* ── Skip link ── */
+.ps-skip-btn {
+  display: block;
+  text-align: center;
+  font-size: 13px;
+  color: var(--loka-text-muted);
+  text-decoration: none;
+  margin-top: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  padding: 12px;
+}
+
+/* ── Error ── */
+.ps-error {
+  font-size: 13px;
+  color: var(--loka-danger);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.ps-spacer { height: 24px; }

@@ -20,6 +20,7 @@ import { useA2HS } from '@/hooks/useA2HS';
 import PromotionPopup from '@/components/PromotionPopup';
 import StorePickerModal from '@/components/StorePickerModal';
 import { LoginModal } from '@/components/auth/LoginModal';
+import Toast from '@/components/shared/Toast';
 
 import { HubLayout } from '@/components/layouts';
 import { HomeHeader } from '@/components/HomeHeader';
@@ -189,14 +190,6 @@ export default function AppShell() {
     }
   };
 
-  const toastColorMap = {
-    success: 'bg-success',
-    error: 'bg-danger',
-    info: 'bg-info',
-  };
-
-  const _isSubPage = SUB_PAGES.includes(page);
-
   return (
     <div className="app-container">
       <OfflineBanner />
@@ -228,27 +221,7 @@ export default function AppShell() {
       ) : (
         <>
           {/* Toast */}
-          <AnimatePresence>
-            {toast && (
-              <motion.div
-                initial={{ opacity: 0, y: -60 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -60 }}
-                transition={reducedMotion ? { duration: 0 } : undefined}
-                className={`absolute top-0 left-0 right-0 z-50 px-4 pt-3 pb-3 safe-area-top ${toastColorMap[toast.type]}`}
-                role="status"
-                aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
-                aria-atomic="true"
-              >
-                <div className="flex items-center justify-between text-white pt-2">
-                  <span className="text-sm font-medium flex-1">{toast.message}</span>
-                  <button onClick={() => useUIStore.getState().hideToast()} className="ml-3 p-1 rounded-full hover:bg-white/20 touch-target">
-                    <span className="text-white">✕</span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {toast && <Toast toast={toast} onDismiss={() => useUIStore.getState().hideToast()} />}
 
           {/* A2HS Centered Modal */}
           {a2hs.canInstall && (
@@ -330,7 +303,6 @@ export default function AppShell() {
                   setShowStoreModal(false);
                   setShowStorePicker(false);
                   setStoreSearch('');
-                  showToast(`Switched to ${store.name}`, 'success');
                 }}
                 onClose={() => { setShowStoreModal(false); setShowStorePicker(false); setStoreSearch(''); }}
               />
@@ -391,7 +363,7 @@ export default function AppShell() {
                   tableNumber: data.table_number,
                 });
                 setOrderMode('dine_in');
-                const storeRes = await api.get('/stores');
+                const storeRes = await api.get('/content/stores');
                 const storeList: StoreType[] = storeRes.data;
                 const found = storeList.find((s) => s.id === data.store_id);
                 if (found) setStore(found);

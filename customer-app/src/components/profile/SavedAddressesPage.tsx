@@ -2,212 +2,233 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Plus, Home, Building2, Navigation, Trash2, X, Check } from 'lucide-react';
+import { MapPin, Home, Building2, HelpCircle, Trash2, Pencil, Plus, Clock } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { PageHeader } from '@/components/shared';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import api from '@/lib/api';
 
 interface Address {
-  id: number;
-  label: string;
-  address: string;
-  lat?: number;
-  lng?: number;
-  is_default: boolean;
+  id: number; label: string; address: string; apartment?: string;
+  building?: string; city?: string; postcode?: string; state?: string;
+  delivery_instructions?: string; lat?: number; lng?: number; is_default: boolean;
 }
 
-const LABEL_ICONS: Record<string, typeof Home> = {
-  home: Home,
-  office: Building2,
-  work: Building2,
-};
+const LABELS = ['Home', 'Office', 'Other'] as const;
+const ICONS: Record<string, typeof Home> = { Home, Office: Building2, Other: HelpCircle };
+const STATES = ['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan',
+  'Pahang','Perak','Perlis','Pulau Pinang','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'];
+
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  return R * 2 * Math.atan2(Math.sqrt(Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2), Math.sqrt(1 - (Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2)));
+}
 
 export default function SavedAddressesPage() {
-  const { setPage, showToast } = useUIStore();
+  const { setPage, showToast, selectedStore } = useUIStore();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newLabel, setNewLabel] = useState('Home');
-  const [newAddress, setNewAddress] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formLabel, setFormLabel] = useState('Home');
+  const [unit, setUnit] = useState('');
+  const [line1, setLine1] = useState('');
+  const [line2, setLine2] = useState('');
+  const [city, setCity] = useState('');
+  const [postcode, setPostcode] = useState('');
+  const [state, setState] = useState('Kuala Lumpur');
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
   const fetchAddresses = () => {
+    setLoading(true);
     api.get('/users/me/addresses')
-      .then((res) => setAddresses(Array.isArray(res.data) ? res.data : []))
+      .then((res) => {
+        const list = Array.isArray(res.data) ? [...res.data] : [];
+        const order = ['Home', 'Office', 'Other'];
+        list.sort((a: Address, b: Address) => order.indexOf(a.label) - order.indexOf(b.label));
+        setAddresses(list);
+      })
       .catch(() => setAddresses([]))
       .finally(() => setLoading(false));
   };
-
   useEffect(() => { fetchAddresses(); }, []);
 
-  const handleGetCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      showToast('Geolocation not available', 'error');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setNewAddress(`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
-        showToast('Location captured', 'success');
-      },
-      () => showToast('Could not get location', 'error')
-    );
+  const usedLabels = new Set(addresses.map((a: Address) => a.label?.toLowerCase()));
+
+  const openAdd = () => {
+    setEditingId(null);
+    const first = LABELS.find(l => !usedLabels.has(l.toLowerCase())) || 'Home';
+    setFormLabel(first);
+    setUnit(''); setLine1(''); setLine2(''); setCity(''); setPostcode(''); setState('Kuala Lumpur');
+    setModalOpen(true);
   };
 
-  const handleAdd = async () => {
-    if (!newAddress.trim()) {
-      showToast('Address is required', 'error');
-      return;
-    }
+  const openEdit = (addr: Address) => {
+    setEditingId(addr.id);
+    setFormLabel(addr.label);
+    setUnit(addr.apartment || '');
+    setLine1(addr.address || '');
+    setLine2(addr.building || '');
+    setCity(addr.city || '');
+    setPostcode(addr.postcode || '');
+    setState(addr.state || 'Kuala Lumpur');
+    setModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!unit.trim() && !line1.trim()) { showToast('Address is required', 'error'); return; }
     setSaving(true);
+    const payload: any = {
+      label: formLabel, address: line1.trim(), apartment: unit.trim() || undefined,
+      building: line2.trim() || undefined, city: city.trim() || undefined,
+      postcode: postcode.trim() || undefined, state: state,
+    };
     try {
-      await api.post('/users/me/addresses', {
-        label: newLabel,
-        address: newAddress.trim(),
-        is_default: addresses.length === 0,
-      });
-      showToast('Address saved', 'success');
-      setShowAdd(false);
-      setNewAddress('');
+      if (editingId) {
+        await api.put(`/users/me/addresses/${editingId}`, payload);
+        showToast('Address updated', 'success');
+      } else {
+        await api.post('/users/me/addresses', payload);
+        showToast('Address saved', 'success');
+      }
+      setModalOpen(false);
       fetchAddresses();
-    } catch { console.error('Failed to load addresses');
-      showToast('Failed to save address', 'error');
-    } finally {
-      setSaving(false);
-    }
+    } catch { showToast('Failed to save', 'error'); }
+    finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await api.delete(`/users/me/addresses/${id}`);
       showToast('Address deleted', 'success');
+      setDeleteTarget(null);
       fetchAddresses();
-    } catch { console.error('Failed to load addresses');
-      showToast('Failed to delete address', 'error');
-    }
+    } catch { showToast('Failed to delete', 'error'); }
   };
 
-  const labelIcon = (label: string) => {
-    const Icon = LABEL_ICONS[label?.toLowerCase()] || MapPin;
-    return <Icon size={20} color="#384B16" />;
+  const getDistance = (addr: Address): string | null => {
+    if (!addr.lat || !addr.lng || !selectedStore?.lat || !selectedStore?.lng) return null;
+    const km = haversineDistance(addr.lat, addr.lng, selectedStore.lat, selectedStore.lng);
+    const min = Math.round((km / 30) * 60);
+    return `${km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km'} · ~${min} min drive`;
+  };
+
+  const fullDisplay = (addr: Address): string => {
+    const lines: string[] = [];
+    if (addr.apartment && addr.address) {
+      lines.push(`${addr.apartment}, ${addr.address}`);
+    } else if (addr.apartment) {
+      lines.push(addr.apartment);
+    } else if (addr.address) {
+      lines.push(addr.address);
+    }
+    if (addr.building) lines.push(addr.building);
+    const loc = [addr.postcode, addr.city].filter(Boolean).join(' ');
+    if (loc) lines.push(loc);
+    if (addr.state) lines.push(addr.state);
+    return lines.join('\n');
   };
 
   return (
-    <div className="sa-page">
+    <div className="sav2-page">
       <PageHeader title="Saved Addresses" onBack={() => setPage('profile')} />
-
-      <div className="sa-content">
+      <div className="sav2-content">
         {loading ? (
-          <div className="sa-skeleton-list">
-            {[1, 2].map((i) => (
-              <div key={i} className="skeleton sa-skeleton-item" />
-            ))}
+          <div className="sav2-skeleton-list">
+            {[1, 2].map((i: number) => <div key={i} className="skeleton sav2-skeleton-item" />)}
           </div>
-        ) : addresses.length === 0 && !showAdd ? (
-          <div className="sa-empty">
-            <div className="sa-empty-icon">
-              <MapPin size={36} color="#D4DCE5" />
-            </div>
-            <p className="sa-empty-title">No saved addresses</p>
-            <p className="sa-empty-desc">Add an address for faster delivery checkout</p>
+        ) : addresses.length === 0 ? (
+          <div className="sav2-empty">
+            <div className="sav2-empty-icon"><MapPin size={28} color="#D4DCE5" /></div>
+            <p className="sav2-empty-title">No saved addresses</p>
+            <p className="sav2-empty-desc">Add an address for faster delivery checkout</p>
           </div>
         ) : (
-          addresses.map((addr) => (
-            <motion.div
-              key={addr.id}
-              whileTap={{ scale: 0.98 }}
-              className="sa-item"
-            >
-              <div className="sa-icon-wrap">
-                {labelIcon(addr.label)}
-              </div>
-              <div className="sa-info">
-                <div className="sa-header">
-                  <p className="sa-label">{addr.label}</p>
-                  {addr.is_default && (
-                    <span className="sa-badge">
-                      Default
-                    </span>
-                  )}
+          addresses.map((addr: Address) => {
+            const dist = getDistance(addr);
+            const confirm = deleteTarget === addr.id;
+            const Icon = ICONS[addr.label] || MapPin;
+            return (
+              <motion.div key={addr.id} layout className="sav2-card">
+                <div className="sav2-card-top">
+                  <div className="sav2-pin-icon"><Icon size={20} /></div>
+                  <div className="sav2-card-main">
+                    <div className="sav2-card-name-row"><span className="sav2-card-name">{addr.label}</span></div>
+                    <div className="sav2-card-address">{fullDisplay(addr)}</div>
+                    {dist && <span className="sav2-distance-badge"><Clock size={12} />{dist}</span>}
+                  </div>
+                  <div className="sav2-card-actions">
+                    <button onClick={() => openEdit(addr)} className="sav2-edit-btn"><Pencil size={14} color="#6A7A8A" /></button>
+                    <button onClick={() => setDeleteTarget(confirm ? null : addr.id)} className={`sav2-delete-btn${confirm ? ' sav2-delete-btn-confirming' : ''}`}><Trash2 size={14} color="#C75050" /></button>
+                  </div>
                 </div>
-                <p className="sa-address">
-                  {addr.address}
-                </p>
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleDelete(addr.id)}
-                className="sa-delete-btn"
-              >
-                <Trash2 size={16} color="#C75050" />
-              </motion.button>
-            </motion.div>
-          ))
+                {confirm && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="sav2-delete-confirm">
+                    <span className="sav2-delete-confirm-text">Delete this address?</span>
+                    <button onClick={() => handleDelete(addr.id)} className="sav2-delete-confirm-yes">Delete</button>
+                    <button onClick={() => setDeleteTarget(null)} className="sav2-delete-confirm-no">Cancel</button>
+                  </motion.div>
+                )}
+              </motion.div>
+            );
+          })
         )}
-
-        {showAdd && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="sa-form"
-          >
-            <div className="sa-form-header">
-              <p className="sa-form-title">New Address</p>
-              <button onClick={() => setShowAdd(false)} className="sa-close-btn">
-                <X size={18} color="#6A7A8A" />
-              </button>
-            </div>
-
-            <div className="sa-labels">
-              {['Home', 'Office', 'Other'].map((lbl) => (
-                <button
-                  key={lbl}
-                  onClick={() => setNewLabel(lbl)}
-                  className={`sa-label-btn ${newLabel === lbl ? 'sa-label-btn-active' : 'sa-label-btn-inactive'}`}
-                >
-                  {lbl}
-                </button>
-              ))}
-            </div>
-
-            <div className="sa-input-wrap">
-              <input
-                type="text"
-                value={newAddress}
-                onChange={(e) => setNewAddress(e.target.value)}
-                placeholder="Enter your address"
-                className="sa-input"
-              />
-              <button
-                onClick={handleGetCurrentLocation}
-                className="sa-loc-btn"
-              >
-                <Navigation size={18} color="#384B16" />
-              </button>
-            </div>
-
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={handleAdd}
-              disabled={saving}
-              className={`sa-save-btn ${saving ? 'sa-save-btn-disabled' : 'sa-save-btn-enabled'}`}
-            >
-              <Check size={18} />
-              {saving ? 'Saving...' : 'Save Address'}
-            </motion.button>
-          </motion.div>
-        )}
-
-        {!showAdd && (
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setShowAdd(true)}
-            className="sa-add-btn"
-          >
-            <Plus size={18} /> Add Address
-          </motion.button>
-        )}
+        <motion.button whileTap={{ scale: 0.98 }} onClick={openAdd} className="sav2-add-btn">
+          <Plus size={18} /> Add New Address
+        </motion.button>
       </div>
+
+      <BottomSheet isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Edit Address' : 'Add New Address'}>
+        <div className="sheet-body">
+          <div className="sav2-label-row">
+            {LABELS.map(lbl => {
+              const I = ICONS[lbl];
+              const exists = usedLabels.has(lbl.toLowerCase());
+              const locked = !!editingId || (!editingId && exists);
+              return (
+                <button key={lbl} onClick={() => { if (!locked) setFormLabel(lbl); }} disabled={locked}
+                  className={`sav2-label-pill${formLabel === lbl ? ' active' : ''}${locked ? ' disabled' : ''}`}>
+                  <I size={16} />{lbl}{exists ? ' ✓' : ''}
+                </button>
+              );
+            })}
+          </div>
+          <div className="sav2-field">
+            <label className="sav2-field-label">Unit / Apartment No.</label>
+            <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g. 123 or A-3-5" className="sav2-input" />
+          </div>
+          <div className="sav2-field">
+            <label className="sav2-field-label">Address Line 1</label>
+            <input value={line1} onChange={e => setLine1(e.target.value)} placeholder="Jalan / Lorong / Persiaran" className="sav2-input" />
+          </div>
+          <div className="sav2-field">
+            <label className="sav2-field-label">Address Line 2 (optional)</label>
+            <input value={line2} onChange={e => setLine2(e.target.value)} placeholder="Building / Taman name" className="sav2-input" />
+          </div>
+          <div className="sav2-field">
+            <label className="sav2-field-label">City</label>
+            <input value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Cheras, Petaling Jaya" className="sav2-input" />
+          </div>
+          <div className="sav2-field-row">
+            <div className="sav2-field sav2-field-half">
+              <label className="sav2-field-label">Postcode</label>
+              <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric" maxLength={5} placeholder="50400" className="sav2-input" />
+            </div>
+            <div className="sav2-field sav2-field-half">
+              <label className="sav2-field-label">State</label>
+              <select value={state} onChange={e => setState(e.target.value)} className="sav2-input" style={{ appearance:'none', backgroundImage:'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236A7A8A\' stroke-width=\'2\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E")', backgroundRepeat:'no-repeat', backgroundPosition:'right 14px center', paddingRight:44 }}>
+                {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <button onClick={handleSave} disabled={saving} className="sav2-save-btn" style={{ marginTop: 4 }}>
+            {saving ? 'Saving...' : 'Save Address'}
+          </button>
+        </div>
+      </BottomSheet>
     </div>
   );
 }

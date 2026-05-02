@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X } from 'lucide-react';
-
-type QrScannerType = typeof import('qr-scanner');
+import { ArrowLeft, Zap, ZapOff, Camera } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -12,58 +11,58 @@ interface QRScannerProps {
 }
 
 export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const scannerRef = useRef<InstanceType<QrScannerType['default']> | null>(null);
-  const [, setHasCamera] = useState(true);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [hasPermission, setHasPermission] = useState(false);
+  const [flashOn, setFlashOn] = useState(false);
 
-  const stopScanner = useCallback(() => {
+  const stopScanner = useCallback(async () => {
     if (scannerRef.current) {
-      scannerRef.current.stop();
-      scannerRef.current.destroy();
+      try { await scannerRef.current.stop(); } catch {}
       scannerRef.current = null;
     }
   }, []);
 
   const startScanner = useCallback(async () => {
-    if (!videoRef.current || !isOpen) return;
+    if (!isOpen) return;
     try {
       setIsLoading(true);
-      setError('');
-      const QrScanner = (await import('qr-scanner')).default;
-      scannerRef.current = new QrScanner(
-        videoRef.current,
-        (result) => {
-          if (result?.data) {
-            onScan(result.data);
-            stopScanner();
-          }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setIsLoading(false);
+        return;
+      }
+      const scanner = new Html5Qrcode('qr-reader');
+      scannerRef.current = scanner;
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          onScan(decodedText);
+          stopScanner();
         },
-        {
-          preferredCamera: 'environment',
-          maxScansPerSecond: 10,
-          highlightScanRegion: true,
-          highlightCodeOutline: true,
-          returnDetailedScanResult: true,
-        }
+        () => { /* ignore scan errors */ }
       );
-      await scannerRef.current.start();
+      setHasPermission(true);
       setIsLoading(false);
-    } catch (err) {
-      console.error('QR Scanner error:', err);
-      setError('Unable to access camera. Please check permissions.');
-      setHasCamera(false);
+    } catch {
+      setHasPermission(false);
       setIsLoading(false);
     }
   }, [isOpen, onScan, stopScanner]);
 
+  const toggleFlash = useCallback(async () => {
+    try {
+      if (!scannerRef.current) return;
+      await scannerRef.current.applyVideoConstraints({
+        advanced: [{ torch: !flashOn } as any],
+      } as any);
+      setFlashOn(!flashOn);
+    } catch { /* unsupported */ }
+  }, [flashOn]);
+
   useEffect(() => {
-    if (isOpen) {
-      startScanner();
-    } else {
-      stopScanner();
-    }
+    if (isOpen) startScanner();
+    else { stopScanner(); }
     return () => { stopScanner(); };
   }, [isOpen, startScanner, stopScanner]);
 
@@ -71,60 +70,69 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
 
   return (
     <div className="qr-screen">
-      {/* Header */}
+      {/* Header over camera */}
       <div className="qr-header">
-        <h2 className="qr-title">Scan QR Code</h2>
-        <button className="qr-close-btn" onClick={onClose} aria-label="Close">
-          <X size={24} />
+        <button className="qr-back-btn" onClick={onClose} aria-label="Close">
+          <ArrowLeft size={18} />
+        </button>
+        <span className="qr-title">Scan QR Code</span>
+        <button
+          className={`qr-flash-btn ${flashOn ? 'active' : ''}`}
+          onClick={toggleFlash}
+          aria-label="Toggle flash"
+        >
+          {flashOn ? <Zap size={18} /> : <ZapOff size={18} />}
         </button>
       </div>
 
-      {/* Scanner Area */}
-      <div className="scanner-area">
-        {isLoading && (
-          <div className="qr-loading">
-            <div className="qr-spinner" />
-            <p className="qr-loading-text">Starting camera…</p>
-          </div>
-        )}
+      {/* Camera viewport */}
+      <div className="qr-camera-area">
+        <div id="qr-reader" style={{ width: '100%', height: '100%' }} />
 
-        {error && (
-          <div className="qr-error-overlay">
-            <div className="qr-error-inner">
-              <p className="qr-error-text">{error}</p>
-              <button
-                onClick={startScanner}
-                className="btn btn-primary btn-pill qr-error-btn"
-              >
-                Try Again
-              </button>
+        {!hasPermission && !isLoading && (
+          <div className="qr-permission">
+            <div className="qr-permission-icon">
+              <Camera size={36} color="#D18E38" />
             </div>
+            <h2 className="qr-permission-title">Camera Access Needed</h2>
+            <p className="qr-permission-text">
+              Allow camera access to scan QR codes for loyalty points, rewards, and in-store ordering.
+            </p>
+            <button className="qr-permission-btn" onClick={startScanner}>
+              Grant Camera Permission
+            </button>
           </div>
         )}
 
-        <video
-          ref={videoRef}
-          className="qr-video"
-          playsInline
-          muted
-        />
-
-        {!isLoading && !error && (
+        {hasPermission && (
           <>
-            <div className="viewfinder">
-              <div className="border-frame" />
-              <div className="corner corner-tl" />
-              <div className="corner corner-tr" />
-              <div className="corner corner-bl" />
-              <div className="corner corner-br" />
+            <div className="qr-viewfinder-overlay" />
+            <div className="qr-viewfinder">
+              <div className="qr-corner tl" />
+              <div className="qr-corner tr" />
+              <div className="qr-corner bl" />
+              <div className="qr-corner br" />
+              <div className="qr-scan-line" />
             </div>
-            <div className="qr-hint">Point camera at a Loka QR code</div>
           </>
         )}
       </div>
 
-      {/* Bottom safe area */}
-      <div className="qr-safe-bottom" />
+      {isLoading && (
+        <div className="qr-loading">
+          <div className="qr-spinner" />
+          <p className="qr-loading-text">Starting camera…</p>
+        </div>
+      )}
+
+      {hasPermission && (
+        <div className="qr-prompt">
+          <div className="qr-prompt-title">Point camera at QR code</div>
+          <div className="qr-prompt-sub">
+            Align the code within the frame to scan automatically
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Coffee } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
@@ -18,7 +17,6 @@ export default function HomePage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const addItem = useCartStore((s) => s.addItem);
   const { balance, points, tier } = useWalletStore();
-  const user = useAuthStore((s) => s.user);
 
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
@@ -115,10 +113,7 @@ export default function HomePage() {
   }, [loadFeatured, loadBanners, loadInfoCards]);
 
   const handleAddToCart = (item: MenuItem) => {
-    if (isGuest) {
-      // Guests can add to cart — login only required at checkout
-    }
-      addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id });
+    addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, base_price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id, customization_count: item.customization_count ?? 0 });
   };
 
   const loadCustomizations = useCallback(async (item: MenuItem) => {
@@ -144,6 +139,7 @@ export default function HomePage() {
         menu_item_id: item.id,
         name: item.name,
         price: totalPrice,
+        base_price: item.base_price,
         quantity,
         customizations:
           customizations.length > 0
@@ -176,34 +172,22 @@ export default function HomePage() {
         initial="hidden"
         animate="show"
       >
-        {/* Hero Brand Section */}
-        <motion.div variants={itemVariants} className="home-hero">
-          <div className="home-hero-inner">
-            <div className="home-hero-icon">
-              <Coffee size={28} color="#57280D" strokeWidth={1.5} />
-            </div>
-            <h1 className="home-hero-title">Loka Espresso</h1>
-            <p className="home-hero-tagline">Artisan Coffee · Community · Culture</p>
-            {user?.name && (
-              <p className="home-hero-welcome">Welcome back, {user.name}</p>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Wallet Card — or guest sign-in prompt */}
-        <motion.div variants={itemVariants}>
-          <WalletCard
-            isGuest={isGuest}
-            isAuthenticated={isAuthenticated}
-            balance={balance}
-            points={points}
-            tier={tier}
-            onTopUp={() => setPage('wallet')}
-            onRewards={() => setPage('my-rewards', { initialTab: 'rewards' })}
-            onVouchers={() => setPage('my-rewards', { initialTab: 'vouchers' })}
-            onSignIn={triggerSignIn}
-          />
-        </motion.div>
+        {/* Wallet Card — hidden for guests, shown for authenticated users */}
+        {isAuthenticated && (
+          <motion.div variants={itemVariants}>
+            <WalletCard
+              isGuest={isGuest}
+              isAuthenticated={isAuthenticated}
+              balance={balance}
+              points={points}
+              tier={tier}
+              onTopUp={() => setPage('wallet')}
+              onRewards={() => setPage('my-rewards', { initialTab: 'rewards' })}
+              onVouchers={() => setPage('my-rewards', { initialTab: 'vouchers' })}
+              onSignIn={triggerSignIn}
+            />
+          </motion.div>
+        )}
 
         {/* Banners & Info Carousels */}
         <HomeCarousel
@@ -214,6 +198,8 @@ export default function HomePage() {
           loadingInfo={loadingInfo}
           onPromoClick={(id) => setPage('promotions', { selectedPromoId: id })}
           onInfoClick={(id, contentType) => setPage('information', { selectedInfoId: id, selectedInfoContentType: contentType })}
+          onViewAllPromos={() => setPage('promotions')}
+          onViewAllDiscover={() => setPage('information')}
         />
 
         {/* Today's Picks */}

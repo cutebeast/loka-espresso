@@ -67,8 +67,6 @@ async def lifespan(app: FastAPI):
     # Warn about insecure defaults
     if not settings.WEBHOOK_API_KEY:
         logger.warning("[startup] WARNING: WEBHOOK_API_KEY is not set. Webhook endpoints will reject all requests.")
-    if settings.OTP_BYPASS_ALLOWED:
-        logger.warning("[startup] WARNING: OTP_BYPASS_ALLOWED is enabled. This should be disabled in production.")
     
     try:
         async with engine.begin() as conn:

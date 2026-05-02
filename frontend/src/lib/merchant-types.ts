@@ -33,6 +33,7 @@ export interface MerchantMenuItem {
   is_available: boolean;
   is_featured: boolean;
   display_order: number;
+  dietary_tags: string[] | null;
 }
 
 export interface MerchantTableItem {

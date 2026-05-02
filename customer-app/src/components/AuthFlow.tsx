@@ -84,7 +84,7 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
         setAuthStep('otp');
       }
     } catch (error) {
-      showToast(getApiErrorMessage(error, 'Failed to log in. Please try again.'), 'error');
+      showToast(getApiErrorMessage(error, 'Failed to log in. Please try again.'), 'error', 'Login failed');
     } finally {
       setLoadingAuth(false);
     }
@@ -99,8 +99,8 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
       else { await fetchAndSetUser(); setIsNewUser(false); onAuthDone(); setAuthStep('done'); }
     } catch (error) {
       const message = getApiErrorMessage(error, 'Invalid OTP. Please try again.');
-      showToast(message, 'error');
-      throw new Error(message);
+      showToast(message, 'error', 'Verification failed');
+      throw error;
     } finally {
       setLoadingAuth(false);
     }
@@ -115,7 +115,7 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
     } catch (error) {
       const message = getApiErrorMessage(error, 'Failed to resend OTP');
       showToast(message, 'error');
-      throw new Error(message);
+      throw error;
     }
   }, [getApiErrorMessage, otpSessionId, phoneNumber, showToast]);
 

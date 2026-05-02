@@ -13,13 +13,13 @@ const InfoCard = memo(function InfoCard({
 }) {
   const cardImage = resolveAssetUrl(card.image_url);
   return (
-    <div className="info-card" onClick={onClick}>
+    <div className="homepage-info-card" onClick={onClick}>
       {cardImage && <img src={cardImage} alt="" className="card-bg-img" loading="lazy" />}
-      <div className="info-content">
-        <span className="info-badge">{card.content_type === 'product' ? 'Product' : 'Experience'}</span>
-        <div className="info-title">{card.title}</div>
-        {card.short_description && <div className="info-desc">{card.short_description}</div>}
-        <button className="info-btn" onClick={(e) => { e.stopPropagation(); onClick(); }}>
+      <div className="homepage-info-content">
+        <span className="homepage-info-badge">{card.content_type === 'product' ? 'Product' : 'Experience'}</span>
+        <div className="homepage-info-title">{card.title}</div>
+        {card.short_description && <div className="homepage-info-desc">{card.short_description}</div>}
+        <button className="homepage-info-btn" onClick={(e) => { e.stopPropagation(); onClick(); }}>
           Learn more
         </button>
       </div>
@@ -36,12 +36,12 @@ const PromoCard = memo(function PromoCard({
 }) {
   const bannerImage = resolveAssetUrl(banner.image_url);
   return (
-    <div className="promo-card" onClick={onClick}>
+    <div className="homepage-promo-card" onClick={onClick}>
       {bannerImage && <img src={bannerImage} alt="" className="card-bg-img" loading="lazy" />}
-      <div className="promo-content">
-        <div className="promo-title">{banner.title}</div>
-        {banner.short_description && <div className="promo-sub">{banner.short_description}</div>}
-        <button className="promo-btn" onClick={(e) => { e.stopPropagation(); onClick(); }}>
+      <div className="homepage-promo-content">
+        <div className="homepage-promo-title">{banner.title}</div>
+        {banner.short_description && <div className="homepage-promo-sub">{banner.short_description}</div>}
+        <button className="homepage-promo-btn" onClick={(e) => { e.stopPropagation(); onClick(); }}>
           {banner.action_type === 'survey' ? 'Take survey' : banner.action_type === 'detail' ? 'Learn more' : 'View'}
         </button>
       </div>
@@ -57,9 +57,11 @@ interface HomeCarouselProps {
   loadingInfo: boolean;
   onPromoClick: (id: number) => void;
   onInfoClick: (id: number, contentType?: string) => void;
+  onViewAllPromos?: () => void;
+  onViewAllDiscover?: () => void;
 }
 
-export default function HomeCarousel({ banners, loadingBanners, infoCards, productCards, loadingInfo, onPromoClick, onInfoClick }: HomeCarouselProps) {
+export default function HomeCarousel({ banners, loadingBanners, infoCards, productCards, loadingInfo, onPromoClick, onInfoClick, onViewAllPromos, onViewAllDiscover }: HomeCarouselProps) {
   const promoScrollRef = useRef<HTMLDivElement>(null);
   const discoverScrollRef = useRef<HTMLDivElement>(null);
   const [promoIndex, setPromoIndex] = useState(0);
@@ -105,10 +107,16 @@ export default function HomeCarousel({ banners, loadingBanners, infoCards, produ
 
   return (
     <>
-      {/* Combined Discover Carousel (info + product alternating) — no title */}
+      {/* Discover Carousel */}
       {showDiscover && (
         <div>
-          <div className="carousel" ref={discoverScrollRef} onScroll={handleDiscoverScroll}>
+          <div className="home-section-header">
+            <h3 className="home-section-title">Discover</h3>
+            <button className="home-see-all-link" onClick={onViewAllDiscover}>
+              View all →
+            </button>
+          </div>
+          <div className="homepage-carousel" ref={discoverScrollRef} onScroll={handleDiscoverScroll}>
             {discoverCards.map((card) => (
               <InfoCard
                 key={card.id}
@@ -117,11 +125,11 @@ export default function HomeCarousel({ banners, loadingBanners, infoCards, produ
               />
             ))}
           </div>
-          <div className="carousel-dots">
+          <div className="homepage-carousel-dots">
             {discoverCards.map((_, i) => (
               <button
                 key={i}
-                className={`dot ${i === discoverIndex ? 'active' : ''}`}
+                className={`homepage-dot ${i === discoverIndex ? 'active' : ''}`}
                 onClick={() => {
                   const el = discoverScrollRef.current;
                   if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
@@ -133,10 +141,16 @@ export default function HomeCarousel({ banners, loadingBanners, infoCards, produ
         </div>
       )}
 
-      {/* Promotion Carousel — no title */}
+      {/* Promotion Carousel */}
       {showPromos && (
         <div>
-          <div className="carousel" ref={promoScrollRef} onScroll={handlePromoScroll}>
+          <div className="home-section-header">
+            <h3 className="home-section-title">Promotions</h3>
+            <button className="home-see-all-link" onClick={onViewAllPromos}>
+              View all →
+            </button>
+          </div>
+          <div className="homepage-carousel" ref={promoScrollRef} onScroll={handlePromoScroll}>
             {banners.map((banner) => (
               <PromoCard
                 key={banner.id}
@@ -145,11 +159,11 @@ export default function HomeCarousel({ banners, loadingBanners, infoCards, produ
               />
             ))}
           </div>
-          <div className="carousel-dots">
+          <div className="homepage-carousel-dots">
             {banners.map((_, i) => (
               <button
                 key={i}
-                className={`dot ${i === promoIndex ? 'active' : ''}`}
+                className={`homepage-dot ${i === promoIndex ? 'active' : ''}`}
                 onClick={() => {
                   const el = promoScrollRef.current;
                   if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AuthStepIndicator } from './AuthStepIndicator';
 
 interface ProfileSetupProps {
   phone: string;
@@ -8,7 +9,7 @@ interface ProfileSetupProps {
   onSkip?: () => void;
 }
 
-export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
+export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,24 +32,24 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
     }
   };
 
-  const displayPhone = phone.replace(/(\+\d{2})(\d{2})(\d{3,4})(\d{0,4})/, '$1 $2 $3 $4').trim();
-
   return (
     <div className="auth-page">
+      <AuthStepIndicator currentStep={3} />
+
       <h2 className="auth-heading">Complete your profile</h2>
-      <p className="auth-subheading">Add your name so your orders feel personal</p>
+      <p className="auth-subheading">Tell us a bit about yourself</p>
 
       {/* Avatar preview */}
-      <div className="ps-preview">
-        <div className="ps-avatar">
-          {name ? name.trim()[0] : '👤'}
-        </div>
-        <div className="ps-info">
-          <p className="ps-label">Your account</p>
-          <p className="ps-name">
-            {name.trim() || 'Set up your Loka profile'}
-          </p>
-          <p className="ps-phone">{displayPhone}</p>
+      <div className="ps-avatar-wrap">
+        <div className={`ps-avatar ${name.trim() ? 'ps-avatar-filled' : ''}`}>
+          {name.trim() ? (
+            name.trim()[0].toUpperCase()
+          ) : (
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="12" r="6" fill="#6A7A8A" />
+              <path d="M6 28 C6 20 10 18 16 18 C22 18 26 20 26 28" fill="#6A7A8A" />
+            </svg>
+          )}
         </div>
       </div>
 
@@ -59,19 +60,21 @@ export function ProfileSetup({ phone, onSubmit, onSkip }: ProfileSetupProps) {
             type="text"
             value={name}
             onChange={(e) => { setName(e.target.value); setError(''); }}
-            placeholder="Your name"
+            placeholder="Enter your name"
             autoFocus
             className="phone-input"
           />
         </div>
 
-        <div className="auth-label ps-mt-16">Email address (optional)</div>
+        <div className="auth-label">
+          Email <span className="ps-optional">(optional)</span>
+        </div>
         <div className="phone-wrapper">
           <input
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setError(''); }}
-            placeholder="your@email.com"
+            placeholder="Enter your email"
             className="phone-input"
           />
         </div>

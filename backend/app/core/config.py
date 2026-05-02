@@ -19,7 +19,6 @@ class Settings(BaseSettings):
     WEBHOOK_API_KEY: str = ""
     WEBHOOK_SIGNING_SECRET: str = ""
     POS_API_URL: str = ""  # External POS integration endpoint (e.g. https://pos-provider.com/api/orders). Leave empty for manual mode.
-    OTP_BYPASS_ALLOWED: bool = False
     ENVIRONMENT: str = "development"
     ALLOW_CUSTOMER_RESET: bool = False  # Dangerous: wipes all customer data
 

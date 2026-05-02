@@ -1,0 +1,310 @@
+/* ============================================
+   ============================================
+   Self-contained. No old CSS references.
+   ============================================ */
+.order-detail-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #E4EAEF;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.order-detail-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--loka-border-light);
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.order-detail-back {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #E4EAEF;
+  border: none;
+  cursor: pointer;
+  color: var(--loka-text-primary);
+}
+
+.order-detail-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--loka-primary);
+}
+
+/* ── Scroll content ── */
+.order-detail-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 20px;
+}
+
+/* ── ETA card ── */
+.od-eta-card {
+  background: linear-gradient(135deg, var(--loka-primary), #4a6320);
+  border-radius: 14px;
+  padding: 18px;
+  color: #fff;
+  margin: 10px 14px;
+}
+
+.od-eta-title {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.od-eta-time {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.od-eta-sub {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.od-eta-progress {
+  height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.od-eta-fill {
+  height: 100%;
+  background: var(--loka-accent-copper);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* ── Section card ── */
+.od-section {
+  background: #fff;
+  margin: 10px 14px;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--loka-border-light);
+}
+
+.od-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--loka-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
+}
+
+/* ── Progress steps V2 ── */
+.od-progress-track {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 8px 0 4px;
+}
+
+.od-progress-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  position: relative;
+}
+
+.od-progress-col:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  width: 100%;
+  height: 3px;
+  background: var(--loka-border-light);
+}
+
+.od-progress-col.completed:not(:last-child)::after {
+  background: var(--loka-primary);
+}
+
+.od-step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--loka-border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #fff;
+  position: relative;
+  z-index: 2;
+  margin-bottom: 8px;
+}
+
+.od-step-circle.done { background: var(--loka-primary); }
+.od-step-circle.current { background: var(--loka-accent-copper); animation: odPulseRing 2s ease-in-out infinite; box-shadow: 0 0 0 6px rgba(209,142,56,0.2); }
+
+@keyframes odPulseRing {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(209,142,56,0.2); }
+  50% { box-shadow: 0 0 0 10px rgba(209,142,56,0.08); }
+}
+
+.od-step-text {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--loka-text-muted);
+  text-align: center;
+}
+
+.od-step-text.done { color: var(--loka-primary); font-weight: 600; }
+.od-step-text.current { color: var(--loka-accent-copper); font-weight: 700; }
+
+/* ── Info row ── */
+.od-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.od-info-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.od-info-icon.green { background: rgba(56,75,22,0.1); color: var(--loka-primary); }
+.od-info-icon.copper { background: rgba(209,142,56,0.12); color: var(--loka-accent-copper); }
+
+.od-info-text { font-size: 13px; line-height: 1.4; }
+.od-info-label { font-weight: 600; color: var(--loka-text-primary); }
+.od-info-value { color: var(--loka-text-muted); font-size: 12px; }
+
+/* ── Order items ── */
+.od-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #E4EAEF;
+}
+.od-item-row:last-child { border-bottom: none; }
+
+.od-item-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--loka-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.od-item-details { flex: 1; }
+.od-item-name { font-size: 14px; font-weight: 600; color: var(--loka-text-primary); }
+.od-item-meta { font-size: 12px; color: var(--loka-text-muted); margin-top: 2px; }
+.od-item-price { font-size: 14px; font-weight: 700; color: var(--loka-text-primary); }
+
+/* ── Summary ── */
+.od-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.od-summary-label { color: var(--loka-text-muted); }
+.od-summary-value { font-weight: 500; color: var(--loka-text-primary); }
+
+.od-summary-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0 0;
+  margin-top: 8px;
+  border-top: 2px solid var(--loka-primary);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--loka-primary);
+}
+
+/* ── Payment row ── */
+.od-payment-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #E4EAEF;
+  border-radius: 10px;
+}
+.od-payment-icon {
+  width: 32px;
+  height: 22px;
+  border-radius: 4px;
+  background: #1A1F71;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+}
+.od-payment-text { font-size: 13px; color: var(--loka-text-primary); }
+
+/* ── Action bar ── */
+.od-action-bar {
+  padding: 14px;
+}
+
+.od-reorder-btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  background: var(--loka-primary);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  text-align: center;
+  margin-bottom: 10px;
+}
+.od-reorder-btn:active { background: var(--loka-primary-dark); }
+
+.od-secondary-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.od-secondary-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+.od-secondary-btn.secondary { background: #E4EAEF; color: var(--loka-text-primary); border: 1px solid var(--loka-border-light); }
+.od-secondary-btn.danger { background: rgba(199,80,80,0.1); color: var(--loka-danger); }

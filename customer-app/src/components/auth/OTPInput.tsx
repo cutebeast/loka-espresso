@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { AuthStepIndicator } from './AuthStepIndicator';
 
 interface OTPInputProps {
   phone: string;
@@ -16,7 +17,6 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(initialRetryAfterSeconds);
-  const [showResentToast, setShowResentToast] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => { inputRefs.current[0]?.focus(); }, []);
@@ -85,8 +85,6 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
       await onResend();
       setResendTimer(60);
       setOtp(['', '', '', '', '', '']);
-      setShowResentToast(true);
-      setTimeout(() => setShowResentToast(false), 2500);
       inputRefs.current[0]?.focus();
     } catch {
       setError('Failed to resend OTP.');
@@ -107,8 +105,13 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
     return `+${d.slice(0, 2)} ${d.slice(2, 4)}-${d.slice(4, 7)} ${d.slice(7)}`;
   })();
 
+  const filledCount = otp.filter((d) => d).length;
+  const autoFillPercent = (filledCount / 6) * 100;
+
   return (
     <div className="auth-page">
+      <AuthStepIndicator currentStep={2} />
+
       <button onClick={onBack} className="auth-back-btn">
         <ArrowLeft size={16} />
         Back
@@ -118,8 +121,6 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
       <p className="auth-subheading">
         We sent a 6‑digit code to <strong className="otp-phone">{displayPhone}</strong>
       </p>
-
-      <div className="auth-label">6‑digit code</div>
 
       <div className="otp-grid" onPaste={handlePaste}>
         {otp.map((digit, index) => (
@@ -134,26 +135,28 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             aria-label={`Digit ${index + 1}`}
-            className={`otp-box ${digit ? 'filled' : ''}`}
+            className={`otp-box ${digit ? 'filled' : ''} ${index === filledCount && !digit ? 'active-border' : ''}`}
             onFocus={(e) => e.currentTarget.select()}
           />
         ))}
       </div>
 
-      <div className="otp-feedback">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#85B085" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-          <polyline points="22 4 12 14.01 9 11.01" />
-        </svg>
-        {showResentToast ? 'OTP resent' : 'OTP sent successfully'}
+      {/* Auto-submit progress line */}
+      <div className="otp-auto-line">
+        <div
+          className={`otp-auto-fill ${filledCount > 0 ? `otp-auto-fill-${filledCount}` : ''}`}
+        />
       </div>
 
-      <p className="otp-resend">
-        Didn&apos;t receive it?{' '}
-        <span className="link" onClick={handleResend}>
+      <div className="otp-resend-row">
+        <span className="otp-resend-text">Didn&apos;t receive the code?</span>
+        <span
+          className={`otp-resend-timer ${resendTimer > 0 ? 'disabled' : ''}`}
+          onClick={resendTimer > 0 ? undefined : handleResend}
+        >
           {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend code'}
         </span>
-      </p>
+      </div>
 
       {error && (
         <p className="otp-error">{error}</p>

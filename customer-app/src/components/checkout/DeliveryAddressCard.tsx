@@ -1,139 +1,247 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { MapPin, Navigation, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { MapPin, Home, Building2, HelpCircle } from 'lucide-react';
 import { LOKA } from '@/lib/tokens';
 import { useAuthStore } from '@/stores/authStore';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import api from '@/lib/api';
 
 interface SavedAddress {
-  id: number;
-  label: string;
-  address: string;
-  lat?: number;
-  lng?: number;
+  id: number; label: string; address: string; apartment?: string;
+  building?: string; city?: string; postcode?: string; state?: string;
+  delivery_instructions?: string; lat?: number; lng?: number;
 }
 
-interface DeliveryAddressCardProps {
+interface Props {
   value: { address: string; lat?: number; lng?: number } | null;
-  onChange: (address: { address: string; lat?: number; lng?: number } | null) => void;
+  onChange: (a: { address: string; lat?: number; lng?: number } | null) => void;
 }
 
-export default function DeliveryAddressCard({ value, onChange }: DeliveryAddressCardProps) {
-  const [inputValue, setInputValue] = useState(value?.address || '');
-  const [error, setError] = useState('');
-  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
-  const [showSaved, setShowSaved] = useState(false);
+const LABELS = ['Home', 'Office', 'Other'] as const;
+const ICONS: Record<string, typeof Home> = { Home, Office: Building2, Other: HelpCircle };
+const STATES = ['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan',
+  'Pahang','Perak','Perlis','Pulau Pinang','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'];
+
+export default function DeliveryAddressCard({ value, onChange }: Props) {
+  /* Sheet state */
+  const [open, setOpen] = useState(false);
+  const [label, setLabel] = useState('Home');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [unit, setUnit] = useState('');
+  const [line1, setLine1] = useState('');
+  const [line2, setLine2] = useState('');
+  const [city, setCity] = useState('');
+  const [postcode, setPostcode] = useState('');
+  const [state, setState] = useState('Kuala Lumpur');
+  const [lat, setLat] = useState<number | undefined>(undefined);
+  const [lng, setLng] = useState<number | undefined>(undefined);
+  const [err, setErr] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<SavedAddress[]>([]);
+  const dismissed = useRef(false);
   const user = useAuthStore((s) => s.user);
 
+  /* Fetch */
+  const fetchSaved = async () => {
+    if (!user) return;
+    const r: any = await api.get('/users/me/addresses').catch(() => ({ data: [] }));
+    if (Array.isArray(r.data)) setSaved(r.data);
+  };
+  useEffect(() => { fetchSaved(); }, [user]);
+
+  /* Auto-open when no address */
   useEffect(() => {
-    if (user) {
-      api.get('/users/me/addresses')
-        .then((res) => {
-          if (Array.isArray(res.data)) setSavedAddresses(res.data);
-        })
-        .catch(() => {});
+    if (!value?.address && !dismissed.current) {
+      const t = setTimeout(() => {
+        setName(user?.name || '');
+        setPhone(user?.phone || '');
+        setOpen(true);
+      }, 100);
+      return () => clearTimeout(t);
     }
-  }, [user]);
+  }, [value?.address, user]);
 
-  const handleUseCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setError('Location access is not supported on this device.');
-      return;
+  /* Find saved address for current label */
+  const savedForLabel = useMemo(
+    () => saved.find(s => s.label?.toLowerCase() === label.toLowerCase()) || null,
+    [saved, label],
+  );
+
+  /* When label changes → pull from address book (full address goes to line1, unit to unit) */
+  useEffect(() => {
+    if (!open) return;
+    const m = savedForLabel;
+    if (m) {
+      setUnit(m.apartment || '');
+      setLine1(m.address || '');
+      setLine2(m.building || '');
+      setCity(m.city || '');
+      setPostcode(m.postcode || '');
+      setState(m.state || 'Kuala Lumpur');
+      setLat(m.lat);
+      setLng(m.lng);
+    } else {
+      setUnit('');
+      setLine1('');
+      setLine2('');
+      setCity('');
+      setPostcode('');
+      setState('Kuala Lumpur');
+      setLat(undefined);
+      setLng(undefined);
     }
-    setError('');
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`)
-          .then(res => res.json())
-          .then(data => {
-            const addr = data.display_name || `${latitude}, ${longitude}`;
-            setInputValue(addr);
-            onChange({ address: addr, lat: latitude, lng: longitude });
-          })
-          .catch(() => {
-            setInputValue(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-            onChange({ address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`, lat: latitude, lng: longitude });
-          });
-      },
-      (geoError) => {
-        if (geoError.code === geoError.PERMISSION_DENIED) {
-          setError('Please allow location access or enter your address manually.');
-          return;
-        }
-        setError('We could not fetch your current location. Please enter your address manually.');
+  }, [label, open]);
+
+  /* Open sheet */
+  const openSheet = () => {
+    dismissed.current = false;
+    // Find saved address matching current value by checking if value contains the saved address
+    const match = saved.find(s => {
+      const sFull = s.apartment ? `${s.apartment}, ${s.address}` : s.address;
+      return value?.address?.includes(s.address) || value?.address?.includes(sFull);
+    });
+    setLabel(match?.label || 'Home');
+    setName(user?.name || '');
+    setPhone(user?.phone || '');
+    setErr('');
+    setOpen(true);
+  };
+  const closeSheet = () => { dismissed.current = true; setOpen(false); };
+
+  /* Save */
+  const save = async () => {
+    if (!unit.trim() && !line1.trim()) { setErr('Address is required'); return; }
+    setSaving(true); setErr('');
+    const p: string[] = [];
+    if (unit.trim()) p.push(unit.trim());
+    if (line1.trim()) p.push(line1.trim());
+    if (line2.trim()) p.push(line2.trim());
+    const cs: string[] = [];
+    if (postcode.trim()) cs.push(postcode.trim());
+    if (city.trim()) cs.push(city.trim());
+    if (cs.length) p.push(cs.join(' '));
+    p.push(state);
+    const full = p.join(', ');
+
+    try {
+      const payload: any = {
+        label,
+        address: line1.trim(),
+        apartment: unit.trim() || undefined,
+        building: line2.trim() || undefined,
+        city: city.trim() || undefined,
+        postcode: postcode.trim() || undefined,
+        state,
+        lat: lat ?? undefined,
+        lng: lng ?? undefined,
+      };
+      if (savedForLabel) {
+        await api.put(`/users/me/addresses/${savedForLabel.id}`, payload);
+      } else {
+        await api.post('/users/me/addresses', { ...payload });
       }
-    );
-  };
-
-  const handleBlur = () => {
-    const nextAddress = inputValue.trim();
-    if (!nextAddress) {
-      onChange(null);
-      return;
+      await fetchSaved();
+    } catch (e) {
+      console.error('Failed to save address to book:', e);
     }
-    const keepCoordinates = nextAddress === (value?.address || '').trim();
-    onChange({ address: nextAddress, lat: keepCoordinates ? value?.lat : undefined, lng: keepCoordinates ? value?.lng : undefined });
+    onChange({ address: full, lat, lng });
+    setSaving(false);
+    setOpen(false);
   };
 
-  const handleUseSaved = (saved: SavedAddress) => {
-    setInputValue(saved.address);
-    onChange({ address: saved.address, lat: saved.lat, lng: saved.lng });
-    setShowSaved(false);
+  /* Display label */
+  const dl = (): string | null => {
+    if (!value?.address) return null;
+    const m = saved.find(s => {
+      const sFull = s.apartment ? `${s.apartment}, ${s.address}` : s.address;
+      return value.address.includes(s.address) || value.address.includes(sFull);
+    });
+    return m?.label || null;
   };
+
+  const has = !!value?.address;
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <MapPin size={16} color={LOKA.copper} />
-        <span className="font-bold text-text-primary dac-title">Delivery Address</span>
-      </div>
-      <div className="relative">
-        <textarea
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onBlur={handleBlur}
-          placeholder="Enter delivery address"
-          rows={2}
-          className="w-full px-3.5 py-3 rounded-[14px] border border-border-subtle bg-white text-sm text-text-primary resize-none outline-none dac-textarea"
-        />
-        <button
-          onClick={handleUseCurrentLocation}
-          className="absolute right-3 top-3 w-10 h-10 rounded-lg bg-copper-soft border-none cursor-pointer flex items-center justify-center"
-          aria-label="Use current location"
-        >
-          <Navigation size={16} color={LOKA.copper} />
-        </button>
-      </div>
-      {savedAddresses.length > 0 && (
-        <div className="mt-2">
-          <button
-            onClick={() => setShowSaved(!showSaved)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary border-none bg-transparent cursor-pointer"
-          >
-            <ChevronDown size={12} style={{ transform: showSaved ? 'rotate(180deg)' : undefined, transition: 'transform 0.2s' }} />
-            Use a saved address ({savedAddresses.length})
-          </button>
-          {showSaved && (
-            <div className="mt-2 flex flex-col gap-1.5">
-              {savedAddresses.map((saved) => (
-                <button
-                  key={saved.id}
-                  onClick={() => handleUseSaved(saved)}
-                  className="text-left py-2.5 px-3 rounded-xl border border-border-subtle bg-surface text-sm text-text-primary cursor-pointer transition-colors hover:border-copper dac-saved-btn"
-                >
-                  <span className="font-semibold">{saved.label}</span>
-                  <span className="text-text-muted text-xs block mt-0.5">{saved.address}</span>
-                </button>
-              ))}
-            </div>
-          )}
+      {has ? (
+        <div className="dac-display-card">
+          <div className="dac-display-icon"><MapPin size={18} color="#fff" /></div>
+          <div className="dac-display-info">
+            {dl() && <div className="dac-display-label">{dl()}</div>}
+            <div className="dac-display-address">{value!.address}</div>
+            <button onClick={openSheet} className="dac-change-btn">Change address</button>
+          </div>
+        </div>
+      ) : (
+        <div className="dac-empty-card">
+          <div className="dac-empty-icon"><MapPin size={20} color={LOKA.copper} /></div>
+          <span className="dac-empty-text">Add delivery address</span>
+          <button onClick={openSheet} className="dac-empty-btn">Enter Address</button>
         </div>
       )}
-      {error && (
-        <p className="mt-2 text-xs text-danger">{error}</p>
-      )}
+
+      <BottomSheet isOpen={open} onClose={closeSheet} title={has ? 'Change Address' : 'Delivery Address'}>
+        <div className="sheet-body">
+
+        {/* Label pills — auto-fill from DB for selected label */}
+        <div className="dac-label-row">
+          {LABELS.map(lbl => {
+            const I = ICONS[lbl];
+            return (
+              <button key={lbl} onClick={() => setLabel(lbl)} className={`dac-label-pill${label === lbl ? ' active' : ''}`}>
+                <I size={15} />{lbl}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Unit / Apartment No */}
+        <div className="dac-sheet-field">
+          <label className="dac-sheet-label">Unit / Apartment No.</label>
+          <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g. 123 or A-3-5" className="dac-input" />
+        </div>
+
+        {/* Address Line 1 */}
+        <div className="dac-sheet-field">
+          <label className="dac-sheet-label">Address Line 1</label>
+          <input value={line1} onChange={e => setLine1(e.target.value)} placeholder="Jalan / Lorong / Persiaran" className="dac-input" />
+        </div>
+
+        {/* Address Line 2 */}
+        <div className="dac-sheet-field">
+          <label className="dac-sheet-label">Address Line 2 (optional)</label>
+          <input value={line2} onChange={e => setLine2(e.target.value)} placeholder="Building / Taman name" className="dac-input" />
+        </div>
+
+        {/* City */}
+        <div className="dac-sheet-field">
+          <label className="dac-sheet-label">City</label>
+          <input value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Cheras, Petaling Jaya" className="dac-input" />
+        </div>
+
+        {/* Postcode | State */}
+        <div className="dac-sheet-row">
+          <div className="dac-sheet-field dac-sheet-field-half">
+            <label className="dac-sheet-label">Postcode</label>
+            <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric" maxLength={5} placeholder="50400" className="dac-input" />
+          </div>
+          <div className="dac-sheet-field dac-sheet-field-half">
+            <label className="dac-sheet-label">State</label>
+            <select value={state} onChange={e => setState(e.target.value)} className="dac-select">
+              {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Delivery Instructions (not saved to DB) */}
+        <div className="dac-sheet-field" style={{ display: 'none' }}></div>
+
+        {err && <p className="dac-error">{err}</p>}
+        <button onClick={save} className="dac-save-btn" disabled={saving}>{saving ? 'Saving...' : 'Save Address'}</button>
+        </div>
+      </BottomSheet>
     </div>
   );
 }

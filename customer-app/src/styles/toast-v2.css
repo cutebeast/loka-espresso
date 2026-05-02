@@ -1,0 +1,154 @@
+/* ============================================
+   TOAST V2 — 5 variants, animation, actions
+   ============================================ */
+
+.toast-container-v2 {
+  position: fixed;
+  top: 52px;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast-v2 {
+  width: 100%;
+  max-width: 343px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.toast-v2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+/* Variants */
+.toast-v2-success {
+  background: rgba(240, 249, 240, 0.96);
+  border: 1px solid rgba(133, 176, 133, 0.35);
+}
+.toast-v2-success::before { background: var(--loka-success); }
+
+.toast-v2-error {
+  background: rgba(254, 242, 242, 0.96);
+  border: 1px solid rgba(199, 80, 80, 0.3);
+}
+.toast-v2-error::before { background: var(--loka-danger); }
+
+.toast-v2-info {
+  background: rgba(239, 246, 255, 0.96);
+  border: 1px solid rgba(91, 126, 181, 0.3);
+}
+.toast-v2-info::before { background: #5B7EB5; }
+
+.toast-v2-warning {
+  background: rgba(255, 251, 235, 0.96);
+  border: 1px solid rgba(224, 155, 60, 0.3);
+}
+.toast-v2-warning::before { background: #E09B3C; }
+
+.toast-v2-reward {
+  background: linear-gradient(135deg, rgba(56,75,22,0.95) 0%, rgba(42,57,16,0.95) 100%);
+  border: 1px solid rgba(209,142,56,0.4);
+  color: #fff;
+}
+.toast-v2-reward::before { background: var(--loka-accent-copper); }
+
+/* Icon */
+.toast-v2-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.toast-v2-success .toast-v2-icon { background: rgba(133, 176, 133, 0.2); }
+.toast-v2-error .toast-v2-icon { background: rgba(199, 80, 80, 0.15); }
+.toast-v2-info .toast-v2-icon { background: rgba(91, 126, 181, 0.15); }
+.toast-v2-warning .toast-v2-icon { background: rgba(224, 155, 60, 0.15); }
+.toast-v2-reward .toast-v2-icon { background: rgba(209,142,56,0.25); }
+
+.toast-v2-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.toast-v2-success .toast-v2-icon svg { stroke: var(--loka-success); }
+.toast-v2-error .toast-v2-icon svg { stroke: var(--loka-danger); }
+.toast-v2-info .toast-v2-icon svg { stroke: #5B7EB5; }
+.toast-v2-warning .toast-v2-icon svg { stroke: #E09B3C; }
+.toast-v2-reward .toast-v2-icon svg { stroke: var(--loka-accent-copper); }
+
+/* Body */
+.toast-v2-body { flex: 1; min-width: 0; }
+
+.toast-v2-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--loka-text-primary);
+  margin-bottom: 2px;
+}
+.toast-v2-reward .toast-v2-title { color: #fff; }
+
+.toast-v2-message {
+  font-size: 12px;
+  color: var(--loka-text-muted);
+  line-height: 1.4;
+}
+.toast-v2-reward .toast-v2-message { color: rgba(255,255,255,0.7); }
+
+/* Close */
+.toast-v2-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toast-v2-reward .toast-v2-close { background: rgba(255,255,255,0.12); }
+.toast-v2-close svg { width: 12px; height: 12px; stroke: var(--loka-text-muted); fill: none; stroke-width: 2; }
+.toast-v2-reward .toast-v2-close svg { stroke: rgba(255,255,255,0.6); }
+
+/* Actions */
+.toast-v2-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+.toast-v2-action-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: none;
+}
+.toast-v2-action-btn.primary { background: var(--loka-primary); color: #fff; }
+.toast-v2-action-btn.secondary { background: transparent; border: 1px solid var(--loka-border-light); color: var(--loka-text-primary); }
+.toast-v2-reward .toast-v2-action-btn.secondary { border-color: rgba(255,255,255,0.3); color: #fff; }

@@ -1,0 +1,271 @@
+/* ============================================
+   qr-scanner-v2 — ✅ Phase 1 Complete
+   Self-contained. Dark theme, viewfinder, permission.
+   ============================================ */
+.qr-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #0a0a0a;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header over camera ── */
+.qr-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(14px, env(safe-area-inset-top, 0px)) 20px 14px;
+}
+
+.qr-back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+}
+.qr-back-btn:active { background: rgba(0,0,0,0.6); }
+
+.qr-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+.qr-flash-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+}
+.qr-flash-btn.active {
+  background: rgba(209,142,56,0.6);
+  border-color: var(--loka-accent-copper);
+  box-shadow: 0 0 16px rgba(209,142,56,0.4);
+}
+
+/* ── Camera area ── */
+.qr-camera-area {
+  flex: 1;
+  position: relative;
+  background: #111;
+  overflow: hidden;
+}
+
+.qr-camera-area #qr-reader {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.qr-camera-area #qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
+.qr-camera-area #qr-reader__scan_region {
+  width: 100%;
+  height: 100%;
+}
+
+.qr-camera-area #qr-reader__dashboard {
+  display: none !important;
+}
+
+/* ── Viewfinder ── */
+.qr-viewfinder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 250px;
+  height: 250px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.qr-viewfinder-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.qr-viewfinder-overlay::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 250px;
+  height: 250px;
+  background: transparent;
+  border-radius: 16px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+}
+
+.qr-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: var(--loka-accent-copper);
+  border-style: solid;
+  border-width: 0;
+}
+.qr-corner.tl { top: 0; left: 0; border-top-width: 3px; border-left-width: 3px; border-radius: 4px 0 0 0; animation: qrCornerPulse 2.5s ease-in-out infinite; }
+.qr-corner.tr { top: 0; right: 0; border-top-width: 3px; border-right-width: 3px; border-radius: 0 4px 0 0; animation: qrCornerPulse 2.5s ease-in-out 0.3s infinite; }
+.qr-corner.bl { bottom: 0; left: 0; border-bottom-width: 3px; border-left-width: 3px; border-radius: 0 0 0 4px; animation: qrCornerPulse 2.5s ease-in-out 0.6s infinite; }
+.qr-corner.br { bottom: 0; right: 0; border-bottom-width: 3px; border-right-width: 3px; border-radius: 0 0 4px 0; animation: qrCornerPulse 2.5s ease-in-out 0.9s infinite; }
+
+@keyframes qrCornerPulse {
+  0%, 100% { border-color: var(--loka-accent-copper); }
+  50% { border-color: #E5A559; }
+}
+
+.qr-scan-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(209,142,56,0.3) 15%, var(--loka-accent-copper) 50%, rgba(209,142,56,0.3) 85%, transparent 100%);
+  box-shadow: 0 0 12px rgba(209,142,56,0.6), 0 0 24px rgba(209,142,56,0.3);
+  animation: qrScanMove 2.2s ease-in-out infinite;
+  border-radius: 1px;
+}
+
+@keyframes qrScanMove {
+  0% { top: 8px; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: calc(100% - 8px); opacity: 0; }
+}
+
+/* ── Bottom prompt ── */
+.qr-prompt {
+  background: #0a0a0a;
+  padding: 24px 20px 32px;
+  text-align: center;
+}
+
+.qr-prompt-title {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: 'Playfair Display', serif;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+
+.qr-prompt-sub {
+  color: rgba(255,255,255,0.45);
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 260px;
+  margin: 0 auto;
+}
+
+/* ── Permission state ── */
+.qr-permission {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 40px 32px;
+  text-align: center;
+  color: #fff;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #0a0a0a;
+}
+
+.qr-permission-icon {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: rgba(209,142,56,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  border: 2px dashed rgba(209,142,56,0.25);
+}
+
+.qr-permission-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.qr-permission-text {
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.6;
+  margin-bottom: 28px;
+  max-width: 280px;
+}
+
+.qr-permission-btn {
+  padding: 14px 36px;
+  background: var(--loka-accent-copper);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.qr-permission-btn:active { background: #E5A559; }
+
+/* ── Loading ── */
+.qr-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0a;
+  z-index: 4;
+}
+
+.qr-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(209,142,56,0.2);
+  border-top-color: var(--loka-accent-copper);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+.qr-loading-text {
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+}

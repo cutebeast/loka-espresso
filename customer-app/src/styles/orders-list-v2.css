@@ -1,0 +1,288 @@
+/* ============================================
+   ============================================
+   Self-contained. No old CSS references.
+   ============================================ */
+.orders-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #E4EAEF;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.orders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--loka-border-light);
+  flex-shrink: 0;
+}
+
+.orders-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--loka-primary);
+}
+
+.orders-auto-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--loka-success);
+  font-weight: 600;
+}
+
+.orders-pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--loka-success);
+  border-radius: 50%;
+  animation: ordPulse 2s infinite;
+}
+@keyframes ordPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* ── Scroll ── */
+.orders-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+
+/* ── Pull to refresh ── */
+.orders-pull-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  font-size: 12px;
+  color: var(--loka-text-muted);
+  font-weight: 500;
+}
+
+.orders-refresh-icon {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--loka-border-light);
+  border-top-color: var(--loka-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Section label ── */
+.orders-section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--loka-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 16px 20px 8px;
+}
+
+/* ── Active order card ── */
+.orders-active-card {
+  background: #fff;
+  margin: 0 14px 12px;
+  border-radius: 18px;
+  padding: 20px;
+  border: 2px solid var(--loka-primary);
+  box-shadow: 0 4px 20px rgba(56,75,22,0.12);
+}
+
+.orders-active-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.orders-active-icon {
+  width: 44px;
+  height: 44px;
+  background: var(--loka-primary);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.orders-active-number { font-size: 16px; font-weight: 700; color: var(--loka-text-primary); }
+.orders-active-date { font-size: 11px; color: var(--loka-text-muted); }
+
+.orders-active-status-chip {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(209,142,56,0.15);
+  color: var(--loka-accent-copper);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* Progress mini bar */
+.orders-progress-mini {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+.orders-progress-step {
+  flex: 1;
+  height: 4px;
+  background: var(--loka-border-light);
+  border-radius: 2px;
+}
+.orders-progress-step.filled { background: var(--loka-primary); }
+.orders-progress-step.current {
+  background: linear-gradient(90deg, var(--loka-primary) 50%, var(--loka-border-light) 50%);
+}
+
+/* ETA row */
+.orders-eta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(209,142,56,0.08);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--loka-accent-copper);
+  font-weight: 600;
+}
+.orders-eta-icon {
+  width: 28px;
+  height: 28px;
+  background: var(--loka-accent-copper);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+}
+
+.orders-active-items { font-size: 13px; color: var(--loka-text-muted); line-height: 1.4; margin-bottom: 12px; }
+
+.orders-active-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.orders-active-total { font-size: 18px; font-weight: 700; color: var(--loka-primary); }
+.orders-track-btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: var(--loka-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+/* ── Past order card ── */
+.orders-past-card {
+  background: #fff;
+  margin: 0 14px 10px;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid var(--loka-border-light);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.orders-past-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--loka-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.orders-past-info { flex: 1; min-width: 0; }
+.orders-past-number { font-size: 13px; font-weight: 700; color: var(--loka-text-primary); }
+.orders-past-date { font-size: 11px; color: var(--loka-text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.orders-past-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+.orders-past-total { font-size: 14px; font-weight: 700; color: var(--loka-primary); }
+
+.orders-status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.orders-status-badge.delivered { background: rgba(133,176,133,0.18); color: #3a7a3a; }
+.orders-status-badge.cancelled { background: rgba(199,80,80,0.15); color: var(--loka-danger); }
+
+.orders-reorder-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--loka-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  margin-left: 6px;
+}
+
+/* ── Empty state ── */
+.orders-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+  text-align: center;
+}
+.orders-empty-icon { margin-bottom: 16px; color: var(--loka-text-muted); }
+.orders-empty-title { font-size: 18px; font-weight: 700; color: var(--loka-text-primary); margin-bottom: 6px; }
+.orders-empty-text { font-size: 14px; color: var(--loka-text-muted); margin-bottom: 24px; }
+.orders-empty-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: var(--loka-primary);
+  color: #fff;
+  border: none;
+  border-radius: 40px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}

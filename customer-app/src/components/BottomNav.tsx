@@ -40,14 +40,16 @@ export default function BottomNav({ page, onNavigate }: BottomNavProps) {
           <button
             key={id}
             onClick={() => onNavigate(id)}
-            className={`nav-item ${isActive ? 'active' : ''}`}
+            className={`nav-item${isActive ? ' active active-pill' : ''}`}
             aria-label={label}
             aria-current={isActive ? 'page' : undefined}
           >
             <span className="nav-icon-wrap">
               <Icon size={22} strokeWidth={isActive ? 2.4 : 1.8} />
               {badgeCount > 0 && (
-                <span className="nav-badge">{badgeCount > 9 ? '9+' : badgeCount}</span>
+                <span className={`nav-badge${badgeCount > 0 ? ' pulse' : ''}`}>
+                  {badgeCount > 9 ? '9+' : badgeCount}
+                </span>
               )}
             </span>
             <span>{label}</span>

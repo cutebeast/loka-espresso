@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { PageId, Store, Category, MenuItem, OrderMode } from '@/lib/api';
+import { idbStorage } from '@/lib/idbStorage';
 
 export interface PageParams {
   initialTab?: string;
@@ -29,6 +30,9 @@ export interface CheckoutDraft {
   notes?: string;
   voucherCode?: string;
   rewardCode?: string;
+  recipientName?: string;
+  recipientPhone?: string;
+  deliveryInstructions?: string;
 }
 
 interface UIState {
@@ -42,7 +46,7 @@ interface UIState {
   selectedCategoryId: number | null;
   searchQuery: string;
   isLoading: boolean;
-  toast: { message: string; type: 'success' | 'error' | 'info' } | null;
+  toast: { message: string; type: 'success' | 'error' | 'info' | 'warning' | 'reward'; title?: string } | null;
   pageParams: PageParams;
   showStorePicker: boolean;
   isGuest: boolean;
@@ -61,7 +65,7 @@ interface UIState {
   setSelectedCategoryId: (id: number | null) => void;
   setSearchQuery: (query: string) => void;
   setIsLoading: (loading: boolean) => void;
-  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  showToast: (message: string, type: 'success' | 'error' | 'info' | 'warning' | 'reward', title?: string) => void;
   hideToast: () => void;
   setShowStorePicker: (show: boolean) => void;
   setIsGuest: (guest: boolean) => void;
@@ -140,11 +144,11 @@ export const useUIStore = create<UIState>()(
       setSelectedCategoryId: (selectedCategoryId) => set({ selectedCategoryId }),
       setSearchQuery: (searchQuery) => set({ searchQuery }),
       setIsLoading: (isLoading) => set({ isLoading }),
-      showToast: (message, type) => set({ toast: { message, type } }),
+      showToast: (message, type, title) => set({ toast: { message, type, title } }),
       hideToast: () => set({ toast: null }),
       setShowStorePicker: (showStorePicker) => set({ showStorePicker }),
       setIsGuest: (isGuest) => set({ isGuest }),
-      triggerSignIn: () => set((s) => ({ requestSignIn: s.requestSignIn + 1, isGuest: false })),
+      triggerSignIn: () => set((s) => ({ requestSignIn: s.requestSignIn + 1 })),
       setPreviousPage: (previousPage) => set({ previousPage }),
       setCheckoutDraft: (draft) => set((state) => ({
         checkoutDraft: { ...state.checkoutDraft, ...draft },
@@ -164,10 +168,15 @@ export const useUIStore = create<UIState>()(
       }),
     }),
     {
-      name: 'ui-store',
+      name: 'ui-store-v2',
+      version: 1,
+      storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({
         checkoutDraft: state.checkoutDraft,
         previousPage: state.previousPage,
+        selectedStore: state.selectedStore,
+        orderMode: state.orderMode,
+        dineInSession: state.dineInSession,
       }),
     }
   )

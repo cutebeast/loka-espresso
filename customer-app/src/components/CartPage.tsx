@@ -34,7 +34,12 @@ function getCustomizationTags(customizations: Record<string, unknown> | undefine
   const cust = customizations as CustomizationStructure;
   const tags: string[] = [];
   if (cust.options && Array.isArray(cust.options) && cust.options.length > 0) {
-    tags.push(...cust.options.map(o => o.name));
+    tags.push(...cust.options.map(o => {
+      // Strip type prefix like "Sugar Level: No Sugar" → "No Sugar"
+      const name = o.name || '';
+      const colonIdx = name.indexOf(': ');
+      return colonIdx >= 0 ? name.slice(colonIdx + 2) : name;
+    }));
   }
   if (cust.note) tags.push(cust.note);
   return tags;
@@ -47,7 +52,7 @@ const ORDER_MODES = [
 ];
 
 export default function CartPage() {
-  const { items, updateQuantity, getTotal, getItemCount, clearCart, orderNote, setOrderNote } = useCartStore();
+  const { items, updateQuantity, updateItem, getTotal, getItemCount, clearCart, orderNote, setOrderNote } = useCartStore();
   const { orderMode, setOrderMode, selectedStore, dineInSession, setDineInSession, setPage, showToast, setShowStorePicker, setCheckoutDraft, isGuest, triggerSignIn } = useUIStore();
   const { config } = useConfigStore();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -81,7 +86,7 @@ export default function CartPage() {
       const res = await api.get(`/menu/items/${item.menu_item_id}/customizations`);
       const options = Array.isArray(res.data) ? res.data : [];
       setEditOptions(options);
-      setEditItem({ id: item.menu_item_id, name: item.name, base_price: item.price, category_id: 0 } as MenuItem);
+      setEditItem({ id: item.menu_item_id, name: item.name, base_price: item.base_price ?? item.price, category_id: 0 } as MenuItem);
       setEditingItem(index);
     } catch { /* ignore */ }
     finally { setEditLoading(false); }
@@ -89,14 +94,13 @@ export default function CartPage() {
 
   const handleCustomizeConfirm = (item: MenuItem, quantity: number, customizations: { id: number; name: string; price_adjustment: number }[], totalPrice: number) => {
     if (editingItem === null) return;
-    updateQuantity(editingItem, quantity);
-    // Update the item price with customizations
-    const currentItem = items[editingItem];
-    if (currentItem) {
-      currentItem.price = totalPrice;
-      currentItem.customizations = { options: customizations.map(o => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) };
-      currentItem.customization_option_ids = customizations.map(o => o.id);
-    }
+    updateItem(editingItem, {
+      quantity,
+      price: totalPrice,
+      base_price: (items[editingItem]?.base_price ?? items[editingItem]?.price),
+      customizations: { options: customizations.map(o => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) },
+      customization_option_ids: customizations.map(o => o.id),
+    });
     setEditingItem(null);
     setEditItem(null);
     setEditOptions([]);
@@ -129,7 +133,7 @@ export default function CartPage() {
         <button className="cart-back-btn" onClick={() => setPage('menu')} aria-label="Back">
           <ArrowLeft size={20} />
         </button>
-        <h3 className="cart-header-title">Your Cart</h3>
+        <h3 className="cart-header-title">Your Cart <span className="cart-header-count">({itemCount} item{itemCount !== 1 ? 's' : ''})</span></h3>
         <button className="cart-header-clear" onClick={() => setShowClearConfirm(true)}>
           Clear
         </button>
@@ -220,15 +224,13 @@ export default function CartPage() {
                   <div className="cart-item-header">
                     <div className="cart-item-title-group">
                       <h4 className="cart-item-name">{item.name}</h4>
-                      <span className="cart-item-price">{formatPrice(item.price * item.quantity)}</span>
                     </div>
-                    <button
-                      className="cart-remove-btn"
-                      onClick={() => updateQuantity(index, 0)}
-                      aria-label={`Remove ${item.name}`}
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="cart-item-price-group">
+                      <div className="cart-item-price">{formatPrice(item.price * item.quantity)}</div>
+                      {item.quantity > 1 && (
+                        <div className="cart-item-unit-price">{formatPrice(item.price)} × {item.quantity}</div>
+                      )}
+                    </div>
                   </div>
                   {tags.length > 0 && (
                     <div className="cart-custom-tags">
@@ -238,14 +240,24 @@ export default function CartPage() {
                     </div>
                   )}
                   <div className="cart-item-row">
-                    <button className="cart-edit-btn" onClick={() => openCustomize(index)}>
-                      <Sliders size={12} /> Add-ons
+                    {(item.customization_count ?? 0) > 0 ? (
+                      <button className="cart-edit-btn" onClick={() => openCustomize(index)}>
+                        <Sliders size={12} /> Add-ons
+                      </button>
+                    ) : <span />}
+                    <button
+                      className="cart-remove-btn"
+                      onClick={() => updateQuantity(index, 0)}
+                      aria-label={`Remove ${item.name}`}
+                    >
+                      <Trash2 size={12} /> Remove
                     </button>
+                  </div>
+                  <div className="cart-item-row">
                     <div className="cart-qty-control">
                       <button
                         className="cart-qty-btn"
                         onClick={() => updateQuantity(index, item.quantity - 1)}
-                        aria-label={`Decrease ${item.name} quantity`}
                       >
                         <Minus size={13} />
                       </button>
@@ -253,7 +265,6 @@ export default function CartPage() {
                       <button
                         className="cart-qty-btn"
                         onClick={() => updateQuantity(index, item.quantity + 1)}
-                        aria-label={`Increase ${item.name} quantity`}
                       >
                         <Plus size={13} />
                       </button>
@@ -279,15 +290,20 @@ export default function CartPage() {
         {/* Summary */}
         <div className="cart-summary-card">
           <div className="cart-summary-row">
-            <span>Subtotal</span>
+            <span>Subtotal ({itemCount} item{itemCount !== 1 ? 's' : ''})</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
-          {deliveryFee > 0 && (
+          {orderMode === 'delivery' && (deliveryFee > 0 ? (
             <div className="cart-summary-row">
               <span>Delivery fee</span>
               <span>{formatPrice(deliveryFee)}</span>
             </div>
-          )}
+          ) : (
+            <div className="cart-summary-row">
+              <span>Delivery fee</span>
+              <span className="cart-delivery-free">Free</span>
+            </div>
+          ))}
           <div className="cart-summary-row total">
             <span>Total</span>
             <span>{formatPrice(total)}</span>
@@ -316,12 +332,17 @@ export default function CartPage() {
                 triggerSignIn();
                 return;
               }
+              if ((orderMode === 'delivery' || orderMode === 'pickup') && !selectedStore) {
+                setShowStorePicker(true);
+                return;
+              }
               setCheckoutDraft({ notes: orderNote });
               setPage('checkout');
             }}
             disabled={belowDeliveryMinimum}
           >
-            Proceed to Checkout
+            <span>Proceed to Checkout</span>
+            <span className="cart-checkout-price">{formatPrice(total)}</span>
           </button>
         )}
       </div>
@@ -347,6 +368,11 @@ export default function CartPage() {
           onAdd={handleCustomizeConfirm}
           loadingOptions={editLoading}
           customizations={editOptions}
+          initialSelections={
+            editingItem !== null && items[editingItem]
+              ? (((items[editingItem].customizations as any)?.options || []) as any[])
+              : []
+          }
         />
       )}
     </div>

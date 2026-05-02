@@ -1,0 +1,384 @@
+/* ═══════════════════════════════════════════
+   SAVED ADDRESSES V2 — .sav2-
+   Matches Proposed design from mockup
+   /root/uiux-review/16-saved-addresses.html
+   ═══════════════════════════════════════════ */
+
+/* ── Page layout ── */
+.sav2-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--color-bg);
+}
+.sav2-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Skeleton ── */
+.sav2-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sav2-skeleton-item {
+  background: var(--color-white);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-border-subtle);
+  height: 88px;
+}
+
+/* ── Empty state ── */
+.sav2-empty {
+  text-align: center;
+  padding: 40px 20px;
+}
+.sav2-empty-icon {
+  margin: 0 auto 12px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sav2-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+.sav2-empty-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* ── Address card ── */
+.sav2-card {
+  background: var(--color-white);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-border-light);
+  position: relative;
+}
+.sav2-card.is-default {
+  border: 2px solid #85B085;
+  background: linear-gradient(135deg, #fafffe 0%, #f5faf5 100%);
+}
+.sav2-card-top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* Map pin icon */
+.sav2-pin-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--color-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-brown);
+}
+.sav2-card.is-default .sav2-pin-icon {
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+/* Main info area */
+.sav2-card-main {
+  flex: 1;
+  min-width: 0;
+}
+.sav2-card-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.sav2-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.sav2-default-pill {
+  padding: 2px 8px;
+  background: #85B085;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.sav2-card-address {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-bottom: 8px;
+  white-space: pre-line;
+}
+
+/* Distance badge */
+.sav2-distance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--color-bg);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+.sav2-distance-badge svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* Instruction line below distance */
+.sav2-card-instructions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(209, 142, 56, 0.08);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-copper);
+  margin-top: 6px;
+  margin-right: 8px;
+}
+.sav2-card-instructions svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* Card action buttons */
+.sav2-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+.sav2-edit-btn,
+.sav2-delete-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.sav2-edit-btn:active,
+.sav2-delete-btn:active {
+  background: var(--color-surface);
+}
+.sav2-delete-btn-confirming {
+  background: rgba(199, 80, 80, 0.1);
+  color: var(--color-danger);
+}
+
+/* ── Add New Address button ── */
+.sav2-add-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.15s;
+}
+.sav2-add-btn:active {
+  opacity: 0.9;
+}
+
+/* ═══════════════════════════════════════════
+   BOTTOM SHEET (address form)
+   Uses Modal component — these are content styles
+   ═══════════════════════════════════════════ */
+
+/* Label selector pills */
+.sav2-label-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.sav2-label-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--color-border-light);
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: #fff;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all 0.15s;
+}
+.sav2-label-pill svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.sav2-label-pill.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.sav2-label-pill.disabled {
+  opacity: 0.4; cursor: not-allowed; pointer-events: none;
+}
+
+/* Form input groups */
+.sav2-field {
+  margin-bottom: 16px;
+}
+.sav2-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+  display: block;
+}
+.sav2-field-row {
+  display: flex;
+  gap: 12px;
+}
+.sav2-field-half {
+  flex: 1;
+}
+.sav2-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--color-border-light);
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text-primary);
+  outline: none;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.sav2-input:focus {
+  border-color: var(--color-primary);
+}
+.sav2-input::placeholder {
+  color: #c0c8d0;
+}
+
+/* Multiline textarea for street address */
+.sav2-textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--color-border-light);
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text-primary);
+  outline: none;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+  resize: none;
+  min-height: 80px;
+  line-height: 1.5;
+}
+.sav2-textarea:focus {
+  border-color: var(--color-primary);
+}
+.sav2-textarea::placeholder {
+  color: #c0c8d0;
+}
+
+/* Save button */
+.sav2-save-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: opacity 0.15s;
+}
+.sav2-save-btn:active {
+  opacity: 0.9;
+}
+.sav2-save-btn:disabled {
+  background: var(--color-border);
+  cursor: not-allowed;
+}
+
+/* Delete confirmation inside card */
+.sav2-delete-confirm {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-danger);
+}
+.sav2-delete-confirm-text {
+  flex: 1;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.sav2-delete-confirm-yes {
+  padding: 6px 16px;
+  background: var(--color-danger);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+.sav2-delete-confirm-no {
+  padding: 6px 16px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}

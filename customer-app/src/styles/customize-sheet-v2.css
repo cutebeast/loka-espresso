@@ -1,0 +1,378 @@
+/* ============================================
+   ============================================
+   Self-contained. No old CSS references.
+   ============================================ */
+.ics-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* ── Sheet ── */
+.ics-sheet {
+  background: #fff;
+  width: 100%;
+  max-width: 430px;
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  overflow: hidden;
+}
+
+.ics-handle-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 4px;
+}
+
+.ics-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--loka-border-light);
+  border-radius: 2px;
+}
+
+/* ── Image area ── */
+.ics-image-wrap {
+  width: calc(100% - 40px);
+  height: 180px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: var(--loka-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 20px 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ics-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ics-image-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ics-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+/* ── Scroll content ── */
+.ics-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 20px;
+}
+
+.ics-body { margin-bottom: 8px; }
+
+.ics-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+  margin-bottom: 4px;
+}
+
+.ics-desc {
+  font-size: 13px;
+  color: var(--loka-text-muted);
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+/* ── Live price ── */
+.ics-live-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--loka-accent-copper);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ics-price-delta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--loka-success);
+  background: rgba(133,176,133,0.1);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+/* ── Allergen warning ── */
+.ics-allergen {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(199,80,80,0.06);
+  border: 1px solid rgba(199,80,80,0.2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.ics-allergen svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--loka-danger);
+  fill: none;
+  stroke-width: 2;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ics-allergen-text {
+  font-size: 12px;
+  color: var(--loka-danger);
+  line-height: 1.5;
+}
+
+/* ── Option group ── */
+.ics-group {
+  margin-bottom: 18px;
+}
+
+.ics-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ics-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--loka-text-primary);
+}
+
+.ics-group-req {
+  font-size: 11px;
+  color: var(--loka-accent-copper);
+  font-weight: 500;
+}
+
+/* ── Popular badge ── */
+.ics-popular-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--loka-cream);
+  color: var(--loka-accent-copper);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 8px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ics-popular-badge svg {
+  width: 10px;
+  height: 10px;
+  fill: var(--loka-accent-copper);
+}
+
+/* ── Option pills ── */
+.ics-options-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ics-option-btn {
+  padding: 8px 16px;
+  border: 1.5px solid var(--loka-border-light);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--loka-text-primary);
+  background: #fff;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.ics-option-btn.selected {
+  border-color: var(--loka-primary);
+  background: rgba(56,75,22,0.06);
+  color: var(--loka-primary);
+}
+
+.ics-option-price {
+  font-size: 11px;
+  color: var(--loka-text-muted);
+}
+
+/* ── Cup preview for Size ── */
+.ics-cup-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.ics-cup-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.ics-cup-visual {
+  border: 1.5px solid var(--loka-border-light);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: #fff;
+  transition: all 0.15s;
+}
+
+.ics-cup-option.selected .ics-cup-visual {
+  border-color: var(--loka-primary);
+  background: rgba(56,75,22,0.06);
+}
+
+.ics-cup-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--loka-text-muted);
+}
+
+.ics-cup-option.selected .ics-cup-label {
+  color: var(--loka-primary);
+  font-weight: 600;
+}
+
+.ics-cup-price {
+  font-size: 10px;
+  color: var(--loka-text-muted);
+}
+
+/* ── Milk color dots ── */
+.ics-milk-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid #E0D5C0;
+}
+
+/* ── Notes ── */
+.ics-notes-section {
+  margin-bottom: 16px;
+}
+
+.ics-notes-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--loka-text-muted);
+  margin-bottom: 6px;
+}
+
+.ics-textarea {
+  width: 100%;
+  border: 1.5px solid var(--loka-border-light);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  color: var(--loka-text-primary);
+  resize: none;
+  height: 60px;
+  outline: none;
+  background: #fff;
+}
+
+.ics-textarea::placeholder { color: var(--loka-text-muted); }
+.ics-textarea:focus { border-color: var(--loka-primary); }
+
+/* ── Footer ── */
+.ics-footer {
+  padding: 12px 20px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid #E4EAEF;
+}
+
+.ics-qty-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #E4EAEF;
+  border-radius: 12px;
+  padding: 6px 12px;
+}
+
+.ics-qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--loka-text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ics-qty-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--loka-text-primary);
+  min-width: 20px;
+  text-align: center;
+}
+
+.ics-add-btn {
+  flex: 1;
+  padding: 14px;
+  background: var(--loka-primary);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  text-align: center;
+}
+
+.ics-add-btn:active { background: var(--loka-primary-dark); }
+
+/* ── Skeleton ── */
+.ics-skeleton-wrap { margin-bottom: 16px; }
+.ics-skeleton { height: 40px; border-radius: 10px; margin-bottom: 8px; }

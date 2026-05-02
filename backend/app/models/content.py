@@ -39,6 +39,7 @@ class InformationCard(Base):
     action_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     action_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     action_label: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    sections: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

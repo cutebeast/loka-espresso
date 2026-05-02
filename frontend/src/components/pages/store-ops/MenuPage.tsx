@@ -46,8 +46,11 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
   const [itemCatId, setItemCatId] = useState(0);
   const [itemAvailable, setItemAvailable] = useState(true);
   const [itemFeatured, setItemFeatured] = useState(false);
+  const [itemDietaryTags, setItemDietaryTags] = useState<string[]>([]);
   const [itemImageFile, setItemImageFile] = useState<File | null>(null);
   const [savingItem, setSavingItem] = useState(false);
+
+  const dietaryTagOptions = ['Vegan', 'Vegetarian', 'Gluten-Free', 'Dairy-Free', 'Halal', 'Hot', 'Iced', 'Caffeinated', 'Decaf', 'Popular', 'New', 'Seasonal', 'Sugar-Free'];
 
   const filteredItems = selectedCategory ? menuItems.filter(i => i.category_id === selectedCategory) : menuItems;
 
@@ -82,11 +85,12 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
   // --- Item CRUD ---
   function openCreateItem() {
     setEditingItem(null); setItemName(''); setItemDesc(''); setItemPrice(''); setItemCatId(selectedCategory || categories[0]?.id || 0);
-    setItemAvailable(true); setItemFeatured(false); setItemImageFile(null); setItemCatError(''); setItemModal(true);
+    setItemAvailable(true); setItemFeatured(false); setItemDietaryTags([]); setItemImageFile(null); setItemCatError(''); setItemModal(true);
   }
   function openEditItem(i: MerchantMenuItem) {
     setEditingItem(i); setItemName(i.name); setItemDesc(i.description || ''); setItemPrice(String(i.base_price));
-    setItemCatId(i.category_id); setItemAvailable(i.is_available); setItemFeatured(i.is_featured); setItemImageFile(null); setItemCatError(''); setItemModal(true);
+    setItemCatId(i.category_id); setItemAvailable(i.is_available); setItemFeatured(i.is_featured);
+    setItemDietaryTags(i.dietary_tags || []); setItemImageFile(null); setItemCatError(''); setItemModal(true);
   }
   function closeItemModal() { setItemModal(false); setEditingItem(null); setItemCatError(''); }
 
@@ -103,7 +107,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
           imageUrl = uploadData.url || uploadData.image_url || '';
         }
       }
-      const body = JSON.stringify({ name: itemName, description: itemDesc, base_price: parseFloat(itemPrice), category_id: itemCatId, is_available: itemAvailable, is_featured: itemFeatured, image_url: imageUrl || undefined });
+      const body = JSON.stringify({ name: itemName, description: itemDesc, base_price: parseFloat(itemPrice), category_id: itemCatId, is_available: itemAvailable, is_featured: itemFeatured, dietary_tags: itemDietaryTags.length > 0 ? itemDietaryTags : undefined, image_url: imageUrl || undefined });
       const res = editingItem
         ? await apiFetch(`/admin/items/${editingItem.id}`, undefined, { method: 'PUT', body })
         : await apiFetch(`/admin/items`, undefined, { method: 'POST', body });
@@ -307,6 +311,31 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
                 <input type="checkbox" checked={itemFeatured} onChange={e => setItemFeatured(e.target.checked)} style={{ width: 16, height: 16 }} /> <i className="fas fa-star" style={{ color: '#D18E38' }}></i> Featured
               </label>
             </div>
+          </div>
+          <div className="df-field" style={{ marginBottom: 16 }}>
+            <label className="df-label">Dietary Tags <span>(max 3)</span></label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 6 }}>
+              {dietaryTagOptions.map(tag => {
+                const checked = itemDietaryTags.includes(tag);
+                const disabled = !checked && itemDietaryTags.length >= 3;
+                return (
+                  <label key={tag} style={{
+                    display: 'flex', alignItems: 'center', gap: 4, cursor: disabled ? 'not-allowed' : 'pointer',
+                    fontSize: 13, opacity: disabled ? 0.5 : 1, padding: '4px 10px',
+                    border: '1px solid #D4DCE5', borderRadius: 8, background: checked ? '#E8EDE0' : '#fff',
+                  }}>
+                    <input type="checkbox" checked={checked} disabled={disabled}
+                      onChange={e => {
+                        if (e.target.checked) setItemDietaryTags(prev => [...prev, tag]);
+                        else setItemDietaryTags(prev => prev.filter(t => t !== tag));
+                      }}
+                      style={{ width: 14, height: 14 }}
+                    /> {tag}
+                  </label>
+                );
+              })}
+            </div>
+            <div className="df-hint">Select up to 3 tags — shown on PWA menu cards</div>
           </div>
         </div>
         <div className="df-actions">

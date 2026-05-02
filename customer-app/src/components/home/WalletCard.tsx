@@ -1,7 +1,8 @@
 'use client';
 
-import { Wallet, Crown, Gift, Ticket, ChevronRight, ArrowRight, Award } from 'lucide-react';
-import { formatPrice } from '@/lib/tokens';
+import { useRef } from 'react';
+import { ChevronRight } from 'lucide-react';
+import { useFitText } from '@/hooks/useFitText';
 
 interface WalletCardProps {
   isGuest: boolean;
@@ -15,60 +16,72 @@ interface WalletCardProps {
   onSignIn: () => void;
 }
 
+function formatRM(value: number): string {
+  return value.toLocaleString('en-MY', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatPoints(value: number): string {
+  return value.toLocaleString('en-MY');
+}
+
 export default function WalletCard({ isGuest, isAuthenticated, balance, points, tier, onTopUp, onRewards, onVouchers, onSignIn }: WalletCardProps) {
+  const amountRef = useRef<HTMLSpanElement>(null);
+
+  useFitText(amountRef, [balance], 14, 0.5);
+
   if (!isAuthenticated) {
     return (
       <div className="wallet-card wallet-card-guest" onClick={onSignIn}>
         <div className="wallet-row">
-          <span className="balance-label">
-            <Wallet size={14} strokeWidth={2} /> Loka Wallet
-          </span>
+          <span className="balance-label">💰 Loka Wallet</span>
         </div>
         <div className="wallet-row wallet-row-mt">
           <span className="guest-wallet-text">Sign in to access wallet & rewards</span>
         </div>
         <div className="wallet-chip-row">
-          <span className="wallet-chip wallet-chip-signin">
-            <ArrowRight size={12} strokeWidth={2} /> Sign In
-          </span>
+          <span className="wallet-chip wallet-chip-signin">Sign In →</span>
         </div>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="wallet-card">
       <div className="wallet-row">
-        <span className="balance-label">
-          <Wallet size={14} strokeWidth={2} /> Loka Balance
-        </span>
+        <span className="balance-label">💰 Loka Balance</span>
         <button
-          className="topup-btn"
+          className="homepage-topup-btn"
           onClick={(e) => { e.stopPropagation(); onTopUp(); }}
         >
           Top Up <ChevronRight size={12} />
         </button>
       </div>
       <div className="wallet-row wallet-row-mt">
-        <span className="amount">{formatPrice(balance)}</span>
-        <span className="points-badge">
-          <Crown size={12} strokeWidth={2} /> {points.toLocaleString()} pts
+        <span className="amount-row">
+          <span className="currency-symbol">RM</span>
+          <span className="amount-number" ref={amountRef}>{formatRM(balance)}</span>
+        </span>
+        <span className="homepage-points-badge">
+          <span className="homepage-points-icon">👑</span>
+          <span className="homepage-points-value">{formatPoints(points)} pts</span>
         </span>
       </div>
       <div className="wallet-tier-row">
         <div className="wallet-tier-badge">
-          <Award size={12} strokeWidth={2} />
-          <span>{tier} Member</span>
+          🏆 {tier} Member
         </div>
       </div>
       <div className="wallet-chip-row">
         <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onRewards(); }}>
-          <Gift size={12} strokeWidth={2} /> Rewards
+          🎁 Rewards
         </span>
         <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onVouchers(); }}>
-          <Ticket size={12} strokeWidth={2} /> Vouchers
+          🎟️ Vouchers
         </span>
       </div>
-    </>
+    </div>
   );
 }
