@@ -1,6 +1,26 @@
 # UI/UX Guidelines
 
-> Last updated: 2026-04-18 | Session 4
+> Last updated: 2026-05-02 | Session: Phase 1 UI/UX v2
+
+## Status
+
+| Page | Status | CSS |
+|---|---|---|
+| Splash | ✅ Complete | `splash-v2.css` |
+| Auth (Phone/OTP/Profile) | ✅ Complete | `phone-v2.css`, `otp-v2.css`, `profile-setup-v2.css` |
+| AuthStepIndicator | ✅ Complete | `auth-step-v2.css` |
+| Login Modal | ✅ Complete | `login-v2.css` |
+| Bottom Nav | ✅ Complete | `home-bottom-nav-v2.css` |
+| Homepage | ✅ Complete | `home-page-v2.css` |
+| QR Scanner | ✅ Complete | `qr-scanner-v2.css` |
+| Menu | ✅ Complete | `menu-page-v2.css` |
+| Cart | ✅ Complete | `cart-page-v2.css` |
+| Store Picker | ✅ Complete | `store-picker-v2.css` |
+| Toast | ✅ Complete | `toast-v2.css` |
+| **Saved Addresses** | ✅ Complete | `saved-addresses-v2.css` |
+| **Checkout** | ✅ Complete (address sheet, order items, payment) | `checkout-v2.css` |
+| Orders List | ⏳ Needs audit | `orders-list-v2.css` |
+| Order Detail | ⏳ Needs audit | `order-detail-v2.css` |
 
 ## Brand Colors (Loka Espresso)
 

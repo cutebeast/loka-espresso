@@ -36,29 +36,27 @@ export function haversineKm(
 
 /**
  * Detect user's approximate location via IP.
- * Uses ip-api.com (free, no key, 45 req/min).
+ * Uses our own backend endpoint which tries local MaxMind DB then ip-api fallback.
  */
 export async function detectIPLocation(): Promise<IPLocation | null> {
   try {
-    const res = await fetch('https://ip-api.com/json/?fields=status,lat,lon', {
-      signal: AbortSignal.timeout(5000),
-    });
-    const data = await res.json();
-    if (data?.status === 'success' && data.lat && data.lon) {
-      return { lat: data.lat, lng: data.lon };
+    const { default: api } = await import('@/lib/api');
+    const res = await api.get('/content/location', { timeout: 5000 });
+    if (res.data?.lat && res.data?.lng) {
+      return { lat: res.data.lat, lng: res.data.lng };
     }
   } catch {
-    // ip-api failed, try backup
+    // Backend unavailable — try direct ip-api
     try {
-      const res = await fetch('https://ipapi.co/json/', {
+      const res = await fetch('https://ip-api.com/json/?fields=status,lat,lon', {
         signal: AbortSignal.timeout(5000),
       });
       const data = await res.json();
-      if (data?.latitude && data?.longitude) {
-        return { lat: data.latitude, lng: data.longitude };
+      if (data?.status === 'success' && data.lat && data.lon) {
+        return { lat: data.lat, lng: data.lon };
       }
     } catch {
-      // both failed
+      // all failed
     }
   }
   return null;

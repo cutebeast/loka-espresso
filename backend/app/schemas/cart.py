@@ -7,6 +7,7 @@ class CartItemCreate(BaseModel):
     item_id: int
     quantity: int = 1
     customization_option_ids: Optional[list[int]] = None
+    store_id: Optional[int] = None
 
     @field_validator('quantity')
     @classmethod

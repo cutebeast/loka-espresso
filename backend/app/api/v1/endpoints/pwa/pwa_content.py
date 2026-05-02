@@ -6,7 +6,7 @@
 import json
 import os
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 from typing import Optional, List
@@ -268,3 +268,40 @@ async def list_stores_public(db: AsyncSession = Depends(get_db)):
     stores = result.scalars().all()
     return [{"id": s.id, "name": s.name, "address": s.address, "slug": s.slug, "lat": float(s.lat) if s.lat else None, "lng": float(s.lng) if s.lng else None}
             for s in stores]
+
+
+@router.get("/location")
+async def get_location(request: Request):
+    """Return user's approximate location based on IP using local GeoLite2 DB if available, else fallback to ip-api."""
+    try:
+        import maxminddb
+        reader = maxminddb.open_database('/app/data/GeoLite2-City.mmdb')
+        client_ip = request.client.host if request.client else '127.0.0.1'
+        if client_ip in ('127.0.0.1', '::1', 'localhost') or client_ip.startswith('172.'):
+            forwarded = request.headers.get('X-Forwarded-For', '')
+            if forwarded:
+                client_ip = forwarded.split(',')[0].strip()
+        record = reader.get(client_ip)
+        if record and 'location' in record:
+            loc = record['location']
+            lat = loc.get('latitude')
+            lng = loc.get('longitude')
+            if lat and lng:
+                return {"lat": float(lat), "lng": float(lng), "source": "maxmind"}
+    except Exception as e:
+        print(f"[location] MaxMind failed: {e}")
+
+    try:
+        import urllib.request
+        import json as json_mod
+        ip = request.client.host if request.client else ''
+        url = f'https://ip-api.com/json/{ip}?fields=status,lat,lon' if ip else 'https://ip-api.com/json/?fields=status,lat,lon'
+        req = urllib.request.Request(url, headers={'User-Agent': 'LokaPWA/1.0'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json_mod.loads(resp.read())
+            if data.get('status') == 'success':
+                return {"lat": data['lat'], "lng": data['lon'], "source": "ip-api"}
+    except Exception:
+        pass
+
+    return {"lat": 3.139, "lng": 101.687, "source": "default"}

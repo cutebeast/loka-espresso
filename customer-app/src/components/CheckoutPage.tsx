@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  ArrowLeft, Wallet, Banknote, CheckCircle2, Loader2, Receipt, UtensilsCrossed, Coffee, Tag, QrCode, ChevronRight,
+  ArrowLeft, Wallet, Banknote, CheckCircle2, Loader2, Receipt, UtensilsCrossed, Coffee, Tag, QrCode, ChevronRight, MessageSquare,
 } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -14,6 +14,8 @@ import { placeOrder } from '@/lib/cartSync';
 import TimeSlotPicker from '@/components/checkout/TimeSlotPicker';
 import DeliveryAddressCard from '@/components/checkout/DeliveryAddressCard';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
 
 const ORDER_TYPES = [
   { key: 'pickup' as const, label: 'Pickup' },
@@ -134,6 +136,7 @@ export default function CheckoutPage() {
   }
 
   return (
+    <>
     <div className="checkout-screen">
       <div className="checkout-header">
         <button className="checkout-back-btn" onClick={() => { saveDraft(); setPage('cart'); }}>
@@ -238,13 +241,15 @@ export default function CheckoutPage() {
           </button>
         </div>
 
-        {/* Order Notes — grey bg read-only */}
-        {notes && (
-          <div className="checkout-section">
-            <div className="co-section-title">Order Notes</div>
+        {/* Order Notes — grey bg read-only, always visible */}
+        <div className="checkout-section">
+          <div className="co-section-title">Order Notes</div>
+          {notes ? (
             <div className="co-notes-display">{notes}</div>
-          </div>
-        )}
+          ) : (
+            <div className="co-notes-display" style={{ color: '#c0c8d0', fontStyle: 'italic' }}>No special requests. Add notes from your cart.</div>
+          )}
+        </div>
 
         {/* Payment Method */}
         <div className="checkout-section">
@@ -376,5 +381,17 @@ export default function CheckoutPage() {
         )}
       </div>
     </div>
-  );
+
+    {/* Voucher / Reward Bottom Sheet */}
+    <BottomSheet isOpen={showRewardSheet} onClose={() => setShowRewardSheet(false)} title="Voucher & Rewards">
+      <div className="sheet-body">
+        <VoucherRewardSelector
+          subtotal={subtotal}
+          selectedType={discountType || 'none'}
+          selectedCode={discountCode}
+          onChange={(type, code, val) => { setDiscountType(type === 'none' ? null : type); setDiscountCode(code || ''); setDiscountValue(val || 0); }}
+        />
+      </div>
+    </BottomSheet>
+  </>);
 }

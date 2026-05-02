@@ -41,6 +41,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const dismissed = useRef(false);
+  const prevLabel = useRef(label);
   const user = useAuthStore((s) => s.user);
 
   /* Fetch */
@@ -69,9 +70,13 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
     [saved, label],
   );
 
-  /* When label changes → pull from address book (full address goes to line1, unit to unit) */
+  /* When label changes → pull from address book */
   useEffect(() => {
     if (!open) return;
+    const labelChanged = prevLabel.current !== label;
+    prevLabel.current = label;
+    // Allow fill on label change; only guard against stale saved updates
+    if (!labelChanged && (unit || line1 || line2 || city || postcode)) return;
     const m = savedForLabel;
     if (m) {
       setUnit(m.apartment || '');
@@ -92,7 +97,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
       setLat(undefined);
       setLng(undefined);
     }
-  }, [label, open]);
+  }, [label, open, saved]);
 
   /* Open sheet */
   const openSheet = () => {
@@ -151,16 +156,28 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
     setOpen(false);
   };
 
-  /* Display label */
-  const dl = (): string | null => {
-    if (!value?.address) return null;
+  /* Display label + formatted multi-line address */
+  const displayInfo = (): { label: string | null; formatted: string } => {
+    if (!value?.address) return { label: null, formatted: '' };
     const m = saved.find(s => {
       const sFull = s.apartment ? `${s.apartment}, ${s.address}` : s.address;
       return value.address.includes(s.address) || value.address.includes(sFull);
     });
-    return m?.label || null;
+    if (m) {
+      const lines: string[] = [];
+      if (m.apartment && m.address) lines.push(`${m.apartment}, ${m.address}`);
+      else if (m.apartment) lines.push(m.apartment);
+      else if (m.address) lines.push(m.address);
+      if (m.building) lines.push(m.building);
+      const loc = [m.postcode, m.city].filter(Boolean).join(' ');
+      if (loc) lines.push(loc);
+      if (m.state) lines.push(m.state);
+      return { label: m.label, formatted: lines.join('\n') };
+    }
+    return { label: null, formatted: value.address };
   };
 
+  const info = displayInfo();
   const has = !!value?.address;
 
   return (
@@ -169,8 +186,8 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
         <div className="dac-display-card">
           <div className="dac-display-icon"><MapPin size={18} color="#fff" /></div>
           <div className="dac-display-info">
-            {dl() && <div className="dac-display-label">{dl()}</div>}
-            <div className="dac-display-address">{value!.address}</div>
+            {info.label && <div className="dac-display-label">{info.label}</div>}
+            <div className="dac-display-address">{info.formatted}</div>
             <button onClick={openSheet} className="dac-change-btn">Change address</button>
           </div>
         </div>

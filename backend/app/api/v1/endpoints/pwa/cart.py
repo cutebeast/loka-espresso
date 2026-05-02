@@ -138,7 +138,9 @@ async def add_to_cart(req: CartItemCreate, user: Customer = Depends(get_current_
         )
 
     ci = CartItem(
-        user_id=user.id, item_id=req.item_id,
+        user_id=user.id,
+        store_id=req.store_id or 0,
+        item_id=req.item_id,
         quantity=req.quantity,
         customization_option_ids=option_ids,
         customization_hash=hash_val,

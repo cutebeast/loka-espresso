@@ -185,6 +185,12 @@
 .co-store-icon { width: 32px; height: 32px; background: var(--loka-primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; flex-shrink: 0; }
 .co-store-name { font-size: 13px; font-weight: 600; color: var(--loka-text-primary); }
 .co-store-address { font-size: 11px; color: var(--loka-text-muted); margin-top: 2px; }
+.co-no-store { text-align: center; padding: 16px 0; }
+.co-no-store p { font-size: 13px; color: var(--loka-text-muted); margin-bottom: 10px; }
+.co-no-store-btn {
+  display: inline-block; padding: 10px 24px; background: var(--loka-primary); color: #fff;
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font-sans);
+}
 .co-order-item-row {
   display: flex; align-items: center; gap: 10px; padding: 10px 0;
   border-bottom: 1px solid #E4EAEF;
@@ -253,10 +259,10 @@
 }
 
 /* ── Order item enhanced (matching cart style) ── */
-.co-order-item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.co-order-item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
 .co-order-item-tag {
-  padding: 2px 8px; background: rgba(56,75,22,0.08); border-radius: 4px;
-  font-size: 11px; font-weight: 500; color: var(--loka-text-secondary);
+  padding: 2px 8px; background: #F2F6EA; border-radius: 10px;
+  font-size: 11px; font-weight: 500; color: var(--loka-primary);
 }
 .co-order-item-unit { font-size: 11px; color: var(--loka-text-muted); margin-top: 2px; }
 .co-order-item-total { font-size: 14px; font-weight: 700; color: var(--loka-text-primary); }

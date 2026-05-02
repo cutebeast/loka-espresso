@@ -1,6 +1,7 @@
 import api from './api';
 import type { CartItem } from './api';
 import { useCartStore } from '@/stores/cartStore';
+import { useUIStore } from '@/stores/uiStore';
 
 interface CustomizationStructure {
   options?: Array<{ id: number; name: string; price_adjustment: number }>;
@@ -77,10 +78,13 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
 
         customizationOptionIds.sort((a, b) => a - b);
 
+        const storeId = useUIStore.getState().selectedStore?.id;
+
         await api.post('/cart/items', {
           item_id: desired.menu_item_id,
           quantity: desired.quantity,
           customization_option_ids: customizationOptionIds,
+          store_id: storeId,
         });
       }
     } catch (err) {
