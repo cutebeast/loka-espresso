@@ -115,7 +115,7 @@ export default function CartPage() {
     return (
       <div className="cart-empty">
         <div className="cart-empty-icon">
-          <ShoppingBag size={32} color="#384B16" className="co-wallet-icon" />
+          <ShoppingBag size={32} color="#384B16" />
         </div>
         <p className="cart-empty-title">Your cart is empty</p>
         <p className="cart-empty-text">Looks like you haven&apos;t added anything yet</p>

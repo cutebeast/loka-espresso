@@ -180,6 +180,7 @@
   border-radius: 40px; font-size: 12px; font-weight: 600; font-family: var(--font-sans); cursor: pointer;
 }
 .co-wallet-topup-btn:active { background: rgba(255,255,255,0.3); }
+.spinning { animation: spin 1s linear infinite; }
 .co-payment-card.disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
 .co-store-info { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
 .co-store-icon { width: 36px; height: 36px; background: var(--loka-cream); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
