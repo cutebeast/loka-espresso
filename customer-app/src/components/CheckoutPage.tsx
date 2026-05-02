@@ -149,11 +149,10 @@ export default function CheckoutPage() {
             <div style={{ flex: 1 }}><div className="co-wallet-label">Wallet Balance</div><div className="co-wallet-amount">{formatPrice(balance)}</div></div>
             {paymentMethod === 'wallet' && <CheckCircle2 size={18} color="#fff" />}
           </div>
-          <div className={`co-payment-card ${paymentMethod === 'pay_at_store' ? 'selected' : ''}`} onClick={() => setPaymentMethod('pay_at_store')}>
+          {orderMode !== 'delivery' && <div className={`co-payment-card ${paymentMethod === 'pay_at_store' ? 'selected' : ''}`} onClick={() => setPaymentMethod('pay_at_store')}>
             <div className="co-payment-icon co-payment-icon-cash"><Banknote size={14} color="#fff" /></div>
             <div className="co-payment-info"><div className="co-payment-label">Pay at Store</div></div>
-            <div className="co-payment-check"><CheckCircle2 size={12} /></div>
-          </div>
+            <div className="co-payment-check"><CheckCircle2 size={12} /></div></div>}
           <div className={`co-payment-card ${paymentMethod === 'cod' ? 'selected' : ''}`} onClick={() => setPaymentMethod('cod')}>
             <div className="co-payment-icon co-payment-icon-cash"><Banknote size={14} color="#fff" /></div>
             <div className="co-payment-info"><div className="co-payment-label">Cash on Delivery</div></div>

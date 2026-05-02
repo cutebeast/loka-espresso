@@ -102,8 +102,8 @@ def _order_out(order: Order, timeline: list[dict] | None = None) -> OrderOut:
         delivery_quote_id=order.delivery_quote_id,
         delivery_tracking_url=order.delivery_tracking_url,
         delivery_eta_minutes=order.delivery_eta_minutes,
-        store_name=order.store.name if order.store else None,
-        store_address=order.store.address if order.store else None,
+        store_name=None,
+        store_address=None,
         recipient_name=order.recipient_name,
         recipient_phone=order.recipient_phone,
         status_timeline=timeline or None,
@@ -406,7 +406,14 @@ async def create_order(
     db.add(notif)
     await db.flush()
 
-    return _order_out(order)
+    out = _order_out(order)
+    # Fetch store info separately to avoid lazy-load in async
+    store_result = await db.execute(select(Store).where(Store.id == order.store_id))
+    store = store_result.scalar_one_or_none()
+    if store:
+        out.store_name = store.name
+        out.store_address = store.address
+    return out
 
 
 @router.get("", response_model=OrderListOut)
@@ -431,6 +438,10 @@ async def list_orders(
     result = await db.execute(q.offset((page - 1) * page_size).limit(page_size))
     orders = result.scalars().all()
     out = [_order_out(o) for o in orders]
+    for i, o in enumerate(orders):
+        if o.store:
+            out[i].store_name = o.store.name
+            out[i].store_address = o.store.address
     return OrderListOut(items=out, total=total, page=page, page_size=page_size, total_pages=max(1, (total + page_size - 1) // page_size))
 
 
@@ -453,7 +464,10 @@ async def get_order(
         select(OrderStatusHistory).where(OrderStatusHistory.order_id == order_id).order_by(OrderStatusHistory.created_at)
     )
     timeline = [{"status": h.status.value if hasattr(h.status, 'value') else str(h.status), "note": h.note, "created_at": h.created_at.isoformat() if h.created_at else None} for h in hist_result.scalars().all()]
-    return _order_out(order, timeline=timeline)
+    out = _order_out(order, timeline=timeline)
+    out.store_name = order.store.name if order.store else None
+    out.store_address = order.store.address if order.store else None
+    return out
 
 
 @router.post("/{order_id}/reorder")
