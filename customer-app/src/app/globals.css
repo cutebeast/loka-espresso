@@ -26,6 +26,7 @@
 @import "../styles/info-cards-detail.css";
 @import "../styles/profile.css";
 @import "../styles/wallet.css";
+@import "../styles/wallet-v2.css";
 @import "../styles/my-rewards.css";
 @import "../styles/my-rewards-detail.css";
 @import "../styles/settings.css";
@@ -40,6 +41,9 @@
 @import "../styles/voucher-reveal.css";
 @import "../styles/redemption-code.css";
 @import "../styles/terms-list.css";
+@import "../styles/my-card-v2.css";
+@import "../styles/referral-v2.css";
+@import "../styles/profile-subpages.css";
 
 /* ============================================
    REMAINING UTILITY CLASSES (not in modules)
