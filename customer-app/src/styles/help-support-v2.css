@@ -1,0 +1,233 @@
+/* ── Settings Page ─────────────────────────────────────── */
+
+.settings-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--loka-bg-light);
+}
+.settings-content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.settings-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--loka-text-muted);
+  margin-bottom: 4px;
+}
+.settings-menu-card {
+  background: var(--loka-bg-card);
+  border-radius: 20px;
+  padding: 4px 0;
+  border: 1px solid var(--loka-border-light);
+}
+.settings-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--loka-border-light);
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  width: 100%;
+  text-align: left;
+}
+.settings-menu-item:last-child { border-bottom: none; }
+.settings-menu-item:active { background: rgba(0,0,0,0.02); }
+.settings-menu-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-right: 14px;
+  flex-shrink: 0;
+}
+.settings-icon-terms { background: #E6F0E8; color: var(--loka-primary); }
+.settings-icon-privacy { background: #FDF3E7; color: var(--loka-accent-copper); }
+.settings-menu-label {
+  flex: 1;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--loka-text-primary);
+}
+.settings-menu-arrow {
+  color: var(--loka-border);
+  font-size: 14px;
+}
+.settings-app-info {
+  background: var(--loka-bg-card);
+  border-radius: 20px;
+  padding: 16px;
+  border: 1px solid var(--loka-border-light);
+  text-align: center;
+  font-size: 14px;
+  color: var(--loka-text-secondary);
+}
+.settings-version {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.settings-love {
+  font-size: 12px;
+  color: var(--loka-text-muted);
+}
+
+/* ── Support Page ──────────────────────────────────────── */
+
+.support-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--loka-bg-light);
+}
+.support-form-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.support-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.support-input-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--loka-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.support-input-field {
+  border: 1.5px solid var(--loka-border);
+  border-radius: 16px;
+  padding: 16px;
+  font-size: 15px;
+  font-family: 'Inter', sans-serif;
+  color: var(--loka-text-primary);
+  background: white;
+  outline: none;
+  width: 100%;
+}
+.support-input-field:focus {
+  border-color: var(--loka-primary);
+  box-shadow: 0 0 0 3px rgba(56,75,22,0.08);
+}
+textarea.support-input-field {
+  min-height: 120px;
+  resize: vertical;
+}
+.support-submit-btn {
+  background: var(--loka-primary);
+  color: white;
+  border: none;
+  border-radius: 40px;
+  padding: 16px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 8px;
+  box-shadow: 0 4px 12px rgba(56,75,22,0.15);
+}
+.support-submit-btn:active {
+  background: var(--loka-primary-dark);
+  transform: scale(0.98);
+}
+.support-success-msg {
+  text-align: center;
+  color: #85B085;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+/* ── Legal Page (Terms & Privacy) ──────────────────────── */
+
+.legal-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+}
+.legal-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--loka-border-light);
+  flex-shrink: 0;
+}
+.legal-back-btn {
+  background: none;
+  border: none;
+  color: var(--loka-text-primary);
+  font-size: 20px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  margin-right: 10px;
+}
+.legal-back-btn:active { background: rgba(0,0,0,0.04); }
+.legal-page-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+}
+.legal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 18px 32px;
+}
+.legal-body {
+  color: #36454b;
+  line-height: 1.7;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+}
+.legal-body h1,
+.legal-body h2,
+.legal-body h3 {
+  color: var(--loka-text-primary);
+  font-weight: 700;
+  margin: 24px 0 12px;
+}
+.legal-body h1 { font-size: 1.3rem; }
+.legal-body h2 { font-size: 1.15rem; }
+.legal-body h3 { font-size: 1.05rem; }
+.legal-body p {
+  margin-bottom: 12px;
+}
+.legal-body ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin-bottom: 16px;
+}
+.legal-body li {
+  margin-bottom: 8px;
+}
+.legal-last-updated {
+  font-size: 0.8rem;
+  color: var(--loka-text-muted);
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--loka-border-light);
+}

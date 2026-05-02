@@ -121,11 +121,11 @@ export default function OrderDetailPage() {
         {/* ETA Card */}
         {['pending', 'confirmed', 'preparing', 'in_progress', 'ready'].includes(order.status?.toLowerCase()) && (
           <div className="od-eta-card">
-            <div className="od-eta-title">Estimated {order.order_type === 'delivery' ? 'Delivery' : 'Ready'}</div>
+            <div className="od-eta-title">Estimated {order.order_type === 'delivery' ? 'Delivery' : order.order_type === 'dine_in' ? 'Ready' : 'Ready'}</div>
             <div className="od-eta-time">
               {order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
             </div>
-            <div className="od-eta-sub">{order.order_type === 'delivery' ? 'Our team is preparing your order' : 'Being prepared for pickup'}</div>
+            <div className="od-eta-sub">{order.order_type === 'delivery' ? 'Our team is preparing your order' : order.order_type === 'dine_in' ? 'Being prepared by our kitchen' : 'Being prepared for pickup'}</div>
             <div className="od-eta-progress"><div className="od-eta-fill" style={{ width: `${Math.min((current / steps.length) * 100, 100)}%` }} /></div>
           </div>
         )}

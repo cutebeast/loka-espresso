@@ -25,10 +25,14 @@
 @import "../styles/info-cards-list.css";
 @import "../styles/info-cards-detail.css";
 @import "../styles/profile.css";
+@import "../styles/profile-v2.css";
 @import "../styles/wallet.css";
 @import "../styles/wallet-v2.css";
 @import "../styles/my-rewards.css";
 @import "../styles/my-rewards-detail.css";
+@import "../styles/rewards-v2.css";
+@import "../styles/profile-v2.css";
+@import "../styles/history-v2.css";
 @import "../styles/settings.css";
 @import "../styles/cart-page-v2.css";
 @import "../styles/orders-list-v2.css";
@@ -44,6 +48,14 @@
 @import "../styles/my-card-v2.css";
 @import "../styles/referral-v2.css";
 @import "../styles/profile-subpages.css";
+@import "../styles/promotions-v2.css";
+@import "../styles/information-v2.css";
+@import "../styles/account-details-v2.css";
+@import "../styles/payment-methods-v2.css";
+@import "../styles/notifications-v2.css";
+@import "../styles/help-support-v2.css";
+@import "../styles/settings-v2.css";
+@import "../styles/legal-v2.css";
 
 /* ============================================
    REMAINING UTILITY CLASSES (not in modules)

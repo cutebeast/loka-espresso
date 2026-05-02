@@ -1,0 +1,566 @@
+/* ── My Rewards & Vouchers Page ────────────────────────── */
+
+.myrv-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--loka-bg-light);
+}
+.myrv-tab-bar {
+  display: flex;
+  padding: 12px 20px;
+  gap: 8px;
+  flex-shrink: 0;
+  background: var(--loka-bg-light);
+}
+.myrv-tab {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid var(--loka-border-light);
+  background: var(--loka-bg-card);
+  color: var(--loka-text-secondary);
+  transition: all 0.22s ease;
+}
+.myrv-tab.active {
+  background: var(--loka-primary);
+  color: white;
+  border-color: var(--loka-primary);
+}
+.myrv-owned-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.myrv-owned-card {
+  background: var(--loka-bg-card);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--loka-border-light);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.myrv-owned-card:active { transform: scale(0.985); }
+.myrv-item-thumb {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
+  background-color: #F3EEE5;
+  flex-shrink: 0;
+}
+.myrv-item-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  color: white;
+}
+.myrv-icon-reward { background: var(--loka-accent-copper); }
+.myrv-icon-voucher { background: var(--loka-primary); }
+.myrv-item-body { flex: 1; min-width: 0; }
+.myrv-item-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--loka-text-primary);
+}
+.myrv-item-desc {
+  font-size: 12px;
+  color: var(--loka-text-muted);
+  margin-top: 2px;
+}
+.myrv-item-code {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--loka-primary-dark);
+  margin-top: 4px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+.myrv-item-expiry {
+  font-size: 11px;
+  color: var(--loka-text-muted);
+  margin-top: 2px;
+}
+
+/* ============================================
+   MIGRATED INLINE STYLES — MyRewardsPage
+   ============================================ */
+
+.mrewards-spacer {
+  width: 36px;
+}
+
+.mrewards-empty {
+  text-align: center;
+  padding: 48px 20px;
+  background: var(--color-white);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-light);
+}
+
+.mrewards-empty-icon {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: var(--color-border-light);
+}
+
+.mrewards-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+
+.mrewards-empty-text {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.mrewards-code {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin: 16px 0;
+  color: var(--color-text-primary);
+}
+
+.mrewards-modal-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.mrewards-modal-btns {
+  margin-top: 20px;
+}
+
+.mrewards-copy-icon {
+  display: inline;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.mrewards-close-btn {
+  background: var(--color-primary) !important;
+}
+/* ── Reward / Promo Detail Pages ────────────────────────── */
+
+.rd-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #d4c9a8;
+}
+.rd-hero-img {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+.rd-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 50%);
+}
+.rd-back-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 30px;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a3e2f;
+  font-size: 1.3rem;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.06);
+  border: 1px solid rgba(230,215,200,0.5);
+  cursor: pointer;
+  z-index: 5;
+}
+.rd-hero-tag {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  padding: 6px 16px;
+  border-radius: 40px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  z-index: 2;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rd-tag-copper { background: var(--loka-copper); }
+.rd-tag-primary { background: var(--loka-primary); }
+.rd-tag-teal    { background: #2a6d5e; }
+
+.rd-content {
+  padding: 20px 18px 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+.rd-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1a2e2a;
+  margin-bottom: 8px;
+  font-family: 'Playfair Display', serif;
+  line-height: 1.15;
+}
+.rd-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 18px;
+  font-size: 0.9rem;
+  color: #5f6c7a;
+  align-items: center;
+}
+.rd-meta i,
+.rd-meta svg {
+  color: var(--loka-copper);
+  margin-right: 5px;
+  flex-shrink: 0;
+}
+.rd-meta-pill {
+  padding: 4px 12px;
+  border-radius: 30px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.rd-pill-copper { background: #fdf3e7; color: #b86e2c; }
+.rd-pill-brown  { background: #f6ede4; color: #b6572a; }
+.rd-pill-green  { background: #e6f0e8; color: #1a4e3a; }
+.rd-desc {
+  color: #36454b;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+.rd-section-title {
+  font-weight: 650;
+  font-size: 1.1rem;
+  margin: 18px 0 12px;
+  color: #1f3d33;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rd-terms-list {
+  list-style: none;
+  margin-bottom: 20px;
+  padding: 0;
+}
+.rd-terms-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid #f0eae4;
+  font-size: 0.9rem;
+  color: var(--loka-text-secondary);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.rd-terms-list li svg {
+  color: var(--loka-copper);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.rd-action-btn {
+  background: var(--loka-primary);
+  color: white;
+  border: none;
+  padding: 16px 20px;
+  border-radius: 60px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  box-shadow: 0 8px 16px rgba(56,75,22,0.15);
+}
+.rd-action-btn:active { background: var(--loka-primary-dark); }
+.rd-action-btn:disabled {
+  background: #C4CED8;
+  color: #6A7A8A;
+  pointer-events: none;
+  box-shadow: none;
+}
+.rd-action-btn-outline {
+  background: transparent;
+  color: var(--loka-primary);
+  border: 1.5px solid var(--loka-primary);
+  box-shadow: none;
+}
+.rd-points-note {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--loka-text-muted);
+  margin-top: 8px;
+}
+.rd-remaining-badge {
+  font-size: 0.8rem;
+  color: #C75050;
+  margin-top: 8px;
+  text-align: center;
+}
+.rd-success-state {
+  text-align: center;
+  padding: 20px;
+}
+.rd-success-state svg {
+  font-size: 48px;
+  color: #85B085;
+  margin-bottom: 12px;
+}
+.rd-success-state p {
+  color: var(--loka-text-primary);
+  font-weight: 600;
+}
+.rd-success-state .rd-success-sub {
+  font-size: 0.9rem;
+  color: var(--loka-text-secondary);
+  margin-top: 8px;
+  font-weight: 400;
+}
+
+/* ── Survey Block ───────────────────────────────────────── */
+.survey-block {
+  background: #faf7f4;
+  border-radius: 20px;
+  padding: 18px;
+  margin: 20px 0;
+}
+.survey-question {
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--loka-text-primary);
+}
+.survey-option {
+  background: white;
+  padding: 12px 16px;
+  border-radius: 18px;
+  margin-bottom: 10px;
+  border: 1.5px solid #e3d8cf;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--loka-text-secondary);
+  transition: border-color 0.15s, background 0.15s;
+}
+.survey-option:active {
+  transform: scale(0.99);
+}
+.survey-option.selected {
+  border: 2px solid var(--loka-primary);
+  background: #f2f6f4;
+  color: var(--loka-primary);
+  font-weight: 600;
+}
+.survey-submit-btn {
+  background: #6f4e2e;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 40px;
+  width: 100%;
+  font-weight: 600;
+  margin-top: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.survey-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.voucher-reveal {
+  background: #e6f2e8;
+  border-radius: 20px;
+  padding: 18px;
+  text-align: center;
+  margin-top: 18px;
+}
+.voucher-reveal svg {
+  color: #1a6e4b;
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+}
+.voucher-reveal-title {
+  font-weight: 600;
+  margin: 8px 0;
+  color: var(--loka-text-primary);
+}
+.voucher-code {
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+  background: white;
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 30px;
+  margin: 12px 0;
+  border: 1px dashed #1a3e2f;
+  color: var(--loka-text-primary);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+.voucher-copy-btn {
+  margin-top: 12px;
+  background: none;
+  border: 1.5px solid #1a3e2f;
+  padding: 8px 16px;
+  border-radius: 40px;
+  width: 100%;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--loka-text-primary);
+  font-size: 0.95rem;
+}
+
+/* ============================================
+   REWARDS & PROMOS PAGE
+   ============================================ */
+
+.rewards-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--loka-bg-light);
+  overflow: hidden;
+}
+
+.rewards-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--loka-bg-card);
+  border-bottom: 1px solid var(--loka-border-light);
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  z-index: 10;
+}
+
+.rewards-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rewards-back-btn {
+  background: none;
+  border: none;
+  color: var(--loka-text-primary);
+  font-size: 20px;
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.rewards-back-btn:active { background: rgba(0,0,0,0.04); }
+
+.rewards-page-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+  letter-spacing: -0.3px;
+}
+
+.rewards-points-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #1F2E0B 0%, #384B16 100%);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 150px;
+}
+
+.rewards-calendar-meta {
+  display: inline-flex;
+  align-items: center;
+}
+
+.rd-action-btn.rewards-action-btn-disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.rewards-action-btn-mt {
+  margin-top: 20px;
+}
+
+.rewards-skeleton-card {
+  height: 110px;
+  border-radius: var(--radius-xl);
+}
+
+.rewards-card-fallback-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Empty state */
+.rd-empty {
+  text-align: center;
+  padding: 48px 20px;
+  background: var(--color-white);
+  border-radius: var(--radius-xl);
+}
+.rd-empty-icon {
+  display: inline-block;
+  margin-bottom: 12px;
+}
+.rd-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+.rd-empty-text {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
