@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.core.security import now_utc, ensure_utc
 from app.models.content import InformationCard
 from app.models.notification import NotificationBroadcast
+from app.schemas.store import StoreOut
 
 router = APIRouter(prefix="/content", tags=["PWA Content"])
 
@@ -260,14 +261,14 @@ async def get_pwa_notifications(
         "server_time": datetime.now(timezone.utc).isoformat()
     }
 
-@router.get("/stores")
+@router.get("/stores", response_model=list[StoreOut])
 async def list_stores_public(db: AsyncSession = Depends(get_db)):
     """Public endpoint: list all active stores."""
     from app.models.store import Store
+    from app.schemas.store import StoreOut
     result = await db.execute(select(Store).where(Store.is_active == True).order_by(Store.name))
     stores = result.scalars().all()
-    return [{"id": s.id, "name": s.name, "address": s.address, "slug": s.slug, "lat": float(s.lat) if s.lat else None, "lng": float(s.lng) if s.lng else None}
-            for s in stores]
+    return [StoreOut.model_validate(s) for s in stores]
 
 
 @router.get("/location")

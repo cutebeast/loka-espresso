@@ -210,7 +210,7 @@ async def create_order(
         order_items.append({
             "item_id": ci.item_id, "name": name, "quantity": ci.quantity,
             "unit_price": price, "customizations": customizations_data,
-            "line_total": line_total,
+            "line_total": line_total, "image_url": mi.image_url,
         })
         subtotal += line_total
 

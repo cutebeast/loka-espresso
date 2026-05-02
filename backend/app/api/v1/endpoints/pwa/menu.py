@@ -10,6 +10,7 @@ from app.models.marketing import CustomizationOption
 from app.schemas.menu import (
     MenuCategoryOut, CategoryCreate, MenuItemOut, MenuItemCreate, MenuItemUpdate,
 )
+from app.schemas.store import StoreOut
 
 router = APIRouter(prefix="/menu", tags=["Menu"])
 
@@ -122,14 +123,14 @@ async def list_customizations_public(item_id: int, db: AsyncSession = Depends(ge
     )
     return [{"id": c.id, "name": c.name, "option_type": c.option_type, "price_adjustment": to_float(c.price_adjustment), "is_popular": c.is_popular} for c in result.scalars().all()]
 
-@router.get("/stores")
+@router.get("/stores", response_model=list[StoreOut])
 async def list_stores_public(db: AsyncSession = Depends(get_db)):
     """Public endpoint: list all active stores."""
     from app.models.store import Store
+    from app.schemas.store import StoreOut
     from sqlalchemy import select as sa_select
     result = await db.execute(
         sa_select(Store).where(Store.is_active == True).order_by(Store.name)
     )
     stores = result.scalars().all()
-    return [{"id": s.id, "name": s.name, "address": s.address, "slug": s.slug}
-            for s in stores]
+    return [StoreOut.model_validate(s) for s in stores]
