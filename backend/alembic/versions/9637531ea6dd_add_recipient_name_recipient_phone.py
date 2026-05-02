@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = '9637531ea6dd'
-down_revision = '50327a33c253'
+down_revision = 'd4e5f6a7b8c9'
 
 def upgrade():
     op.add_column('orders', sa.Column('recipient_name', sa.String(255), nullable=True))
