@@ -219,6 +219,13 @@ async def list_all_orders(
                 "delivery_courier_name": o.delivery_courier_name,
                 "delivery_courier_phone": o.delivery_courier_phone,
                 "delivery_eta_minutes": o.delivery_eta_minutes,
+                "pos_synced_at": o.pos_synced_at.isoformat() if o.pos_synced_at else None,
+                "pos_synced_by": o.pos_synced_by,
+                "delivery_dispatched_at": o.delivery_dispatched_at.isoformat() if o.delivery_dispatched_at else None,
+                "delivery_dispatched_by": o.delivery_dispatched_by,
+                "staff_notes": o.staff_notes,
+                "recipient_name": o.recipient_name,
+                "recipient_phone": o.recipient_phone,
                 "created_at": o.created_at.isoformat() if o.created_at else None,
                 "updated_at": o.updated_at.isoformat() if o.updated_at else None,
             }

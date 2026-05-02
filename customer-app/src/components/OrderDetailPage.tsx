@@ -139,20 +139,24 @@ export default function OrderDetailPage() {
               {order.status === 'completed' ? 'Enjoy your order!' : order.status === 'cancelled' ? 'This order was cancelled' : 'Your order is being processed'}
             </div>
           </div>
-          <div className="od-progress-track">
-            {steps.map((step, i) => {
-              const done = i < current;
-              const cur = i === current;
-              return (
-                <div key={step} className={`od-progress-col${done ? ' completed' : ''}`}>
-                  <div className={`od-step-circle${done ? ' done' : ''}${cur ? ' current' : ''}`}>
-                    {done ? <Check size={14} /> : cur ? '⌛' : '·'}
+          {order.status !== 'cancelled' ? (
+            <div className="od-progress-track">
+              {steps.map((step, i) => {
+                const done = i < current;
+                const cur = i === current;
+                return (
+                  <div key={step} className={`od-progress-col${done ? ' completed' : ''}`}>
+                    <div className={`od-step-circle${done ? ' done' : ''}${cur ? ' current' : ''}`}>
+                      {done ? <Check size={14} /> : cur ? '⌛' : '·'}
+                    </div>
+                    <div className={`od-step-text${done ? ' done' : ''}${cur ? ' current' : ''}`}>{step}</div>
                   </div>
-                  <div className={`od-step-text${done ? ' done' : ''}${cur ? ' current' : ''}`}>{step}</div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--loka-danger)', fontWeight: 600 }}>This order was cancelled</div>
+          )}
         </div>
 
         {/* Delivery / Contact Info */}
