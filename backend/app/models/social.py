@@ -38,5 +38,5 @@ class Favorite(Base):
     item_id: Mapped[int] = mapped_column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    user: Mapped["Customer"] = relationship("Customer")
+    user: Mapped["Customer"] = relationship("Customer", foreign_keys=[user_id])
     menu_item: Mapped[MenuItem] = relationship("MenuItem")
