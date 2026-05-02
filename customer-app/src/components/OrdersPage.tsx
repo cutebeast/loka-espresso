@@ -99,10 +99,10 @@ export default function OrdersPage() {
       </div>
 
       <div className="orders-scroll">
-        <div className="orders-pull-refresh">
+        <button className="orders-pull-refresh" onClick={fetchOrders} disabled={isLoading}>
           {isLoading ? <span className="orders-refresh-icon" /> : <RefreshCw size={14} />}
-          Pull down to refresh
-        </div>
+          Tap to refresh
+        </button>
 
         {activeOrders.length > 0 && (
           <>

@@ -86,6 +86,10 @@ class OrderOut(BaseModel):
     delivery_quote_id: Optional[str] = None
     delivery_tracking_url: Optional[str] = None
     delivery_eta_minutes: Optional[int] = None
+    store_name: Optional[str] = None
+    store_address: Optional[str] = None
+    recipient_name: Optional[str] = None
+    recipient_phone: Optional[str] = None
     delivery_courier_name: Optional[str] = None
     delivery_courier_phone: Optional[str] = None
     delivery_last_event_at: Optional[datetime] = None

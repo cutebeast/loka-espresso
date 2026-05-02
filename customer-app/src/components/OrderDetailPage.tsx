@@ -180,7 +180,10 @@ export default function OrderDetailPage() {
             <div className="od-info-icon green">{order.order_type === 'delivery' ? '🛵' : order.order_type === 'dine_in' ? '🍽️' : '🛍️'}</div>
             <div className="od-info-text">
               <div className="od-info-label">{order.order_type === 'delivery' ? 'Delivery' : order.order_type === 'dine_in' ? 'Dine-in' : 'Pickup'}</div>
-              <div className="od-info-value">{order.store_name ? `From ${order.store_name}` : `Store #${order.store_id || '?'}`}</div>
+              <div className="od-info-value">{order.store_name ? `From ${order.store_name}` : order.store_address || `Store #${order.store_id || '?'}`}</div>
+              {order.store_address && order.store_name && (
+                <div className="od-info-value" style={{ fontSize: 11, marginTop: 2 }}>{order.store_address}</div>
+              )}
             </div>
           </div>
         </div>

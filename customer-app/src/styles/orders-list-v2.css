@@ -66,7 +66,13 @@
   font-size: 12px;
   color: var(--loka-text-muted);
   font-weight: 500;
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  font-family: var(--font-sans);
 }
+.orders-pull-refresh:active { opacity: 0.6; }
 
 .orders-refresh-icon {
   width: 20px;

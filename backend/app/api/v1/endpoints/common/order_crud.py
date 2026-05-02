@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
+from sqlalchemy.orm import selectinload
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.commerce import (
@@ -101,17 +102,11 @@ def _order_out(order: Order, timeline: list[dict] | None = None) -> OrderOut:
         delivery_quote_id=order.delivery_quote_id,
         delivery_tracking_url=order.delivery_tracking_url,
         delivery_eta_minutes=order.delivery_eta_minutes,
-        delivery_courier_name=order.delivery_courier_name,
-        delivery_courier_phone=order.delivery_courier_phone,
-        delivery_last_event_at=order.delivery_last_event_at,
-        pos_synced_at=order.pos_synced_at,
-        pos_synced_by=order.pos_synced_by,
-        delivery_dispatched_at=order.delivery_dispatched_at,
-        delivery_dispatched_by=order.delivery_dispatched_by,
-        staff_notes=order.staff_notes,
-        created_at=order.created_at,
-        updated_at=order.updated_at,
-        status_timeline=timeline,
+        store_name=order.store.name if order.store else None,
+        store_address=order.store.address if order.store else None,
+        recipient_name=order.recipient_name,
+        recipient_phone=order.recipient_phone,
+        status_timeline=timeline or None,
     )
 
 
@@ -445,7 +440,9 @@ async def get_order(
     user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Order).where(Order.id == order_id))
+    result = await db.execute(
+        select(Order).options(selectinload(Order.store)).where(Order.id == order_id)
+    )
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")

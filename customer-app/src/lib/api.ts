@@ -209,6 +209,7 @@ export interface Order {
   updated_at?: string;
   store_id?: number;
   store_name?: string;
+  store_address?: string;
   table_id?: number;
   pickup_time?: string;
   delivery_address?: Record<string, unknown> | string;
