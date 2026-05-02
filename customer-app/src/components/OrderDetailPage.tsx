@@ -58,8 +58,23 @@ export default function OrderDetailPage() {
   const handleReorder = async () => {
     if (!order?.store_id) { showToast('Cannot reorder: store missing', 'error'); return; }
     setReordering(true);
-    try { const res = await api.post(`/orders/${order.id}/reorder`); clearCart(); for (const item of res.data?.items ?? []) useCartStore.getState().addItem(item); setPage('cart'); }
-    catch { showToast('Failed to reorder', 'error'); }
+    try {
+      const res = await api.post(`/orders/${order.id}/reorder`);
+      clearCart();
+      const items = res.data?.items ?? [];
+      for (const item of items) {
+        useCartStore.getState().addItem({
+          menu_item_id: item.item_id || item.menu_item_id,
+          name: item.item_name || item.name || '',
+          price: item.unit_price || item.price || 0,
+          quantity: item.quantity || 1,
+          customization_option_ids: item.customization_option_ids || [],
+          customizations: item.customizations || {},
+          customization_count: item.customization_count ?? 0,
+        } as any);
+      }
+      setPage('cart');
+    } catch { showToast('Failed to reorder', 'error'); }
     finally { setReordering(false); }
   };
 

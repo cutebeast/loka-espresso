@@ -5,6 +5,7 @@ import { RefreshCw, ShoppingBag, Receipt, Clock, RotateCcw } from 'lucide-react'
 import { useOrderStore } from '@/stores/orderStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
 import type { Order } from '@/lib/api';
 import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
@@ -68,6 +69,28 @@ export default function OrdersPage() {
   const openDetail = (order: Order) => {
     setCurrentOrder(order);
     setPage('order-detail', { orderId: order.id });
+  };
+
+  const handleReorder = async (order: Order) => {
+    if (!order.store_id) { showToast('Cannot reorder: store missing', 'error'); return; }
+    try {
+      const res = await api.post(`/orders/${order.id}/reorder`);
+      const { clearCart } = useCartStore.getState();
+      clearCart();
+      const items = res.data?.items ?? [];
+      for (const item of items) {
+        useCartStore.getState().addItem({
+          menu_item_id: item.item_id || item.menu_item_id,
+          name: item.item_name || item.name || '',
+          price: item.unit_price || item.price || 0,
+          quantity: item.quantity || 1,
+          customization_option_ids: item.customization_option_ids || [],
+          customizations: item.customizations || {},
+          customization_count: item.customization_count ?? 0,
+        } as any);
+      }
+      setPage('cart');
+    } catch { showToast('Failed to reorder', 'error'); }
   };
 
   const activeOrders = orders.filter(o => ACTIVE.includes(o.status?.toLowerCase()));
@@ -159,7 +182,7 @@ export default function OrdersPage() {
                       <span className="orders-past-total">{formatPrice(order.total)}</span>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <span className={`orders-status-badge ${badge.cls}`}>{badge.label}</span>
-                        <button className="orders-reorder-btn" onClick={e => { e.stopPropagation(); /* reorder logic */ }}><RotateCcw size={12} /> Reorder</button>
+                        <button className="orders-reorder-btn" onClick={e => { e.stopPropagation(); handleReorder(order); }}><RotateCcw size={12} /> Reorder</button>
                       </div>
                     </div>
                   </div>

@@ -418,9 +418,9 @@ async def list_orders(
     db: AsyncSession = Depends(get_db),
 ):
     if is_global_admin(user) or is_hq(user):
-        q = select(Order).order_by(Order.created_at.desc())
+        q = select(Order).options(selectinload(Order.store)).order_by(Order.created_at.desc())
     else:
-        q = select(Order).where(Order.user_id == user.id).order_by(Order.created_at.desc())
+        q = select(Order).options(selectinload(Order.store)).where(Order.user_id == user.id).order_by(Order.created_at.desc())
 
     if store_id:
         q = q.where(Order.store_id == store_id)
@@ -469,6 +469,19 @@ async def reorder(order_id: int, user: Customer = Depends(get_current_user), db:
         if not mi:
             continue
         option_ids = (item_data.get("customizations") or {}).get("option_ids") if item_data.get("customizations") else None
+
+        # Fetch option details for the response
+        option_details = []
+        if option_ids:
+            from app.models.marketing import CustomizationOption
+            opt_res = await db.execute(
+                select(CustomizationOption).where(CustomizationOption.id.in_(option_ids))
+            )
+            option_details = [
+                {"id": o.id, "name": o.name, "price_adjustment": to_float(o.price_adjustment)}
+                for o in opt_res.scalars().all()
+            ]
+
         existing = await db.execute(
             select(CartItem).where(CartItem.user_id == user.id, CartItem.item_id == mi.id)
         )
@@ -483,8 +496,8 @@ async def reorder(order_id: int, user: Customer = Depends(get_current_user), db:
         else:
             from app.api.v1.endpoints.pwa.cart import _hash_option_ids
             ci = CartItem(
-                user_id=user.id, item_id=mi.id,
-                quantity=item_data.get("quantity", 1),
+                user_id=user.id, customer_id=user.id, store_id=order.store_id,
+                item_id=mi.id, quantity=item_data.get("quantity", 1),
                 customization_option_ids=option_ids,
                 customization_hash=_hash_option_ids(option_ids),
                 unit_price=mi.base_price,
@@ -492,14 +505,32 @@ async def reorder(order_id: int, user: Customer = Depends(get_current_user), db:
             db.add(ci)
         added_items.append(
             {
+                "item_id": mi.id,
                 "menu_item_id": mi.id,
+                "item_name": mi.name,
                 "name": mi.name,
                 "price": to_float(mi.base_price),
+                "unit_price": to_float(mi.base_price),
                 "quantity": item_data.get("quantity", 1),
-                "customizations": item_data.get("customizations"),
+                "customizations": {"options": option_details, "option_ids": option_ids},
+                "customization_option_ids": option_ids,
             }
         )
-    await db.flush()
+        await db.flush()
+    # Fetch customization counts for all reorder items
+    item_ids = [mi.id for mi in items]
+    if item_ids:
+        from sqlalchemy import select as sa_select, func as sa_func
+        from app.models.marketing import CustomizationOption as CO
+        count_result = await db.execute(
+            sa_select(CO.item_id, sa_func.count(CO.id).label('cnt'))
+            .where(CO.item_id.in_(item_ids), CO.is_active == True)
+            .group_by(CO.item_id)
+        )
+        counts = {row.item_id: row.cnt for row in count_result}
+        for item in added_items:
+            item["customization_count"] = counts.get(item["menu_item_id"], 0)
+
     return {"message": "Items added to cart", "items": added_items, "store_id": order.store_id}
 
 
