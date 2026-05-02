@@ -1,6 +1,6 @@
 # UI/UX Guidelines
 
-> Last updated: 2026-05-02 | Session: Phase 1 UI/UX v2
+> Last updated: 2026-05-03 | Essential Journey Complete
 
 ## Status
 
@@ -19,8 +19,9 @@
 | Toast | ✅ Complete | `toast-v2.css` |
 | **Saved Addresses** | ✅ Complete | `saved-addresses-v2.css` |
 | **Checkout** | ✅ Complete | `checkout-v2.css` |
-| Orders List | ⏳ Needs audit | `orders-list-v2.css` |
-| Order Detail | ⏳ Needs audit | `order-detail-v2.css` |
+| **Orders List** | ✅ Complete | `orders-list-v2.css` |
+| **Order Detail** | ✅ Complete | `order-detail-v2.css` |
+| Profile/Wallet/Info | ⏳ Display pages | shared CSS |
 
 ## Brand Colors (Loka Espresso)
 
