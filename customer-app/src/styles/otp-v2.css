@@ -183,3 +183,9 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .otp-spacer { height: 24px; }
+
+
+/* ── OTP extras (from auth-extras.css) ── */
+.otp-phone { color: var(--color-text-primary); }
+.otp-error { color: var(--color-danger); font-size: 12px; margin-top: 12px; }
+.otp-spacer { flex: 1; }

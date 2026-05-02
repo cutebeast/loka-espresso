@@ -275,3 +275,22 @@
 .co-order-item-total { font-size: 14px; font-weight: 700; color: var(--loka-text-primary); }
 .co-order-item-each { font-size: 11px; color: var(--loka-text-muted); margin-top: 1px; }
 .co-order-item-price { font-weight: 600; font-size: 13px; color: var(--loka-text-primary); flex-shrink: 0; text-align: right; }
+
+
+/* ── Checkout extras (from checkout-extras.css) ── */
+.tsp-title { font-size: 13px; }
+.tsp-slot { font-size: 13px; font-weight: 600; border: 1.5px solid var(--color-border-subtle); background: var(--color-white); color: var(--color-text-primary); }
+.tsp-slot-selected { font-weight: 700; border: 2px solid var(--color-primary); background: #F2F6EA; color: var(--color-primary); }
+.tsp-date-nav { display: flex; align-items: center; }
+.tsp-date-btn { width: 44px; height: 44px; border-radius: 8px; border: none; background: var(--color-surface); color: var(--color-text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+.tsp-date-btn:hover { background: var(--color-border-subtle); }
+.tsp-date-btn-disabled { opacity: 0.3; cursor: not-allowed; }
+.tsp-date-label { font-size: 13px; font-weight: 700; color: var(--color-text-primary); min-width: 80px; text-align: center; }
+.tsp-no-slots { padding: 12px 0; }
+.oth-icon-wrap { width: 42px; height: 42px; }
+.oth-emoji { font-size: 18px; }
+.oth-store { font-size: 15px; }
+.onf-title { font-size: 13px; }
+.onf-textarea { font-family: inherit; box-sizing: border-box; }
+.ditc-card { border: 1px solid rgba(209,142,56,0.2); }
+.ditc-emoji { font-size: 22px; }
