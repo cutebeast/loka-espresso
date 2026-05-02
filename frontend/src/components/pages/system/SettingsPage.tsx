@@ -49,6 +49,13 @@ const CONFIG_GROUPS: { label: string; icon: string; items: ConfigDef[] }[] = [
     ],
   },
   {
+    label: 'Auth Settings',
+    icon: 'fa-shield',
+    items: [
+      { key: 'otp_rate_limit', label: 'OTP Rate Limit', description: 'Max OTP requests per minute per IP (0 = unlimited)', type: 'number' },
+    ],
+  },
+  {
     label: 'Store Settings',
     icon: 'fa-store',
     items: [

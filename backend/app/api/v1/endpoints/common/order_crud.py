@@ -518,16 +518,16 @@ async def reorder(order_id: int, user: Customer = Depends(get_current_user), db:
         )
         await db.flush()
     # Fetch customization counts for all reorder items
-    item_ids = [mi.id for mi in items]
-    if item_ids:
+    if added_items:
+        item_ids = [it["menu_item_id"] for it in added_items]
         from sqlalchemy import select as sa_select, func as sa_func
         from app.models.marketing import CustomizationOption as CO
         count_result = await db.execute(
-            sa_select(CO.item_id, sa_func.count(CO.id).label('cnt'))
-            .where(CO.item_id.in_(item_ids), CO.is_active == True)
-            .group_by(CO.item_id)
+            sa_select(CO.menu_item_id, sa_func.count(CO.id).label('cnt'))
+            .where(CO.menu_item_id.in_(item_ids), CO.is_active == True)
+            .group_by(CO.menu_item_id)
         )
-        counts = {row.item_id: row.cnt for row in count_result}
+        counts = {row.menu_item_id: row.cnt for row in count_result}
         for item in added_items:
             item["customization_count"] = counts.get(item["menu_item_id"], 0)
 
