@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Gift } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Gift } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { PromoBanner } from '@/lib/api';
@@ -223,6 +223,27 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
           <div className="promotions-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
           <p className="promotions-empty-title">No promotions available</p>
           <p className="promotions-empty-text">Check back soon for new offers</p>
+        </div>
+      )}
+
+      {/* Card list (below tab bar) */}
+      {promotions.length > 0 && (
+        <div className="promotions-card-list">
+          {promotions.map(promo => {
+            const img = resolveAssetUrl(promo.image_url);
+            return (
+              <div key={promo.id} className="promotions-list-card" onClick={() => handleSelectPromo(promo)}>
+                <div className="promotions-card-thumb">
+                  {img ? <img src={img} alt="" /> : <Gift size={24} color="#C4CED8" />}
+                </div>
+                <div className="promotions-card-body">
+                  <div className="promotions-card-title">{promo.title}</div>
+                  {promo.short_description && <div className="promotions-card-desc">{promo.short_description}</div>}
+                </div>
+                <div className="promotions-card-arrow"><ChevronRight size={16} /></div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
