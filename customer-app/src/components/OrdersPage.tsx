@@ -96,7 +96,32 @@ export default function OrdersPage() {
   };
 
   const activeOrders = orders.filter(o => ACTIVE.includes(o.status?.toLowerCase()));
-  const pastOrders = orders.filter(o => !ACTIVE.includes(o.status?.toLowerCase()));
+  const [pastPage, setPastPage] = useState(1);
+  const [allPastOrders, setAllPastOrders] = useState<Order[]>([]);
+  const [loadingPast, setLoadingPast] = useState(false);
+  const [hasMorePast, setHasMorePast] = useState(true);
+  const pastOrdersDisplay = allPastOrders.slice(0, 5);
+
+  const loadPastOrders = async (reset = false) => {
+    setLoadingPast(true);
+    try {
+      const p = reset ? 1 : pastPage + 1;
+      const res = await api.get('/orders', { params: { page_size: 10, page: p } });
+      const items = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
+      const past = items.filter((o: Order) => !ACTIVE.includes(o.status?.toLowerCase()));
+      if (reset) {
+        setAllPastOrders(past);
+        setPastPage(1);
+      } else {
+        setAllPastOrders(prev => [...prev, ...past]);
+        setPastPage(p);
+      }
+      setHasMorePast(past.length === 10);
+    } catch { console.error('Failed to load past orders'); }
+    finally { setLoadingPast(false); }
+  };
+
+  useEffect(() => { loadPastOrders(true); }, []);
 
   if (!isLoading && orders.length === 0) {
     return (
@@ -165,10 +190,15 @@ export default function OrdersPage() {
           </>
         )}
 
-        {pastOrders.length > 0 && (
+        {pastOrdersDisplay.length > 0 && (
           <>
-            <div className="orders-section-label">Past Orders</div>
-            {pastOrders.map(order => {
+            <div className="orders-section-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Past Orders</span>
+              {allPastOrders.length > 5 && (
+                <span style={{ fontSize: 12, color: '#6A7A8A' }}>{allPastOrders.length} total</span>
+              )}
+            </div>
+            {pastOrdersDisplay.map(order => {
               const badge = getStatusBadge(order.status);
               const firstItem = order.items?.[0];
               const itemPreview = order.items?.map(i => i.name).slice(0, 2).join(', ') || '';
@@ -188,9 +218,15 @@ export default function OrdersPage() {
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                  </div>
+                );
+              })}
+            {hasMorePast && (
+              <button onClick={() => loadPastOrders(false)} disabled={loadingPast}
+                style={{ width: '100%', padding: 12, marginTop: 4, background: '#E4EAEF', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#384B16', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+                {loadingPast ? 'Loading...' : `Load More (${allPastOrders.length - pastOrdersDisplay.length} more)`}
+              </button>
+            )}
           </>
         )}
       </div>
