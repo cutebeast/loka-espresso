@@ -184,30 +184,30 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
   }
 
   return (
-    <div className="rewards-screen">
+    <div className="promotions-screen">
       {/* Header */}
-      <div className="rewards-header">
-        <div className="rewards-header-left">
-          <button className="rewards-back-btn" onClick={onBack}><ArrowLeft size={20} /></button>
-          <h1 className="rewards-page-title">Promotions</h1>
+      <div className="promotions-header">
+        <div className="promotions-header-left">
+          <button className="promotions-back-btn" onClick={onBack}><ArrowLeft size={20} /></button>
+          <h1 className="promotions-page-title">Promotions</h1>
         </div>
       </div>
 
-      {/* Tab bar — matches rewards format */}
-      <div className="rewards-tab-bar">
-        <button className="rewards-tab" onClick={() => setPage('rewards')}>Point Rewards</button>
-        <button className="rewards-tab active">Promotions</button>
+      {/* Tab bar */}
+      <div className="promotions-tab-bar">
+        <button className="promotions-tab" onClick={() => setPage('rewards')}>Point Rewards</button>
+        <button className="promotions-tab active">Promotions</button>
       </div>
 
-      {/* Promotions carousel (like homepage) or empty state */}
+      {/* Promotions carousel or empty state */}
       {!loading && promotions.length === 0 ? (
-        <div className="rd-empty">
-          <div className="rd-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
-          <p className="rd-empty-title">No promotions available</p>
-          <p className="rd-empty-text">Check back soon for new offers</p>
+        <div className="promotions-empty">
+          <div className="promotions-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
+          <p className="promotions-empty-title">No promotions available</p>
+          <p className="promotions-empty-text">Check back soon for new offers</p>
         </div>
       ) : (
-        <div className="scroll-container promo-scroll-container">
+        <div className="promotions-scroll">
           <BannerCarousel
             promotions={promotions}
             loading={loading}
