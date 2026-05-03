@@ -1,6 +1,6 @@
 /* ════════ PROMOTIONS V2 — self-contained ════════ */
 
-.promotions-screen { display: flex; flex-direction: column; height: 100%; background: var(--loka-bg-light); }
+.promotions-screen { display: flex; flex-direction: column; height: 100%; background: var(--loka-bg-light); overflow-x: hidden; }
 .promotions-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #fff; border-bottom: 1px solid #D4DCE5; }
 .promotions-header-left { display: flex; align-items: center; gap: 12px; }
 .promotions-back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: #E4EAEF; border: none; cursor: pointer; color: #1B2023; }
@@ -9,8 +9,6 @@
 .promotions-tab { flex: 1; padding: 10px 0; border-radius: 40px; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; border: 1px solid var(--loka-border-light); background: var(--loka-bg-card); color: var(--loka-text-secondary); transition: all .22s ease; white-space: nowrap; font-family: var(--font-sans); }
 .promotions-tab.active { background: var(--loka-primary); color: white; border-color: var(--loka-primary); box-shadow: 0 4px 12px rgba(56,75,22,.2); }
 .promotions-tab:active { transform: scale(.96); }
-.promotions-scroll { flex: 1; overflow-y: auto; }
-.promotions-hero { margin: 12px 0 16px; min-height: 180px; width: 100%; }
 .promotions-carousel { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; flex-shrink: 0; }
 .promotions-carousel::-webkit-scrollbar { display: none; }
 .promotions-promo-card { flex: 0 0 88%; scroll-snap-align: start; height: 180px; border-radius: 24px; background-color: #2A3910; position: relative; overflow: hidden; }
