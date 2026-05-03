@@ -142,6 +142,7 @@ export interface Reward {
   name: string;
   short_description: string | null;
   description: string;
+  long_description?: string | null;
   points_cost: number;
   reward_type: string;
   image_url?: string;

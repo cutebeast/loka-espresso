@@ -629,3 +629,8 @@
 .rewards-tab.active { background: var(--loka-primary); color: white; border-color: var(--loka-primary); box-shadow: 0 4px 12px rgba(56,75,22,.2); }
 .rewards-tab:active { transform: scale(.96); }
 .rewards-hero { padding-top: 10px; }
+
+.detail-full-desc { font-size: 14px; color: #3A4A5A; line-height: 1.6; margin: 12px 0; }
+.detail-terms-list { list-style: none; padding: 0; margin: 0; }
+.detail-terms-list li { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; font-size: 13px; color: #1B2023; line-height: 1.5; border-bottom: 1px solid #E4EAEF; }
+.detail-terms-list li:last-child { border-bottom: none; }

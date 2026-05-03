@@ -85,10 +85,19 @@ export default function RewardsPage() {
           {selectedReward.short_description && (
             <p className="rd-desc">{selectedReward.short_description}</p>
           )}
+          {(selectedReward.long_description || selectedReward.description) && (
+            <div className="detail-full-desc">
+              {selectedReward.long_description || selectedReward.description}
+            </div>
+          )}
           {selectedReward.terms && selectedReward.terms.length > 0 && (
             <>
               <div className="detail-section-label">Terms &amp; Conditions</div>
-              <div className="detail-terms">{selectedReward.terms.join(' · ')}</div>
+              <ul className="detail-terms-list">
+                {selectedReward.terms.map((t, i) => (
+                  <li key={i}><Circle size={10} fill="#D18E38" color="#D18E38" /> {t}</li>
+                ))}
+              </ul>
             </>
           )}
         </div>
