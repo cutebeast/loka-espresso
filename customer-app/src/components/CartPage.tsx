@@ -181,15 +181,21 @@ export default function CartPage() {
         <div className="cart-mode-bar">
           {ORDER_MODES.map((m) => {
             const isActive = orderMode === m.key;
-            const isDisabled = m.key === 'dine_in' && !dineInSession;
+            const isDineInDisabled = m.key === 'dine_in' && !dineInSession;
             return (
               <button
                 key={m.key}
-                className={`cart-mode-btn ${isActive ? 'active' : ''}`}
-                onClick={() => handleOrderModeChange(m.key)}
-                disabled={isDisabled}
-                title={isDisabled ? 'Scan table QR to enable' : undefined}
+                className={`cart-mode-btn ${isActive ? 'active' : ''} ${isDineInDisabled ? 'disabled' : ''}`}
+                onClick={() => {
+                  if (isDineInDisabled) {
+                    showToast('Please ask service crew for QR code to dine in', 'info', 'Dine-in Unavailable');
+                    return;
+                  }
+                  handleOrderModeChange(m.key);
+                }}
+                title={isDineInDisabled ? 'Scan table QR to enable' : undefined}
               >
+                {isDineInDisabled && <QrCode size={14} style={{ marginRight: 4 }} />}
                 {m.label}
               </button>
             );
