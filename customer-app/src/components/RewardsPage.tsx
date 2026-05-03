@@ -71,30 +71,30 @@ export default function RewardsPage() {
     const img = resolveAssetUrl(selectedReward.image_url);
     const canRedeem = points >= selectedReward.points_cost;
     return (
-      <div className="rd-fullscreen">
-        <div className="rd-hero">
-          <div className="rd-hero-img" style={img ? { backgroundImage: `url(${img})` } : { background: 'linear-gradient(135deg, #F3EEE5, rgba(209,142,56,0.3))' }} />
-          <div className="rd-hero-overlay" />
-          <button className="rd-back-btn" onClick={() => setSelectedReward(null)}><ArrowLeft size={20} /></button>
-          <span className="rd-hero-tag rd-tag-copper"><Crown size={14} /> {selectedReward.points_cost.toLocaleString()} PTS</span>
+      <div className="rd-fullscreen" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className="detail-hero">
+          {img ? <img src={img} alt="" /> : <Gift size={48} color="#fff" />}
+          <button className="rd-back-btn" onClick={() => setSelectedReward(null)} style={{ position: 'absolute', top: 12, left: 12 }}><ArrowLeft size={20} /></button>
         </div>
-        <div className="rd-content">
-          <h1 className="rd-title">{selectedReward.name}</h1>
-          <div className="rd-meta">
-            <span className="rewards-calendar-meta"><Calendar size={16} /> Valid {selectedReward.validity_days || 30} days</span>
-            <span className="rd-meta-pill rd-pill-copper">{selectedReward.points_cost.toLocaleString()} points</span>
+        <div className="detail-body">
+          <h1 className="detail-title">{selectedReward.name}</h1>
+          <div className="detail-points-row">
+            <span className="detail-points-pill"><Crown size={14} /> {selectedReward.points_cost.toLocaleString()} pts</span>
+            <span className="detail-stock-pill"><Circle size={8} fill="#C75050" /> Limited stock</span>
           </div>
-          <p className="rd-desc">{selectedReward.description || selectedReward.short_description || 'Enjoy this exclusive reward from Loka Espresso.'}</p>
+          {selectedReward.short_description && (
+            <p className="rd-desc">{selectedReward.short_description}</p>
+          )}
           {selectedReward.terms && selectedReward.terms.length > 0 && (
             <>
-              <div className="rd-section-title"><List size={16} /> Terms</div>
-              <ul className="rd-terms-list">{selectedReward.terms.map((t, i) => <li key={i}><Circle size={10} fill="#D18E38" color="#D18E38" /> {t}</li>)}</ul>
+              <div className="detail-section-label">Terms &amp; Conditions</div>
+              <div className="detail-terms">{selectedReward.terms.join(' · ')}</div>
             </>
           )}
         </div>
         <div className="sticky-redeem">
           {!redemptionSuccess ? (
-            <button className="detail-redeem-btn" onClick={() => handleRedeem(selectedReward)} disabled={!canRedeem || redeeming === selectedReward.id} style={{ opacity: canRedeem ? 1 : 0.5 }}>
+            <button className="detail-redeem-btn" onClick={() => handleRedeem(selectedReward)} disabled={!canRedeem || redeeming === selectedReward.id} style={{ boxShadow: '0 4px 16px rgba(56,75,22,0.3)' }}>
               {redeeming === selectedReward.id ? 'Redeeming…' : `Redeem for ${selectedReward.points_cost.toLocaleString()} pts`}
             </button>
           ) : (
