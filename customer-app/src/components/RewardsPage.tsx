@@ -121,6 +121,7 @@ export default function RewardsPage() {
       </div>
 
       {/* Points display large */}
+      <div className="rewards-hero">
       <div className="points-display-large">
         <span className="points-label">Your Points Balance</span>
         <span className="points-value">{points.toLocaleString()}</span>
@@ -137,6 +138,7 @@ export default function RewardsPage() {
           <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
         </div>
         <div className="progress-hint">{nextThreshold - points > 0 ? `${(nextThreshold - points).toLocaleString()} more points to unlock ${nextTier} rewards` : `You've reached ${nextTier}!`}</div>
+      </div>
       </div>
 
       {/* Tabs */}

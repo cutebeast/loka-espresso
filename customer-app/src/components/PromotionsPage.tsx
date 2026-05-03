@@ -196,7 +196,8 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
 
       {/* Horizontal carousel */}
       {!loading && promotions.length > 0 && (
-        <div className="promotions-carousel">
+        <div className="promotions-carousel-wrap">
+          <div className="promotions-carousel">
             {promotions.map(promo => (
               <div key={promo.id} className="promotions-promo-card" onClick={() => handleSelectPromo(promo)}>
                 {promo.image_url && <img src={resolveAssetUrl(promo.image_url) || ''} alt="" className="promotions-card-bg-img" loading="lazy" />}
@@ -208,6 +209,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
               </div>
             ))}
           </div>
+        </div>
       )}
 
       {/* Tab bar */}
@@ -238,6 +240,9 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
                 <div className="promotions-card-body">
                   <div className="promotions-card-title">{promo.title}</div>
                   {promo.short_description && <div className="promotions-card-desc">{promo.short_description}</div>}
+                  <div className={`promotions-card-tag ${promo.action_type === 'survey' ? 'tag-survey' : 'tag-promo'}`}>
+                    {promo.action_type === 'survey' ? 'Survey' : 'Promo'}
+                  </div>
                 </div>
                 <div className="promotions-card-arrow"><ChevronRight size={16} /></div>
               </div>
