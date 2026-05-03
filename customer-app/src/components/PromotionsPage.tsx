@@ -197,14 +197,14 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       {/* Horizontal carousel — uses homepage promo card style */}
       {!loading && promotions.length > 0 && (
         <div className="promotions-hero">
-          <div className="homepage-carousel">
+          <div className="promotions-carousel">
             {promotions.map(promo => (
-              <div key={promo.id} className="homepage-promo-card" onClick={() => handleSelectPromo(promo)}>
-                {promo.image_url && <img src={resolveAssetUrl(promo.image_url) || ''} alt="" className="card-bg-img" loading="lazy" />}
-                <div className="homepage-promo-content">
-                  <div className="homepage-promo-title">{promo.title}</div>
-                  {promo.short_description && <div className="homepage-promo-sub">{promo.short_description}</div>}
-                  <button className="homepage-promo-btn" onClick={(e) => { e.stopPropagation(); handleSelectPromo(promo); }}>View</button>
+              <div key={promo.id} className="promotions-promo-card" onClick={() => handleSelectPromo(promo)}>
+                {promo.image_url && <img src={resolveAssetUrl(promo.image_url) || ''} alt="" className="promotions-card-bg-img" loading="lazy" />}
+                <div className="promotions-promo-content">
+                  <div className="promotions-promo-title">{promo.title}</div>
+                  {promo.short_description && <div className="promotions-promo-sub">{promo.short_description}</div>}
+                  <button className="promotions-promo-btn" onClick={(e) => { e.stopPropagation(); handleSelectPromo(promo); }}>View</button>
                 </div>
               </div>
             ))}
