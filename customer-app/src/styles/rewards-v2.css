@@ -454,13 +454,7 @@
    REWARDS & PROMOS PAGE
    ============================================ */
 
-.rewards-screen {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--loka-bg-light);
-  overflow: hidden;
-}
+.rewards-screen { display: flex; flex-direction: column; height: 100%; background: #E4EAEF; }
 
 .rewards-header {
   display: flex;

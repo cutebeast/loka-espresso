@@ -17,8 +17,8 @@ function getActiveNavId(page: PageId): PageId {
   if (page === 'order-detail') return 'orders';
   if (page === 'cart') return 'menu';
   if (page === 'wallet' || page === 'history') return 'profile';
-  if (page === 'promotions' || page === 'information') return 'home';
-  if (page === 'my-rewards' || page === 'account-details' || page === 'payment-methods' || page === 'saved-addresses' || page === 'notifications' || page === 'help-support' || page === 'my-card' || page === 'settings' || page === 'legal') return 'profile';
+  if (page === 'promotions' || page === 'my-rewards' || page === 'information') return 'rewards';
+  if (page === 'account-details' || page === 'payment-methods' || page === 'saved-addresses' || page === 'notifications' || page === 'help-support' || page === 'my-card' || page === 'settings' || page === 'legal') return 'profile';
   return page;
 }
 
