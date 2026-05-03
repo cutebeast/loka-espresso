@@ -592,7 +592,7 @@
 .stock-badge { position: absolute; top: 10px; right: 40px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 8px; }
 .stock-badge.low { background: rgba(199,80,80,0.1); color: #C75050; }
 
-.sticky-redeem { position: sticky; bottom: 0; background: #fff; padding: 14px 20px; border-top: 1px solid #D4DCE5; }
+.sticky-redeem { position: sticky; bottom: 0; background: var(--loka-bg-light); padding: 14px 20px; }
 .sticky-redeem .detail-redeem-btn { width: 100%; padding: 14px; background: #384B16; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); }
 .detail-redeem-btn:disabled { background: #9CAF7A; cursor: not-allowed; }
 .sticky-redeem .detail-redeem-btn:disabled { background: #9CAF7A; cursor: not-allowed; }
@@ -624,4 +624,4 @@
 .detail-section-label { font-size: 12px; font-weight: 600; color: #6A7A8A; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; }
 .detail-terms { font-size: 13px; color: #1B2023; line-height: 1.6; background: #fff; border-radius: 10px; padding: 14px; }
 
-.rd-fullscreen { display: flex; flex-direction: column; height: 100%; background: #E4EAEF; }
+.rd-fullscreen { display: flex; flex-direction: column; height: 100%; background: var(--loka-bg-light); }

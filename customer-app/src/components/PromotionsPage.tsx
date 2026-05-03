@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Gift } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { PromoBanner } from '@/lib/api';
-
 import { BannerCarousel, VoucherSection } from './promotions';
 
 interface BannerStatus {
@@ -185,23 +184,37 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
   }
 
   return (
-    <div className="promo-screen">
-      <div className="promo-header">
-        <div className="promo-header-row">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} className="promo-back-btn">
-            <ArrowLeft size={22} />
-          </motion.button>
-          <h1 className="promo-title">Promotions</h1>
+    <div className="rewards-screen">
+      {/* Header */}
+      <div className="rewards-header">
+        <div className="rewards-header-left">
+          <button className="rewards-back-btn" onClick={onBack}><ArrowLeft size={20} /></button>
+          <h1 className="rewards-page-title">Promotions</h1>
         </div>
       </div>
 
-      <div className="scroll-container promo-scroll-container">
-        <BannerCarousel
-          promotions={promotions}
-          loading={loading}
-          onSelectPromo={handleSelectPromo}
-        />
+      {/* Tab bar — matches rewards format */}
+      <div className="rewards-tab-bar">
+        <button className="rewards-tab" onClick={() => setPage('rewards')}>Point Rewards</button>
+        <button className="rewards-tab active">Promotions</button>
       </div>
+
+      {/* Promotions carousel (like homepage) or empty state */}
+      {!loading && promotions.length === 0 ? (
+        <div className="rd-empty">
+          <div className="rd-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
+          <p className="rd-empty-title">No promotions available</p>
+          <p className="rd-empty-text">Check back soon for new offers</p>
+        </div>
+      ) : (
+        <div className="scroll-container promo-scroll-container">
+          <BannerCarousel
+            promotions={promotions}
+            loading={loading}
+            onSelectPromo={handleSelectPromo}
+          />
+        </div>
+      )}
     </div>
   );
 }

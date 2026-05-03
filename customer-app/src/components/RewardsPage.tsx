@@ -142,7 +142,7 @@ export default function RewardsPage() {
       {/* Tabs */}
       <div className="rewards-tab-bar">
         <button className={`rewards-tab ${activeTab === 'rewards' ? 'active' : ''}`} onClick={() => setActiveTab('rewards')}>Point Rewards</button>
-        <button className={`rewards-tab ${activeTab === 'vouchers' ? 'active' : ''}`} onClick={() => setPage('promotions')}>Vouchers & Promos</button>
+        <button className={`rewards-tab ${activeTab === 'vouchers' ? 'active' : ''}`} onClick={() => setPage('promotions')}>Promotions</button>
       </div>
 
       {/* Card List */}
