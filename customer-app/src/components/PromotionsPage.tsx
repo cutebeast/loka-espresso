@@ -6,7 +6,8 @@ import { ArrowLeft, Gift } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { PromoBanner } from '@/lib/api';
-import { BannerCarousel, VoucherSection } from './promotions';
+import { VoucherSection } from './promotions';
+import { resolveAssetUrl } from '@/lib/tokens';
 
 interface BannerStatus {
   action_type: string;
@@ -193,26 +194,35 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         </div>
       </div>
 
+      {/* Horizontal carousel — fills the points+progress space */}
+      {!loading && promotions.length > 0 ? (
+        <div className="promotions-hero">
+          <div className="promotions-carousel">
+            {promotions.map(promo => (
+              <div key={promo.id} className="promotions-carousel-item" onClick={() => handleSelectPromo(promo)}>
+                {promo.image_url && <img src={resolveAssetUrl(promo.image_url) || ''} alt="" />}
+                <div className="promotions-carousel-item-content">
+                  <div className="promotions-carousel-item-title">{promo.title}</div>
+                  {promo.short_description && <div className="promotions-carousel-item-sub">{promo.short_description}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* Tab bar */}
       <div className="promotions-tab-bar">
         <button className="promotions-tab" onClick={() => setPage('rewards')}>Point Rewards</button>
         <button className="promotions-tab active">Promotions</button>
       </div>
 
-      {/* Promotions carousel or empty state */}
-      {!loading && promotions.length === 0 ? (
+      {/* Empty state */}
+      {!loading && promotions.length === 0 && (
         <div className="promotions-empty">
           <div className="promotions-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
           <p className="promotions-empty-title">No promotions available</p>
           <p className="promotions-empty-text">Check back soon for new offers</p>
-        </div>
-      ) : (
-        <div className="promotions-hero">
-          <BannerCarousel
-            promotions={promotions}
-            loading={loading}
-            onSelectPromo={handleSelectPromo}
-          />
         </div>
       )}
     </div>

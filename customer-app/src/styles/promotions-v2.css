@@ -11,6 +11,17 @@
 .promotions-tab.active::after { content: ''; position: absolute; bottom: -1.5px; left: 0; right: 0; height: 2.5px; background: #384B16; border-radius: 2px; }
 .promotions-scroll { flex: 1; overflow-y: auto; }
 .promotions-hero { margin: 0 16px 16px; min-height: 180px; border-radius: 16px; overflow: hidden; }
+.promotions-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 0; }
+.promotions-carousel::-webkit-scrollbar { display: none; }
+.promotions-carousel-item { flex: 0 0 88%; scroll-snap-align: start; margin-right: 12px; border-radius: 16px; overflow: hidden; position: relative; min-height: 180px; background: linear-gradient(135deg, #384B16, #5a7a2a); display: flex; align-items: flex-end; }
+.promotions-carousel-item:first-child { margin-left: 4px; }
+.promotions-carousel-item img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.promotions-carousel-item-content { position: relative; z-index: 1; padding: 16px; width: 100%; background: linear-gradient(transparent, rgba(0,0,0,0.7)); color: #fff; }
+.promotions-carousel-item-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.promotions-carousel-item-sub { font-size: 12px; opacity: 0.85; }
+.promotions-carousel-dots { display: flex; justify-content: center; gap: 6px; padding: 8px 0; }
+.promotions-carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: #D4DCE5; transition: background 0.2s; }
+.promotions-carousel-dot.active { background: #384B16; }
 .promotions-empty { text-align: center; padding: 60px 20px; }
 .promotions-empty-icon { margin: 0 auto 12px; }
 .promotions-empty-title { font-size: 16px; font-weight: 600; color: #1B2023; margin-bottom: 4px; }
