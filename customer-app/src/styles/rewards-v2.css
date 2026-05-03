@@ -624,7 +624,7 @@
 .detail-terms { font-size: 13px; color: #1B2023; line-height: 1.6; background: #fff; border-radius: 10px; padding: 14px; }
 
 .rd-fullscreen { display: flex; flex-direction: column; height: 100%; background: var(--loka-bg-light); }
-.rewards-tab-bar { display: flex; padding: 0 16px; background: #fff; }
-.rewards-tab { padding: 12px 0; font-size: 13px; font-weight: 500; color: #6A7A8A; flex: 1; text-align: center; position: relative; background: none; border: none; cursor: pointer; font-family: var(--font-sans); }
-.rewards-tab.active { color: #384B16; font-weight: 600; }
-.rewards-tab.active::after { content: ""; position: absolute; bottom: -1.5px; left: 0; right: 0; height: 2.5px; background: #384B16; border-radius: 2px; }
+.rewards-tab-bar { display: flex; padding: 12px 20px; gap: 8px; flex-shrink: 0; background: var(--loka-bg-light); }
+.rewards-tab { flex: 1; padding: 10px 0; border-radius: 40px; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; border: 1px solid var(--loka-border-light); background: var(--loka-bg-card); color: var(--loka-text-secondary); transition: all .22s ease; white-space: nowrap; font-family: var(--font-sans); }
+.rewards-tab.active { background: var(--loka-primary); color: white; border-color: var(--loka-primary); box-shadow: 0 4px 12px rgba(56,75,22,.2); }
+.rewards-tab:active { transform: scale(.96); }
