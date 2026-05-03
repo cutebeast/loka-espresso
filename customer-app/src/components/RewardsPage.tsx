@@ -85,11 +85,6 @@ export default function RewardsPage() {
           {selectedReward.short_description && (
             <p className="rd-desc">{selectedReward.short_description}</p>
           )}
-          {(selectedReward.long_description || selectedReward.description) && (
-            <div className="detail-full-desc">
-              {selectedReward.long_description || selectedReward.description}
-            </div>
-          )}
           {selectedReward.terms && selectedReward.terms.length > 0 && (
             <>
               <div className="detail-section-label">Terms &amp; Conditions</div>
@@ -99,6 +94,11 @@ export default function RewardsPage() {
                 ))}
               </ul>
             </>
+          )}
+          {(selectedReward.long_description || selectedReward.description) && selectedReward.short_description !== (selectedReward.long_description || selectedReward.description) && (
+            <div className="detail-full-desc">
+              {selectedReward.long_description || selectedReward.description}
+            </div>
           )}
         </div>
         <div className="sticky-redeem">
