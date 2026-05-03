@@ -173,7 +173,11 @@ export default function AppShell() {
       case 'checkout': return <CheckoutPage />;
       case 'wallet': return <WalletPage />;
       case 'history': return <HistoryPage />;
-      case 'promotions': return <PromotionsPage onBack={() => setPage('home')} preselectedId={pageParams.selectedPromoId as number | undefined} />;
+      case 'promotions': return (
+        <HubLayout page={page} onNavigate={handleNavClick}>
+          <PromotionsPage onBack={() => setPage('home')} preselectedId={pageParams.selectedPromoId as number | undefined} />
+        </HubLayout>
+      );
       case 'information': return <InformationPage onBack={() => setPage('home')} preselectedId={pageParams.selectedInfoId as number | undefined} preselectedSlug={pageParams.selectedInfoSlug as string | undefined} contentType={pageParams.selectedInfoContentType as string | undefined} />;
       case 'my-rewards': return <MyRewardsPage onBack={() => setPage('profile')} initialTab={pageParams.initialTab as 'rewards' | 'vouchers' | undefined} />;
       case 'account-details': return <AccountDetailsPage />;
