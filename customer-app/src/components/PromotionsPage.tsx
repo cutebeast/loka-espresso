@@ -207,7 +207,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
           <p className="promotions-empty-text">Check back soon for new offers</p>
         </div>
       ) : (
-        <div className="promotions-scroll">
+        <div className="promotions-hero">
           <BannerCarousel
             promotions={promotions}
             loading={loading}

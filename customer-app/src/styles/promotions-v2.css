@@ -10,6 +10,7 @@
 .promotions-tab.active { color: #384B16; font-weight: 600; }
 .promotions-tab.active::after { content: ''; position: absolute; bottom: -1.5px; left: 0; right: 0; height: 2.5px; background: #384B16; border-radius: 2px; }
 .promotions-scroll { flex: 1; overflow-y: auto; }
+.promotions-hero { margin: 0 16px 16px; min-height: 180px; border-radius: 16px; overflow: hidden; }
 .promotions-empty { text-align: center; padding: 60px 20px; }
 .promotions-empty-icon { margin: 0 auto 12px; }
 .promotions-empty-title { font-size: 16px; font-weight: 600; color: #1B2023; margin-bottom: 4px; }
