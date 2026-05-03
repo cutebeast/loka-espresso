@@ -5,8 +5,8 @@ import { apiFetch, apiUpload } from '@/lib/merchant-api';
 
 export function AddRewardForm({ token: _token, onClose }: { token: string; onClose: () => void }) {
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [shortDescription, setShortDescription] = useState('');
+  const [longDescription, setLongDescription] = useState('');
   const [pointsCost, setPointsCost] = useState('');
   const [rewardType, setRewardType] = useState('free_item');
   const [validityDays, setValidityDays] = useState('30');
@@ -29,9 +29,10 @@ export function AddRewardForm({ token: _token, onClose }: { token: string; onClo
       await apiFetch('/admin/rewards', undefined, {
         method: 'POST',
         body: JSON.stringify({
-          name, description, points_cost: parseInt(pointsCost),
+          name, description: longDescription, points_cost: parseInt(pointsCost),
           reward_type: rewardType, is_active: true,
           short_description: shortDescription || undefined,
+          long_description: longDescription || undefined,
           validity_days: parseInt(validityDays) || 30,
           terms: termsList.length > 0 ? termsList : undefined,
           image_url: imageUrl || undefined,
@@ -50,11 +51,12 @@ export function AddRewardForm({ token: _token, onClose }: { token: string; onClo
       </div>
       <div className="arf-2">
         <label className="arf-3">Short Description</label>
-        <input value={shortDescription} onChange={e => setShortDescription(e.target.value)} placeholder="Card summary text" />
+        <input value={shortDescription} onChange={e => setShortDescription(e.target.value)} placeholder="Card summary text (shown on list)" />
       </div>
       <div className="arf-2">
-        <label className="arf-3">Description</label>
-        <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Detail description" />
+        <label className="arf-3">Full Description</label>
+        <textarea value={longDescription} onChange={e => setLongDescription(e.target.value)} placeholder="Detailed description for the detail page" rows={4} />
+        <small style={{ color: '#6A7A8A', fontSize: 11, marginTop: 4, display: 'block' }}>Keep under ~100 words for best readability</small>
       </div>
       <div className="arf-4">
         <label className="arf-5">Points Cost</label>
@@ -75,6 +77,7 @@ export function AddRewardForm({ token: _token, onClose }: { token: string; onClo
       <div className="arf-2">
         <label className="arf-3">Terms &amp; Conditions</label>
         <input value={terms} onChange={e => setTerms(e.target.value)} placeholder="Comma-separated terms" />
+        <small style={{ color: '#6A7A8A', fontSize: 11, marginTop: 4, display: 'block' }}>Separate each term with a comma. Each will be displayed as a bullet point.</small>
       </div>
       <div className="arf-2">
         <label className="arf-3">Image</label>
