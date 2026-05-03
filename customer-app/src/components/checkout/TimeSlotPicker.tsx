@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LOKA } from '@/lib/tokens';
+import { useUIStore } from '@/stores/uiStore';
 
 interface TimeSlotPickerProps {
   value: string | null;
@@ -10,21 +11,41 @@ interface TimeSlotPickerProps {
   leadMinutes?: number;
 }
 
-function generateTimeSlots(leadMinutes: number, baseDate: Date, count: number = 8): string[] {
+function parseStoreHours(openingHours: Record<string, string> | undefined, date: Date): { open: number; close: number } {
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayName = days[date.getDay()];
+  const hours = openingHours?.[dayName] || openingHours?.['weekday'] || '';
+  const match = hours.match(/(\d{1,2})(?::(\d{2}))?\s*(?:-|to)\s*(\d{1,2})(?::(\d{2}))?/i);
+  if (match) {
+    const openH = parseInt(match[1]);
+    const closeH = parseInt(match[3]);
+    return { open: openH, close: closeH || 22 };
+  }
+  return { open: 9, close: 22 }; // default
+}
+
+function generateTimeSlots(leadMinutes: number, baseDate: Date, openingHours?: Record<string, string>, count: number = 8): string[] {
   const slots: string[] = [];
   const now = new Date();
   const start = new Date(baseDate.getTime());
+  const hours = parseStoreHours(openingHours, baseDate);
   
   if (isSameDay(baseDate, now)) {
     start.setTime(now.getTime() + leadMinutes * 60 * 1000);
     start.setMinutes(Math.ceil(start.getMinutes() / 15) * 15, 0, 0);
+    // Don't start before opening + 30 min
+    const minStart = hours.open * 60 + 30;
+    if (start.getHours() * 60 + start.getMinutes() < minStart) {
+      start.setHours(hours.open, 30, 0, 0);
+    }
   } else {
-    start.setHours(9, 0, 0, 0);
+    start.setHours(hours.open, 30, 0, 0); // 30 min after opening
   }
 
+  const endMinutes = hours.close * 60 - 30; // 30 min before closing
   for (let i = 0; i < count * 4; i++) {
     const slot = new Date(start.getTime() + i * 15 * 60 * 1000);
-    if (slot.getHours() >= 22) break;
+    if (slot.getHours() * 60 + slot.getMinutes() > endMinutes) break;
     slots.push(slot.toISOString());
     if (slots.length >= count) break;
   }
@@ -61,8 +82,9 @@ function formatDateLabel(date: Date): string {
 
 export default function TimeSlotPicker({ value, onChange, leadMinutes = 15 }: TimeSlotPickerProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const selectedStore = useUIStore(s => s.selectedStore);
   
-  const slots = useMemo(() => generateTimeSlots(leadMinutes, selectedDate), [leadMinutes, selectedDate]);
+  const slots = useMemo(() => generateTimeSlots(leadMinutes, selectedDate, selectedStore?.opening_hours as Record<string, string> | undefined), [leadMinutes, selectedDate, selectedStore?.opening_hours]);
 
   const hasSlots = slots.length > 0;
 
