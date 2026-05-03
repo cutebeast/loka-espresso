@@ -5,7 +5,7 @@
 .promotions-header-left { display: flex; align-items: center; gap: 12px; }
 .promotions-back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: #E4EAEF; border: none; cursor: pointer; color: #1B2023; }
 .promotions-page-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #384B16; }
-.promotions-tab-bar { display: flex; padding: 0 16px; background: #fff; border-bottom: 1.5px solid #D4DCE5; }
+.promotions-tab-bar { display: flex; padding: 0 16px; background: #fff; }
 .promotions-tab { padding: 12px 0; font-size: 13px; font-weight: 500; color: #6A7A8A; flex: 1; text-align: center; position: relative; background: none; border: none; cursor: pointer; font-family: var(--font-sans); }
 .promotions-tab.active { color: #384B16; font-weight: 600; }
 .promotions-tab.active::after { content: ''; position: absolute; bottom: -1.5px; left: 0; right: 0; height: 2.5px; background: #384B16; border-radius: 2px; }
