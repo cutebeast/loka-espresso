@@ -94,7 +94,7 @@ export default function RewardsPage() {
         </div>
         <div className="sticky-redeem">
           {!redemptionSuccess ? (
-            <button className="detail-redeem-btn" onClick={() => handleRedeem(selectedReward)} disabled={!canRedeem || redeeming === selectedReward.id} style={{ boxShadow: '0 4px 16px rgba(56,75,22,0.3)' }}>
+            <button className="detail-redeem-btn" onClick={() => handleRedeem(selectedReward)} disabled={!canRedeem || redeeming === selectedReward.id}>
               {redeeming === selectedReward.id ? 'Redeeming…' : `Redeem for ${selectedReward.points_cost.toLocaleString()} pts`}
             </button>
           ) : (

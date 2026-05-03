@@ -594,6 +594,8 @@
 
 .sticky-redeem { position: sticky; bottom: 0; background: #fff; padding: 14px 20px; border-top: 1px solid #D4DCE5; }
 .sticky-redeem .detail-redeem-btn { width: 100%; padding: 14px; background: #384B16; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); }
+.detail-redeem-btn:disabled { background: #9CAF7A; cursor: not-allowed; }
+.sticky-redeem .detail-redeem-btn:disabled { background: #9CAF7A; cursor: not-allowed; }
 
 .reward-thumb { width: 60px; height: 60px; border-radius: 10px; background: #F3EEE5; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .reward-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
@@ -621,3 +623,5 @@
 .detail-stock-pill { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; background: rgba(199,80,80,0.08); border-radius: 20px; font-size: 12px; font-weight: 500; color: #C75050; }
 .detail-section-label { font-size: 12px; font-weight: 600; color: #6A7A8A; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; }
 .detail-terms { font-size: 13px; color: #1B2023; line-height: 1.6; background: #fff; border-radius: 10px; padding: 14px; }
+
+.rd-fullscreen { display: flex; flex-direction: column; height: 100%; background: #E4EAEF; }
