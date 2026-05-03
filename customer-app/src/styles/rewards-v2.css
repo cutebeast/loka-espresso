@@ -594,3 +594,19 @@
 
 .sticky-redeem { position: sticky; bottom: 0; background: #fff; padding: 14px 20px; border-top: 1px solid #D4DCE5; }
 .sticky-redeem .detail-redeem-btn { width: 100%; padding: 14px; background: #384B16; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); }
+
+.reward-thumb { width: 60px; height: 60px; border-radius: 10px; background: #F3EEE5; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.reward-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+.reward-info { flex: 1; min-width: 0; }
+.reward-name { font-size: 14px; font-weight: 600; color: #1B2023; margin-bottom: 2px; }
+.reward-desc { font-size: 12px; color: #6A7A8A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stock-badge { position: absolute; top: 10px; right: 40px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 8px; }
+.stock-badge.low { background: rgba(199,80,80,0.1); color: #C75050; }
+.stock-badge.available { background: rgba(133,176,133,0.1); color: #3a7a3a; }
+.detail-points-row { display: flex; gap: 8px; margin: 12px 0; }
+.detail-points-pill { padding: 6px 14px; background: rgba(56,75,22,0.1); border-radius: 20px; font-size: 12px; font-weight: 600; color: #384B16; }
+.detail-stock-pill { padding: 6px 14px; background: rgba(199,80,80,0.08); border-radius: 20px; font-size: 12px; font-weight: 500; color: #C75050; }
+.points-display-large .points-label { font-size: 11px; font-weight: 500; opacity: 0.8; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.points-display-large .points-value { font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 2px; }
+.points-display-large .points-sub { font-size: 12px; opacity: 0.7; }
+.progress-hint { font-size: 11px; color: #6A7A8A; margin-top: 6px; }
