@@ -194,10 +194,9 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         </div>
       </div>
 
-      {/* Horizontal carousel — uses homepage promo card style */}
+      {/* Horizontal carousel */}
       {!loading && promotions.length > 0 && (
-        <div className="promotions-hero">
-          <div className="promotions-carousel">
+        <div className="promotions-carousel">
             {promotions.map(promo => (
               <div key={promo.id} className="promotions-promo-card" onClick={() => handleSelectPromo(promo)}>
                 {promo.image_url && <img src={resolveAssetUrl(promo.image_url) || ''} alt="" className="promotions-card-bg-img" loading="lazy" />}
@@ -209,7 +208,6 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
               </div>
             ))}
           </div>
-        </div>
       )}
 
       {/* Tab bar */}

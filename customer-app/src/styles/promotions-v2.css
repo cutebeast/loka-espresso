@@ -10,7 +10,7 @@
 .promotions-tab.active { background: var(--loka-primary); color: white; border-color: var(--loka-primary); box-shadow: 0 4px 12px rgba(56,75,22,.2); }
 .promotions-tab:active { transform: scale(.96); }
 .promotions-scroll { flex: 1; overflow-y: auto; }
-.promotions-hero { margin: 12px 0 16px; min-height: 180px; }
+.promotions-hero { margin: 12px 0 16px; min-height: 180px; width: 100%; }
 .promotions-carousel { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; flex-shrink: 0; }
 .promotions-carousel::-webkit-scrollbar { display: none; }
 .promotions-promo-card { flex: 0 0 88%; scroll-snap-align: start; height: 180px; border-radius: 24px; background-color: #2A3910; position: relative; overflow: hidden; }
