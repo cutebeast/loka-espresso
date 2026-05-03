@@ -122,22 +122,27 @@ class SystemContentOut(BaseModel):
 
 @router.get("/legal/{content_key}", response_model=SystemContentOut)
 async def get_legal_content(
-    content_key: str,  # 'terms' or 'privacy'
+    content_key: str,  # 'terms', 'privacy', or 'about'
     db: AsyncSession = Depends(get_db),
 ):
-    """Get system legal content (Terms & Conditions or Privacy Policy).
-    
-    content_key: 'terms' or 'privacy'
-    """
-    # Map key to title pattern
-    title_pattern = "Terms & Conditions" if content_key == "terms" else "Privacy Policy" if content_key == "privacy" else content_key
+    """Get system content by key. Supports 'terms', 'privacy', 'about', or any slug."""
+    # Map known keys to title patterns, otherwise treat as slug
+    key_map = {
+        "terms": "Terms & Conditions",
+        "privacy": "Privacy Policy",
+        "about": "About Loka Espresso",
+    }
+    title_pattern = key_map.get(content_key, content_key)
     
     result = await db.execute(
         select(InformationCard)
         .where(
             InformationCard.content_type == "system",
-            InformationCard.title.ilike(f"%{title_pattern}%"),
-            InformationCard.is_active == True
+            InformationCard.is_active == True,
+        )
+        .where(
+            InformationCard.title.ilike(f"%{title_pattern}%") | 
+            InformationCard.slug == content_key
         )
     )
     card = result.scalar_one_or_none()

@@ -15,6 +15,7 @@ interface BannerStatus {
   voucher_claimed?: boolean;
   voucher_used?: boolean;
   voucher_code?: string;
+  remaining?: number | null;
 }
 
 interface SurveyQuestion {
@@ -173,6 +174,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         submittingSurvey={submittingSurvey}
         surveyCompleted={surveyCompleted}
         showVoucher={showVoucher}
+        remainingVouchers={bannerStatus[selectedPromo.id]?.remaining ?? null}
         onBack={handleBackFromDetail}
         onClaim={handleClaim}
         onSubmitSurvey={handleSubmitSurvey}

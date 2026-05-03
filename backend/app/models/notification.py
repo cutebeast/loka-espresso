@@ -45,6 +45,8 @@ class NotificationBroadcast(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     audience: Mapped[str] = mapped_column(String(50), default="all")
     store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id", ondelete="SET NULL"), nullable=True)
     scheduled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -55,6 +57,25 @@ class NotificationBroadcast(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="draft")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    store: Mapped[Optional["Store"]] = relationship("Store", foreign_keys=[store_id])
+    creator: Mapped[Optional["AdminUser"]] = relationship("AdminUser", foreign_keys=[created_by])
+
+
+class NotificationTemplate(Base):
+    """Pre-saved notification templates for quick broadcast drafting."""
+    __tablename__ = "notification_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    type: Mapped[str] = mapped_column(String(50), default="broadcast")
+    audience: Mapped[str] = mapped_column(String(50), default="all")
+    store_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("stores.id", ondelete="SET NULL"), nullable=True)
+    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("admin_users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     store: Mapped[Optional["Store"]] = relationship("Store", foreign_keys=[store_id])
     creator: Mapped[Optional["AdminUser"]] = relationship("AdminUser", foreign_keys=[created_by])

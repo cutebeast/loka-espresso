@@ -1,6 +1,47 @@
 # Loka Espresso PWA — Agent Documentation
 
-> This document tracks the design system, architecture, and conventions for the customer PWA at `app.loyaltysystem.uk`.
+> Phase 2 complete — all PWA pages updated to self-contained v2 CSS (2026-05-04)
+> `app.loyaltysystem.uk`
+
+---
+
+## 0. Latest Changes (2026-05-04)
+
+### Phase 2 Complete — All Pages v2
+All PWA pages now have self-contained `*-v2.css` files. Shared patterns extracted per page group. Key CSS variable fix: `var(--loka-copper)` → `var(--loka-accent-copper)`, `var(--loka-brown)` → `var(--loka-accent-brown)`.
+
+**Promotions v2:** Button style matched rewards (12px radius), share button, `rd-remaining-badge` under "How to Redeem", dynamic voucher count from backend.
+**Information v2:** Tab bar (Experiences/Products), matching card style, carousel + share button on detail.
+**Profile v2:** Gradient user card, tier badge + progress bar, order thumbnails, colored menu icons. "Notification Preferences" → "Notifications".
+**Account Details v2:** Avatar upload, grouped form sections, tier badge, iOS-style DatePicker component. Backend: `date_of_birth` now saved via `PUT /users/me`.
+**Notifications v2:** Filter chips, date groups (Today/Yesterday/Earlier), mark-all-read, unread left border, auto-clear retention note. Backend: `notification_retention_days` config + 24h cleanup task.
+**Help & Support v2:** FAQ accordion, subject cards, celebratory success. No live chat. Feedback API: fixed PWA `POST /feedback` 404.
+**Settings & Legal v2:** About section (dynamic from system content), TOC + collapsible sections + search + API `updated_at`. `settings.css` deleted (duplicate).
+**My Card v2:** Physical card design, QR code (`loka:customer:{id}`), tier pills row, share, quick actions.
+**Referral v2:** Gradient stats card, code box with confirmation, milestones, invited user avatars.
+**Wallet v2:** 4-column preset grid with labels, improved balance card, transaction category icons. Fixed missing `.selected`/`.in`/`.out` CSS.
+**My Rewards v2:** Progress bar, expiry countdown, codes HIDDEN (security), bottom sheets without code display.
+**History v2:** Monthly summary card, date groups (Today/This Week/Earlier), category icons, Loyalty/Wallet tabs.
+**Payment Methods v2:** Wallet card with gradient, brand icons (Visa/MC), default toggle, empty state.
+
+### Backend Additions
+- `NotificationTemplate` model + CRUD + auto-seeded 10 templates
+- `POST /admin/scan/customer` — staff scans customer QR to get wallet/rewards/voucher info
+- `notification_retention_days` config key for admin PWA Settings
+- `type` + `image_url` columns on `NotificationBroadcast`
+- `customer_id` added to `Feedback` + `Reservation` models
+- Schema fix: `promotion` → `event` in `_VALID_CONTENT_TYPES`
+- QR scanner updated to handle `loka:customer:` prefix
+- Admin Wallet Top-Up now has QR scanner
+
+### Admin Frontend
+- Notification type dropdown + image URL + template selector in broadcast form
+- `notification_retention_days` field in PWA Settings page
+
+### Key Architecture Decisions
+- **Codes hidden**: Reward/voucher redemption codes NOT shown on PWA. Staff scans QR at counter. Prevents code sharing between friends.
+- **QR payload format**: `loka:customer:{id}` — used by My Card page and scanned by admin POS/Wallet Top-Up.
+- **System content**: `content_type='system'` cards for T&C, Privacy, About. Editable via admin Information page with sections editor.
 
 ---
 
@@ -14,20 +55,29 @@
 | `src/app/globals.css` | Imports all modular CSS files (zero framework dependency) |
 | `src/styles/utilities.css` | ~400 pure CSS utility classes (display, flex, padding, colors, etc.) |
 | `src/styles/components.css` | Component primitives (btn, chip, badge, guest-banner, etc.) |
-| `src/styles/modals.css` | Modal, bottom-sheet, and dialog styles |
-| `src/styles/notifications.css` | Toast, notification list, and badge styles |
+| `src/styles/info-cards.css` | Shared sub-page-header + promo + legal blocks |
 | `src/styles/sub-components.css` | Small shared sub-components (ListCard, ProfileSetup, etc.) |
 | `src/styles/type-pill.css` | TypePill component styles (`.tp-*`) |
 | `src/styles/voucher-reveal.css` | VoucherRevealBlock styles (`.vrb-*`) |
 | `src/styles/redemption-code.css` | RedemptionCodeModal styles (`.rcm-*`) |
 | `src/styles/terms-list.css` | TermsList styles (`.tl-*`) |
-| `src/styles/info-cards.css` | Info cards shared + promotions + sub-page header |
-| `src/styles/info-cards-list.css` | Info cards list view styles |
-| `src/styles/info-cards-detail.css` | Info cards detail/article view styles |
-| `src/styles/checkout.css` | Checkout page layout + top-up + my-card + A2HS |
-| `src/styles/checkout-form.css` | Checkout form/input/payment/summary styles |
-| `src/styles/checkout-success.css` | Checkout success confirmation styles |
-| `src/styles/checkout-delivery.css` | Checkout delivery-specific styles |
+| `src/styles/profile-subpages.css` | Namespace-prefixed sub-page classes (`.ad-`, `.np-`, `.hsp-`, etc.) |
+
+### V2 CSS Files (self-contained)
+| File | Page |
+|---|---|
+| `splash-v2.css`, `auth-step-v2.css`, `phone-v2.css`, `otp-v2.css`, `profile-setup-v2.css`, `login-v2.css` | Auth flow |
+| `home-page-v2.css`, `home-bottom-nav-v2.css`, `qr-scanner-v2.css` | Home + nav |
+| `menu-page-v2.css`, `customize-sheet-v2.css`, `cart-page-v2.css` | Menu + cart |
+| `checkout-v2.css`, `store-picker-v2.css`, `saved-addresses-v2.css` | Checkout |
+| `orders-list-v2.css`, `order-detail-v2.css` | Orders |
+| `rewards-v2.css`, `promotions-v2.css`, `information-v2.css` | Rewards + promos + info |
+| `profile-v2.css`, `account-details-v2.css`, `notifications-v2.css`, `help-support-v2.css`, `settings-v2.css`, `legal-v2.css` | Profile sub-pages |
+| `my-card-v2.css`, `referral-v2.css`, `wallet-v2.css`, `history-v2.css`, `my-rewards-v2.css`, `payment-methods-v2.css` | More profile sub-pages |
+| `toast-v2.css` | Toast notifications |
+
+### Deleted CSS Files (no longer imported)
+`profile.css`, `settings.css`, `notifications.css`, `info-cards-list.css`, `info-cards-detail.css`
 
 **Rule:** Never define local `LOKA` objects in components. Import from `src/lib/tokens.ts`.
 

@@ -1,5 +1,6 @@
 """Barista scan endpoint + Cron expiry job.
 
+- POST /scan/customer        — barista scans customer QR code → returns customer info
 - POST /scan/reward/{code}  — barista scans reward redemption code → marks used
 - POST /scan/voucher/{code} — barista scans voucher code → marks used (redirects to vouchers/use)
 - POST /cron/expire         — marks expired rewards and vouchers
@@ -7,7 +8,7 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from pydantic import BaseModel
 from typing import Optional
 
@@ -16,6 +17,8 @@ from app.core.security import require_role, require_hq_access, require_dashboard
 from app.models.admin_user import AdminUser
 from app.models.reward import UserReward, Reward
 from app.models.voucher import UserVoucher, Voucher
+from app.models.customer import Customer
+from app.models.wallet import Wallet, WalletTransaction
 
 router = APIRouter(prefix="/admin/scan", tags=["Scan & Cron"])
 
@@ -205,4 +208,89 @@ async def expire_items(
     return CronResult(
         rewards_expired=len(reward_ids),
         vouchers_expired=len(voucher_ids),
+    )
+
+
+# ───────────────────────────────────────────────────────────────
+# Customer QR Scan — staff scans customer's membership card QR
+# ───────────────────────────────────────────────────────────────
+
+class CustomerScanRequest(BaseModel):
+    code: str  # e.g. "loka:customer:123"
+
+
+class CustomerScanResult(BaseModel):
+    success: bool
+    message: str
+    customer_id: Optional[int] = None
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    wallet_balance: Optional[float] = None
+    loyalty_points: Optional[int] = None
+    rewards_count: int = 0
+    vouchers_count: int = 0
+
+
+@router.post("/customer", response_model=CustomerScanResult)
+async def scan_customer_qr(
+    body: CustomerScanRequest,
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(require_dashboard_access()),
+):
+    """Staff scans a customer's membership card QR code.
+    Payload format: loka:customer:{id}
+    """
+    code = body.code.strip()
+    if not code.startswith("loka:customer:"):
+        raise HTTPException(400, "Invalid QR code format")
+
+    try:
+        customer_id = int(code.split(":")[-1])
+    except (ValueError, IndexError):
+        raise HTTPException(400, "Invalid customer ID in QR code")
+
+    # Fetch customer
+    c_result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    customer = c_result.scalar_one_or_none()
+    if not customer or not customer.is_active:
+        raise HTTPException(404, "Customer not found")
+
+    # Fetch wallet
+    w_result = await db.execute(select(Wallet).where(Wallet.customer_id == customer_id))
+    wallet = w_result.scalar_one_or_none()
+
+    # Fetch loyalty account
+    from app.models.loyalty import LoyaltyAccount
+    l_result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id))
+    loyalty = l_result.scalar_one_or_none()
+
+    # Count active rewards & vouchers
+    rewards_count = (
+        await db.execute(
+            select(func.count()).select_from(UserReward).where(
+                UserReward.customer_id == customer_id,
+                UserReward.status == "available",
+            )
+        )
+    ).scalar() or 0
+
+    vouchers_count = (
+        await db.execute(
+            select(func.count()).select_from(UserVoucher).where(
+                UserVoucher.customer_id == customer_id,
+                UserVoucher.status == "available",
+            )
+        )
+    ).scalar() or 0
+
+    return CustomerScanResult(
+        success=True,
+        message="Customer found",
+        customer_id=customer.id,
+        customer_name=customer.name,
+        customer_phone=customer.phone,
+        wallet_balance=float(wallet.balance) if wallet else 0,
+        loyalty_points=int(loyalty.points_balance) if loyalty else 0,
+        rewards_count=rewards_count,
+        vouchers_count=vouchers_count,
     )

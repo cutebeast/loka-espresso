@@ -1,6 +1,6 @@
 'use client';
 
-import { Gift, ArrowLeft, ArrowRight, Calendar, Clock, Star, Tag, PenLine, HelpCircle, CheckCircle, Flame, List, Circle } from 'lucide-react';
+import { Gift, ArrowLeft, ArrowRight, Calendar, Clock, Star, Tag, PenLine, HelpCircle, CheckCircle, Flame, List, Circle, Share2 } from 'lucide-react';
 import { RedemptionCodeModal } from '@/components/shared';
 import { useUIStore } from '@/stores/uiStore';
 import { resolveAssetUrl } from '@/lib/tokens';
@@ -38,6 +38,7 @@ interface VoucherSectionProps {
   submittingSurvey: boolean;
   surveyCompleted: boolean;
   showVoucher: string | null;
+  remainingVouchers?: number | null;
   onBack: () => void;
   onClaim: (promo: PromoBanner) => void;
   onSubmitSurvey: () => void;
@@ -57,6 +58,7 @@ export default function VoucherSection({
   submittingSurvey,
   surveyCompleted,
   showVoucher,
+  remainingVouchers,
   onBack,
   onClaim,
   onSubmitSurvey,
@@ -79,6 +81,26 @@ export default function VoucherSection({
   };
 
   const cta = getCTA();
+
+  const remainingText = remainingVouchers != null && remainingVouchers > 0
+    ? `Only ${remainingVouchers} voucher${remainingVouchers !== 1 ? 's' : ''} left`
+    : 'Limited vouchers available';
+
+  const handleShare = async () => {
+    const shareData: ShareData = {
+      title: selectedPromo.title,
+      text: selectedPromo.short_description || '',
+      url: `${window.location.origin}${window.location.pathname}?promo=${selectedPromo.id}#promotions`,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.url || '');
+        useUIStore.getState().showToast('Link copied!', 'success');
+      }
+    } catch { /* user cancelled or not supported */ }
+  };
 
   return (
     <div className="promo-screen-white">
@@ -216,6 +238,10 @@ export default function VoucherSection({
             <p className="rd-desc promo-redeem-box">
               {selectedPromo.how_to_redeem}
             </p>
+            <p className="rd-remaining-badge">
+              <span className="promo-inline-icon"><Flame size={14} /></span>
+              {remainingText}
+            </p>
           </>
         )}
 
@@ -253,10 +279,13 @@ export default function VoucherSection({
               <span>{claiming === selectedPromo.id ? 'Processing...' : cta.text}</span>
               <ArrowRight size={20} />
             </button>
-            <p className="rd-remaining-badge">
-              <span className="promo-inline-icon"><Flame size={14} /></span>
-              Only 47 vouchers left
-            </p>
+            <button
+              className="rd-action-btn-outline"
+              onClick={handleShare}
+            >
+              <span>Share</span>
+              <Share2 size={18} />
+            </button>
           </>
         )}
 

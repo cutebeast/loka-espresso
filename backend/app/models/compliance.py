@@ -127,6 +127,7 @@ class Reservation(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     store_id: Mapped[int] = mapped_column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("customers.id", ondelete="SET NULL"), nullable=True)
+    customer_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("customers.id", ondelete="SET NULL"), nullable=True)
     table_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("store_tables.id", ondelete="SET NULL"), nullable=True)
     guest_name: Mapped[str] = mapped_column(String(255), nullable=False)
     guest_phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
@@ -138,5 +139,5 @@ class Reservation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     store: Mapped["Store"] = relationship("Store", back_populates="reservations")
-    user: Mapped[Optional["Customer"]] = relationship("Customer")
+    user: Mapped[Optional["Customer"]] = relationship("Customer", foreign_keys=[user_id])
     table: Mapped[Optional["StoreTable"]] = relationship("StoreTable")

@@ -58,6 +58,8 @@ async def update_me(req: UserUpdate, user=Depends(get_current_user), db: AsyncSe
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email already in use")
         user.email = req.email
+    if req.date_of_birth is not None and hasattr(user, 'date_of_birth'):
+        user.date_of_birth = req.date_of_birth
     await db.flush()
     ut_name = None
     role_name = None

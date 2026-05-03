@@ -54,7 +54,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
     setLoading(true);
     setError('');
     try {
-      const editableKeys = ['otp_bypass_enabled', 'otp_bypass_code', 'pwa_phone_country_code'];
+      const editableKeys = ['otp_bypass_enabled', 'otp_bypass_code', 'pwa_phone_country_code', 'notification_retention_days'];
       const adminRes = await apiFetch(`/admin/config?${editableKeys.map((key) => `key=${encodeURIComponent(key)}`).join('&')}`);
       const publicRes = await apiFetch('/config');
       if (!adminRes.ok || !publicRes.ok) {
@@ -77,6 +77,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
       if (!vals.pwa_phone_country_code) vals.pwa_phone_country_code = '+60';
       if (!vals.otp_bypass_enabled) vals.otp_bypass_enabled = 'false';
       if (!vals.otp_bypass_code) vals.otp_bypass_code = '';
+      if (!vals.notification_retention_days) vals.notification_retention_days = '30';
       setEditValues(vals);
     } catch {
       setError('Network error');
@@ -378,6 +379,65 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
               </span>
             )}
             {savedKeys['pwa_phone_country_code'] === 'err' && (
+              <span className="psp-40">
+                <i className="fas fa-exclamation-circle"></i>
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Notification Retention Group */}
+      <div className="psp-28">
+        <div className="psp-29">
+          <span className="psp-30"><i className="fas fa-bell"></i></span>
+          <h3 className="psp-31">Notification Retention</h3>
+        </div>
+
+        <div className="psp-32">
+          <div className="psp-33">
+            <div className="psp-34">
+              Auto-clear after (days)
+            </div>
+            <div className="psp-35">
+              Notifications older than this many days are automatically purged. Default: 30 days. Shown as a note to users in the PWA.
+            </div>
+          </div>
+          <div className="psp-36">
+            <input
+              type="number"
+              min="1"
+              max="365"
+              value={editValues.notification_retention_days ?? '30'}
+              onChange={(e) => {
+                setEditValues(prev => ({ ...prev, notification_retention_days: e.target.value }));
+                setSavedKeys(prev => {
+                  const next = { ...prev };
+                  delete next['notification_retention_days'];
+                  return next;
+                });
+              }}
+              placeholder="30"
+              className="psp-37"
+              style={{ width: 80 }}
+            />
+            <button
+              className="btn btn-primary psp-38"
+              disabled={savingKeys['notification_retention_days'] || editValues.notification_retention_days === String(configs.notification_retention_days ?? '30')}
+              onClick={() => saveConfig('notification_retention_days')}
+            >
+              {savingKeys['notification_retention_days'] ? (
+                <><i className="fas fa-spinner fa-spin"></i></>
+              ) : (
+                <><i className="fas fa-save"></i></>
+              )}
+            </button>
+            {savedKeys['notification_retention_days'] === 'ok' && (
+              <span className="psp-39">
+                <i className="fas fa-check-circle"></i>
+              </span>
+            )}
+            {savedKeys['notification_retention_days'] === 'err' && (
               <span className="psp-40">
                 <i className="fas fa-exclamation-circle"></i>
               </span>

@@ -87,10 +87,10 @@ export default function RewardsPage() {
           )}
           {selectedReward.terms && selectedReward.terms.length > 0 && (
             <>
-              <div className="detail-section-label">Terms &amp; Conditions</div>
-              <ul className="detail-terms-list">
+              <div className="rd-section-title"><List size={16} /> Terms &amp; Conditions</div>
+              <ul className="rd-terms-list">
                 {selectedReward.terms.map((t, i) => (
-                  <li key={i}><Circle size={10} fill="#D18E38" color="#D18E38" /> {t}</li>
+                  <li key={i}><Circle size={10} fill="currentColor" /> {t}</li>
                 ))}
               </ul>
             </>

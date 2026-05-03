@@ -47,6 +47,34 @@ export default function QRScanner({ onCustomerFound, onResult, onApplied }: QRSc
   const validateScannedCode = useCallback(async (code: string) => {
     setConfirmingScan(true);
     onResult(null);
+
+    // Customer membership card scan (loka:customer:{id})
+    if (code.startsWith('loka:customer:')) {
+      try {
+        const res = await apiFetch('/admin/scan/customer', undefined, {
+          method: 'POST',
+          body: JSON.stringify({ code }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          onCustomerFound({
+            id: data.customer_id,
+            name: data.customer_name,
+            phone: data.customer_phone,
+          });
+          onResult({ success: true, message: `Found: ${data.customer_name || 'Customer'} (Balance: RM ${data.wallet_balance?.toFixed(2) || '0.00'})` });
+          setConfirmingScan(false);
+          return;
+        }
+        const err = await res.json().catch(() => ({}));
+        onResult({ success: false, message: err.detail || 'Customer not found' });
+      } catch {
+        onResult({ success: false, message: 'Network error' });
+      }
+      setConfirmingScan(false);
+      return;
+    }
+
     try {
       let res = await apiFetch(`/admin/scan/reward/${encodeURIComponent(code)}`, undefined, {
         method: 'POST',

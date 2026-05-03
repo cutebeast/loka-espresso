@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import CustomerSearchForm from './CustomerSearchForm';
+import QRScanner from './pos-terminal/QRScanner';
 import type { CustomerResult } from './CustomerSearchForm';
 
 interface WalletTopUpPageProps {
@@ -33,6 +34,11 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
     } catch {
       setCustomer({ ...c, wallet_balance: 0 });
     }
+  }
+
+  async function handleCustomerFoundFromQR(c: CustomerResult) {
+    await handleCustomerFound(c);
+    setResult({ success: true, message: `Customer found: ${c.name || 'Unknown'} (${c.phone || '—'})` });
   }
 
   async function handleTopUp(e: FormEvent) {
@@ -95,8 +101,14 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
         )}
       </div>
 
-      {/* Step 1: Search Customer */}
-      <CustomerSearchForm onCustomerFound={handleCustomerFound} />
+      {/* Step 1: Search Customer by phone or scan QR */}
+      <CustomerSearchForm onCustomerFound={handleCustomerFound}>
+        <QRScanner
+          onCustomerFound={handleCustomerFoundFromQR}
+          onResult={setResult}
+          onApplied={() => {}}
+        />
+      </CustomerSearchForm>
 
       {customer && (
         <div className="wallet-topup-customer wtup-10">

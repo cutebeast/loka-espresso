@@ -1,13 +1,272 @@
-/* ════════ MY CARD V2 ════════ */
-.mycard-screen { display: flex; flex-direction: column; height: 100%; background: #E4EAEF; }
-.mycard-header { display: flex; align-items: center; padding: 12px 20px; background: #fff; border-bottom: 1px solid #D4DCE5; gap: 12px; }
-.mycard-back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: #E4EAEF; border: none; cursor: pointer; color: #1B2023; }
-.mycard-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #384B16; }
-.mycard-content { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
-.mycard-qr-box { background: #fff; border-radius: 20px; padding: 24px; border: 1px solid #D4DCE5; width: 100%; max-width: 300px; text-align: center; }
-.mycard-qr-inner { width: 200px; height: 200px; margin: 0 auto 12px; background: #F3EEE5; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-.mycard-qr-label { font-size: 12px; color: #6A7A8A; text-transform: uppercase; letter-spacing: 0.5px; }
-.mycard-member-name { font-size: 18px; font-weight: 700; color: #1B2023; }
-.mycard-member-since { font-size: 13px; color: #6A7A8A; margin-top: 2px; }
-.mycard-points-row { display: flex; gap: 12px; width: 100%; }
-.mycard-info-text { font-size: 14px; color: #6A7A8A; text-align: center; line-height: 1.5; }
+/* ════════ MY CARD V2 — self-contained ════════ */
+
+.mycard-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--loka-bg-light);
+}
+
+.mycard-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  gap: 12px;
+  background: #fff;
+  border-bottom: 1px solid #D4DCE5;
+  flex-shrink: 0;
+}
+
+.mycard-back-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #E4EAEF;
+  border: none;
+  cursor: pointer;
+  color: #1B2023;
+}
+
+.mycard-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #384B16;
+}
+
+.mycard-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Physical card */
+.mycard-physical {
+  width: 100%;
+  max-width: 340px;
+  height: 200px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, var(--loka-primary) 0%, #2a3a10 40%, var(--loka-accent-brown) 100%);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(56,75,22,0.3), 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.mycard-physical::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(209,142,56,0.15);
+}
+
+.mycard-physical::after {
+  content: '';
+  position: absolute;
+  bottom: -40px;
+  left: -20px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+
+.mycard-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  z-index: 2;
+}
+
+.mycard-brand {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.mycard-tier-badge {
+  background: var(--loka-accent-copper);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mycard-middle {
+  position: relative;
+  z-index: 2;
+}
+
+.mycard-qr-area {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mycard-qr {
+  width: 64px;
+  height: 64px;
+  background: #fff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.mycard-qr canvas,
+.mycard-qr img {
+  width: 56px;
+  height: 56px;
+}
+
+.mycard-member-info {
+  color: #fff;
+}
+
+.mycard-member-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.mycard-member-id {
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 1px;
+}
+
+.mycard-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  position: relative;
+  z-index: 2;
+}
+
+.mycard-points-display {
+  color: #fff;
+}
+
+.mycard-pts-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
+.mycard-pts-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  margin-top: 2px;
+}
+
+.mycard-since {
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+}
+
+/* Tier pills row */
+.mycard-tier-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+  max-width: 340px;
+}
+
+.mycard-tier-pill {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1.5px solid #D4DCE5;
+  background: #fff;
+  color: #6A7A8A;
+}
+
+.mycard-tier-pill.active {
+  background: var(--loka-cream);
+  border-color: var(--loka-accent-copper);
+  color: var(--loka-accent-copper);
+}
+
+/* Share button */
+.mycard-share-btn {
+  width: 100%;
+  max-width: 340px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--loka-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+}
+
+.mycard-share-btn:active { background: var(--loka-primary-dark); }
+
+/* Quick actions */
+.mycard-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.mycard-action-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #D4DCE5;
+  background: #fff;
+  color: var(--loka-text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+.mycard-action-btn:active { background: #F5F7FA; }
+
+.mycard-action-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--loka-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

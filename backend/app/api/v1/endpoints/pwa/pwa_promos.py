@@ -64,6 +64,8 @@ class PromoStatusOut(BaseModel):
     voucher_claimed: Optional[bool] = None
     voucher_used: Optional[bool] = None
     voucher_code: Optional[str] = None
+    # Remaining voucher count (max_uses - used_count, or null if unlimited)
+    remaining: Optional[int] = None
 
 
 # ---------------------------------------------------------------------------
@@ -247,6 +249,13 @@ async def get_banner_status(
     if not voucher_id:
         return status  # No voucher to track
 
+    # Fetch voucher to get max_uses / used_count for remaining calculation
+    v = await db.execute(select(Voucher).where(Voucher.id == voucher_id))
+    voucher = v.scalar_one_or_none()
+    if voucher and voucher.max_uses is not None:
+        remaining = max(0, voucher.max_uses - (voucher.used_count or 0))
+        status.remaining = remaining
+
     # Check user_vouchers for this voucher
     uv_result = await db.execute(
         select(UserVoucher).where(
@@ -263,9 +272,7 @@ async def get_banner_status(
         unused = [uv for uv in user_vouchers if uv.order_id is None]
         if unused:
             status.voucher_used = False
-            # Fetch voucher code
-            v = await db.execute(select(Voucher).where(Voucher.id == voucher_id))
-            voucher = v.scalar_one_or_none()
+            # Reuse voucher already fetched above for voucher_code
             status.voucher_code = voucher.code if voucher else None
         else:
             status.voucher_used = True

@@ -18,7 +18,12 @@ import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/tokens';
 
-const TOPUP_AMOUNTS = [20, 50, 100, 200];
+const TOPUP_AMOUNTS = [
+  { amount: 20, label: 'Starter' },
+  { amount: 50, label: 'Popular' },
+  { amount: 100, label: 'Value' },
+  { amount: 200, label: 'Premium' },
+];
 
 export default function WalletPage() {
   const { balance, setBalance, transactions, setTransactions } = useWalletStore();
@@ -118,15 +123,16 @@ export default function WalletPage() {
 
         {/* Online Top Up */}
         <div>
-          <div className="topup-section-title">Online Top Up</div>
-          <div className="topup-amount-grid">
-            {TOPUP_AMOUNTS.map((amount) => (
+          <div className="topup-section-title">Quick Top Up</div>
+          <div className="topup-amount-grid topup-amount-grid-4col">
+            {TOPUP_AMOUNTS.map(({ amount, label }) => (
               <button
                 key={amount}
                 className={`topup-amount-btn ${selectedAmount === amount ? 'selected' : ''}`}
                 onClick={() => handleSelectAmount(amount)}
               >
-                RM {amount}
+                <span className="topup-preset-amount">RM {amount}</span>
+                <span className="topup-preset-label">{label}</span>
               </button>
             ))}
           </div>

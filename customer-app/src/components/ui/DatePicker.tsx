@@ -1,100 +1,176 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useRef, useEffect, useState, useCallback } from 'react';
+import { ChevronDown } from 'lucide-react';
 
-interface DatePickerProps {
-  value?: Date;
-  onChange: (date: Date) => void;
-  minDate?: Date;
-  maxDate?: Date;
-}
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
-  'January','February','March','April','May','June',
-  'July','August','September','October','November','December',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-export function DatePicker({ value, onChange, minDate, maxDate }: DatePickerProps) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const [viewDate, setViewDate] = useState(
-    value ? new Date(value.getFullYear(), value.getMonth(), 1) : new Date(today.getFullYear(), today.getMonth(), 1)
-  );
+const DAYS_PER_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 100 }, (_, i) => currentYear - i);
 
-  const isDisabled = (day: number) => {
-    const d = new Date(year, month, day);
-    if (minDate && d < minDate) return true;
-    if (maxDate && d > maxDate) return true;
-    return false;
+function daysInMonth(monthIndex: number): number {
+  return DAYS_PER_MONTH[monthIndex] || 31;
+}
+
+interface DatePickerProps {
+  value: string;        // YYYY-MM-DD
+  onChange: (value: string) => void;
+  placeholder?: string;
+  label?: string;
+}
+
+export default function DatePicker({ value, onChange, placeholder = 'Select date', label }: DatePickerProps) {
+  const [open, setOpen] = useState(false);
+
+  const parsed = value ? value.split('-').map(Number) : null;
+  const [month, setMonth] = useState(parsed ? parsed[1] - 1 : 0);
+  const [day, setDay] = useState(parsed ? parsed[2] : 1);
+  const [year, setYear] = useState(parsed ? parsed[0] : currentYear - 25);
+
+  const monthRef = useRef<HTMLDivElement>(null);
+  const dayRef = useRef<HTMLDivElement>(null);
+  const yearRef = useRef<HTMLDivElement>(null);
+
+  const displayText = parsed
+    ? `${parsed[2]} ${MONTHS[parsed[1] - 1].slice(0, 3)} ${parsed[0]}`
+    : null;
+
+  const safeDay = Math.min(day, daysInMonth(month));
+
+  const apply = useCallback(() => {
+    const m = String(month + 1).padStart(2, '0');
+    const d = String(safeDay).padStart(2, '0');
+    onChange(`${year}-${m}-${d}`);
+    setOpen(false);
+  }, [month, safeDay, year, onChange]);
+
+  // Scroll selected item into view when picker opens
+  useEffect(() => {
+    if (!open) return;
+    const timeout = setTimeout(() => {
+      monthRef.current?.children[month]?.scrollIntoView({ block: 'center', behavior: 'auto' });
+      dayRef.current?.children[safeDay - 1]?.scrollIntoView({ block: 'center', behavior: 'auto' });
+      const yearIdx = YEARS.indexOf(year);
+      if (yearIdx >= 0) {
+        yearRef.current?.children[yearIdx]?.scrollIntoView({ block: 'center', behavior: 'auto' });
+      }
+    }, 50);
+    return () => clearTimeout(timeout);
+  }, [open, month, safeDay, year]);
+
+  const handleWheelMonth = (e: React.WheelEvent) => {
+    e.preventDefault();
+    setMonth(m => Math.max(0, Math.min(11, m + (e.deltaY > 0 ? 1 : -1))));
   };
 
-  const isSelected = (day: number) => {
-    if (!value) return false;
-    return value.getDate() === day && value.getMonth() === month && value.getFullYear() === year;
+  const handleWheelDay = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const max = daysInMonth(month);
+    setDay(d => Math.max(1, Math.min(max, d + (e.deltaY > 0 ? 1 : -1))));
   };
 
-  const isToday = (day: number) => {
-    return today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+  const handleWheelYear = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const idx = YEARS.indexOf(year);
+    const newIdx = Math.max(0, Math.min(YEARS.length - 1, idx + (e.deltaY > 0 ? 1 : -1)));
+    setYear(YEARS[newIdx]);
   };
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-card">
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={() => setViewDate(new Date(year, month - 1, 1))}
-          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-bg-light transition-colors"
-        >
-          <ChevronLeft size={18} className="text-text-secondary" />
-        </button>
-        <span className="text-sm font-bold text-text-primary">{MONTHS[month]} {year}</span>
-        <button
-          onClick={() => setViewDate(new Date(year, month + 1, 1))}
-          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-bg-light transition-colors"
-        >
-          <ChevronRight size={18} className="text-text-secondary" />
-        </button>
-      </div>
+    <>
+      <button
+        type="button"
+        className="datepicker-field"
+        onClick={() => setOpen(true)}
+      >
+        <span className={displayText ? 'datepicker-value' : 'datepicker-placeholder'}>
+          {displayText || placeholder}
+        </span>
+        <ChevronDown size={16} className="datepicker-chevron" />
+      </button>
 
-      <div className="grid grid-cols-7 mb-2">
-        {DAYS.map((d) => (
-          <div key={d} className="text-center text-[11px] font-semibold text-text-muted py-1">{d}</div>
-        ))}
-      </div>
+      {open && (
+        <div className="datepicker-overlay" onClick={(e) => { if (e.target === e.currentTarget) apply(); }}>
+          <div className="datepicker-sheet">
+            <div className="datepicker-sheet-header">
+              <button className="datepicker-sheet-btn datepicker-cancel" onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+              {label && <span className="datepicker-sheet-label">{label}</span>}
+              <button className="datepicker-sheet-btn datepicker-done" onClick={apply}>
+                Done
+              </button>
+            </div>
 
-      <div className="grid grid-cols-7 gap-1">
-        {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`e${i}`} />
-        ))}
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1;
-          const disabled = isDisabled(day);
-          const selected = isSelected(day);
-          const todayMark = isToday(day);
-          let cls = 'aspect-square rounded-lg text-sm font-semibold flex items-center justify-center transition-colors ';
-          if (selected) cls += 'bg-primary text-white ';
-          else if (todayMark) cls += 'bg-copper-soft text-copper ';
-          else if (disabled) cls += 'text-border cursor-not-allowed ';
-          else cls += 'text-text-primary hover:bg-bg-light ';
+            <div className="datepicker-columns">
+              {/* Month */}
+              <div className="datepicker-column">
+                <div className="datepicker-column-label">Month</div>
+                <div
+                  ref={monthRef}
+                  className="datepicker-scroll"
+                  onWheel={handleWheelMonth}
+                >
+                  {MONTHS.map((m, i) => (
+                    <div
+                      key={m}
+                      className={`datepicker-item ${i === month ? 'active' : ''}`}
+                      onClick={() => setMonth(i)}
+                    >
+                      {m.slice(0, 3)}
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          return (
-            <button
-              key={day}
-              onClick={() => !disabled && onChange(new Date(year, month, day))}
-              disabled={disabled}
-              className={cls}
-            >
-              {day}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+              {/* Day */}
+              <div className="datepicker-column">
+                <div className="datepicker-column-label">Day</div>
+                <div
+                  ref={dayRef}
+                  className="datepicker-scroll"
+                  onWheel={handleWheelDay}
+                >
+                  {Array.from({ length: daysInMonth(month) }, (_, i) => i + 1).map(d => (
+                    <div
+                      key={d}
+                      className={`datepicker-item ${d === safeDay ? 'active' : ''}`}
+                      onClick={() => setDay(d)}
+                    >
+                      {d}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Year */}
+              <div className="datepicker-column">
+                <div className="datepicker-column-label">Year</div>
+                <div
+                  ref={yearRef}
+                  className="datepicker-scroll"
+                  onWheel={handleWheelYear}
+                >
+                  {YEARS.map(y => (
+                    <div
+                      key={y}
+                      className={`datepicker-item ${y === year ? 'active' : ''}`}
+                      onClick={() => setYear(y)}
+                    >
+                      {y}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

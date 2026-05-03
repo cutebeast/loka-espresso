@@ -9,10 +9,12 @@ from app.core.security import require_hq_access
 from app.core.audit import log_action, get_client_ip
 from app.models.admin_user import AdminUser
 from app.models.customer import CustomerDeviceToken
-from app.models.notification import Notification, NotificationBroadcast
+from app.models.notification import Notification, NotificationBroadcast, NotificationTemplate
 from app.schemas.admin_extras import (
     BroadcastCreate,
     BroadcastOut,
+    TemplateCreate,
+    TemplateOut,
 )
 
 router = APIRouter(prefix="/admin", tags=["Admin Broadcasts"])
@@ -218,7 +220,8 @@ async def send_broadcast(
                 customer_id=dt.customer_id,
                 title=obj.title,
                 body=obj.body,
-                type="broadcast",
+                type=obj.type or "broadcast",
+                image_url=obj.image_url,
                 data={"broadcast_id": obj.id, "image_url": obj.image_url},
             )
             db.add(notif)
@@ -237,3 +240,91 @@ async def send_broadcast(
     await db.refresh(obj)
     return {"id": obj.id, "status": obj.status, "sent_count": sent_count,
             "sent_at": obj.sent_at.isoformat() if obj.sent_at else None}
+
+
+# ───────────────────────────────────────────────────────────────
+# Notification Templates CRUD
+# ───────────────────────────────────────────────────────────────
+
+@router.get("/notification-templates", response_model=list[TemplateOut])
+async def list_templates(
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(require_hq_access()),
+):
+    """List all active notification templates."""
+    result = await db.execute(
+        select(NotificationTemplate)
+        .where(NotificationTemplate.is_active == True)
+        .order_by(NotificationTemplate.name)
+    )
+    return result.scalars().all()
+
+
+@router.post("/notification-templates", response_model=TemplateOut, status_code=201)
+async def create_template(
+    body: TemplateCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(require_hq_access()),
+):
+    """Save a new notification template."""
+    tmpl = NotificationTemplate(
+        name=body.name,
+        title=body.title,
+        body=body.body,
+        type=body.type,
+        audience=body.audience,
+        store_id=body.store_id,
+        created_by=user.id,
+    )
+    db.add(tmpl)
+    await db.flush()
+    ip = get_client_ip(request)
+    await log_action(db, action="CREATE_TEMPLATE", user_id=user.id, entity_type="template",
+                     entity_id=tmpl.id, details={"name": tmpl.name, "type": tmpl.type}, ip_address=ip)
+    await db.refresh(tmpl)
+    return tmpl
+
+
+@router.put("/notification-templates/{template_id}", response_model=TemplateOut)
+async def update_template(
+    template_id: int,
+    body: TemplateCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(require_hq_access()),
+):
+    """Update an existing notification template."""
+    result = await db.execute(select(NotificationTemplate).where(NotificationTemplate.id == template_id))
+    tmpl = result.scalar_one_or_none()
+    if not tmpl:
+        raise HTTPException(404, "Template not found")
+    for key in ("name", "title", "body", "type", "audience", "store_id"):
+        val = getattr(body, key, None)
+        if val is not None:
+            setattr(tmpl, key, val)
+    await db.flush()
+    ip = get_client_ip(request)
+    await log_action(db, action="UPDATE_TEMPLATE", user_id=user.id, entity_type="template",
+                     entity_id=tmpl.id, details={"name": tmpl.name}, ip_address=ip)
+    return tmpl
+
+
+@router.delete("/notification-templates/{template_id}")
+async def delete_template(
+    template_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(require_hq_access()),
+):
+    """Soft-delete a notification template."""
+    result = await db.execute(select(NotificationTemplate).where(NotificationTemplate.id == template_id))
+    tmpl = result.scalar_one_or_none()
+    if not tmpl:
+        raise HTTPException(404, "Template not found")
+    tmpl.is_active = False
+    await db.flush()
+    ip = get_client_ip(request)
+    await log_action(db, action="DELETE_TEMPLATE", user_id=user.id, entity_type="template",
+                     entity_id=tmpl.id, details={"name": tmpl.name}, ip_address=ip)
+    return {"message": "Template deleted"}

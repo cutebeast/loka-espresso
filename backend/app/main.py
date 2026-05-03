@@ -44,18 +44,34 @@ logging.basicConfig(
 logger = logging.getLogger("fnb_app")
 
 
-async def _token_blacklist_cleanup():
-    """Background task: purge expired token_blacklist rows every 24 hours."""
-    from app.core.database import engine
+async def _scheduled_cleanup():
+    """Background task: purge expired token_blacklist and old notifications every 24 hours."""
+    from app.core.database import engine, async_session
     while True:
         await asyncio.sleep(86400)  # 24 hours
         try:
             async with engine.begin() as conn:
+                # Purge expired blacklist tokens
                 result = await conn.execute(text("DELETE FROM token_blacklist WHERE expires_at < NOW()"))
                 if result.rowcount and result.rowcount > 0:
                     logger.info(f"[cleanup] Purged {result.rowcount} expired token_blacklist rows")
+
+            # Purge old notifications based on retention_days config
+            async with async_session() as session:
+                from app.models.splash import AppConfig
+                from sqlalchemy import select
+                r = await session.execute(select(AppConfig.value).where(AppConfig.key == "notification_retention_days"))
+                val = r.scalar_one_or_none()
+                retention_days = int(val) if val else 30
+                result = await session.execute(
+                    text("DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '1 day' * :days"),
+                    {"days": retention_days},
+                )
+                if result.rowcount and result.rowcount > 0:
+                    logger.info(f"[cleanup] Purged {result.rowcount} notifications older than {retention_days} days")
+                await session.commit()
         except Exception as e:
-            logger.error(f"[cleanup] token_blacklist purge failed: {e}")
+            logger.error(f"[cleanup] Scheduled cleanup failed: {e}")
 
 
 @asynccontextmanager
@@ -78,12 +94,21 @@ async def lifespan(app: FastAPI):
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
             logger.info("[startup] Database connection successful")
+
+        # Seed default notification templates if table is empty
+        try:
+            from app.core.seed_templates import seed_templates
+            from app.core.database import async_session
+            async with async_session() as session:
+                await seed_templates(session)
+        except Exception as e:
+            logger.warning(f"[startup] Template seeding skipped: {e}")
             
     except Exception as e:
         logger.error(f"[startup] Database connection failed: {e}")
         raise
     
-    task = asyncio.create_task(_token_blacklist_cleanup())
+    task = asyncio.create_task(_scheduled_cleanup())
     logger.info("[startup] Background cleanup task started")
     
     yield

@@ -7,6 +7,23 @@ Multi-app F&B platform for Loka Espresso:
 - **Admin Frontend**: Next.js 16 (Hash router, pure CSS)
 - **Customer PWA**: Next.js 16 (Zustand, pure CSS)
 
+## Session: Phase 2 UI/UX Complete (2026-05-04)
+
+All PWA pages updated to self-contained v2 CSS. 22 display pages completed.
+See `customer-app/AGENTS.md` for full page-by-page details.
+
+### Key additions this session:
+- **QR bridge**: Customer My Card generates QR (`loka:customer:{id}`), admin scans via POS/Wallet Top-Up
+- **Notification templates**: 10 auto-seeded templates for admin broadcast drafting
+- **Notification retention**: Configurable auto-clear (default 30 days), admin PWA Settings field
+- **Feedback API**: Fixed PWA `POST /feedback` 404 (created `pwa_feedback.py`)
+- **CSS variable fix**: `--loka-copper` → `--loka-accent-copper` across 10 files (invisible icons bug)
+- **Codes hidden**: Reward/voucher redemption codes not displayed on PWA (security decision)
+- **System content**: `content_type='system'` for T&C, Privacy, About — sections editor in admin
+
+### Deleted files (5): `profile.css`, `settings.css`, `notifications.css`, `info-cards-list.css`, `info-cards-detail.css`
+### New files (4): `pwa_feedback.py`, `seed_templates.py`, `my-rewards-v2.css`, migration `489e0319dcfe`
+
 ## Key Commands
 
 ```bash

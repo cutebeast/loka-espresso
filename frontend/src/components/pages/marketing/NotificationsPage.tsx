@@ -42,6 +42,8 @@ interface EditFormProps {
 function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
   const [title, setTitle] = useState(bc.title);
   const [body, setBody] = useState(bc.body || '');
+  const [type, setType] = useState(bc.type || 'broadcast');
+  const [imageUrl, setImageUrl] = useState(bc.image_url || '');
   const [audience, setAudience] = useState(bc.audience);
   const [scheduledDate, setScheduledDate] = useState(
     bc.scheduled_at ? bc.scheduled_at.slice(0, 10) : ''
@@ -50,6 +52,17 @@ function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
     bc.scheduled_at ? bc.scheduled_at.slice(11, 16) : ''
   );
   const [saving, setSaving] = useState(false);
+
+  const typeOptions = [
+    { value: 'broadcast', label: 'Broadcast' },
+    { value: 'order', label: 'Order' },
+    { value: 'reward', label: 'Reward' },
+    { value: 'wallet', label: 'Wallet' },
+    { value: 'loyalty', label: 'Loyalty' },
+    { value: 'promo', label: 'Promo' },
+    { value: 'info', label: 'Info' },
+    { value: 'event', label: 'Event' },
+  ];
 
   const audienceOptions = [
     { value: 'all', label: 'All Users' },
@@ -62,16 +75,16 @@ function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
   async function handleSave() {
     setSaving(true);
     try {
-      const payload: Record<string, string> = { title, body, audience };
+      const payload: Record<string, unknown> = { title, body, type, audience, image_url: imageUrl || undefined };
       if (scheduledDate && scheduledTime) {
         payload.scheduled_at = `${scheduledDate}T${scheduledTime}:00`;
       }
-      const res = await apiFetch(`/admin/broadcasts/${bc.id}`, undefined, {
+      await apiFetch(`/admin/broadcasts/${bc.id}`, undefined, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (res.ok) onSave();
+      onSave();
     } catch { console.error('Failed to save broadcast'); } finally { setSaving(false); }
   }
 
@@ -84,6 +97,17 @@ function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
             <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Broadcast title" />
           </div>
           <div className="df-field">
+            <label className="df-label">Type</label>
+            <FilterSelect
+              value={type}
+              onChange={setType}
+              options={typeOptions}
+              placeholder="Select type..."
+            />
+          </div>
+        </div>
+        <div className="df-grid">
+          <div className="df-field">
             <label className="df-label">Audience</label>
             <FilterSelect
               value={audience}
@@ -91,6 +115,10 @@ function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
               options={audienceOptions}
               placeholder="Select audience..."
             />
+          </div>
+          <div className="df-field">
+            <label className="df-label">Image URL <span>(optional)</span></label>
+            <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
           </div>
         </div>
         <div className="df-field" style={{ marginBottom: 16 }}>
@@ -268,6 +296,7 @@ export default function NotificationsPage({ token, refreshKey: _refreshKey, onNe
                       {statusBadge(bc.status, bc.scheduled_at)}
                     </div>
                     <div className="np-33">
+                      {bc.type && <span className="badge badge-outline" style={{ marginRight: 8 }}>{bc.type}</span>}
                       {audienceLabel[bc.audience] || bc.audience}
                       {bc.scheduled_at && !bc.sent_at && <span> &middot; <i className="fas fa-clock"></i> Scheduled: {new Date(bc.scheduled_at).toLocaleString()}</span>}
                       {bc.sent_at && <span> &middot; Published: {new Date(bc.sent_at).toLocaleString()}</span>}

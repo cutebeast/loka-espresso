@@ -194,6 +194,8 @@ export interface MerchantBroadcast {
   id: number;
   title: string;
   body: string | null;
+  type: string | null;
+  image_url: string | null;
   audience: string;
   store_id: number | null;
   scheduled_at: string | null;

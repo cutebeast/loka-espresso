@@ -118,6 +118,8 @@ class AuditLogOut(BaseModel):
 class BroadcastCreate(BaseModel):
     title: str
     body: Optional[str] = None
+    type: Optional[str] = "broadcast"
+    image_url: Optional[str] = None
     audience: str = "all"
     store_id: Optional[int] = None
     scheduled_at: Optional[datetime] = None
@@ -128,6 +130,8 @@ class BroadcastOut(BaseModel):
     id: int
     title: str
     body: Optional[str] = None
+    type: Optional[str] = None
+    image_url: Optional[str] = None
     audience: str
     store_id: Optional[int] = None
     scheduled_at: Optional[datetime] = None
@@ -136,6 +140,30 @@ class BroadcastOut(BaseModel):
     open_count: int
     is_archived: bool = False
     status: str = "draft"
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class TemplateCreate(BaseModel):
+    name: str
+    title: str
+    body: Optional[str] = None
+    type: str = "broadcast"
+    audience: str = "all"
+    store_id: Optional[int] = None
+
+
+class TemplateOut(BaseModel):
+    id: int
+    name: str
+    title: str
+    body: Optional[str] = None
+    type: str = "broadcast"
+    audience: str = "all"
+    store_id: Optional[int] = None
+    is_active: bool = True
     created_at: Optional[datetime] = None
 
     class Config:
@@ -224,7 +252,7 @@ class LoyaltyTierCreate(BaseModel):
     sort_order: int = 0
 
 
-_VALID_CONTENT_TYPES = {"system", "information", "product", "promotion"}
+_VALID_CONTENT_TYPES = {"system", "information", "product", "event"}
 
 
 class InformationCardCreate(BaseModel):

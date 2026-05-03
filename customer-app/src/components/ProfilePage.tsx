@@ -15,11 +15,14 @@ import {
   ChevronRight,
   Pen,
   IdCard,
+  Bell,
+  ShoppingBag,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { GuestGate } from '@/components/auth/GuestGate';
+import { resolveAssetUrl } from '@/lib/tokens';
 import api from '@/lib/api';
 
 interface OrderPreview {
@@ -27,26 +30,39 @@ interface OrderPreview {
   items: string;
   date: string;
   status: string;
+  total: number;
+  imageUrl: string | null;
 }
 
 export default function ProfilePage() {
   const { user, logout } = useAuthStore();
-  const { points } = useWalletStore();
+  const { points, tier } = useWalletStore();
   const { setPage } = useUIStore();
 
   const [showLogout, setShowLogout] = useState(false);
   const [recentOrders, setRecentOrders] = useState<OrderPreview[]>([]);
 
+  /* Tier progress */
+  const tierThresholds: Record<string, number> = { Bronze: 0, Silver: 1000, Gold: 3000, Platinum: 5000 };
+  const tiers = Object.keys(tierThresholds);
+  const currentTierIdx = tiers.indexOf(tier || 'Bronze');
+  const nextTier = tiers[currentTierIdx + 1] || 'Platinum';
+  const nextThreshold = tierThresholds[nextTier] || 5000;
+  const progress = Math.min((points / nextThreshold) * 100, 100);
+  const ptsToNext = Math.max(0, nextThreshold - points);
+
   useEffect(() => {
     if (!useAuthStore.getState().isAuthenticated) return;
-    api.get('/orders?page_size=2')
+    api.get('/orders?page_size=3')
       .then((res) => {
         const data = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
-        setRecentOrders(data.slice(0, 2).map((o: { id: number; items?: { name?: string }[]; created_at?: string; status?: string }) => ({
+        setRecentOrders(data.slice(0, 3).map((o: any) => ({
           id: o.id,
-          items: o.items?.map(i => i.name).filter(Boolean).join(', ') || 'Order #' + o.id,
-          date: o.created_at ? new Date(o.created_at).toLocaleDateString('en-MY', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
+          items: o.items?.map((i: any) => i.name).filter(Boolean).join(', ') || 'Order #' + o.id,
+          date: o.created_at ? new Date(o.created_at).toLocaleDateString('en-MY', { month: 'short', day: 'numeric' }) : '',
           status: o.status || 'Completed',
+          total: o.total || 0,
+          imageUrl: o.items?.[0]?.image_url ? resolveAssetUrl(o.items[0].image_url) : null,
         })));
       })
       .catch(() => setRecentOrders([]));
@@ -66,12 +82,20 @@ export default function ProfilePage() {
     { id: 'payment', icon: CreditCard, label: 'Payment Methods', iconClass: 'profile-icon-payment', onClick: () => setPage('payment-methods') },
     { id: 'addresses', icon: MapPin, label: 'Saved Addresses', iconClass: 'profile-icon-address', onClick: () => setPage('saved-addresses') },
     { id: 'card', icon: IdCard, label: 'My Card', iconClass: 'profile-icon-card', onClick: () => setPage('my-card') },
+    { id: 'notification', icon: Bell, label: 'Notifications', iconClass: 'profile-icon-notif', onClick: () => setPage('notifications') },
   ];
 
   const menuItems2 = [
     { id: 'settings', icon: SlidersHorizontal, label: 'Settings', iconClass: 'profile-icon-settings', onClick: () => setPage('settings') },
     { id: 'help', icon: Headset, label: 'Help & Support', iconClass: 'profile-icon-help', onClick: () => setPage('help-support') },
   ];
+
+  function statusClass(status: string) {
+    const s = status.toLowerCase();
+    if (s === 'completed') return 'completed';
+    if (s === 'cancelled') return 'cancelled';
+    return '';
+  }
 
   return (
     <div className="profile-screen">
@@ -91,21 +115,31 @@ export default function ProfilePage() {
       {/* Content */}
       <div className="profile-scroll">
         <GuestGate message="Sign in to view your profile, rewards, and order history.">
-          {/* User card */}
-          <div className="profile-user-card">
+          {/* User card — gradient background */}
+          <div className="profile-user-card" onClick={() => setPage('account-details')}>
             <div className="profile-avatar">{initials}</div>
             <div className="profile-user-info">
               <div className="profile-user-name">{user?.name || 'Guest'}</div>
               <div className="profile-user-phone">{user?.phone || 'No phone'}</div>
-              <div className="profile-points-row">
-                <Crown size={14} /> {points.toLocaleString()} points
+              <div className={`profile-tier-badge ${(tier || 'Bronze').toLowerCase()}`}>
+                <Crown size={12} /> {tier} Member
               </div>
+              {ptsToNext > 0 && (
+                <div className="profile-tier-progress">
+                  <div className="profile-tier-track">
+                    <div className="profile-tier-fill" style={{ width: `${progress}%` }} />
+                  </div>
+                  <span className="profile-tier-text">{ptsToNext.toLocaleString()} pts to {nextTier}</span>
+                </div>
+              )}
             </div>
           </div>
 
-        {/* Recent orders */}
-        <div>
-          <div className="profile-section-title">Recent orders</div>
+          {/* Recent orders */}
+          <div className="profile-section-header">
+            <div className="profile-section-title">Recent Orders</div>
+            <button className="profile-see-all" onClick={() => setPage('orders')}>See All</button>
+          </div>
           <div className="profile-preview-card">
             {recentOrders.length === 0 ? (
               <div className="profile-empty-orders">
@@ -113,12 +147,24 @@ export default function ProfilePage() {
               </div>
             ) : (
               recentOrders.map((order) => (
-                <div key={order.id} className="profile-order-item">
+                <div key={order.id} className="profile-order-item" onClick={() => setPage('order-detail', { orderId: order.id })}>
+                  <div className="profile-order-thumb">
+                    {order.imageUrl ? (
+                      <img src={order.imageUrl} alt="" loading="lazy" />
+                    ) : (
+                      <ShoppingBag size={22} color="#C4CED8" />
+                    )}
+                  </div>
                   <div className="profile-order-info">
                     <div className="profile-order-name">{order.items}</div>
                     <div className="profile-order-date">{order.date}</div>
                   </div>
-                  <span className="profile-order-status">{order.status}</span>
+                  <div className="profile-order-right">
+                    <div className="profile-order-amount">RM {order.total.toFixed(2)}</div>
+                    <div className={`profile-order-status ${statusClass(order.status)}`}>
+                      {order.status}
+                    </div>
+                  </div>
                 </div>
               ))
             )}
@@ -126,49 +172,49 @@ export default function ProfilePage() {
               View all →
             </button>
           </div>
-        </div>
 
-        {/* Menu links */}
-        <div className="profile-menu-card">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button key={item.id} className="profile-menu-item" onClick={item.onClick}>
-                <div className={`profile-menu-icon ${item.iconClass}`}>
-                  <Icon size={18} />
-                </div>
-                <span className="profile-menu-label">{item.label}</span>
-                <ChevronRight size={16} color="#C4CED8" />
-              </button>
-            );
-          })}
-        </div>
+          {/* Menu links */}
+          <div style={{ height: 12 }} />
+          <div className="profile-menu-card">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button key={item.id} className="profile-menu-item" onClick={item.onClick}>
+                  <div className={`profile-menu-icon ${item.iconClass}`}>
+                    <Icon size={18} />
+                  </div>
+                  <span className="profile-menu-label">{item.label}</span>
+                  <ChevronRight size={16} color="#C4CED8" />
+                </button>
+              );
+            })}
+          </div>
 
-        <div className="profile-menu-card">
-          {menuItems2.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button key={item.id} className="profile-menu-item" onClick={item.onClick}>
-                <div className={`profile-menu-icon ${item.iconClass}`}>
-                  <Icon size={18} />
-                </div>
-                <span className="profile-menu-label">{item.label}</span>
-                <ChevronRight size={16} color="#C4CED8" />
-              </button>
-            );
-          })}
-        </div>
+          <div className="profile-menu-card">
+            {menuItems2.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button key={item.id} className="profile-menu-item" onClick={item.onClick}>
+                  <div className={`profile-menu-icon ${item.iconClass}`}>
+                    <Icon size={18} />
+                  </div>
+                  <span className="profile-menu-label">{item.label}</span>
+                  <ChevronRight size={16} color="#C4CED8" />
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Logout */}
-        <div className="profile-menu-card">
-          <button className="profile-menu-item" onClick={() => setShowLogout(true)}>
-            <div className="profile-menu-icon profile-icon-logout">
-              <LogOut size={18} />
-            </div>
-            <span className="profile-menu-label profile-menu-label-red">Log Out</span>
-            <ChevronRight size={16} color="#C75050" />
-          </button>
-        </div>
+          {/* Logout */}
+          <div className="profile-menu-card">
+            <button className="profile-menu-item" onClick={() => setShowLogout(true)}>
+              <div className="profile-menu-icon profile-icon-logout">
+                <LogOut size={18} />
+              </div>
+              <span className="profile-menu-label profile-menu-label-red">Log Out</span>
+              <ChevronRight size={16} color="#C75050" />
+            </button>
+          </div>
         </GuestGate>
       </div>
 

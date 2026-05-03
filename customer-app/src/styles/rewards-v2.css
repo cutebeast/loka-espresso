@@ -213,7 +213,7 @@
   align-items: center;
   gap: 6px;
 }
-.rd-tag-copper { background: var(--loka-copper); }
+.rd-tag-copper { background: var(--loka-accent-copper); }
 .rd-tag-primary { background: var(--loka-primary); }
 .rd-tag-teal    { background: #2a6d5e; }
 
@@ -223,12 +223,12 @@
   overflow-y: auto;
 }
 .rd-title {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #1a2e2a;
-  margin-bottom: 8px;
   font-family: 'Playfair Display', serif;
-  line-height: 1.15;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1B2023;
+  margin-bottom: 12px;
+  line-height: 1.3;
 }
 .rd-meta {
   display: flex;
@@ -241,7 +241,7 @@
 }
 .rd-meta i,
 .rd-meta svg {
-  color: var(--loka-copper);
+  color: var(--loka-accent-copper);
   margin-right: 5px;
   flex-shrink: 0;
 }
@@ -284,7 +284,7 @@
   gap: 10px;
 }
 .rd-terms-list li svg {
-  color: var(--loka-copper);
+  color: var(--loka-accent-copper);
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -292,30 +292,46 @@
   background: var(--loka-primary);
   color: white;
   border: none;
-  padding: 16px 20px;
-  border-radius: 60px;
-  font-weight: 700;
-  font-size: 1.1rem;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
   width: 100%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 16px;
-  box-shadow: 0 8px 16px rgba(56,75,22,0.15);
+  box-shadow: none;
+  font-family: var(--font-sans);
 }
 .rd-action-btn:active { background: var(--loka-primary-dark); }
 .rd-action-btn:disabled {
-  background: #C4CED8;
-  color: #6A7A8A;
-  pointer-events: none;
+  background: #9CAF7A;
+  color: #fff;
+  cursor: not-allowed;
   box-shadow: none;
+  opacity: 0.8;
 }
 .rd-action-btn-outline {
   background: transparent;
   color: var(--loka-primary);
   border: 1.5px solid var(--loka-primary);
   box-shadow: none;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-family: var(--font-sans);
+}
+.rd-action-btn-outline:active {
+  background: rgba(56,75,22,0.06);
 }
 .rd-points-note {
   text-align: center;

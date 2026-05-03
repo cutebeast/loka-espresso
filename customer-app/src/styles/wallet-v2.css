@@ -9,8 +9,12 @@
 .topup-balance-amount { font-size: 36px; font-weight: 800; margin-top: 4px; }
 .topup-section-title { font-size: 13px; font-weight: 600; color: #6A7A8A; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
 .topup-amount-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.topup-amount-btn { padding: 14px; border: 1.5px solid #D4DCE5; border-radius: 12px; background: #fff; font-size: 15px; font-weight: 600; color: #384B16; cursor: pointer; font-family: var(--font-sans); }
+.topup-amount-grid-4col { grid-template-columns: repeat(4, 1fr); }
+.topup-amount-btn { padding: 14px 8px; border: 1.5px solid #D4DCE5; border-radius: 12px; background: #fff; cursor: pointer; font-family: var(--font-sans); text-align: center; }
+.topup-preset-amount { display: block; font-size: 15px; font-weight: 700; color: var(--loka-text-primary); }
+.topup-preset-label { display: block; font-size: 10px; color: #6A7A8A; margin-top: 2px; }
 .topup-amount-btn:active { background: #F2F6EA; border-color: #384B16; }
+.topup-amount-btn.selected { background: #F0F4E8; border-color: #384B16; color: #384B16; font-weight: 700; }
 .topup-custom-amount { margin-top: 8px; }
 .topup-custom-input { width: 100%; padding: 14px; border: 1.5px solid #D4DCE5; border-radius: 12px; font-size: 15px; color: #1B2023; background: #fff; outline: none; box-sizing: border-box; font-family: var(--font-sans); }
 .topup-custom-input:focus { border-color: #384B16; }
@@ -22,10 +26,14 @@
 .topup-store-btn { padding: 10px 24px; background: #384B16; color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); }
 .topup-tx-item { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #E4EAEF; }
 .topup-tx-item:last-child { border-bottom: none; }
-.topup-tx-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.topup-tx-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.topup-tx-icon.in  { background: rgba(56,75,22,0.1); color: var(--loka-primary); }
+.topup-tx-icon.out { background: rgba(199,80,80,0.1); color: var(--loka-danger); }
 .topup-tx-info { flex: 1; }
 .topup-tx-desc { font-size: 13px; font-weight: 500; color: #1B2023; }
 .topup-tx-date { font-size: 11px; color: #6A7A8A; }
-.topup-tx-amount { font-weight: 600; font-size: 13px; }
+.topup-tx-amount { font-weight: 600; font-size: 14px; }
+.topup-tx-amount.in  { color: var(--loka-success); }
+.topup-tx-amount.out { color: var(--loka-danger); }
 .topup-empty { text-align: center; padding: 40px 20px; }
 .topup-empty-icon { margin: 0 auto 12px; color: #D4DCE5; }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Share2, Copy, Users, Gift, Check } from 'lucide-react';
+import { ArrowLeft, Share2, Copy, Users, Check, Lock, Gift } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
@@ -21,6 +21,13 @@ interface ReferralStats {
   }>;
 }
 
+const MILESTONES = [
+  { count: 5, label: 'Bronze', bonus: 500, icon: '🔓' },
+  { count: 10, label: 'Silver', bonus: 1200, icon: '🔓' },
+  { count: 15, label: 'Gold', bonus: 2000, icon: '🔒' },
+  { count: 25, label: 'Platinum', bonus: 5000, icon: '🔒' },
+];
+
 export default function ReferralPage() {
   const { setPage, showToast } = useUIStore();
   const { user } = useAuthStore();
@@ -36,7 +43,7 @@ export default function ReferralPage() {
           api.get('/referral/stats'),
         ]);
         setStats({ ...codeRes.data, ...statsRes.data });
-      } catch { console.error('Failed to load referral data'); }
+      } catch { /* ignore */ }
       finally { setLoading(false); }
     })();
   }, []);
@@ -63,6 +70,8 @@ export default function ReferralPage() {
     } catch { /* cancelled */ }
   };
 
+  const initials = user?.name?.charAt(0)?.toUpperCase() || 'U';
+
   return (
     <div className="referral-screen">
       <div className="sub-page-header">
@@ -72,66 +81,117 @@ export default function ReferralPage() {
           </button>
           <h1 className="sub-page-title">Referral</h1>
         </div>
-        <div className="st-spacer" />
+        <div className="ad-spacer" />
       </div>
 
-      <div className="profile-scroll">
+      <div className="referral-scroll">
         {loading ? (
-          <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>
+          <div style={{ padding: 40, textAlign: 'center', color: '#6A7A8A' }}>Loading...</div>
         ) : stats ? (
           <>
-            <div className="profile-user-card" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div className="profile-avatar" style={{ background: 'var(--color-copper)' }}>
-                  <Users size={22} color="#fff" />
-                </div>
+            {/* Stats card */}
+            <div className="referral-stats-card">
+              <div className="referral-stats-top">
+                <div className="referral-stats-avatar">{initials}</div>
                 <div>
-                  <div className="profile-user-name">{stats.referrals} referrals</div>
-                  <div className="profile-points-row">
-                    <Gift size={14} /> {stats.points_earned.toLocaleString()} points earned
-                  </div>
+                  <div className="referral-stats-name">{user?.name || 'Member'}</div>
+                  <div className="referral-stats-sub">Referral Partner since 2024</div>
                 </div>
               </div>
-
-              <div style={{ width: '100%', background: 'var(--color-bg-muted)', borderRadius: 12, padding: '14px 16px' }}>
-                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>Your referral code</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <code style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1 }}>{stats.code}</code>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-ghost btn-sm" onClick={copyLink}>
-                      {copied ? <Check size={16} color="var(--color-success)" /> : <Copy size={16} />}
-                    </button>
-                    {typeof navigator?.share === 'function' && (
-                      <button className="btn btn-ghost btn-sm" onClick={shareLink}>
-                        <Share2 size={16} />
-                      </button>
-                    )}
-                  </div>
+              <div className="referral-big-numbers">
+                <div className="referral-big-stat">
+                  <div className="referral-big-num">{stats.referrals}</div>
+                  <div className="referral-big-label">Referrals</div>
+                </div>
+                <div className="referral-big-stat">
+                  <div className="referral-big-num">{stats.points_earned.toLocaleString()}</div>
+                  <div className="referral-big-label">Points Earned</div>
+                </div>
+                <div className="referral-big-stat">
+                  <div className="referral-big-num">{stats.paid_rewards}</div>
+                  <div className="referral-big-label">Active</div>
+                </div>
+              </div>
+              <div className="referral-progress-section">
+                <div className="referral-progress-header">
+                  <span className="referral-tier-label">{stats.referrals >= 10 ? 'Silver Tier' : 'Bronze Tier'}</span>
+                  <span className="referral-progress-text">{Math.max(0, 10 - stats.referrals)} more to next tier</span>
+                </div>
+                <div className="referral-progress-bar">
+                  <div className="referral-progress-fill" style={{ width: `${Math.min(100, (stats.referrals / 10) * 100)}%` }} />
                 </div>
               </div>
             </div>
 
+            {/* Code box */}
+            <div className="referral-code-box">
+              <div className="referral-code-label">Your Referral Code</div>
+              <div className="referral-code-display">{stats.code}</div>
+              {copied && (
+                <div className="referral-copy-anim">
+                  <Check size={14} />
+                  Copied to clipboard
+                </div>
+              )}
+              <div className="referral-code-actions">
+                <button className="referral-btn-copy" onClick={copyLink}>
+                  <Copy size={14} /> Copy Link
+                </button>
+                <button className="referral-btn-share" onClick={shareLink}>
+                  <Share2 size={14} /> Share
+                </button>
+              </div>
+            </div>
+
+            {/* Milestones */}
+            <div className="referral-milestones-title">Referral Milestones</div>
+            {MILESTONES.map((m) => {
+              const achieved = stats.referrals >= m.count;
+              return (
+                <div key={m.count} className={`referral-milestone-row ${achieved ? 'achieved' : ''}`}>
+                  <div className={`referral-milestone-icon ${achieved ? 'done' : 'locked'}`}>
+                    {achieved ? <Check size={14} /> : <Lock size={12} />}
+                  </div>
+                  <div className="referral-milestone-info">
+                    <div className="referral-milestone-name">{m.label} — {m.count} Referrals</div>
+                    <div className="referral-milestone-desc">+{m.bonus.toLocaleString()} bonus points</div>
+                  </div>
+                  {achieved && <Check size={14} color="#85B085" />}
+                </div>
+              );
+            })}
+
+            {/* Invited users */}
             {stats.invited_users.length > 0 && (
-              <div style={{ marginTop: 20 }}>
-                <div className="profile-section-title">Invited users</div>
+              <>
+                <div className="referral-invited-title">
+                  Invited Users ({stats.total_invited})
+                </div>
                 {stats.invited_users.map((u, i) => (
-                  <div key={i} className="profile-preview-card" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{u.name || 'Unknown'}</div>
-                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                        Joined {u.joined_at ? new Date(u.joined_at).toLocaleDateString() : '—'} · {u.order_count} order{u.order_count !== 1 ? 's' : ''}
+                  <div key={i} className="referral-invited-item">
+                    <div className="referral-invited-avatar">
+                      {u.name?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                    <div className="referral-invited-details">
+                      <div className="referral-invited-name">{u.name || 'Unknown'}</div>
+                      <div className="referral-invited-meta">
+                        Joined {u.joined_at ? new Date(u.joined_at).toLocaleDateString('en-MY', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                       </div>
                     </div>
-                    {u.reward_paid && (
-                      <span className="badge badge-green">Rewarded</span>
-                    )}
+                    <div className="referral-invited-right">
+                      <span className={`referral-status-badge ${u.reward_paid ? 'rewarded' : 'pending'}`}>
+                        {u.reward_paid ? 'Rewarded' : 'Pending'}
+                      </span>
+                    </div>
                   </div>
                 ))}
-              </div>
+              </>
             )}
           </>
         ) : (
-          <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Unable to load referral data</div>
+          <div style={{ padding: 40, textAlign: 'center', color: '#6A7A8A' }}>
+            Unable to load referral data
+          </div>
         )}
       </div>
     </div>

@@ -190,7 +190,7 @@ async def create_feedback(
     sanitized_data = data.model_dump()
     sanitized_data["comment"] = sanitize_text_field(sanitized_data.get("comment"), max_length=2000)
     
-    obj = Feedback(user_id=user.id, **sanitized_data)
+    obj = Feedback(user_id=user.id, customer_id=user.id, **sanitized_data)
     db.add(obj)
     await db.flush()
     await db.refresh(obj)

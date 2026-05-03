@@ -1,1 +1,48 @@
-/* History uses utilities.css - minimal v2 */
+/* ════════ HISTORY V2 — self-contained ════════ */
+
+.history-screen { display: flex; flex-direction: column; height: 100%; background: var(--loka-bg-light); }
+
+/* Tab bar */
+.history-tab-bar { display: flex; padding: 12px 20px; gap: 8px; flex-shrink: 0; background: var(--loka-bg-light); }
+.history-tab { flex: 1; padding: 10px 0; border-radius: 40px; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; border: 1px solid var(--loka-border-light); background: var(--loka-bg-card); color: var(--loka-text-secondary); transition: all .22s ease; font-family: var(--font-sans); }
+.history-tab.active { background: var(--loka-primary); color: white; border-color: var(--loka-primary); }
+
+/* Monthly summary */
+.history-summary { background: linear-gradient(135deg, var(--loka-primary) 0%, #4A6B1E 100%); margin: 4px 16px 8px; padding: 16px; border-radius: 14px; color: #fff; }
+.history-summary-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 10px; }
+.history-summary-row { display: flex; justify-content: space-around; }
+.history-summary-stat { text-align: center; }
+.history-summary-value { font-size: 20px; font-weight: 700; }
+.history-summary-lbl { font-size: 11px; opacity: 0.75; margin-top: 2px; }
+.history-summary-divider { width: 1px; background: rgba(255,255,255,0.25); }
+
+/* Date groups */
+.history-date-group { padding: 16px 16px 6px; font-size: 12px; font-weight: 700; color: #6A7A8A; text-transform: uppercase; letter-spacing: 0.8px; }
+
+/* Transaction list */
+.history-list { flex: 1; overflow-y: auto; padding: 0 0 20px; }
+
+/* Transaction card */
+.history-tx-card { background: #fff; margin: 6px 16px; padding: 14px 16px; border-radius: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid #D4DCE5; }
+.history-tx-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.history-tx-icon.credit { background: rgba(133,176,133,0.12); color: var(--loka-success); }
+.history-tx-icon.debit  { background: rgba(199,80,80,0.1); color: var(--loka-danger); }
+.history-tx-info { flex: 1; min-width: 0; }
+.history-tx-desc-row { display: flex; align-items: center; gap: 6px; }
+.history-tx-desc { font-size: 14px; font-weight: 600; color: var(--loka-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-tx-cat { font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: var(--loka-bg-light); color: #6A7A8A; white-space: nowrap; flex-shrink: 0; }
+.history-tx-date { font-size: 12px; color: #6A7A8A; margin-top: 2px; }
+.history-tx-right { text-align: right; flex-shrink: 0; }
+.history-tx-amount { font-size: 14px; font-weight: 700; }
+.history-tx-amount.credit { color: var(--loka-success); }
+.history-tx-amount.debit  { color: var(--loka-danger); }
+.history-tx-points { font-size: 11px; color: #6A7A8A; margin-top: 2px; }
+
+/* Empty state */
+.history-empty { text-align: center; padding: 60px 20px; }
+.history-empty-icon { margin: 0 auto 16px; color: #D4DCE5; }
+.history-empty-title { font-size: 16px; font-weight: 600; color: var(--loka-text-primary); margin-bottom: 6px; }
+.history-empty-desc { font-size: 13px; color: #6A7A8A; }
+
+/* Skeleton */
+.history-skeleton-row { height: 64px; border-radius: 12px; }

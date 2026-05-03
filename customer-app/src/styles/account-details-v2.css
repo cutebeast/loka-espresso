@@ -1,224 +1,9 @@
-/* ── Profile Page ──────────────────────────────────────── */
+/* ════════ ACCOUNT DETAILS V2 — self-contained ════════
+   Improved: avatar upload, grouped form sections,
+   change password link, account metadata
+═══════════════════════════════════════════════════ */
 
-.profile-screen {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--loka-bg-light);
-}
-.profile-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 20px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.profile-user-card {
-  background: var(--loka-bg-card);
-  border-radius: 24px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  border: 1px solid var(--loka-border-light);
-}
-.profile-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #1F2E0B 0%, #384B16 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 28px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.profile-user-info { flex: 1; }
-.profile-user-name {
-  font-weight: 700;
-  font-size: 20px;
-  color: var(--loka-text-primary);
-  font-family: 'Playfair Display', serif;
-}
-.profile-user-phone {
-  font-size: 14px;
-  color: var(--loka-text-muted);
-  margin-top: 2px;
-}
-.profile-points-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: linear-gradient(135deg, #1F2E0B 0%, #384B16 100%);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 40px;
-  font-size: 14px;
-  font-weight: 600;
-  margin-top: 8px;
-  width: fit-content;
-}
-.profile-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--loka-text-muted);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.profile-preview-card {
-  background: var(--loka-bg-card);
-  border-radius: 20px;
-  padding: 16px;
-  border: 1px solid var(--loka-border-light);
-}
-.profile-order-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--loka-border-light);
-}
-.profile-order-item:last-child { border-bottom: none; }
-.profile-order-info { flex: 1; }
-.profile-order-name {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--loka-text-primary);
-}
-.profile-order-date {
-  font-size: 12px;
-  color: var(--loka-text-muted);
-}
-.profile-order-status {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: #E6F0E8;
-  color: #1A4E3A;
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-.profile-view-all {
-  text-align: right;
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--loka-primary);
-  font-weight: 600;
-  cursor: pointer;
-  background: none;
-  border: none;
-  width: 100%;
-}
-.profile-menu-card {
-  background: var(--loka-bg-card);
-  border-radius: 20px;
-  padding: 4px 0;
-  border: 1px solid var(--loka-border-light);
-}
-.profile-menu-item {
-  display: flex;
-  align-items: center;
-  padding: 16px 20px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--loka-border-light);
-  background: none;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  width: 100%;
-  text-align: left;
-}
-.profile-menu-item:last-child { border-bottom: none; }
-.profile-menu-item:active { background: rgba(0,0,0,0.02); }
-.profile-menu-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  margin-right: 14px;
-  flex-shrink: 0;
-}
-.profile-icon-reward { background: #FDF3E7; color: var(--loka-accent-copper); }
-.profile-icon-voucher { background: #E6F0E8; color: var(--loka-primary); }
-.profile-icon-order { background: #EDF0F5; color: #4A607A; }
-.profile-icon-payment { background: #F5EDE4; color: var(--loka-accent-brown); }
-.profile-icon-settings { background: #F0F0F0; color: #3A4A5A; }
-.profile-icon-help { background: #EAF2F8; color: #4A607A; }
-.profile-icon-logout { background: #FDEDEC; color: var(--loka-danger); }
-.profile-menu-label {
-  flex: 1;
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--loka-text-primary);
-}
-.profile-menu-label-red { color: var(--loka-danger) !important; }
-
-/* Profile Logout Modal */
-.profile-modal-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(2px);
-  z-index: 100;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-.profile-modal-overlay.show {
-  display: flex;
-  opacity: 1;
-  pointer-events: auto;
-}
-.profile-modal-box {
-  background: white;
-  border-radius: 24px;
-  padding: 24px;
-  width: 85%;
-  text-align: center;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-}
-.profile-modal-box h3 {
-  font-family: 'Playfair Display', serif;
-  font-size: 20px;
-  margin-bottom: 12px;
-  color: var(--loka-text-primary);
-}
-.profile-modal-box p {
-  font-size: 14px;
-  color: var(--loka-text-secondary);
-  margin-bottom: 24px;
-}
-.profile-modal-btns {
-  display: flex;
-  gap: 12px;
-}
-.profile-modal-btn {
-  flex: 1;
-  padding: 14px;
-  border-radius: 40px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-}
-.profile-modal-btn-cancel {
-  background: #F0F0F0;
-  color: #3A4A5A;
-}
-.profile-modal-btn-confirm {
-  background: var(--loka-danger);
-  color: white;
-}
-
-/* ── Edit Profile Page ─────────────────────────────────── */
+/* ── Screen & Layout ────────────────────────────────────── */
 
 .edit-profile-screen {
   display: flex;
@@ -226,68 +11,474 @@
   height: 100%;
   background: var(--loka-bg-light);
 }
+
 .edit-form-scroll {
   flex: 1;
   overflow-y: auto;
+}
+
+/* ── Avatar Section ─────────────────────────────────────── */
+
+.ad-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: 24px 20px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  background: #fff;
+  margin: 16px 20px 0;
+  border-radius: 16px;
+  border: 1px solid var(--loka-border-light);
 }
-.edit-input-group {
+
+.ad-avatar-ring {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 3px solid var(--loka-accent-copper);
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.ad-avatar-circle {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  background: var(--loka-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--loka-accent-copper);
+  font-weight: 600;
+}
+
+.ad-avatar-edit-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  background: var(--loka-accent-copper);
+  border-radius: 50%;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ad-avatar-upload-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--loka-accent-copper);
+  cursor: pointer;
+}
+
+.ad-account-meta {
+  font-size: 12px;
+  color: var(--loka-text-muted);
+  margin-top: 4px;
+}
+
+/* ── Tier Badge (Account section) ────────────────────────── */
+
+.ad-tier-badge {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
 }
-.edit-input-label {
+
+.ad-tier-badge.bronze   { background: linear-gradient(135deg, #8B6F47, #6B4F2E); }
+.ad-tier-badge.silver   { background: linear-gradient(135deg, #9CA3AF, #6B7280); }
+.ad-tier-badge.gold     { background: linear-gradient(135deg, #D18E38, #B86E2C); }
+.ad-tier-badge.platinum { background: linear-gradient(135deg, #7C8CA6, #4B5E7A); }
+
+.ad-group-header {
+  padding: 20px 20px 8px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--loka-text-primary);
-  letter-spacing: 0.4px;
+  color: var(--loka-primary);
   text-transform: uppercase;
+  letter-spacing: 0.8px;
 }
-.edit-input-field {
-  border: 1.5px solid var(--loka-border);
-  border-radius: 16px;
-  padding: 16px;
-  font-size: 15px;
+
+.ad-form-card {
+  background: #fff;
+  margin: 0 16px;
+  border-radius: 14px;
+  border: 1px solid var(--loka-border-light);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.ad-form-field {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--loka-border-light);
+}
+
+.ad-form-field:last-child {
+  border-bottom: none;
+}
+
+.ad-form-label {
+  font-size: 12px;
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
-  color: var(--loka-text-primary);
-  background: white;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  width: 100%;
+  color: var(--loka-text-muted);
+  margin-bottom: 6px;
 }
-.edit-input-field:focus {
-  border-color: var(--loka-primary);
-  box-shadow: 0 0 0 3px rgba(56,75,22,0.08);
-}
-textarea.edit-input-field {
-  min-height: 90px;
-  resize: vertical;
-}
-.edit-save-btn {
-  background: var(--loka-primary);
-  color: white;
-  font-weight: 600;
+
+.ad-form-input {
+  font-family: var(--font-sans);
   font-size: 15px;
-  padding: 16px;
-  border-radius: 999px;
+  color: var(--loka-text-primary);
   width: 100%;
   border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+}
+
+.ad-form-input::placeholder {
+  color: var(--loka-border-light);
+}
+
+.ad-form-input-muted {
+  color: var(--loka-text-muted);
+}
+
+/* Change Password link */
+.ad-password-link {
+  padding: 14px 16px;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   cursor: pointer;
-  margin-top: 8px;
-  transition: background 0.2s, transform 0.1s;
-  box-shadow: 0 4px 12px rgba(56,75,22,0.15);
 }
-.edit-save-btn:active {
-  background: var(--loka-primary-dark);
-  transform: scale(0.98);
+
+.ad-password-link span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--loka-accent-copper);
 }
-.edit-success-msg {
-  text-align: center;
-  color: #85B085;
+
+.ad-password-link svg {
+  color: var(--loka-accent-copper);
+}
+
+/* ── Save Button ────────────────────────────────────────── */
+
+.ad-save-btn {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 20px 16px;
+  padding: 14px;
+  background: var(--loka-primary);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 15px;
   font-weight: 600;
-  margin-top: 12px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.ad-save-btn:active {
+  background: var(--loka-primary-dark);
+}
+
+.ad-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Success Message ────────────────────────────────────── */
+
+.ad-success-msg {
+  margin: 8px 16px 20px;
+  padding: 12px 16px;
+  background: #f0f9f0;
+  border: 1px solid var(--loka-success);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--loka-success);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ad-success-icon {
+  display: inline;
+  vertical-align: middle;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Spacer (balances header action slot) ────────────────── */
+
+.ad-spacer {
+  width: 36px;
+}
+
+/* ── Change Password Modal ───────────────────────────────── */
+
+.ad-password-modal-overlay {
+  visibility: hidden;
+  opacity: 0;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.ad-password-modal-overlay.show {
+  visibility: visible;
+  opacity: 1;
+}
+
+.ad-password-modal-box {
+  background: #fff;
+  border-radius: 20px;
+  padding: 24px;
+  width: calc(100% - 64px);
+  max-width: 340px;
+}
+
+.ad-password-modal-box h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--loka-text-primary);
+  margin-bottom: 16px;
+}
+
+.ad-password-input-group {
+  margin-bottom: 14px;
+}
+
+.ad-password-input-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--loka-text-muted);
+  margin-bottom: 4px;
+}
+
+.ad-password-input-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--loka-border-light);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  outline: none;
+}
+
+.ad-password-input-group input:focus {
+  border-color: var(--loka-primary);
+}
+
+.ad-password-error {
+  font-size: 12px;
+  color: var(--loka-danger);
+  margin-bottom: 8px;
+}
+
+.ad-password-modal-btns {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.ad-password-modal-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.ad-password-modal-btn-cancel {
+  background: var(--loka-bg-light);
+  color: var(--loka-text-primary);
+}
+
+.ad-password-modal-btn-confirm {
+  background: var(--loka-primary);
+  color: #fff;
+}
+
+.ad-password-modal-btn-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── iOS-Style Date Picker ───────────────────────────────── */
+
+.datepicker-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+.datepicker-value {
+  font-size: 15px;
+  color: var(--loka-text-primary);
+}
+
+.datepicker-placeholder {
+  font-size: 15px;
+  color: var(--loka-border-light);
+}
+
+.datepicker-chevron {
+  color: var(--loka-text-muted);
+  flex-shrink: 0;
+}
+
+.datepicker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.datepicker-sheet {
+  background: #fff;
+  width: 100%;
+  max-width: 430px;
+  border-radius: 20px 20px 0 0;
+  overflow: hidden;
+  animation: datepicker-slide-up 0.25s ease-out;
+}
+
+@keyframes datepicker-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.datepicker-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid #E4EAEF;
+}
+
+.datepicker-sheet-btn {
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+.datepicker-cancel {
+  color: var(--loka-text-muted);
+}
+
+.datepicker-done {
+  color: var(--loka-primary);
+  font-weight: 600;
+}
+
+.datepicker-sheet-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--loka-text-primary);
+}
+
+.datepicker-columns {
+  display: flex;
+  height: 240px;
+  position: relative;
+}
+
+.datepicker-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.datepicker-column:not(:last-child) {
+  border-right: 1px solid #E4EAEF;
+}
+
+.datepicker-column-label {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--loka-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 10px 0 6px;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.datepicker-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: y mandatory;
+  padding: 60px 0;
+}
+
+.datepicker-scroll::-webkit-scrollbar { display: none; }
+
+.datepicker-item {
+  text-align: center;
+  padding: 10px 8px;
+  font-size: 17px;
+  color: #C4CED8;
+  cursor: pointer;
+  scroll-snap-align: center;
+  transition: color 0.15s, font-weight 0.15s;
+  font-family: var(--font-sans);
+}
+
+.datepicker-item.active {
+  color: var(--loka-text-primary);
+  font-weight: 600;
+}
+
+/* Center highlight overlay */
+.datepicker-columns::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 44px;
+  pointer-events: none;
+  border-top: 1px solid #E4EAEF;
+  border-bottom: 1px solid #E4EAEF;
 }

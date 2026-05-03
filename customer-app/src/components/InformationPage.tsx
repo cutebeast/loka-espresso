@@ -1,11 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, ChevronRight, Info, Clock, Star } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Info, Clock, Star, Share2 } from 'lucide-react';
+import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { InformationCard as ApiInformationCard } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/tokens';
 
 type InformationCard = ApiInformationCard;
+
+const CONTENT_TYPES = [
+  { id: 'information', label: 'Experiences' },
+  { id: 'product', label: 'Products' },
+];
 
 interface InformationPageProps {
   onBack: () => void;
@@ -13,8 +20,6 @@ interface InformationPageProps {
   preselectedSlug?: string;
   contentType?: string;
 }
-
-import { resolveAssetUrl } from '@/lib/tokens';
 
 function resolveCardImage(card: InformationCard): string | null {
   return resolveAssetUrl(card.image_url) || resolveAssetUrl(card.icon) || null;
@@ -27,17 +32,24 @@ function estimateReadTime(text: string | null | undefined): string {
   return `${mins} min read`;
 }
 
+function tagLabel(contentType?: string | null): string {
+  if (!contentType) return 'Article';
+  return contentType === 'product' ? 'Product' : 'Experience';
+}
+
 export default function InformationPage({ onBack, preselectedId, preselectedSlug, contentType }: InformationPageProps) {
+  const { showToast } = useUIStore();
   const [cards, setCards] = useState<InformationCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(contentType || 'information');
   const [selectedCard, setSelectedCard] = useState<InformationCard | null>(null);
   const preselectedConsumed = useRef(false);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
-  const isProduct = contentType === 'product';
-  const pageLabel = isProduct ? 'Products' : 'Experiences';
 
-  const loadCards = useCallback(async () => {
-    const type = contentType || 'information';
+  const pageLabel = CONTENT_TYPES.find(t => t.id === activeTab)?.label || 'Articles';
+
+  const loadCards = useCallback(async (type: string) => {
+    setLoading(true);
     try {
       const res = await api.get(`/content/information?limit=20&content_type=${type}`);
       const data = Array.isArray(res.data) ? res.data : [];
@@ -49,14 +61,14 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
 
   useEffect(() => {
     const init = async () => {
-      const data = await loadCards();
+      const data = await loadCards(contentType || 'information');
       if (preselectedId && !preselectedConsumed.current && data.length > 0) {
         const found = data.find((c: InformationCard) => c.id === preselectedId);
         if (found) { setSelectedCard(found); preselectedConsumed.current = true; }
       }
     };
     init();
-  }, [loadCards, preselectedId]);
+  }, [loadCards, preselectedId, contentType]);
 
   useEffect(() => {
     if (!preselectedSlug || preselectedConsumed.current) return;
@@ -69,19 +81,41 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
           preselectedConsumed.current = true;
         }
       } catch {
-        await loadCards();
+        await loadCards(contentType || 'information');
       } finally {
         setLoading(false);
       }
     };
     fetchBySlug();
-  }, [preselectedSlug, loadCards]);
+  }, [preselectedSlug, loadCards, contentType]);
+
+  const handleTabChange = async (type: string) => {
+    setActiveTab(type);
+    await loadCards(type);
+  };
 
   /* ── Detail view ── */
   if (selectedCard) {
     const img = resolveCardImage(selectedCard);
     const gallery = (selectedCard.gallery_urls || []).map(resolveAssetUrl).filter(Boolean) as string[];
     const allImages = img ? [img, ...gallery] : gallery;
+    const tag = tagLabel(selectedCard.content_type);
+
+    const handleShare = async () => {
+      const shareData: ShareData = {
+        title: selectedCard.title,
+        text: selectedCard.short_description || '',
+        url: `${window.location.origin}${window.location.pathname}?selectedInfoId=${selectedCard.id}&selectedInfoContentType=${selectedCard.content_type || 'information'}#information`,
+      };
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+        } else {
+          await navigator.clipboard.writeText(shareData.url || '');
+          showToast('Link copied!', 'success');
+        }
+      } catch { /* user cancelled or not supported */ }
+    };
 
     return (
       <div className="info-detail-screen">
@@ -91,9 +125,18 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
           ) : (
             <>
               {img && !brokenImages.has(selectedCard.id) ? (
-                <img src={img} alt="" className="info-detail-hero-img info-detail-hero-img-fill" onError={() => { setBrokenImages(prev => new Set(prev).add(selectedCard.id)); }} />
+                <img
+                  src={img}
+                  alt=""
+                  className="info-detail-hero-img"
+                  onError={() => { setBrokenImages(prev => new Set(prev).add(selectedCard.id)); }}
+                />
               ) : (
-                <div className="info-detail-hero-img info-detail-hero-img-fallback" />
+                <div className="info-detail-hero-img" style={{ background: 'linear-gradient(135deg, #384B16, #5a7a2a)' }}>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'rgba(255,255,255,0.25)' }}>
+                    <Info size={64} />
+                  </div>
+                </div>
               )}
             </>
           )}
@@ -101,9 +144,9 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
           <button className="info-detail-back-btn" onClick={() => setSelectedCard(null)} aria-label="Back">
             <ArrowLeft size={20} />
           </button>
-          <span className="info-detail-tag">
+          <span className={`info-detail-tag ${selectedCard.content_type === 'product' ? 'product' : 'experience'}`}>
             <Info size={14} />
-            {selectedCard.content_type || 'Article'}
+            {tag}
           </span>
         </div>
 
@@ -114,16 +157,21 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
             <span className="info-detail-meta-item">
               <Clock size={16} /> {estimateReadTime(selectedCard.long_description)}
             </span>
-            {selectedCard.content_type && (
-              <span className="info-detail-meta-item">
-                <Star size={16} /> {selectedCard.content_type}
-              </span>
-            )}
+            <span className="info-detail-meta-item">
+              <Star size={16} /> {tag}
+            </span>
           </div>
 
           <p className="info-detail-desc">
             {selectedCard.long_description || selectedCard.short_description || 'No content available.'}
           </p>
+        </div>
+
+        <div style={{ padding: '0 18px 16px' }}>
+          <button className="info-share-btn" onClick={handleShare}>
+            <span>Share</span>
+            <Share2 size={18} />
+          </button>
         </div>
       </div>
     );
@@ -132,13 +180,30 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
   /* ── List view ── */
   return (
     <div className="info-screen">
+      {/* Header */}
       <div className="info-header">
-        <button className="info-back-btn" onClick={onBack} aria-label="Back">
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="info-page-title">{pageLabel}</h1>
+        <div className="info-header-left">
+          <button className="info-back-btn" onClick={onBack} aria-label="Back">
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="info-page-title">{pageLabel}</h1>
+        </div>
       </div>
 
+      {/* Tab bar */}
+      <div className="info-tab-bar">
+        {CONTENT_TYPES.map(t => (
+          <button
+            key={t.id}
+            className={`info-tab ${activeTab === t.id ? 'active' : ''}`}
+            onClick={() => handleTabChange(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Card list */}
       <div className="info-card-list">
         {loading ? (
           <>
@@ -149,29 +214,37 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
         ) : cards.length === 0 ? (
           <div className="info-empty">
             <Info size={40} className="info-empty-icon" />
-            <p className="info-empty-title">{isProduct ? 'No products available' : 'No articles available'}</p>
+            <p className="info-empty-title">
+              {activeTab === 'product' ? 'No products available' : 'No articles available'}
+            </p>
             <p className="info-empty-desc">Check back soon for updates</p>
           </div>
         ) : (
           cards.map((card) => {
             const img = resolveCardImage(card);
+            const tag = tagLabel(card.content_type);
+            const tagClass = card.content_type === 'product' ? 'product' : 'experience';
             return (
-              <div key={card.id} className="info-exp-card" onClick={() => setSelectedCard(card)}>
+              <div key={card.id} className="info-card" onClick={() => setSelectedCard(card)}>
                 <div className="info-card-thumb">
                   {img && !brokenImages.has(card.id) ? (
-                    <img src={img} alt="" className="info-card-thumb-img" onError={() => { setBrokenImages(prev => new Set(prev).add(card.id)); }} />
+                    <img
+                      src={img}
+                      alt=""
+                      onError={() => { setBrokenImages(prev => new Set(prev).add(card.id)); }}
+                    />
                   ) : (
                     <div className="info-card-thumb-fallback">
-                      <Info size={24} strokeWidth={1.5} className="info-card-fallback-icon" />
+                      <Info size={24} strokeWidth={1.5} color="#C4CED8" />
                     </div>
                   )}
-                  <span className="info-thumb-badge">{card.content_type || 'Article'}</span>
                 </div>
                 <div className="info-card-body">
                   <div className="info-card-title">{card.title}</div>
                   {card.short_description && (
                     <div className="info-card-desc">{card.short_description}</div>
                   )}
+                  <div className={`info-card-tag ${tagClass}`}>{tag}</div>
                 </div>
                 <div className="info-card-arrow">
                   <ChevronRight size={16} />
@@ -229,22 +302,19 @@ function ImageCarousel({ images }: { images: string[] }) {
 
   return (
     <div
-      className="carousel-wrap"
+      className="info-carousel-wrap"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
     >
-      <div
-        ref={trackRef}
-        className="carousel-track"
-      >
+      <div ref={trackRef} className="info-carousel-track">
         {images.map((src, i) => (
-          <div key={i} className="carousel-slide">
+          <div key={i} className="info-carousel-slide">
             <img
               src={src}
               alt=""
-              className="carousel-img"
+              className="info-carousel-img"
               loading={i === 0 ? 'eager' : 'lazy'}
               draggable={false}
             />
@@ -254,11 +324,11 @@ function ImageCarousel({ images }: { images: string[] }) {
 
       {/* Dots */}
       {total > 1 && (
-        <div className="carousel-dots">
+        <div className="info-carousel-dots">
           {images.map((_, i) => (
             <button
               key={i}
-              className={`carousel-dot ${i === current ? 'active' : ''}`}
+              className={`info-carousel-dot ${i === current ? 'active' : ''}`}
               onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
               aria-label={`Go to slide ${i + 1}`}
             />
@@ -269,11 +339,11 @@ function ImageCarousel({ images }: { images: string[] }) {
       {/* Arrow buttons */}
       {total > 1 && (
         <>
-          <button className="carousel-arrow carousel-arrow-left" onClick={prev} aria-label="Previous">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <button className="info-carousel-arrow info-carousel-arrow-left" onClick={prev} aria-label="Previous">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
           </button>
-          <button className="carousel-arrow carousel-arrow-right" onClick={next} aria-label="Next">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          <button className="info-carousel-arrow info-carousel-arrow-right" onClick={next} aria-label="Next">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
         </>
       )}

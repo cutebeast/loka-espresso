@@ -1,36 +1,66 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ArrowLeft, QrCode, Crown } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { ArrowLeft, Share2, QrCode, Star, Clock, Settings } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useAuthStore } from '@/stores/authStore';
+import QRCode from 'qrcode';
 import api from '@/lib/api';
 
+const TIERS = ['Bronze', 'Silver', 'Gold', 'Platinum'];
+
 export default function MyCardPage() {
-  const { setPage } = useUIStore();
-  const { points } = useWalletStore();
+  const { setPage, showToast } = useUIStore();
+  const { points, tier } = useWalletStore();
   const { user } = useAuthStore();
 
   const [memberSince, setMemberSince] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api.get('/users/me')
       .then((res) => {
         const created = res.data?.created_at;
         if (created) {
-          const date = new Date(created);
-          setMemberSince(date.toLocaleDateString('en-MY', { month: 'long', year: 'numeric' }));
+          setMemberSince(new Date(created).toLocaleDateString('en-MY', { month: 'long', year: 'numeric' }));
         }
       })
-      .catch(() => {
-        setMemberSince('Recently');
-      });
+      .catch(() => setMemberSince('Recently'));
   }, []);
+
+  /* Generate QR code for the user's ID to be scanned by staff */
+  useEffect(() => {
+    if (!user?.id) return;
+    const qrPayload = `loka:customer:${user.id}`;
+    QRCode.toDataURL(qrPayload, {
+      width: 120,
+      margin: 0,
+      color: { dark: '#1B2023', light: '#FFFFFF' },
+    }).then(setQrDataUrl).catch(() => {});
+  }, [user?.id]);
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'My Loka Espresso Card',
+          text: `Join Loka Espresso! My referral code: ${user?.referral_code || ''}`,
+          url: `https://app.loyaltysystem.uk?ref=${user?.referral_code || ''}`,
+        });
+      } else {
+        await navigator.clipboard.writeText(user?.referral_code || '');
+        showToast('Referral code copied!', 'success');
+      }
+    } catch { /* cancelled */ }
+  };
+
+  const initials = user?.name?.charAt(0)?.toUpperCase() || 'M';
+  const memberId = user?.id ? `ID: LOKA-${String(user.id).padStart(6, '0')}` : '';
 
   return (
     <div className="mycard-screen">
-      {/* Header */}
       <div className="mycard-header">
         <button className="mycard-back-btn" onClick={() => setPage('profile')} aria-label="Back">
           <ArrowLeft size={20} />
@@ -38,28 +68,75 @@ export default function MyCardPage() {
         <h1 className="mycard-title">My Card</h1>
       </div>
 
-      {/* Card Content */}
       <div className="mycard-content">
-        {/* QR Code Placeholder */}
-        <div className="mycard-qr-box">
-          <div className="mycard-qr-inner">
-            <QrCode size={80} strokeWidth={1.5} />
-            <p className="mycard-qr-label">Member QR</p>
+        {/* Physical card */}
+        <div className="mycard-physical" ref={cardRef}>
+          <div className="mycard-top">
+            <div className="mycard-brand">Loka Espresso</div>
+            <div className="mycard-tier-badge">{tier} Member</div>
+          </div>
+
+          <div className="mycard-middle">
+            <div className="mycard-qr-area">
+              <div className="mycard-qr">
+                {qrDataUrl ? (
+                  <img src={qrDataUrl} alt="Member QR" width={56} height={56} />
+                ) : (
+                  <QrCode size={28} color="#C4CED8" />
+                )}
+              </div>
+              <div className="mycard-member-info">
+                <div className="mycard-member-name">{user?.name || 'Member'}</div>
+                <div className="mycard-member-id">{memberId}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mycard-bottom">
+            <div className="mycard-points-display">
+              <div className="mycard-pts-val">{points.toLocaleString()}</div>
+              <div className="mycard-pts-label">Total Points</div>
+            </div>
+            {memberSince && <div className="mycard-since">Since {memberSince.split(' ')[0]} {memberSince.split(' ')[1]?.slice(0,3)}</div>}
           </div>
         </div>
 
-        <div className="mycard-member-name">{user?.name || 'Member'}</div>
-        <div className="mycard-member-since">
-          {memberSince ? `Member since ${memberSince}` : 'Member'}
+        {/* Tier progress row */}
+        <div className="mycard-tier-row">
+          {TIERS.map((t) => (
+            <div key={t} className={`mycard-tier-pill ${t === tier ? 'active' : ''}`}>
+              {t}
+            </div>
+          ))}
         </div>
 
-        <div className="mycard-points-row">
-          <Crown size={16} /> {points.toLocaleString()} pts
-        </div>
+        {/* Share button */}
+        <button className="mycard-share-btn" onClick={handleShare}>
+          <Share2 size={18} />
+          Share my card
+        </button>
 
-        <p className="mycard-info-text">
-          Show this code at the counter to earn points, redeem rewards, or top up your balance.
-        </p>
+        {/* Quick actions */}
+        <div className="mycard-actions">
+          <button className="mycard-action-btn" onClick={() => setPage('home')}>
+            <div className="mycard-action-icon">
+              <QrCode size={16} color="#57280D" />
+            </div>
+            Home
+          </button>
+          <button className="mycard-action-btn" onClick={() => setPage('history')}>
+            <div className="mycard-action-icon">
+              <Clock size={16} color="#57280D" />
+            </div>
+            History
+          </button>
+          <button className="mycard-action-btn" onClick={() => setPage('settings')}>
+            <div className="mycard-action-icon">
+              <Settings size={16} color="#57280D" />
+            </div>
+            Settings
+          </button>
+        </div>
       </div>
     </div>
   );
