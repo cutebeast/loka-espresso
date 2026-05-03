@@ -197,7 +197,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       {/* Horizontal carousel — uses homepage promo card style */}
       {!loading && promotions.length > 0 && (
         <div className="promotions-hero">
-          <div className="homepage-carousel promotions-carousel">
+          <div className="homepage-carousel">
             {promotions.map(promo => (
               <div key={promo.id} className="homepage-promo-card" onClick={() => handleSelectPromo(promo)}>
                 {promo.image_url && <img src={resolveAssetUrl(promo.image_url) || ''} alt="" className="card-bg-img" loading="lazy" />}
