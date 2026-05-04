@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, FormEvent, useCallback } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import type { CustomerDetail, CustomerWalletTransaction, CustomerLoyaltyTransaction, MerchantOrder } from '@/lib/merchant-types';
 import { CustomerInfo, OrderHistory, LoyaltyPanel, WalletTransactions, WalletRewards } from './customer-detail';
+import { useAuthStore } from '@/stores';
 
 interface PaginatedResponse<T> {
   total: number;
@@ -36,6 +37,70 @@ function ActionError({ msg }: { msg: string }) {
 }
 function ActionResult({ msg }: { msg: string }) {
   return <div className="cdp-success"><i className="fas fa-check-circle"></i> {msg}</div>;
+}
+
+function WalletAdjustDialog({ customerId, currentBalance, onDone }: { customerId: number; currentBalance: number; onDone: () => void }) {
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<string | null>(null);
+
+  async function handleSubmit() {
+    const amt = parseFloat(amount);
+    if (!amt) { setError('Enter a non-zero amount'); return; }
+    if (amt < 0 && Math.abs(amt) > currentBalance) {
+      setError(`Cannot deduct more than wallet balance (${formatRM(currentBalance)})`);
+      return;
+    }
+    const msg = amt > 0
+      ? `Add ${formatRM(amt)} to this customer's wallet?`
+      : `Deduct ${formatRM(Math.abs(amt))} from this customer's wallet?\n\nThis cannot be undone.`;
+    if (!confirm(msg)) return;
+    setSaving(true); setError(''); setResult(null);
+    try {
+      const isAdd = amt > 0;
+      const res = await apiFetch(isAdd ? '/admin/wallet/topup' : '/wallet/deduct', undefined, {
+        method: 'POST',
+        body: JSON.stringify(isAdd
+          ? { amount: amt, user_id: customerId, reason: reason || `Admin wallet ${amt > 0 ? 'top-up' : 'deduction'}` }
+          : { amount: Math.abs(amt), user_id: customerId, description: reason || 'Admin wallet deduction' }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || 'Failed'); return; }
+      const d = await res.json();
+      setResult(`Done! New balance: ${formatRM(d.new_balance)}`);
+      setAmount(''); setReason('');
+      onDone();
+    } catch { setError('Network error'); } finally { setSaving(false); }
+  }
+
+  return (
+    <ActionCard icon="wallet" title="Add / Deduct Wallet Credit">
+      {error && <ActionError msg={error} />}
+      {result && <ActionResult msg={result} />}
+      <div className="cdp-action-row">
+        <div className="cdp-action-field cdp-action-field-sm">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <label className="df-label">Amount (RM)</label>
+            <span className="df-hint">Negative to deduct</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+            <span className="df-hint" style={{ fontSize: 11 }}>Balance: {formatRM(currentBalance)}</span>
+          </div>
+          <input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="+/- RM" disabled={saving} />
+        </div>
+        <div className="cdp-action-field cdp-action-field-lg">
+          <label className="df-label">Reason</label>
+          <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Chargeback, correction, bonus" disabled={saving} />
+        </div>
+      </div>
+      <div className="df-actions">
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+          {saving ? 'Processing...' : 'Adjust Wallet'}
+        </button>
+      </div>
+    </ActionCard>
+  );
 }
 
 function AwardPointsDialog({ customerId, onDone }: { customerId: number; onDone: () => void }) {
@@ -237,6 +302,8 @@ function ApproveProfileButton({ customerId, onDone }: { customerId: number; onDo
 }
 
 export default function CustomerDetailPage({ customerId, onBack }: CustomerDetailPageProps) {
+  const userType = useAuthStore((s) => s.currentUserType);
+  const isHQ = userType === 1;
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('profile');
@@ -438,6 +505,7 @@ export default function CustomerDetailPage({ customerId, onBack }: CustomerDetai
               </div>
             )}
             <AwardPointsDialog customerId={customerId} onDone={fetchDetail} />
+            {isHQ && <WalletAdjustDialog customerId={customerId} currentBalance={detail.wallet_balance || 0} onDone={fetchDetail} />}
             <AwardVoucherDialog customerId={customerId} onDone={fetchDetail} />
             <SetTierDialog customerId={customerId} currentTier={detail.tier} onDone={fetchDetail} />
           </div>
