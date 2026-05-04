@@ -91,6 +91,11 @@ async def update_order_status(
     order.status = req.status
     history = OrderStatusHistory(order_id=order.id, status=req.status, note=req.note)
     if req.completed_at:
+        # Reject future dates and dates before order creation
+        if req.completed_at > now_utc():
+            raise HTTPException(400, "completed_at cannot be in the future")
+        if order.created_at and ensure_utc(req.completed_at) < ensure_utc(order.created_at):
+            raise HTTPException(400, "completed_at cannot be before order creation date")
         history.created_at = req.completed_at
     db.add(history)
     notif = Notification(

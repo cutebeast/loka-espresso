@@ -33,6 +33,7 @@ export default function WalletPage() {
   const [customAmount, setCustomAmount] = useState('');
   const [toppingUp, setToppingUp] = useState(false);
   const [loadingTx, setLoadingTx] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const fetchBalance = useCallback(async () => {
     if (!useAuthStore.getState().isAuthenticated) return;
@@ -84,6 +85,13 @@ export default function WalletPage() {
       showToast('Select or enter a valid amount (min RM 5)', 'error');
       return;
     }
+    setShowConfirm(true);
+  };
+
+  const executeTopUp = async () => {
+    const amount = getTopUpAmount();
+    if (!amount) return;
+    setShowConfirm(false);
     setToppingUp(true);
     try {
       await api.post('/wallet/topup', { amount });
@@ -233,6 +241,22 @@ export default function WalletPage() {
         </div>
         </GuestGate>
       </div>
+
+      {/* Confirmation Dialog */}
+      {showConfirm && (
+        <div className="profile-modal-overlay show" onClick={() => setShowConfirm(false)}>
+          <div className="profile-modal-box">
+            <h3>Confirm Top Up</h3>
+            <p style={{ marginBottom: 16 }}>
+              Top up <strong>{formatPrice(getTopUpAmount() || 0)}</strong> to your wallet?
+            </p>
+            <div className="profile-modal-btns">
+              <button className="profile-modal-btn profile-modal-btn-cancel" onClick={() => setShowConfirm(false)}>Cancel</button>
+              <button className="profile-modal-btn profile-modal-btn-confirm" onClick={executeTopUp}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
