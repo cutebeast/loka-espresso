@@ -25,13 +25,9 @@ interface RewardItem {
   updated_at?: string;
 }
 
-interface RewardsPageProps {
-  token: string;
-}
-
 const PAGE_SIZE = 20;
 
-export default function RewardsPage({ token }: RewardsPageProps) {
+export default function RewardsPage() {
   const [rewards, setRewards] = useState<RewardItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -169,7 +165,7 @@ export default function RewardsPage({ token }: RewardsPageProps) {
     <div>
       <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} >
         {viewMode === 'form' && (
-          <RewardFormPage token={token} existingReward={editingReward} onBack={closeForm} />
+          <RewardFormPage existingReward={editingReward} onBack={closeForm} />
         )}
       </Drawer>
 
@@ -207,7 +203,7 @@ export default function RewardsPage({ token }: RewardsPageProps) {
 
 // ── Separate Form Page ────────────────────────────────────────────────────────
 
-function RewardFormPage({ token: _token, existingReward, onBack }: { token: string; existingReward: RewardItem | null; onBack: () => void }) {
+function RewardFormPage({ existingReward, onBack }: { existingReward: RewardItem | null; onBack: () => void }) {
   const isEdit = !!existingReward;
   const fileRef = useRef<HTMLInputElement>(null);
 

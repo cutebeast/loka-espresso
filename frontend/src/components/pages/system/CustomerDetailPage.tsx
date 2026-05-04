@@ -15,7 +15,6 @@ interface PaginatedResponse<T> {
 type TabId = 'profile' | 'orders' | 'loyalty' | 'wallet' | 'vouchers' | 'actions';
 
 interface CustomerDetailPageProps {
-  token: string;
   customerId: number;
   onBack: () => void;
 }
@@ -39,7 +38,7 @@ function ActionResult({ msg }: { msg: string }) {
   return <div className="cdp-success"><i className="fas fa-check-circle"></i> {msg}</div>;
 }
 
-function AwardPointsDialog({ customerId, token: _token, onDone }: { customerId: number; token: string; onDone: () => void }) {
+function AwardPointsDialog({ customerId, onDone }: { customerId: number; onDone: () => void }) {
   const [points, setPoints] = useState('');
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
@@ -89,7 +88,7 @@ function AwardPointsDialog({ customerId, token: _token, onDone }: { customerId: 
   );
 }
 
-function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number; token: string; onDone: () => void }) {
+function AwardVoucherDialog({ customerId, onDone }: { customerId: number; onDone: () => void }) {
   const [vouchers, setVouchers] = useState<{ id: number; code: string; title: string | null; discount_type: string; discount_value: number }[]>([]);
   const [selectedVoucher, setSelectedVoucher] = useState('');
   const [reason, setReason] = useState('');
@@ -109,7 +108,7 @@ function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number;
         }
       } catch { console.error('Failed to load vouchers'); }
     })();
-  }, [token]);
+  }, []);
 
   async function handleSubmit() {
     if (!selectedVoucher) { setError('Select a voucher'); return; }
@@ -158,7 +157,7 @@ function AwardVoucherDialog({ customerId, token, onDone }: { customerId: number;
   );
 }
 
-function SetTierDialog({ customerId, currentTier, token: _token, onDone }: { customerId: number; currentTier: string | null; token: string; onDone: () => void }) {
+function SetTierDialog({ customerId, currentTier, onDone }: { customerId: number; currentTier: string | null; onDone: () => void }) {
   const [tier, setTier] = useState(currentTier || 'bronze');
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
@@ -203,7 +202,7 @@ function SetTierDialog({ customerId, currentTier, token: _token, onDone }: { cus
   );
 }
 
-function ApproveProfileButton({ customerId, token: _token, onDone }: { customerId: number; token: string; onDone: () => void }) {
+function ApproveProfileButton({ customerId, onDone }: { customerId: number; onDone: () => void }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<string | null>(null);
@@ -237,7 +236,7 @@ function ApproveProfileButton({ customerId, token: _token, onDone }: { customerI
   );
 }
 
-export default function CustomerDetailPage({ token, customerId, onBack }: CustomerDetailPageProps) {
+export default function CustomerDetailPage({ customerId, onBack }: CustomerDetailPageProps) {
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('profile');
@@ -426,7 +425,7 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
           <div className="df-section">
             <h4 className="cdp-section-title"><i className="fas fa-cog" style={{ marginRight: 8 }}></i>Customer Management Actions</h4>
             {!detail.phone_verified && (
-              <ApproveProfileButton customerId={customerId} token={token} onDone={fetchDetail} />
+              <ApproveProfileButton customerId={customerId} onDone={fetchDetail} />
             )}
             {detail.phone_verified && !detail.is_profile_complete && (
               <div className="cdp-approve-card">
@@ -438,9 +437,9 @@ export default function CustomerDetailPage({ token, customerId, onBack }: Custom
                 </div>
               </div>
             )}
-            <AwardPointsDialog customerId={customerId} token={token} onDone={fetchDetail} />
-            <AwardVoucherDialog customerId={customerId} token={token} onDone={fetchDetail} />
-            <SetTierDialog customerId={customerId} currentTier={detail.tier} token={token} onDone={fetchDetail} />
+            <AwardPointsDialog customerId={customerId} onDone={fetchDetail} />
+            <AwardVoucherDialog customerId={customerId} onDone={fetchDetail} />
+            <SetTierDialog customerId={customerId} currentTier={detail.tier} onDone={fetchDetail} />
           </div>
         )}
 

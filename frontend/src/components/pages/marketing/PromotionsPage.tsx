@@ -6,11 +6,7 @@ import type { PromoView } from './promotions';
 
 type ViewMode = 'promotions' | 'banner-form' | PromoView;
 
-interface PromotionsPageProps {
-  token: string;
-}
-
-export default function PromotionsPage({ token }: PromotionsPageProps) {
+export default function PromotionsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('promotions');
 
   const currentTab: 'promotions' | 'surveys' | 'reports' =
@@ -31,12 +27,11 @@ export default function PromotionsPage({ token }: PromotionsPageProps) {
       <PromoTabs activeTab={currentTab} onTabChange={handleTabChange} />
 
       {currentTab === 'promotions' && (
-        <PromoBannerEditor token={token} />
+        <PromoBannerEditor />
       )}
 
       {currentTab !== 'promotions' && (
         <PromoContentTabs
-          token={token}
           activeView={viewMode as PromoView}
           onViewChange={handlePromoViewChange}
         />

@@ -6,7 +6,6 @@ import { DonutChart, StoreSelector, DateFilter, Modal, DataTable, calcDateRange,
 import type { MerchantStore } from '@/lib/merchant-types'
 
 interface MarketingReportsPageProps {
-  token: string
   stores: MerchantStore[]
 }
 
@@ -88,7 +87,7 @@ function RankingList({ items, maxVal, colorOffset, totalLabel, onShowAll }: {
 
 /* ── Main Component ── */
 
-export default function MarketingReportsPage({ token: _token, stores }: MarketingReportsPageProps) {
+export default function MarketingReportsPage({ stores }: MarketingReportsPageProps) {
   const [preset, setPreset] = useState<DatePreset>('MTD')
   const [localStore, setLocalStore] = useState<string>('all')
   const [fromDate, setFromDate] = useState('')

@@ -29,9 +29,7 @@ interface VoucherItem {
   updated_at?: string;
 }
 
-interface VouchersPageProps {
-  token: string;
-}
+
 
 interface VoucherForm {
   code: string;
@@ -62,7 +60,7 @@ const emptyForm: VoucherForm = {
 
 const PAGE_SIZE = 20;
 
-export default function VouchersPage({ token }: VouchersPageProps) {
+export default function VouchersPage() {
   const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -188,7 +186,7 @@ export default function VouchersPage({ token }: VouchersPageProps) {
     <div>
       <Drawer isOpen={drawerOpen} onClose={closeForm} title={drawerTitle} >
         {viewMode === 'form' && (
-          <VoucherFormPage token={token} existingVoucher={editingVoucher} onBack={closeForm} />
+          <VoucherFormPage existingVoucher={editingVoucher} onBack={closeForm} />
         )}
       </Drawer>
       <div className="vp-0">
@@ -224,7 +222,7 @@ export default function VouchersPage({ token }: VouchersPageProps) {
 
 // ── Separate Form Page ────────────────────────────────────────────────────────
 
-function VoucherFormPage({ token: _token, existingVoucher, onBack }: { token: string; existingVoucher: any | null; onBack: () => void }) {
+function VoucherFormPage({ existingVoucher, onBack }: { existingVoucher: any | null; onBack: () => void }) {
   const isEdit = !!existingVoucher;
 
   function formFromVoucher(v: any): VoucherForm {

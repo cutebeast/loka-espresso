@@ -8,23 +8,22 @@ import SurveyReportPage from '../SurveyReportPage';
 export type PromoView = 'surveys' | 'survey-form' | 'reports';
 
 interface PromoContentTabsProps {
-  token: string;
   activeView: PromoView;
   onViewChange: (view: PromoView) => void;
 }
 
-export default function PromoContentTabs({ token, activeView, onViewChange }: PromoContentTabsProps) {
+export default function PromoContentTabs({ activeView, onViewChange }: PromoContentTabsProps) {
   return (
     <>
       {(activeView === 'surveys' || activeView === 'survey-form') && (
         <SurveysPage
-          token={token}
+
           onSwitchToPromotions={() => onViewChange('surveys')}
         />
       )}
 
       {activeView === 'reports' && (
-        <SurveyReportPage token={token} />
+        <SurveyReportPage />
       )}
     </>
   );

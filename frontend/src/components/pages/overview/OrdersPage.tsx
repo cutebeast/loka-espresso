@@ -10,7 +10,6 @@ import type { MerchantOrder } from '@/lib/merchant-types';
 interface OrdersPageProps {
   orders: MerchantOrder[];
   loading: boolean;
-  token: string;
   selectedStore: string;
   stores: { id: number; name: string }[];
   total: number;
@@ -36,7 +35,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   cod: 'Cash on Delivery',
 };
 
-export default function OrdersPage({ orders, loading, token: _token, selectedStore, stores, total, page, pageSize, status, orderType, fromDate, toDate, onUpdate, onPageChange, onStatusChange, onOrderTypeChange, onStoreChange, onDateChange }: OrdersPageProps) {
+export default function OrdersPage({ orders, loading, selectedStore, stores, total, page, pageSize, status, orderType, fromDate, toDate, onUpdate, onPageChange, onStatusChange, onOrderTypeChange, onStoreChange, onDateChange }: OrdersPageProps) {
   const [showModal, setShowModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<MerchantOrder | null>(null);
   const [preset, setPreset] = useState<DatePreset>('MTD');

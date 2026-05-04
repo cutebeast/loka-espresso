@@ -2,28 +2,21 @@
 
 import { useState } from 'react';
 import { apiFetch, apiUpload, formatRM } from '@/lib/merchant-api';
-import type { MerchantCategory, MerchantMenuItem, MerchantStore } from '@/lib/merchant-types';
+import type { MerchantCategory, MerchantMenuItem } from '@/lib/merchant-types';
 import { Select, Modal, Drawer, DataTable, type ColumnDef } from '@/components/ui';
 import { THEME } from '@/lib/theme';
+import { useAuthStore, useMerchantDataStore, useUIStore } from '@/stores';
 
-interface MenuPageProps {
-  categories: MerchantCategory[];
-  menuItems: MerchantMenuItem[];
-  selectedCategory: number | null;
-  setSelectedCategory: (id: number | null) => void;
-  selectedStore: string;
-  storeObj: MerchantStore | undefined;
-  token: string;
-  onRefresh: () => void;
-  onCustomizeItem: (item: MerchantMenuItem) => void;
-  userRole?: string;
-  userType?: number;
-}
-
-
-
-export default function MenuPage({ categories, menuItems, selectedCategory, setSelectedCategory, selectedStore: _selectedStore, storeObj: _storeObj, token: _token, onRefresh, onCustomizeItem, userType = 1 }: MenuPageProps) {
+export default function MenuPage() {
+  const categories = useMerchantDataStore((s) => s.categories);
+  const menuItems = useMerchantDataStore((s) => s.menuItems);
+  const selectedCategory = useMerchantDataStore((s) => s.selectedCategory);
+  const setSelectedCategory = useMerchantDataStore((s) => s.setSelectedCategory);
+  const fetchMenu = useMerchantDataStore((s) => s.fetchMenu);
+  const setCustomizingItem = useUIStore((s) => s.setCustomizingItem);
+  const userType = useAuthStore((s) => s.currentUserType);
   const isHQ = userType === 1;
+
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<number | null>(null);
   const [itemCatError, setItemCatError] = useState('');
@@ -66,14 +59,14 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
         ? await apiFetch(`/admin/categories/${editingCat.id}`, undefined, { method: 'PUT', body: JSON.stringify({ name: catName, slug, display_order: editingCat.display_order }) })
         : await apiFetch(`/admin/categories`, undefined, { method: 'POST', body: JSON.stringify({ name: catName, slug, display_order: 0 }) });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setCatError(d.detail || 'Failed'); return; }
-      closeCatModal(); onRefresh();
+      closeCatModal(); fetchMenu();
     } catch { setCatError('Network error'); } finally { setSavingCat(false); }
   }
 
   async function toggleCatActive(c: MerchantCategory) {
     try {
       await apiFetch(`/admin/categories/${c.id}`, undefined, { method: 'PUT', body: JSON.stringify({ name: c.name, slug: c.slug, display_order: c.display_order, is_active: !c.is_active }) });
-      onRefresh();
+      fetchMenu();
     } catch { console.error('Failed to toggle category'); }
   }
 
@@ -109,18 +102,18 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
         ? await apiFetch(`/admin/items/${editingItem.id}`, undefined, { method: 'PUT', body })
         : await apiFetch(`/admin/items`, undefined, { method: 'POST', body });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setItemCatError(d.detail || `Failed (${res.status})`); return; }
-      closeItemModal(); onRefresh();
+      closeItemModal(); fetchMenu();
     } catch (err: any) { setItemCatError(err.message || 'Network error'); } finally { setSavingItem(false); }
   }
 
   async function deleteItem(id: number) {
-    try { const res = await apiFetch(`/admin/items/${id}`, undefined, { method: 'DELETE' }); if (res.ok) { setConfirmDeleteItem(null); onRefresh(); } } catch { console.error('Failed to delete item'); }
+    try { const res = await apiFetch(`/admin/items/${id}`, undefined, { method: 'DELETE' }); if (res.ok) { setConfirmDeleteItem(null); fetchMenu(); } } catch { console.error('Failed to delete item'); }
   }
 
   async function toggleItemAvailable(item: MerchantMenuItem) {
     try {
       await apiFetch(`/admin/items/${item.id}`, undefined, { method: 'PUT', body: JSON.stringify({ name: item.name, base_price: item.base_price, category_id: item.category_id, is_available: !item.is_available, is_featured: item.is_featured }) });
-      onRefresh();
+      fetchMenu();
     } catch { console.error('Failed to delete item'); }
   }
 
@@ -140,7 +133,7 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
       key: 'options',
       header: 'Add-ons',
       render: (item: MerchantMenuItem) => isHQ ? (
-        <button className="btn btn-sm" onClick={() => onCustomizeItem(item)} title="Manage add-ons"><i className="fas fa-sliders-h"></i> Manage</button>
+        <button className="btn btn-sm" onClick={() => setCustomizingItem(item)} title="Manage add-ons"><i className="fas fa-sliders-h"></i> Manage</button>
       ) : (
         <span className="badge badge-gray">—</span>
       ),

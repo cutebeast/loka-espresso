@@ -35,11 +35,7 @@ const emptyForm: BannerForm = {
   how_to_redeem: '',
 };
 
-interface BannerManagerProps {
-  token: string;
-}
-
-export default function BannerManager({ token }: BannerManagerProps) {
+export default function BannerManager() {
   const [banners, setBanners] = useState<any[]>([]);
   const [bannerPage, setBannerPage] = useState(1);
   const [bannerTotal, setBannerTotal] = useState(0);
@@ -85,7 +81,7 @@ export default function BannerManager({ token }: BannerManagerProps) {
         .then(d => setVouchers(Array.isArray(d) ? d : (d.items ?? [])))
         .catch(() => {});
     }
-  }, [drawerOpen, token]);
+  }, [drawerOpen]);
 
   const openNew = () => {
     setEditingId(null);
@@ -305,7 +301,7 @@ export default function BannerManager({ token }: BannerManagerProps) {
             </div>
 
             <div className="pp-6">
-              <ImageUploadField label="Banner Image (thumbnail)" imageUrl={form.image_url} token={token} onSet={(url) => setField('image_url', url)} hint="720 × 405 px (16:9) · Card thumbnail" />
+              <ImageUploadField label="Banner Image (thumbnail)" imageUrl={form.image_url} onSet={(url) => setField('image_url', url)} hint="720 × 405 px (16:9) · Card thumbnail" />
             </div>
 
             <div className="pp-7">
@@ -408,7 +404,7 @@ export default function BannerManager({ token }: BannerManagerProps) {
   );
 }
 
-function ImageUploadField({ label, imageUrl, token: _token, onSet, hint }: { label: string; imageUrl: string; token: string; onSet: (url: string) => void; hint?: string }) {
+function ImageUploadField({ label, imageUrl, onSet, hint }: { label: string; imageUrl: string; onSet: (url: string) => void; hint?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 

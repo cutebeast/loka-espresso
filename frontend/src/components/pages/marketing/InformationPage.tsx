@@ -6,10 +6,6 @@ import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { DataTable, Drawer, type ColumnDef } from '@/components/ui';
 import { APP_DOMAIN } from '@/lib/config';
 
-interface InformationPageProps {
-  token: string;
-}
-
 interface InfoCard {
   id: number;
   title: string;
@@ -101,7 +97,7 @@ const contentTypeOptions = [
   { value: 'system',      label: 'System' },
 ];
 
-export default function InformationPage({ token }: InformationPageProps) {
+export default function InformationPage() {
   const [cards, setCards] = useState<InfoCard[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -500,11 +496,10 @@ export default function InformationPage({ token }: InformationPageProps) {
             )}
 
             <div className="inf-11">
-              <ImageUploadField 
-                label="Card Image" 
-                imageUrl={form.image_url} 
-                token={token} 
-                onSet={(url) => setField('image_url', url)} 
+              <ImageUploadField
+                label="Card Image"
+                imageUrl={form.image_url}
+                onSet={(url) => setField('image_url', url)}
                 hint="Cover image shown on PWA card and article header."
                 folder={form.content_type}
               />
@@ -515,7 +510,6 @@ export default function InformationPage({ token }: InformationPageProps) {
               <GalleryUploadField
                 label="Gallery Images"
                 urls={form.gallery_urls}
-                token={token}
                 onSet={(urls) => setField('gallery_urls', urls)}
                 hint="Additional images shown as a swipeable gallery inside the article."
                 folder={form.content_type}
@@ -614,7 +608,7 @@ export default function InformationPage({ token }: InformationPageProps) {
   );
 }
 
-function ImageUploadField({ label, imageUrl, token: _token, onSet, hint, folder }: { label: string; imageUrl: string; token: string; onSet: (url: string) => void; hint?: string; folder?: string }) {
+function ImageUploadField({ label, imageUrl, onSet, hint, folder }: { label: string; imageUrl: string; onSet: (url: string) => void; hint?: string; folder?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -654,7 +648,7 @@ function ImageUploadField({ label, imageUrl, token: _token, onSet, hint, folder 
   );
 }
 
-function GalleryUploadField({ label, urls, token: _token, onSet, hint, folder }: { label: string; urls: string[]; token: string; onSet: (urls: string[]) => void; hint?: string; folder?: string }) {
+function GalleryUploadField({ label, urls, onSet, hint, folder }: { label: string; urls: string[]; onSet: (urls: string[]) => void; hint?: string; folder?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 

@@ -36,11 +36,10 @@ export const emptySurveyQuestion = (): SurveyQuestion => ({
 
 
 interface SurveysPageProps {
-  token: string;
   onSwitchToPromotions?: () => void;
 }
 
-export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPromotions }: SurveysPageProps) {
+export default function SurveysPage({ onSwitchToPromotions: _onSwitchToPromotions }: SurveysPageProps) {
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
 
   const [surveyList, setSurveyList] = useState<Survey[]>([]);
@@ -90,7 +89,7 @@ export default function SurveysPage({ token, onSwitchToPromotions: _onSwitchToPr
         .then(d => setSurveyVouchers(Array.isArray(d) ? d : (d.items ?? [])))
         .catch(() => {});
     }
-  }, [viewMode, token]);
+  }, [viewMode]);
 
   function surveyOpenCreate() {
     setSurveyEditing(null);

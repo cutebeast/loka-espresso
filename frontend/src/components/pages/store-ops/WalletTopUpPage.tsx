@@ -6,13 +6,9 @@ import CustomerSearchForm from './CustomerSearchForm';
 import QRScanner from './pos-terminal/QRScanner';
 import type { CustomerResult } from './CustomerSearchForm';
 
-interface WalletTopUpPageProps {
-  token: string;
-}
-
 const TOPUP_PRESETS = [20, 50, 100, 200, 300, 500];
 
-export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps) {
+export default function WalletTopUpPage() {
   const [customer, setCustomer] = useState<CustomerResult | null>(null);
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'paywave'>('cash');

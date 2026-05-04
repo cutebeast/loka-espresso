@@ -5,20 +5,10 @@ import { apiFetch, apiUpload } from '@/lib/merchant-api';
 import { StoreSelector, Select, Modal, Button, Drawer, DataTable } from '@/components/ui';
 import type { ColumnDef } from '@/components/ui';
 import { THEME } from '@/lib/theme';
-import type { MerchantInventoryItem, MerchantInventoryCategory, MerchantStore } from '@/lib/merchant-types';
+import type { MerchantInventoryItem, MerchantInventoryCategory } from '@/lib/merchant-types';
 import InventoryLedgerPage from '@/components/pages/store-ops/InventoryLedgerPage';
 
-interface InventoryPageProps {
-  inventory: MerchantInventoryItem[];
-  selectedStore: string;
-  storeObj: MerchantStore | undefined;
-  token: string;
-  onRefresh: () => void;
-  userRole: string;
-  userType?: number;
-  stores: MerchantStore[];
-  onStoreChange: (storeId: string) => void;
-}
+import { useAuthStore, useMerchantDataStore } from '@/stores';
 
 const UNITS = ['kg', 'litre', 'pcs', 'g', 'ml'];
 const MOVEMENT_TYPES = [
@@ -31,7 +21,14 @@ const MOVEMENT_TYPES = [
 ];
 
 
-export default function InventoryPage({ inventory, selectedStore, storeObj: _storeObj, token, onRefresh, userRole: _userRole, userType, stores, onStoreChange }: InventoryPageProps) {
+export default function InventoryPage() {
+  const inventory = useMerchantDataStore((s) => s.inventory);
+  const selectedStore = useMerchantDataStore((s) => s.selectedStore);
+  const setSelectedStore = useMerchantDataStore((s) => s.setSelectedStore);
+  const stores = useMerchantDataStore((s) => s.stores);
+  const fetchInventory = useMerchantDataStore((s) => s.fetchInventory);
+  const userType = useAuthStore((s) => s.currentUserType);
+
   const isHQ = userType === 1;
   const activeStoreId = selectedStore !== 'all' && selectedStore ? selectedStore : '';
 
@@ -82,7 +79,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
         setCategories(cats);
       })
       .catch(() => {});
-  }, [activeStoreId, selectedStore, token, inventory]);
+  }, [activeStoreId, selectedStore, inventory]);
 
   const filteredItems = selectedCat ? inventory.filter(i => i.category_id === selectedCat) : inventory;
 
@@ -109,7 +106,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
         : await apiFetch(`/admin/stores/${activeStoreId}/inventory-categories`, undefined, { method: 'POST', body: JSON.stringify({ name: catName, slug, display_order: 0 }) });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setCatError(d.detail || 'Failed'); return; }
       closeCatModal();
-      onRefresh();
+      fetchInventory();
     } catch { setCatError('Network error'); } finally { setCatSaving(false); }
   }
 
@@ -129,21 +126,21 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
         ? await apiFetch(`/admin/stores/${activeStoreId}/inventory/${editingItem.id}`, undefined, { method: 'PUT', body })
         : await apiFetch(`/admin/stores/${activeStoreId}/inventory`, undefined, { method: 'POST', body });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || `Failed (${res.status})`); return; }
-      closeItemModal(); onRefresh();
+      closeItemModal(); fetchInventory();
     } catch (err: any) { setError(err.message || 'Network error'); } finally { setSaving(false); }
   }
 
   async function handleToggle(item: MerchantInventoryItem) {
     try {
       const res = await apiFetch(`/admin/stores/${activeStoreId}/inventory/${item.id}/toggle`, undefined, { method: 'PATCH', body: JSON.stringify({ is_active: !item.is_active }) });
-      if (res.ok) onRefresh();
+      if (res.ok) fetchInventory();
     } catch { console.error('Failed to toggle inventory item'); }
   }
 
   async function handleDelete(id: number) {
     try {
       const res = await apiFetch(`/admin/stores/${activeStoreId}/inventory/${id}`, undefined, { method: 'DELETE' });
-      if (res.ok) { setConfirmDelete(null); onRefresh(); }
+      if (res.ok) { setConfirmDelete(null); fetchInventory(); }
     } catch { console.error('Failed to toggle inventory item'); }
   }
 
@@ -171,11 +168,11 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
         body: JSON.stringify({ movement_type: adjType, quantity: adjQuantity, note: adjNote, attachment_path: attachmentPath }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || `Failed (${res.status})`); return; }
-      closeAdjust(); onRefresh();
+      closeAdjust(); fetchInventory();
     } catch (err: any) { setError(err.message || 'Network error'); } finally { setSavingAdj(false); }
   }
 
-  const physicalStores = stores.filter(s => String(s.id) !== '0');
+  const physicalStores = stores.filter((s: any) => String(s.id) !== '0');
 
   const columns: ColumnDef<MerchantInventoryItem>[] = [
     {
@@ -234,7 +231,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
           <StoreSelector
             stores={physicalStores}
             selectedStore={activeStoreId}
-            onChange={onStoreChange}
+            onChange={setSelectedStore}
             showAllOption={false}
             placeholder="Select a store..."
           />
@@ -267,12 +264,11 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
         <InventoryLedgerPage
           selectedStore={activeStoreId}
           storeObj={undefined}
-          token={token}
           stores={stores}
-          onStoreChange={onStoreChange || (() => {})}
+          onStoreChange={setSelectedStore}
           fromDate={fromDate}
           toDate={toDate}
-          onDateChange={(from, to) => { setFromDate(from); setToDate(to); }}
+          onDateChange={(from: string, to: string) => { setFromDate(from); setToDate(to); }}
         />
       ) : (
       <>

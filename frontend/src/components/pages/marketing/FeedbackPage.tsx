@@ -6,7 +6,6 @@ import { DateFilter, type DatePreset, calcDateRange } from '@/components/ui/Date
 import { BarChart, Modal, TextArea } from '@/components/ui';
 
 interface FeedbackPageProps {
-  token: string;
   selectedStore: string;
 }
 
@@ -26,7 +25,7 @@ interface Feedback {
   created_at: string;
 }
 
-export default function FeedbackPage({ token: _token, selectedStore }: FeedbackPageProps) {
+export default function FeedbackPage({ selectedStore }: FeedbackPageProps) {
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);

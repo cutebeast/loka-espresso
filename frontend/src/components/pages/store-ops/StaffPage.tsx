@@ -2,17 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
-import { StoreSelector, Select, DataTable, Pagination, Drawer, Input } from '@/components/ui';
+import { StoreSelector, Select, DataTable, Pagination, Drawer } from '@/components/ui';
 import { THEME } from '@/lib/theme';
-import type { MerchantStaffMember, MerchantStore } from '@/lib/merchant-types';
-
-interface StaffPageProps {
-  selectedStore: string;
-  storeObj: MerchantStore | undefined;
-  token: string;
-  stores: MerchantStore[];
-  onStoreChange: (storeId: string) => void;
-}
+import type { MerchantStaffMember } from '@/lib/merchant-types';
+import { useMerchantDataStore } from '@/stores';
 
 // ACL Lookup: user_type_id → label
 const USER_TYPES = [
@@ -47,7 +40,11 @@ const USER_TYPE_COLORS: Record<number, { bg: string; text: string }> = {
 
 const PAGE_SIZE = 20;
 
-export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _token, stores, onStoreChange }: StaffPageProps) {
+export default function StaffPage() {
+  const selectedStore = useMerchantDataStore((s) => s.selectedStore);
+  const setSelectedStore = useMerchantDataStore((s) => s.setSelectedStore);
+  const stores = useMerchantDataStore((s) => s.stores);
+
   const activeStoreId = selectedStore !== 'all' && selectedStore ? selectedStore : '';
   const isHQ = selectedStore === 'all';
 
@@ -110,7 +107,7 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
     } catch {
       setStaffList([]);
     } finally { setLoading(false); }
-  }, [isHQ, selectedStore]);
+  }, [isHQ, activeStoreId]);
 
   useEffect(() => { fetchStaff(1); }, [fetchStaff]);
 
@@ -385,7 +382,7 @@ export default function StaffPage({ selectedStore, storeObj: _storeObj, token: _
           <StoreSelector
             stores={stores.filter(s => String(s.id) !== '0')}
             selectedStore={selectedStore}
-            onChange={onStoreChange}
+            onChange={setSelectedStore}
             allLabel="All Stores (HQ view)"
           />
         </div>

@@ -7,7 +7,6 @@ import { DataTable, Drawer, Input } from '@/components/ui';
 
 interface LoyaltyRulesPageProps {
   tiers: MerchantLoyaltyTier[];
-  token: string;
   onRefresh: () => void;
 }
 
@@ -29,7 +28,7 @@ function BenefitsBadges({ benefits }: { benefits: Record<string, unknown> | null
   return <div className="bb-2">{chips.map((chip, i) => <span key={i} className="bb-3">{chip}</span>)}</div>;
 }
 
-export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRulesPageProps) {
+export default function LoyaltyRulesPage({ tiers, onRefresh }: LoyaltyRulesPageProps) {
   const [drawerMode, setDrawerMode] = useState<'add' | 'edit' | null>(null);
   const [editingTier, setEditingTier] = useState<MerchantLoyaltyTier | null>(null);
 
@@ -47,11 +46,11 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
   return (
     <div>
       <Drawer isOpen={drawerMode === 'add'} onClose={closeDrawer} title="New Loyalty Tier">
-        <TierForm token={token} onClose={closeDrawer} />
+        <TierForm onClose={closeDrawer} />
       </Drawer>
 
       <Drawer isOpen={drawerMode === 'edit' && !!editingTier} onClose={closeDrawer} title={editingTier ? `Edit: ${editingTier.name}` : 'Edit Tier'}>
-        {editingTier && <TierForm token={token} existingTier={editingTier} onClose={closeDrawer} />}
+        {editingTier && <TierForm existingTier={editingTier} onClose={closeDrawer} />}
       </Drawer>
 
       <div className="lrp-4">
@@ -107,12 +106,11 @@ export default function LoyaltyRulesPage({ tiers, token, onRefresh }: LoyaltyRul
 
 // ── Shared Tier Form ──
 interface TierFormProps {
-  token: string;
   onClose: () => void;
   existingTier?: MerchantLoyaltyTier;
 }
 
-function TierForm({ token: _token, onClose, existingTier }: TierFormProps) {
+function TierForm({ onClose, existingTier }: TierFormProps) {
   const isEdit = !!existingTier;
   const b = existingTier?.benefits as Record<string, any> | null;
   const [name, setName] = useState(existingTier?.name || '');

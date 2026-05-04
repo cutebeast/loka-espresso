@@ -34,11 +34,7 @@ interface WalletData {
   vouchers: WalletVoucher[];
 }
 
-interface POSTerminalPageProps {
-  token: string;
-}
-
-export default function POSTerminalPage({ token: _token }: POSTerminalPageProps) {
+export default function POSTerminalPage() {
   const [customer, setCustomer] = useState<CustomerResult | null>(null);
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [loadingWallet, setLoadingWallet] = useState(false);

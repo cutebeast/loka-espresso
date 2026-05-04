@@ -21,7 +21,6 @@ import { Line } from 'react-chartjs-2'
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 interface SalesReportsPageProps {
-  token: string
   stores: MerchantStore[]
 }
 
@@ -32,7 +31,7 @@ interface RevenueData {
   by_day: { [key: string]: number }
 }
 
-export default function SalesReportsPage({ token: _token, stores }: SalesReportsPageProps) {
+export default function SalesReportsPage({ stores }: SalesReportsPageProps) {
   const [preset, setPreset] = useState<DatePreset>('MTD')
   const [localStore, setLocalStore] = useState<string>('all')
   const [fromDate, setFromDate] = useState('')

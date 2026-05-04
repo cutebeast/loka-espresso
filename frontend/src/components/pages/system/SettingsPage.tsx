@@ -3,10 +3,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 
-interface SettingsPageProps {
-  token: string;
-}
-
 interface ConfigDef {
   key: string;
   label: string;
@@ -64,7 +60,7 @@ const CONFIG_GROUPS: { label: string; icon: string; items: ConfigDef[] }[] = [
   },
 ];
 
-export default function SettingsPage({ token }: SettingsPageProps) {
+export default function SettingsPage() {
   const [configs, setConfigs] = useState<Record<string, string | number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -74,7 +70,7 @@ export default function SettingsPage({ token }: SettingsPageProps) {
 
   useEffect(() => {
     fetchConfig();
-  }, [token]);
+  }, []);
 
   async function fetchConfig() {
     setLoading(true);

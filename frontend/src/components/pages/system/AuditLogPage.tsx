@@ -7,7 +7,6 @@ import type { MerchantAuditEntry, MerchantStore } from '@/lib/merchant-types';
 
 interface AuditLogPageProps {
   stores: MerchantStore[];
-  token: string;
 }
 
 interface AuditLogResponse {
@@ -29,7 +28,7 @@ const ACTION_OPTIONS = [
   { value: 'import', label: 'Import' },
 ];
 
-export default function AuditLogPage({ stores, token: _token }: AuditLogPageProps) {
+export default function AuditLogPage({ stores }: AuditLogPageProps) {
   const [entries, setEntries] = useState<MerchantAuditEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);

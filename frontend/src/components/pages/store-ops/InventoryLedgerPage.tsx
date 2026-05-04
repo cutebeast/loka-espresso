@@ -10,7 +10,6 @@ import type { MerchantStore, InventoryMovement } from '@/lib/merchant-types';
 interface InventoryLedgerPageProps {
   selectedStore: string;
   storeObj: MerchantStore | undefined;
-  token: string;
   stores: MerchantStore[];
   onStoreChange: (storeId: string) => void;
   fromDate: string;
@@ -27,7 +26,7 @@ const MOVEMENT_COLORS: Record<string, { bg: string; color: string }> = {
   adjustment: { bg: '#F9FAFB', color: '#374151' },
 };
 
-export default function InventoryLedgerPage({ selectedStore, storeObj: _storeObj, token: _token, stores: _stores, onStoreChange: _onStoreChange, fromDate, toDate, onDateChange }: InventoryLedgerPageProps) {
+export default function InventoryLedgerPage({ selectedStore, storeObj: _storeObj, stores: _stores, onStoreChange: _onStoreChange, fromDate, toDate, onDateChange }: InventoryLedgerPageProps) {
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('');

@@ -8,7 +8,6 @@ import type { MerchantBroadcast } from '@/lib/merchant-types';
 import NotificationTemplateManager from './NotificationTemplateManager';
 
 interface NotificationsPageProps {
-  token: string;
   refreshKey: number;
   onNewBroadcast: () => void;
 }
@@ -35,12 +34,11 @@ function isDraftStatus(bc: MerchantBroadcast): boolean {
 
 interface EditFormProps {
   bc: MerchantBroadcast;
-  token: string;
   onSave: () => void;
   onCancel: () => void;
 }
 
-function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
+function EditForm({ bc, onSave, onCancel }: EditFormProps) {
   const [title, setTitle] = useState(bc.title);
   const [body, setBody] = useState(bc.body || '');
   const [type, setType] = useState(bc.type || 'broadcast');
@@ -165,7 +163,7 @@ function EditForm({ bc, token: _token, onSave, onCancel }: EditFormProps) {
   );
 }
 
-export default function NotificationsPage({ token, refreshKey: _refreshKey, onNewBroadcast }: NotificationsPageProps) {
+export default function NotificationsPage({ refreshKey: _refreshKey, onNewBroadcast }: NotificationsPageProps) {
   const [broadcasts, setBroadcasts] = useState<MerchantBroadcast[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -230,7 +228,7 @@ export default function NotificationsPage({ token, refreshKey: _refreshKey, onNe
         <Drawer isOpen={true} onClose={() => setEditingId(null)} title={`Edit: ${editingBroadcast.title}`}>
           <EditForm
             bc={editingBroadcast}
-            token={token}
+
             onSave={() => { setEditingId(null); fetchBroadcasts(); }}
             onCancel={() => setEditingId(null)}
           />
@@ -340,7 +338,7 @@ export default function NotificationsPage({ token, refreshKey: _refreshKey, onNe
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} loading={loading} />
-      <NotificationTemplateManager token={token} />
+      <NotificationTemplateManager />
     </div>
   );
 }

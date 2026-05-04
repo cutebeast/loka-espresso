@@ -1,21 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import React from 'react';
+import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import type { PageId, MerchantMenuItem } from '@/lib/merchant-types';
+import type { PageId } from '@/lib/merchant-types';
 import Sidebar from '@/components/Sidebar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import ChangePasswordModal from '@/components/ChangePasswordModal';
-import ProfileUpdateModal from '@/components/ProfileUpdateModal';
-import CustomizationManager from '@/components/CustomizationManager';
+import AdminModals from '@/components/AdminModals';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobilePageGuard from '@/components/MobilePageGuard';
 import AuthGuard from '@/components/AuthGuard';
 import SkeletonPage from '@/components/SkeletonPage';
-import { useAuth } from '@/hooks/useAuth';
-import { useHashRouter } from '@/hooks/useHashRouter';
-import { useMerchantData } from '@/hooks/useMerchantData';
+import { useAuthStore, useRouterStore, useUIStore, useMerchantDataStore } from '@/stores';
 import DashboardPage from '@/components/pages/overview/DashboardPage';
 const OrdersPage = dynamic(() => import('@/components/pages/overview/OrdersPage'), { ssr: false });
 
@@ -68,8 +63,7 @@ const PAGE_TITLES: Record<PageId, string> = {
   posterminal: 'POS Terminal',
 };
 
-function PageRenderer({ page, token, data, stores, selectedStore, setSelectedStore, storeObj, customerDetailId, setCustomerDetailId, handlePageChange, setOrdersStatus, ordersPage, setOrdersPage, ordersPageSize, ordersStatus, ordersOrderType, setOrdersOrderType, ordersFromDate, ordersToDate, setOrdersFromDate, setOrdersToDate, dateRange, dashboardChartMode, fetchOrders, fetchMenu, fetchInventory, fetchTables, fetchLoyaltyTiers, fetchAdminStores, handleDateRangeChange, notifRefreshKey, openBroadcastModal, setCustomizingItem, currentUserRole, currentUserType }: any) {
-  const { loading, dashboard, orders, ordersTotal, categories, menuItems, selectedCategory, setSelectedCategory, tables, inventory, loyaltyTiers } = data;
+function PageRenderer({ page, loading, dashboard, orders, ordersTotal, tables, loyaltyTiers, stores, selectedStore, setSelectedStore, storeObj, customerDetailId, setCustomerDetailId, handlePageChange, setOrdersStatus, ordersPage, setOrdersPage, ordersPageSize, ordersStatus, ordersOrderType, setOrdersOrderType, ordersFromDate, ordersToDate, setOrdersFromDate, setOrdersToDate, dateRange, dashboardChartMode, fetchOrders, fetchTables, fetchLoyaltyTiers, fetchAdminStores, handleDateRangeChange, notifRefreshKey, openBroadcastModal }: any) {
 
   return (
     <>
@@ -77,144 +71,100 @@ function PageRenderer({ page, token, data, stores, selectedStore, setSelectedSto
 
       {page === 'dashboard' && <DashboardPage dashboard={dashboard} loading={loading} selectedStore={selectedStore} stores={stores} onStoreChange={setSelectedStore} fromDate={dateRange.from} toDate={dateRange.to} onDateChange={handleDateRangeChange} chartMode={dashboardChartMode} />}
 
-      {page === 'orders' && <OrdersPage orders={orders} loading={loading} token={token} selectedStore={selectedStore} stores={stores} total={ordersTotal} page={ordersPage} pageSize={ordersPageSize} status={ordersStatus} orderType={ordersOrderType} fromDate={ordersFromDate} toDate={ordersToDate} onUpdate={() => fetchOrders(selectedStore === 'all' ? undefined : selectedStore)} onPageChange={setOrdersPage} onStatusChange={setOrdersStatus} onOrderTypeChange={setOrdersOrderType} onStoreChange={setSelectedStore} onDateChange={(from, to) => { setOrdersFromDate(from); setOrdersToDate(to); }} />}
+      {page === 'orders' && <OrdersPage orders={orders} loading={loading} selectedStore={selectedStore} stores={stores} total={ordersTotal} page={ordersPage} pageSize={ordersPageSize} status={ordersStatus} orderType={ordersOrderType} fromDate={ordersFromDate} toDate={ordersToDate} onUpdate={() => fetchOrders(selectedStore === 'all' ? undefined : selectedStore)} onPageChange={setOrdersPage} onStatusChange={setOrdersStatus} onOrderTypeChange={setOrdersOrderType} onStoreChange={setSelectedStore} onDateChange={(from: string, to: string) => { setOrdersFromDate(from); setOrdersToDate(to); }} />}
 
-      {page === 'kitchen' && <KitchenDisplayPage token={token} selectedStore={selectedStore} stores={stores} onStoreChange={setSelectedStore} />}
+      {page === 'kitchen' && <KitchenDisplayPage selectedStore={selectedStore} stores={stores} onStoreChange={setSelectedStore} />}
 
-      {page === 'menu' && <MenuPage categories={categories} menuItems={menuItems} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} selectedStore={selectedStore} storeObj={storeObj} token={token} onRefresh={fetchMenu} onCustomizeItem={(item) => setCustomizingItem(item)} userType={currentUserType} />}
+      {page === 'menu' && <MenuPage />}
 
-      {page === 'inventory' && <InventoryPage inventory={inventory} selectedStore={selectedStore} storeObj={storeObj} token={token} onRefresh={fetchInventory} userRole={currentUserRole} userType={currentUserType} stores={stores} onStoreChange={setSelectedStore} />}
+      {page === 'inventory' && <InventoryPage />}
 
-      {page === 'tables' && <TablesPage tables={tables} selectedStore={selectedStore} storeObj={storeObj} token={token} onRefresh={fetchTables} stores={stores} onStoreChange={setSelectedStore} onViewOrder={() => { setOrdersStatus(''); handlePageChange('orders'); }} />}
+      {page === 'tables' && <TablesPage tables={tables} selectedStore={selectedStore} storeObj={storeObj} onRefresh={fetchTables} stores={stores} onStoreChange={setSelectedStore} onViewOrder={() => { setOrdersStatus(''); handlePageChange('orders'); }} />}
 
-      {page === 'staff' && <StaffPage selectedStore={selectedStore} storeObj={storeObj} token={token} stores={stores} onStoreChange={setSelectedStore} />}
+      {page === 'staff' && <StaffPage />}
 
-      {page === 'rewards' && <RewardsPage token={token} />}
-      {page === 'vouchers' && <VouchersPage token={token} />}
-      {page === 'promotions' && <PromotionsPage token={token} />}
-      {page === 'information' && <InformationPage token={token} />}
-      {page === 'feedback' && <FeedbackPage token={token} selectedStore={selectedStore} />}
-      {page === 'reports' && <SalesReportsPage token={token} stores={stores} />}
-      {page === 'marketingreports' && <MarketingReportsPage token={token} stores={stores} />}
+      {page === 'rewards' && <RewardsPage />}
+      {page === 'vouchers' && <VouchersPage />}
+      {page === 'promotions' && <PromotionsPage />}
+      {page === 'information' && <InformationPage />}
+      {page === 'feedback' && <FeedbackPage selectedStore={selectedStore} />}
+      {page === 'reports' && <SalesReportsPage stores={stores} />}
+      {page === 'marketingreports' && <MarketingReportsPage stores={stores} />}
 
       {page === 'customers' && (customerDetailId
-        ? <CustomerDetailPage token={token} customerId={customerDetailId} onBack={() => window.history.back()} />
-        : <CustomersPage token={token} stores={stores} selectedStore={selectedStore} onStoreChange={setSelectedStore} onEditCustomer={(id) => { window.history.pushState({ customerDetailId: id }, '', '#customers'); setCustomerDetailId(id); }} />
+        ? <CustomerDetailPage customerId={customerDetailId} onBack={() => window.history.back()} />
+        : <CustomersPage stores={stores} selectedStore={selectedStore} onStoreChange={setSelectedStore} onEditCustomer={(id: number) => { window.history.pushState({ customerDetailId: id }, '', '#customers'); setCustomerDetailId(id); }} />
       )}
 
-      {page === 'notifications' && <NotificationsPage token={token} refreshKey={notifRefreshKey} onNewBroadcast={openBroadcastModal} />}
-      {page === 'auditlog' && <AuditLogPage stores={stores} token={token} />}
-      {page === 'loyaltyrules' && <LoyaltyRulesPage tiers={loyaltyTiers} token={token} onRefresh={fetchLoyaltyTiers} />}
-      {page === 'store' && <StoreSettingsPage stores={stores} token={token} onRefresh={fetchAdminStores} />}
-      {page === 'settings' && <SettingsPage token={token} />}
-      {page === 'pwa' && <PWASettingsPage token={token} />}
-      {page === 'walletTopup' && <WalletTopUpPage token={token} />}
-      {page === 'posterminal' && <POSTerminalPage token={token} />}
-    </>
-  );
-}
-
-function AdminModals({ showModal, setShowModal, modalTitle, modalContent, showChangePassword, setShowChangePassword, showProfile, setShowProfile, showStoreModal, setShowStoreModal, stores, setSelectedStore, customizingItem, setCustomizingItem, token, fetchMenu, currentUserName, currentUserPhone, currentUserEmail, setCurrentUserName, setCurrentUserPhone }: any) {
-  return (
-    <>
-      {showStoreModal && (
-        <div className="modal-overlay" onClick={() => setShowStoreModal(false)}>
-          <div className="modal md-4" onClick={e => e.stopPropagation()}>
-            <h3 className="md-5">Select Store</h3>
-            <div className="md-6">
-              <button className="btn md-7" onClick={() => { setSelectedStore('all'); setShowStoreModal(false); }}>All Stores (Global view)</button>
-            </div>
-            {stores.map((s: any) => (
-              <button key={s.id} className="btn md-8" onClick={() => { setSelectedStore(String(s.id)); setShowStoreModal(false); }}>{s.name} &middot; {s.address}</button>
-            ))}
-            <button className="btn btn-primary md-9" onClick={() => setShowStoreModal(false)}>Done</button>
-          </div>
-        </div>
-      )}
-
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="md-10">
-              <h3>{modalTitle}</h3>
-              <button className="btn btn-sm" onClick={() => setShowModal(false)}><i className="fas fa-times"></i></button>
-            </div>
-            {modalContent}
-          </div>
-        </div>
-      )}
-
-      {customizingItem && (
-        <div className="modal-overlay" onClick={() => setCustomizingItem(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="md-11">
-              <h3>Customizations: {customizingItem.name}</h3>
-              <button className="btn btn-sm" onClick={() => setCustomizingItem(null)}><i className="fas fa-times"></i></button>
-            </div>
-            <CustomizationManager storeId={0} item={customizingItem} token={token} onClose={() => { setCustomizingItem(null); fetchMenu(); }} />
-          </div>
-        </div>
-      )}
-
-      {showChangePassword && (
-        <div className="modal-overlay" onClick={() => setShowChangePassword(false)}>
-          <div className="modal md-12" onClick={e => e.stopPropagation()}>
-            <ChangePasswordModal token={token} onClose={() => setShowChangePassword(false)} />
-          </div>
-        </div>
-      )}
-
-      {showProfile && (
-        <div className="modal-overlay" onClick={() => setShowProfile(false)}>
-          <div className="modal md-12" onClick={e => e.stopPropagation()}>
-            <ProfileUpdateModal
-              currentName={currentUserName}
-              currentPhone={currentUserPhone}
-              currentEmail={currentUserEmail}
-              onClose={() => setShowProfile(false)}
-              onSaved={(name: string, phone: string) => { setCurrentUserName(name); setCurrentUserPhone(phone); }}
-            />
-          </div>
-        </div>
-      )}
+      {page === 'notifications' && <NotificationsPage refreshKey={notifRefreshKey} onNewBroadcast={openBroadcastModal} />}
+      {page === 'auditlog' && <AuditLogPage stores={stores} />}
+      {page === 'loyaltyrules' && <LoyaltyRulesPage tiers={loyaltyTiers} onRefresh={fetchLoyaltyTiers} />}
+      {page === 'store' && <StoreSettingsPage stores={stores} onRefresh={fetchAdminStores} />}
+      {page === 'settings' && <SettingsPage />}
+      {page === 'pwa' && <PWASettingsPage />}
+      {page === 'walletTopup' && <WalletTopUpPage />}
+      {page === 'posterminal' && <POSTerminalPage />}
     </>
   );
 }
 
 export default function MerchantDashboard() {
-  const { token, setToken, currentUserRole, currentUserType, currentUserName, currentUserPhone, currentUserEmail, setCurrentUserName, setCurrentUserPhone, handleLogout, fetchUserRole } = useAuth();
-  const { page, customerDetailId, setCustomerDetailId, handlePageChange: baseHandlePageChange } = useHashRouter();
+  const token = useAuthStore((s) => s.token);
+  const setToken = useAuthStore((s) => s.setToken);
+  const currentUserRole = useAuthStore((s) => s.currentUserRole);
+  const currentUserType = useAuthStore((s) => s.currentUserType);
+  const handleLogout = useAuthStore((s) => s.handleLogout);
+  const fetchUserRole = useAuthStore((s) => s.fetchUserRole);
 
-  const data = useMerchantData(token);
-  const {
-    stores, selectedStore, setSelectedStore,
-    ordersPage, setOrdersPage, ordersPageSize,
-    ordersStatus, setOrdersStatus, ordersOrderType, setOrdersOrderType,
-    ordersFromDate, setOrdersFromDate, ordersToDate, setOrdersToDate,
-    dateRange, dashboardChartMode,
-    fetchStores, fetchAdminStores, fetchDashboardWithRange, fetchOrders,
-    fetchMenu, fetchInventory, fetchTables, fetchLoyaltyTiers, handleDateRangeChange,
-  } = data;
+  const page = useRouterStore((s) => s.page);
+  const customerDetailId = useRouterStore((s) => s.customerDetailId);
+  const setCustomerDetailId = useRouterStore((s) => s.setCustomerDetailId);
+  const baseHandlePageChange = useRouterStore((s) => s.handlePageChange);
 
-  const [showStoreModal, setShowStoreModal] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [modalContent, setModalContent] = useState<React.ReactNode>(null);
-  const [modalTitle, setModalTitle] = useState('');
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [sidebarOpen, setSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth > 1024 : false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [showChangePassword, setShowChangePassword] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [notifRefreshKey, setNotifRefreshKey] = useState(0);
-  const [customizingItem, setCustomizingItem] = useState<MerchantMenuItem | null>(null);
+  const collapsedGroups = useUIStore((s) => s.collapsedGroups);
+  const setCollapsedGroups = useUIStore((s) => s.setCollapsedGroups);
+  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
+  const setShowChangePassword = useUIStore((s) => s.setShowChangePassword);
+  const setShowProfile = useUIStore((s) => s.setShowProfile);
+  const notifRefreshKey = useUIStore((s) => s.notifRefreshKey);
+  const setCustomizingItem = useUIStore((s) => s.setCustomizingItem);
+  const openBroadcastModal = useUIStore((s) => s.openBroadcastModal);
 
-  function openBroadcastModal() {
-    import('@/components/Modals').then(({ AddBroadcastForm }) => {
-      setModalTitle('New Broadcast');
-      setModalContent(<AddBroadcastForm token={token} onClose={() => { setShowModal(false); setNotifRefreshKey(k => k + 1); }} />);
-      setShowModal(true);
-    });
-  }
+  const stores = useMerchantDataStore((s) => s.stores);
+  const selectedStore = useMerchantDataStore((s) => s.selectedStore);
+  const setSelectedStore = useMerchantDataStore((s) => s.setSelectedStore);
+  const ordersPage = useMerchantDataStore((s) => s.ordersPage);
+  const setOrdersPage = useMerchantDataStore((s) => s.setOrdersPage);
+  const ordersPageSize = useMerchantDataStore((s) => s.ordersPageSize);
+  const ordersStatus = useMerchantDataStore((s) => s.ordersStatus);
+  const setOrdersStatus = useMerchantDataStore((s) => s.setOrdersStatus);
+  const ordersOrderType = useMerchantDataStore((s) => s.ordersOrderType);
+  const setOrdersOrderType = useMerchantDataStore((s) => s.setOrdersOrderType);
+  const ordersFromDate = useMerchantDataStore((s) => s.ordersFromDate);
+  const setOrdersFromDate = useMerchantDataStore((s) => s.setOrdersFromDate);
+  const ordersToDate = useMerchantDataStore((s) => s.ordersToDate);
+  const setOrdersToDate = useMerchantDataStore((s) => s.setOrdersToDate);
+  const dateRange = useMerchantDataStore((s) => s.dateRange);
+  const dashboardChartMode = useMerchantDataStore((s) => s.dashboardChartMode);
+  const fetchStores = useMerchantDataStore((s) => s.fetchStores);
+  const fetchAdminStores = useMerchantDataStore((s) => s.fetchAdminStores);
+  const fetchDashboardWithRange = useMerchantDataStore((s) => s.fetchDashboardWithRange);
+  const fetchOrders = useMerchantDataStore((s) => s.fetchOrders);
+  const fetchMenu = useMerchantDataStore((s) => s.fetchMenu);
+  const fetchInventory = useMerchantDataStore((s) => s.fetchInventory);
+  const fetchTables = useMerchantDataStore((s) => s.fetchTables);
+  const fetchLoyaltyTiers = useMerchantDataStore((s) => s.fetchLoyaltyTiers);
+  const handleDateRangeChange = useMerchantDataStore((s) => s.handleDateRangeChange);
+
+  const loading = useMerchantDataStore((s) => s.loading);
+  const dashboard = useMerchantDataStore((s) => s.dashboard);
+  const orders = useMerchantDataStore((s) => s.orders);
+  const ordersTotal = useMerchantDataStore((s) => s.ordersTotal);
+  const tables = useMerchantDataStore((s) => s.tables);
+  const loyaltyTiers = useMerchantDataStore((s) => s.loyaltyTiers);
 
   function handlePageChange(newPage: PageId) {
     baseHandlePageChange(newPage);
@@ -258,14 +208,14 @@ export default function MerchantDashboard() {
     const abortCtrl = new AbortController();
     fetchInventory(abortCtrl.signal);
     return () => abortCtrl.abort();
-  }, [page, token, fetchInventory]);
+  }, [page, token, storeId, fetchInventory]);
 
   useEffect(() => {
     if (!token || page !== 'tables') return;
     const abortCtrl = new AbortController();
     fetchTables(abortCtrl.signal);
     return () => abortCtrl.abort();
-  }, [page, token, fetchTables]);
+  }, [page, token, storeId, fetchTables]);
 
   useEffect(() => {
     if (!token || page !== 'loyaltyrules') return;
@@ -324,8 +274,12 @@ export default function MerchantDashboard() {
               <MobilePageGuard page={page}>
               <PageRenderer
                 page={page}
-                token={token}
-                data={data}
+                loading={loading}
+                dashboard={dashboard}
+                orders={orders}
+                ordersTotal={ordersTotal}
+                tables={tables}
+                loyaltyTiers={loyaltyTiers}
                 stores={stores}
                 selectedStore={selectedStore}
                 setSelectedStore={setSelectedStore}
@@ -369,30 +323,7 @@ export default function MerchantDashboard() {
         <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <AdminModals
-        showModal={showModal}
-        setShowModal={setShowModal}
-        modalTitle={modalTitle}
-        modalContent={modalContent}
-        showChangePassword={showChangePassword}
-        setShowChangePassword={setShowChangePassword}
-        showStoreModal={showStoreModal}
-        setShowStoreModal={setShowStoreModal}
-        stores={stores}
-        selectedStore={selectedStore}
-        setSelectedStore={setSelectedStore}
-        customizingItem={customizingItem}
-        setCustomizingItem={setCustomizingItem}
-        token={token}
-        fetchMenu={fetchMenu}
-        showProfile={showProfile}
-        setShowProfile={setShowProfile}
-        currentUserName={currentUserName}
-        currentUserPhone={currentUserPhone}
-        currentUserEmail={currentUserEmail}
-        setCurrentUserName={setCurrentUserName}
-        setCurrentUserPhone={setCurrentUserPhone}
-      />
+      <AdminModals />
     </div>
 
     <MobileBottomNav page={page} setPage={handlePageChange} />

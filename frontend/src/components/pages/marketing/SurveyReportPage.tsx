@@ -4,10 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { Select, Pagination, DataTableExpandableRow, ColumnDef } from '@/components/ui';
 
-interface SurveyReportPageProps {
-  token: string;
-}
-
 interface SurveyListItem {
   id: number;
   title: string;
@@ -33,7 +29,7 @@ interface SurveyResponse {
 
 const PAGE_SIZE = 10;
 
-export default function SurveyReportPage({ token }: SurveyReportPageProps) {
+export default function SurveyReportPage() {
   const [surveys, setSurveys] = useState<SurveyListItem[]>([]);
   const [selectedSurvey, setSelectedSurvey] = useState<number | null>(null);
   const [_surveyTitle, setSurveyTitle] = useState('');
@@ -72,7 +68,7 @@ export default function SurveyReportPage({ token }: SurveyReportPageProps) {
         setPage(p);
       }
     } catch { console.error('Failed to fetch responses'); } finally { setLoading(false); }
-  }, [selectedSurvey, token]);
+  }, [selectedSurvey]);
 
   useEffect(() => {
     if (selectedSurvey) fetchResponses(1);

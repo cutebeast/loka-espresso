@@ -4,17 +4,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
 import { THEME } from '@/lib/theme';
 import { StoreSelector } from '@/components/ui/Select';
+import { useAuthStore } from '@/stores';
 import type { MerchantOrder } from '@/lib/merchant-types';
 
 interface KitchenDisplayPageProps {
-  token: string;
   selectedStore: string;
   stores: { id: number; name: string }[];
   onStoreChange: (store: string) => void;
 }
 
 /** Simplified card-based view showing ONLY active orders for kitchen/service crew. */
-export default function KitchenDisplayPage({ token, selectedStore, stores, onStoreChange }: KitchenDisplayPageProps) {
+export default function KitchenDisplayPage({ selectedStore, stores, onStoreChange }: KitchenDisplayPageProps) {
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<string>('');
@@ -27,6 +27,7 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
   const activeStoreId = selectedStore !== 'all' ? selectedStore : '';
 
   const fetchActiveOrders = useCallback(async () => {
+    const { token } = useAuthStore.getState();
     if (!token || !activeStoreId) { setLoading(false); return; }
     setLoading(true);
     try {
@@ -45,7 +46,7 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
       setOrders([]);
       setLoadError('Failed to load orders');
     } finally { setLoading(false); }
-  }, [token, activeStoreId, filterType]);
+  }, [activeStoreId, filterType]);
 
   useEffect(() => {
     fetchActiveOrders();

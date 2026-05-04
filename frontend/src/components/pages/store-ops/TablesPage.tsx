@@ -11,14 +11,13 @@ interface TablesPageProps {
   tables: MerchantTableItem[];
   selectedStore: string;
   storeObj: MerchantStore | undefined;
-  token: string;
   onRefresh: () => void;
   stores: MerchantStore[];
   onStoreChange: (storeId: string) => void;
   onViewOrder: (orderId: number) => void;
 }
 
-export default function TablesPage({ tables, selectedStore, storeObj, token, onRefresh, stores, onStoreChange, onViewOrder }: TablesPageProps) {
+export default function TablesPage({ tables, selectedStore, storeObj, onRefresh, stores, onStoreChange, onViewOrder }: TablesPageProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingTable, setEditingTable] = useState<MerchantTableItem | null>(null);
   const [error, setError] = useState('');

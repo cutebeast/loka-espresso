@@ -58,9 +58,9 @@ function OpeningHoursEditor({ value, onChange }: { value: OpeningHoursState; onC
   );
 }
 
-interface StoreSettingsPageProps { stores: MerchantStore[]; token: string; onRefresh: () => void; }
+interface StoreSettingsPageProps { stores: MerchantStore[]; onRefresh: () => void; }
 
-export default function StoreSettingsPage({ stores, token, onRefresh }: StoreSettingsPageProps) {
+export default function StoreSettingsPage({ stores, onRefresh }: StoreSettingsPageProps) {
   const [drawerMode, setDrawerMode] = useState<'add' | 'edit' | null>(null);
   const [editingStore, setEditingStore] = useState<MerchantStore | null>(null);
   const [error, setError] = useState('');
@@ -87,10 +87,10 @@ export default function StoreSettingsPage({ stores, token, onRefresh }: StoreSet
   return (
     <div>
       <Drawer isOpen={drawerMode === 'add'} onClose={closeDrawer} title="New Store">
-        <StoreForm token={token} onClose={closeDrawer} />
+        <StoreForm onClose={closeDrawer} />
       </Drawer>
       <Drawer isOpen={drawerMode === 'edit' && !!editingStore} onClose={closeDrawer} title={editingStore ? `Edit: ${editingStore.name}` : 'Edit Store'}>
-        {editingStore && <StoreForm token={token} existingStore={editingStore} onClose={closeDrawer} />}
+        {editingStore && <StoreForm existingStore={editingStore} onClose={closeDrawer} />}
       </Drawer>
 
       <div className="ssp-5">
@@ -127,7 +127,7 @@ export default function StoreSettingsPage({ stores, token, onRefresh }: StoreSet
 }
 
 // ── Shared Store Form ──
-function StoreForm({ token: _token, onClose, existingStore }: { token: string; onClose: () => void; existingStore?: MerchantStore }) {
+function StoreForm({ onClose, existingStore }: { onClose: () => void; existingStore?: MerchantStore }) {
   const isEdit = !!existingStore;
   const [name, setName] = useState(existingStore?.name || '');
   const [slug, setSlug] = useState(existingStore?.slug || '');

@@ -23,10 +23,6 @@ const AUDIENCES = [
   { value: 'platinum', label: 'Platinum Members' },
 ];
 
-interface TemplateManagerProps {
-  token: string;
-}
-
 function TemplateForm({ onSave, onCancel, existing }: { onSave: () => void; onCancel: () => void; existing?: NotificationTemplate }) {
   const [name, setName] = useState(existing?.name || '');
   const [title, setTitle] = useState(existing?.title || '');
@@ -91,7 +87,7 @@ function TemplateForm({ onSave, onCancel, existing }: { onSave: () => void; onCa
   );
 }
 
-export default function NotificationTemplateManager({ token: _token }: TemplateManagerProps) {
+export default function NotificationTemplateManager() {
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

@@ -4,10 +4,6 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { API_BASE_URL } from '@/lib/config';
 
-interface PWASettingsPageProps {
-  token: string;
-}
-
 interface PWAVersionInfo {
   version: string;
   build_date: string;
@@ -31,7 +27,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
   );
 }
 
-export default function PWASettingsPage({ token }: PWASettingsPageProps) {
+export default function PWASettingsPage() {
   const [configs, setConfigs] = useState<Record<string, string | number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -48,7 +44,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
   useEffect(() => {
     fetchConfig();
     fetchVersionInfo();
-  }, [token]);
+  }, []);
 
   async function fetchConfig() {
     setLoading(true);

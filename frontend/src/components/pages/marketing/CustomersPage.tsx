@@ -6,7 +6,6 @@ import { FilterSelect, StoreSelector, DateFilter, DataTable, type DatePreset, Pa
 import type { CustomerItem, MerchantStore } from '@/lib/merchant-types';
 
 interface CustomersPageProps {
-  token: string;
   stores: MerchantStore[];
   selectedStore: string;
   onStoreChange?: (storeId: string) => void;
@@ -15,7 +14,7 @@ interface CustomersPageProps {
 
 const PAGE_SIZE = 50;
 
-export default function CustomersPage({ token: _token, stores, selectedStore, onStoreChange, onEditCustomer }: CustomersPageProps) {
+export default function CustomersPage({ stores, selectedStore, onStoreChange, onEditCustomer }: CustomersPageProps) {
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
