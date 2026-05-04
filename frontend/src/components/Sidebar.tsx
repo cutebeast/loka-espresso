@@ -7,6 +7,9 @@ import Image from 'next/image';
 import { APP_NAME, LOGO_URL } from '@/lib/config';
 
 // Page visibility by user_type_id
+// 1 = Admin / HQ / Brand Owner (full access)
+// 2 = Store Manager / Asst Manager (counter + store operations + CRM, no menu/system config)
+// 3 = Service Crew (counter operations only)
 const PAGE_VISIBILITY: Record<number, Set<string>> = {
   1: new Set([
     'dashboard', 'orders', 'kitchen',
@@ -17,35 +20,37 @@ const PAGE_VISIBILITY: Record<number, Set<string>> = {
   ]),
   2: new Set([
     'dashboard', 'orders', 'kitchen',
-    'menu', 'inventory', 'tables', 'staff', 'walletTopup', 'posterminal',
-    'customers', 'rewards', 'vouchers', 'reports', 'marketingreports',
+    'inventory', 'tables', 'staff', 'walletTopup', 'posterminal',
+    'customers', 'rewards', 'vouchers', 'promotions', 'information', 'notifications', 'feedback',
+    'reports', 'marketingreports',
+    'store',
   ]),
   3: new Set(['kitchen', 'tables', 'walletTopup', 'posterminal']),
 };
 
 const navGroups = [
-  { label: 'Overview', icon: 'fa-compass', items: [
-    { id: 'dashboard' as PageId, icon: 'fa-chart-pie', label: 'Dashboard' },
-  ]},
   { label: 'Counter Operations', icon: 'fa-cash-register', items: [
     { id: 'tables' as PageId, icon: 'fa-chair', label: 'Tables' },
     { id: 'kitchen' as PageId, icon: 'fa-fire-burner', label: 'Order Station' },
     { id: 'posterminal' as PageId, icon: 'fa-cash-register', label: 'POS Terminal' },
     { id: 'walletTopup' as PageId, icon: 'fa-wallet', label: 'Wallet Top-Up' },
   ]},
-  { label: 'Store Management', icon: 'fa-store', items: [
+  { label: 'Menu & Products', icon: 'fa-mug-hot', items: [
+    { id: 'menu' as PageId, icon: 'fa-utensils', label: 'Menu Management' },
+  ]},
+  { label: 'Store Operations', icon: 'fa-store', items: [
+    { id: 'dashboard' as PageId, icon: 'fa-chart-pie', label: 'Dashboard' },
     { id: 'orders' as PageId, icon: 'fa-clipboard-list', label: 'Orders' },
-    { id: 'menu' as PageId, icon: 'fa-mug-hot', label: 'Menu Management' },
-    { id: 'inventory' as PageId, icon: 'fa-boxes-stacked', label: 'Inventory', hasSubmenu: true },
+    { id: 'inventory' as PageId, icon: 'fa-boxes-stacked', label: 'Inventory' },
     { id: 'staff' as PageId, icon: 'fa-user-tie', label: 'Staff' },
   ]},
   { label: 'CRM & Marketing', icon: 'fa-bullhorn', items: [
     { id: 'customers' as PageId, icon: 'fa-users', label: 'Customers' },
     { id: 'rewards' as PageId, icon: 'fa-gift', label: 'Rewards' },
     { id: 'vouchers' as PageId, icon: 'fa-ticket', label: 'Vouchers' },
-    { id: 'promotions' as PageId, icon: 'fa-bullhorn', label: 'Promotions' },
-    { id: 'information' as PageId, icon: 'fa-info-circle', label: 'Information' },
-    { id: 'notifications' as PageId, icon: 'fa-bell', label: 'Push Notifications' },
+    { id: 'promotions' as PageId, icon: 'fa-tag', label: 'Promotions' },
+    { id: 'information' as PageId, icon: 'fa-newspaper', label: 'Information' },
+    { id: 'notifications' as PageId, icon: 'fa-bell', label: 'Notifications' },
     { id: 'feedback' as PageId, icon: 'fa-star', label: 'Feedback' },
   ]},
   { label: 'Analytics', icon: 'fa-chart-bar', items: [
@@ -54,7 +59,7 @@ const navGroups = [
   ]},
   { label: 'System & Config', icon: 'fa-cog', items: [
     { id: 'store' as PageId, icon: 'fa-store-alt', label: 'Store Settings' },
-    { id: 'settings' as PageId, icon: 'fa-cog', label: 'App Settings' },
+    { id: 'settings' as PageId, icon: 'fa-sliders-h', label: 'App Settings' },
     { id: 'pwa' as PageId, icon: 'fa-mobile-alt', label: 'PWA Settings' },
     { id: 'loyaltyrules' as PageId, icon: 'fa-medal', label: 'Loyalty Rules' },
     { id: 'auditlog' as PageId, icon: 'fa-history', label: 'Audit Log' },

@@ -215,6 +215,18 @@ export interface BroadcastListResponse {
   total_pages: number;
 }
 
+export interface NotificationTemplate {
+  id: number;
+  name: string;
+  title: string;
+  body: string | null;
+  type: string;
+  audience: string;
+  store_id: number | null;
+  is_active: boolean;
+  created_at: string | null;
+}
+
 export interface MerchantAuditEntry {
   id: number;
   timestamp: string;

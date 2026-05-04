@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/merchant-api';
 import { FilterSelect, DateFilter, Pagination, Drawer } from '@/components/ui';
 import { type DatePreset } from '@/components/ui/DateFilter';
 import type { MerchantBroadcast } from '@/lib/merchant-types';
+import NotificationTemplateManager from './NotificationTemplateManager';
 
 interface NotificationsPageProps {
   token: string;
@@ -339,6 +340,7 @@ export default function NotificationsPage({ token, refreshKey: _refreshKey, onNe
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} loading={loading} />
+      <NotificationTemplateManager token={token} />
     </div>
   );
 }

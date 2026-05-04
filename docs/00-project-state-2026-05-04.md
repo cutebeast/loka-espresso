@@ -1,8 +1,60 @@
 # Loka Espresso — Project State (2026-05-04)
 
-> Phase 2 UI/UX v2 complete. All PWA pages self-contained, brand-wide CSS refactored with premium Turkish coffee aesthetic. Ready for dine-in flow implementation.
+> Phase 3 complete. All PWA pages v2, brand-wide CSS refactored with Turkish premium aesthetic. Admin frontend has notification templates, proper menu placement, role-based access. Dine-in flow fully implemented. Ready for production testing.
 
----
+## 12. Admin Frontend — Current State
+
+### Role-Based Access (3 tiers)
+
+| Tier | User Type | Access |
+|---|---|---|
+| **Service Crew** (type_id=3) | Counter staff | Counter Operations only: Tables, Order Station, POS Terminal, Wallet Top-Up |
+| **Store Manager** (type_id=2) | Manager, Asst Manager | All counter ops + Store Operations (Dashboard, Orders, Inventory, Staff) + CRM & Marketing (Customers, Rewards, Vouchers, Promos, Info, Notifications, Feedback) + Analytics + Store Settings. No Menu access. No System/Config access. |
+| **Admin / HQ** (type_id=1) | HQ Staff, Brand Owner | Full access — all pages including Menu Management, System & Config |
+
+### Sidebar Navigation
+
+| Section | Pages | Icon |
+|---|---|---|
+| **Counter Operations** | Tables, Order Station, POS Terminal, Wallet Top-Up | `fa-cash-register` |
+| **Menu & Products** | Menu Management (HQ only) | `fa-mug-hot` |
+| **Store Operations** | Dashboard, Orders, Inventory, Staff | `fa-store` |
+| **CRM & Marketing** | Customers, Rewards, Vouchers, Promotions, Information, Notifications, Feedback | `fa-bullhorn` |
+| **Analytics** | Sales Reports, Marketing ROI | `fa-chart-bar` |
+| **System & Config** | Store Settings, App Settings, PWA Settings, Loyalty Rules, Audit Log | `fa-cog` |
+
+### Key Changes This Session
+- **Menu moved** from Store Management → Menu & Products (separate section)
+- **Notification Templates** — new `NotificationTemplateManager` component with full CRUD (create/edit/delete templates)
+- **Store Manager** role refined — removed Menu, App Settings, PWA Settings, Loyalty Rules, Audit Log access
+- **Section naming** updated to F&B industry standard (Store Operations, Counter Operations, CRM & Marketing)
+
+### Admin Pages — 19 total
+| Page | Scope |
+|---|---|
+| Dashboard | Store Operations |
+| Orders | Store Operations |
+| Order Station | Counter Operations |
+| Menu Management | Menu & Products (HQ only) |
+| Inventory | Store Operations |
+| Tables | Counter Operations |
+| Staff | Store Operations |
+| Rewards | CRM & Marketing |
+| Vouchers | CRM & Marketing |
+| Promotions | CRM & Marketing |
+| Information | CRM & Marketing |
+| Push Notifications | CRM & Marketing (now with Template Manager) |
+| Feedback | CRM & Marketing |
+| Customers | CRM & Marketing |
+| Sales Reports | Analytics |
+| Marketing ROI | Analytics |
+| Store Settings | System & Config |
+| App Settings | System & Config |
+| PWA Settings | System & Config |
+| Loyalty Rules | System & Config |
+| Audit Log | System & Config |
+| Wallet Top-Up | Counter Operations |
+| POS Terminal | Counter Operations |
 
 ## 1. Brand Design System — Unified ✅
 
