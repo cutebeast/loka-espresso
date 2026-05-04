@@ -481,7 +481,7 @@ async def change_password(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    if len(body.new_password) < 6:
+    if len(body.new_password) < 8:
         raise HTTPException(400, "New password must be at least 6 characters")
     if not hasattr(user, 'password_hash') or not user.password_hash:
         raise HTTPException(400, "This account does not use password authentication")
