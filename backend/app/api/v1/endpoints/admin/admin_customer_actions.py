@@ -9,13 +9,13 @@ from app.core.database import get_db
 from app.core.security import require_hq_access, require_role, now_utc, ensure_utc
 from app.core.audit import log_action, get_client_ip
 from app.core.utils import to_float
-from app.core.commerce import credit_wallet
+from app.core.commerce import credit_wallet, debit_wallet
 from app.core.config import get_settings
 from app.models.admin_user import AdminUser
 from app.models.customer import Customer
 from app.models.user import RoleIDs
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
-from app.schemas.wallet import AdminWalletTopupRequest
+from app.schemas.wallet import AdminWalletTopupRequest, WalletDeduct
 from app.models.order import Order
 from app.models.wallet import Wallet, WalletTransaction
 from app.models.voucher import Voucher, UserVoucher
@@ -350,6 +350,46 @@ async def admin_wallet_topup(
         "payment_method": payment_method,
         "new_balance": new_balance,
         "previous_balance": round(new_balance - float(amount), 2),
+    }
+
+
+@router.post("/wallet/deduct")
+async def admin_wallet_deduct(
+    request: Request,
+    data: WalletDeduct,
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+):
+    """HQ-only: Deduct amount from customer wallet (chargebacks, corrections)."""
+    target_user_id = data.user_id
+    amount = data.amount
+    description = data.description or "Admin wallet deduction"
+
+    if not amount or amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+
+    _, new_balance = await debit_wallet(db, target_user_id, float(amount), description)
+
+    ip = get_client_ip(request)
+    await log_action(
+        db,
+        action="WALLET_DEDUCT",
+        user_id=user.id,
+        entity_type="wallet",
+        entity_id=target_user_id,
+        details={
+            "target_user_id": target_user_id,
+            "amount": amount,
+            "description": description,
+            "new_balance": new_balance,
+        },
+        ip_address=ip,
+    )
+    await db.flush()
+
+    return {
+        "message": "Deduction successful",
+        "new_balance": to_float(new_balance),
     }
 
 

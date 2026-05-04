@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.core.commerce import credit_wallet, debit_wallet, settle_order_payment
+from app.core.commerce import credit_wallet, settle_order_payment
 from app.core.database import get_db
 from app.core.security import get_current_user, require_hq_access
 from app.core.utils import to_float
@@ -14,7 +14,7 @@ from app.core.audit import log_action
 from app.models.customer import Customer
 from app.models.wallet import Wallet, WalletTransaction, WalletTxType
 from app.models.order import Order, Payment
-from app.schemas.wallet import WalletOut, WalletTopup, WalletDeduct, WalletTransactionOut
+from app.schemas.wallet import WalletOut, WalletTopup, WalletTransactionOut
 
 router = APIRouter(prefix="/wallet", tags=["Wallet"])
 
@@ -73,41 +73,6 @@ async def topup_wallet(req: WalletTopup, db: AsyncSession = Depends(get_db), use
             status="failure",
         )
         raise
-
-
-@router.post("/deduct")
-async def deduct_wallet(req: WalletDeduct, db: AsyncSession = Depends(get_db), user: Customer = Depends(require_hq_access())):
-    """Admin-only: Deduct amount from customer wallet."""
-    target_user_id = req.user_id
-    wallet = await _get_or_create_wallet(target_user_id, db)
-
-    if float(wallet.balance) < req.amount:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Insufficient balance. Available: {to_float(wallet.balance)}, Required: {req.amount}"
-        )
-
-    _, new_balance = await debit_wallet(
-        db,
-        target_user_id,
-        req.amount,
-        description=req.description,
-    )
-
-    await log_action(
-        db,
-        action="wallet_deduct",
-        user_id=user.id,
-        store_id=None,
-        entity_type="wallet",
-        entity_id=target_user_id,
-        details={"amount": req.amount, "target_user_id": target_user_id, "description": req.description},
-        ip_address=None,
-        status="success",
-    )
-    await db.flush()
-
-    return {"message": "Deduction successful", "new_balance": to_float(new_balance)}
 
 
 @router.get("/transactions", response_model=list[WalletTransactionOut])

@@ -60,7 +60,7 @@ function WalletAdjustDialog({ customerId, currentBalance, onDone }: { customerId
     setSaving(true); setError(''); setResult(null);
     try {
       const isAdd = amt > 0;
-      const res = await apiFetch(isAdd ? '/admin/wallet/topup' : '/wallet/deduct', undefined, {
+      const res = await apiFetch(isAdd ? '/admin/wallet/topup' : '/admin/wallet/deduct', undefined, {
         method: 'POST',
         body: JSON.stringify(isAdd
           ? { amount: amt, user_id: customerId, reason: reason || `Admin wallet ${amt > 0 ? 'top-up' : 'deduction'}` }
