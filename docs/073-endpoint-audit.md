@@ -1,82 +1,89 @@
-# Endpoint Audit — 2026-05-04 (Final)
+# Endpoint Audit — 2026-05-04 (Final, Corrected)
 
-**Result:** 161 routes registered. 137 live endpoints tested — 0 failures. ~44 dead endpoints identified. 0 auth gaps. 0 duplicate routes.
+**Result:** 161 routes registered. 110 live. ~55 dead (verified by cross-referencing every frontend API call). 0 auth gaps. 0 duplicate routes.
+
+> ⚠️ Previous version had 9 false positives — customization CRUD, upload variants, and scan endpoints were incorrectly marked dead. Corrected below.
 
 ---
 
-## Live Endpoint Verification
+## Live Endpoint Verification (137 tested)
 
-| Category | Tested | Result |
-|----------|--------|--------|
+| Category | Count | Result |
+|----------|-------|--------|
 | Public (no auth) | 43 | All 200/4xx |
 | Customer Auth | 38 | All 200/4xx |
-| Admin via Customer (RBAC) | 28 | All 403 (correctly denied) |
+| Admin via Customer (RBAC) | 28 | All 403 |
 | Admin via Admin | 23 | All 200 |
 | Critical Changed | 4 | Verified |
 | **Total** | **137** | **0 failures** |
 
 ---
 
-## Dead Endpoints (44 — registered but never called by either frontend)
+## Dead Endpoints (~55 — registered but never called)
 
-### Admin-only (never called)
+### Admin (31)
 
-| Method | Path | Notes |
-|--------|------|-------|
-| POST | `/admin/marketing/campaigns` | No campaign UI |
-| GET | `/admin/marketing/campaigns` | No campaign UI |
-| GET | `/admin/marketing/campaigns/{id}` | No campaign UI |
-| PUT | `/admin/marketing/campaigns/{id}` | No campaign UI |
-| DELETE | `/admin/marketing/campaigns/{id}` | No campaign UI |
-| GET | `/admin/items/{id}/customizations` | CustomizationManager unused |
-| POST | `/admin/items/{id}/customizations` | CustomizationManager unused |
-| PUT | `/admin/customizations/{id}` | CustomizationManager unused |
-| DELETE | `/admin/customizations/{id}` | CustomizationManager unused |
-| GET | `/admin/broadcasts/{id}` | List endpoint suffices |
+| Method | Path | Reason |
+|--------|------|--------|
+| 5× | `/admin/marketing/campaigns` (CRUD) | No campaign UI |
+| DELETE | `/admin/customizations/{id}` | No delete UI |
+| GET | `/admin/broadcasts/{id}` | List suffices |
 | POST | `/admin/broadcasts/{id}/send` | No send button |
-| POST | `/admin/feedback` | PWA uses `/feedback` |
+| POST | `/admin/feedback` | PWA submits via `/feedback` |
 | PUT | `/admin/feedback/{id}` | No edit UI |
 | DELETE | `/admin/feedback/{id}` | No delete UI |
-| GET | `/admin/feedback/{id}` | List endpoint suffices |
-| GET | `/admin/vouchers/{id}/usage` | No usage detail UI |
-| GET | `/admin/rewards/{id}/redemptions` | No redemption detail UI |
+| GET | `/admin/feedback/{id}` | List suffices |
+| GET | `/admin/vouchers/{id}/usage` | No usage UI |
+| GET | `/admin/rewards/{id}/redemptions` | No redemption UI |
 | GET | `/admin/stores/{id}/inventory/low-stock` | No low-stock UI |
-| POST | `/admin/system/backfill-inventory-ledger` | CLI-only |
-| GET | `/admin/otps` | No OTP lookup UI |
+| POST | `/admin/system/backfill-inventory-ledger` | CLI only |
+| GET | `/admin/otps` | No OTP lookup |
 | GET | `/admin/users/{id}` | Uses `/admin/customers/{id}` |
 | DELETE | `/admin/system/reset` | No reset button |
-| POST | `/admin/system/init-hq` | Seed script only |
-| GET | `/admin/reports/loyalty` | No loyalty report tab |
-| GET | `/admin/reports/inventory` | No inventory report tab |
-| GET | `/admin/reports/csv` | No CSV export button |
+| POST | `/admin/system/init-hq` | Seed script |
+| GET | `/admin/reports/loyalty` | No loyalty tab |
+| GET | `/admin/reports/inventory` | No inventory tab |
+| GET | `/admin/reports/csv` | No CSV button |
 | GET | `/admin/reports/sales` | Uses `/admin/reports/revenue` |
-| GET | `/admin/reports/popular` | No popular items tab |
+| GET | `/admin/reports/popular` | No popular tab |
 | GET | `/admin/export` | No export button |
 | PATCH | `/admin/stores/{id}/tables/{id}/occupancy` | No occupancy UI |
 | POST | `/admin/staff/{id}/clock-in` | No clock-in UI |
 | POST | `/admin/staff/{id}/clock-out` | No clock-out UI |
 | GET | `/admin/stores/{id}/shifts` | No shifts UI |
+| GET | `/admin/pwa/version` | PWA uses `/content/version` |
 
-### PWA / Common (never called)
+### PWA / Common (23)
 
-| Method | Path | Notes |
-|--------|------|-------|
-| GET | `/promos` | PWA uses `/promos/banners` |
+| Method | Path | Reason |
+|--------|------|--------|
+| GET | `/promos` | Uses `/promos/banners` |
 | GET | `/menu/items/search` | PWA filters client-side |
-| GET | `/menu/items/popular` | PWA uses `featured` param |
-| GET | `/menu/stores` | PWA uses `/content/stores` |
-| GET | `/content/notifications` | PWA uses `/notifications` |
-| POST | `/vouchers/apply` | PWA uses `/checkout` |
-| POST | `/vouchers/use/{code}` | Admin uses `/admin/customers/{id}/use-voucher/{uv_id}` |
-| DELETE | `/vouchers/me/{id}` | No discard voucher UI |
-| GET | `/favorites` | No favorites UI |
-| POST | `/favorites/{id}` | No favorites UI |
-| DELETE | `/favorites/{id}` | No favorites UI |
-| GET | `/order-tracking/{id}/track` | PWA uses `/orders/{id}` |
-| DELETE | `/users/me` | No self-delete UI |
+| GET | `/menu/items/popular` | Uses `featured=true` param |
+| GET | `/menu/stores` | Uses `/content/stores` |
+| GET | `/content/notifications` | Uses `/notifications` |
+| POST | `/vouchers/apply` | Via `/checkout` |
+| POST | `/vouchers/use/{code}` | Uses `/admin/customers/{id}/use-voucher/{uv_id}` |
+| DELETE | `/vouchers/me/{id}` | No discard UI |
+| 3× | `/favorites` (CRUD) | No favorites feature |
+| GET | `/order-tracking/{id}/track` | Uses `/orders/{id}` |
+| DELETE | `/users/me` | No self-delete |
 | GET | `/loyalty/tiers` | Admin uses `/admin/loyalty-tiers` |
+| GET | `/tables/{table_id}` | QR via `/tables/scan` |
+| POST | `/tables/{table_id}/release` | No release UI |
+| 3× | `/splash` (GET/PUT/DELETE) | Static PWA page |
+| POST | `/wallet/deduct` | No deduct UI |
+| POST | `/referral/apply` | PWA shows stats only |
+| POST | `/orders/{id}/apply-voucher` | Via `/checkout` |
+| POST | `/admin/scan/cron/expire` | Cron job (intentional) |
 
-### External-only (webhooks — intentional, keep)
+### Upload Dead (1)
+
+| Method | Path | Reason |
+|--------|------|--------|
+| GET | `/upload/files/{path}` | Caddy serves `/uploads/` |
+
+### External Webhooks (4 — intentional)
 
 | Method | Path |
 |--------|------|
@@ -85,46 +92,53 @@
 | POST | `/wallet/webhook/pg-payment` |
 | POST | `/wallet/webhook/order-payment` |
 
-### Upload endpoints (some dead)
+---
 
-| Method | Path | Status |
+## False Positives Corrected (9 — these ARE live)
+
+| Method | Path | Caller |
 |--------|------|--------|
-| POST | `/upload/products-image` | Dead — no caller |
-| POST | `/upload/events-image` | Dead — no caller |
-| POST | `/upload/marketing-image` | Dead — replaced by `/upload/store-image` |
-| GET | `/upload/files/{path}` | Dead — Caddy serves `/uploads/` directly |
+| GET | `/admin/items/{id}/customizations` | `CustomizationManager.tsx:22` |
+| POST | `/admin/items/{id}/customizations` | `AddCustomizationModal.tsx:18` |
+| PUT | `/admin/customizations/{id}` | `CustomizationManager.tsx:30` |
+| POST | `/upload/products-image` | `InformationPage.tsx:622` |
+| POST | `/upload/events-image` | `InformationPage.tsx:664` |
+| POST | `/upload/marketing-image` | `AddRewardModal.tsx:25` |
+| POST | `/admin/scan/customer` | `QRScanner.tsx:54` |
+| POST | `/admin/scan/reward/{code}` | `QRScanner.tsx:79` |
+| POST | `/admin/scan/voucher/{code}` | `QRScanner.tsx:103` |
 
 ---
 
 ## Fixed Issues (this session)
 
-| Issue | Before | After |
-|-------|--------|-------|
-| `POST /favorites/{id}` | 500 FK violation | 404 "Menu item not found" |
-| `GET /admin/stores/{id}/tables` | 200 leak (customer) | 403 denied |
-| `GET /admin/pwa/version` | 500 crash | 200 with warning |
+| Issue | Before | After | File |
+|-------|--------|-------|------|
+| `POST /favorites/{id}` | 500 FK violation | 404 | `favorites.py:39` |
+| `GET /admin/stores/{id}/tables` | 200 leak (customer) | 403 | `admin_stores.py:129` |
+| `GET /admin/pwa/version` | 500 crash | 200 | `admin_pwa_mgmt.py:127` |
 
 ## Deleted Endpoints (this session)
 
-| Method | Path | Reason |
-|--------|------|--------|
-| GET | `/admin/stores/{id}` | Dead — unused single store detail |
-| GET | `/admin/stores/{id}/menu` | Dead — PWA uses `/menu/*` |
-| GET | `/admin/stores/{id}/pickup-slots` | Dead — no caller |
+| Method | Path | File | Reason |
+|--------|------|------|--------|
+| GET | `/admin/stores/{id}` | `admin_stores.py` | Dead: unused single store detail |
+| GET | `/admin/stores/{id}/menu` | `admin_stores.py` | Dead: PWA uses `/menu/*` |
+| GET | `/admin/stores/{id}/pickup-slots` | `admin_stores.py` | Dead: no caller |
 
 ---
 
-## Security Posture
+## Security Summary
 
-- **Admin routes**: All 70 protected with `get_current_user` / `require_hq_access` / `require_store_access`
-- **No unauthenticated admin endpoints** remain
-- **Token prop-drilling**: Eliminated from all 18+ admin pages
-- **Auth flows**: httpOnly cookies via `credentials: 'include'`
-- **JWT**: issuer/audience validated on all decode paths
+- All 70 admin routes: protected with `get_current_user` / `require_hq_access` / `require_store_access`
+- No unauthenticated admin endpoints remain
+- Token prop-drilling: eliminated from all 18+ pages
+- JWT: `issuer`/`audience` validated on all decode paths (session, blacklist, get_current_user)
+- Webhooks: require `WEBHOOK_API_KEY` + `WEBHOOK_SIGNING_SECRET`
 
-## Tests
+## Test Results
 
-- Backend: 17 passed, 1 skipped (DB-dependent schema import)
+- Backend: 17 passed, 1 skipped (DB-dependent schema import test)
 - Admin TypeScript: 0 errors
 - PWA TypeScript: 0 errors
 - Admin production build: Successful (19.1s)
