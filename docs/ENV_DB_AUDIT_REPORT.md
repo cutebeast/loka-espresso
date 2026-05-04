@@ -68,19 +68,31 @@
 
 ---
 
-## Remaining Deferred Items (Month 2+ Code Quality)
+## Remaining Deferred Item (Month 2+ Code Quality)
 
 1. **Admin state management refactor** — Replace scattered `useState` with a centralized state pattern or reducer in the admin frontend.
-2. **Mega `useEffect` refactor** — Break down large `useEffect` blocks (especially in data-fetching pages) into smaller, focused hooks or use a data-fetching library (e.g., React Query / SWR).
 
-Neither item is security-critical.
+Not security-critical.
+
+---
+
+## Completed Since Last Audit
+
+| Item | Status |
+|------|--------|
+| Mega `useEffect` refactor (`page.tsx`) | ✅ Split into 7 per-page effects (2026-05-04) |
+| ESLint 0 errors / 0 warnings | ✅ All 15 changed files clean (2026-05-04) |
+| Full endpoint audit (175 endpoints) | ✅ Zero regressions (`docs/073-endpoint-audit.md`) |
+| TypeScript 0 errors | ✅ Both frontends pass `tsc --noEmit` |
 
 ---
 
 ## Current Grade: A
 
 - **17/18 tests passing** (1 skipped due to missing DB)
-- **All security audit items resolved**
+- **All security audit items resolved** (3 rounds, 32 findings addressed)
 - **Secrets properly isolated** in `.env.local` (gitignored)
 - **Redis middleware** active with auto-fallback to in-memory
 - **Authenticated upload endpoint** available alongside public StaticFiles
+- **ESLint clean**: 0 errors, 0 warnings
+- **TypeScript clean**: 0 errors in both frontends

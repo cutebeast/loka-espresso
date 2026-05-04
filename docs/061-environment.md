@@ -21,20 +21,20 @@ Consolidated reference for all environment variables used across the FNB Super-A
 | `UPLOAD_DIR` | `/app/uploads` | Static file upload directory |
 | `CUSTOMER_APP_DIR` | `/app/customer-app` | Customer PWA static files directory |
 | `ENVIRONMENT` | `development` | Deployment environment (`development`, `staging`, `production`) |
+| `REDIS_URL` | `redis://redis:6379/0` | Redis connection for distributed rate limiting (optional; auto-falls back to in-memory) |
 
 ### JWT (Optional)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `JWT_SECRET_PREVIOUS` | — | Previous secret for key rotation (verify-only) |
-| `JWT_ISSUER` | `fnb-api` | JWT `iss` claim |
-| `JWT_AUDIENCE` | `fnb-app` | JWT `aud` claim |
+| `JWT_ISSUER` | `fnb-api` | JWT `iss` claim **(now validated on decode)** |
+| `JWT_AUDIENCE` | `fnb-app` | JWT `aud` claim **(now validated on decode)** |
 
 ### Auth & Security
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OTP_BYPASS_ALLOWED` | `false` | Allow OTP bypass in non-prod environments |
 | `ALLOW_CUSTOMER_RESET` | `false` | Allow customer self-service password reset |
 
 ### Webhooks & Integrations

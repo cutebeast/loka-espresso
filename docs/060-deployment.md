@@ -33,15 +33,17 @@ DATABASE_URL=postgresql+asyncpg://fnb:<password>@localhost:5433/fnb
 JWT_SECRET=<strong-secret>
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=30
+JWT_ISSUER=fnb-api
+JWT_AUDIENCE=fnb-app
 CORS_ORIGINS=https://admin.loyaltysystem.uk,https://app.loyaltysystem.uk
 UPLOAD_DIR=/root/fnb-super-app/uploads
+REDIS_URL=redis://redis:6379/0             # Optional — auto-falls back to in-memory
 WEBHOOK_API_KEY=<shared-webhook-key>
 WEBHOOK_SIGNING_SECRET=<optional-signing-secret>
-OTP_BYPASS_ALLOWED=false
-POS_API_URL=                          # Leave empty to disable outbound POS calls (manual mode)
+POS_API_URL=                               # Leave empty to disable outbound POS calls (manual mode)
 ```
 
-For the current pre-Twilio phase, OTP bypass may still be enabled intentionally in non-production environments via env + app config.
+OTP bypass is DB-controlled via `AppConfig` (`otp_bypass_enabled` / `otp_bypass_code`). No env var needed.
 
 ---
 

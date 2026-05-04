@@ -1,6 +1,6 @@
 # Loka Espresso — Project State (2026-05-04)
 
-> Phase 3 Complete. All 26 PWA pages v2 self-contained. Premium Turkish coffee brand aesthetic. 35/35 API endpoints verified. Dine-in flow fully implemented. Pull-to-refresh fixed. Security audited. Admin frontend role-based access with notification template management.
+> Phase 3 Complete. All 26 PWA pages v2 self-contained. Premium Turkish coffee brand aesthetic. Full API endpoint audit: 175 endpoints, zero regressions. Redis rate limiting active. Dine-in flow fully implemented. Pull-to-refresh fixed. Security audited (3 rounds). ESLint 0 errors / 0 warnings. Admin frontend role-based access with notification template management.
 
 ---
 
@@ -8,12 +8,13 @@
 
 | Component | Stack | URL |
 |---|---|---|
-| Backend | FastAPI + PostgreSQL + Alembic | `:3002` |
+| Backend | FastAPI + PostgreSQL + Alembic + Redis | `:3002` |
 | Admin Frontend | Next.js 16 (Hash router, pure CSS) | `admin.loyaltysystem.uk` |
 | Customer PWA | Next.js 16 (Zustand, pure CSS, 26 pages) | `app.loyaltysystem.uk` |
 | Database | PostgreSQL 16 | `:5433` |
+| Cache | Redis 7 (Alpine) | `:6379` |
 
-**Docker deployment** with Caddy reverse proxy. Auto-migration on deploy via `docker-entrypoint.sh`.
+**Docker deployment** with Caddy reverse proxy. Auto-migration on deploy via `docker-entrypoint.sh`. Redis middleware with auto-fallback to in-memory when unavailable.
 
 ---
 
@@ -152,11 +153,13 @@ QR scan → Table session → Cart lock → Checkout lock → Order with table_i
 
 ## 11. Security Posture
 
-**Fixed**: `require_permission` crash, XSS via `dangerouslySetInnerHTML`, password min 6→8, wallet top-up confirmation dialog, API timeout (30s), 401 reload loop removal, silent catch blocks.
+**Fixed (Round 1-3 audit)**: `require_permission` crash, XSS via `dangerouslySetInnerHTML`, password min 6→8, wallet top-up confirmation dialog, API timeout (30s), 401 reload loop removal, JWT issuer/audience validation, `BroadcastUpdate` schema (status bypass), `MarketingCampaignUpdate.total_recipients` removed, `OrderCreate.created_at` removed, `last4` validator, CORS wildcard rejection, 16 `alert()` → `console.error()`, `isNaN` guards on all `parseFloat` calls, `ListCard.tsx` innerHTML XSS, OTP code hidden from DEBUG logs, `images.unoptimized` removed.
 
-**Accepted**: In-memory rate limiting (single-worker), public uploads via UUID filenames, staff password display (admin UX behind auth), `bleach` sanitization active on feedback/surveys.
+**Infrastructure**: Redis rate limiting (auto-fallback to in-memory), webhook API key signing, authenticated upload endpoint, `Content-Length` OOM guard, `.env.local` secrets isolation, CI workflow with Postgres service, 17 integration tests.
 
-**Deferred**: Admin accessibility pass, test suite.
+**Resolved**: ESLint 0 errors / 0 warnings across all changed files. TypeScript 0 errors in both frontends.
+
+**Deferred**: Admin state management refactor (Month 2+).
 
 ---
 
