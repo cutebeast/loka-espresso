@@ -89,8 +89,9 @@ export function useAuthFlow() {
     }
   }, [isGuest, page, authDone]);
 
-  // Validate session on mount via httpOnly cookie — always runs (handles page reloads)
+  // Validate session on mount — restores user after page reload
   useEffect(() => {
+    if (useUIStore.getState().isGuest) return;
     const abortCtrl = new AbortController();
     const validate = async () => {
       setIsLoading(true);
@@ -100,16 +101,11 @@ export function useAuthFlow() {
           const userRes = await api.get('/users/me', { signal: abortCtrl.signal });
           setUser(userRes.data);
           setAuthDone(true);
-        } else {
-          // Not authenticated — enable guest mode so the app renders the main UI
-          // The auth flow (splash→phone→OTP) will show when needed via GuestGate/LoginModal
-          useUIStore.getState().setIsGuest(true);
-          setAuthDone(true);
         }
+        // If NOT authenticated, leave authDone=false → AuthFlow shows splash→login
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;
-        useUIStore.getState().setIsGuest(true);
-        setAuthDone(true);
+        // Network error on mount — leave authDone=false, AuthFlow handles it
       } finally {
         setIsLoading(false);
       }
