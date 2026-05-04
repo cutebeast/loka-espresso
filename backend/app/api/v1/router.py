@@ -10,12 +10,12 @@ from app.api.v1.endpoints.admin import (
 from app.api.v1.endpoints.pwa import (
     pwa_wallet, pwa_promos, pwa_surveys, pwa_content,
     cart, checkout, loyalty, menu, wallet,
-    order_tracking, favorites, referral,
+    favorites, referral,
     pwa_feedback,
 )
 from app.api.v1.endpoints.common import (
-    auth, users, config, splash, upload,
-    notifications, orders, payments, promos,
+    auth, users, config, upload,
+    notifications, orders, payments,
     tables, vouchers, rewards,
 )
 
@@ -35,9 +35,7 @@ api_router.include_router(notifications.router)
 api_router.include_router(referral.router)
 api_router.include_router(tables.router)
 api_router.include_router(wallet.router)
-api_router.include_router(promos.router)
 api_router.include_router(upload.router)
-api_router.include_router(splash.router)
 api_router.include_router(config.router)
 api_router.include_router(admin_inventory.router)
 api_router.include_router(admin.router)
@@ -61,5 +59,4 @@ api_router.include_router(pwa_wallet.router)
 api_router.include_router(pwa_content.router)
 api_router.include_router(admin_scan_cron.router)
 api_router.include_router(checkout.router)
-api_router.include_router(order_tracking.router)
 api_router.include_router(pwa_feedback.router)

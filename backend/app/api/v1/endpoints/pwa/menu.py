@@ -10,7 +10,6 @@ from app.models.marketing import CustomizationOption
 from app.schemas.menu import (
     MenuCategoryOut, CategoryCreate, MenuItemOut, MenuItemCreate, MenuItemUpdate,
 )
-from app.schemas.store import StoreOut
 
 router = APIRouter(prefix="/menu", tags=["Menu"])
 
@@ -84,32 +83,6 @@ async def list_items(
     return items
 
 
-@router.get("/items/search", response_model=list[MenuItemOut])
-async def search_items(
-    q: str = Query(..., min_length=1),
-    db: AsyncSession = Depends(get_db),
-):
-    query = select(MenuItem).where(MenuItem.is_available == True, MenuItem.deleted_at.is_(None))
-    query = query.where(MenuItem.name.ilike(f"%{q}%"))
-    query = query.order_by(MenuItem.display_order)
-    result = await db.execute(query.limit(20))
-    return result.scalars().all()
-
-
-@router.get("/items/popular", response_model=list[MenuItemOut])
-async def popular_items(
-    limit: int = 10,
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(
-        select(MenuItem)
-        .where(MenuItem.is_available == True, MenuItem.deleted_at.is_(None))
-        .order_by(MenuItem.popularity.desc().nullslast(), MenuItem.display_order)
-        .limit(limit)
-    )
-    return result.scalars().all()
-
-
 @router.get("/items/{item_id}/customizations")
 async def list_customizations_public(item_id: int, db: AsyncSession = Depends(get_db)):
     """Public endpoint: list available customization options for a menu item."""
@@ -122,15 +95,3 @@ async def list_customizations_public(item_id: int, db: AsyncSession = Depends(ge
         .order_by(CustomizationOption.display_order)
     )
     return [{"id": c.id, "name": c.name, "option_type": c.option_type, "price_adjustment": to_float(c.price_adjustment), "is_popular": c.is_popular} for c in result.scalars().all()]
-
-@router.get("/stores", response_model=list[StoreOut])
-async def list_stores_public(db: AsyncSession = Depends(get_db)):
-    """Public endpoint: list all active stores."""
-    from app.models.store import Store
-    from app.schemas.store import StoreOut
-    from sqlalchemy import select as sa_select
-    result = await db.execute(
-        sa_select(Store).where(Store.is_active == True).order_by(Store.name)
-    )
-    stores = result.scalars().all()
-    return [StoreOut.model_validate(s) for s in stores]
