@@ -2,9 +2,5 @@
    SUB-COMPONENT STYLES
    ============================================ */
 
-@import "./list-card.css";
-@import "./checkout-modal.css";
-@import "./voucher-reward-selector.css";
-@import "./delivery-address-v2.css";
 @import "./profile-subpages.css";
 @import "./layout-extras.css";
