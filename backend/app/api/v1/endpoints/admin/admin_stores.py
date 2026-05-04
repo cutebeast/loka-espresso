@@ -1,22 +1,15 @@
-import math
-from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, asc, case
+from sqlalchemy import select, func, asc, case
 
 from app.core.database import get_db
-from app.core.security import require_role, require_hq_access, require_store_access, now_utc
+from app.core.security import require_role, require_hq_access, require_store_access
 from app.core.audit import log_action, get_client_ip
 from app.core.utils import to_float
 from app.models.admin_user import AdminUser
 from app.models.user import RoleIDs
 from app.models.store import Store, StoreTable
-from app.models.menu import MenuCategory, MenuItem
-from app.models.marketing import CustomizationOption
-from app.schemas.store import (
-    StoreOut, StoreCreate, StoreUpdate, StoreTableOut, TableCreate,
-    TableScanRequest, PickupSlotOut,
-)
+from app.schemas.store import StoreCreate, StoreUpdate
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -133,91 +126,6 @@ async def toggle_store(
     return {"id": store.id, "is_active": store.is_active}
 
 
-@router.get("/stores/{store_id}", response_model=StoreOut)
-async def get_store(store_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Store).where(Store.id == store_id))
-    store = result.scalar_one_or_none()
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-    return store
-
-
-@router.get("/stores/{store_id}/menu")
-async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Store).where(Store.id == store_id))
-    store = result.scalar_one_or_none()
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-
-    cat_result = await db.execute(
-        select(MenuCategory)
-        .where(MenuCategory.is_active == True)
-        .order_by(MenuCategory.display_order)
-    )
-    categories = cat_result.scalars().all()
-
-    cat_ids = [c.id for c in categories]
-    if cat_ids:
-        items_result = await db.execute(
-            select(MenuItem)
-            .where(
-                MenuItem.category_id.in_(cat_ids),
-                MenuItem.is_available == True,
-            )
-            .order_by(MenuItem.display_order)
-        )
-        all_items = items_result.scalars().all()
-        items_by_cat = {}
-        item_ids = []
-        for item in all_items:
-            items_by_cat.setdefault(item.category_id, []).append(item)
-            item_ids.append(item.id)
-
-        customizations_by_item: dict[int, list[dict]] = {}
-        if item_ids:
-            cust_result = await db.execute(
-                select(CustomizationOption)
-                .where(
-                    CustomizationOption.menu_item_id.in_(item_ids),
-                    CustomizationOption.is_active == True,
-                )
-                .order_by(CustomizationOption.display_order)
-            )
-            for opt in cust_result.scalars().all():
-                customizations_by_item.setdefault(opt.menu_item_id, []).append({
-                    "id": opt.id,
-                    "name": opt.name,
-                    "price_adjustment": to_float(opt.price_adjustment),
-                })
-    else:
-        items_by_cat = {}
-        customizations_by_item = {}
-
-    cats_out = []
-    for cat in categories:
-        items = items_by_cat.get(cat.id, [])
-        cats_out.append({
-            "id": cat.id,
-            "name": cat.name,
-            "slug": cat.slug,
-            "display_order": cat.display_order,
-            "items": [
-                {
-                    "id": i.id,
-                    "name": i.name,
-                    "description": i.description,
-                    "base_price": to_float(i.base_price),
-                    "image_url": i.image_url,
-                    "customization_options": customizations_by_item.get(i.id, []),
-                    "is_available": i.is_available,
-                    "display_order": i.display_order,
-                }
-                for i in items
-            ],
-        })
-    return {"store_id": store_id, "store_name": store.name, "categories": cats_out}
-
-
 @router.get("/stores/{store_id}/tables")
 async def get_store_tables(
     store_id: int,
@@ -276,34 +184,3 @@ async def get_store_tables(
         }
         for t in tables
     ]
-
-
-@router.get("/stores/{store_id}/pickup-slots", response_model=list[PickupSlotOut])
-async def get_pickup_slots(
-    store_id: int,
-    date: str | None = None,
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(Store).where(Store.id == store_id))
-    store = result.scalar_one_or_none()
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-    lead = store.pickup_lead_minutes or 15
-    now = now_utc()
-    target = now
-    if date:
-        try:
-            parsed = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            if parsed.date() > now.date():
-                target = parsed.replace(hour=8, minute=0)
-        except ValueError:
-            pass
-    start = target + timedelta(minutes=lead)
-    start = start.replace(minute=(start.minute // 15) * 15, second=0, microsecond=0)
-    slots = []
-    for i in range(32):
-        slot_time = start + timedelta(minutes=15 * i)
-        if slot_time.hour >= 22:
-            break
-        slots.append(PickupSlotOut(time=slot_time.isoformat(), available=True))
-    return slots
