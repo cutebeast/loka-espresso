@@ -19,7 +19,7 @@ function isPublicPage(page: PageId): boolean {
 }
 
 export function useAuthFlow() {
-  const { isAuthenticated, setUser, logout, authDone, setAuthDone } = useAuthStore();
+  const { isAuthenticated, setUser, authDone, setAuthDone } = useAuthStore();
   const {
     page, selectedStore,
     setPage, setSelectedStore, setStores, showToast,
@@ -102,7 +102,6 @@ export function useAuthFlow() {
           setUser(userRes.data);
           setAuthDone(true);
         }
-        // If NOT authenticated, leave authDone=false → AuthFlow shows splash→login
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;
         // Network error on mount — leave authDone=false, AuthFlow handles it
@@ -122,7 +121,6 @@ export function useAuthFlow() {
         api.get('/wallet'),
         api.get('/content/stores'),
       ]);
-
       if (profileRes.status === 'fulfilled') setUser(profileRes.value.data);
       if (loyaltyRes.status === 'fulfilled') {
         const d = loyaltyRes.value.data;

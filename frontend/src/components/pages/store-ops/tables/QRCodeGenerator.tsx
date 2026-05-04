@@ -36,10 +36,42 @@ export function useQrImages(tables: MerchantTableItem[], storeId: string) {
   const [qrUrls, setQrUrls] = useState<Record<number, string>>({});
   const prevKey = useRef('');
   const generating = useRef(false);
+  const blobUrlsRef = useRef<string[]>([]);
+
+  const generateAll = useCallback(
+    async (tableList: MerchantTableItem[], now: number, signal: AbortSignal | null): Promise<Record<number, string>> => {
+      generating.current = true;
+      const newUrls: Record<number, string> = {};
+      const valid = tableList.filter(t => {
+        if (!t.qr_code_url || !t.qr_generated_at) return false;
+        return (now - new Date(t.qr_generated_at).getTime()) / 1000 <= QR_EXPIRY_SECONDS;
+      });
+
+      await Promise.all(
+        valid.map(async (t) => {
+          if (signal?.aborted) return;
+          try {
+            const dataUrl = await QRCode.toDataURL(t.qr_code_url!, {
+              width: 280, margin: 2,
+              color: { dark: '#2C1E16', light: '#FFFFFF' },
+            });
+            if (!signal?.aborted) newUrls[t.id] = dataUrl;
+          } catch (err) {
+            console.error(`QR generation failed for table ${t.table_number}:`, err);
+          }
+        })
+      );
+
+      generating.current = false;
+      return newUrls;
+    },
+    []
+  );
 
   useEffect(() => {
     if (!storeId || !tables.length) {
-      setQrUrls({});
+      blobUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
+      blobUrlsRef.current = [];
       return;
     }
 
@@ -47,43 +79,16 @@ export function useQrImages(tables: MerchantTableItem[], storeId: string) {
     if (key === prevKey.current) return;
     prevKey.current = key;
 
-    Object.values(qrUrls).forEach(u => { if (u.startsWith('blob:')) URL.revokeObjectURL(u); });
+    blobUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
+    blobUrlsRef.current = [];
 
-    let cancelled = false;
-    const now = Date.now();
-
-    async function generateAll() {
-      generating.current = true;
-
-      const newUrls: Record<number, string> = {};
-      const validTables = tables.filter(t => {
-        if (!t.qr_code_url || !t.qr_generated_at) return false;
-        const age = (now - new Date(t.qr_generated_at).getTime()) / 1000;
-        return age <= QR_EXPIRY_SECONDS;
-      });
-
-      await Promise.all(
-        validTables.map(async (t) => {
-          try {
-            const dataUrl = await QRCode.toDataURL(t.qr_code_url!, {
-              width: 280,
-              margin: 2,
-              color: { dark: '#2C1E16', light: '#FFFFFF' },
-            });
-            if (!cancelled) newUrls[t.id] = dataUrl;
-          } catch (err) {
-            console.error(`QR generation failed for table ${t.table_number}:`, err);
-          }
-        })
-      );
-
-      if (!cancelled) setQrUrls(newUrls);
-      generating.current = false;
-    }
-
-    generateAll();
-    return () => { cancelled = true; };
-  }, [storeId, tables]);
+    const abortCtrl = new AbortController();
+    generateAll(tables, Date.now(), abortCtrl.signal).then(urls => {
+      blobUrlsRef.current = Object.values(urls).filter(u => u.startsWith('blob:'));
+      setQrUrls(urls);
+    });
+    return () => abortCtrl.abort();
+  }, [storeId, tables, generateAll]);
 
   return qrUrls;
 }

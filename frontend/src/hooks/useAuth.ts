@@ -48,22 +48,23 @@ export function useAuth() {
   }, [token, handleLogout]);
 
   useEffect(() => {
-    async function checkAuth() {
+    const abortCtrl = new AbortController();
+    const checkAuth = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/auth/session`, {
           credentials: 'include',
+          signal: abortCtrl.signal,
         });
         if (res.ok) {
           const data = await res.json();
-          if (data.authenticated) {
-            setToken('cookie-auth');
-          }
+          if (data.authenticated) setToken('cookie-auth');
         }
       } catch {
-        // Not authenticated
+        // Not authenticated or aborted
       }
-    }
+    };
     checkAuth();
+    return () => abortCtrl.abort();
   }, []);
 
   useEffect(() => {

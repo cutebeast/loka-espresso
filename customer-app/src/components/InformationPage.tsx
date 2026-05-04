@@ -70,24 +70,25 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
     init();
   }, [loadCards, preselectedId, contentType]);
 
-  useEffect(() => {
-    if (!preselectedSlug || preselectedConsumed.current) return;
-    const fetchBySlug = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/content/information/${encodeURIComponent(preselectedSlug)}`);
-        if (res.data) {
-          setSelectedCard(res.data);
-          preselectedConsumed.current = true;
-        }
-      } catch {
-        await loadCards(contentType || 'information');
-      } finally {
-        setLoading(false);
+  const fetchBySlug = useCallback(async (slug: string, type: string) => {
+    if (preselectedConsumed.current) return;
+    setLoading(true);
+    try {
+      const res = await api.get(`/content/information/${encodeURIComponent(slug)}`);
+      if (res.data) {
+        setSelectedCard(res.data);
+        preselectedConsumed.current = true;
       }
-    };
-    fetchBySlug();
-  }, [preselectedSlug, loadCards, contentType]);
+    } catch {
+      await loadCards(type);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadCards]);
+
+  useEffect(() => {
+    if (preselectedSlug) fetchBySlug(preselectedSlug, contentType || 'information');
+  }, [preselectedSlug, contentType, fetchBySlug]);
 
   const handleTabChange = async (type: string) => {
     setActiveTab(type);
