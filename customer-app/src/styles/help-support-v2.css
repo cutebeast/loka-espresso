@@ -30,8 +30,8 @@
 }
 
 .support-faq-item {
-  background: #fff;
-  border: 1px solid #D4DCE5;
+  background: var(--loka-bg-card);
+  border: 1px solid var(--loka-border-light);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 10px;
@@ -44,7 +44,7 @@
 }
 
 .support-faq-item:active {
-  background: #F5F7FA;
+  background: var(--loka-bg-light);
 }
 
 .support-faq-text {
@@ -56,7 +56,7 @@
 
 .support-faq-chevron {
   flex-shrink: 0;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
 }
 
 .support-faq-answer {
@@ -64,9 +64,9 @@
   font-size: 13px;
   color: var(--loka-text-muted);
   line-height: 1.6;
-  background: #fff;
+  background: var(--loka-bg-card);
   margin: -8px 0 10px;
-  border: 1px solid #D4DCE5;
+  border: 1px solid var(--loka-border-light);
   border-top: none;
   border-radius: 0 0 12px 12px;
   margin-left: 0;
@@ -94,19 +94,19 @@
 .support-input-field {
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid #D4DCE5;
+  border: 1px solid var(--loka-border-light);
   border-radius: 10px;
   font-family: var(--font-sans);
   font-size: 14px;
   color: var(--loka-text-primary);
-  background: #fff;
+  background: var(--loka-bg-card);
   outline: none;
 }
 
-.support-input-field::placeholder { color: #B0BAC5; }
+.support-input-field::placeholder { color: var(--loka-border); }
 .support-input-field:focus {
   border-color: var(--loka-primary);
-  box-shadow: 0 0 0 3px rgba(56,75,22,0.08);
+  box-shadow: 0 0 0 3px rgba(59, 74, 26,0.08);
 }
 
 textarea.support-input-field {
@@ -125,8 +125,8 @@ textarea.support-input-field {
 
 .support-subject-card {
   padding: 14px 12px;
-  background: #fff;
-  border: 2px solid #D4DCE5;
+  background: var(--loka-bg-card);
+  border: 2px solid var(--loka-border-light);
   border-radius: 12px;
   text-align: center;
   cursor: pointer;
@@ -137,7 +137,7 @@ textarea.support-input-field {
 
 .support-subject-card.selected {
   border-color: var(--loka-primary);
-  background: #F0F4E8;
+  background: var(--color-primary-50);
 }
 
 .support-subject-icon {
@@ -162,7 +162,7 @@ textarea.support-input-field {
   width: 100%;
   padding: 14px;
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   border: none;
   border-radius: 12px;
   font-family: var(--font-sans);
@@ -187,7 +187,7 @@ textarea.support-input-field {
 .support-celebratory {
   margin: 20px;
   padding: 32px 24px;
-  background: linear-gradient(135deg, var(--loka-primary) 0%, #4A6B1E 100%);
+  background: linear-gradient(135deg, var(--loka-primary) 0%, var(--loka-primary-light) 100%);
   border-radius: 16px;
   text-align: center;
   position: relative;
@@ -202,7 +202,7 @@ textarea.support-input-field {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: rgba(209,142,56,0.2);
+  background: rgba(196, 137, 58,0.2);
 }
 
 .support-celebratory::after {
@@ -213,7 +213,7 @@ textarea.support-input-field {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: rgba(209,142,56,0.15);
+  background: rgba(196, 137, 58,0.15);
 }
 
 .support-celebratory-icon {
@@ -227,7 +227,7 @@ textarea.support-input-field {
   font-family: 'Playfair Display', serif;
   font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  color: var(--loka-white);
   margin-bottom: 8px;
   position: relative;
   z-index: 1;
@@ -246,7 +246,7 @@ textarea.support-input-field {
   display: inline-block;
   padding: 10px 28px;
   background: var(--loka-accent-copper);
-  color: #fff;
+  color: var(--loka-white);
   border: none;
   border-radius: 10px;
   font-family: var(--font-sans);

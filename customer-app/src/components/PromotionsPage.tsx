@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { PromoBanner } from '@/lib/api';
 import { VoucherSection } from './promotions';
-import { resolveAssetUrl } from '@/lib/tokens';
+import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 
 interface BannerStatus {
   action_type: string;
@@ -64,7 +64,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         statuses.forEach((s) => { if (s) map[s.id] = s.status; });
         setBannerStatus(map);
       }
-    } catch { console.error("Failed to load promotions"); setPromotions([]); }
+    } catch (err) { console.error('[PromotionsPage] Failed to load promotions:', err); setPromotions([]); }
     finally { setLoading(false); }
   }, []);
 
@@ -76,7 +76,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
     try {
       const res = await api.get(`/surveys/${surveyId}`);
       setSurveyQuestions(res.data.questions || []);
-    } catch (err: any) { console.error("Failed to load");
+    } catch (err) { console.error('[PromotionsPage] Failed to load survey questions:', err);
       setSurveyQuestions([]);
     }
   }, []);
@@ -102,7 +102,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       const code = res.data?.voucher_code || res.data?.redemption_code || '';
       if (code) { setShowVoucher(code); await loadPromotions(); }
       else showToast('Offer claimed! Check your vouchers.', 'success');
-    } catch { console.error("Claim failed"); showToast('Failed to claim offer', 'error'); }
+    } catch (err) { console.error('[PromotionsPage] Claim failed:', err); showToast('Failed to claim offer', 'error'); }
     finally { setClaiming(null); }
   };
 
@@ -134,7 +134,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         setSurveyCompleted(true);
         await loadPromotions();
       }
-    } catch (err: any) { console.error("Failed to load");
+    } catch (err) { console.error('[PromotionsPage] Failed to submit survey:', err);
       showToast('Failed to submit survey', 'error');
     } finally {
       setSubmittingSurvey(false);
@@ -223,7 +223,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       {/* Empty state */}
       {!loading && promotions.length === 0 && (
         <div className="promotions-empty">
-          <div className="promotions-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
+          <div className="promotions-empty-icon"><Gift size={40} color={LOKA.borderLight} /></div>
           <p className="promotions-empty-title">No promotions available</p>
           <p className="promotions-empty-text">Check back soon for new offers</p>
         </div>
@@ -237,7 +237,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
             return (
               <div key={promo.id} className="promotions-list-card" onClick={() => handleSelectPromo(promo)}>
                 <div className="promotions-card-thumb">
-                  {img ? <img src={img} alt="" /> : <Gift size={24} color="#C4CED8" />}
+                  {img ? <img src={img} alt="" loading="lazy" /> : <Gift size={24} color={LOKA.border} />}
                 </div>
                 <div className="promotions-card-body">
                   <div className="promotions-card-title">{promo.title}</div>

@@ -7,6 +7,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useAuthStore } from '@/stores/authStore';
 import QRCode from 'qrcode';
 import api from '@/lib/api';
+import { LOKA } from '@/lib/tokens';
 
 const TIERS = ['Bronze', 'Silver', 'Gold', 'Platinum'];
 
@@ -37,7 +38,7 @@ export default function MyCardPage() {
     QRCode.toDataURL(qrPayload, {
       width: 120,
       margin: 0,
-      color: { dark: '#1B2023', light: '#FFFFFF' },
+      color: { dark: LOKA.textPrimary, light: LOKA.white },
     }).then(setQrDataUrl).catch(() => {});
   }, [user?.id]);
 
@@ -82,7 +83,7 @@ export default function MyCardPage() {
                 {qrDataUrl ? (
                   <img src={qrDataUrl} alt="Member QR" width={56} height={56} />
                 ) : (
-                  <QrCode size={28} color="#C4CED8" />
+                  <QrCode size={28} color={LOKA.border} />
                 )}
               </div>
               <div className="mycard-member-info">
@@ -120,19 +121,19 @@ export default function MyCardPage() {
         <div className="mycard-actions">
           <button className="mycard-action-btn" onClick={() => setPage('home')}>
             <div className="mycard-action-icon">
-              <QrCode size={16} color="#57280D" />
+              <QrCode size={16} color={LOKA.brown} />
             </div>
             Home
           </button>
           <button className="mycard-action-btn" onClick={() => setPage('history')}>
             <div className="mycard-action-icon">
-              <Clock size={16} color="#57280D" />
+              <Clock size={16} color={LOKA.brown} />
             </div>
             History
           </button>
           <button className="mycard-action-btn" onClick={() => setPage('settings')}>
             <div className="mycard-action-icon">
-              <Settings size={16} color="#57280D" />
+              <Settings size={16} color={LOKA.brown} />
             </div>
             Settings
           </button>

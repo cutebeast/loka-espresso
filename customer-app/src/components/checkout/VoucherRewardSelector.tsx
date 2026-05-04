@@ -132,7 +132,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                   <div
                     className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${isSelected ? 'vrs-check-selected' : 'vrs-check'}`}
                   >
-                    {isSelected && <CheckCircle2 size={12} color="#FFFFFF" />}
+                    {isSelected && <CheckCircle2 size={12} color={LOKA.white} />}
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-text-primary vrs-code">{v.code}</p>
@@ -181,7 +181,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                   <div
                     className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${isSelected ? 'vrs-check-selected' : 'vrs-check'}`}
                   >
-                    {isSelected && <CheckCircle2 size={12} color="#FFFFFF" />}
+                    {isSelected && <CheckCircle2 size={12} color={LOKA.white} />}
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-text-primary vrs-code">{r.reward_name}</p>

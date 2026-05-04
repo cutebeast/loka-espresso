@@ -3,16 +3,16 @@
    ============================================ */
 
 /* ── Screen ── */
-.checkout-screen { display: flex; flex-direction: column; height: 100%; background: #E4EAEF; overflow: hidden; }
+.checkout-screen { display: flex; flex-direction: column; height: 100%; background: var(--loka-bg); overflow: hidden; }
 
 /* ── Header ── */
 .checkout-header {
-  display: flex; align-items: center; padding: 12px 20px; background: #fff;
+  display: flex; align-items: center; padding: 12px 20px; background: var(--loka-bg-card);
   border-bottom: 1px solid var(--loka-border-light); gap: 12px; flex-shrink: 0;
 }
 .checkout-back-btn {
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  border-radius: 8px; background: #E4EAEF; border: none; cursor: pointer; color: var(--loka-text-primary);
+  border-radius: 8px; background: var(--loka-bg); border: none; cursor: pointer; color: var(--loka-text-primary);
 }
 .checkout-title {
   font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--loka-primary);
@@ -21,7 +21,7 @@
 
 /* ── Section card ── */
 .checkout-section {
-  background: #fff; margin: 10px 14px; border-radius: 12px; padding: 16px;
+  background: var(--loka-bg-card); margin: 10px 14px; border-radius: 12px; padding: 16px;
   border: 1px solid var(--loka-border-light);
 }
 
@@ -42,16 +42,16 @@
 .co-type-pills { display: flex; gap: 8px; }
 .co-type-pill {
   flex: 1; text-align: center; padding: 10px 0; border-radius: 24px; font-size: 13px; font-weight: 600;
-  border: 2px solid var(--loka-border-light); color: var(--loka-text-muted); background: #fff;
+  border: 2px solid var(--loka-border-light); color: var(--loka-text-muted); background: var(--loka-bg-card);
   cursor: pointer; font-family: var(--font-sans); transition: all 0.2s;
 }
-.co-type-pill.active { background: var(--loka-primary); color: #fff; border-color: var(--loka-primary); }
+.co-type-pill.active { background: var(--loka-primary); color: var(--loka-white); border-color: var(--loka-primary); }
 .co-type-pill.disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Dine-in scan ── */
 .co-dinein-scan-btn {
   display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; margin-top: 10px;
-  background: var(--loka-primary); color: #fff; border: none; border-radius: 12px;
+  background: var(--loka-primary); color: var(--loka-white); border: none; border-radius: 12px;
   font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); width: 100%;
 }
 
@@ -59,35 +59,35 @@
 .co-select-box {
   width: 100%; padding: 14px; border: 1.5px solid var(--loka-border-light); border-radius: 12px;
   font-size: 14px; font-family: var(--font-sans); color: var(--loka-text-primary);
-  background: #fff; outline: none; transition: border-color 0.2s;
+  background: var(--loka-bg-card); outline: none; transition: border-color 0.2s;
 }
-.co-select-box:focus { border-color: var(--loka-primary); box-shadow: 0 0 0 3px rgba(56,75,22,0.08); }
+.co-select-box:focus { border-color: var(--loka-primary); box-shadow: 0 0 0 3px rgba(59, 74, 26,0.08); }
 
 /* ── Manual delivery banner ── */
 .co-manual-delivery-banner {
   display: flex; align-items: flex-start; gap: 12px; background: rgba(180,83,9,0.08);
   border: 1px solid rgba(180,83,9,0.15); border-radius: 12px; padding: 12px; margin-top: 10px;
 }
-.co-manual-delivery-text { font-size: 13px; font-weight: 600; color: #92400E; }
-.co-manual-delivery-sub { font-size: 12px; color: #92400E; opacity: 0.8; margin-top: 2px; }
+.co-manual-delivery-text { font-size: 13px; font-weight: 600; color: var(--color-gold-dark, #92400E); }
+.co-manual-delivery-sub { font-size: 12px; color: var(--color-gold-dark, #92400E); opacity: 0.8; margin-top: 2px; }
 
 /* ── Wallet balance card ── */
 .co-wallet-balance {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px;
-  background: linear-gradient(135deg, var(--loka-primary), #4a6320); border-radius: 12px; color: #fff; margin-bottom: 10px;
+  background: linear-gradient(135deg, var(--loka-primary), var(--loka-primary-light)); border-radius: 12px; color: var(--loka-white); margin-bottom: 10px;
 }
 .co-wallet-label { font-size: 11px; opacity: 0.8; }
 .co-wallet-amount { font-size: 18px; font-weight: 700; margin-top: 2px; }
-.co-wallet-icon { color: #fff; opacity: 0.6; }
+.co-wallet-icon { color: var(--loka-white); opacity: 0.6; }
 
 /* ── Payment options ── */
 .co-payment-options { display: flex; flex-direction: column; gap: 8px; }
 .co-payment-card {
   display: flex; align-items: center; gap: 12px; padding: 14px;
-  border: 2px solid var(--loka-border-light); border-radius: 14px; background: #fff;
+  border: 2px solid var(--loka-border-light); border-radius: 14px; background: var(--loka-bg-card);
   cursor: pointer; font-family: var(--font-sans); transition: all 0.2s;
 }
-.co-payment-card.selected { border-color: var(--loka-primary); background: rgba(56,75,22,0.04); }
+.co-payment-card.selected { border-color: var(--loka-primary); background: rgba(59, 74, 26,0.04); }
 .co-payment-card.disabled { opacity: 0.5; cursor: not-allowed; }
 .co-payment-radio {
   width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--loka-border-light); flex-shrink: 0;
@@ -98,7 +98,7 @@
 
 /* ── Order summary ── */
 .co-summary-card {
-  background: #fff; border: 1px solid var(--loka-border-light); border-radius: 12px; padding: 16px;
+  background: var(--loka-bg-card); border: 1px solid var(--loka-border-light); border-radius: 12px; padding: 16px;
   margin: 10px 14px;
 }
 .co-order-items-list { padding: 4px 0; margin-bottom: 10px; }
@@ -115,7 +115,7 @@
 
 /* ── Sticky footer ── */
 .checkout-footer {
-  position: sticky; bottom: 0; background: #fff; border-top: 2px solid var(--loka-border-light);
+  position: sticky; bottom: 0; background: var(--loka-bg-card); border-top: 2px solid var(--loka-border-light);
   padding: 14px; margin: 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.08); flex-shrink: 0;
 }
 
@@ -130,7 +130,7 @@
 /* ── Place order button ── */
 .co-place-order-btn {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  width: 100%; padding: 16px; background: var(--loka-primary); color: #fff;
+  width: 100%; padding: 16px; background: var(--loka-primary); color: var(--loka-white);
   border: none; border-radius: 14px; font-size: 16px; font-weight: 700;
   font-family: var(--font-sans); cursor: pointer;
 }
@@ -141,7 +141,7 @@
 /* ── Top up button ── */
 .co-topup-btn {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  width: 100%; padding: 16px; background: var(--loka-accent-copper); color: #fff;
+  width: 100%; padding: 16px; background: var(--loka-accent-copper); color: var(--loka-white);
   border: none; border-radius: 14px; font-size: 16px; font-weight: 700;
   font-family: var(--font-sans); cursor: pointer;
   margin-top: 0;
@@ -150,7 +150,7 @@
 /* ── Success screen ── */
 .co-success-screen {
   display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;
-  padding: 40px 20px; text-align: center; background: #fff;
+  padding: 40px 20px; text-align: center; background: var(--loka-bg-card);
 }
 .co-success-icon {
   width: 72px; height: 72px; border-radius: 50%; background: rgba(133,176,133,0.15);
@@ -160,23 +160,23 @@
 .co-success-text { font-size: 14px; color: var(--loka-text-muted); margin-bottom: 16px; }
 .co-success-number { font-size: 13px; font-weight: 600; color: var(--loka-primary); }
 .co-success-card {
-  background: #fff; border: 1px solid var(--loka-border-light); border-radius: 14px;
+  background: var(--loka-bg-card); border: 1px solid var(--loka-border-light); border-radius: 14px;
   padding: 20px; text-align: center; margin: 16px 0; width: 100%;
 }
-.co-pay-later-note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: #92400E; margin-top: 8px; }
+.co-pay-later-note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--color-gold-dark, #92400E); margin-top: 8px; }
 .co-success-points { font-size: 14px; font-weight: 600; color: var(--loka-accent-copper); margin-top: 8px; }
 .co-points-note { font-size: 12px; color: var(--loka-text-muted); margin-top: 4px; }
 .co-success-btns { display: flex; gap: 10px; margin-top: 16px; }
 .co-success-btn-primary {
-  padding: 14px 28px; background: var(--loka-primary); color: #fff; border: none;
+  padding: 14px 28px; background: var(--loka-primary); color: var(--loka-white); border: none;
   border-radius: 40px; font-size: 15px; font-weight: 600; font-family: var(--font-sans); cursor: pointer;
 }
 .co-success-btn-secondary {
-  padding: 14px 28px; background: #E4EAEF; color: var(--loka-text-primary);
+  padding: 14px 28px; background: var(--loka-bg); color: var(--loka-text-primary);
   border: 1px solid var(--loka-border-light); border-radius: 40px; font-size: 15px; font-weight: 600; font-family: var(--font-sans); cursor: pointer;
 }
 .co-wallet-topup-btn {
-  padding: 6px 16px; background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.3);
+  padding: 6px 16px; background: rgba(255,255,255,0.2); color: var(--loka-white); border: 1px solid rgba(255,255,255,0.3);
   border-radius: 40px; font-size: 12px; font-weight: 600; font-family: var(--font-sans); cursor: pointer;
 }
 .co-wallet-topup-btn:active { background: rgba(255,255,255,0.3); }
@@ -188,20 +188,20 @@
 .co-store-address { font-size: 12px; color: var(--loka-text-muted); margin-top: 2px; }
 .co-store-info {
   display: flex; align-items: center; gap: 12px; padding: 12px;
-  background: #E4EAEF; border-radius: 10px;
+  background: var(--loka-bg); border-radius: 10px;
 }
-.co-store-icon { width: 32px; height: 32px; background: var(--loka-primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; flex-shrink: 0; }
+.co-store-icon { width: 32px; height: 32px; background: var(--loka-primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--loka-white); font-size: 14px; flex-shrink: 0; }
 .co-store-name { font-size: 13px; font-weight: 600; color: var(--loka-text-primary); }
 .co-store-address { font-size: 11px; color: var(--loka-text-muted); margin-top: 2px; }
 .co-no-store { text-align: center; padding: 16px 0; }
 .co-no-store p { font-size: 13px; color: var(--loka-text-muted); margin-bottom: 10px; }
 .co-no-store-btn {
-  display: inline-block; padding: 10px 24px; background: var(--loka-primary); color: #fff;
+  display: inline-block; padding: 10px 24px; background: var(--loka-primary); color: var(--loka-white);
   border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font-sans);
 }
 .co-order-item-row {
   display: flex; align-items: center; gap: 10px; padding: 10px 0;
-  border-bottom: 1px solid #E4EAEF;
+  border-bottom: 1px solid var(--loka-bg);
 }
 .co-order-item-row:last-child { border-bottom: none; }
 .co-order-item-thumb {
@@ -219,7 +219,7 @@
 /* ── Payment icons ── */
 .co-payment-icon {
   width: 44px; height: 30px; border-radius: 6px; display: flex; align-items: center;
-  justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
+  justify-content: center; font-size: 11px; font-weight: 700; color: var(--loka-white); flex-shrink: 0;
 }
 .co-payment-icon-wallet { background: var(--loka-accent-copper); }
 .co-payment-icon-cash { background: var(--loka-primary); }
@@ -231,7 +231,7 @@
   width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--loka-border-light);
   display: flex; align-items: center; justify-content: center; font-size: 12px; color: transparent; flex-shrink: 0;
 }
-.co-payment-card.selected .co-payment-check { border-color: var(--loka-primary); background: var(--loka-primary); color: #fff; }
+.co-payment-card.selected .co-payment-check { border-color: var(--loka-primary); background: var(--loka-primary); color: var(--loka-white); }
 .co-payment-card { text-align: left; }
 .co-payment-card:last-of-type { margin-bottom: 0; }
 
@@ -242,10 +242,10 @@
 .co-delivery-input {
   width: 100%; padding: 12px 14px; border: 1.5px solid var(--loka-border-light); border-radius: 8px;
   font-family: var(--font-sans); font-size: 14px; color: var(--loka-text-primary);
-  outline: none; background: #f5f7fa; box-sizing: border-box;
+  outline: none; background: var(--loka-bg-light); box-sizing: border-box;
 }
-.co-delivery-input:focus { border-color: var(--loka-primary); background: #fff; }
-.co-delivery-input::placeholder { color: #c0c8d0; }
+.co-delivery-input:focus { border-color: var(--loka-primary); background: var(--loka-bg-card); }
+.co-delivery-input::placeholder { color: var(--loka-border); }
 
 /* ── Voucher / Reward card (grey bg, opens sheet) ── */
 .co-reward-card {
@@ -255,7 +255,7 @@
 }
 .co-reward-left { display: flex; align-items: center; gap: 10px; }
 .co-reward-icon {
-  width: 28px; height: 28px; background: rgba(209,142,56,0.12); border-radius: 6px;
+  width: 28px; height: 28px; background: rgba(196, 137, 58,0.12); border-radius: 6px;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .co-reward-text { font-size: 13px; font-weight: 500; color: var(--loka-text-primary); }
@@ -269,7 +269,7 @@
 /* ── Order item enhanced (matching cart style) ── */
 .co-order-item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
 .co-order-item-tag {
-  padding: 2px 8px; background: #F2F6EA; border-radius: 10px;
+  padding: 2px 8px; background: var(--color-primary-50); border-radius: 10px;
   font-size: 11px; font-weight: 500; color: var(--loka-primary);
 }
 .co-order-item-unit { font-size: 11px; color: var(--loka-text-muted); margin-top: 2px; }
@@ -281,7 +281,7 @@
 /* ── Checkout extras (from checkout-extras.css) ── */
 .tsp-title { font-size: 13px; }
 .tsp-slot { font-size: 13px; font-weight: 600; border: 1.5px solid var(--color-border-subtle); background: var(--color-white); color: var(--color-text-primary); }
-.tsp-slot-selected { font-weight: 700; border: 2px solid var(--color-primary); background: #F2F6EA; color: var(--color-primary); }
+.tsp-slot-selected { font-weight: 700; border: 2px solid var(--color-primary); background: var(--color-primary-50); color: var(--color-primary); }
 .tsp-date-nav { display: flex; align-items: center; }
 .tsp-date-btn { width: 44px; height: 44px; border-radius: 8px; border: none; background: var(--color-surface); color: var(--color-text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
 .tsp-date-btn:hover { background: var(--color-border-subtle); }
@@ -293,5 +293,5 @@
 .oth-store { font-size: 15px; }
 .onf-title { font-size: 13px; }
 .onf-textarea { font-family: inherit; box-sizing: border-box; }
-.ditc-card { border: 1px solid rgba(209,142,56,0.2); }
+.ditc-card { border: 1px solid rgba(196, 137, 58,0.2); }
 .ditc-emoji { font-size: 22px; }

@@ -22,8 +22,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { GuestGate } from '@/components/auth/GuestGate';
-import { resolveAssetUrl } from '@/lib/tokens';
+import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 import api from '@/lib/api';
+import type { Order } from '@/lib/api';
 
 interface OrderPreview {
   id: number;
@@ -55,10 +56,10 @@ export default function ProfilePage() {
     if (!useAuthStore.getState().isAuthenticated) return;
     api.get('/orders?page_size=3')
       .then((res) => {
-        const data = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
-        setRecentOrders(data.slice(0, 3).map((o: any) => ({
+        const data: Order[] = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
+        setRecentOrders(data.slice(0, 3).map((o) => ({
           id: o.id,
-          items: o.items?.map((i: any) => i.name).filter(Boolean).join(', ') || 'Order #' + o.id,
+          items: o.items?.map((i) => i.name).filter(Boolean).join(', ') || 'Order #' + o.id,
           date: o.created_at ? new Date(o.created_at).toLocaleDateString('en-MY', { month: 'short', day: 'numeric' }) : '',
           status: o.status || 'Completed',
           total: o.total || 0,
@@ -152,7 +153,7 @@ export default function ProfilePage() {
                     {order.imageUrl ? (
                       <img src={order.imageUrl} alt="" loading="lazy" />
                     ) : (
-                      <ShoppingBag size={22} color="#C4CED8" />
+                      <ShoppingBag size={22} color={LOKA.border} />
                     )}
                   </div>
                   <div className="profile-order-info">
@@ -184,7 +185,7 @@ export default function ProfilePage() {
                     <Icon size={18} />
                   </div>
                   <span className="profile-menu-label">{item.label}</span>
-                  <ChevronRight size={16} color="#C4CED8" />
+                  <ChevronRight size={16} color={LOKA.border} />
                 </button>
               );
             })}
@@ -199,7 +200,7 @@ export default function ProfilePage() {
                     <Icon size={18} />
                   </div>
                   <span className="profile-menu-label">{item.label}</span>
-                  <ChevronRight size={16} color="#C4CED8" />
+                  <ChevronRight size={16} color={LOKA.border} />
                 </button>
               );
             })}
@@ -212,7 +213,7 @@ export default function ProfilePage() {
                 <LogOut size={18} />
               </div>
               <span className="profile-menu-label profile-menu-label-red">Log Out</span>
-              <ChevronRight size={16} color="#C75050" />
+              <ChevronRight size={16} color={LOKA.danger} />
             </button>
           </div>
         </GuestGate>

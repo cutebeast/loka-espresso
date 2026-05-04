@@ -14,7 +14,7 @@
 
 /* ── Sheet ── */
 .ics-sheet {
-  background: #fff;
+  background: var(--loka-bg-card);
   width: 100%;
   max-width: 430px;
   border-radius: 20px 20px 0 0;
@@ -212,7 +212,7 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--loka-text-primary);
-  background: #fff;
+  background: var(--loka-bg-card);
   cursor: pointer;
   font-family: var(--font-sans);
   display: flex;
@@ -223,7 +223,7 @@
 
 .ics-option-btn.selected {
   border-color: var(--loka-primary);
-  background: rgba(56,75,22,0.06);
+  background: rgba(59, 74, 26,0.06);
   color: var(--loka-primary);
 }
 
@@ -254,13 +254,13 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: #fff;
+  background: var(--loka-bg-card);
   transition: all 0.15s;
 }
 
 .ics-cup-option.selected .ics-cup-visual {
   border-color: var(--loka-primary);
-  background: rgba(56,75,22,0.06);
+  background: rgba(59, 74, 26,0.06);
 }
 
 .ics-cup-label {
@@ -284,7 +284,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 1px solid #E0D5C0;
+  border: 1px solid var(--color-border-light);
 }
 
 /* ── Notes ── */
@@ -310,7 +310,7 @@
   resize: none;
   height: 60px;
   outline: none;
-  background: #fff;
+  background: var(--loka-bg-card);
 }
 
 .ics-textarea::placeholder { color: var(--loka-text-muted); }
@@ -322,14 +322,14 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  border-top: 1px solid #E4EAEF;
+  border-top: 1px solid var(--loka-bg);
 }
 
 .ics-qty-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   border-radius: 12px;
   padding: 6px 12px;
 }
@@ -339,7 +339,7 @@
   height: 28px;
   border-radius: 8px;
   border: none;
-  background: #fff;
+  background: var(--loka-bg-card);
   font-size: 16px;
   font-weight: 600;
   color: var(--loka-text-primary);
@@ -361,7 +361,7 @@
   flex: 1;
   padding: 14px;
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   border: none;
   border-radius: 12px;
   font-size: 15px;

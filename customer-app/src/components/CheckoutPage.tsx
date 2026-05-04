@@ -16,6 +16,17 @@ import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
 
+interface CustomizationOption {
+  id: number;
+  name: string;
+  price_adjustment: number;
+}
+
+interface CustomizationStructure {
+  options?: CustomizationOption[];
+  note?: string;
+}
+
 const ORDER_TYPES = [
   { key: 'pickup' as const, label: 'Pickup' },
   { key: 'delivery' as const, label: 'Delivery' },
@@ -140,7 +151,7 @@ export default function CheckoutPage() {
         </div>
         <div className="checkout-section">
           <div className="co-section-title">Order Notes</div>
-          {notes ? <div className="co-notes-display">{notes}</div> : <div className="co-notes-display" style={{ color: '#c0c8d0', fontStyle: 'italic' }}>No special requests. Add notes from your cart.</div>}
+          {notes ? <div className="co-notes-display">{notes}</div> : <div className="co-notes-display" style={{ color: LOKA.border, fontStyle: 'italic' }}>No special requests. Add notes from your cart.</div>}
         </div>
         <div className="checkout-section">
           <div className="co-section-title">Payment Method</div>
@@ -166,10 +177,11 @@ export default function CheckoutPage() {
           <div className="co-section-title">Order Summary</div>
           <div className="co-order-items-list">
             {items.map((item, i) => {
-              const tags = typeof item.customizations === 'object' && item.customizations ? ((item.customizations as any)?.options as any[])?.map((o: any) => { const name = o.name || ''; const colonIdx = name.indexOf(': '); return colonIdx >= 0 ? name.slice(colonIdx + 2) : name; }) || [] : [];
+              const cust = item.customizations as CustomizationStructure | undefined;
+              const tags = cust?.options?.map((o) => { const name = o.name || ''; const colonIdx = name.indexOf(': '); return colonIdx >= 0 ? name.slice(colonIdx + 2) : name; }) || [];
               return (
                 <div key={i} className="co-order-item-row">
-                  <div className="co-order-item-thumb">{item.image_url && !brokenImages.has(item.menu_item_id) ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.name} onError={() => setBrokenImages(prev => new Set(prev).add(item.menu_item_id))} /> : <Coffee size={18} color="#384B16" />}</div>
+                  <div className="co-order-item-thumb">{item.image_url && !brokenImages.has(item.menu_item_id) ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.name} loading="lazy" onError={() => setBrokenImages(prev => new Set(prev).add(item.menu_item_id))} /> : <Coffee size={18} color={LOKA.primary} />}</div>
                   <div className="co-order-item-info">
                     <div className="co-order-item-name">{item.name}</div>
                     {tags.length > 0 && <div className="co-order-item-tags">{tags.map((t: string, j: number) => <span key={j} className="co-order-item-tag">{t}</span>)}</div>}

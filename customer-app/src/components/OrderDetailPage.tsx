@@ -6,8 +6,8 @@ import { useOrderStore } from '@/stores/orderStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
-import type { Order } from '@/lib/api';
-import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
+import type { Order, CartItem } from '@/lib/api';
+import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 
 const PICKUP_STEPS = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed'];
 const DELIVERY_STEPS = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'On the way', 'Completed'];
@@ -63,7 +63,7 @@ export default function OrderDetailPage() {
       clearCart();
       const items = res.data?.items ?? [];
       for (const item of items) {
-        useCartStore.getState().addItem({
+        const cartItem: CartItem = {
           menu_item_id: item.item_id || item.menu_item_id,
           name: item.item_name || item.name || '',
           price: item.unit_price || item.price || 0,
@@ -71,7 +71,8 @@ export default function OrderDetailPage() {
           customization_option_ids: item.customization_option_ids || [],
           customizations: item.customizations || {},
           customization_count: item.customization_count ?? 0,
-        } as any);
+        };
+        useCartStore.getState().addItem(cartItem);
       }
       setPage('cart');
     } catch { showToast('Failed to reorder', 'error'); }
@@ -160,23 +161,23 @@ export default function OrderDetailPage() {
         </div>
 
         {/* Delivery / Contact Info */}
-        {(order.order_type === 'delivery' || (order as any).recipient_name || (order as any).recipient_phone) && (
+        {(order.order_type === 'delivery' || order.recipient_name || order.recipient_phone) && (
           <div className="od-section">
             <div className="od-section-title">{order.order_type === 'delivery' ? 'Delivery Info' : 'Contact'}</div>
-            {(order as any).recipient_name && (
+            {order.recipient_name && (
               <div className="od-info-row">
                 <div className="od-info-icon green">👤</div>
                 <div className="od-info-text">
-                  <div className="od-info-label">{(order as any).recipient_name}</div>
+                  <div className="od-info-label">{order.recipient_name}</div>
                 </div>
               </div>
             )}
-            {(order as any).recipient_phone && (
+            {order.recipient_phone && (
               <div className="od-info-row">
                 <div className="od-info-icon copper"><Phone size={14} /></div>
                 <div className="od-info-text">
                   <div className="od-info-label">Contact</div>
-                  <div className="od-info-value">+60 {(order as any).recipient_phone}</div>
+                  <div className="od-info-value">+60 {order.recipient_phone}</div>
                 </div>
               </div>
             )}
@@ -213,12 +214,12 @@ export default function OrderDetailPage() {
           {order.items?.map((item, i) => {
             const price = Number(item.price ?? item.unit_price ?? 0);
             const meta = typeof item.customizations === 'object' && item.customizations
-              ? ((item.customizations as any)?.options as any[])?.map((o: any) => { const n = o.name || ''; const px = n.indexOf(': '); return px >= 0 ? n.slice(px + 2) : n; })?.join(' · ') || ''
+              ? ((item.customizations as Record<string, unknown>)?.options as Array<{ name?: string }>)?.map((o) => { const n = o.name || ''; const px = n.indexOf(': '); return px >= 0 ? n.slice(px + 2) : n; })?.join(' · ') || ''
               : '';
             return (
               <div key={i} className="od-item-row">
                 <div className="od-item-thumb">
-                  {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /> : <Coffee size={18} color="#384B16" />}
+                  {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /> : <Coffee size={18} color={LOKA.primary} />}
                 </div>
                 <div className="od-item-details">
                   <div className="od-item-name">{item.name}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</div>
@@ -228,7 +229,7 @@ export default function OrderDetailPage() {
               </div>
             );
           })}
-          <div style={{ marginTop: 10, borderTop: '1px solid #D4DCE5', paddingTop: 10 }}>
+          <div style={{ marginTop: 10, borderTop: `1px solid ${LOKA.borderLight}`, paddingTop: 10 }}>
             {order.subtotal != null && <div className="od-summary-row"><span className="od-summary-label">Subtotal</span><span className="od-summary-value">{formatPrice(order.subtotal)}</span></div>}
             {(order.delivery_fee ?? 0) > 0 && <div className="od-summary-row"><span className="od-summary-label">Delivery Fee</span><span className="od-summary-value">{formatPrice(order.delivery_fee ?? 0)}</span></div>}
             {(order.discount ?? 0) > 0 && <div className="od-summary-row"><span className="od-summary-label">Discount</span><span className="od-summary-value">-{formatPrice(order.discount ?? 0)}</span></div>}

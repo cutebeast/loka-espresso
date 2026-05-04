@@ -67,8 +67,8 @@ export default function HistoryPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   /* Group by date */
-  const groupByDate = (items: any[]) => {
-    const groups: Record<string, any[]> = {};
+  const groupByDate = <T extends { created_at?: string }>(items: T[]) => {
+    const groups: Record<string, T[]> = {};
     items.forEach(item => {
       const g = getDateGroup(item.created_at || '');
       if (!groups[g]) groups[g] = [];
@@ -79,7 +79,6 @@ export default function HistoryPage() {
 
   const loyaltyGroups = groupByDate(loyaltyHistory);
   const walletGroups = groupByDate(walletHistory);
-  const currentGroups = activeTab === 'loyalty' ? loyaltyGroups : walletGroups;
   const groupOrder = ['Today', 'This Week', 'This Month', 'Earlier'];
 
   /* Summary stats */
@@ -163,13 +162,13 @@ export default function HistoryPage() {
           </div>
         ) : (
           groupOrder.map(group => {
-            const items = currentGroups[group];
+            const items = activeTab === 'loyalty' ? loyaltyGroups[group] : walletGroups[group];
             if (!items?.length) return null;
             return (
               <div key={group}>
                 <div className="history-date-group">{group}</div>
-                {items.map((item: any, idx: number) => {
-                  const isPositive = activeTab === 'loyalty' ? (item.points || 0) > 0 : item.amount > 0;
+                {items.map((item, idx) => {
+                  const isPositive = activeTab === 'loyalty' ? ((item as LoyaltyHistoryEntry).points || 0) > 0 : (item as Transaction).amount > 0;
                   const type = (item.type || '').toLowerCase();
                   const IconComp = CATEGORY_ICONS[type] || CATEGORY_ICONS.default;
                   const catLabel = type ? type.charAt(0).toUpperCase() + type.slice(1) : '';
@@ -190,8 +189,8 @@ export default function HistoryPage() {
                       <div className="history-tx-right">
                         <div className={`history-tx-amount ${isPositive ? 'credit' : 'debit'}`}>
                           {activeTab === 'loyalty'
-                            ? `${isPositive ? '+' : '−'}${Math.abs(item.points || 0).toLocaleString()} pts`
-                            : `${isPositive ? '+' : '−'}RM ${Math.abs(item.amount || 0).toFixed(2)}`}
+                            ? `${isPositive ? '+' : '−'}${Math.abs((item as LoyaltyHistoryEntry).points || 0).toLocaleString()} pts`
+                            : `${isPositive ? '+' : '−'}RM ${Math.abs((item as Transaction).amount || 0).toFixed(2)}`}
                         </div>
                       </div>
                     </div>

@@ -1,11 +1,22 @@
 # Loka Espresso PWA — Agent Documentation
 
-> Phase 2 complete — all PWA pages updated to self-contained v2 CSS (2026-05-04)
+> Phase 3 complete — Turkish coffee premium brand palette applied (2026-05-04)
 > `app.loyaltysystem.uk`
 
 ---
 
 ## 0. Latest Changes (2026-05-04)
+
+### Phase 3 Complete — Turkish Coffee Premium Brand Palette
+Unified all 22 PWA pages under a warm, premium Turkish coffee aesthetic. Color-only changes — no layout modifications.
+
+**Tokens updated:** `variables.css` + `tokens.ts` — new palette: `#3B4A1A` primary, `#C9A84C` gold accent, `#C4893A` copper, `#4A2210` brown, `#F2EEE6` warm parchment BG, `#FFFDF8` warm card BG, `#1E1B18` warm text.
+**CSS files updated:** All 34 `*-v2.css` files + `globals.css` + `components.css` + `utilities.css` + `base.css` + `wallet.css` + `type-pill.css` + `voucher-reveal.css` + `info-cards.css`. ~400+ hex→variable replacements.
+**TSX files updated:** 23 component files — icon `color` props now use `LOKA.*` tokens instead of hardcoded hex.
+**Gradients:** All `linear-gradient` values updated to use CSS variables. Toast, wallet, card gradients use warm golden shadows.
+**Shadows:** All shadows now use `rgba(74, 34, 16, ...)` warm brown tint instead of `rgba(0, 0, 0, ...)`.
+**Tier colors:** Metallic gradients updated — Bronze `#A0783A→#7A5828`, Silver `#B0A9A0→#8A8278`, Gold `#D4AF37→#B8942A`, Platinum `#8A9AB0→#5A6A80`.
+**New variables added:** `--loka-accent-gold`, `--loka-primary-light`, `--loka-bg-light`, `--loka-border-warm`, `--font-display`, tier color variables.
 
 ### Phase 2 Complete — All Pages v2
 All PWA pages now have self-contained `*-v2.css` files. Shared patterns extracted per page group. Key CSS variable fix: `var(--loka-copper)` → `var(--loka-accent-copper)`, `var(--loka-brown)` → `var(--loka-accent-brown)`.
@@ -81,17 +92,18 @@ All PWA pages now have self-contained `*-v2.css` files. Shared patterns extracte
 
 **Rule:** Never define local `LOKA` objects in components. Import from `src/lib/tokens.ts`.
 
-### Brand Colors
+### Brand Colors (Turkish Coffee Premium)
 
 ```
-Primary:      #384B16  (dark olive)
-Primary Dark: #2A3910
-Primary Light:#4A6A1D
-Copper:       #D18E38  (accent)
-Brown:        #57280D
-Text Primary: #1B2023
-Background:   #E4EAEF
-Card:         #FFFFFF
+Primary:      #3B4A1A  (Turkish olive)
+Primary Dark: #263210
+Primary Light:#4E6E20
+Gold:         #C9A84C  (primary accent)
+Copper:       #C4893A  (secondary accent)
+Brown:        #4A2210  (Turkish coffee)
+Text Primary: #1E1B18  (warm near-black)
+Background:   #F2EEE6  (warm parchment)
+Card:         #FFFDF8  (warm white)
 ```
 
 ### CSS Class Reference

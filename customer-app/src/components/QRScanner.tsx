@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Zap, ZapOff, Camera } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { LOKA } from '@/lib/tokens';
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -92,7 +93,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
         {!hasPermission && !isLoading && (
           <div className="qr-permission">
             <div className="qr-permission-icon">
-              <Camera size={36} color="#D18E38" />
+              <Camera size={36} color={LOKA.copper} />
             </div>
             <h2 className="qr-permission-title">Camera Access Needed</h2>
             <p className="qr-permission-text">

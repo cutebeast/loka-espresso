@@ -5,6 +5,7 @@ import { ArrowLeft, Share2, Copy, Users, Check, Lock, Gift } from 'lucide-react'
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
+import { LOKA } from '@/lib/tokens';
 
 interface ReferralStats {
   code: string;
@@ -86,7 +87,7 @@ export default function ReferralPage() {
 
       <div className="referral-scroll">
         {loading ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#6A7A8A' }}>Loading...</div>
+          <div style={{ padding: 40, textAlign: 'center', color: LOKA.textMuted }}>Loading...</div>
         ) : stats ? (
           <>
             {/* Stats card */}
@@ -156,7 +157,7 @@ export default function ReferralPage() {
                     <div className="referral-milestone-name">{m.label} — {m.count} Referrals</div>
                     <div className="referral-milestone-desc">+{m.bonus.toLocaleString()} bonus points</div>
                   </div>
-                  {achieved && <Check size={14} color="#85B085" />}
+                  {achieved && <Check size={14} color={LOKA.success} />}
                 </div>
               );
             })}
@@ -189,7 +190,7 @@ export default function ReferralPage() {
             )}
           </>
         ) : (
-          <div style={{ padding: 40, textAlign: 'center', color: '#6A7A8A' }}>
+          <div style={{ padding: 40, textAlign: 'center', color: LOKA.textMuted }}>
             Unable to load referral data
           </div>
         )}

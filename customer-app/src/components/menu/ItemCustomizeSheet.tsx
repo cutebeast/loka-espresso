@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, ShoppingCart, Coffee, AlertTriangle } from 'lucide-react';
 import type { MenuItem, CustomizationOption } from '@/lib/api';
-import { resolveAssetUrl, formatPrice } from '@/lib/tokens';
+import { resolveAssetUrl, formatPrice, LOKA } from '@/lib/tokens';
 
 interface SelectedOption {
   id: number;
@@ -136,10 +136,10 @@ export default function ItemCustomizeSheet({
             {/* Image */}
             <div className="ics-image-wrap">
               {imgSrc ? (
-                <img src={imgSrc} alt={item.name} className="ics-image" />
+                <img src={imgSrc} alt={item.name} loading="lazy" className="ics-image" />
               ) : (
                 <div className="ics-image-fallback">
-                  <Coffee size={56} color="#57280D" strokeWidth={1.2} />
+                  <Coffee size={56} color={LOKA.brown} strokeWidth={1.2} />
                 </div>
               )}
               <button onClick={onClose} className="ics-close-btn" aria-label="Close">
@@ -211,9 +211,9 @@ export default function ItemCustomizeSheet({
                             >
                               <div className="ics-cup-visual" style={{ width: cup.w + 32, height: cup.h + 24 }}>
                                 <svg width={cup.w} height={cup.h} viewBox={`0 0 ${cup.w} ${cup.h}`} fill="none">
-                                  <rect x="2" y="4" width={cup.w - 4} height={cup.h - 8} rx="2" fill="#57280D" />
-                                  <rect x="4" y="6" width={cup.w - 8} height={cup.h - 20} rx="1" fill="#D18E38" opacity="0.3" />
-                                  <path d={`M${cup.w - 6} ${cup.h / 3} C${cup.w} ${cup.h / 3} ${cup.w + 3} ${cup.h / 2} ${cup.w + 3} ${cup.h / 2 + 3} C${cup.w + 3} ${cup.h / 2 + 8} ${cup.w} ${cup.h / 2 + 10} ${cup.w - 6} ${cup.h / 2 + 10}`} stroke="#57280D" strokeWidth="2" fill="none" />
+                                  <rect x="2" y="4" width={cup.w - 4} height={cup.h - 8} rx="2" fill={LOKA.brown} />
+                                  <rect x="4" y="6" width={cup.w - 8} height={cup.h - 20} rx="1" fill={LOKA.copper} opacity="0.3" />
+                                  <path d={`M${cup.w - 6} ${cup.h / 3} C${cup.w} ${cup.h / 3} ${cup.w + 3} ${cup.h / 2} ${cup.w + 3} ${cup.h / 2 + 3} C${cup.w + 3} ${cup.h / 2 + 8} ${cup.w} ${cup.h / 2 + 10} ${cup.w - 6} ${cup.h / 2 + 10}`} stroke={LOKA.brown} strokeWidth="2" fill="none" />
                                 </svg>
                               </div>
                               <span className="ics-cup-label">{cup.label || opt.name}</span>

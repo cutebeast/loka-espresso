@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   padding: 14px 20px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-bottom: 1px solid var(--loka-border-light);
   flex-shrink: 0;
 }
@@ -84,13 +84,13 @@
 
 /* Search bar */
 .legal-search-bar {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 10px;
   padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #D4DCE5;
+  border: 1px solid var(--loka-border-light);
   margin-bottom: 12px;
 }
 
@@ -105,19 +105,19 @@
 }
 
 .legal-search-bar input::placeholder {
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
 }
 
 .legal-search-icon {
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   flex-shrink: 0;
 }
 
 /* TOC card */
 .legal-toc-card {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 12px;
-  border: 1px solid #D4DCE5;
+  border: 1px solid var(--loka-border-light);
   overflow: hidden;
   margin-bottom: 12px;
 }
@@ -127,7 +127,7 @@
   font-weight: 600;
   color: var(--loka-text-primary);
   padding: 12px 14px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--loka-bg-light);
   background: var(--loka-cream);
 }
 
@@ -135,7 +135,7 @@
   display: flex;
   align-items: center;
   padding: 10px 14px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--loka-bg-light);
   gap: 8px;
   cursor: pointer;
   background: none;
@@ -146,7 +146,7 @@
 }
 
 .legal-toc-item:last-child { border-bottom: none; }
-.legal-toc-item:active { background: #F5F7FA; }
+.legal-toc-item:active { background: var(--loka-bg-light); }
 
 .legal-toc-num {
   font-size: 11px;
@@ -164,15 +164,15 @@
 }
 
 .legal-toc-arrow {
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   flex-shrink: 0;
 }
 
 /* Collapsible sections */
 .legal-section {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 10px;
-  border: 1px solid #D4DCE5;
+  border: 1px solid var(--loka-border-light);
   margin-bottom: 8px;
   overflow: hidden;
 }
@@ -189,13 +189,13 @@
   font-family: var(--font-sans);
 }
 
-.legal-section-header:active { background: #F5F7FA; }
+.legal-section-header:active { background: var(--loka-bg-light); }
 
 .legal-section-num {
   font-size: 11px;
   font-weight: 700;
   color: var(--loka-accent-copper);
-  background: rgba(209,142,56,0.1);
+  background: rgba(196, 137, 58,0.1);
   width: 24px;
   height: 24px;
   border-radius: 6px;
@@ -215,18 +215,18 @@
 
 .legal-section-chevron {
   transition: transform 0.2s;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   flex-shrink: 0;
 }
 
 .legal-section-body {
   padding: 0 14px 14px;
-  border-top: 1px solid #f0f2f5;
+  border-top: 1px solid var(--loka-bg-light);
 }
 
 .legal-section-body p {
   font-size: 13px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   line-height: 1.65;
   margin-top: 10px;
 }
@@ -238,7 +238,7 @@
 
 .legal-section-body ul li {
   font-size: 13px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   line-height: 1.6;
   margin-bottom: 4px;
 }
@@ -248,7 +248,7 @@
   text-align: center;
   padding: 16px;
   font-size: 12px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
 }
 
 /* Skeleton */
@@ -266,6 +266,6 @@
 .legal-error {
   text-align: center;
   padding: 40px 20px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   font-size: 14px;
 }

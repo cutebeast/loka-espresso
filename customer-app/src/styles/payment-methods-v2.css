@@ -4,49 +4,49 @@
 .payment-content-scroll { flex: 1; overflow-y: auto; }
 
 /* Wallet card */
-.payment-wallet-card { margin: 16px; padding: 24px; background: linear-gradient(135deg, var(--loka-primary) 0%, #2a3a10 100%); border-radius: 20px; color: #fff; position: relative; overflow: hidden; }
-.payment-wallet-card::before { content: ''; position: absolute; top: -30px; right: -30px; width: 100px; height: 100px; background: rgba(209,142,56,0.12); border-radius: 50%; }
-.payment-wallet-card::after { content: ''; position: absolute; bottom: -40px; left: -20px; width: 120px; height: 120px; background: rgba(209,142,56,0.06); border-radius: 50%; }
+.payment-wallet-card { margin: 16px; padding: 24px; background: linear-gradient(135deg, var(--loka-primary) 0%, var(--loka-primary-dark) 100%); border-radius: 20px; color: var(--loka-white); position: relative; overflow: hidden; }
+.payment-wallet-card::before { content: ''; position: absolute; top: -30px; right: -30px; width: 100px; height: 100px; background: rgba(196, 137, 58,0.12); border-radius: 50%; }
+.payment-wallet-card::after { content: ''; position: absolute; bottom: -40px; left: -20px; width: 120px; height: 120px; background: rgba(196, 137, 58,0.06); border-radius: 50%; }
 .payment-wallet-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .payment-wallet-label { font-size: 13px; opacity: 0.7; }
 .payment-wallet-badge { padding: 3px 10px; background: rgba(255,255,255,0.15); border-radius: 20px; font-size: 11px; font-weight: 500; }
 .payment-wallet-amount { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; margin-bottom: 4px; }
 .payment-wallet-sub { font-size: 12px; opacity: 0.6; margin-bottom: 20px; }
-.payment-topup-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; background: var(--loka-accent-copper); color: #fff; border: none; border-radius: 12px; font-family: var(--font-sans); font-size: 14px; font-weight: 600; cursor: pointer; position: relative; z-index: 1; }
+.payment-topup-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; background: var(--loka-accent-copper); color: var(--loka-white); border: none; border-radius: 12px; font-family: var(--font-sans); font-size: 14px; font-weight: 600; cursor: pointer; position: relative; z-index: 1; }
 .payment-topup-btn:active { opacity: 0.9; }
 
 /* Section title */
-.payment-section-title { font-size: 13px; font-weight: 600; color: #6A7A8A; text-transform: uppercase; letter-spacing: 0.5px; padding: 16px 20px 8px; }
+.payment-section-title { font-size: 13px; font-weight: 600; color: var(--loka-text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 16px 20px 8px; }
 
 /* Card item */
-.payment-card-item { display: flex; align-items: center; padding: 16px; background: #fff; margin: 0 16px 10px; border-radius: 14px; border: 1px solid #D4DCE5; gap: 12px; }
-.payment-card-item.is-default { border: 2px solid var(--loka-success); background: #fafffe; }
+.payment-card-item { display: flex; align-items: center; padding: 16px; background: var(--loka-bg-card); margin: 0 16px 10px; border-radius: 14px; border: 1px solid var(--loka-border-light); gap: 12px; }
+.payment-card-item.is-default { border: 2px solid var(--loka-success); background: var(--color-success-light); }
 .payment-card-brand { width: 44px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
-.payment-card-brand.visa { background: #1a1f71; color: #fff; font-style: italic; }
-.payment-card-brand.mc { background: #252525; position: relative; }
+.payment-card-brand.visa { background: #1a1f71; color: var(--loka-white); font-style: italic; }
+.payment-card-brand.mc { background: var(--loka-text-primary); position: relative; }
 .payment-card-brand.mc::before { content: ''; position: absolute; width: 18px; height: 18px; background: #eb001b; border-radius: 50%; left: 6px; }
-.payment-card-brand.mc::after { content: ''; position: absolute; width: 18px; height: 18px; background: #f79e1b; border-radius: 50%; right: 6px; }
+.payment-card-brand.mc::after { content: ''; position: absolute; width: 18px; height: 18px; background: var(--color-gold); border-radius: 50%; right: 6px; }
 .payment-card-info { flex: 1; }
 .payment-card-number { font-size: 14px; font-weight: 500; color: var(--loka-text-primary); }
-.payment-card-expiry { font-size: 12px; color: #6A7A8A; margin-top: 2px; }
+.payment-card-expiry { font-size: 12px; color: var(--loka-text-muted); margin-top: 2px; }
 .payment-card-default { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .payment-default-toggle { width: 32px; height: 18px; border-radius: 9px; background: var(--loka-success); position: relative; flex-shrink: 0; }
-.payment-default-toggle.off { background: #D4DCE5; }
-.payment-default-toggle::after { content: ''; width: 14px; height: 14px; border-radius: 50%; background: #fff; position: absolute; top: 2px; right: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.payment-default-toggle.off { background: var(--loka-border-light); }
+.payment-default-toggle::after { content: ''; width: 14px; height: 14px; border-radius: 50%; background: var(--loka-bg-card); position: absolute; top: 2px; right: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .payment-default-label { font-size: 11px; font-weight: 500; color: var(--loka-success); }
-.payment-default-label.off { color: #6A7A8A; }
+.payment-default-label.off { color: var(--loka-text-muted); }
 .payment-remove-btn { padding: 6px 12px; background: transparent; border: 1px solid var(--loka-danger); border-radius: 8px; color: var(--loka-danger); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans); flex-shrink: 0; }
 
 /* Add card button */
-.payment-add-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 32px); margin: 8px 16px 16px; padding: 14px; background: var(--loka-primary); color: #fff; border: none; border-radius: 12px; font-family: var(--font-sans); font-size: 14px; font-weight: 600; cursor: pointer; }
+.payment-add-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 32px); margin: 8px 16px 16px; padding: 14px; background: var(--loka-primary); color: var(--loka-white); border: none; border-radius: 12px; font-family: var(--font-sans); font-size: 14px; font-weight: 600; cursor: pointer; }
 .payment-add-btn:active { background: var(--loka-primary-dark); }
 
 /* Empty state */
-.payment-empty { text-align: center; padding: 36px 20px; margin: 8px 16px; background: #fff; border-radius: 16px; border: 1px solid #D4DCE5; }
-.payment-empty-icon { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, var(--loka-cream), #e8e2d8); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+.payment-empty { text-align: center; padding: 36px 20px; margin: 8px 16px; background: var(--loka-bg-card); border-radius: 16px; border: 1px solid var(--loka-border-light); }
+.payment-empty-icon { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, var(--loka-cream), var(--color-border-light)); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
 .payment-empty-title { font-size: 14px; font-weight: 600; color: var(--loka-text-primary); margin-bottom: 6px; }
-.payment-empty-text { font-size: 12px; color: #6A7A8A; line-height: 1.5; margin-bottom: 16px; }
-.payment-empty-cta { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: var(--loka-accent-copper); color: #fff; border: none; border-radius: 8px; font-family: var(--font-sans); font-size: 13px; font-weight: 600; cursor: pointer; }
+.payment-empty-text { font-size: 12px; color: var(--loka-text-muted); line-height: 1.5; margin-bottom: 16px; }
+.payment-empty-cta { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: var(--loka-accent-copper); color: var(--loka-white); border: none; border-radius: 8px; font-family: var(--font-sans); font-size: 13px; font-weight: 600; cursor: pointer; }
 
 /* Skeleton */
 .pm-skeleton { height: 72px; border-radius: 14px; }

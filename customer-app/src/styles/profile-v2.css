@@ -23,13 +23,13 @@
 
 .profile-user-card {
   margin: 16px 20px;
-  background: linear-gradient(135deg, var(--loka-primary), #5a7a2a);
+  background: linear-gradient(135deg, var(--loka-primary), var(--loka-primary-light));
   border-radius: 16px;
   padding: 20px;
   display: flex;
   align-items: center;
   gap: 14px;
-  box-shadow: 0 4px 16px rgba(56,75,22,0.2);
+  box-shadow: 0 4px 16px rgba(59, 74, 26,0.2);
   cursor: pointer;
   transition: transform 0.15s;
 }
@@ -47,7 +47,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--loka-white);
   font-size: 24px;
   font-weight: 700;
   flex-shrink: 0;
@@ -61,7 +61,7 @@
 .profile-user-name {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--loka-white);
   margin-bottom: 2px;
 }
 
@@ -76,7 +76,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #fff;
+  color: var(--loka-white);
   padding: 3px 10px;
   border-radius: 10px;
   font-size: 11px;
@@ -84,10 +84,10 @@
   margin-bottom: 6px;
 }
 
-.profile-tier-badge.bronze   { background: linear-gradient(135deg, #8B6F47, #6B4F2E); }
-.profile-tier-badge.silver   { background: linear-gradient(135deg, #9CA3AF, #6B7280); }
-.profile-tier-badge.gold     { background: linear-gradient(135deg, #D18E38, #B86E2C); }
-.profile-tier-badge.platinum { background: linear-gradient(135deg, #7C8CA6, #4B5E7A); }
+.profile-tier-badge.bronze   { background: linear-gradient(135deg, var(--tier-bronze), var(--tier-bronze-dark)); }
+.profile-tier-badge.silver   { background: linear-gradient(135deg, var(--tier-silver), var(--tier-silver-dark)); }
+.profile-tier-badge.gold     { background: linear-gradient(135deg, var(--loka-accent-copper), var(--loka-accent-brown)); }
+.profile-tier-badge.platinum { background: linear-gradient(135deg, var(--tier-platinum), var(--tier-platinum-dark)); }
 
 /* Mini progress bar */
 .profile-tier-progress {
@@ -146,7 +146,7 @@
 
 .profile-preview-card {
   margin: 0 20px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
@@ -236,7 +236,7 @@
 .profile-order-status.preparing,
 .profile-order-status.confirmed,
 .profile-order-status.pending {
-  background: rgba(209,142,56,0.12);
+  background: rgba(196, 137, 58,0.12);
   color: var(--loka-accent-copper);
 }
 
@@ -265,7 +265,7 @@
 
 .profile-menu-card {
   margin: 0 20px 12px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
@@ -303,17 +303,17 @@
 }
 
 /* Colored icon backgrounds */
-.profile-icon-reward    { background: var(--loka-accent-copper); color: #fff; }
-.profile-icon-voucher   { background: var(--loka-primary); color: #fff; }
-.profile-icon-referral  { background: #7B61FF; color: #fff; }
-.profile-icon-payment   { background: #3B82F6; color: #fff; }
-.profile-icon-address   { background: var(--loka-accent-brown); color: #fff; }
-.profile-icon-card      { background: #EC4899; color: #fff; }
-.profile-icon-notif     { background: #F59E0B; color: #fff; }
-.profile-icon-settings  { background: #6B7280; color: #fff; }
-.profile-icon-help      { background: #14B8A6; color: #fff; }
-.profile-icon-logout    { background: var(--loka-danger); color: #fff; }
-.profile-icon-order     { background: var(--loka-primary); color: #fff; }
+.profile-icon-reward    { background: var(--loka-accent-copper); color: var(--loka-white); }
+.profile-icon-voucher   { background: var(--loka-primary); color: var(--loka-white); }
+.profile-icon-referral  { background: #7B61FF; color: var(--loka-white); }
+.profile-icon-payment   { background: #3B82F6; color: var(--loka-white); }
+.profile-icon-address   { background: var(--loka-accent-brown); color: var(--loka-white); }
+.profile-icon-card      { background: #EC4899; color: var(--loka-white); }
+.profile-icon-notif     { background: var(--color-gold); color: var(--loka-white); }
+.profile-icon-settings  { background: var(--tier-silver-dark); color: var(--loka-white); }
+.profile-icon-help      { background: #14B8A6; color: var(--loka-white); }
+.profile-icon-logout    { background: var(--loka-danger); color: var(--loka-white); }
+.profile-icon-order     { background: var(--loka-primary); color: var(--loka-white); }
 
 .profile-menu-label {
   flex: 1;
@@ -349,7 +349,7 @@
 }
 
 .profile-modal-box {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 20px;
   padding: 24px;
   width: calc(100% - 64px);
@@ -392,5 +392,5 @@
 
 .profile-modal-btn-confirm {
   background: var(--loka-danger);
-  color: #fff;
+  color: var(--loka-white);
 }

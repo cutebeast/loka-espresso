@@ -10,16 +10,16 @@
   text-transform: uppercase;
 }
 .tp-offer {
-  background: #e7ddd2;
-  color: #3a2e26;
+  background: var(--loka-cream);
+  color: var(--loka-accent-brown);
 }
 .tp-survey {
-  background: #d4e0d8;
+  background: var(--color-success-light);
   color: #1a4e3a;
 }
 .tp-limited {
   background: var(--color-copper-soft);
-  color: #57280D;
+  color: var(--loka-accent-brown);
 }
 .tp-system {
   background: var(--color-surface);

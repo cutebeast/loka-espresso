@@ -2,7 +2,7 @@
 .vrb-card {
   border: 1px dashed var(--color-primary);
   border-radius: 16px;
-  background: #E6F2E8;
+  background: var(--color-success-light);
   padding: 20px 24px;
   text-align: center;
 }

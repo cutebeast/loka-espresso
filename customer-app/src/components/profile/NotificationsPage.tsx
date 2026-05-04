@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, Package, Gift, Wallet, Star, Info, Calendar, X, BookOpen } from 'lucide-react';
+import { Bell, Package, Gift, Wallet, Star, Info, Calendar, X } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 

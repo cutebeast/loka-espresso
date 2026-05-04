@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import VoucherRevealBlock from './VoucherRevealBlock';
+import { LOKA } from '@/lib/tokens';
 
 interface RedemptionCodeModalProps {
   code: string;
@@ -42,7 +43,7 @@ export default function RedemptionCodeModal({
               className="rcm-close"
               aria-label="Close"
             >
-              <X size={16} color="#1B2023" />
+              <X size={16} color={LOKA.textPrimary} />
             </button>
             <h3 className="rcm-title">
               {title}

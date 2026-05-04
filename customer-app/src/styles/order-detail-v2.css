@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   overflow: hidden;
 }
 
@@ -15,7 +15,7 @@
   display: flex;
   align-items: center;
   padding: 12px 20px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-bottom: 1px solid var(--loka-border-light);
   gap: 12px;
   flex-shrink: 0;
@@ -28,7 +28,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   border: none;
   cursor: pointer;
   color: var(--loka-text-primary);
@@ -50,10 +50,10 @@
 
 /* ── ETA card ── */
 .od-eta-card {
-  background: linear-gradient(135deg, var(--loka-primary), #4a6320);
+  background: linear-gradient(135deg, var(--loka-primary), var(--loka-primary-light));
   border-radius: 14px;
   padding: 18px;
-  color: #fff;
+  color: var(--loka-white);
   margin: 10px 14px;
 }
 
@@ -93,7 +93,7 @@
 
 /* ── Section card ── */
 .od-section {
-  background: #fff;
+  background: var(--loka-bg-card);
   margin: 10px 14px;
   border-radius: 12px;
   padding: 16px;
@@ -148,18 +148,18 @@
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  color: #fff;
+  color: var(--loka-white);
   position: relative;
   z-index: 2;
   margin-bottom: 8px;
 }
 
 .od-step-circle.done { background: var(--loka-primary); }
-.od-step-circle.current { background: var(--loka-accent-copper); animation: odPulseRing 2s ease-in-out infinite; box-shadow: 0 0 0 6px rgba(209,142,56,0.2); }
+.od-step-circle.current { background: var(--loka-accent-copper); animation: odPulseRing 2s ease-in-out infinite; box-shadow: 0 0 0 6px rgba(196, 137, 58,0.2); }
 
 @keyframes odPulseRing {
-  0%, 100% { box-shadow: 0 0 0 6px rgba(209,142,56,0.2); }
-  50% { box-shadow: 0 0 0 10px rgba(209,142,56,0.08); }
+  0%, 100% { box-shadow: 0 0 0 6px rgba(196, 137, 58,0.2); }
+  50% { box-shadow: 0 0 0 10px rgba(196, 137, 58,0.08); }
 }
 
 .od-step-text {
@@ -190,8 +190,8 @@
   font-size: 13px;
   flex-shrink: 0;
 }
-.od-info-icon.green { background: rgba(56,75,22,0.1); color: var(--loka-primary); }
-.od-info-icon.copper { background: rgba(209,142,56,0.12); color: var(--loka-accent-copper); }
+.od-info-icon.green { background: rgba(59, 74, 26,0.1); color: var(--loka-primary); }
+.od-info-icon.copper { background: rgba(196, 137, 58,0.12); color: var(--loka-accent-copper); }
 
 .od-info-text { font-size: 13px; line-height: 1.4; }
 .od-info-label { font-weight: 600; color: var(--loka-text-primary); }
@@ -203,7 +203,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid #E4EAEF;
+  border-bottom: 1px solid var(--loka-bg);
 }
 .od-item-row:last-child { border-bottom: none; }
 
@@ -251,7 +251,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   border-radius: 10px;
 }
 .od-payment-icon {
@@ -262,7 +262,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--loka-white);
   font-size: 9px;
   font-weight: 700;
 }
@@ -278,7 +278,7 @@
   width: 100%;
   padding: 16px;
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   border: none;
   border-radius: 14px;
   font-size: 16px;
@@ -306,5 +306,5 @@
   cursor: pointer;
   font-family: var(--font-sans);
 }
-.od-secondary-btn.secondary { background: #E4EAEF; color: var(--loka-text-primary); border: 1px solid var(--loka-border-light); }
+.od-secondary-btn.secondary { background: var(--loka-bg); color: var(--loka-text-primary); border: 1px solid var(--loka-border-light); }
 .od-secondary-btn.danger { background: rgba(199,80,80,0.1); color: var(--loka-danger); }

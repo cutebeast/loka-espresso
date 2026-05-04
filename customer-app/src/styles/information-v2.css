@@ -17,8 +17,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: #fff;
-  border-bottom: 1px solid #D4DCE5;
+  background: var(--loka-bg-card);
+  border-bottom: 1px solid var(--loka-border-light);
   flex-shrink: 0;
 }
 
@@ -35,17 +35,17 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   border: none;
   cursor: pointer;
-  color: #1B2023;
+  color: var(--loka-text-primary);
 }
 
 .info-page-title {
   font-family: 'Playfair Display', serif;
   font-size: 20px;
   font-weight: 700;
-  color: #384B16;
+  color: var(--loka-primary);
 }
 
 /* Tab bar */
@@ -77,7 +77,7 @@
   background: var(--loka-primary);
   color: white;
   border-color: var(--loka-primary);
-  box-shadow: 0 4px 12px rgba(56,75,22,.2);
+  box-shadow: 0 4px 12px rgba(59, 74, 26,.2);
 }
 
 .info-tab:active { transform: scale(.96); }
@@ -96,7 +96,7 @@
 .info-card {
   display: flex;
   align-items: center;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 14px;
   padding: 14px;
   gap: 12px;
@@ -111,7 +111,7 @@
   width: 60px;
   height: 60px;
   border-radius: 10px;
-  background: #F3EEE5;
+  background: var(--loka-cream);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -133,8 +133,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #C4CED8;
-  background: #F3EEE5;
+  color: var(--loka-border);
+  background: var(--loka-cream);
 }
 
 .info-card-body {
@@ -145,7 +145,7 @@
 .info-card-title {
   font-size: 14px;
   font-weight: 600;
-  color: #1B2023;
+  color: var(--loka-text-primary);
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -154,7 +154,7 @@
 
 .info-card-desc {
   font-size: 12px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -171,22 +171,22 @@
 }
 
 .info-card-tag.product {
-  color: #85B085;
+  color: var(--loka-success);
   background: rgba(133,176,133,0.1);
 }
 
 .info-card-tag.experience {
-  color: #D18E38;
-  background: rgba(209,142,56,0.1);
+  color: var(--loka-accent-copper);
+  background: rgba(196, 137, 58,0.1);
 }
 
 .info-card-tag.article {
-  color: #D18E38;
-  background: rgba(209,142,56,0.1);
+  color: var(--loka-accent-copper);
+  background: rgba(196, 137, 58,0.1);
 }
 
 .info-card-arrow {
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   flex-shrink: 0;
 }
 
@@ -204,19 +204,19 @@
 
 .info-empty-icon {
   margin: 0 auto 12px;
-  color: #D4DCE5;
+  color: var(--loka-border-light);
 }
 
 .info-empty-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1B2023;
+  color: var(--loka-text-primary);
   margin-bottom: 4px;
 }
 
 .info-empty-desc {
   font-size: 14px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
 }
 
 
@@ -235,7 +235,7 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   flex-shrink: 0;
-  background-color: #d4c9a8;
+  background-color: var(--loka-accent-gold);
 }
 
 .info-detail-hero-img {
@@ -307,7 +307,7 @@
   font-family: 'Playfair Display', serif;
   font-size: 20px;
   font-weight: 700;
-  color: #1B2023;
+  color: var(--loka-text-primary);
   margin-bottom: 8px;
   line-height: 1.3;
 }
@@ -318,7 +318,7 @@
   gap: 16px;
   margin-bottom: 18px;
   font-size: 0.85rem;
-  color: #5f6c7a;
+  color: var(--loka-text-muted);
   align-items: center;
 }
 
@@ -334,7 +334,7 @@
 }
 
 .info-detail-desc {
-  color: #36454b;
+  color: var(--loka-text-secondary);
   line-height: 1.7;
   margin-bottom: 20px;
   font-size: 0.95rem;
@@ -359,7 +359,7 @@
 }
 
 .info-share-btn:active {
-  background: rgba(56,75,22,0.06);
+  background: rgba(59, 74, 26,0.06);
 }
 
 /* Gallery carousel */
@@ -410,7 +410,7 @@
 .info-carousel-dot.active {
   width: 20px;
   border-radius: 4px;
-  background: #fff;
+  background: var(--loka-bg-card);
 }
 
 .info-carousel-arrow {
@@ -426,7 +426,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--loka-white);
   cursor: pointer;
   z-index: 2;
 }

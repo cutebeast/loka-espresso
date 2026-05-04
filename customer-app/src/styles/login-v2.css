@@ -43,7 +43,7 @@
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
-.country-selector:active { background: rgba(56,75,22,0.06); }
+.country-selector:active { background: rgba(59, 74, 26,0.06); }
 
 .country-selector-flag {
   display: block;
@@ -95,7 +95,7 @@
 .social-btn {
   width: 100%;
   padding: 13px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border: 1.5px solid var(--loka-border);
   border-radius: 12px;
   font-size: 14px;
@@ -123,11 +123,11 @@
   background: linear-gradient(135deg, #4285F4 25%, #EA4335 25%, #EA4335 50%, #FBBC05 50%, #FBBC05 75%, #34A853 75%);
 }
 .social-icon-apple {
-  background: #000;
+  background: var(--loka-text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--loka-white);
   font-size: 12px;
   font-weight: 700;
 }
@@ -163,8 +163,8 @@
   color: var(--loka-text-muted);
 }
 .lm-avatar-filled {
-  background: linear-gradient(135deg, var(--color-primary), #5a7a2a);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary), var(--loka-primary-light));
+  color: var(--loka-white);
 }
 
 /* ── Country Picker (rendered inside LoginModal) ── */
@@ -195,7 +195,7 @@
 }
 .country-search-inner:focus-within {
   border-color: var(--loka-primary);
-  box-shadow: 0 0 0 3px rgba(56,75,22,0.08);
+  box-shadow: 0 0 0 3px rgba(59, 74, 26,0.08);
 }
 
 .country-search-icon { flex-shrink: 0; color: var(--loka-text-muted); }
@@ -226,7 +226,7 @@
   padding: 0;
 }
 .country-search-clear:active { background: var(--loka-text-muted); }
-.country-search-clear svg { width: 10px; height: 10px; stroke: #fff; }
+.country-search-clear svg { width: 10px; height: 10px; stroke: var(--loka-white); }
 
 .country-list {
   flex: 1;
@@ -251,7 +251,7 @@
   padding: 14px 20px;
   background: none;
   border: none;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--loka-bg-light);
   cursor: pointer;
   text-align: left;
   transition: background 0.15s;
@@ -260,7 +260,7 @@
 }
 .country-item:last-child { border-bottom: none; }
 .country-item:active { background: var(--loka-cream); }
-.country-item-selected { background: rgba(56,75,22,0.04); }
+.country-item-selected { background: rgba(59, 74, 26,0.04); }
 
 .country-item-flag {
   display: block;
@@ -303,7 +303,7 @@
 .country-item-check svg {
   width: 12px;
   height: 12px;
-  stroke: #fff;
+  stroke: var(--loka-white);
   fill: none;
   stroke-width: 3;
 }

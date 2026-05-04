@@ -19,16 +19,16 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   padding: 20px 20px 8px;
 }
 
 /* Menu card */
 .settings-menu-card {
   margin: 0;
-  background: #fff;
-  border-top: 1px solid #D4DCE5;
-  border-bottom: 1px solid #D4DCE5;
+  background: var(--loka-bg-card);
+  border-top: 1px solid var(--loka-border-light);
+  border-bottom: 1px solid var(--loka-border-light);
 }
 
 .settings-menu-item {
@@ -39,7 +39,7 @@
   width: 100%;
   background: none;
   border: none;
-  border-bottom: 1px solid #D4DCE5;
+  border-bottom: 1px solid var(--loka-border-light);
   cursor: pointer;
   font-family: var(--font-sans);
 }
@@ -57,8 +57,8 @@
   flex-shrink: 0;
 }
 
-.settings-icon-terms  { background: #F3EEE5; color: var(--loka-accent-brown); }
-.settings-icon-privacy { background: #E6F0E8; color: var(--loka-primary); }
+.settings-icon-terms  { background: var(--loka-cream); color: var(--loka-accent-brown); }
+.settings-icon-privacy { background: var(--color-success-light); color: var(--loka-primary); }
 
 .settings-menu-label {
   flex: 1;
@@ -69,7 +69,7 @@
 }
 
 .settings-menu-arrow {
-  color: #B0BAC5;
+  color: var(--loka-border);
   flex-shrink: 0;
 }
 
@@ -77,9 +77,9 @@
 .settings-about-section {
   margin: 16px 20px;
   padding: 20px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 16px;
-  border: 1px solid #D4DCE5;
+  border: 1px solid var(--loka-border-light);
 }
 
 .settings-about-brand {
@@ -108,7 +108,7 @@
 
 .settings-about-desc {
   font-size: 13px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   line-height: 1.6;
 }
 
@@ -120,11 +120,11 @@
 
 .settings-version {
   font-size: 13px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   margin-bottom: 4px;
 }
 
 .settings-attribution {
   font-size: 11px;
-  color: #B0BAC5;
+  color: var(--loka-border);
 }

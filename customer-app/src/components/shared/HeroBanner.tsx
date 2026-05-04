@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 
 import TypePill from './TypePill';
-import { resolveAssetUrl } from '@/lib/tokens';
+import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 
 interface HeroBannerProps {
   imageUrl?: string | null;
@@ -20,7 +20,7 @@ export default function HeroBanner({ imageUrl, tag, onBack, aspectRatio = 16 / 9
         className="hb-bg"
         style={imageUrl
           ? { backgroundImage: `url(${resolveAssetUrl(imageUrl)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-          : { background: 'linear-gradient(135deg, #F3EEE5 0%, rgba(209,142,56,0.3) 100%)' }
+          : { background: `linear-gradient(135deg, ${LOKA.cream} 0%, rgba(209,142,56,0.3) 100%)` }
         }
       />
       <div className="hb-overlay" />
@@ -31,7 +31,7 @@ export default function HeroBanner({ imageUrl, tag, onBack, aspectRatio = 16 / 9
           className="hb-back-btn"
           aria-label="Go back"
         >
-          <ArrowLeft size={22} color="#384B16" />
+          <ArrowLeft size={22} color={LOKA.primary} />
         </motion.button>
       )}
       {tag && (

@@ -31,7 +31,7 @@
   position: relative;
   width: 100%;
   max-width: 430px;
-  background: #FFFFFF;
+  background: var(--loka-bg-card);
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -20px 50px -12px rgba(15, 19, 23, 0.25);
   display: flex;
@@ -50,7 +50,7 @@
 
 .store-picker-close {
   width: 36px; height: 36px; border-radius: 10px;
-  background: #E4EAEF; border: none;
+  background: var(--loka-bg); border: none;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0;
 }
@@ -67,7 +67,7 @@
   gap: 10px;
   border: 1.5px solid var(--loka-border-light);
   border-radius: 12px;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   padding: 10px 14px;
 }
 
@@ -86,7 +86,7 @@
   border: 1.5px solid var(--loka-border-light);
   border-radius: 14px;
   margin-bottom: 10px;
-  background: #fff;
+  background: var(--loka-bg-card);
   position: relative;
   transition: border-color 0.2s, background 0.2s;
 }

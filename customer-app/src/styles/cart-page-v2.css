@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   overflow: hidden;
 }
 
@@ -16,7 +16,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-bottom: 1px solid var(--loka-border-light);
   flex-shrink: 0;
 }
@@ -70,14 +70,14 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #E4EAEF;
+  background: var(--loka-bg);
 }
 
 .cart-context-icon {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(209,142,56,0.15);
+  background: rgba(196, 137, 58,0.15);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -121,7 +121,7 @@
 .cart-mode-bar {
   display: flex;
   gap: 4px;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   border-radius: 10px;
   padding: 3px;
 }
@@ -140,9 +140,9 @@
   transition: all 0.2s;
 }
 .cart-mode-btn.active {
-  background: #fff;
+  background: var(--loka-bg-card);
   color: var(--loka-primary);
-  box-shadow: 0 2px 8px rgba(56,75,22,0.12);
+  box-shadow: 0 2px 8px rgba(59, 74, 26,0.12);
 }
 .cart-mode-btn:disabled {
   opacity: 0.5;
@@ -162,7 +162,7 @@
   gap: 12px;
   align-items: flex-start;
   padding: 14px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 16px;
   border: 1px solid var(--loka-border-light);
   margin-bottom: 8px;
@@ -251,7 +251,7 @@
 }
 
 .cart-custom-tag {
-  background: #F2F6EA;
+  background: var(--color-primary-50);
   color: var(--loka-primary);
   padding: 2px 8px;
   border-radius: 10px;
@@ -291,7 +291,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   border: 1px solid var(--loka-border-light);
   display: flex;
   align-items: center;
@@ -301,7 +301,7 @@
   font-size: 12px;
   font-weight: 700;
 }
-.cart-qty-btn:active { background: #D4DCE5; }
+.cart-qty-btn:active { background: var(--loka-border-light); }
 
 .cart-qty-value {
   font-weight: 600;
@@ -313,7 +313,7 @@
 
 /* ── Notes ── */
 .cart-notes-card {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 16px;
   padding: 14px;
   border: 1px solid var(--loka-border-light);
@@ -334,7 +334,7 @@
   padding: 10px;
   font-size: 13px;
   min-height: 50px;
-  background: #fff;
+  background: var(--loka-bg-card);
   color: var(--loka-text-primary);
   font-family: var(--font-sans);
   resize: none;
@@ -345,7 +345,7 @@
 
 /* ── Summary ── */
 .cart-summary-card {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 16px;
   padding: 14px;
   border: 1px solid var(--loka-border-light);
@@ -377,13 +377,13 @@
 /* ── Footer / checkout btn ── */
 .cart-footer {
   padding: 12px 16px 20px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-top: 1px solid var(--loka-border-light);
 }
 
 .cart-checkout-btn {
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   font-weight: 600;
   font-size: 15px;
   padding: 14px 20px;
@@ -391,7 +391,7 @@
   width: 100%;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(56,75,22,0.15);
+  box-shadow: 0 4px 12px rgba(59, 74, 26,0.15);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -407,7 +407,7 @@
 /* ── Scan QR for dine-in ── */
 .cart-scan-btn {
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   font-weight: 600;
   font-size: 15px;
   padding: 14px;
@@ -431,8 +431,8 @@
   padding: 8px;
   margin-bottom: 8px;
   font-size: 13px;
-  color: #7a4e18;
-  background: rgba(209,142,56,0.1);
+  color: var(--loka-accent-brown);
+  background: rgba(196, 137, 58,0.1);
   border-radius: 12px;
 }
 
@@ -445,7 +445,7 @@
   height: 100%;
   padding: 40px;
   text-align: center;
-  background: #fff;
+  background: var(--loka-bg-card);
 }
 
 .cart-empty-icon {
@@ -474,7 +474,7 @@
 
 .cart-empty-btn {
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   border: none;
   border-radius: 40px;
   padding: 14px 28px;

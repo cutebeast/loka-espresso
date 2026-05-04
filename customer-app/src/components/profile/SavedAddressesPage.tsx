@@ -7,6 +7,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { PageHeader } from '@/components/shared';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import api from '@/lib/api';
+import { LOKA } from '@/lib/tokens';
 
 interface Address {
   id: number; label: string; address: string; apartment?: string;
@@ -142,7 +143,7 @@ export default function SavedAddressesPage() {
           </div>
         ) : addresses.length === 0 ? (
           <div className="sav2-empty">
-            <div className="sav2-empty-icon"><MapPin size={28} color="#D4DCE5" /></div>
+            <div className="sav2-empty-icon"><MapPin size={28} color={LOKA.borderLight} /></div>
             <p className="sav2-empty-title">No saved addresses</p>
             <p className="sav2-empty-desc">Add an address for faster delivery checkout</p>
           </div>
@@ -161,8 +162,8 @@ export default function SavedAddressesPage() {
                     {dist && <span className="sav2-distance-badge"><Clock size={12} />{dist}</span>}
                   </div>
                   <div className="sav2-card-actions">
-                    <button onClick={() => openEdit(addr)} className="sav2-edit-btn"><Pencil size={14} color="#6A7A8A" /></button>
-                    <button onClick={() => setDeleteTarget(confirm ? null : addr.id)} className={`sav2-delete-btn${confirm ? ' sav2-delete-btn-confirming' : ''}`}><Trash2 size={14} color="#C75050" /></button>
+                    <button onClick={() => openEdit(addr)} className="sav2-edit-btn"><Pencil size={14} color={LOKA.textMuted} /></button>
+                    <button onClick={() => setDeleteTarget(confirm ? null : addr.id)} className={`sav2-delete-btn${confirm ? ' sav2-delete-btn-confirming' : ''}`}><Trash2 size={14} color={LOKA.danger} /></button>
                   </div>
                 </div>
                 {confirm && (

@@ -15,10 +15,10 @@
 
 /* Stats card — gradient */
 .referral-stats-card {
-  background: linear-gradient(135deg, var(--loka-primary) 0%, #4a6a20 100%);
+  background: linear-gradient(135deg, var(--loka-primary) 0%, var(--loka-primary-light) 100%);
   border-radius: 16px;
   padding: 20px;
-  color: #fff;
+  color: var(--loka-white);
   margin-bottom: 16px;
 }
 
@@ -45,7 +45,7 @@
 .referral-stats-name {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--loka-white);
 }
 
 .referral-stats-sub {
@@ -68,7 +68,7 @@
 .referral-big-num {
   font-size: 28px;
   font-weight: 700;
-  color: #fff;
+  color: var(--loka-white);
   line-height: 1;
 }
 
@@ -95,7 +95,7 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--loka-accent-copper);
-  background: rgba(209,142,56,0.2);
+  background: rgba(196, 137, 58,0.2);
   padding: 2px 8px;
   border-radius: 4px;
 }
@@ -122,7 +122,7 @@
 
 /* Code box */
 .referral-code-box {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 16px;
   padding: 20px;
   border: 2px solid var(--loka-primary);
@@ -132,7 +132,7 @@
 
 .referral-code-label {
   font-size: 11px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
   font-weight: 600;
@@ -177,7 +177,7 @@
   cursor: pointer;
   border: none;
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -194,7 +194,7 @@
   cursor: pointer;
   border: none;
   background: var(--loka-accent-copper);
-  color: #fff;
+  color: var(--loka-white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -215,15 +215,15 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 10px;
-  border: 1px solid #D4DCE5;
+  border: 1px solid var(--loka-border-light);
   margin-bottom: 6px;
 }
 
 .referral-milestone-row.achieved {
   border-color: var(--loka-success);
-  background: #f0f8f0;
+  background: var(--color-success-light);
 }
 
 .referral-milestone-icon {
@@ -238,17 +238,17 @@
 
 .referral-milestone-icon.done {
   background: var(--loka-success);
-  color: #fff;
+  color: var(--loka-white);
 }
 
 .referral-milestone-icon.locked {
-  background: #D4DCE5;
-  color: #6A7A8A;
+  background: var(--loka-border-light);
+  color: var(--loka-text-muted);
 }
 
 .referral-milestone-info { flex: 1; }
 .referral-milestone-name { font-size: 13px; font-weight: 600; color: var(--loka-text-primary); }
-.referral-milestone-desc { font-size: 11px; color: #6A7A8A; }
+.referral-milestone-desc { font-size: 11px; color: var(--loka-text-muted); }
 
 /* Invited users */
 .referral-invited-title {
@@ -259,13 +259,13 @@
 }
 
 .referral-invited-item {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 12px;
   padding: 12px;
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #D4DCE5;
+  border: 1px solid var(--loka-border-light);
   margin-bottom: 8px;
 }
 
@@ -293,7 +293,7 @@
 
 .referral-invited-meta {
   font-size: 11px;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   margin-top: 1px;
 }
 
@@ -309,10 +309,10 @@
 
 .referral-status-badge.rewarded {
   background: rgba(133,176,133,0.15);
-  color: #3a7a3a;
+  color: var(--loka-success);
 }
 
 .referral-status-badge.pending {
-  background: rgba(209,142,56,0.12);
+  background: rgba(196, 137, 58,0.12);
   color: var(--loka-accent-copper);
 }

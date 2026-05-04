@@ -67,8 +67,8 @@
   position: relative;
 }
 .sav2-card.is-default {
-  border: 2px solid #85B085;
-  background: linear-gradient(135deg, #fafffe 0%, #f5faf5 100%);
+  border: 2px solid var(--loka-success);
+  background: linear-gradient(135deg, var(--color-success-light) 0%, var(--color-success-light) 100%);
 }
 .sav2-card-top {
   display: flex;
@@ -111,8 +111,8 @@
 }
 .sav2-default-pill {
   padding: 2px 8px;
-  background: #85B085;
-  color: #fff;
+  background: var(--loka-success);
+  color: var(--loka-white);
   border-radius: 4px;
   font-size: 10px;
   font-weight: 600;
@@ -151,7 +151,7 @@
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background: rgba(209, 142, 56, 0.08);
+  background: rgba(196, 137, 58, 0.08);
   border-radius: 6px;
   font-size: 11px;
   font-weight: 500;
@@ -200,7 +200,7 @@
   width: 100%;
   padding: 14px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--loka-white);
   border: none;
   border-radius: 12px;
   font-family: var(--font-sans);
@@ -240,7 +240,7 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--color-text-muted);
-  background: #fff;
+  background: var(--loka-bg-card);
   cursor: pointer;
   font-family: var(--font-sans);
   transition: all 0.15s;
@@ -252,7 +252,7 @@
 }
 .sav2-label-pill.active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--loka-white);
   border-color: var(--color-primary);
 }
 .sav2-label-pill.disabled {
@@ -286,7 +286,7 @@
   font-size: 14px;
   color: var(--color-text-primary);
   outline: none;
-  background: #fff;
+  background: var(--loka-bg-card);
   box-sizing: border-box;
   transition: border-color 0.15s;
 }
@@ -294,7 +294,7 @@
   border-color: var(--color-primary);
 }
 .sav2-input::placeholder {
-  color: #c0c8d0;
+  color: var(--loka-border);
 }
 
 /* Multiline textarea for street address */
@@ -307,7 +307,7 @@
   font-size: 14px;
   color: var(--color-text-primary);
   outline: none;
-  background: #fff;
+  background: var(--loka-bg-card);
   box-sizing: border-box;
   transition: border-color 0.15s;
   resize: none;
@@ -318,7 +318,7 @@
   border-color: var(--color-primary);
 }
 .sav2-textarea::placeholder {
-  color: #c0c8d0;
+  color: var(--loka-border);
 }
 
 /* Save button */
@@ -326,7 +326,7 @@
   width: 100%;
   padding: 14px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--loka-white);
   border: none;
   border-radius: 12px;
   font-family: var(--font-sans);
@@ -363,7 +363,7 @@
 .sav2-delete-confirm-yes {
   padding: 6px 16px;
   background: var(--color-danger);
-  color: #fff;
+  color: var(--loka-white);
   border: none;
   border-radius: 8px;
   font-size: 12px;

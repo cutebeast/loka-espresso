@@ -106,7 +106,7 @@
   background: var(--loka-white);
   border-radius: 20px;
   padding: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(74, 34, 16, 0.06);
 }
 
 /* ── Form Elements ────────────────────────────────────── */
@@ -415,11 +415,11 @@
 }
 
 .offline-banner.online {
-  background: #059669;
+  background: var(--loka-success);
 }
 
 .offline-banner.offline {
-  background: #B91C1C;
+  background: var(--loka-danger);
 }
 
 /* ── Service Worker Update Banner ─────────────────────── */
@@ -496,7 +496,7 @@
   font-weight: 700;
   border: none;
   cursor: pointer;
-  box-shadow: 0 12px 24px -8px rgba(56,75,22,0.4);
+  box-shadow: 0 12px 24px -8px rgba(59,74,26,0.35);
   z-index: 40;
 }
 
@@ -541,11 +541,11 @@
 }
 
 .item-card-thumb-bg {
-  background: linear-gradient(135deg, #F2F6EA 0%, #F3EEE5 100%);
+  background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--loka-cream) 100%);
 }
 
 .item-card-thumb-bg.has-image {
-  background: #EFEAE0;
+  background: var(--loka-bg-light);
 }
 
 .item-card-featured-corner {

@@ -2,7 +2,7 @@
 
 import { memo, useRef } from 'react';
 import { Coffee } from 'lucide-react';
-import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
+import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useFitText } from '@/hooks/useFitText';
 import type { MenuItem } from '@/lib/api';
 import { Plus, ArrowRight } from 'lucide-react';
@@ -24,7 +24,7 @@ const ProductCard = memo(function ProductCard({
           <img src={imgSrc} alt="" className="card-bg-img" loading="lazy" />
         ) : (
         <div className="home-img-fallback">
-            <Coffee size={24} strokeWidth={1.5} color="#C4CED8" />
+            <Coffee size={24} strokeWidth={1.5} color={LOKA.border} />
           </div>
         )}
       </div>

@@ -16,7 +16,7 @@ import { GuestGate } from '@/components/auth/GuestGate';
 import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
-import { formatPrice } from '@/lib/tokens';
+import { formatPrice, LOKA } from '@/lib/tokens';
 
 const TOPUP_AMOUNTS = [
   { amount: 20, label: 'Starter' },
@@ -39,7 +39,7 @@ export default function WalletPage() {
     try {
       const res = await api.get('/wallet');
       setBalance(res.data?.balance ?? balance);
-    } catch { console.error("Wallet operation failed");
+    } catch (err) { console.error('[WalletPage] Failed to fetch balance:', err);
       // keep existing
     }
   }, [balance, setBalance]);
@@ -49,7 +49,7 @@ export default function WalletPage() {
     try {
       const res = await api.get('/wallet/transactions', { params: { page_size: 20 } });
       setTransactions(Array.isArray(res.data) ? res.data : []);
-    } catch { console.error("Wallet operation failed");
+    } catch (err) { console.error('[WalletPage] Failed to fetch transactions:', err);
       // keep existing
     } finally {
       setLoadingTx(false);
@@ -92,7 +92,7 @@ export default function WalletPage() {
       await fetchTransactions();
       setSelectedAmount(null);
       setCustomAmount('');
-    } catch { console.error("Wallet operation failed");
+    } catch (err) { console.error('[WalletPage] Top-up failed:', err);
       showToast('Top-up failed. Please try again.', 'error');
     } finally {
       setToppingUp(false);
@@ -193,7 +193,7 @@ export default function WalletPage() {
           ) : transactions.length === 0 ? (
             <div className="topup-empty">
               <div className="topup-empty-icon">
-                <Wallet size={24} color="#C4CED8" />
+                <Wallet size={24} color={LOKA.border} />
               </div>
               <p className="home-empty-text">No transactions yet</p>
             </div>

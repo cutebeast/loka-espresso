@@ -8,7 +8,7 @@ import api from '@/lib/api';
 import type { MenuItem, CustomizationOption } from '@/lib/api';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
-import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
+import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 
 interface SelectedOption {
   id: number;
@@ -178,7 +178,7 @@ export default function MenuPage() {
         {showSearch ? (
           <div className="menu-search-bar">
             <div className="menu-search-input-wrap">
-              <Search size={14} color="#6A7A8A" />
+              <Search size={14} color={LOKA.textMuted} />
               <input
                 type="text"
                 autoFocus
@@ -256,7 +256,7 @@ export default function MenuPage() {
         ) : filteredItems.length === 0 ? (
           <div className="menu-empty-state">
             <div className="menu-empty-icon">
-              <Coffee size={24} color="#D18E38" strokeWidth={1.5} />
+              <Coffee size={24} color={LOKA.copper} strokeWidth={1.5} />
             </div>
             <p className="menu-empty-title">
               {searchQuery ? `No items match "${searchQuery}"` : loadError ? 'Unable to load menu' : 'No items available'}
@@ -292,10 +292,10 @@ export default function MenuPage() {
                     >
                       <div className="menu-product-img">
                         {imgSrc && !brokenImages.has(item.id) ? (
-                          <img src={imgSrc} alt={item.name} className="menu-product-img-bg" onError={() => { setBrokenImages(prev => new Set(prev).add(item.id)); }} />
+                          <img src={imgSrc} alt={item.name} loading="lazy" className="menu-product-img-bg" onError={() => { setBrokenImages(prev => new Set(prev).add(item.id)); }} />
                         ) : (
                           <div className="menu-img-fallback">
-                            <Coffee size={28} color="#C4CED8" strokeWidth={1.5} />
+                            <Coffee size={28} color={LOKA.border} strokeWidth={1.5} />
                           </div>
                         )}
                         {item.is_featured && (

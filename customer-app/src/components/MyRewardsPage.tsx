@@ -5,6 +5,7 @@ import { ArrowLeft, Gift, Ticket, Clock, QrCode, Shield } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import type { UserReward, UserVoucher } from '@/lib/api';
+import { LOKA } from '@/lib/tokens';
 
 interface MyRewardsPageProps {
   onBack: () => void;
@@ -30,9 +31,11 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
     return new Date(dateStr).toLocaleDateString('en-MY', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const [now] = useState(() => Date.now());
+
   const daysUntil = (dateStr: string | null | undefined): number | null => {
     if (!dateStr) return null;
-    const diff = new Date(dateStr).getTime() - Date.now();
+    const diff = new Date(dateStr).getTime() - now;
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
@@ -81,7 +84,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
         {activeTab === 'rewards' ? (
           availableRewards.length === 0 ? (
             <div className="myrv-empty">
-              <div className="myrv-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
+              <div className="myrv-empty-icon"><Gift size={40} color={LOKA.borderLight} /></div>
               <div className="myrv-empty-title">No rewards yet</div>
               <div className="myrv-empty-desc">Redeem your points to earn rewards and start collecting today.</div>
             </div>
@@ -92,7 +95,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                 <div key={reward.id} className="myrv-owned-card" onClick={() => setSelectedReward(reward)}>
                   <div className="myrv-item-thumb">
                     {reward.reward_image_url ? (
-                      <img src={reward.reward_image_url} alt="" />
+                      <img src={reward.reward_image_url} alt="" loading="lazy" />
                     ) : (
                       <Gift size={24} />
                     )}
@@ -116,7 +119,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
           )
         ) : availableVouchers.length === 0 ? (
           <div className="myrv-empty">
-            <div className="myrv-empty-icon"><Ticket size={40} color="#D4DCE5" /></div>
+            <div className="myrv-empty-icon"><Ticket size={40} color={LOKA.borderLight} /></div>
             <div className="myrv-empty-title">No vouchers yet</div>
             <div className="myrv-empty-desc">Claim promotions and complete surveys to earn vouchers.</div>
           </div>

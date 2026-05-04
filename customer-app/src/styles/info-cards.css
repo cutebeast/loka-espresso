@@ -48,7 +48,7 @@
   justify-content: center;
   border-radius: 10px;
 }
-.sub-header-action:active { background: rgba(56,75,22,0.05); }
+.sub-header-action:active { background: rgba(59,74,26,0.05); }
 
 
 
@@ -350,7 +350,7 @@
 }
 
 .promo-success-icon {
-  color: #1A6E4B;
+  color: var(--loka-success);
 }
 
 /* ============================================

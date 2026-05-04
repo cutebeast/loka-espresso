@@ -26,9 +26,9 @@ const FAQ_ITEMS = [
 ];
 
 const SUBJECTS = [
-  { id: 'feedback', label: 'General', icon: MessageSquare, bg: '#F3EEE5', stroke: '#57280D' },
-  { id: 'order', label: 'Order Issue', icon: Package, bg: '#FFF3E0', stroke: '#D18E38' },
-  { id: 'rewards', label: 'Rewards', icon: Gift, bg: '#E6F0E8', stroke: '#384B16' },
+  { id: 'feedback', label: 'General', icon: MessageSquare, bg: '#F5F0E6', stroke: '#4A2210' },
+  { id: 'order', label: 'Order Issue', icon: Package, bg: '#FFF3E0', stroke: '#C4893A' },
+  { id: 'rewards', label: 'Rewards', icon: Gift, bg: '#E6F0E8', stroke: '#3B4A1A' },
   { id: 'technical', label: 'Technical', icon: AlertCircle, bg: '#FDEAEA', stroke: '#C75050' },
 ];
 

@@ -22,7 +22,7 @@
   max-width: 430px;
   height: 100vh;
   height: 100dvh;
-  background: linear-gradient(180deg, var(--loka-cream) 0%, #FFFFFF 100%);
+  background: linear-gradient(180deg, var(--loka-cream) 0%, var(--loka-white) 100%);
   display: flex;
   flex-direction: column;
   align-items: center;

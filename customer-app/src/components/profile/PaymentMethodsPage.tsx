@@ -6,7 +6,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
-import { formatPrice } from '@/lib/tokens';
+import { formatPrice, LOKA } from '@/lib/tokens';
 
 interface PaymentMethodItem {
   id: number;
@@ -103,7 +103,7 @@ export default function PaymentMethodsPage() {
         ) : methods.length === 0 ? (
           <div className="payment-empty">
             <div className="payment-empty-icon">
-              <CreditCard size={32} color="#D18E38" />
+              <CreditCard size={32} color={LOKA.copper} />
             </div>
             <div className="payment-empty-title">No payment methods yet</div>
             <div className="payment-empty-text">

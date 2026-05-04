@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
+import { LOKA } from '@/lib/tokens';
 
 interface AuthStepLayoutProps {
   children: ReactNode;
@@ -22,7 +23,7 @@ export function AuthStepLayout({ children, footer, onBack }: AuthStepLayoutProps
           className="auth-back-btn"
           aria-label="Go back"
         >
-          <ArrowLeft size={20} color="#1B2023" />
+          <ArrowLeft size={20} color={LOKA.textPrimary} />
         </motion.button>
       )}
 

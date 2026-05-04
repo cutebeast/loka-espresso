@@ -48,6 +48,7 @@
 @import "../styles/help-support-v2.css";
 @import "../styles/settings-v2.css";
 @import "../styles/legal-v2.css";
+@import "../styles/layout-extras.css";
 
 /* ============================================
    REMAINING UTILITY CLASSES (not in modules)
@@ -84,7 +85,7 @@
 }
 
 .sheet-content {
-  background: #FFFFFF;
+  background: var(--loka-bg-card);
   width: 100%;
   max-width: 430px;
   border-radius: 24px 24px 0 0;
@@ -97,7 +98,7 @@
 .sheet-handle {
   width: 36px;
   height: 4px;
-  background: #C4CED8;
+  background: var(--loka-accent-gold);
   border-radius: 999px;
   margin: 16px auto 12px;
   flex-shrink: 0;
@@ -113,19 +114,19 @@
 .sheet-header h3 {
   font-size: 18px;
   font-weight: 700;
-  color: #1B2023;
+  color: var(--loka-text-primary);
 }
 
 .sheet-close {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #F5F7FA;
+  background: var(--loka-bg-light);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6A7A8A;
+  color: var(--loka-text-muted);
   cursor: pointer;
 }
 
@@ -139,24 +140,24 @@
   font-size: 15px;
   font-weight: 700;
   margin: 16px 0 6px;
-  color: #1B2023;
+  color: var(--loka-text-primary);
 }
 
 .sheet-body p {
   font-size: 13.5px;
   line-height: 1.6;
-  color: #3A4A5A;
+  color: var(--loka-text-secondary);
 }
 
 .sheet-footer {
   padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid #E4EAEF;
+  border-top: 1px solid var(--loka-border-light);
   flex-shrink: 0;
 }
 
 .sheet-btn {
-  background: #384B16;
-  color: #FFFFFF;
+  background: var(--loka-primary);
+  color: var(--loka-white);
   border: none;
   border-radius: 999px;
   padding: 14px;
@@ -166,7 +167,7 @@
   cursor: pointer;
 }
 .sheet-btn:active {
-  background: #2A3910;
+  background: var(--loka-primary-dark);
 }
 
 /* Portrait Lock */
@@ -175,7 +176,7 @@
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: var(--color-bg, #E4EAEF);
+  background: var(--color-bg, #F2EEE6);
   align-items: center;
   justify-content: center;
   flex-direction: column;
@@ -187,7 +188,7 @@
   .app-container > :not(.rotate-prompt) { display: none !important; }
   .rotate-prompt { display: flex; }
   .rotate-prompt-inner {
-    background: var(--color-white, #FFFFFF);
+  background: var(--color-white, #FFFDF8);
     border-radius: 24px;
     padding: 32px 40px;
     display: flex;
@@ -203,7 +204,7 @@
   .rotate-prompt-text {
     font-size: 16px;
     font-weight: 700;
-    color: var(--color-text-primary, #1B2023);
+    color: var(--color-text-primary, #1E1B18);
     text-align: center;
   }
 }
@@ -227,17 +228,17 @@
 }
 
 /* Opacity-modifier utility fallbacks */
-.bg-primary-5 { background-color: rgba(56, 75, 22, 0.05); }
-.bg-primary-10 { background-color: rgba(56, 75, 22, 0.1); }
-.bg-primary-30 { background-color: rgba(56, 75, 22, 0.3); }
-.text-primary-40 { color: rgba(56, 75, 22, 0.4); }
-.bg-primary-light-10 { background-color: rgba(74, 106, 29, 0.1); }
-.bg-primary-light-20 { background-color: rgba(74, 106, 29, 0.2); }
-.bg-copper-10 { background-color: rgba(209, 142, 56, 0.1); }
-.border-copper-25 { border-color: rgba(209, 142, 56, 0.25); }
-.border-copper-30 { border-color: rgba(209, 142, 56, 0.3); }
+.bg-primary-5 { background-color: rgba(59, 74, 26, 0.05); }
+.bg-primary-10 { background-color: rgba(59, 74, 26, 0.1); }
+.bg-primary-30 { background-color: rgba(59, 74, 26, 0.3); }
+.text-primary-40 { color: rgba(59, 74, 26, 0.4); }
+.bg-primary-light-10 { background-color: rgba(78, 110, 32, 0.1); }
+.bg-primary-light-20 { background-color: rgba(78, 110, 32, 0.2); }
+.bg-copper-10 { background-color: rgba(196, 137, 58, 0.1); }
+.border-copper-25 { border-color: rgba(196, 137, 58, 0.25); }
+.border-copper-30 { border-color: rgba(196, 137, 58, 0.3); }
 .bg-danger-90 { background-color: rgba(199, 80, 80, 0.9); }
-.shadow-primary-25 { box-shadow: 0 8px 16px rgba(56, 75, 22, 0.25); }
+.shadow-primary-25 { box-shadow: 0 8px 16px rgba(59, 74, 26, 0.20); }
 
 /* ── Loka Design System Typography ── */
 .loka-h1 { font-size: 30px; line-height: 36px; font-weight: 800; color: var(--color-text-primary); }
@@ -257,7 +258,7 @@
   gap: 12px;
   padding: 16px 20px;
   background: var(--color-white, #FFFFFF);
-  border-bottom: 1px solid var(--color-border-subtle, #E4EAEF);
+  border-bottom: 1px solid var(--color-border-subtle, #EBE5DA);
   flex-shrink: 0;
 }
 
@@ -265,7 +266,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--color-bg-light, #F5F7FA);
+  background: var(--color-bg-light, #F8F5EF);
   border: none;
   display: flex;
   align-items: center;
@@ -274,5 +275,5 @@
   flex-shrink: 0;
 }
 .loka-back-btn:active {
-  background: var(--color-border-subtle, #E4EAEF);
+  background: var(--color-border-subtle, #EBE5DA);
 }

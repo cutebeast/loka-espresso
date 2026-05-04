@@ -12,8 +12,8 @@
   align-items: center;
   padding: 16px 20px;
   gap: 12px;
-  background: #fff;
-  border-bottom: 1px solid #D4DCE5;
+  background: var(--loka-bg-card);
+  border-bottom: 1px solid var(--loka-border-light);
   flex-shrink: 0;
 }
 
@@ -24,17 +24,17 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   border: none;
   cursor: pointer;
-  color: #1B2023;
+  color: var(--loka-text-primary);
 }
 
 .mycard-title {
   font-family: 'Playfair Display', serif;
   font-size: 20px;
   font-weight: 700;
-  color: #384B16;
+  color: var(--loka-primary);
 }
 
 .mycard-content {
@@ -53,14 +53,14 @@
   max-width: 340px;
   height: 200px;
   border-radius: 18px;
-  background: linear-gradient(145deg, var(--loka-primary) 0%, #2a3a10 40%, var(--loka-accent-brown) 100%);
+  background: linear-gradient(145deg, var(--loka-primary) 0%, var(--loka-primary-dark) 40%, var(--loka-accent-brown) 100%);
   padding: 24px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 12px 40px rgba(56,75,22,0.3), 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 12px 40px rgba(59, 74, 26,0.3), 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .mycard-physical::before {
@@ -71,7 +71,7 @@
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: rgba(209,142,56,0.15);
+  background: rgba(196, 137, 58,0.15);
 }
 
 .mycard-physical::after {
@@ -97,12 +97,12 @@
   font-family: 'Playfair Display', serif;
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--loka-white);
 }
 
 .mycard-tier-badge {
   background: var(--loka-accent-copper);
-  color: #fff;
+  color: var(--loka-white);
   font-size: 10px;
   font-weight: 700;
   padding: 4px 10px;
@@ -125,7 +125,7 @@
 .mycard-qr {
   width: 64px;
   height: 64px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -142,13 +142,13 @@
 }
 
 .mycard-member-info {
-  color: #fff;
+  color: var(--loka-white);
 }
 
 .mycard-member-name {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--loka-white);
   margin-bottom: 2px;
 }
 
@@ -167,13 +167,13 @@
 }
 
 .mycard-points-display {
-  color: #fff;
+  color: var(--loka-white);
 }
 
 .mycard-pts-val {
   font-size: 22px;
   font-weight: 700;
-  color: #fff;
+  color: var(--loka-white);
   line-height: 1;
 }
 
@@ -202,9 +202,9 @@
   border-radius: 20px;
   font-size: 11px;
   font-weight: 600;
-  border: 1.5px solid #D4DCE5;
-  background: #fff;
-  color: #6A7A8A;
+  border: 1.5px solid var(--loka-border-light);
+  background: var(--loka-bg-card);
+  color: var(--loka-text-muted);
 }
 
 .mycard-tier-pill.active {
@@ -220,7 +220,7 @@
   padding: 14px;
   border-radius: 12px;
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   font-size: 15px;
   font-weight: 600;
   border: none;
@@ -248,8 +248,8 @@
   border-radius: 10px;
   font-size: 12px;
   font-weight: 600;
-  border: 1px solid #D4DCE5;
-  background: #fff;
+  border: 1px solid var(--loka-border-light);
+  background: var(--loka-bg-card);
   color: var(--loka-text-primary);
   display: flex;
   flex-direction: column;
@@ -259,7 +259,7 @@
   font-family: var(--font-sans);
 }
 
-.mycard-action-btn:active { background: #F5F7FA; }
+.mycard-action-btn:active { background: var(--loka-bg-light); }
 
 .mycard-action-icon {
   width: 32px;

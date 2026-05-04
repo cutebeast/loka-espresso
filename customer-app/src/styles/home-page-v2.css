@@ -9,7 +9,7 @@
   flex-direction: column;
   gap: 20px;
   padding: 20px 16px 24px;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   min-height: 100%;
 }
 
@@ -20,8 +20,8 @@
   align-items: center;
   padding: max(14px, env(safe-area-inset-top, 0px)) 20px 12px;
   flex-shrink: 0;
-  background: #F9F7F2;
-  border-bottom: 1px solid #E8E5DF;
+  background: var(--loka-bg-light);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .greeting-text {
@@ -70,7 +70,7 @@
   right: 6px;
   width: 8px;
   height: 8px;
-  background: #C75050;
+  background: var(--loka-danger);
   border-radius: 50%;
   border: 2px solid white;
 }
@@ -89,13 +89,13 @@
    ════════════════════════════════════════════ */
 
 .wallet-card {
-  background: linear-gradient(135deg, #1F2E0B 0%, #384B16 100%);
+  background: linear-gradient(135deg, var(--color-primary-deep) 0%, var(--loka-primary) 100%);
   border-radius: 24px;
   padding: 18px;
   color: white;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 18px 36px -12px rgba(31, 46, 11, 0.45);
+  box-shadow: 0 18px 36px -12px rgba(26, 35, 9, 0.45);
   flex-shrink: 0;
 }
 .wallet-card::before {
@@ -172,10 +172,10 @@
 }
 
 .homepage-points-badge {
-  background: rgba(209, 142, 56, 0.35);
+  background: rgba(196, 137, 58, 0.35);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(209, 142, 56, 0.45);
+  border: 1px solid rgba(196, 137, 58, 0.45);
   border-radius: 999px;
   padding: 5px 12px;
   font-size: 11px;
@@ -204,10 +204,10 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(209, 142, 56, 0.25);
+  background: rgba(196, 137, 58, 0.25);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(209, 142, 56, 0.35);
+  border: 1px solid rgba(196, 137, 58, 0.35);
   border-radius: 16px;
   padding: 4px 10px;
   font-size: 10px;
@@ -240,7 +240,7 @@
 
 /* Guest wallet card */
 .wallet-card-guest {
-  background: linear-gradient(135deg, #E4EAEF 0%, #F5F7FA 100%);
+  background: linear-gradient(135deg, var(--loka-bg) 0%, var(--loka-bg-light) 100%);
   color: var(--color-text-primary);
   box-shadow: 0 10px 24px -8px rgba(0,0,0,0.1), 0 4px 8px -4px rgba(0,0,0,0.06);
   cursor: pointer;
@@ -304,7 +304,7 @@
   scroll-snap-align: start;
   height: 200px;
   border-radius: 24px;
-  background-color: #D4C9A8;
+  background-color: var(--loka-accent-gold);
   position: relative;
   overflow: hidden;
 }
@@ -383,7 +383,7 @@
   scroll-snap-align: start;
   height: 180px;
   border-radius: 24px;
-  background-color: #2A3910;
+  background-color: var(--loka-primary-dark);
   position: relative;
   overflow: hidden;
 }
@@ -596,7 +596,7 @@
   padding: 0 20px;
 }
 .a2hs-modal-box {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(0,0,0,0.15);
   width: 100%;
@@ -657,7 +657,7 @@
   padding: 8px 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
+  color: var(--loka-white);
   background: var(--loka-primary);
   border: none;
   border-radius: 10px;

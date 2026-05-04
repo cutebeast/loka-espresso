@@ -1,53 +1,71 @@
 /* ============================================
    LOKA THEME VARIABLES — Single Source of Truth
-   Standard CSS custom properties. No framework lock-in.
+   Premium Turkish Coffee Brand Aesthetic
    ============================================ */
 
 :root {
-  /* Brand */
-  --color-primary: #384B16;
-  --color-primary-dark: #2A3910;
-  --color-primary-deep: #1F2C0B;
-  --color-primary-light: #4A6A1D;
+  /* Brand — Turkish Olive Grove */
+  --color-primary: #3B4A1A;
+  --color-primary-dark: #263210;
+  --color-primary-deep: #1A2309;
+  --color-primary-light: #4E6E20;
   --color-primary-50: #F5F7F0;
   --color-primary-100: #E8EDE0;
 
-  --color-copper: #D18E38;
-  --color-copper-light: #E5A559;
-  --color-copper-soft: rgba(209, 142, 56, 0.12);
-  --color-copper-mid: rgba(209, 142, 56, 0.25);
+  /* Accent — Turkish Gold */
+  --color-gold: #C9A84C;
+  --color-gold-light: #D9C06A;
+  --color-gold-soft: rgba(201, 168, 76, 0.12);
+  --color-gold-mid: rgba(201, 168, 76, 0.25);
 
-  --color-brown: #57280D;
-  --color-brown-light: #7A4A2E;
-  --color-cream: #F3EEE5;
+  /* Accent — Copper (backward compat) */
+  --color-copper: #C4893A;
+  --color-copper-light: #D9A558;
+  --color-copper-soft: rgba(196, 137, 58, 0.12);
+  --color-copper-mid: rgba(196, 137, 58, 0.25);
 
-  /* Text */
-  --color-text-primary: #1B2023;
-  --color-text-secondary: #3A4A5A;
-  --color-text-muted: #6A7A8A;
+  /* Accent — Turkish Coffee Brown */
+  --color-brown: #4A2210;
+  --color-brown-light: #6A3A22;
+  --color-cream: #F5F0E6;
 
-  /* Surfaces */
-  --color-bg: #E4EAEF;
-  --color-bg-light: #F5F7FA;
-  --color-bg-card: #F9FBFE;
-  --color-surface: #F5F7FA;
+  /* Text — Warm Tones */
+  --color-text-primary: #1E1B18;
+  --color-text-secondary: #4A4038;
+  --color-text-muted: #8A8078;
+
+  /* Surfaces — Warm Parchment */
+  --color-bg: #F2EEE6;
+  --color-bg-light: #F8F5EF;
+  --color-bg-card: #FFFDF8;
+  --color-surface: #F8F5EF;
   --color-surface-warm: #F5F7F0;
   --color-white: #FFFFFF;
 
-  /* Borders */
-  --color-border: #C4CED8;
-  --color-border-light: #D4DCE5;
-  --color-border-subtle: #E4EAEF;
+  /* Borders — Warm Cream */
+  --color-border: #D5CCBE;
+  --color-border-light: #E0D8CB;
+  --color-border-subtle: #EBE5DA;
 
-  /* Semantic */
-  --color-success: #85B085;
-  --color-success-light: #E8F5E9;
-  --color-warning: #D18E38;
-  --color-warning-light: #FFF3E0;
+  /* Semantic — Warm Tints */
+  --color-success: #7AAA7A;
+  --color-success-light: #E8F2E8;
+  --color-warning: #C9A84C;
+  --color-warning-light: #FDF5E6;
   --color-danger: #C75050;
   --color-danger-light: #FFEBEE;
-  --color-info: #4A607A;
-  --color-info-light: #E3F2FD;
+  --color-info: #5A707A;
+  --color-info-light: #E8EFF3;
+
+  /* Tier — Metallic Gradients */
+  --tier-bronze: #A0783A;
+  --tier-bronze-dark: #7A5828;
+  --tier-silver: #B0A9A0;
+  --tier-silver-dark: #8A8278;
+  --tier-gold: #D4AF37;
+  --tier-gold-dark: #B8942A;
+  --tier-platinum: #8A9AB0;
+  --tier-platinum-dark: #5A6A80;
 
   /* Radii */
   --radius-sm: 6px;
@@ -57,31 +75,34 @@
   --radius-2xl: 24px;
   --radius-full: 9999px;
 
-  /* Shadows (as CSS strings) */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.10);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
-  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03);
-  --shadow-nav: 0 -4px 10px rgba(0, 0, 0, 0.02);
-  --shadow-primary: 0 8px 16px rgba(56, 75, 22, 0.25);
-  --shadow-primary-sm: 0 2px 8px rgba(56, 75, 22, 0.12);
-  --shadow-wallet: 0 18px 36px -14px rgba(31, 44, 11, 0.55);
+  /* Shadows — Golden Tint */
+  --shadow-sm: 0 1px 3px rgba(74, 34, 16, 0.04);
+  --shadow-md: 0 4px 6px rgba(74, 34, 16, 0.06);
+  --shadow-lg: 0 10px 15px rgba(74, 34, 16, 0.08);
+  --shadow-xl: 0 20px 25px rgba(74, 34, 16, 0.10);
+  --shadow-card: 0 4px 12px rgba(74, 34, 16, 0.04);
+  --shadow-nav: 0 -4px 10px rgba(74, 34, 16, 0.03);
+  --shadow-primary: 0 8px 16px rgba(59, 74, 26, 0.20);
+  --shadow-primary-sm: 0 2px 8px rgba(59, 74, 26, 0.10);
+  --shadow-wallet: 0 18px 36px -14px rgba(26, 35, 9, 0.50);
 
-  /* Loka-branded aliases (used in CSS files and inline styles) */
+  /* Loka-branded aliases */
   --loka-primary: var(--color-primary);
   --loka-primary-dark: var(--color-primary-dark);
+  --loka-primary-light: var(--color-primary-light);
+  --loka-accent-gold: var(--color-gold);
   --loka-accent-copper: var(--color-copper);
   --loka-accent-brown: var(--color-brown);
   --loka-text-primary: var(--color-text-primary);
   --loka-text-secondary: var(--color-text-secondary);
   --loka-text-muted: var(--color-text-muted);
   --loka-bg: var(--color-bg);
-  --loka-bg-light: #F9F7F2;
-  --loka-bg-card: var(--color-white);
+  --loka-bg-light: #F8F5EF;
+  --loka-bg-card: var(--color-bg-card);
   --loka-bg-dark: var(--color-text-primary);
   --loka-border: var(--color-border);
   --loka-border-light: var(--color-border-light);
+  --loka-border-warm: var(--color-border-light);
   --loka-success: var(--color-success);
   --loka-danger: var(--color-danger);
   --loka-cream: var(--color-cream);
@@ -89,6 +110,7 @@
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
   /* Safe area */

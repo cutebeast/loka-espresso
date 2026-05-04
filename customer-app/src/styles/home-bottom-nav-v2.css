@@ -5,7 +5,7 @@
 
 /* ── Bottom nav bar ── */
 .bottom-nav {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-top: 1px solid var(--loka-border-light);
   display: flex;
   align-items: center;
@@ -27,7 +27,7 @@
   transition: background 0.2s;
   background: none;
   border: none;
-  color: #8A9AAA;
+  color: var(--loka-text-muted);
   font-size: 10px;
   font-weight: 500;
   font-family: var(--font-sans, 'Inter', sans-serif);
@@ -37,7 +37,7 @@
 .nav-item svg {
   width: 22px;
   height: 22px;
-  stroke: #8A9AAA;
+  stroke: var(--loka-text-muted);
   fill: none;
   stroke-width: 1.8;
   stroke-linecap: round;
@@ -57,7 +57,7 @@
 
 /* Active pill background */
 .nav-item.active-pill {
-  background: #E8EDDF;
+  background: var(--color-primary-100);
 }
 
 /* ── Icon wrap ── */
@@ -73,8 +73,8 @@
   position: absolute;
   top: -4px;
   right: -8px;
-  background: #C75050;
-  color: #fff;
+  background: var(--loka-danger);
+  color: var(--loka-white);
   font-size: 9px;
   font-weight: 700;
   min-width: 18px;
@@ -84,7 +84,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 2px solid #fff;
+  border: 2px solid var(--loka-white);
   line-height: 1;
 }
 
@@ -137,7 +137,7 @@
 .install-title { font-weight: 600; font-size: 14px; }
 .install-sub { font-size: 11px; opacity: 0.75; margin-top: 2px; }
 .install-btn {
-  background: #fff; color: var(--loka-primary); border: none;
+  background: var(--loka-bg-card); color: var(--loka-primary); border: none;
   padding: 8px 16px; border-radius: 40px; font-weight: 700;
   font-size: 12px; cursor: pointer; flex-shrink: 0;
 }

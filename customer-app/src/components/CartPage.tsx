@@ -19,13 +19,13 @@ import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useConfigStore } from '@/stores/configStore';
 
-import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
+import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import api from '@/lib/api';
 import type { MenuItem, CustomizationOption as ApiCustomOption } from '@/lib/api';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 
 interface CustomizationStructure {
-  options?: Array<{ id: number; name: string; price_adjustment: number }>;
+  options?: Array<{ id: number; name: string; option_type: string; price_adjustment: number }>;
   note?: string;
 }
 
@@ -115,7 +115,7 @@ export default function CartPage() {
     return (
       <div className="cart-empty">
         <div className="cart-empty-icon">
-          <ShoppingBag size={32} color="#384B16" />
+          <ShoppingBag size={32} color={LOKA.primary} />
         </div>
         <p className="cart-empty-title">Your cart is empty</p>
         <p className="cart-empty-text">Looks like you haven&apos;t added anything yet</p>
@@ -218,12 +218,13 @@ export default function CartPage() {
                     <img
                       src={resolveAssetUrl(item.image_url) || ''}
                       alt={item.name}
+                      loading="lazy"
                       onError={() => {
                         setBrokenImages(prev => new Set(prev).add(item.menu_item_id));
                       }}
                     />
                   ) : (
-                    <Coffee size={22} color="#384B16" />
+                    <Coffee size={22} color={LOKA.primary} />
                   )}
                 </div>
                 <div className="cart-item-details">
@@ -321,7 +322,7 @@ export default function CartPage() {
       <div className="cart-footer">
         {orderMode === 'delivery' && config.min_order_delivery > 0 && subtotal < config.min_order_delivery && (
           <div className="cart-delivery-min">
-            <ShoppingBag size={16} color="#7a4e18" />
+            <ShoppingBag size={16} color={LOKA.brown} />
             <span>Add {formatPrice(config.min_order_delivery - subtotal)} more for delivery</span>
           </div>
         )}
@@ -376,7 +377,7 @@ export default function CartPage() {
           customizations={editOptions}
           initialSelections={
             editingItem !== null && items[editingItem]
-              ? (((items[editingItem].customizations as any)?.options || []) as any[])
+              ? ((items[editingItem].customizations as CustomizationStructure)?.options || [])
               : []
           }
         />

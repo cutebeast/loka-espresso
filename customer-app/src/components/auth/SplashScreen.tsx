@@ -27,7 +27,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
                 <path
                   className="smoke-wisp smoke-wisp-1"
                   d="M32 18c0-4 2-8 4-10s2-6 0-8"
-                  stroke="#D18E38"
+                  stroke="#C4893A"
                   strokeWidth="2"
                   strokeLinecap="round"
                   fill="none"
@@ -36,7 +36,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
                 <path
                   className="smoke-wisp smoke-wisp-2"
                   d="M40 16c0-5 3-9 2-13s-1-7 2-9"
-                  stroke="#D18E38"
+                  stroke="#C4893A"
                   strokeWidth="2"
                   strokeLinecap="round"
                   fill="none"
@@ -45,7 +45,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
                 <path
                   className="smoke-wisp smoke-wisp-3"
                   d="M48 18c0-3 1-7 3-9s3-5 1-7"
-                  stroke="#D18E38"
+                  stroke="#C4893A"
                   strokeWidth="2"
                   strokeLinecap="round"
                   fill="none"
@@ -56,7 +56,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
             {/* Cup body */}
             <path
               d="M20 32c0-2 2-4 4-4h32c2 0 4 2 4 4v4c0 14-8 26-20 26S20 50 20 36v-4z"
-              fill="#57280D"
+              fill="#4A2210"
             />
             {/* Cup rim */}
             <ellipse cx="40" cy="32" rx="20" ry="4" fill="#7A4A2E" />
@@ -65,7 +65,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
             {/* Handle */}
             <path
               d="M58 38c6 0 10 4 10 10s-4 10-10 10"
-              stroke="#57280D"
+              stroke="#4A2210"
               strokeWidth="4"
               strokeLinecap="round"
               fill="none"

@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronRight, Info, Clock, Star, Share2 } from 'lucide-react
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { InformationCard as ApiInformationCard } from '@/lib/api';
-import { resolveAssetUrl } from '@/lib/tokens';
+import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 
 type InformationCard = ApiInformationCard;
 
@@ -128,11 +128,12 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
                 <img
                   src={img}
                   alt=""
+                  loading="lazy"
                   className="info-detail-hero-img"
                   onError={() => { setBrokenImages(prev => new Set(prev).add(selectedCard.id)); }}
                 />
               ) : (
-                <div className="info-detail-hero-img" style={{ background: 'linear-gradient(135deg, #384B16, #5a7a2a)' }}>
+                <div className="info-detail-hero-img" style={{ background: `linear-gradient(135deg, ${LOKA.primary}, #5a7a2a)` }}>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'rgba(255,255,255,0.25)' }}>
                     <Info size={64} />
                   </div>
@@ -231,11 +232,12 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
                     <img
                       src={img}
                       alt=""
+                      loading="lazy"
                       onError={() => { setBrokenImages(prev => new Set(prev).add(card.id)); }}
                     />
                   ) : (
                     <div className="info-card-thumb-fallback">
-                      <Info size={24} strokeWidth={1.5} color="#C4CED8" />
+                      <Info size={24} strokeWidth={1.5} color={LOKA.border} />
                     </div>
                   )}
                 </div>

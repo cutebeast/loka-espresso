@@ -11,7 +11,7 @@
   padding: 48px 24px 32px;
   padding-top: max(48px, env(safe-area-inset-top));
   padding-bottom: max(32px, env(safe-area-inset-bottom));
-  background: #fff;
+  background: var(--loka-bg-card);
 }
 
 /* ── Heading ── */
@@ -38,7 +38,7 @@
   height: auto;
   border-radius: 12px;
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   font-size: 15px;
   font-weight: 600;
   font-family: var(--font-sans, 'Inter', sans-serif);
@@ -57,7 +57,7 @@
   width: 20px;
   height: 20px;
   border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
+  border-top-color: var(--loka-white);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   margin: 0 auto;
@@ -85,8 +85,8 @@
 }
 
 .ps-avatar.ps-avatar-filled {
-  background: linear-gradient(135deg, var(--color-primary, #384B16), #5a7a2a);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary, var(--loka-primary)), var(--loka-primary-light));
+  color: var(--loka-white);
   font-size: 32px;
   font-weight: 700;
 }
@@ -115,7 +115,7 @@
   border: 1.5px solid var(--loka-border);
   border-radius: 12px;
   padding: 0;
-  background: #fff;
+  background: var(--loka-bg-card);
   height: auto;
   margin-bottom: 12px;
   overflow: hidden;

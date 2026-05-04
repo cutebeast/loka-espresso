@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Store, MapPin, Check, X, Clock, Navigation } from 'lucide-react';
 import { getStoresWithDistance } from '@/lib/geolocation';
-import { resolveAssetUrl } from '@/lib/tokens';
+import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 import type { Store as StoreType } from '@/lib/api';
 
 interface StorePickerModalProps {
@@ -139,7 +139,7 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
                 </div>
                 {isSelected && (
                   <div className="store-picker-check">
-                    <Check size={15} color="#FFFFFF" strokeWidth={3} />
+                    <Check size={15} color={LOKA.white} strokeWidth={3} />
                   </div>
                 )}
               </motion.button>

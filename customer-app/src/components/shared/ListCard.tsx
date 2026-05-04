@@ -2,14 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { Gift, Tag, Calendar, Clock } from 'lucide-react';
-import { resolveAssetUrl } from '@/lib/tokens';
+import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 import TypePill from './TypePill';
-
-const LOKA = {
-  cream: '#F3EEE5',
-  copper: '#D18E38',
-  brown: '#57280D',
-} as const;
 
 interface ListCardProps {
   title: string;

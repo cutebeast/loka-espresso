@@ -7,8 +7,8 @@ import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
-import type { Order } from '@/lib/api';
-import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
+import type { Order, CartItem } from '@/lib/api';
+import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { Coffee } from 'lucide-react';
 
 function getStatusBadge(status: string): { label: string; cls: string } {
@@ -81,7 +81,7 @@ export default function OrdersPage() {
       clearCart();
       const items = res.data?.items ?? [];
       for (const item of items) {
-        useCartStore.getState().addItem({
+        const cartItem: CartItem = {
           menu_item_id: item.item_id || item.menu_item_id,
           name: item.item_name || item.name || '',
           price: item.unit_price || item.price || 0,
@@ -89,7 +89,8 @@ export default function OrdersPage() {
           customization_option_ids: item.customization_option_ids || [],
           customizations: item.customizations || {},
           customization_count: item.customization_count ?? 0,
-        } as any);
+        };
+        useCartStore.getState().addItem(cartItem);
       }
       setPage('cart');
     } catch { showToast('Failed to reorder', 'error'); }
@@ -117,7 +118,7 @@ export default function OrdersPage() {
         setPastPage(p);
       }
       setHasMorePast(past.length === 10);
-    } catch { console.error('Failed to load past orders'); }
+    } catch (err) { console.error('[OrdersPage] Failed to load past orders:', err); }
     finally { setLoadingPast(false); }
   };
 
@@ -129,7 +130,7 @@ export default function OrdersPage() {
         <div className="orders-header"><h1 className="orders-title">Orders</h1></div>
         <div className="orders-scroll" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="orders-empty">
-            <div className="orders-empty-icon"><ShoppingBag size={32} color="#D4DCE5" /></div>
+            <div className="orders-empty-icon"><ShoppingBag size={32} color={LOKA.borderLight} /></div>
             <p className="orders-empty-title">No orders yet</p>
             <p className="orders-empty-text">Your order history will appear here</p>
             <button className="orders-empty-btn" onClick={() => setPage('menu')}>Start Ordering</button>
@@ -195,7 +196,7 @@ export default function OrdersPage() {
             <div className="orders-section-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Past Orders</span>
               {allPastOrders.length > 5 && (
-                <span style={{ fontSize: 12, color: '#6A7A8A' }}>{allPastOrders.length} total</span>
+                <span style={{ fontSize: 12, color: LOKA.textMuted }}>{allPastOrders.length} total</span>
               )}
             </div>
             {pastOrdersDisplay.map(order => {
@@ -205,7 +206,7 @@ export default function OrdersPage() {
               return (
                 <div key={order.id} className="orders-past-card" onClick={() => openDetail(order)}>
                   <div className="orders-past-thumb">
-                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /> : <Coffee size={20} color="#384B16" />}
+                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /> : <Coffee size={20} color={LOKA.primary} />}
                   </div>
                   <div className="orders-past-info">
                     <div className="orders-past-number">Order #{order.order_number}</div>
@@ -223,7 +224,7 @@ export default function OrdersPage() {
               })}
             {hasMorePast && (
               <button onClick={() => loadPastOrders(false)} disabled={loadingPast}
-                style={{ width: '100%', padding: 12, marginTop: 4, background: '#E4EAEF', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#384B16', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+                style={{ width: '100%', padding: 12, marginTop: 4, background: LOKA.bg, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, color: LOKA.primary, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
                 {loadingPast ? 'Loading...' : `Load More (${allPastOrders.length - pastOrdersDisplay.length} more)`}
               </button>
             )}

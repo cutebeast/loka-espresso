@@ -57,7 +57,7 @@
   border-radius: 14px;
   background-size: cover;
   background-position: center;
-  background-color: #F3EEE5;
+  background-color: var(--loka-cream);
   flex-shrink: 0;
 }
 .myrv-item-icon {
@@ -166,7 +166,7 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   flex-shrink: 0;
-  background-color: #d4c9a8;
+  background-color: var(--loka-accent-gold);
 }
 .rd-hero-img {
   position: absolute;
@@ -226,7 +226,7 @@
   font-family: 'Playfair Display', serif;
   font-size: 20px;
   font-weight: 700;
-  color: #1B2023;
+  color: var(--loka-text-primary);
   margin-bottom: 12px;
   line-height: 1.3;
 }
@@ -236,7 +236,7 @@
   gap: 16px;
   margin-bottom: 18px;
   font-size: 0.9rem;
-  color: #5f6c7a;
+  color: var(--loka-text-muted);
   align-items: center;
 }
 .rd-meta i,
@@ -251,11 +251,11 @@
   font-size: 0.85rem;
   font-weight: 600;
 }
-.rd-pill-copper { background: #fdf3e7; color: #b86e2c; }
-.rd-pill-brown  { background: #f6ede4; color: #b6572a; }
-.rd-pill-green  { background: #e6f0e8; color: #1a4e3a; }
+.rd-pill-copper { background: var(--loka-cream); color: var(--loka-accent-brown); }
+.rd-pill-brown  { background: var(--loka-bg-light); color: var(--loka-accent-brown); }
+.rd-pill-green  { background: var(--color-success-light); color: #1a4e3a; }
 .rd-desc {
-  color: #36454b;
+  color: var(--loka-text-secondary);
   line-height: 1.6;
   margin-bottom: 20px;
   font-size: 0.95rem;
@@ -276,7 +276,7 @@
 }
 .rd-terms-list li {
   padding: 10px 0;
-  border-bottom: 1px solid #f0eae4;
+  border-bottom: 1px solid var(--loka-bg-light);
   font-size: 0.9rem;
   color: var(--loka-text-secondary);
   display: flex;
@@ -307,8 +307,8 @@
 }
 .rd-action-btn:active { background: var(--loka-primary-dark); }
 .rd-action-btn:disabled {
-  background: #9CAF7A;
-  color: #fff;
+  background: var(--color-primary-100);
+  color: var(--loka-white);
   cursor: not-allowed;
   box-shadow: none;
   opacity: 0.8;
@@ -331,7 +331,7 @@
   font-family: var(--font-sans);
 }
 .rd-action-btn-outline:active {
-  background: rgba(56,75,22,0.06);
+  background: rgba(59, 74, 26,0.06);
 }
 .rd-points-note {
   text-align: center;
@@ -341,7 +341,7 @@
 }
 .rd-remaining-badge {
   font-size: 0.8rem;
-  color: #C75050;
+  color: var(--loka-danger);
   margin-top: 8px;
   text-align: center;
 }
@@ -351,7 +351,7 @@
 }
 .rd-success-state svg {
   font-size: 48px;
-  color: #85B085;
+  color: var(--loka-success);
   margin-bottom: 12px;
 }
 .rd-success-state p {
@@ -367,7 +367,7 @@
 
 /* ── Survey Block ───────────────────────────────────────── */
 .survey-block {
-  background: #faf7f4;
+  background: var(--loka-bg-light);
   border-radius: 20px;
   padding: 18px;
   margin: 20px 0;
@@ -385,7 +385,7 @@
   padding: 12px 16px;
   border-radius: 18px;
   margin-bottom: 10px;
-  border: 1.5px solid #e3d8cf;
+  border: 1.5px solid var(--color-border-light);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -404,7 +404,7 @@
   font-weight: 600;
 }
 .survey-submit-btn {
-  background: #6f4e2e;
+  background: var(--loka-accent-brown);
   color: white;
   border: none;
   padding: 14px;
@@ -424,7 +424,7 @@
   cursor: not-allowed;
 }
 .voucher-reveal {
-  background: #e6f2e8;
+  background: var(--color-success-light);
   border-radius: 20px;
   padding: 18px;
   text-align: center;
@@ -523,7 +523,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, #1F2E0B 0%, #384B16 100%);
+  background: linear-gradient(135deg, var(--color-primary-deep) 0%, var(--loka-primary) 100%);
   color: white;
   padding: 6px 16px;
   border-radius: 40px;
@@ -584,69 +584,69 @@
 /* ════════ V2 IMPROVEMENTS (from mockup) ════════ */
 .points-display-large {
   display: flex; flex-direction: column; align-items: center;
-  background: linear-gradient(135deg, #384B16, #5a7a2a); margin: 0 16px 16px;
-  border-radius: 16px; padding: 18px 16px 14px; color: #fff;
+  background: linear-gradient(135deg, var(--loka-primary), var(--loka-primary-light)); margin: 0 16px 16px;
+  border-radius: 16px; padding: 18px 16px 14px; color: var(--loka-white);
 }
 .points-display-large .points-label { font-size: 11px; font-weight: 500; opacity: 0.8; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 .points-display-large .points-value { font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 2px; }
 .points-display-large .points-sub { font-size: 12px; opacity: 0.7; }
 
-.progress-section { margin: 0 16px 16px; background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.progress-section { margin: 0 16px 16px; background: var(--loka-bg-card); border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
 .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.progress-title { font-size: 12px; font-weight: 600; color: #1B2023; }
-.progress-value { font-size: 12px; font-weight: 600; color: #D18E38; }
-.progress-bar-track { height: 8px; background: #D4DCE5; border-radius: 4px; overflow: hidden; }
-.progress-bar-fill { height: 100%; background: linear-gradient(90deg, #D18E38, #384B16); border-radius: 4px; transition: width 0.3s; }
-.progress-hint { font-size: 11px; color: #6A7A8A; margin-top: 6px; }
+.progress-title { font-size: 12px; font-weight: 600; color: var(--loka-text-primary); }
+.progress-value { font-size: 12px; font-weight: 600; color: var(--loka-accent-copper); }
+.progress-bar-track { height: 8px; background: var(--loka-border-light); border-radius: 4px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--loka-accent-copper), var(--loka-primary)); border-radius: 4px; transition: width 0.3s; }
+.progress-hint { font-size: 11px; color: var(--loka-text-muted); margin-top: 6px; }
 
-.reward-card-improved { display: flex; align-items: center; background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 12px; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
-.rewards-card-thumb { width: 60px; height: 60px; border-radius: 10px; background: #F3EEE5; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.reward-card-improved { display: flex; align-items: center; background: var(--loka-bg-card); border-radius: 14px; padding: 14px; margin-bottom: 12px; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
+.rewards-card-thumb { width: 60px; height: 60px; border-radius: 10px; background: var(--loka-cream); flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .rewards-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.reward-points-tag { display: inline-block; font-size: 11px; font-weight: 600; color: #D18E38; background: rgba(209,142,56,0.1); padding: 2px 8px; border-radius: 10px; margin-bottom: 4px; }
-.reward-chevron { color: #6A7A8A; font-size: 18px; flex-shrink: 0; }
+.reward-points-tag { display: inline-block; font-size: 11px; font-weight: 600; color: var(--loka-accent-copper); background: rgba(196, 137, 58,0.1); padding: 2px 8px; border-radius: 10px; margin-bottom: 4px; }
+.reward-chevron { color: var(--loka-text-muted); font-size: 18px; flex-shrink: 0; }
 .stock-badge { position: absolute; top: 10px; right: 40px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 8px; }
-.stock-badge.low { background: rgba(199,80,80,0.1); color: #C75050; }
+.stock-badge.low { background: rgba(199,80,80,0.1); color: var(--loka-danger); }
 
 .sticky-redeem { position: sticky; bottom: 0; background: var(--loka-bg-light); padding: 14px 20px; }
-.sticky-redeem .detail-redeem-btn { width: 100%; padding: 14px; background: #384B16; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); }
-.detail-redeem-btn:disabled { background: #9CAF7A; cursor: not-allowed; }
-.sticky-redeem .detail-redeem-btn:disabled { background: #9CAF7A; cursor: not-allowed; }
+.sticky-redeem .detail-redeem-btn { width: 100%; padding: 14px; background: var(--loka-primary); color: var(--loka-white); border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); }
+.detail-redeem-btn:disabled { background: var(--color-primary-100); cursor: not-allowed; }
+.sticky-redeem .detail-redeem-btn:disabled { background: var(--color-primary-100); cursor: not-allowed; }
 
-.reward-thumb { width: 60px; height: 60px; border-radius: 10px; background: #F3EEE5; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.reward-thumb { width: 60px; height: 60px; border-radius: 10px; background: var(--loka-cream); flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .reward-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
 .reward-info { flex: 1; min-width: 0; }
-.reward-name { font-size: 14px; font-weight: 600; color: #1B2023; margin-bottom: 2px; }
-.reward-desc { font-size: 12px; color: #6A7A8A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reward-name { font-size: 14px; font-weight: 600; color: var(--loka-text-primary); margin-bottom: 2px; }
+.reward-desc { font-size: 12px; color: var(--loka-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stock-badge { position: absolute; top: 10px; right: 40px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 8px; }
-.stock-badge.low { background: rgba(199,80,80,0.1); color: #C75050; }
-.stock-badge.available { background: rgba(133,176,133,0.1); color: #3a7a3a; }
+.stock-badge.low { background: rgba(199,80,80,0.1); color: var(--loka-danger); }
+.stock-badge.available { background: rgba(133,176,133,0.1); color: var(--loka-success); }
 .detail-points-row { display: flex; gap: 8px; margin: 12px 0; }
-.detail-points-pill { padding: 6px 14px; background: rgba(56,75,22,0.1); border-radius: 20px; font-size: 12px; font-weight: 600; color: #384B16; }
-.detail-stock-pill { padding: 6px 14px; background: rgba(199,80,80,0.08); border-radius: 20px; font-size: 12px; font-weight: 500; color: #C75050; }
+.detail-points-pill { padding: 6px 14px; background: rgba(59, 74, 26,0.1); border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--loka-primary); }
+.detail-stock-pill { padding: 6px 14px; background: rgba(199,80,80,0.08); border-radius: 20px; font-size: 12px; font-weight: 500; color: var(--loka-danger); }
 .points-display-large .points-label { font-size: 11px; font-weight: 500; opacity: 0.8; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 .points-display-large .points-value { font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 2px; }
 .points-display-large .points-sub { font-size: 12px; opacity: 0.7; }
-.progress-hint { font-size: 11px; color: #6A7A8A; margin-top: 6px; }
+.progress-hint { font-size: 11px; color: var(--loka-text-muted); margin-top: 6px; }
 
 .detail-sticky-wrapper { display: flex; flex-direction: column; min-height: 100%; }
-.detail-hero { width: 100%; height: 180px; background: linear-gradient(135deg, #384B16, #5a7a2a); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 48px; flex-shrink: 0; }
+.detail-hero { width: 100%; height: 180px; background: linear-gradient(135deg, var(--loka-primary), var(--loka-primary-light)); display: flex; align-items: center; justify-content: center; color: var(--loka-white); font-size: 48px; flex-shrink: 0; }
 .detail-hero img { width: 100%; height: 100%; object-fit: cover; }
 .detail-body { flex: 1; padding: 16px 20px; }
-.detail-title { font-family: "Playfair Display", serif; font-size: 20px; font-weight: 700; color: #1B2023; margin-bottom: 12px; }
+.detail-title { font-family: "Playfair Display", serif; font-size: 20px; font-weight: 700; color: var(--loka-text-primary); margin-bottom: 12px; }
 .detail-points-row { display: flex; gap: 8px; margin: 12px 0; }
-.detail-points-pill { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; background: rgba(56,75,22,0.08); border-radius: 20px; font-size: 12px; font-weight: 600; color: #384B16; }
-.detail-stock-pill { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; background: rgba(199,80,80,0.08); border-radius: 20px; font-size: 12px; font-weight: 500; color: #C75050; }
-.detail-section-label { font-size: 12px; font-weight: 600; color: #6A7A8A; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; }
-.detail-terms { font-size: 13px; color: #1B2023; line-height: 1.6; background: #fff; border-radius: 10px; padding: 14px; }
+.detail-points-pill { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; background: rgba(59, 74, 26,0.08); border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--loka-primary); }
+.detail-stock-pill { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; background: rgba(199,80,80,0.08); border-radius: 20px; font-size: 12px; font-weight: 500; color: var(--loka-danger); }
+.detail-section-label { font-size: 12px; font-weight: 600; color: var(--loka-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; }
+.detail-terms { font-size: 13px; color: var(--loka-text-primary); line-height: 1.6; background: var(--loka-bg-card); border-radius: 10px; padding: 14px; }
 
 .rd-fullscreen { display: flex; flex-direction: column; height: 100%; background: var(--loka-bg-light); }
 .rewards-tab-bar { display: flex; padding: 12px 20px; gap: 8px; flex-shrink: 0; background: var(--loka-bg-light); }
 .rewards-tab { flex: 1; padding: 10px 0; border-radius: 40px; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; border: 1px solid var(--loka-border-light); background: var(--loka-bg-card); color: var(--loka-text-secondary); transition: all .22s ease; white-space: nowrap; font-family: var(--font-sans); }
-.rewards-tab.active { background: var(--loka-primary); color: white; border-color: var(--loka-primary); box-shadow: 0 4px 12px rgba(56,75,22,.2); }
+.rewards-tab.active { background: var(--loka-primary); color: white; border-color: var(--loka-primary); box-shadow: 0 4px 12px rgba(59, 74, 26,.2); }
 .rewards-tab:active { transform: scale(.96); }
 .rewards-hero { padding-top: 10px; }
 
-.detail-full-desc { font-size: 14px; color: #3A4A5A; line-height: 1.6; margin: 12px 0; }
+.detail-full-desc { font-size: 14px; color: var(--loka-text-secondary); line-height: 1.6; margin: 12px 0; }
 .detail-terms-list { list-style: none; padding: 5px 10px; background: var(--color-copper-soft); border-radius: 8px; margin: 0; }
-.detail-terms-list li { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; font-size: 13px; color: #1B2023; line-height: 1.5; border-bottom: 1px solid #E4EAEF; }
+.detail-terms-list li { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; font-size: 13px; color: var(--loka-text-primary); line-height: 1.5; border-bottom: 1px solid var(--loka-bg); }
 .detail-terms-list li:last-child { border-bottom: none; }

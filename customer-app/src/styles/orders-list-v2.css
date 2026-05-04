@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #E4EAEF;
+  background: var(--loka-bg);
   overflow: hidden;
 }
 
@@ -16,7 +16,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: #fff;
+  background: var(--loka-bg-card);
   border-bottom: 1px solid var(--loka-border-light);
   flex-shrink: 0;
 }
@@ -94,12 +94,12 @@
 
 /* ── Active order card ── */
 .orders-active-card {
-  background: #fff;
+  background: var(--loka-bg-card);
   margin: 0 14px 12px;
   border-radius: 18px;
   padding: 20px;
   border: 2px solid var(--loka-primary);
-  box-shadow: 0 4px 20px rgba(56,75,22,0.12);
+  box-shadow: 0 4px 20px rgba(59, 74, 26,0.12);
 }
 
 .orders-active-header {
@@ -116,7 +116,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--loka-white);
   font-size: 20px;
   flex-shrink: 0;
 }
@@ -128,7 +128,7 @@
   font-weight: 700;
   padding: 6px 14px;
   border-radius: 8px;
-  background: rgba(209,142,56,0.15);
+  background: rgba(196, 137, 58,0.15);
   color: var(--loka-accent-copper);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -160,7 +160,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(209,142,56,0.08);
+  background: rgba(196, 137, 58,0.08);
   border-radius: 10px;
   margin-bottom: 12px;
   font-size: 13px;
@@ -175,7 +175,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--loka-white);
   font-size: 13px;
 }
 
@@ -191,7 +191,7 @@
   padding: 10px 20px;
   border-radius: 10px;
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   font-size: 13px;
   font-weight: 600;
   border: none;
@@ -201,7 +201,7 @@
 
 /* ── Past order card ── */
 .orders-past-card {
-  background: #fff;
+  background: var(--loka-bg-card);
   margin: 0 14px 10px;
   border-radius: 14px;
   padding: 16px;
@@ -245,7 +245,7 @@
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-.orders-status-badge.delivered { background: rgba(133,176,133,0.18); color: #3a7a3a; }
+.orders-status-badge.delivered { background: rgba(133,176,133,0.18); color: var(--loka-success); }
 .orders-status-badge.cancelled { background: rgba(199,80,80,0.15); color: var(--loka-danger); }
 
 .orders-reorder-btn {
@@ -255,7 +255,7 @@
   padding: 8px 14px;
   border-radius: 8px;
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   font-size: 12px;
   font-weight: 600;
   border: none;
@@ -282,7 +282,7 @@
   gap: 8px;
   padding: 14px 28px;
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   border: none;
   border-radius: 40px;
   font-size: 15px;

@@ -24,7 +24,7 @@
   flex-direction: column;
   align-items: center;
   padding: 24px 20px 16px;
-  background: #fff;
+  background: var(--loka-bg-card);
   margin: 16px 20px 0;
   border-radius: 16px;
   border: 1px solid var(--loka-border-light);
@@ -63,7 +63,7 @@
   height: 26px;
   background: var(--loka-accent-copper);
   border-radius: 50%;
-  border: 2px solid #fff;
+  border: 2px solid var(--loka-white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -93,13 +93,13 @@
   border-radius: 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #fff;
+  color: var(--loka-white);
 }
 
-.ad-tier-badge.bronze   { background: linear-gradient(135deg, #8B6F47, #6B4F2E); }
-.ad-tier-badge.silver   { background: linear-gradient(135deg, #9CA3AF, #6B7280); }
-.ad-tier-badge.gold     { background: linear-gradient(135deg, #D18E38, #B86E2C); }
-.ad-tier-badge.platinum { background: linear-gradient(135deg, #7C8CA6, #4B5E7A); }
+.ad-tier-badge.bronze   { background: linear-gradient(135deg, var(--tier-bronze), var(--tier-bronze-dark)); }
+.ad-tier-badge.silver   { background: linear-gradient(135deg, var(--tier-silver), var(--tier-silver-dark)); }
+.ad-tier-badge.gold     { background: linear-gradient(135deg, var(--loka-accent-copper), var(--loka-accent-brown)); }
+.ad-tier-badge.platinum { background: linear-gradient(135deg, var(--tier-platinum), var(--tier-platinum-dark)); }
 
 .ad-group-header {
   padding: 20px 20px 8px;
@@ -111,7 +111,7 @@
 }
 
 .ad-form-card {
-  background: #fff;
+  background: var(--loka-bg-card);
   margin: 0 16px;
   border-radius: 14px;
   border: 1px solid var(--loka-border-light);
@@ -182,7 +182,7 @@
   margin: 20px 16px;
   padding: 14px;
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
   border: none;
   border-radius: 12px;
   font-family: var(--font-sans);
@@ -206,7 +206,7 @@
 .ad-success-msg {
   margin: 8px 16px 20px;
   padding: 12px 16px;
-  background: #f0f9f0;
+  background: var(--color-success-light);
   border: 1px solid var(--loka-success);
   border-radius: 10px;
   font-size: 13px;
@@ -250,7 +250,7 @@
 }
 
 .ad-password-modal-box {
-  background: #fff;
+  background: var(--loka-bg-card);
   border-radius: 20px;
   padding: 24px;
   width: calc(100% - 64px);
@@ -319,7 +319,7 @@
 
 .ad-password-modal-btn-confirm {
   background: var(--loka-primary);
-  color: #fff;
+  color: var(--loka-white);
 }
 
 .ad-password-modal-btn-confirm:disabled {
@@ -367,7 +367,7 @@
 }
 
 .datepicker-sheet {
-  background: #fff;
+  background: var(--loka-bg-card);
   width: 100%;
   max-width: 430px;
   border-radius: 20px 20px 0 0;
@@ -385,7 +385,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  border-bottom: 1px solid #E4EAEF;
+  border-bottom: 1px solid var(--loka-bg);
 }
 
 .datepicker-sheet-btn {
@@ -426,7 +426,7 @@
 }
 
 .datepicker-column:not(:last-child) {
-  border-right: 1px solid #E4EAEF;
+  border-right: 1px solid var(--loka-bg);
 }
 
 .datepicker-column-label {
@@ -437,7 +437,7 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 10px 0 6px;
-  background: #fff;
+  background: var(--loka-bg-card);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -457,7 +457,7 @@
   text-align: center;
   padding: 10px 8px;
   font-size: 17px;
-  color: #C4CED8;
+  color: var(--loka-border);
   cursor: pointer;
   scroll-snap-align: center;
   transition: color 0.15s, font-weight 0.15s;
@@ -479,6 +479,6 @@
   transform: translateY(-50%);
   height: 44px;
   pointer-events: none;
-  border-top: 1px solid #E4EAEF;
-  border-bottom: 1px solid #E4EAEF;
+  border-top: 1px solid var(--loka-bg);
+  border-bottom: 1px solid var(--loka-bg);
 }

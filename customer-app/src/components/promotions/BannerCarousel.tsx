@@ -58,7 +58,7 @@ export default function BannerCarousel({ promotions, loading, onSelectPromo }: B
           >
             <div className="promo-list-card-thumb">
               {img ? (
-                <img src={img} alt="" className="promo-list-card-thumb-img" />
+                <img src={img} alt="" loading="lazy" className="promo-list-card-thumb-img" />
               ) : (
                 <div className="promo-list-card-thumb-fallback">
                   <Gift size={24} strokeWidth={1.5} className="promo-list-card-thumb-icon" />

@@ -6,7 +6,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { Reward } from '@/lib/api';
-import { resolveAssetUrl } from '@/lib/tokens';
+import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 
 type Tab = 'rewards' | 'vouchers';
 
@@ -56,7 +56,7 @@ export default function RewardsPage() {
   if (redemptionCode) {
     return (
       <div className="rd-modal-code">
-        <div className="rd-modal-icon-circle"><Gift size={32} color="#384B16" /></div>
+        <div className="rd-modal-icon-circle"><Gift size={32} color={LOKA.primary} /></div>
         <h2 className="rd-modal-title">Reward Redeemed!</h2>
         <p className="rd-modal-desc">Show this code to the cashier</p>
         <div className="rd-modal-code-box">{redemptionCode}</div>
@@ -73,14 +73,14 @@ export default function RewardsPage() {
     return (
       <div className="rd-fullscreen" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div className="detail-hero">
-          {img ? <img src={img} alt="" /> : <Gift size={48} color="#fff" />}
+          {img ? <img src={img} alt="" loading="lazy" /> : <Gift size={48} color="#fff" />}
           <button className="rd-back-btn" onClick={() => setSelectedReward(null)} style={{ position: 'absolute', top: 12, left: 12 }}><ArrowLeft size={20} /></button>
         </div>
         <div className="detail-body">
           <h1 className="detail-title">{selectedReward.name}</h1>
           <div className="detail-points-row">
             <span className="detail-points-pill"><Crown size={14} /> {selectedReward.points_cost.toLocaleString()} pts</span>
-            <span className="detail-stock-pill"><Circle size={8} fill="#C75050" /> Limited stock</span>
+            <span className="detail-stock-pill"><Circle size={8} fill={LOKA.danger} /> Limited stock</span>
           </div>
           {selectedReward.short_description && (
             <p className="rd-desc">{selectedReward.short_description}</p>
@@ -108,7 +108,7 @@ export default function RewardsPage() {
             </button>
           ) : (
             <div className="rd-success-state">
-              <CheckCircle size={24} color="#85B085" />
+              <CheckCircle size={24} color={LOKA.success} />
               <p>Reward redeemed! Show at the counter.</p>
               <button className="btn btn-ghost rd-btn-full" onClick={() => { setSelectedReward(null); setRedemptionSuccess(false); }}>Back to Rewards</button>
             </div>
@@ -162,7 +162,7 @@ export default function RewardsPage() {
           [1, 2, 3].map(i => <div key={i} className="skeleton rewards-skeleton-card" />)
         ) : rewards.length === 0 ? (
           <div className="rd-empty">
-            <div className="rd-empty-icon"><Gift size={40} color="#D4DCE5" /></div>
+            <div className="rd-empty-icon"><Gift size={40} color={LOKA.borderLight} /></div>
             <p className="rd-empty-title">No rewards available</p>
             <p className="rd-empty-text">Check back soon for new rewards</p>
           </div>
@@ -173,7 +173,7 @@ export default function RewardsPage() {
               return (
                 <div key={reward.id} className="reward-card-improved" onClick={() => setSelectedReward(reward)}>
                   <div className="reward-thumb">
-                    {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /> : <Gift size={24} color="#C4CED8" />}
+                    {img ? <img src={img} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /> : <Gift size={24} color={LOKA.border} />}
                   </div>
                   <div className="reward-info">
                     <div className="reward-points-tag">{reward.points_cost.toLocaleString()} pts</div>

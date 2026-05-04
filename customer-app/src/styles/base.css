@@ -107,8 +107,8 @@ button {
 
 /* Selection */
 ::selection {
-  background: #D1DBC1;
-  color: #1B2023;
+  background: var(--color-primary-100);
+  color: var(--loka-text-primary);
 }
 
 :focus-visible {

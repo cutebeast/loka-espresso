@@ -106,7 +106,7 @@ export default function VoucherSection({
     <div className="promo-screen-white">
       <div className="rd-hero">
         {img ? (
-          <img src={img} alt="" className="rd-hero-img promo-hero-img-fill" />
+          <img src={img} alt="" loading="lazy" className="rd-hero-img promo-hero-img-fill" />
         ) : (
           <div className="rd-hero-img promo-hero-img-fallback" />
         )}
