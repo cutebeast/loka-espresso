@@ -38,6 +38,10 @@ async def list_favorites(
 
 @router.post("/{item_id}", status_code=201)
 async def add_favorite(item_id: int, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    # Validate menu item exists
+    item_check = await db.execute(select(MenuItem).where(MenuItem.id == item_id))
+    if not item_check.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Menu item not found")
     existing = await db.execute(
         select(Favorite).where(Favorite.user_id == user.id, Favorite.item_id == item_id)
     )

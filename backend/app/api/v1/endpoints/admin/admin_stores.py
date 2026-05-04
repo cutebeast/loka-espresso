@@ -221,6 +221,7 @@ async def get_store_menu(store_id: int, db: AsyncSession = Depends(get_db)):
 @router.get("/stores/{store_id}/tables")
 async def get_store_tables(
     store_id: int,
+    user: AdminUser = Depends(require_store_access()),
     db: AsyncSession = Depends(get_db),
 ):
     """List tables sorted by is_active DESC, table_number ASC.
