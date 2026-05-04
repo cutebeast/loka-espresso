@@ -222,7 +222,11 @@ export default function MerchantDashboard() {
   }
 
   useEffect(() => {
-    if (token) { fetchStores(); fetchUserRole(); }
+    if (!token) return;
+    const abortCtrl = new AbortController();
+    fetchStores(abortCtrl.signal);
+    fetchUserRole();
+    return () => abortCtrl.abort();
   }, [token, fetchStores, fetchUserRole]);
 
   const storeId = selectedStore === 'all' ? '' : selectedStore;
@@ -230,37 +234,51 @@ export default function MerchantDashboard() {
   // Per-page data fetching — each effect only runs when its page is active
   useEffect(() => {
     if (!token || page !== 'dashboard') return;
-    fetchDashboardWithRange(storeId, dateRange.from, dateRange.to, dashboardChartMode);
+    const abortCtrl = new AbortController();
+    fetchDashboardWithRange(storeId, dateRange.from, dateRange.to, dashboardChartMode, abortCtrl.signal);
+    return () => abortCtrl.abort();
   }, [page, token, storeId, dateRange, dashboardChartMode, fetchDashboardWithRange]);
 
   useEffect(() => {
     if (!token || page !== 'orders') return;
-    fetchOrders(storeId);
+    const abortCtrl = new AbortController();
+    fetchOrders(storeId, abortCtrl.signal);
+    return () => abortCtrl.abort();
   }, [page, token, storeId, ordersPage, ordersStatus, ordersOrderType, ordersFromDate, ordersToDate, fetchOrders]);
 
   useEffect(() => {
     if (!token || page !== 'menu') return;
-    fetchMenu();
+    const abortCtrl = new AbortController();
+    fetchMenu(abortCtrl.signal);
+    return () => abortCtrl.abort();
   }, [page, token, fetchMenu]);
 
   useEffect(() => {
     if (!token || page !== 'inventory') return;
-    fetchInventory();
+    const abortCtrl = new AbortController();
+    fetchInventory(abortCtrl.signal);
+    return () => abortCtrl.abort();
   }, [page, token, fetchInventory]);
 
   useEffect(() => {
     if (!token || page !== 'tables') return;
-    fetchTables();
+    const abortCtrl = new AbortController();
+    fetchTables(abortCtrl.signal);
+    return () => abortCtrl.abort();
   }, [page, token, fetchTables]);
 
   useEffect(() => {
     if (!token || page !== 'loyaltyrules') return;
-    fetchLoyaltyTiers();
+    const abortCtrl = new AbortController();
+    fetchLoyaltyTiers(abortCtrl.signal);
+    return () => abortCtrl.abort();
   }, [page, token, fetchLoyaltyTiers]);
 
   useEffect(() => {
     if (!token || page !== 'store') return;
-    fetchAdminStores();
+    const abortCtrl = new AbortController();
+    fetchAdminStores(abortCtrl.signal);
+    return () => abortCtrl.abort();
   }, [page, token, fetchAdminStores]);
 
   const storeObj = stores.find((s: any) => s.id === Number(selectedStore));
