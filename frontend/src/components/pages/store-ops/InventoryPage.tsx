@@ -35,6 +35,7 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState<MerchantInventoryCategory[]>([]);
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'stock' | 'ledger'>('stock');
+  const [lowStockCount, setLowStockCount] = useState(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [error, setError] = useState('');
@@ -80,6 +81,15 @@ export default function InventoryPage() {
       })
       .catch(() => {});
   }, [activeStoreId, selectedStore, inventory]);
+
+  // Fetch low-stock count
+  useEffect(() => {
+    if (!activeStoreId) return;
+    apiFetch(`/admin/stores/${activeStoreId}/inventory/low-stock`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setLowStockCount(Array.isArray(data) ? data.length : (data?.items?.length || 0)))
+      .catch(() => {});
+  }, [activeStoreId, inventory]);
 
   const filteredItems = selectedCat ? inventory.filter(i => i.category_id === selectedCat) : inventory;
 
@@ -250,6 +260,7 @@ export default function InventoryPage() {
       <div className="ip-8">
         <button onClick={() => setActiveTab('stock')} className={`ip-tab ${activeTab === 'stock' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
           <span className="ip-9"><i className="fas fa-boxes-stacked"></i></span> Stock
+          {lowStockCount > 0 && <span className="badge badge-red" style={{ marginLeft: 6, fontSize: 10 }}>{lowStockCount}</span>}
         </button>
         <button onClick={() => setActiveTab('ledger')} className={`ip-tab ${activeTab === 'ledger' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
           <span className="ip-10"><i className="fas fa-clock-rotate-left"></i></span> Ledger

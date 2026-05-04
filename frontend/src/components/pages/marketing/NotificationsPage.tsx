@@ -206,8 +206,15 @@ export default function NotificationsPage({ refreshKey: _refreshKey, onNewBroadc
 
   async function deleteBroadcast(id: number) {
     await apiFetch(`/admin/broadcasts/${id}`, undefined, { method: 'DELETE' });
-    setConfirmDeleteId(null);
-    fetchBroadcasts();
+    setConfirmDeleteId(null); fetchBroadcasts();
+  }
+
+  async function sendBroadcast(id: number) {
+    if (!confirm('Send this broadcast now? It will be delivered to the selected audience immediately.')) return;
+    try {
+      await apiFetch(`/admin/broadcasts/${id}/send`, undefined, { method: 'POST' });
+      fetchBroadcasts();
+    } catch { console.error('Failed to send broadcast'); }
   }
 
   const audienceLabel: Record<string, string> = {
@@ -303,9 +310,12 @@ export default function NotificationsPage({ refreshKey: _refreshKey, onNewBroadc
                     </div>
                   </div>
                   <div className="np-34">
-                    {draft && (
-                      <>
-                        <button className="btn btn-sm" title="Edit" onClick={() => setEditingId(editingId === bc.id ? null : bc.id)}>
+                     {draft && (
+                       <>
+                         <button className="btn btn-sm" title="Send" onClick={() => sendBroadcast(bc.id)} style={{ color: '#16A34A' }}>
+                           <i className="fas fa-paper-plane"></i>
+                         </button>
+                         <button className="btn btn-sm" title="Edit" onClick={() => setEditingId(editingId === bc.id ? null : bc.id)}>
                           <i className="fas fa-pen"></i>
                         </button>
                         {confirmDeleteId === bc.id ? (
