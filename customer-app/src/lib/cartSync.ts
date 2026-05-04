@@ -86,7 +86,6 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
           customization_option_ids: customizationOptionIds,
           store_id: storeId,
         };
-        console.log('[cartSync] POST /cart/items payload:', JSON.stringify(payload));
 
         await api.post('/cart/items', payload);
       }
