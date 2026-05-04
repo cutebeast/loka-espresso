@@ -41,7 +41,7 @@
 | # | Doc |
 |---|---|
 | 050 | [050-api-reference.md](050-api-reference.md) — API endpoints, auth, schemas |
-| 073 | [073-endpoint-audit.md](073-endpoint-audit.md) — Complete API endpoint audit (2026-05-04) |
+| 073 | [073-endpoint-audit.md](073-endpoint-audit.md) — Complete API endpoint audit — 161 routes, 44 dead, 0 auth gaps (2026-05-04) |
 
 ## 06x — Operations
 
@@ -50,7 +50,6 @@
 | 060 | [060-deployment.md](060-deployment.md) — Docker deploy, rebuild, migrations |
 | 061 | [061-environment.md](061-environment.md) — Environment variables, config |
 | 062 | [062-troubleshooting.md](062-troubleshooting.md) — Common issues, debugging |
-| 065 | [ENV_DB_AUDIT_REPORT.md](ENV_DB_AUDIT_REPORT.md) — Env vs DB config audit, Redis, secrets (2026-05-04) |
 
 ## 07x — Development Guides
 
