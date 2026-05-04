@@ -95,7 +95,7 @@ export function DataTable<T extends Record<string, any>>({
             <tbody>
               {data.map((row, idx) => (
                 <tr
-                  key={idx}
+                  key={row.id ?? idx}
                   onClick={() => onRowClick?.(row)}
                   className={`dt-row ${onRowClick ? 'cursor-pointer' : 'cursor-default'}`}
                   onMouseEnter={e => (e.currentTarget.style.background = '#F9F7F3')}

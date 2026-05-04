@@ -12,6 +12,7 @@ from app.models.customer import CustomerDeviceToken
 from app.models.notification import Notification, NotificationBroadcast, NotificationTemplate
 from app.schemas.admin_extras import (
     BroadcastCreate,
+    BroadcastUpdate,
     BroadcastOut,
     TemplateCreate,
     TemplateOut,
@@ -154,7 +155,7 @@ async def create_broadcast(
 async def update_broadcast(
     broadcast_id: int,
     request: Request,
-    data: BroadcastCreate,
+    data: BroadcastUpdate,
     db: AsyncSession = Depends(get_db),
     user: AdminUser = Depends(require_hq_access()),
 ):

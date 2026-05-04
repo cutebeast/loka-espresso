@@ -60,12 +60,12 @@ export default function OrdersPage({ orders, loading, token: _token, selectedSto
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.detail || `Failed to update status to ${newStatus}`);
+        console.error(data.detail || `Failed to update status to ${newStatus}`);
         return;
       }
       onUpdate();
     } catch {
-      alert('Network error updating status');
+      console.error('Network error updating status');
     }
   }
 
@@ -78,14 +78,13 @@ export default function OrdersPage({ orders, loading, token: _token, selectedSto
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.detail || 'Failed to mark as paid');
+        console.error(data.detail || 'Failed to mark as paid');
         return;
       }
       onUpdate();
-      // Refresh the selected order in the modal
       setSelectedOrder(prev => prev ? { ...prev, payment_status: 'paid' } : prev);
     } catch {
-      alert('Network error');
+      console.error('Network error');
     } finally {
       setMarkingPaid(false);
     }
@@ -108,13 +107,13 @@ export default function OrdersPage({ orders, loading, token: _token, selectedSto
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.detail || 'Failed to update tracking');
+        console.error(data.detail || 'Failed to update tracking');
         return;
       }
       setShowTrackingForm(false);
       onUpdate();
     } catch {
-      alert('Network error');
+      console.error('Network error');
     } finally {
       setSavingTracking(false);
     }
@@ -177,20 +176,20 @@ export default function OrdersPage({ orders, loading, token: _token, selectedSto
     setMarkingPosSynced(true);
     try {
       const res = await apiFetch(`/orders/${order.id}/pos-synced`, undefined, { method: 'POST' });
-      if (!res.ok) { const data = await res.json().catch(() => ({})); alert(data.detail || 'Failed'); return; }
+      if (!res.ok) { const data = await res.json().catch(() => ({})); console.error(data.detail || 'Failed'); return; }
       onUpdate();
       setSelectedOrder(prev => prev ? { ...prev, pos_synced_at: new Date().toISOString() } : prev);
-    } catch { alert('Network error'); } finally { setMarkingPosSynced(false); }
+    } catch { console.error('Network error'); } finally { setMarkingPosSynced(false); }
   }
 
   async function markDeliveryDispatched(order: MerchantOrder) {
     setMarkingDispatched(true);
     try {
       const res = await apiFetch(`/orders/${order.id}/delivery-dispatched`, undefined, { method: 'POST' });
-      if (!res.ok) { const data = await res.json().catch(() => ({})); alert(data.detail || 'Failed'); return; }
+      if (!res.ok) { const data = await res.json().catch(() => ({})); console.error(data.detail || 'Failed'); return; }
       onUpdate();
       setSelectedOrder(prev => prev ? { ...prev, delivery_dispatched_at: new Date().toISOString() } : prev);
-    } catch { alert('Network error'); } finally { setMarkingDispatched(false); }
+    } catch { console.error('Network error'); } finally { setMarkingDispatched(false); }
   }
 
   function timeSince(dateStr: string): string {

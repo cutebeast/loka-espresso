@@ -64,21 +64,21 @@ export default function KitchenDisplayPage({ token, selectedStore, stores, onSto
         const res = await apiFetch(`/orders/${orderId}/payment-status`, undefined, {
           method: 'PATCH', body: JSON.stringify({ payment_status: 'paid' }),
         });
-        if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
+        if (!res.ok) { const d = await res.json().catch(() => ({})); console.error(d.detail || 'Failed'); return; }
       } else if (action === 'pos_synced') {
         const res = await apiFetch(`/orders/${orderId}/pos-synced`, undefined, { method: 'POST' });
-        if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
+        if (!res.ok) { const d = await res.json().catch(() => ({})); console.error(d.detail || 'Failed'); return; }
       } else if (action === 'delivery_dispatched') {
         const res = await apiFetch(`/orders/${orderId}/delivery-dispatched`, undefined, { method: 'POST' });
-        if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
+        if (!res.ok) { const d = await res.json().catch(() => ({})); console.error(d.detail || 'Failed'); return; }
       } else {
         const res = await apiFetch(`/orders/${orderId}/status`, undefined, {
           method: 'PATCH', body: JSON.stringify({ status: action }),
         });
-        if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.detail || 'Failed'); return; }
+        if (!res.ok) { const d = await res.json().catch(() => ({})); console.error(d.detail || 'Failed'); return; }
       }
       fetchActiveOrders();
-    } catch { alert('Network error'); }
+    } catch { console.error('Network error'); }
   }
 
   function needsPosSync(order: MerchantOrder): boolean {

@@ -21,8 +21,9 @@ ALLOWED_CONFIG_KEYS = {
     "referral_reward_points", "referral_min_orders",
     "pos_integration_enabled", "delivery_integration_enabled",
     "payment_gateway_provider",
-    "otp_bypass_enabled", "pwa_phone_country_code", "otp_bypass_code",
+    "otp_bypass_enabled", "otp_bypass_code",
     "notification_retention_days",
+    "pos_api_url",
 }
 
 SENSITIVE_KEY_PATTERNS = {"secret", "password", "token", "api_key", "private", "jwt", "credential", "bypass_code"}

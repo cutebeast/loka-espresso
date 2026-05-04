@@ -126,7 +126,7 @@ export function useAsyncErrorHandler() {
       }
       
       if (options?.showToast) {
-        alert(`Error: ${err.message}`);
+        console.error(`Error: ${err.message}`);
       }
       
       if (options?.fallbackValue !== undefined) {

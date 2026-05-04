@@ -19,18 +19,24 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
-async def _send_order_to_pos(order: Order):
+async def _send_order_to_pos(order: Order, db: AsyncSession):
     """
     Send order to external POS system.
 
-    NOTE: This is a placeholder for future POS API integration.
-    Set POS_API_URL in your environment (e.g. https://your-pos-provider.com/api/orders)
-    to enable automatic order sync. Until then, manual mode is used — staff re-key
-    orders into the POS terminal and mark them synced via the admin UI.
+    Reads POS_API_URL from environment first; if empty, falls back to the
+    AppConfig DB setting so admins can change the endpoint without redeploying.
     """
     from app.core.config import get_settings
+    from app.models.splash import AppConfig
+
     settings = get_settings()
     pos_url = settings.POS_API_URL
+
+    if not pos_url:
+        cfg_result = await db.execute(select(AppConfig).where(AppConfig.key == "pos_api_url"))
+        cfg = cfg_result.scalar_one_or_none()
+        if cfg and cfg.value:
+            pos_url = cfg.value.strip()
 
     if not pos_url:
         logger.info(f"POS_API_URL not configured — order {order.order_number} will be handled manually")
@@ -92,7 +98,7 @@ async def confirm_order(
     store = store_result.scalar_one_or_none()
 
     if store and store.pos_integration_enabled:
-        await _send_order_to_pos(order)
+        await _send_order_to_pos(order, db)
     else:
         logger.info(f"Order {order.order_number} confirmed in manual mode (store {order.store_id} POS integration disabled)")
 

@@ -26,6 +26,20 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fnb
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: fnb_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5433:5432
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,7 +47,13 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - run: pip install pytest anyio httpx
+        env:
+          DATABASE_URL: postgresql+asyncpg://fnb:testpass@localhost:5433/fnb_test
+          JWT_SECRET: test-secret-for-ci-only
       - run: pytest tests/ -v --tb=short -x
+        env:
+          DATABASE_URL: postgresql+asyncpg://fnb:testpass@localhost:5433/fnb_test
+          JWT_SECRET: test-secret-for-ci-only
 
   backend-migrations:
     runs-on: ubuntu-latest

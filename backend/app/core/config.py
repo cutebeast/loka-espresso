@@ -27,9 +27,20 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_PHONE_NUMBER: str = ""  # E.164 format, e.g. +1234567890
 
+    # MaxMind GeoIP
+    MAXMIND_ACCOUNT_ID: str = ""
+    MAXMIND_LICENSE_KEY: str = ""
+
+    # Redis (for distributed rate limiting and caching)
+    REDIS_URL: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        # Reject wildcard origins when credentials are enabled — prevents credential-hijacking
+        if "*" in origins and self.ENVIRONMENT.lower() != "development":
+            raise ValueError("CORS_ORIGINS cannot contain '*' when allow_credentials=True in non-development environments")
+        return origins
 
     class Config:
         env_file = str(Path(__file__).resolve().parents[3] / ".env")

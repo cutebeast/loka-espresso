@@ -107,7 +107,9 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
           imageUrl = uploadData.url || uploadData.image_url || '';
         }
       }
-      const body = JSON.stringify({ name: itemName, description: itemDesc, base_price: parseFloat(itemPrice), category_id: itemCatId, is_available: itemAvailable, is_featured: itemFeatured, dietary_tags: itemDietaryTags.length > 0 ? itemDietaryTags : undefined, image_url: imageUrl || undefined });
+      const price = parseFloat(itemPrice);
+      if (isNaN(price)) { setItemCatError('Please enter a valid price'); return; }
+      const body = JSON.stringify({ name: itemName, description: itemDesc, base_price: price, category_id: itemCatId, is_available: itemAvailable, is_featured: itemFeatured, dietary_tags: itemDietaryTags.length > 0 ? itemDietaryTags : undefined, image_url: imageUrl || undefined });
       const res = editingItem
         ? await apiFetch(`/admin/items/${editingItem.id}`, undefined, { method: 'PUT', body })
         : await apiFetch(`/admin/items`, undefined, { method: 'POST', body });

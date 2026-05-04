@@ -1,10 +1,13 @@
 import os
 import uuid
+import mimetypes
 from io import BytesIO
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from app.core.security import require_role, get_current_user
 from app.core.config import get_settings
 from app.models.admin_user import AdminUser
+from app.models.customer import Customer
 from app.models.user import RoleIDs
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
@@ -181,3 +184,40 @@ async def upload_document(
     if file.content_type in MAGIC_BYTES and not _validate_magic_bytes(content, file.content_type):
         raise HTTPException(status_code=400, detail="File content does not match declared type")
     return _save_upload(content, file.filename, "inventory", settings)
+
+
+# ---------------------------------------------------------------------------
+# Authenticated file serving endpoint (replaces public StaticFiles)
+# ---------------------------------------------------------------------------
+
+@router.get("/files/{path:path}")
+async def serve_upload(
+    path: str,
+    user: AdminUser | Customer = Depends(get_current_user),
+):
+    """
+    Serve uploaded files with authentication.
+    Replaces the public `/uploads` StaticFiles mount.
+    Any authenticated user (admin or customer) can access files.
+    """
+    settings = get_settings()
+    base_dir = os.path.abspath(settings.UPLOAD_DIR)
+
+    # Prevent path traversal attacks
+    requested_path = os.path.abspath(os.path.join(base_dir, path))
+    if not requested_path.startswith(base_dir):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not os.path.exists(requested_path) or not os.path.isfile(requested_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Guess MIME type from file extension
+    mime_type, _ = mimetypes.guess_type(requested_path)
+    if not mime_type:
+        mime_type = "application/octet-stream"
+
+    return FileResponse(
+        path=requested_path,
+        media_type=mime_type,
+        filename=os.path.basename(requested_path),
+    )

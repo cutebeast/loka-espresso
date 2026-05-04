@@ -4,9 +4,6 @@ const API_PROXY = process.env.NEXT_PUBLIC_API_PROXY || "https://admin.loyaltysys
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  images: {
-    unoptimized: true,
-  },
   async rewrites() {
     return [
       {

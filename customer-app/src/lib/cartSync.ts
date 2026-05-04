@@ -32,7 +32,7 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
       serverItems = Array.isArray(data) ? data : (data?.items ?? []);
     }
   } catch {
-    // proceed with sync even if we can't read the cart
+    console.error('Failed to read server cart for sync');
   }
 
   function cartItemKey(item: { menu_item_id: number; customization_option_ids?: number[] }): string {
@@ -210,7 +210,7 @@ export async function placeOrder(params: {
           headers: { 'Idempotency-Key': createIdempotencyKey('order-cancel') },
         });
       } catch {
-        // Best-effort rollback
+        console.error('Best-effort order cancel rollback failed');
       }
     }
     throw error;
@@ -223,7 +223,7 @@ export async function placeOrder(params: {
       });
       newOrder.status = 'confirmed';
     } catch {
-      // Order stays at pending, kitchen/admin can confirm later
+      console.error('Order confirm failed, order stays pending');
     }
   }
 

@@ -21,6 +21,22 @@ logging.basicConfig(
 logger = logging.getLogger("fnb_app")
 
 
+# Redis helper for distributed rate limiting and caching
+def _get_redis_client():
+    """Get Redis client if REDIS_URL is configured, else None."""
+    try:
+        from app.core.config import get_settings
+        settings = get_settings()
+        if not settings.REDIS_URL:
+            return None
+        import redis
+        client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+        client.ping()
+        return client
+    except Exception:
+        return None
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
     
@@ -67,6 +83,19 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         if request.method in ["POST", "PUT", "PATCH"]:
+            # Fast-path: reject oversized requests via Content-Length header before reading body
+            content_length = request.headers.get("content-length")
+            if content_length:
+                try:
+                    if int(content_length) > self.max_size:
+                        logger.warning(f"Request too large (Content-Length): {content_length} bytes from {request.client.host}")
+                        return JSONResponse(
+                            status_code=413,
+                            content={"detail": f"Request body too large. Max size: {self.max_size / 1024 / 1024}MB"}
+                        )
+                except (ValueError, TypeError):
+                    pass  # Malformed header; fall through to body check
+            
             body = await request.body()
             if len(body) > self.max_size:
                 logger.warning(f"Request too large: {len(body)} bytes from {request.client.host}")
@@ -138,14 +167,18 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
 class IdempotencyMiddleware(BaseHTTPMiddleware):
     """
     Idempotency key middleware for POST/PUT/PATCH requests.
-    Prevents duplicate operations on network retries.
+    Uses Redis when available, falls back to in-memory dict.
     """
     
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-        # In production, use Redis. For now, use in-memory with TTL.
-        self._cache = {}
         self._cache_ttl = 300  # 5 minutes
+        self._redis = _get_redis_client()
+        self._cache = {}  # Fallback in-memory cache
+        if self._redis:
+            logger.info("IdempotencyMiddleware using Redis backend")
+        else:
+            logger.info("IdempotencyMiddleware using in-memory fallback")
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         if request.method not in ["POST", "PUT", "PATCH"]:
@@ -168,42 +201,69 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         user_token = request.headers.get("Authorization") or request.cookies.get("session") or "anonymous"
         token_hash = hashlib.sha256(user_token.encode()).hexdigest()[:12]
         
-        # Check cache (in production, use Redis)
-        cache_key = f"{request.method}:{request.url.path}:{idempotency_key}:{body_hash}:{token_hash}"
+        cache_key = f"idempotency:{request.method}:{request.url.path}:{idempotency_key}:{body_hash}:{token_hash}"
         
-        # Clean expired entries
-        now = time.time()
-        self._cache = {
-            k: v for k, v in self._cache.items()
-            if v["expires_at"] > now
-        }
-        
-        if cache_key in self._cache:
-            cached = self._cache[cache_key]
-            logger.info(f"Idempotency cache hit: {cache_key}")
-            return Response(
-                content=cached["content"],
-                status_code=cached["status_code"],
-                headers={"X-Idempotency-Replay": "true"}
-            )
+        # Check Redis first, then fallback to in-memory
+        if self._redis:
+            cached = self._redis.get(cache_key)
+            if cached:
+                try:
+                    data = json.loads(cached)
+                    logger.info(f"Idempotency Redis cache hit: {cache_key}")
+                    return Response(
+                        content=data["content"].encode(),
+                        status_code=data["status_code"],
+                        headers={"X-Idempotency-Replay": "true"}
+                    )
+                except Exception:
+                    pass  # Corrupted cache entry, fall through
+        else:
+            # In-memory fallback: clean expired entries
+            now = time.time()
+            self._cache = {
+                k: v for k, v in self._cache.items()
+                if v["expires_at"] > now
+            }
+            
+            if cache_key in self._cache:
+                cached = self._cache[cache_key]
+                logger.info(f"Idempotency memory cache hit: {cache_key}")
+                return Response(
+                    content=cached["content"],
+                    status_code=cached["status_code"],
+                    headers={"X-Idempotency-Replay": "true"}
+                )
         
         # Process request
         response = await call_next(request)
         
         # Cache successful responses
         if response.status_code < 500:
-            body = b""
+            resp_body = b""
             async for chunk in response.body_iterator:
-                body += chunk
+                resp_body += chunk
             
-            self._cache[cache_key] = {
-                "content": body,
-                "status_code": response.status_code,
-                "expires_at": now + self._cache_ttl
-            }
+            if self._redis:
+                try:
+                    self._redis.setex(
+                        cache_key,
+                        self._cache_ttl,
+                        json.dumps({
+                            "content": resp_body.decode(),
+                            "status_code": response.status_code,
+                        })
+                    )
+                except Exception as e:
+                    logger.warning(f"Redis idempotency cache write failed: {e}")
+            else:
+                self._cache[cache_key] = {
+                    "content": resp_body,
+                    "status_code": response.status_code,
+                    "expires_at": time.time() + self._cache_ttl
+                }
             
             return Response(
-                content=body,
+                content=resp_body,
                 status_code=response.status_code,
                 headers=dict(response.headers)
             )
@@ -214,21 +274,25 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 class RateLimitByEndpointMiddleware(BaseHTTPMiddleware):
     """
     Rate limiting for specific high-risk endpoints.
-    Uses in-memory storage (use Redis in production).
+    Uses Redis when available, falls back to in-memory storage.
     """
     
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-        # endpoint: (limit, window_seconds)
         self._limits = {
-            "POST:/api/v1/orders": (10, 60),           # 10 orders/minute
-            "POST:/api/v1/wallet/topup": (5, 60),      # 5 topups/minute
-            "POST:/api/v1/loyalty": (20, 60),          # 20 loyalty ops/minute
-            "POST:/api/v1/rewards": (10, 60),          # 10 reward ops/minute
-            "POST:/api/v1/feedback": (5, 60),          # 5 feedback/minute
-            "POST:/api/v1/cart/items": (30, 60),       # 30 cart ops/minute
+            "POST:/api/v1/orders": (10, 60),
+            "POST:/api/v1/wallet/topup": (5, 60),
+            "POST:/api/v1/loyalty": (20, 60),
+            "POST:/api/v1/rewards": (10, 60),
+            "POST:/api/v1/feedback": (5, 60),
+            "POST:/api/v1/cart/items": (30, 60),
         }
-        self._requests = {}  # ip:endpoint -> [(timestamp, count)]
+        self._redis = _get_redis_client()
+        self._requests = {}  # Fallback in-memory storage
+        if self._redis:
+            logger.info("RateLimitByEndpointMiddleware using Redis backend")
+        else:
+            logger.info("RateLimitByEndpointMiddleware using in-memory fallback")
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         key = f"{request.method}:{request.url.path}"
@@ -237,36 +301,58 @@ class RateLimitByEndpointMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         
         client_ip = request.client.host if request.client else "unknown"
-        limit_key = f"{client_ip}:{key}"
+        limit_key = f"ratelimit:{client_ip}:{key}"
         limit, window = self._limits[key]
         
         now = time.time()
         
-        # Clean old entries
-        if limit_key in self._requests:
-            self._requests[limit_key] = [
-                (ts, cnt) for ts, cnt in self._requests[limit_key]
-                if now - ts < window
-            ]
+        if self._redis:
+            try:
+                # Use Redis sorted set: score = timestamp, member = nanoid
+                # Remove entries older than window
+                self._redis.zremrangebyscore(limit_key, 0, now - window)
+                current = self._redis.zcard(limit_key)
+                
+                if current >= limit:
+                    logger.warning(f"Rate limit exceeded: {limit_key}")
+                    return JSONResponse(
+                        status_code=429,
+                        content={
+                            "detail": "Rate limit exceeded",
+                            "limit": limit,
+                            "window_seconds": window
+                        }
+                    )
+                
+                # Record request with timestamp as score
+                self._redis.zadd(limit_key, {str(uuid.uuid4()): now})
+                self._redis.expire(limit_key, window)
+            except Exception as e:
+                logger.warning(f"Redis rate limit check failed: {e}")
         else:
-            self._requests[limit_key] = []
-        
-        # Count requests in window
-        total = sum(cnt for ts, cnt in self._requests[limit_key])
-        
-        if total >= limit:
-            logger.warning(f"Rate limit exceeded: {limit_key}")
-            return JSONResponse(
-                status_code=429,
-                content={
-                    "detail": "Rate limit exceeded",
-                    "limit": limit,
-                    "window_seconds": window
-                }
-            )
-        
-        # Record request
-        self._requests[limit_key].append((now, 1))
+            # In-memory fallback
+            if limit_key in self._requests:
+                self._requests[limit_key] = [
+                    (ts, cnt) for ts, cnt in self._requests[limit_key]
+                    if now - ts < window
+                ]
+            else:
+                self._requests[limit_key] = []
+            
+            total = sum(cnt for ts, cnt in self._requests[limit_key])
+            
+            if total >= limit:
+                logger.warning(f"Rate limit exceeded: {limit_key}")
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "detail": "Rate limit exceeded",
+                        "limit": limit,
+                        "window_seconds": window
+                    }
+                )
+            
+            self._requests[limit_key].append((now, 1))
         
         return await call_next(request)
 

@@ -54,7 +54,7 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
     setLoading(true);
     setError('');
     try {
-      const editableKeys = ['otp_bypass_enabled', 'otp_bypass_code', 'pwa_phone_country_code', 'notification_retention_days'];
+      const editableKeys = ['otp_bypass_enabled', 'otp_bypass_code', 'notification_retention_days'];
       const adminRes = await apiFetch(`/admin/config?${editableKeys.map((key) => `key=${encodeURIComponent(key)}`).join('&')}`);
       const publicRes = await apiFetch('/config');
       if (!adminRes.ok || !publicRes.ok) {
@@ -74,7 +74,6 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
       for (const [k, v] of Object.entries(data)) {
         vals[k] = String(v ?? '');
       }
-      if (!vals.pwa_phone_country_code) vals.pwa_phone_country_code = '+60';
       if (!vals.otp_bypass_enabled) vals.otp_bypass_enabled = 'false';
       if (!vals.otp_bypass_code) vals.otp_bypass_code = '';
       if (!vals.notification_retention_days) vals.notification_retention_days = '30';
@@ -337,54 +336,6 @@ export default function PWASettingsPage({ token }: PWASettingsPageProps) {
           <h3 className="psp-31">Phone Format</h3>
         </div>
 
-        <div className="psp-32">
-          <div className="psp-33">
-            <div className="psp-34">
-              Default Country Code
-            </div>
-            <div className="psp-35">
-              Prepended to phone numbers on the PWA (default: +60 for Malaysia)
-            </div>
-          </div>
-          <div className="psp-36">
-            <input
-              type="text"
-              value={editValues.pwa_phone_country_code ?? '+60'}
-              onChange={(e) => {
-                setEditValues(prev => ({ ...prev, pwa_phone_country_code: e.target.value }));
-                setSavedKeys(prev => {
-                  const next = { ...prev };
-                  delete next['pwa_phone_country_code'];
-                  return next;
-                });
-              }}
-              placeholder="+60"
-              className="psp-37"
-            />
-            <button
-              className="btn btn-primary psp-38"
-              
-              disabled={savingKeys['pwa_phone_country_code'] || editValues.pwa_phone_country_code === String(configs.pwa_phone_country_code ?? '+60')}
-              onClick={() => saveConfig('pwa_phone_country_code')}
-            >
-              {savingKeys['pwa_phone_country_code'] ? (
-                <><i className="fas fa-spinner fa-spin"></i></>
-              ) : (
-                <><i className="fas fa-save"></i></>
-              )}
-            </button>
-            {savedKeys['pwa_phone_country_code'] === 'ok' && (
-              <span className="psp-39">
-                <i className="fas fa-check-circle"></i>
-              </span>
-            )}
-            {savedKeys['pwa_phone_country_code'] === 'err' && (
-              <span className="psp-40">
-                <i className="fas fa-exclamation-circle"></i>
-              </span>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Notification Retention Group */}

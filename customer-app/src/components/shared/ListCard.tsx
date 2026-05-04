@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Gift, Tag, Calendar, Clock } from 'lucide-react';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
@@ -30,11 +31,7 @@ export default function ListCard({
   onPress,
   disabled,
 }: ListCardProps) {
-  const handleImageError = (e: React.SyntheticEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    target.style.background = `linear-gradient(135deg, ${LOKA.cream} 0%, ${LOKA.copper}30 100%)`;
-    target.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="${LOKA.brown}" stroke-width="1.5"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></div>`;
-  };
+  const [imageError, setImageError] = useState(false);
 
   return (
     <motion.button
@@ -44,15 +41,23 @@ export default function ListCard({
       className={`lc-card ${disabled ? 'lc-card-disabled' : ''}`}
     >
       <div
-        onError={handleImageError}
         className="lc-thumb"
         style={{
-          background: imageUrl
-            ? `url(${resolveAssetUrl(imageUrl)}) center/cover`
+          background: imageUrl && !imageError
+            ? undefined
             : `linear-gradient(135deg, ${LOKA.cream} 0%, ${LOKA.copper}30 100%)`,
         }}
       >
-        {!imageUrl && <Gift size={28} color={LOKA.brown} strokeWidth={1.5} />}
+        {imageUrl && !imageError ? (
+          <img
+            src={resolveAssetUrl(imageUrl) ?? undefined}
+            alt={title}
+            onError={() => setImageError(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <Gift size={28} color={LOKA.brown} strokeWidth={1.5} />
+        )}
       </div>
       <div className="lc-body">
         <div className="lc-row">

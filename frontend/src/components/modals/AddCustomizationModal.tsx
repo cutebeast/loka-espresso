@@ -13,9 +13,11 @@ export function AddCustomizationForm({ storeId: _storeId, itemId, token: _token,
     e.preventDefault();
     setSaving(true);
     try {
+      const priceAdjustment = parseFloat(priceAdj);
+      if (isNaN(priceAdjustment)) { setSaving(false); return; }
       await apiFetch(`/admin/items/${itemId}/customizations`, undefined, {
         method: 'POST',
-        body: JSON.stringify({ name, option_type: optionType.trim() || 'addon', price_adjustment: parseFloat(priceAdj), is_active: true, display_order: 0 }),
+        body: JSON.stringify({ name, option_type: optionType.trim() || 'addon', price_adjustment: priceAdjustment, is_active: true, display_order: 0 }),
       });
       onClose();
     } catch { console.error('Modal save operation failed'); } finally { setSaving(false); }

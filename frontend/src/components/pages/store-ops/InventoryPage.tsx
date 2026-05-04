@@ -121,7 +121,10 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
   async function handleSubmit() {
     setSaving(true); setError('');
     try {
-      const body = JSON.stringify({ name, current_stock: parseFloat(stock), unit, reorder_level: parseFloat(reorderLevel) || 0, category_id: catId });
+      const inventoryStock = parseFloat(stock);
+      const inventoryReorder = parseFloat(reorderLevel);
+      if (isNaN(inventoryStock)) { setError('Please enter a valid stock amount'); setSaving(false); return; }
+      const body = JSON.stringify({ name, current_stock: inventoryStock, unit, reorder_level: isNaN(inventoryReorder) ? 0 : inventoryReorder, category_id: catId });
       const res = editingItem
         ? await apiFetch(`/admin/stores/${activeStoreId}/inventory/${editingItem.id}`, undefined, { method: 'PUT', body })
         : await apiFetch(`/admin/stores/${activeStoreId}/inventory`, undefined, { method: 'POST', body });
@@ -161,9 +164,11 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
       } catch { console.error('Failed to toggle inventory item'); }
     }
     try {
+      const adjQuantity = parseFloat(adjQty);
+      if (isNaN(adjQuantity)) { setError('Please enter a valid quantity'); setSavingAdj(false); return; }
       const res = await apiFetch(`/admin/stores/${activeStoreId}/inventory/${adjustingItem.id}/adjust`, undefined, {
         method: 'POST',
-        body: JSON.stringify({ movement_type: adjType, quantity: parseFloat(adjQty), note: adjNote, attachment_path: attachmentPath }),
+        body: JSON.stringify({ movement_type: adjType, quantity: adjQuantity, note: adjNote, attachment_path: attachmentPath }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || `Failed (${res.status})`); return; }
       closeAdjust(); onRefresh();

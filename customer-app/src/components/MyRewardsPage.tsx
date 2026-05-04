@@ -44,7 +44,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
   const availableRewards = rewards.filter((r) => r.status === 'available');
   const availableVouchers = vouchers.filter((v) => v.status === 'available');
   const totalOwned = rewards.length + vouchers.length;
-  const usedThisMonth = 2; // TODO: fetch from backend
+  const usedThisMonth = rewards.filter((r) => r.status === 'used').length;
 
   return (
     <div className="myrv-screen">

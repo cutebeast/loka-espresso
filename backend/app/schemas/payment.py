@@ -1,4 +1,4 @@
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 from typing import Optional
 
 
@@ -31,3 +31,10 @@ class PaymentMethodCreate(BaseModel):
     provider: Optional[str] = None
     last4: Optional[str] = None
     is_default: bool = False
+
+    @field_validator('last4')
+    @classmethod
+    def last4_format(cls, v):
+        if v is not None and not (v.isdigit() and len(v) == 4):
+            raise ValueError('last4 must be exactly 4 digits')
+        return v

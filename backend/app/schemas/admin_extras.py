@@ -126,6 +126,16 @@ class BroadcastCreate(BaseModel):
     status: str = "draft"
 
 
+class BroadcastUpdate(BaseModel):
+    title: Optional[str] = None
+    body: Optional[str] = None
+    type: Optional[str] = None
+    image_url: Optional[str] = None
+    audience: Optional[str] = None
+    store_id: Optional[int] = None
+    scheduled_at: Optional[datetime] = None
+
+
 class BroadcastOut(BaseModel):
     id: int
     title: str
@@ -346,4 +356,3 @@ class MarketingCampaignUpdate(BaseModel):
     provider: Optional[str] = None
     provider_campaign_id: Optional[str] = None
     scheduled_at: Optional[datetime] = None
-    total_recipients: Optional[int] = None

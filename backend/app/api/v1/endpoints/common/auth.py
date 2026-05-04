@@ -112,7 +112,7 @@ async def _blacklist_token(token: str, user_id: int, db: AsyncSession) -> None:
     if not token:
         return
     try:
-        payload = pyjwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = pyjwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM], issuer=settings.JWT_ISSUER, audience=settings.JWT_AUDIENCE)
     except PyJWTError:
         return
     jti = payload.get("jti")
@@ -135,7 +135,7 @@ async def check_session(request: Request, db: AsyncSession = Depends(get_db)):
     if not token:
         return JSONResponse({"authenticated": False})
     try:
-        payload = pyjwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = pyjwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM], issuer=settings.JWT_ISSUER, audience=settings.JWT_AUDIENCE)
         if payload.get("type") != "access":
             return JSONResponse({"authenticated": False})
         jti = payload.get("jti")
@@ -482,7 +482,7 @@ async def change_password(
     user: User = Depends(get_current_user),
 ):
     if len(body.new_password) < 8:
-        raise HTTPException(400, "New password must be at least 6 characters")
+        raise HTTPException(400, "New password must be at least 8 characters")
     if not hasattr(user, 'password_hash') or not user.password_hash:
         raise HTTPException(400, "This account does not use password authentication")
     if not verify_password(body.current_password, user.password_hash):

@@ -207,6 +207,13 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
               {result.newBalance !== undefined && (
                 <div className="wtup-27">
                   New Balance: {formatRM(result.newBalance)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Confirmation Dialog */}
       {showConfirm && (
         <div className="modal-overlay" onClick={() => setShowConfirm(false)}>
@@ -220,12 +227,6 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button className="btn" style={{ flex: 1 }} onClick={() => setShowConfirm(false)}>Cancel</button>
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={executeTopUp}>Confirm</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-              )}
             </div>
           </div>
         </div>

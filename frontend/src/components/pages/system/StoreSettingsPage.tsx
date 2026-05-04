@@ -158,9 +158,9 @@ function StoreForm({ token: _token, onClose, existingStore }: { token: string; o
       }
       const payload: Record<string, unknown> = { name, address, phone, pickup_lead_minutes: parseInt(pickupLead) || 15 };
       if (!isEdit) payload.slug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      if (lat) payload.lat = parseFloat(lat);
-      if (lng) payload.lng = parseFloat(lng);
-      if (deliveryRadius) payload.delivery_radius_km = parseFloat(deliveryRadius);
+      if (lat) { const latNum = parseFloat(lat); if (!isNaN(latNum)) payload.lat = latNum; }
+      if (lng) { const lngNum = parseFloat(lng); if (!isNaN(lngNum)) payload.lng = lngNum; }
+      if (deliveryRadius) { const radiusNum = parseFloat(deliveryRadius); if (!isNaN(radiusNum)) payload.delivery_radius_km = radiusNum; }
       if (uploadedUrl) payload.image_url = uploadedUrl;
       const ohJSON = openingHoursToJSON(openingHours);
       if (ohJSON) payload.opening_hours = ohJSON;

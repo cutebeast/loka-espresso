@@ -15,10 +15,12 @@ export function AddItemForm({ storeId: _storeId, categories, token: _token, onCl
     e.preventDefault();
     setSaving(true);
     try {
+      const itemPrice = parseFloat(price);
+      if (isNaN(itemPrice)) { setSaving(false); return; }
       await apiFetch(`/admin/items`, undefined, {
         method: 'POST',
         body: JSON.stringify({
-          name, description, base_price: parseFloat(price),
+          name, description, base_price: itemPrice,
           category_id: categoryId, is_available: true, display_order: 0,
         }),
       });

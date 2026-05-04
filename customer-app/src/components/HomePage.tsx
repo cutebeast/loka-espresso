@@ -44,6 +44,7 @@ export default function HomePage() {
       }
       setFeaturedItems(list.slice(0, 10));
     } catch {
+      console.error('Failed to load featured items');
       setFeaturedItems([]);
     } finally {
       setLoadingFeatured(false);
@@ -62,6 +63,7 @@ export default function HomePage() {
       });
       setBanners(active);
     } catch {
+      console.error('Failed to load banners');
       setBanners([]);
     } finally {
       setLoadingBanners(false);
@@ -78,6 +80,7 @@ export default function HomePage() {
       setInfoCards(Array.isArray(infoRes.data) ? infoRes.data : []);
       setProductCards(Array.isArray(prodRes.data) ? prodRes.data : []);
     } catch {
+      console.error('Failed to load info cards');
       try {
         const res = await api.get('/promos/banners');
         const data = Array.isArray(res.data) ? res.data : [];
@@ -99,6 +102,7 @@ export default function HomePage() {
           }));
         setInfoCards(detailBanners);
       } catch {
+        console.error('Failed to load info fallback from banners');
         setInfoCards([]);
       }
     } finally {
@@ -122,6 +126,7 @@ export default function HomePage() {
       const res = await api.get(`/menu/items/${item.id}/customizations`);
       setAvailableOptions(res.data ?? []);
     } catch {
+      console.error('Failed to load customizations');
       setAvailableOptions(item.customization_options ?? []);
     } finally {
       setLoadingOptions(false);

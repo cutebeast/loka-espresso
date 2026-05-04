@@ -15,13 +15,16 @@ export function AddVoucherForm({ token: _token, onClose }: { token: string; onCl
     e.preventDefault();
     setSaving(true);
     try {
+      const discValue = parseFloat(discountValue);
+      const minOrd = parseFloat(minSpend);
+      if (isNaN(discValue)) { setSaving(false); return; }
       await apiFetch('/admin/vouchers', undefined, {
         method: 'POST',
         body: JSON.stringify({
           code: code.toUpperCase(), description,
           discount_type: discountType,
-          discount_value: parseFloat(discountValue),
-          min_order: parseFloat(minSpend),
+          discount_value: discValue,
+          min_order: isNaN(minOrd) ? 0 : minOrd,
           is_active: true,
         }),
       });

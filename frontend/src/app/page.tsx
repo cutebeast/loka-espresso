@@ -226,19 +226,43 @@ export default function MerchantDashboard() {
     if (token) { fetchStores(); fetchUserRole(); }
   }, [token, fetchStores, fetchUserRole]);
 
+  const storeId = selectedStore === 'all' ? '' : selectedStore;
+
+  // Per-page data fetching — each effect only runs when its page is active
   useEffect(() => {
-    if (!token) return;
-    const controller = new AbortController();
-    const storeId = selectedStore === 'all' ? '' : selectedStore;
-    if (page === 'dashboard') fetchDashboardWithRange(storeId, dateRange.from, dateRange.to, dashboardChartMode);
-    else if (page === 'orders') fetchOrders(storeId);
-    else if (page === 'menu') fetchMenu();
-    else if (page === 'inventory') fetchInventory();
-    else if (page === 'tables') fetchTables();
-    else if (page === 'loyaltyrules') fetchLoyaltyTiers();
-    else if (page === 'store') fetchAdminStores();
-    return () => controller.abort();
-  }, [page, token, selectedStore, dateRange, ordersPage, ordersStatus, ordersOrderType, ordersFromDate, ordersToDate, dashboardChartMode, fetchDashboardWithRange, fetchAdminStores, fetchInventory, fetchMenu, fetchOrders, fetchTables, fetchLoyaltyTiers]);
+    if (!token || page !== 'dashboard') return;
+    fetchDashboardWithRange(storeId, dateRange.from, dateRange.to, dashboardChartMode);
+  }, [page, token, storeId, dateRange, dashboardChartMode, fetchDashboardWithRange]);
+
+  useEffect(() => {
+    if (!token || page !== 'orders') return;
+    fetchOrders(storeId);
+  }, [page, token, storeId, ordersPage, ordersStatus, ordersOrderType, ordersFromDate, ordersToDate, fetchOrders]);
+
+  useEffect(() => {
+    if (!token || page !== 'menu') return;
+    fetchMenu();
+  }, [page, token, fetchMenu]);
+
+  useEffect(() => {
+    if (!token || page !== 'inventory') return;
+    fetchInventory();
+  }, [page, token, fetchInventory]);
+
+  useEffect(() => {
+    if (!token || page !== 'tables') return;
+    fetchTables();
+  }, [page, token, fetchTables]);
+
+  useEffect(() => {
+    if (!token || page !== 'loyaltyrules') return;
+    fetchLoyaltyTiers();
+  }, [page, token, fetchLoyaltyTiers]);
+
+  useEffect(() => {
+    if (!token || page !== 'store') return;
+    fetchAdminStores();
+  }, [page, token, fetchAdminStores]);
 
   const storeObj = stores.find((s: any) => s.id === Number(selectedStore));
 

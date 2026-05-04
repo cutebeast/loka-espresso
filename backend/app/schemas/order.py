@@ -19,7 +19,6 @@ class OrderCreate(BaseModel):
     recipient_name: Optional[str] = None
     recipient_phone: Optional[str] = None
     delivery_instructions: Optional[str] = None
-    created_at: Optional[datetime] = None
 
     @field_validator('store_id')
     @classmethod
