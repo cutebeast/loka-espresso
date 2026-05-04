@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Gift, Ticket, Clock, QrCode, Shield } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
-import { useUIStore } from '@/stores/uiStore';
 import type { UserReward, UserVoucher } from '@/lib/api';
 import { LOKA } from '@/lib/tokens';
 
@@ -16,7 +15,6 @@ type Tab = 'rewards' | 'vouchers';
 
 export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps) {
   const { rewards, vouchers, refreshWallet } = useWalletStore();
-  const { showToast } = useUIStore();
 
   const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'rewards');
   const [selectedReward, setSelectedReward] = useState<UserReward | null>(null);

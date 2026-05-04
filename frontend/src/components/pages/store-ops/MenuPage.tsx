@@ -22,11 +22,10 @@ interface MenuPageProps {
 
 
 
-export default function MenuPage({ categories, menuItems, selectedCategory, setSelectedCategory, selectedStore, storeObj: _storeObj, token: _token, onRefresh, onCustomizeItem, userType = 1 }: MenuPageProps) {
+export default function MenuPage({ categories, menuItems, selectedCategory, setSelectedCategory, selectedStore: _selectedStore, storeObj: _storeObj, token: _token, onRefresh, onCustomizeItem, userType = 1 }: MenuPageProps) {
   const isHQ = userType === 1;
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<number | null>(null);
-  const [confirmDeleteCat, setConfirmDeleteCat] = useState<number | null>(null);
   const [itemCatError, setItemCatError] = useState('');
 
   // Category form (modal)
@@ -69,10 +68,6 @@ export default function MenuPage({ categories, menuItems, selectedCategory, setS
       if (!res.ok) { const d = await res.json().catch(() => ({})); setCatError(d.detail || 'Failed'); return; }
       closeCatModal(); onRefresh();
     } catch { setCatError('Network error'); } finally { setSavingCat(false); }
-  }
-
-  async function deleteCat(id: number) {
-    try { const res = await apiFetch(`/admin/categories/${id}`, undefined, { method: 'DELETE' }); if (res.ok) { setConfirmDeleteCat(null); onRefresh(); } } catch { console.error('Failed to delete category'); }
   }
 
   async function toggleCatActive(c: MerchantCategory) {

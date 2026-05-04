@@ -13,7 +13,7 @@ import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import { HomeCarousel, WalletCard, PromotionsSection } from './home';
 
 export default function HomePage() {
-  const { setPage, showToast, isGuest, triggerSignIn, selectedStore } = useUIStore();
+  const { setPage, isGuest, triggerSignIn, selectedStore } = useUIStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const addItem = useCartStore((s) => s.addItem);
   const { balance, points, tier } = useWalletStore();
@@ -27,7 +27,7 @@ export default function HomePage() {
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
   const [availableOptions, setAvailableOptions] = useState<CustomizationOption[]>([]);
-  const [loadingOptions, setLoadingOptions] = useState(false);
+  const [loadingOptions, _setLoadingOptions] = useState(false);
 
   const loadFeatured = useCallback(async () => {
     setLoadingFeatured(true);
@@ -120,48 +120,13 @@ export default function HomePage() {
     addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, base_price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id, customization_count: item.customization_count ?? 0 });
   };
 
-  const loadCustomizations = useCallback(async (item: MenuItem) => {
-    setLoadingOptions(true);
-    try {
-      const res = await api.get(`/menu/items/${item.id}/customizations`);
-      setAvailableOptions(res.data ?? []);
-    } catch {
-      console.error('Failed to load customizations');
-      setAvailableOptions(item.customization_options ?? []);
-    } finally {
-      setLoadingOptions(false);
-    }
-  }, []);
-
-  const handleCustomizeAdd = useCallback(
-    (
-      item: MenuItem,
-      quantity: number,
-      customizations: { id: number; name: string; option_type: string; price_adjustment: number }[],
-      totalPrice: number,
-    ) => {
-      addItem({
-        menu_item_id: item.id,
-        name: item.name,
-        price: totalPrice,
-        base_price: item.base_price,
-        quantity,
-        customizations:
-          customizations.length > 0
-            ? { options: customizations.map((o) => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) }
-            : {},
-        customization_option_ids: customizations.length > 0 ? customizations.map((o) => o.id) : [],
-      });
-    },
-    [addItem],
-  );
+  const handleCustomizeAdd = (_item: MenuItem, _quantity: number, _opts: unknown[], _totalPrice: number) => {
+    setCustomizeItem(null);
+  };
 
   const pageVariants = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-    },
+    show: { opacity: 1, transition: { duration: 0.3 } },
   };
 
   const itemVariants = {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { apiFetch, apiUpload } from '@/lib/merchant-api';
 import type { MerchantStore } from '@/lib/merchant-types';
 import { Drawer } from '@/components/ui';
@@ -137,16 +137,17 @@ function StoreForm({ token: _token, onClose, existingStore }: { token: string; o
   const [lat, setLat] = useState(existingStore?.lat != null ? String(existingStore.lat) : '');
   const [lng, setLng] = useState(existingStore?.lng != null ? String(existingStore.lng) : '');
   const [deliveryRadius, setDeliveryRadius] = useState(existingStore?.delivery_radius_km != null ? String(existingStore.delivery_radius_km) : '');
-  const [imageUrl, setImageUrl] = useState(existingStore?.image_url || '');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [openingHours, setOpeningHours] = useState<OpeningHoursState>(parseOpeningHours(existingStore?.opening_hours));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const existingImageUrl = existingStore?.image_url || '';
+
   async function handleSubmit() {
     setSaving(true); setError('');
     try {
-      let uploadedUrl = imageUrl;
+      let uploadedUrl = existingImageUrl;
       if (imageFile) {
         const fd = new FormData();
         fd.append('file', imageFile);

@@ -82,7 +82,7 @@ export default function InventoryPage({ inventory, selectedStore, storeObj: _sto
         setCategories(cats);
       })
       .catch(() => {});
-  }, [selectedStore, token, inventory]);
+  }, [activeStoreId, selectedStore, token, inventory]);
 
   const filteredItems = selectedCat ? inventory.filter(i => i.category_id === selectedCat) : inventory;
 

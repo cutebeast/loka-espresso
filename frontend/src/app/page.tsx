@@ -114,7 +114,7 @@ function PageRenderer({ page, token, data, stores, selectedStore, setSelectedSto
   );
 }
 
-function AdminModals({ showModal, setShowModal, modalTitle, modalContent, showChangePassword, setShowChangePassword, showProfile, setShowProfile, showStoreModal, setShowStoreModal, stores, selectedStore, setSelectedStore, customizingItem, setCustomizingItem, token, fetchMenu, currentUserName, currentUserPhone, currentUserEmail, setCurrentUserName, setCurrentUserPhone }: any) {
+function AdminModals({ showModal, setShowModal, modalTitle, modalContent, showChangePassword, setShowChangePassword, showProfile, setShowProfile, showStoreModal, setShowStoreModal, stores, setSelectedStore, customizingItem, setCustomizingItem, token, fetchMenu, currentUserName, currentUserPhone, currentUserEmail, setCurrentUserName, setCurrentUserPhone }: any) {
   return (
     <>
       {showStoreModal && (
@@ -187,12 +187,10 @@ export default function MerchantDashboard() {
 
   const data = useMerchantData(token);
   const {
-    stores, setStores, selectedStore, setSelectedStore,
-    ordersTotal, ordersPage, setOrdersPage, ordersPageSize,
+    stores, selectedStore, setSelectedStore,
+    ordersPage, setOrdersPage, ordersPageSize,
     ordersStatus, setOrdersStatus, ordersOrderType, setOrdersOrderType,
     ordersFromDate, setOrdersFromDate, ordersToDate, setOrdersToDate,
-    setCategories, setSelectedCategory,
-    loyaltyTiers, loading,
     dateRange, dashboardChartMode,
     fetchStores, fetchAdminStores, fetchDashboardWithRange, fetchOrders,
     fetchMenu, fetchInventory, fetchTables, fetchLoyaltyTiers, handleDateRangeChange,
@@ -211,10 +209,11 @@ export default function MerchantDashboard() {
   const [customizingItem, setCustomizingItem] = useState<MerchantMenuItem | null>(null);
 
   function openBroadcastModal() {
-    const { AddBroadcastForm } = require('@/components/Modals');
-    setModalTitle('New Broadcast');
-    setModalContent(<AddBroadcastForm token={token} onClose={() => { setShowModal(false); setNotifRefreshKey(k => k + 1); }} />);
-    setShowModal(true);
+    import('@/components/Modals').then(({ AddBroadcastForm }) => {
+      setModalTitle('New Broadcast');
+      setModalContent(<AddBroadcastForm token={token} onClose={() => { setShowModal(false); setNotifRefreshKey(k => k + 1); }} />);
+      setShowModal(true);
+    });
   }
 
   function handlePageChange(newPage: PageId) {
