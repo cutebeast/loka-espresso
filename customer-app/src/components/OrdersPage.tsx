@@ -74,9 +74,7 @@ export default function OrdersPage() {
   const handleReorder = async (order: Order) => {
     if (!order.store_id) { showToast('Cannot reorder: store missing', 'error'); return; }
     try {
-      console.log('[reorder] posting to orders/' + order.id + '/reorder');
       const res = await api.post(`/orders/${order.id}/reorder`);
-      console.log('[reorder] response:', res.data);
       const { clearCart } = useCartStore.getState();
       clearCart();
       const items = res.data?.items ?? [];

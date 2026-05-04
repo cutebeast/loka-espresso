@@ -149,7 +149,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
       }
       await fetchSaved();
     } catch (e) {
-      console.error('Failed to save address to book:', e);
+      console.error('[DeliveryAddressCard] Failed to save:', e);
     }
     onChange({ address: full, lat, lng });
     setSaving(false);

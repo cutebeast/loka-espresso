@@ -27,7 +27,7 @@ export function ServiceWorkerRegistrar() {
           window.dispatchEvent(event);
         }
       } catch (err) {
-        console.error('SW registration failed:', err);
+        console.error('[ServiceWorker] Registration failed:', err);
       }
     };
 
