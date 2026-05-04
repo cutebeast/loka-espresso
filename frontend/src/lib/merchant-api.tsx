@@ -34,9 +34,13 @@ async function refreshMerchantAccessToken(): Promise<boolean> {
 
 // _unused is intentionally ignored — auth is via httpOnly session cookies
 export async function apiFetch(path: string, _unused?: string, options?: RequestInit) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+  try {
   const response = await fetch(`${API}${path}`, {
     ...options,
     credentials: 'include',
+    signal: options?.signal || controller.signal,
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
@@ -63,6 +67,9 @@ export async function apiFetch(path: string, _unused?: string, options?: Request
     console.error(`API error ${response.status} on ${path}:`, errorBody);
   }
   return response;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**

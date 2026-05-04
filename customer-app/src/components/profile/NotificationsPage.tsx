@@ -96,7 +96,7 @@ export default function NotificationsPage() {
     try {
       await api.put(`/notifications/${id}/read`);
       setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
-    } catch {}
+    } catch { console.error('[Notifications] Failed to mark read'); }
   };
 
   const handleMarkAllRead = async () => {
@@ -105,7 +105,7 @@ export default function NotificationsPage() {
     try {
       await Promise.all(unread.map((n) => api.put(`/notifications/${n.id}/read`)));
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    } catch {}
+    } catch { console.error('[Notifications] Failed to mark read'); }
   };
 
   /* Filter */

@@ -19,7 +19,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
 
   const stopScanner = useCallback(async () => {
     if (scannerRef.current) {
-      try { await scannerRef.current.stop(); } catch {}
+      try { await scannerRef.current.stop(); } catch { /* camera cleanup — ignore */ }
       scannerRef.current = null;
     }
   }, []);

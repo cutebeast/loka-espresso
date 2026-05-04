@@ -176,7 +176,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
   };
 
   const handleProfileSkip = async () => {
-    try { const me = await api.get('/users/me'); setUser(me.data as UserProfile); } catch {}
+    try { const me = await api.get('/users/me'); setUser(me.data as UserProfile); } catch { /* skip if profile fetch fails */ }
     setIsNewUser(false); finishAuth();
   };
 

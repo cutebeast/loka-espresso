@@ -20,6 +20,7 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
   const [showGuide, setShowGuide] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; newBalance?: number } | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   async function handleCustomerFound(c: CustomerResult) {
     setResult(null);
@@ -49,6 +50,13 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
       setResult({ success: false, message: 'Please enter a valid amount' });
       return;
     }
+    setShowConfirm(true);
+  }
+
+  async function executeTopUp() {
+    if (!customer || !amount) return;
+    const amt = parseFloat(amount);
+    setShowConfirm(false);
     setProcessing(true);
     setResult(null);
     try {
@@ -199,7 +207,24 @@ export default function WalletTopUpPage({ token: _token }: WalletTopUpPageProps)
               {result.newBalance !== undefined && (
                 <div className="wtup-27">
                   New Balance: {formatRM(result.newBalance)}
-                </div>
+      {/* Confirmation Dialog */}
+      {showConfirm && (
+        <div className="modal-overlay" onClick={() => setShowConfirm(false)}>
+          <div className="modal md-4" onClick={e => e.stopPropagation()}>
+            <h3 className="md-5">Confirm Top-Up</h3>
+            <p style={{ margin: '12px 0' }}>
+              Top up <strong>{formatRM(parseFloat(amount))}</strong> for{' '}
+              <strong>{customer?.name || 'customer'}</strong>
+              {customer?.phone ? ` (${customer.phone})` : ''}?
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button className="btn" style={{ flex: 1 }} onClick={() => setShowConfirm(false)}>Cancel</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={executeTopUp}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
               )}
             </div>
           </div>

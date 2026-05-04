@@ -6,6 +6,7 @@ const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true, // Send httpOnly cookies automatically
+  timeout: 30000, // 30-second request timeout
 });
 
 // Prevents multiple simultaneous refresh attempts from triggering multiple reloads
@@ -42,14 +43,9 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // Only clear and reload once per page load to prevent infinite loops
-      // (should rarely reach here — only if refresh succeeded but no access_token returned)
-      if (!_refreshFailed) {
-        _refreshFailed = true;
-        if (typeof window !== 'undefined') {
-          window.location.reload();
-        }
-      }
+      // Token refresh failed irrecoverably — reject silently
+      // The next API call will trigger a fresh /auth/session check via useAuthFlow
+      console.error('Token refresh failed — session may need re-authentication');
     }
 
     return Promise.reject(error);
