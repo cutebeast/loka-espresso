@@ -89,9 +89,8 @@ export function useAuthFlow() {
     }
   }, [isGuest, page, authDone]);
 
-  // Validate session on mount via httpOnly cookie
+  // Validate session on mount via httpOnly cookie — always runs (handles page reloads)
   useEffect(() => {
-    if (!isAuthenticated) return;
     const abortCtrl = new AbortController();
     const validate = async () => {
       setIsLoading(true);
@@ -100,18 +99,20 @@ export function useAuthFlow() {
         if (res.data?.authenticated) {
           const userRes = await api.get('/users/me', { signal: abortCtrl.signal });
           setUser(userRes.data);
+          setAuthDone(true);
+        } else {
+          setAuthDone(true);
         }
-        setAuthDone(true);
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;
-        logout();
+        setAuthDone(true);
       } finally {
         setIsLoading(false);
       }
     };
     validate();
     return () => abortCtrl.abort();
-  }, [logout, setIsLoading, setUser, setAuthDone, isAuthenticated]);
+  }, [setUser, setAuthDone, setIsLoading]);
 
   const loadAppData = useCallback(async () => {
     try {
