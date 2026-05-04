@@ -8,7 +8,7 @@ import os
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func
+from sqlalchemy import select, desc, func, or_
 from typing import Optional, List
 from pydantic import BaseModel
 
@@ -139,10 +139,10 @@ async def get_legal_content(
         .where(
             InformationCard.content_type == "system",
             InformationCard.is_active == True,
-        )
-        .where(
-            InformationCard.title.ilike(f"%{title_pattern}%") | 
-            InformationCard.slug == content_key
+            or_(
+                InformationCard.title.ilike(f"%{title_pattern}%"),
+                InformationCard.slug == content_key,
+            ),
         )
     )
     card = result.scalar_one_or_none()

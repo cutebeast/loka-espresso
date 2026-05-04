@@ -3,16 +3,21 @@ from sqlalchemy import text
 
 
 async def seed_templates(db):
-    """Insert default notification templates if table is empty."""
+    """Insert default notification templates and system content if missing."""
     from sqlalchemy import select, func
     from app.models.notification import NotificationTemplate
     from app.models.splash import AppConfig
 
+    # Always ensure config defaults exist (idempotent)
+    await _seed_config_defaults(db)
+
+    # Always ensure system content cards exist (idempotent)
+    await _seed_system_content(db)
+
+    # Skip template seeding if already done
     count = (await db.execute(select(func.count()).select_from(NotificationTemplate))).scalar()
     if count and count > 0:
-        # Also ensure config defaults exist (idempotent)
-        await _seed_config_defaults(db)
-        return  # Already seeded
+        return
 
     templates = [
         dict(name="Welcome New User", title="Welcome to Loka Espresso! ☕",
@@ -59,22 +64,11 @@ async def seed_templates(db):
     print(f"Seeded {len(templates)} notification templates")
 
 
-async def _seed_config_defaults(db):
-    """Ensure essential app_config keys and system content cards exist (idempotent)."""
-    from app.models.splash import AppConfig
+async def _seed_system_content(db):
+    """Ensure essential system content cards exist (idempotent)."""
     from app.models.content import InformationCard
     from sqlalchemy import select
 
-    defaults = {
-        "notification_retention_days": "30",
-        "otp_rate_limit": "20",
-    }
-    for key, val in defaults.items():
-        existing = (await db.execute(select(AppConfig).where(AppConfig.key == key))).scalar_one_or_none()
-        if not existing:
-            db.add(AppConfig(key=key, value=val))
-
-    # Seed default system content cards if they don't exist
     system_cards = [
         dict(title="About Loka Espresso", slug="about-loka-espresso",
              long_description="Born from a passion for authentic Turkish coffee culture, Loka Espresso brings the warmth of centuries-old coffee traditions to every cup. Our beans are sourced from the finest regions — roasted in small batches to honour the craft.",
@@ -86,5 +80,21 @@ async def _seed_config_defaults(db):
         )).scalar_one_or_none()
         if not existing:
             db.add(InformationCard(**card))
+    await db.flush()
+
+
+async def _seed_config_defaults(db):
+    """Ensure essential app_config keys exist (idempotent)."""
+    from app.models.splash import AppConfig
+    from sqlalchemy import select
+
+    defaults = {
+        "notification_retention_days": "30",
+        "otp_rate_limit": "20",
+    }
+    for key, val in defaults.items():
+        existing = (await db.execute(select(AppConfig).where(AppConfig.key == key))).scalar_one_or_none()
+        if not existing:
+            db.add(AppConfig(key=key, value=val))
 
     await db.flush()

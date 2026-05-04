@@ -40,6 +40,8 @@ export default function CheckoutPage() {
   const { config } = useConfigStore();
   const user = useAuthStore((s) => s.user);
 
+  const isDineInLocked = orderMode === 'dine_in' && !!dineInSession;
+
   const [pickupTime, setPickupTime] = useState<string | null>(checkoutDraft.pickupTime ?? null);
   const [deliveryAddress, setDeliveryAddress] = useState<{ address: string; lat?: number; lng?: number } | null>(checkoutDraft.deliveryAddress ?? null);
   const [recipientName, setRecipientName] = useState(checkoutDraft.recipientName || '');
@@ -48,7 +50,9 @@ export default function CheckoutPage() {
   const [discountType, setDiscountType] = useState<'voucher' | 'reward' | null>(null);
   const [discountCode, setDiscountCode] = useState('');
   const [discountValue, setDiscountValue] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash'>(checkoutDraft.paymentMethod || 'wallet');
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash'>(
+    checkoutDraft.paymentMethod || (orderMode === 'dine_in' ? 'pay_at_store' : 'wallet')
+  );
   const [notes, setNotes] = useState(checkoutDraft.notes || orderNote || '');
   const [placing, setPlacing] = useState(false);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
@@ -106,8 +110,19 @@ export default function CheckoutPage() {
           <div className="co-type-pills">
             {ORDER_TYPES.map(ot => {
               const isDineIn = ot.key === 'dine_in';
-              return <button key={ot.key} className={`co-type-pill ${orderMode === ot.key ? 'active' : ''} ${isDineIn ? 'disabled' : ''}`}
-                onClick={() => isDineIn ? showToast('Please ask service crew for QR code to dine in', 'info', 'Dine-in Unavailable') : setOrderMode(ot.key)}>
+              const isCurrent = orderMode === ot.key;
+              const isClicable = !isDineIn || dineInSession;
+              return <button key={ot.key}
+                className={`co-type-pill ${isCurrent ? 'active' : ''} ${isDineIn && !dineInSession ? 'disabled' : ''}`}
+                onClick={() => {
+                  if (isDineInLocked && ot.key !== 'dine_in') {
+                    showToast('Dine-in session active — cannot switch order type', 'info');
+                    return;
+                  }
+                  if (isClicable) setOrderMode(ot.key);
+                  else showToast('Scan a table QR code to enable dine-in', 'info');
+                }}
+                disabled={isDineInLocked && ot.key !== 'dine_in'}>
                 {isDineIn && <QrCode size={14} style={{ marginRight: 4 }} />}{ot.label}
               </button>;
             })}
@@ -155,20 +170,22 @@ export default function CheckoutPage() {
         </div>
         <div className="checkout-section">
           <div className="co-section-title">Payment Method</div>
-          <div className="co-wallet-balance" onClick={() => setPaymentMethod('wallet')}>
-            <div className="co-payment-icon co-payment-icon-wallet"><Wallet size={16} color="#fff" /></div>
-            <div style={{ flex: 1 }}><div className="co-wallet-label">Wallet Balance</div><div className="co-wallet-amount">{formatPrice(balance)}</div></div>
-            {paymentMethod === 'wallet' && <CheckCircle2 size={18} color="#fff" />}
-          </div>
+          {orderMode !== 'dine_in' && (
+            <div className="co-wallet-balance" onClick={() => setPaymentMethod('wallet')}>
+              <div className="co-payment-icon co-payment-icon-wallet"><Wallet size={16} color="#fff" /></div>
+              <div style={{ flex: 1 }}><div className="co-wallet-label">Wallet Balance</div><div className="co-wallet-amount">{formatPrice(balance)}</div></div>
+              {paymentMethod === 'wallet' && <CheckCircle2 size={18} color="#fff" />}
+            </div>
+          )}
           {orderMode !== 'delivery' && <div className={`co-payment-card ${paymentMethod === 'pay_at_store' ? 'selected' : ''}`} onClick={() => setPaymentMethod('pay_at_store')}>
             <div className="co-payment-icon co-payment-icon-cash"><Banknote size={14} color="#fff" /></div>
-            <div className="co-payment-info"><div className="co-payment-label">Pay at Store</div></div>
+            <div className="co-payment-info"><div className="co-payment-label">{orderMode === 'dine_in' ? 'Pay at Counter' : 'Pay at Store'}</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div></div>}
-          <div className={`co-payment-card ${paymentMethod === 'cod' ? 'selected' : ''}`} onClick={() => setPaymentMethod('cod')}>
+          {orderMode === 'delivery' && <div className={`co-payment-card ${paymentMethod === 'cod' ? 'selected' : ''}`} onClick={() => setPaymentMethod('cod')}>
             <div className="co-payment-icon co-payment-icon-cash"><Banknote size={14} color="#fff" /></div>
             <div className="co-payment-info"><div className="co-payment-label">Cash on Delivery</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div>
-          </div>
+          </div>}
           <div className="co-payment-card disabled"><div className="co-payment-icon co-payment-icon-visa">VISA</div><div className="co-payment-info"><div className="co-payment-label">Visa / Mastercard</div><div className="co-payment-desc">Coming soon</div></div><div className="co-payment-check" /></div>
           <div className="co-payment-card disabled"><div className="co-payment-icon co-payment-icon-duitnow">D</div><div className="co-payment-info"><div className="co-payment-label">DuitNow</div><div className="co-payment-desc">Coming soon</div></div><div className="co-payment-check" /></div>
           <div className="co-payment-card disabled"><div className="co-payment-icon co-payment-icon-tng">TnG</div><div className="co-payment-info"><div className="co-payment-label">Touch &apos;n Go eWallet</div><div className="co-payment-desc">Coming soon</div></div><div className="co-payment-check" /></div>
