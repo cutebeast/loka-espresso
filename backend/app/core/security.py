@@ -244,7 +244,7 @@ def require_permission(permission_name: str):
         if not await user_has_permission(user, permission_name, db):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Permission '{permission_name}' required")
         return user
-    return role_checker
+    return checker
 
 
 # ---------------------------------------------------------------------------

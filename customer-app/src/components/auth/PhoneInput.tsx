@@ -326,12 +326,12 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
                   <div key={i}>
                     {section.title && <h3 className="legal-section-title">{section.title}</h3>}
                     {section.body && (
-                      <p className="legal-paragraph" dangerouslySetInnerHTML={{ __html: section.body }} />
+                      <p className="legal-paragraph">{section.body}</p>
                     )}
                     {section.list && section.list.length > 0 && (
                       <ul className="legal-list">
                         {section.list.map((item, j) => (
-                          <li key={j} dangerouslySetInnerHTML={{ __html: item }} />
+                          <li key={j}>{item}</li>
                         ))}
                       </ul>
                     )}
