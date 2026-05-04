@@ -101,10 +101,14 @@ export function useAuthFlow() {
           setUser(userRes.data);
           setAuthDone(true);
         } else {
+          // Not authenticated — enable guest mode so the app renders the main UI
+          // The auth flow (splash→phone→OTP) will show when needed via GuestGate/LoginModal
+          useUIStore.getState().setIsGuest(true);
           setAuthDone(true);
         }
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;
+        useUIStore.getState().setIsGuest(true);
         setAuthDone(true);
       } finally {
         setIsLoading(false);
