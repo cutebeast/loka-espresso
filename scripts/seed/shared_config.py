@@ -370,7 +370,7 @@ def get_store_tables(store_id: int):
     
     Returns list of table dicts with id, table_number, capacity, is_occupied, etc.
     """
-    resp = api_get(f"/stores/{store_id}/tables")
+    resp = api_get(f"/admin/stores/{store_id}/tables")
     if resp.status_code == 200:
         tables = resp.json()
         if isinstance(tables, dict):

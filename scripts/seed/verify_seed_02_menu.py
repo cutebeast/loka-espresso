@@ -213,7 +213,7 @@ def run():
     print(f"  ✓ {msg}")
 
     # Fetch physical stores dynamically to use correct IDs
-    stores_resp = api_get("/stores", token=token)
+    stores_resp = api_get("/admin/stores", token=token)
     physical_stores = []
     if stores_resp.status_code == 200:
         all_stores = stores_resp.json()

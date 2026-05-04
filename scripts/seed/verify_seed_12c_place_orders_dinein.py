@@ -3,7 +3,7 @@ SEED SCRIPT: verify_seed_12c_place_orders_dinein.py
 Purpose: Place DINE-IN order for a single customer (self-contained, no helpers)
 APIs tested: 
   - GET /stores (get all stores)
-  - GET /stores/{id}/tables (get available tables)
+  - GET /admin/stores/{id}/tables (get available tables)
   - POST /tables/scan (QR code scan)
   - GET /menu/items (get menu items)
   - DELETE /cart (clear cart)
@@ -42,7 +42,7 @@ def get_stores(token):
     """Get all stores from API."""
     try:
         resp = requests.get(
-            f"{API_BASE}/stores",
+            f"{API_BASE}/admin/stores",
             headers={"Authorization": f"Bearer {token}"},
             timeout=10
         )
@@ -54,15 +54,15 @@ def get_stores(token):
 
 
 def get_tables(store_id, token):
-    """Get available tables for a store using GET /stores/{id}/tables API."""
+    """Get available tables for a store using GET /admin/stores/{id}/tables API."""
     try:
         resp = requests.get(
-            f"{API_BASE}/stores/{store_id}/tables",
+            f"{API_BASE}/admin/stores/{store_id}/tables",
             headers={"Authorization": f"Bearer {token}"},
             timeout=10
         )
         if resp.status_code != 200:
-            return [], f"GET /stores/{store_id}/tables failed: {resp.status_code}"
+            return [], f"GET /admin/stores/{store_id}/tables failed: {resp.status_code}"
         
         tables = resp.json()
         # Filter for active tables with capacity > 0 (exclude PICKUP counter)

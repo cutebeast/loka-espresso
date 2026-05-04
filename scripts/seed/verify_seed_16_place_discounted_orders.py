@@ -16,7 +16,7 @@ from shared_config import API_BASE, load_state, save_state, get_store_menu_items
 SEED_STATE_FILE = os.path.join(SEED_DIR, "seed_state.json")
 
 def get_stores(token):
-    resp = requests.get(f"{API_BASE}/stores", headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    resp = requests.get(f"{API_BASE}/admin/stores", headers={"Authorization": f"Bearer {token}"}, timeout=10)
     if resp.status_code != 200: return [], f"GET /stores failed: {resp.status_code}"
     return resp.json(), None
 

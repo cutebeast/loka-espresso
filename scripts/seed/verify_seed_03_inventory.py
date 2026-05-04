@@ -1,11 +1,11 @@
 """
 SEED SCRIPT: verify_seed_03_inventory.py
 Purpose: Create per-store inventory (10 categories × ~65 items × 5 stores)
-APIs tested: POST /stores/{id}/inventory-categories, POST /stores/{id}/inventory, GET /stores/{id}/inventory
+APIs tested: POST /admin/stores/{id}/inventory-categories, POST /admin/stores/{id}/inventory, GET /admin/stores/{id}/inventory
 Status: CERTIFIED-2026-04-19 | API-only implementation (except Step 00 which uses SQL for reset)
 Dependencies: verify_seed_01_stores.py (stores must exist at ids 2-6)
 Note: Inventory is per-store, NOT universal. Each store tracks its own stock.
-Idempotency: Categories and items checked via GET /stores/{id}/inventory API before creating.
+Idempotency: Categories and items checked via GET /admin/stores/{id}/inventory API before creating.
 """
 
 import sys, os
@@ -144,8 +144,8 @@ INVENTORY_CATEGORIES = [
 
 
 def _get_inv_cat_by_slug(store_id, slug, token):
-    """Get inventory category ID by slug using GET /stores/{id}/inventory-categories API."""
-    resp = api_get(f"/stores/{store_id}/inventory-categories", token=token)
+    """Get inventory category ID by slug using GET /admin/stores/{id}/inventory-categories API."""
+    resp = api_get(f"/admin/stores/{store_id}/inventory-categories", token=token)
     if resp.status_code != 200:
         return None
     data = resp.json()
@@ -157,8 +157,8 @@ def _get_inv_cat_by_slug(store_id, slug, token):
 
 
 def _get_inv_item_by_name(store_id, name, token):
-    """Get inventory item ID by name using GET /stores/{id}/inventory API."""
-    resp = api_get(f"/stores/{store_id}/inventory", token=token)
+    """Get inventory item ID by name using GET /admin/stores/{id}/inventory API."""
+    resp = api_get(f"/admin/stores/{store_id}/inventory", token=token)
     if resp.status_code != 200:
         return None
     data = resp.json()
@@ -189,7 +189,7 @@ def run():
                 created_cats.append({**cat, "id": existing_id})
                 print(f"  {cat['name']}: already exists (id={existing_id})")
                 continue
-            resp = api_post(f"/stores/{store_id}/inventory-categories", token=token, json={
+            resp = api_post(f"/admin/stores/{store_id}/inventory-categories", token=token, json={
                 "name": cat["name"],
                 "slug": cat["slug"],
                 "display_order": i,
@@ -211,7 +211,7 @@ def run():
                 existing_item_id = _get_inv_item_by_name(store_id, item["name"], token)
                 if existing_item_id is not None:
                     continue
-                resp = api_post(f"/stores/{store_id}/inventory", token=token, json={
+                resp = api_post(f"/admin/stores/{store_id}/inventory", token=token, json={
                     "name": item["name"],
                     "category_id": cat["id"],
                     "current_stock": item["current_stock"],

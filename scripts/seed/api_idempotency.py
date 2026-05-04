@@ -42,8 +42,8 @@ def get_menu_item_by_name(name, token):
 
 
 def get_inventory_category_by_slug(store_id, slug, token):
-    """Get inventory category ID by slug using GET /stores/{id}/inventory API."""
-    resp = api_get(f"/stores/{store_id}/inventory", token=token)
+    """Get inventory category ID by slug using GET /admin/stores/{id}/inventory API."""
+    resp = api_get(f"/admin/stores/{store_id}/inventory", token=token)
     if resp.status_code != 200:
         return None
     data = resp.json()

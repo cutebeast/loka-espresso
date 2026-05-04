@@ -1,7 +1,7 @@
 """
 SEED SCRIPT: verify_seed_01_stores.py
 Purpose: Create HQ + 5 physical stores with tables
-APIs tested: POST /admin/system/init-hq, POST /admin/stores, POST /admin/stores/{id}/tables, GET /admin/stores, GET /stores
+APIs tested: POST /admin/system/init-hq, POST /admin/stores, POST /admin/stores/{id}/tables, GET /admin/stores, GET /admin/stores
 Status: PENDING - Converting to API-only (no direct DB calls)
 Dependencies: verify_seed_00_full_reset.py (clean DB)
 """
@@ -76,8 +76,8 @@ def _get_store_by_slug(slug, token):
 
 
 def _get_table_count(store_id, token):
-    """Get table count using GET /stores/{id}/tables API."""
-    resp = api_get(f"/stores/{store_id}/tables", token=token)
+    """Get table count using GET /admin/stores/{id}/tables API."""
+    resp = api_get(f"/admin/stores/{store_id}/tables", token=token)
     if resp.status_code != 200:
         return 0
     data = resp.json()
@@ -157,10 +157,10 @@ def run():
 
         print(f"  ✓ {store['name']}: {len(store['tables'])} tables + PICKUP counter + QR codes")
 
-    print("\n[*] Validating via GET /stores...")
-    resp = api_get("/stores", token=token)
+    print("\n[*] Validating via GET /admin/stores...")
+    resp = api_get("/admin/stores", token=token)
     if resp.status_code != 200:
-        raise RuntimeError(f"GET /stores failed: {resp.status_code}")
+        raise RuntimeError(f"GET /admin/stores failed: {resp.status_code}")
     stores_list = resp.json()
     print(f"  ✓ {len(stores_list)} stores returned by API")
 

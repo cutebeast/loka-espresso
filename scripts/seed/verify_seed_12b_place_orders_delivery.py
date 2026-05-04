@@ -52,7 +52,7 @@ def get_stores(token):
     """Get all stores from API."""
     try:
         resp = requests.get(
-            f"{API_BASE}/stores",
+            f"{API_BASE}/admin/stores",
             headers={"Authorization": f"Bearer {token}"},
             timeout=10
         )
