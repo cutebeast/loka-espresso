@@ -49,11 +49,17 @@ export default function StaffPage() {
   const isHQ = selectedStore === 'all';
 
   // Tab
-  const [tab, setTab] = useState<'staff' | 'shifts'>('staff');
+  const [tab, setTab] = useState<'staff' | 'shifts' | 'clock'>('staff');
 
   // Shift state
   const [shifts, setShifts] = useState<any[]>([]);
   const [shiftsLoading, setShiftsLoading] = useState(false);
+
+  // Clock state
+  const [clockStaffId, setClockStaffId] = useState('');
+  const [clockPin, setClockPin] = useState('');
+  const [clocking, setClocking] = useState(false);
+  const [clockResult, setClockResult] = useState<{success: boolean; message: string} | null>(null);
 
   // Staff list state
   const [staffList, setStaffList] = useState<MerchantStaffMember[]>([]);
@@ -140,6 +146,35 @@ export default function StaffPage() {
   }, [activeStoreId]);
 
   useEffect(() => { if (tab === 'shifts') fetchShifts(); }, [tab, fetchShifts]);
+
+  async function clockIn() {
+    const sid = parseInt(clockStaffId);
+    if (!sid) { setClockResult({success: false, message: 'Enter a staff ID'}); return; }
+    if (!clockPin) { setClockResult({success: false, message: 'Enter PIN'}); return; }
+    setClocking(true); setClockResult(null);
+    try {
+      const res = await apiFetch(`/admin/staff/${sid}/clock-in`, undefined, {
+        method: 'POST', body: JSON.stringify({ pin_code: clockPin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setClockResult({success: res.ok, message: data.message || data.detail || 'Clock in successful'});
+      if (res.ok) { setClockStaffId(''); setClockPin(''); }
+    } catch { setClockResult({success: false, message: 'Network error'}); }
+    finally { setClocking(false); }
+  }
+
+  async function clockOut() {
+    const sid = parseInt(clockStaffId);
+    if (!sid) { setClockResult({success: false, message: 'Enter a staff ID'}); return; }
+    setClocking(true); setClockResult(null);
+    try {
+      const res = await apiFetch(`/admin/staff/${sid}/clock-out`, undefined, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      setClockResult({success: res.ok, message: data.message || data.detail || 'Clock out successful'});
+      if (res.ok) { setClockStaffId(''); setClockPin(''); }
+    } catch { setClockResult({success: false, message: 'Network error'}); }
+    finally { setClocking(false); }
+  }
 
   function handleUserTypeChange(newTypeId: number) {
     setUserTypeId(newTypeId);
@@ -397,16 +432,8 @@ export default function StaffPage() {
       </Drawer>
 
       {/* LIST VIEW */}
-      <div className="sp-18">
-        {/* Tab bar */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button onClick={() => setTab('staff')} className={`ip-tab ${tab === 'staff' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
-            <i className="fas fa-users" style={{ marginRight: 4 }}></i> Staff
-          </button>
-          <button onClick={() => setTab('shifts')} className={`ip-tab ${tab === 'shifts' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
-            <i className="fas fa-clock" style={{ marginRight: 4 }}></i> Shifts
-          </button>
-        </div>
+      {/* Store Selector — top left, consistent across tabs */}
+      <div className="sp-18" style={{ marginBottom: 0 }}>
         <div className="sp-19">
           <StoreSelector
             stores={stores.filter(s => String(s.id) !== '0')}
@@ -415,9 +442,24 @@ export default function StaffPage() {
             allLabel="All Stores (HQ view)"
           />
         </div>
+      </div>
+
+      {/* Tab bar + New Staff button */}
+      <div className="sp-18" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setTab('staff')} className={`ip-tab ${tab === 'staff' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
+            <i className="fas fa-users" style={{ marginRight: 4 }}></i> Staff
+          </button>
+          <button onClick={() => setTab('shifts')} className={`ip-tab ${tab === 'shifts' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
+            <i className="fas fa-clock" style={{ marginRight: 4 }}></i> Shifts
+          </button>
+          <button onClick={() => setTab('clock')} className={`ip-tab ${tab === 'clock' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
+            <i className="fas fa-sign-in-alt" style={{ marginRight: 4 }}></i> Clock In/Out
+          </button>
+        </div>
         {tab === 'staff' && (
-        <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Staff</button>
-      )}
+          <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Staff</button>
+        )}
       </div>
 
       {error && (

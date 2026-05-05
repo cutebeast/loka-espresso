@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
+import { useAuthStore } from '@/stores';
 
 interface ProfileUpdateModalProps {
   currentName: string;
@@ -19,6 +20,13 @@ export default function ProfileUpdateModal({ currentName, currentPhone, currentE
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // Clock in/out state
+  const [clockPin, setClockPin] = useState('');
+  const [clocking, setClocking] = useState(false);
+  const [clockMsg, setClockMsg] = useState<{ok: boolean; text: string} | null>(null);
+  const userType = useAuthStore((s) => s.currentUserType);
+  const showClock = userType && userType <= 3; // Staff roles only
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,6 +50,36 @@ export default function ProfileUpdateModal({ currentName, currentPhone, currentE
       onSaved(name, phone);
     } catch (err) { console.error('Profile update failed:', err); setError('Network error'); }
     finally { setSaving(false); }
+  }
+
+  async function doClockIn() {
+    if (!clockPin) { setClockMsg({ok: false, text: 'Enter your PIN'}); return; }
+    setClocking(true); setClockMsg(null);
+    try {
+      const me = await apiFetch('/users/me');
+      if (!me.ok) { setClockMsg({ok: false, text: 'Could not verify identity'}); return; }
+      const user = await me.json();
+      const res = await apiFetch(`/admin/staff/${user.id}/clock-in`, undefined, {
+        method: 'POST', body: JSON.stringify({ pin_code: clockPin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setClockMsg({ok: res.ok, text: data.message || data.detail || 'Clocked in'});
+      if (res.ok) setClockPin('');
+    } catch { setClockMsg({ok: false, text: 'Network error'}); }
+    finally { setClocking(false); }
+  }
+
+  async function doClockOut() {
+    setClocking(true); setClockMsg(null);
+    try {
+      const me = await apiFetch('/users/me');
+      if (!me.ok) { setClockMsg({ok: false, text: 'Could not verify identity'}); return; }
+      const user = await me.json();
+      const res = await apiFetch(`/admin/staff/${user.id}/clock-out`, undefined, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      setClockMsg({ok: res.ok, text: data.message || data.detail || 'Clocked out'});
+    } catch { setClockMsg({ok: false, text: 'Network error'}); }
+    finally { setClocking(false); }
   }
 
   if (success) {
@@ -93,6 +131,29 @@ export default function ProfileUpdateModal({ currentName, currentPhone, currentE
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </form>
+
+      {showClock && (
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border, #E5E0D8)' }}>
+          <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}><i className="fas fa-clock" style={{ marginRight: 6 }}></i>Clock In / Out</h4>
+          {clockMsg && (
+            <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, color: clockMsg.ok ? '#16A34A' : '#DC2626', fontSize: 13 }}>
+              <i className={`fas ${clockMsg.ok ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i> {clockMsg.text}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <div className="cpm-8" style={{ flex: 1 }}>
+              <label className="cpm-9">PIN</label>
+              <input type="password" value={clockPin} onChange={e => setClockPin(e.target.value)} placeholder="Enter PIN" maxLength={6} disabled={clocking} />
+            </div>
+            <button className="btn btn-primary" onClick={doClockIn} disabled={clocking} style={{ height: 36 }}>
+              {clocking ? '...' : 'Clock In'}
+            </button>
+            <button className="btn" onClick={doClockOut} disabled={clocking} style={{ height: 36 }}>
+              {clocking ? '...' : 'Clock Out'}
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
