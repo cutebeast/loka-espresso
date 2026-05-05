@@ -105,11 +105,17 @@ export default function StoreSettingsPage({ stores, onRefresh }: StoreSettingsPa
             <div className="ssp-8">
               <div>
                 <div className="ssp-9">{s.name} {!s.is_active && <span className="ssp-10">(Inactive)</span>}</div>
-                <div className="ssp-11">{s.address}</div>
-                <div className="ssp-12">Slug: <code>{s.slug}</code> · Phone: {s.phone || '-'} · Pickup lead: {s.pickup_lead_minutes || '-'} min</div>
+                {s.id === 0 ? (
+                  <div className="ssp-11" style={{ color: '#6B7280', fontStyle: 'italic' }}>Headquarters — global settings only</div>
+                ) : (
+                  <>
+                  <div className="ssp-11">{s.address}</div>
+                  <div className="ssp-12">Slug: <code>{s.slug}</code> · Phone: {s.phone || '-'} · Pickup lead: {s.pickup_lead_minutes || '-'} min</div>
+                  </>
+                )}
               </div>
               <div className="ssp-14">
-                <button className="btn btn-sm" onClick={() => openEdit(s)}><i className="fas fa-edit"></i> Edit</button>
+                <button className="btn btn-sm" onClick={() => openEdit(s)}><i className="fas fa-edit"></i> {s.id === 0 ? 'Edit Name' : 'Edit'}</button>
                 {s.id === 0 ? (
                   <span className="ssp-15">Main Store</span>
                 ) : (
@@ -129,6 +135,7 @@ export default function StoreSettingsPage({ stores, onRefresh }: StoreSettingsPa
 // ── Shared Store Form ──
 function StoreForm({ onClose, existingStore }: { onClose: () => void; existingStore?: MerchantStore }) {
   const isEdit = !!existingStore;
+  const isHQ = existingStore?.id === 0;
   const [name, setName] = useState(existingStore?.name || '');
   const [slug, setSlug] = useState(existingStore?.slug || '');
   const [address, setAddress] = useState(existingStore?.address || '');
@@ -157,14 +164,21 @@ function StoreForm({ onClose, existingStore }: { onClose: () => void; existingSt
           uploadedUrl = uploadData.url || uploadData.image_url || '';
         }
       }
-      const payload: Record<string, unknown> = { name, address, phone, pickup_lead_minutes: parseInt(pickupLead) || 15 };
+      const payload: Record<string, unknown> = { name };
+      if (isHQ) {
+        // HQ only has name — no physical store data
+      } else {
+        payload.address = address;
+        payload.phone = phone;
+        payload.pickup_lead_minutes = parseInt(pickupLead) || 15;
+        if (lat) { const latNum = parseFloat(lat); if (!isNaN(latNum)) payload.lat = latNum; }
+        if (lng) { const lngNum = parseFloat(lng); if (!isNaN(lngNum)) payload.lng = lngNum; }
+        if (deliveryRadius) { const radiusNum = parseFloat(deliveryRadius); if (!isNaN(radiusNum)) payload.delivery_radius_km = radiusNum; }
+        if (uploadedUrl) payload.image_url = uploadedUrl;
+        const ohJSON = openingHoursToJSON(openingHours);
+        if (ohJSON) payload.opening_hours = ohJSON;
+      }
       if (!isEdit) payload.slug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      if (lat) { const latNum = parseFloat(lat); if (!isNaN(latNum)) payload.lat = latNum; }
-      if (lng) { const lngNum = parseFloat(lng); if (!isNaN(lngNum)) payload.lng = lngNum; }
-      if (deliveryRadius) { const radiusNum = parseFloat(deliveryRadius); if (!isNaN(radiusNum)) payload.delivery_radius_km = radiusNum; }
-      if (uploadedUrl) payload.image_url = uploadedUrl;
-      const ohJSON = openingHoursToJSON(openingHours);
-      if (ohJSON) payload.opening_hours = ohJSON;
       const url = isEdit ? `/admin/stores/${existingStore!.id}` : '/admin/stores';
       const method = isEdit ? 'PUT' : 'POST';
       const res = await apiFetch(url, undefined, { method, body: JSON.stringify(payload) });
@@ -193,6 +207,8 @@ function StoreForm({ onClose, existingStore }: { onClose: () => void; existingSt
             {isEdit && <div className="df-hint">Slug cannot be changed after creation</div>}
           </div>
         </div>
+        {!isHQ && (
+        <>
         <div className="df-field" style={{ marginBottom: 16 }}>
           <label className="df-label">Address</label>
           <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} placeholder="Full store address" />
@@ -232,10 +248,12 @@ function StoreForm({ onClose, existingStore }: { onClose: () => void; existingSt
         </div>
       </div>
 
+      {!isHQ && (
       <div className="df-section">
         <h4 className="cdp-section-title"><i className="fas fa-clock" style={{ marginRight: 8 }}></i>Opening Hours</h4>
         <OpeningHoursEditor value={openingHours} onChange={setOpeningHours} />
       </div>
+      )}
 
       <div className="df-actions">
         <button className="btn" onClick={onClose}>Cancel</button>
