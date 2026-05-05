@@ -507,8 +507,8 @@ export default function InformationPage() {
                 imageUrl={form.image_url}
                 onSet={(url) => setField('image_url', url)}
                 hint={form.content_type === 'popup_banner'
-                  ? 'JPEG, PNG, MP4, WebM — Max 50MB for fullscreen overlay'
-                  : 'JPEG, PNG, MP4, WebM — Max 25MB'}
+                  ? 'JPEG, PNG, MP4, WebM — Max 50MB. Portrait/vertical (9:16) for fullscreen mobile overlay.'
+                  : 'JPEG, PNG, MP4, WebM — Max 25MB. Landscape/horizontal (16:9) for in-article display.'}
                 folder={form.content_type}
                 allowVideo={true}
               />
