@@ -99,6 +99,7 @@ export interface InformationCard {
   slug?: string | null;
   short_description: string | null;
   long_description?: string | null;
+  sections?: { title?: string; body?: string; list?: string[]; visible?: boolean }[] | null;
   content_type?: string | null;
   icon?: string | null;
   image_url?: string | null;
