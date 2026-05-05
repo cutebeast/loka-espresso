@@ -13,6 +13,8 @@ const FALLBACK_ABOUT = "Born from a passion for authentic Turkish coffee culture
 export default function SettingsPage() {
   const { setPage } = useUIStore();
   const { t } = useTranslation();
+  const locale = localeStore((s) => s.locale);
+  const setLocale = localeStore((s) => s.setLocale);
   const [aboutText, setAboutText] = useState(FALLBACK_ABOUT);
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export default function SettingsPage() {
             <button
               key={code}
               className="settings-menu-item"
-              onClick={() => localeStore.getState().setLocale(code)}
+              onClick={() => setLocale(code)}
             >
               <div className="settings-menu-icon settings-icon-language">
                 <Globe size={18} />
@@ -52,7 +54,7 @@ export default function SettingsPage() {
               <span className="settings-menu-label">
                 {t(`settings.languages.${code}`)}
               </span>
-              {localeStore.getState().locale === code && (
+              {locale === code && (
                 <span className="settings-menu-check">✓</span>
               )}
             </button>
