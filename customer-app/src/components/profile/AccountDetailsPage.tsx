@@ -100,8 +100,8 @@ export default function AccountDetailsPage() {
             {avatarUrl ? (
               <img
                 src={avatarUrl}
-                alt=""
-                style={{ width: 78, height: 78, borderRadius: '50%', objectFit: 'cover' }}
+                alt="Profile photo"
+                className="ad-avatar-img"
               />
             ) : (
               <div className="ad-avatar-circle">{initials}</div>
@@ -120,7 +120,7 @@ export default function AccountDetailsPage() {
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            style={{ display: 'none' }}
+            className="hidden"
             onChange={handleAvatarUpload}
           />
         </div>
@@ -136,6 +136,7 @@ export default function AccountDetailsPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
+              autoComplete="name"
             />
           </div>
           <div className="ad-form-field">
@@ -160,6 +161,7 @@ export default function AccountDetailsPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
+              autoComplete="email"
             />
           </div>
           <div className="ad-form-field">
@@ -187,7 +189,7 @@ export default function AccountDetailsPage() {
           </div>
           <div className="ad-form-field">
             <label className="ad-form-label" htmlFor="ad-tier">Membership Tier</label>
-            <div style={{ paddingTop: 4 }}>
+            <div className="pt-1">
               <span className={`ad-tier-badge ${(tier || 'Bronze').toLowerCase()}`}>
                 <Crown size={14} /> {tier}
               </span>

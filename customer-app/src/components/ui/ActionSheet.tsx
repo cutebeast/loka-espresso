@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { useEscClose } from '@/hooks/useEscClose';
 
 interface ActionOption {
   label: string;
@@ -16,6 +17,7 @@ interface ActionSheetProps {
 }
 
 export function ActionSheet({ isOpen, onClose, title, options }: ActionSheetProps) {
+  useEscClose(isOpen, onClose);
   return (
     <AnimatePresence>
       {isOpen && (

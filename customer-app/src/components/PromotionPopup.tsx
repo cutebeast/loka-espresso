@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useEscClose } from '@/hooks/useEscClose';
 import api from '@/lib/api';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -79,6 +80,8 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
       setIsOpen(false);
     }
   };
+
+  useEscClose(isOpen, handleClose);
 
   if (popups.length === 0) return null;
 

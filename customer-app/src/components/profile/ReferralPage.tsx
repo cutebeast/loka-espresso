@@ -44,7 +44,7 @@ export default function ReferralPage() {
           api.get('/referral/stats'),
         ]);
         setStats({ ...codeRes.data, ...statsRes.data });
-      } catch { /* ignore */ }
+      } catch { showToast('Failed to load referral stats', 'error'); }
       finally { setLoading(false); }
     })();
   }, []);
@@ -58,7 +58,7 @@ export default function ReferralPage() {
       await navigator.clipboard.writeText(referralLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
+    } catch { showToast('Failed to copy code', 'error'); }
   };
 
   const shareLink = async () => {

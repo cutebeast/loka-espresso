@@ -46,3 +46,6 @@
 
 /* Skeleton */
 .history-skeleton-row { height: 64px; border-radius: 12px; }
+
+/* Inline-style cleanup additions */
+.history-list { padding: 16px; display: flex; flex-direction: column; gap: 12px; }

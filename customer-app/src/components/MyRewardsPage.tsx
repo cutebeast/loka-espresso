@@ -126,7 +126,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
             const days = daysUntil(voucher.expires_at);
             return (
               <div key={voucher.id} className="myrv-voucher-card" onClick={() => setSelectedVoucher(voucher)}>
-                <div className="myrv-item-thumb" style={{ background: 'var(--loka-primary)', color: '#fff' }}>
+                <div className="myrv-item-thumb" style={{ background: 'var(--loka-primary)', color: 'white' }}>
                   <Ticket size={24} />
                 </div>
                 <div className="myrv-item-body">

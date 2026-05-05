@@ -51,17 +51,16 @@ const PromoCard = memo(function PromoCard({
 
 interface HomeCarouselProps {
   banners: PromoBanner[];
-  loadingBanners: boolean;
+  loading: boolean;
   infoCards: InformationCard[];
   productCards: InformationCard[];
-  loadingInfo: boolean;
   onPromoClick: (id: number) => void;
   onInfoClick: (id: number, contentType?: string) => void;
   onViewAllPromos?: () => void;
   onViewAllDiscover?: () => void;
 }
 
-export default function HomeCarousel({ banners, loadingBanners, infoCards, productCards, loadingInfo, onPromoClick, onInfoClick, onViewAllPromos, onViewAllDiscover }: HomeCarouselProps) {
+export default function HomeCarousel({ banners, loading, infoCards, productCards, onPromoClick, onInfoClick, onViewAllPromos, onViewAllDiscover }: HomeCarouselProps) {
   const promoScrollRef = useRef<HTMLDivElement>(null);
   const discoverScrollRef = useRef<HTMLDivElement>(null);
   const [promoIndex, setPromoIndex] = useState(0);
@@ -80,8 +79,8 @@ export default function HomeCarousel({ banners, loadingBanners, infoCards, produ
     return result.slice(0, 6);
   }, [infoCards, productCards]);
 
-  const showPromos = !loadingBanners && banners.length > 0;
-  const showDiscover = !loadingInfo && discoverCards.length > 0;
+  const showPromos = !loading && banners.length > 0;
+  const showDiscover = !loading && discoverCards.length > 0;
 
   const handlePromoScroll = useCallback(() => {
     const el = promoScrollRef.current;
@@ -108,7 +107,21 @@ export default function HomeCarousel({ banners, loadingBanners, infoCards, produ
   return (
     <>
       {/* Discover Carousel */}
-      {showDiscover && (
+      {loading ? (
+        <div>
+          <div className="home-section-header">
+            <div className="skeleton" style={{ width: 80, height: 18, borderRadius: 4 }} />
+            <div className="skeleton" style={{ width: 50, height: 14, borderRadius: 4 }} />
+          </div>
+          <div className="homepage-carousel">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="homepage-info-card">
+                <div className="skeleton" style={{ width: '100%', height: '100%', borderRadius: 12 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : showDiscover ? (
         <div>
           <div className="home-section-header">
             <h3 className="home-section-title">Discover</h3>
@@ -139,10 +152,24 @@ export default function HomeCarousel({ banners, loadingBanners, infoCards, produ
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Promotion Carousel */}
-      {showPromos && (
+      {loading ? (
+        <div>
+          <div className="home-section-header">
+            <div className="skeleton" style={{ width: 100, height: 18, borderRadius: 4 }} />
+            <div className="skeleton" style={{ width: 50, height: 14, borderRadius: 4 }} />
+          </div>
+          <div className="homepage-carousel">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="homepage-promo-card">
+                <div className="skeleton" style={{ width: '100%', height: '100%', borderRadius: 12 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : showPromos ? (
         <div>
           <div className="home-section-header">
             <h3 className="home-section-title">Promotions</h3>
@@ -173,7 +200,7 @@ export default function HomeCarousel({ banners, loadingBanners, infoCards, produ
             ))}
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

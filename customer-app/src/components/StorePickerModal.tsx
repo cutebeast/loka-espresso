@@ -75,7 +75,7 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
         {/* Store image hero */}
         <div className="store-picker-hero">
           {selectedStore?.image_url ? (
-            <img src={resolveAssetUrl(selectedStore.image_url) || undefined} alt="" className="store-picker-hero-img" />
+            <img src={resolveAssetUrl(selectedStore.image_url) || undefined} alt={selectedStore.name} className="store-picker-hero-img" />
           ) : (
             <Store size={48} strokeWidth={1} className="store-picker-hero-fallback" />
           )}

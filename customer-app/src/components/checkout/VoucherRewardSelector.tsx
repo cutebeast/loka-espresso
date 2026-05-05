@@ -93,6 +93,8 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                 setVoucherError('');
               }}
               placeholder="Enter voucher code"
+              aria-invalid={!!voucherError}
+              aria-describedby={voucherError ? 'voucher-error' : undefined}
               className={`flex-1 py-2.5 px-3.5 rounded-xl bg-white text-sm text-text-primary outline-none vrs-input ${voucherError ? 'vrs-input-error' : ''}`}
             />
             <button
@@ -104,12 +106,12 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
             </button>
           </div>
           {voucherError && (
-            <p className="text-xs text-danger mb-2">{voucherError}</p>
+            <p id="voucher-error" className="text-xs text-danger mb-2">{voucherError}</p>
           )}
         </>
       )}
       {voucherError && (
-        <p className="text-xs text-danger mb-2">{voucherError}</p>
+        <p id="voucher-error-inline" className="text-xs text-danger mb-2">{voucherError}</p>
       )}
 
       {availableVouchers.length > 0 && (

@@ -283,7 +283,7 @@
   border: 1.5px solid var(--color-border-light);
   border-radius: 10px;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--color-text-primary);
   outline: none;
   background: var(--loka-bg-card);

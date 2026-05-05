@@ -181,6 +181,6 @@
 .store-picker-label-icon { display: inline; margin-right: 4px; }
 .store-picker-title { font-size: 22px; font-weight: 800; color: var(--color-text-primary); margin-top: 2px; letter-spacing: -0.01em; }
 .store-picker-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
-.store-picker-search-input { flex: 1; border: none; outline: none; background: transparent; font-size: 14px; color: var(--color-text-primary); }
+.store-picker-search-input { flex: 1; border: none; outline: none; background: transparent; font-size: 16px; color: var(--color-text-primary); }
 .store-picker-search-clear { background: transparent; border: none; padding: 0; color: var(--color-text-muted); cursor: pointer; display: inline-flex; }
 .store-picker-empty { text-align: center; padding: 40px 20px; color: var(--color-text-muted); font-size: 14px; }

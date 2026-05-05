@@ -158,7 +158,7 @@ export default function OrdersPage() {
           <>
             <div className="flex items-center justify-between">
               <div className="orders-section-label">Active Orders</div>
-              {lastUpdated && <span style={{ fontSize: 10, color: 'var(--loka-text-muted, #8A8078)' }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
+              {lastUpdated && <span className="orders-last-updated">Updated {lastUpdated.toLocaleTimeString()}</span>}
             </div>
             {activeOrders.map(order => {
               const step = activeStepIdx(order.status);
@@ -198,7 +198,7 @@ export default function OrdersPage() {
             <div className="orders-section-label flex items-center justify-between">
               <span>Past Orders</span>
               {allPastOrders.length > 5 && (
-                <span style={{ fontSize: 12, color: LOKA.textMuted }}>{allPastOrders.length} total</span>
+                <span className="orders-total-count">{allPastOrders.length} total</span>
               )}
             </div>
             {pastOrdersDisplay.map(order => {
@@ -226,7 +226,7 @@ export default function OrdersPage() {
               })}
             {hasMorePast && (
               <button onClick={() => loadPastOrders(false)} disabled={loadingPast}
-                style={{ width: '100%', padding: 12, marginTop: 4, background: LOKA.bg, border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, color: LOKA.primary, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+                className="orders-load-more-btn">
                 {loadingPast ? 'Loading...' : `Load More (${allPastOrders.length - pastOrdersDisplay.length} more)`}
               </button>
             )}

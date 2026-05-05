@@ -25,6 +25,7 @@ export default function HomePage() {
   const [infoCards, setInfoCards] = useState<InformationCard[]>([]);
   const [productCards, setProductCards] = useState<InformationCard[]>([]);
   const [loadingInfo, setLoadingInfo] = useState(true);
+  const isLoading = loadingFeatured || loadingBanners || loadingInfo;
   const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
   const [availableOptions, setAvailableOptions] = useState<CustomizationOption[]>([]);
   const [loadingOptions, _setLoadingOptions] = useState(false);
@@ -162,10 +163,9 @@ export default function HomePage() {
         {/* Banners & Info Carousels */}
         <HomeCarousel
           banners={banners}
-          loadingBanners={loadingBanners}
+          loading={isLoading}
           infoCards={infoCards}
           productCards={productCards}
-          loadingInfo={loadingInfo}
           onPromoClick={(id) => setPage('promotions', { selectedPromoId: id })}
           onInfoClick={(id, contentType) => setPage('information', { selectedInfoId: id, selectedInfoContentType: contentType })}
           onViewAllPromos={() => setPage('promotions')}
@@ -176,7 +176,7 @@ export default function HomePage() {
         <motion.div variants={itemVariants}>
           <PromotionsSection
             featuredItems={featuredItems}
-            loading={loadingFeatured}
+            loading={isLoading}
             onAddToCart={handleAddToCart}
             onSeeAll={() => setPage('menu')}
           />

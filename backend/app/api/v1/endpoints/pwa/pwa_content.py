@@ -28,6 +28,7 @@ class InformationCardOut(BaseModel):
     slug: Optional[str] = None
     short_description: Optional[str] = None
     long_description: Optional[str] = None
+    sections: Optional[list] = None
     content_type: Optional[str] = None
     icon: Optional[str] = None
     image_url: Optional[str] = None

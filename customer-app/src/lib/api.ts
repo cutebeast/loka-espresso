@@ -10,7 +10,6 @@ const api = axios.create({
 });
 
 // Prevents multiple simultaneous refresh attempts from triggering multiple reloads
-let _refreshFailed = false;
 let _refreshPromise: Promise<any> | null = null;
 
 api.interceptors.response.use(

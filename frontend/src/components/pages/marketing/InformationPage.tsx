@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Image from 'next/image';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { DataTable, Drawer, type ColumnDef } from '@/components/ui';
 import { APP_DOMAIN } from '@/lib/config';
@@ -26,10 +25,11 @@ interface Section {
   title: string;
   body: string;
   list: string[];
+  visible?: boolean;
 }
 
 function emptySection(): Section {
-  return { title: '', body: '', list: [] };
+  return { title: '', body: '', list: [], visible: true };
 }
 
 interface InfoCardForm {
@@ -309,7 +309,7 @@ export default function InformationPage() {
       width: '80px',
       render: (row) => (
         row.image_url ? (
-          <Image src={cacheBust(row.image_url)} alt="" width={60} height={40} style={{ borderRadius: 4, objectFit: 'cover' }} />
+          <img src={cacheBust(row.image_url)} alt="" style={{ width: 60, height: 40, borderRadius: 4, objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         ) : (
           <div style={{ width: 60, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', borderRadius: 4 }}>
             <i className={`fas fa-${row.icon || 'info'}`}></i>
@@ -423,16 +423,22 @@ export default function InformationPage() {
               <input type="text" value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} placeholder="Brief text shown on PWA card" />
             </div>
 
-            {form.content_type === 'system' ? (
+            {form.content_type !== 'event' ? (
             <div className="inf-48">
               <label className="iform-label">Sections <span className="inf-50">(structured content)</span></label>
               {form.sections.map((section, si) => (
                 <div key={si} className="inf-51">
                   <div className="inf-52">
                     <span className="inf-53">Section {si + 1}</span>
-                    <button type="button" className="inf-54" onClick={() => removeSection(si)}>
-                      <i className="fas fa-times"></i>
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={section.visible !== false} onChange={(e) => updateSection(si, 'visible', e.target.checked)} style={{ accentColor: '#3B4A1A' }} />
+                        <i className={`fas ${section.visible !== false ? 'fa-eye' : 'fa-eye-slash'}`} style={{ color: section.visible !== false ? '#16A34A' : '#9CA3AF' }}></i>
+                      </label>
+                      <button type="button" className="inf-54" onClick={() => removeSection(si)}>
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </div>
                   </div>
                   <div className="inf-55">
                     <input
@@ -484,12 +490,12 @@ export default function InformationPage() {
             </div>
             ) : (
             <div className="inf-8">
-              <label className="iform-label">Long Description <span className="inf-9">(detail view)</span></label>
+              <label className="iform-label">Description <span className="inf-9">(popup overlay text)</span></label>
               <textarea
                 value={form.long_description}
                 onChange={(e) => setField('long_description', e.target.value)}
-                placeholder="Full content shown when customer taps to view details..."
-                rows={4}
+                placeholder="Text displayed as overlay on the popup banner..."
+                rows={3}
                 className="inf-10"
               />
             </div>
@@ -638,7 +644,7 @@ function ImageUploadField({ label, imageUrl, onSet, hint, folder }: { label: str
         </button>
         {imageUrl && (
           <>
-            <Image src={imageUrl} alt="" width={60} height={40} className="iuf-50" />
+            <img src={imageUrl} alt="" width={60} height={40} className="iuf-50" style={{ borderRadius: 4, objectFit: 'cover' }} />
             <button type="button" className="btn btn-sm iuf-51" onClick={() => onSet('')} ><i className="fas fa-times"></i></button>
           </>
         )}
@@ -686,7 +692,7 @@ function GalleryUploadField({ label, urls, onSet, hint, folder }: { label: strin
         </button>
         {urls.map((url, i) => (
           <div key={i} className="guf-56">
-            <Image src={url} alt="" width={60} height={40} className="guf-57" />
+            <img src={url} alt="" width={60} height={40} className="guf-57" style={{ borderRadius: 4, objectFit: 'cover' }} />
             <button
               type="button"
               onClick={() => removeUrl(i)}

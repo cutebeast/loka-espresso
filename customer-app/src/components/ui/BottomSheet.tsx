@@ -1,9 +1,10 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useEscClose } from '@/hooks/useEscClose';
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface BottomSheetProps {
 
 export function BottomSheet({ isOpen, onClose, title, children, footer }: BottomSheetProps) {
   const sheetRef = useFocusTrap<HTMLDivElement>(isOpen);
+  useEscClose(isOpen, onClose);
   return (
     <AnimatePresence>
       {isOpen && (

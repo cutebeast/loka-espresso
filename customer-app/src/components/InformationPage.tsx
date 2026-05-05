@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, ChevronRight, ChevronLeft, Info, Clock, Star, Share2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ChevronLeft, Info, Clock, Star, Share2, X } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { InformationCard as ApiInformationCard } from '@/lib/api';
@@ -122,20 +122,20 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
       <div className="info-detail-screen">
         <div className="info-detail-hero">
           {allImages.length > 1 ? (
-            <ImageCarousel images={allImages} />
+            <ImageCarousel images={allImages} title={selectedCard.title} />
           ) : (
             <>
               {img && !brokenImages.has(selectedCard.id) ? (
                 <img
                   src={img}
-                  alt=""
+                  alt={selectedCard.title}
                   loading="lazy"
                   className="info-detail-hero-img"
                   onError={() => { setBrokenImages(prev => new Set(prev).add(selectedCard.id)); }}
                 />
               ) : (
-                <div className="info-detail-hero-img" style={{ background: `linear-gradient(135deg, ${LOKA.primary}, #5a7a2a)` }}>
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: 'rgba(255,255,255,0.25)' }}>
+                <div className="info-detail-hero-img info-detail-hero-fallback">
+                  <div className="info-detail-hero-fallback-icon">
                     <Info size={64} />
                   </div>
                 </div>
@@ -169,7 +169,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
           </p>
         </div>
 
-        <div style={{ padding: '0 18px 16px' }}>
+        <div className="info-detail-footer">
           <button className="info-share-btn" onClick={handleShare}>
             <span>Share</span>
             <Share2 size={18} />
@@ -262,8 +262,9 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
 }
 
 /* ── Inline Image Carousel for article gallery ── */
-function ImageCarousel({ images }: { images: string[] }) {
+function ImageCarousel({ images, title }: { images: string[]; title?: string }) {
   const [current, setCurrent] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
   const total = images.length;
   const touchStartX = useRef(0);
   const isDragging = useRef(false);
@@ -304,52 +305,72 @@ function ImageCarousel({ images }: { images: string[] }) {
   }, [current]);
 
   return (
-    <div
-      className="info-carousel-wrap"
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-      onMouseDown={onMouseDown}
-      onMouseUp={onMouseUp}
-    >
-      <div ref={trackRef} className="info-carousel-track">
-        {images.map((src, i) => (
-          <div key={i} className="info-carousel-slide">
-            <img
-              src={src}
-              alt=""
-              className="info-carousel-img"
-              loading={i === 0 ? 'eager' : 'lazy'}
-              draggable={false}
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* Dots */}
-      {total > 1 && (
-        <div className="info-carousel-dots">
-          {images.map((_, i) => (
-            <button
-              key={i}
-              className={`info-carousel-dot ${i === current ? 'active' : ''}`}
-              onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
-              aria-label={`Go to slide ${i + 1}`}
-            />
+    <>
+      <div
+        className="info-carousel-wrap"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+      >
+        <div ref={trackRef} className="info-carousel-track">
+          {images.map((src, i) => (
+            <div key={i} className="info-carousel-slide" onClick={() => setLightbox(true)}>
+              <img
+                src={src}
+                alt={title ? `${title} — image ${i + 1}` : `Image ${i + 1}`}
+                className="info-carousel-img"
+                loading={i === 0 ? 'eager' : 'lazy'}
+                draggable={false}
+              />
+            </div>
           ))}
         </div>
-      )}
 
-      {/* Arrow buttons */}
-      {total > 1 && (
-        <>
-          <button className="info-carousel-arrow info-carousel-arrow-left" onClick={prev} aria-label="Previous">
-            <ChevronLeft color="#8A8078" size={14} strokeWidth={3} />
+        {/* Dots */}
+        {total > 1 && (
+          <div className="info-carousel-dots">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                className={`info-carousel-dot ${i === current ? 'active' : ''}`}
+                onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
+                aria-label={`Go to slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Arrow buttons */}
+        {total > 1 && (
+          <>
+            <button className="info-carousel-arrow info-carousel-arrow-left" onClick={prev} aria-label="Previous">
+              <ChevronLeft color="#8A8078" size={14} strokeWidth={3} />
+            </button>
+            <button className="info-carousel-arrow info-carousel-arrow-right" onClick={next} aria-label="Next">
+              <ChevronRight color="#8A8078" size={14} strokeWidth={3} />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="info-lightbox-overlay" onClick={() => setLightbox(false)}>
+          <img
+            src={images[current]}
+            alt={title ? `${title} — full view` : 'Full view'}
+            className="info-lightbox-img"
+          />
+          <button
+            className="info-lightbox-close"
+            onClick={() => setLightbox(false)}
+            aria-label="Close lightbox"
+          >
+            <X size={20} />
           </button>
-          <button className="info-carousel-arrow info-carousel-arrow-right" onClick={next} aria-label="Next">
-            <ChevronRight color="#8A8078" size={14} strokeWidth={3} />
-          </button>
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }

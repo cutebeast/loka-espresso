@@ -149,12 +149,12 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
       <div className="flex-1 overflow-y-auto scroll-container">
         <AnimatePresence mode="wait">
           {authStep === 'phone' && (
-            <motion.div key="phone" {...pageTransition(reducedMotion)} className="h-full bg-white text-[#1B2023]">
+            <motion.div key="phone" {...pageTransition(reducedMotion)} className="h-full bg-white text-text-primary">
               <PhoneInput onSubmit={handlePhoneSubmit} />
             </motion.div>
           )}
           {authStep === 'otp' && (
-            <motion.div key="otp" {...pageTransition(reducedMotion)} className="h-full bg-white text-[#1B2023]">
+            <motion.div key="otp" {...pageTransition(reducedMotion)} className="h-full bg-white text-text-primary">
               <OTPInput
                 phone={phoneNumber}
                 onSubmit={handleOTPSubmit}
@@ -165,7 +165,7 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
             </motion.div>
           )}
           {authStep === 'profile' && (
-            <motion.div key="profile" {...pageTransition(reducedMotion)} className="h-full bg-white text-[#1B2023]">
+            <motion.div key="profile" {...pageTransition(reducedMotion)} className="h-full bg-white text-text-primary">
               <ProfileSetup
                 phone={phoneNumber}
                 onSubmit={handleProfileSubmit}
@@ -186,8 +186,8 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
             className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
           >
             <div className="flex flex-col items-center">
-              <div className="w-8 h-8 border-3" style={{ borderColor: '#3B4A1A', borderTopColor: 'transparent', borderRadius: '50%' }} />
-              <p style={{ fontSize: '0.875rem', color: '#8A8078', marginTop: '0.75rem' }}>Please wait...</p>
+              <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-text-muted mt-3">Please wait...</p>
             </div>
           </motion.div>
         )}

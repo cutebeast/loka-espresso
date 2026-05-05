@@ -241,7 +241,7 @@
 .co-delivery-label { font-size: 12px; font-weight: 500; color: var(--loka-text-muted); margin-bottom: 4px; display: block; }
 .co-delivery-input {
   width: 100%; padding: 12px 14px; border: 1.5px solid var(--loka-border-light); border-radius: 8px;
-  font-family: var(--font-sans); font-size: 14px; color: var(--loka-text-primary);
+  font-family: var(--font-sans); font-size: 16px; color: var(--loka-text-primary);
   outline: none; background: var(--loka-bg-light); box-sizing: border-box;
 }
 .co-delivery-input:focus { border-color: var(--loka-primary); background: var(--loka-bg-card); }
@@ -295,3 +295,7 @@
 .onf-textarea { font-family: inherit; box-sizing: border-box; }
 .ditc-card { border: 1px solid rgba(196, 137, 58,0.2); }
 .ditc-emoji { font-size: 22px; }
+
+/* Inline-style cleanup additions */
+.co-notes-empty { color: var(--loka-border); font-style: italic; }
+.co-voucher-hint { font-size: 11px; color: var(--loka-text-muted); text-align: center; padding: 8px 0 4px; }

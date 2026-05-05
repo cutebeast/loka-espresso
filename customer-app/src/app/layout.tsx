@@ -3,6 +3,7 @@ import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://app.loyaltysystem.uk"),
   title: "Loka Espresso",
   description: "Artisan Coffee · Community · Culture",
   manifest: "/manifest.json",
@@ -23,6 +24,19 @@ export const metadata: Metadata = {
   applicationName: "Loka Espresso",
   authors: [{ name: "Loka Espresso" }],
   keywords: ["coffee", "cafe", "loyalty", "rewards", "malaysia"],
+  openGraph: {
+    title: "Loka Espresso",
+    description: "Artisan Coffee · Community · Culture",
+    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "Loka Espresso" }],
+    type: "website",
+    locale: "en_MY",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Loka Espresso",
+    description: "Artisan Coffee · Community · Culture",
+    images: ["/icon-512.png"],
+  },
 };
 
 export const viewport: Viewport = {

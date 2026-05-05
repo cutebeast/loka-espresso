@@ -134,8 +134,8 @@ export default function OrderDetailPage() {
         {/* Status */}
         <div className="od-section">
           <div className="od-section-title">Order Status</div>
-          <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-            <div className="text-sm font-semibold" style={{ color: 'var(--loka-accent-copper)' }}>{displayStatus}</div>
+          <div className="od-status-wrap">
+            <div className="od-status-label">{displayStatus}</div>
             <div className="text-xs text-muted mt-1">
               {order.status === 'completed' ? 'Enjoy your order!' : order.status === 'cancelled' ? 'This order was cancelled' : 'Your order is being processed'}
             </div>
@@ -156,7 +156,7 @@ export default function OrderDetailPage() {
               })}
             </div>
           ) : (
-            <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--loka-danger)', fontWeight: 600 }}>This order was cancelled</div>
+            <div className="od-cancelled-banner">This order was cancelled</div>
           )}
         </div>
 
@@ -196,7 +196,7 @@ export default function OrderDetailPage() {
         {/* Order Type */}
         <div className="od-section">
           <div className="od-section-title">Order Type</div>
-          <div className="od-info-row" style={{ padding: 0 }}>
+          <div className="od-info-row od-info-row-compact">
             <div className="od-info-icon green">{order.order_type === 'delivery' ? <Truck color="#C4893A" size={14} /> : order.order_type === 'dine_in' ? <Utensils color="#4A2210" size={14} /> : <ShoppingBag color="#4A2210" size={14} />}</div>
             <div className="od-info-text">
               <div className="od-info-label">{order.order_type === 'delivery' ? 'Delivery' : order.order_type === 'dine_in' ? 'Dine-in' : 'Pickup'}</div>
@@ -229,7 +229,7 @@ export default function OrderDetailPage() {
               </div>
             );
           })}
-          <div style={{ marginTop: 10, borderTop: `1px solid ${LOKA.borderLight}`, paddingTop: 10 }}>
+          <div className="od-summary-divider">
             {order.subtotal != null && <div className="od-summary-row"><span className="od-summary-label">Subtotal</span><span className="od-summary-value">{formatPrice(order.subtotal)}</span></div>}
             {(order.delivery_fee ?? 0) > 0 && <div className="od-summary-row"><span className="od-summary-label">Delivery Fee</span><span className="od-summary-value">{formatPrice(order.delivery_fee ?? 0)}</span></div>}
             {(order.discount ?? 0) > 0 && <div className="od-summary-row"><span className="od-summary-label">Discount</span><span className="od-summary-value">-{formatPrice(order.discount ?? 0)}</span></div>}

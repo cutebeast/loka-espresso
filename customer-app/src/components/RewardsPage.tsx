@@ -74,7 +74,7 @@ export default function RewardsPage() {
     return (
       <div className="rd-fullscreen" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div className="detail-hero">
-          {img ? <img src={img} alt="" loading="lazy" /> : <Gift size={48} color="#fff" />}
+          {img ? <img src={img} alt={selectedReward.name} loading="lazy" /> : <Gift size={48} color="white" />}
           <button className="rd-back-btn" onClick={() => setSelectedReward(null)} style={{ position: 'absolute', top: 12, left: 12 }}><ArrowLeft size={20} /></button>
         </div>
         <div className="detail-body">

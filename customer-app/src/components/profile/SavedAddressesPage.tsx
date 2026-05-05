@@ -199,15 +199,15 @@ export default function SavedAddressesPage() {
           </div>
           <div className="sav2-field">
             <label className="sav2-field-label">Unit / Apartment No.</label>
-            <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g. 123 or A-3-5" className="sav2-input" />
+            <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g. 123 or A-3-5" autoComplete="address-line1" className="sav2-input" />
           </div>
           <div className="sav2-field">
             <label className="sav2-field-label">Address Line 1</label>
-            <input value={line1} onChange={e => setLine1(e.target.value)} placeholder="Jalan / Lorong / Persiaran" className="sav2-input" />
+            <input value={line1} onChange={e => setLine1(e.target.value)} placeholder="Jalan / Lorong / Persiaran" autoComplete="street-address" className="sav2-input" />
           </div>
           <div className="sav2-field">
             <label className="sav2-field-label">Address Line 2 (optional)</label>
-            <input value={line2} onChange={e => setLine2(e.target.value)} placeholder="Building / Taman name" className="sav2-input" />
+            <input value={line2} onChange={e => setLine2(e.target.value)} placeholder="Building / Taman name" autoComplete="address-line2" className="sav2-input" />
           </div>
           <div className="sav2-field">
             <label className="sav2-field-label" htmlFor="sa-city">City</label>

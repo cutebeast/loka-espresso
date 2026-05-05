@@ -95,7 +95,7 @@
 }
 .dac-input {
   width: 100%; padding: 14px 16px; border: 1.5px solid var(--loka-border-light);
-  border-radius: 10px; font-family: var(--font-sans); font-size: 14px;
+  border-radius: 10px; font-family: var(--font-sans); font-size: 16px;
   color: var(--loka-text-primary); outline: none; background: var(--loka-bg-card);
   box-sizing: border-box; transition: border-color 0.15s;
 }
@@ -105,7 +105,7 @@
 /* Textarea */
 .dac-textarea-input {
   width: 100%; padding: 14px 16px; border: 1.5px solid var(--loka-border-light);
-  border-radius: 10px; font-family: var(--font-sans); font-size: 14px;
+  border-radius: 10px; font-family: var(--font-sans); font-size: 16px;
   color: var(--loka-text-primary); outline: none; background: var(--loka-bg-card);
   box-sizing: border-box; transition: border-color 0.15s;
   resize: none; min-height: 60px; line-height: 1.5;

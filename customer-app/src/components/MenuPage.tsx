@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Search, X, ArrowLeft, Plus, Coffee, Star, RefreshCw } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
@@ -129,11 +130,13 @@ export default function MenuPage() {
     [addItem, selectedStore],
   );
 
+  const debouncedSearch = useDebounce(searchQuery, 150);
+
   const filteredItems = useMemo(() => menuItems.filter((item) => {
-    const matchesSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = !debouncedSearch || item.name.toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchesDietary = !selectedDietaryTag || (item.dietary_tags && item.dietary_tags.some((t: string) => t.toLowerCase() === selectedDietaryTag.toLowerCase()));
     return matchesSearch && matchesDietary && item.is_available;
-  }), [menuItems, searchQuery, selectedDietaryTag]);
+  }), [menuItems, debouncedSearch, selectedDietaryTag]);
 
   const availableDietaryTags = useMemo(() => {
     const tags = new Set<string>();

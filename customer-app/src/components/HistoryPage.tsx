@@ -151,7 +151,7 @@ export default function HistoryPage() {
 
       <div className="history-list">
         {loading ? (
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="history-list">
             {[1, 2, 3].map(i => <Skeleton key={i} className="skeleton history-skeleton-row" />)}
           </div>
         ) : (activeTab === 'loyalty' ? loyaltyHistory : walletHistory).length === 0 ? (

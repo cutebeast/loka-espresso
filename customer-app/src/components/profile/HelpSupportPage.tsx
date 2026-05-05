@@ -160,7 +160,7 @@ export default function HelpSupportPage() {
                         className={`support-subject-card ${selected ? 'selected' : ''}`}
                         onClick={() => setSubject(s.id)}
                       >
-                        <div className="support-subject-icon" style={{ background: s.bg }}>
+                        <div className="support-subject-icon" style={{ background: s.bg as string }}>
                           <Icon size={16} stroke={s.stroke} />
                         </div>
                         <span className="support-subject-label">{s.label}</span>

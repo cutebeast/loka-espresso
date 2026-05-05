@@ -308,3 +308,10 @@
 }
 .od-secondary-btn.secondary { background: var(--loka-bg); color: var(--loka-text-primary); border: 1px solid var(--loka-border-light); }
 .od-secondary-btn.danger { background: rgba(199,80,80,0.1); color: var(--loka-danger); }
+
+/* Inline-style cleanup additions */
+.od-status-wrap { text-align: center; padding: 8px 0 4px; }
+.od-status-label { font-size: 14px; font-weight: 600; color: var(--loka-accent-copper); }
+.od-cancelled-banner { padding: 16px 0; text-align: center; color: var(--loka-danger); font-weight: 600; }
+.od-info-row-compact { padding: 0; }
+.od-summary-divider { margin-top: 10px; border-top: 1px solid var(--loka-border-light); padding-top: 10px; }

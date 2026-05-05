@@ -433,3 +433,13 @@
 
 .info-carousel-arrow-left { left: 10px; }
 .info-carousel-arrow-right { right: 10px; }
+
+/* Inline-style cleanup additions */
+.info-detail-hero-fallback { background: linear-gradient(135deg, var(--loka-primary), #5a7a2a); }
+.info-detail-hero-fallback-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 48px; color: rgba(255,255,255,0.25); }
+.info-detail-footer { padding: 0 18px 16px; }
+
+/* Lightbox */
+.info-lightbox-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 70; display: flex; align-items: center; justify-content: center; }
+.info-lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.info-lightbox-close { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.15); color: #fff; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }

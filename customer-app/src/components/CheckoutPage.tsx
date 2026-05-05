@@ -131,7 +131,7 @@ export default function CheckoutPage() {
                   else showToast('Scan a table QR code to enable dine-in', 'info');
                 }}
                 disabled={isDineInLocked && ot.key !== 'dine_in'}>
-                {isDineIn && <QrCode size={14} style={{ marginRight: 4 }} />}{ot.label}
+                {isDineIn && <QrCode size={14} className="mr-1" />}{ot.label}
               </button>;
             })}
           </div>
@@ -152,11 +152,11 @@ export default function CheckoutPage() {
           <div className={`checkout-section${fieldErrors.has('address') ? ' error' : ''}`}>
             <div className="co-section-title">Delivery Address</div>
             <div className="co-delivery-fields">
-              <div className="co-delivery-field"><label className="co-delivery-label">Recipient&apos;s Name</label><input value={recipientName} onChange={e => { setRecipientName(e.target.value); saveDraft(); }} placeholder="Your full name" className="co-delivery-input" /></div>
-              <div className="co-delivery-field"><label className="co-delivery-label">Recipient&apos;s Phone</label><input value={recipientPhone} onChange={e => { setRecipientPhone(e.target.value); saveDraft(); }} placeholder="60123456789" className="co-delivery-input" /></div>
+              <div className="co-delivery-field"><label className="co-delivery-label">Recipient&apos;s Name</label><input value={recipientName} onChange={e => { setRecipientName(e.target.value); saveDraft(); }} placeholder="Your full name" autoComplete="name" className="co-delivery-input" /></div>
+              <div className="co-delivery-field"><label className="co-delivery-label">Recipient&apos;s Phone</label><input value={recipientPhone} onChange={e => { setRecipientPhone(e.target.value); saveDraft(); }} placeholder="60123456789" autoComplete="tel" inputMode="tel" className="co-delivery-input" /></div>
             </div>
             <DeliveryAddressCard value={deliveryAddress} onChange={(addr) => { setDeliveryAddress(addr); saveDraft(); }} />
-            <div className="co-delivery-field" style={{ marginTop: 10 }}><label className="co-delivery-label">Delivery Instructions (optional)</label><input value={deliveryInstr} onChange={e => { setDeliveryInstr(e.target.value); saveDraft(); }} placeholder="e.g., Ring doorbell twice" className="co-delivery-input" /></div>
+            <div className="co-delivery-field mt-2"><label className="co-delivery-label">Delivery Instructions (optional)</label><input value={deliveryInstr} onChange={e => { setDeliveryInstr(e.target.value); saveDraft(); }} placeholder="e.g., Ring doorbell twice" autoComplete="off" className="co-delivery-input" /></div>
           </div>
         )}
         {orderMode !== 'dine_in' && (
@@ -174,14 +174,14 @@ export default function CheckoutPage() {
         </div>
         <div className="checkout-section">
           <div className="co-section-title">Order Notes</div>
-          {notes ? <div className="co-notes-display">{notes}</div> : <div className="co-notes-display" style={{ color: LOKA.border, fontStyle: 'italic' }}>No special requests. Add notes from your cart.</div>}
+          {notes ? <div className="co-notes-display">{notes}</div> : <div className="co-notes-display co-notes-empty">No special requests. Add notes from your cart.</div>}
         </div>
         <div className="checkout-section">
           <div className="co-section-title">Payment Method</div>
           {orderMode !== 'dine_in' && (
             <div className="co-wallet-balance" onClick={() => setPaymentMethod('wallet')}>
               <div className="co-payment-icon co-payment-icon-wallet"><Wallet size={16} color="#fff" /></div>
-              <div style={{ flex: 1 }}><div className="co-wallet-label">Wallet Balance</div><div className="co-wallet-amount">{formatPrice(balance)}</div></div>
+              <div className="flex-1"><div className="co-wallet-label">Wallet Balance</div><div className="co-wallet-amount">{formatPrice(balance)}</div></div>
               {paymentMethod === 'wallet' && <CheckCircle2 size={18} color="#fff" />}
             </div>
           )}
@@ -194,7 +194,7 @@ export default function CheckoutPage() {
             <div className="co-payment-info"><div className="co-payment-label">Cash on Delivery</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div>
           </div>}
-          <div style={{ fontSize: 11, color: 'var(--loka-text-muted, #8A8078)', textAlign: 'center', padding: '8px 0 4px' }}>
+          <div className="co-voucher-hint">
             More payment options (Visa, DuitNow, TnG) coming soon
           </div>
         </div>

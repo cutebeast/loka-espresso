@@ -217,32 +217,32 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
         {/* Unit / Apartment No */}
         <div className="dac-sheet-field">
           <label className="dac-sheet-label">Unit / Apartment No.</label>
-          <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g. 123 or A-3-5" className="dac-input" />
+          <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g. 123 or A-3-5" autoComplete="address-line1" className="dac-input" />
         </div>
 
         {/* Address Line 1 */}
         <div className="dac-sheet-field">
           <label className="dac-sheet-label">Address Line 1</label>
-          <input value={line1} onChange={e => setLine1(e.target.value)} placeholder="Jalan / Lorong / Persiaran" className="dac-input" />
+          <input value={line1} onChange={e => setLine1(e.target.value)} placeholder="Jalan / Lorong / Persiaran" autoComplete="street-address" className="dac-input" />
         </div>
 
         {/* Address Line 2 */}
         <div className="dac-sheet-field">
           <label className="dac-sheet-label">Address Line 2 (optional)</label>
-          <input value={line2} onChange={e => setLine2(e.target.value)} placeholder="Building / Taman name" className="dac-input" />
+          <input value={line2} onChange={e => setLine2(e.target.value)} placeholder="Building / Taman name" autoComplete="address-line2" className="dac-input" />
         </div>
 
         {/* City */}
         <div className="dac-sheet-field">
           <label className="dac-sheet-label">City</label>
-          <input value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Cheras, Petaling Jaya" className="dac-input" />
+          <input value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Cheras, Petaling Jaya" autoComplete="address-level2" className="dac-input" />
         </div>
 
         {/* Postcode | State */}
         <div className="dac-sheet-row">
           <div className="dac-sheet-field dac-sheet-field-half">
             <label className="dac-sheet-label">Postcode</label>
-            <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric" maxLength={5} placeholder="50400" className="dac-input" />
+            <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric" maxLength={5} placeholder="50400" autoComplete="postal-code" className="dac-input" />
           </div>
           <div className="dac-sheet-field dac-sheet-field-half">
             <label className="dac-sheet-label">State</label>

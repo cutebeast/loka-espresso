@@ -24,8 +24,6 @@ export function useVersionCheck() {
       const data = res.data;
 
       if (data.requires_update) {
-        console.log('[PWA] Update available:', data.version);
-        
         // Store new version
         localStorage.setItem(STORAGE_KEY, data.version);
         

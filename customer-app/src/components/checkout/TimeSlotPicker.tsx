@@ -67,7 +67,10 @@ function isSameDay(a: Date, b: Date): boolean {
 
 function formatTime(isoString: string): string {
   const date = new Date(isoString);
-  return date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return date.toLocaleTimeString('en-MY', {
+    hour: '2-digit', minute: '2-digit', hour12: true,
+    timeZone: 'Asia/Kuala_Lumpur',
+  });
 }
 
 function formatDateLabel(date: Date): string {
