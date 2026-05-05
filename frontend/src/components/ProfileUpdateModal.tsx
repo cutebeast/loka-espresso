@@ -14,18 +14,24 @@ interface ProfileUpdateModalProps {
 export default function ProfileUpdateModal({ currentName, currentPhone, currentEmail, onClose, onSaved }: ProfileUpdateModalProps) {
   const [name, setName] = useState(currentName);
   const [phone, setPhone] = useState(currentPhone);
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (pin && pin !== confirmPin) { setError('PINs do not match'); return; }
+    if (pin && pin.length < 4) { setError('PIN must be at least 4 digits'); return; }
     setSaving(true);
     setError('');
     try {
+      const body: Record<string, string> = { name, phone };
+      if (pin) body.pin_code = pin;
       const res = await apiFetch('/users/me', undefined, {
         method: 'PUT',
-        body: JSON.stringify({ name, phone }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -73,6 +79,16 @@ export default function ProfileUpdateModal({ currentName, currentPhone, currentE
           <label className="cpm-9">Phone</label>
           <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} />
         </div>
+        <div className="cpm-8">
+          <label className="cpm-9">New PIN (4+ digits)</label>
+          <input type="password" value={pin} onChange={e => setPin(e.target.value)} placeholder="Leave blank to keep current" maxLength={6} inputMode="numeric" pattern="[0-9]*" />
+        </div>
+        {pin && (
+          <div className="cpm-8">
+            <label className="cpm-9">Confirm PIN</label>
+            <input type="password" value={confirmPin} onChange={e => setConfirmPin(e.target.value)} placeholder="Re-enter PIN" maxLength={6} inputMode="numeric" pattern="[0-9]*" />
+          </div>
+        )}
         <button type="submit" className="btn btn-primary cpm-13" disabled={saving}>
           {saving ? 'Saving...' : 'Save Changes'}
         </button>

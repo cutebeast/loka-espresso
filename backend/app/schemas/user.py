@@ -72,3 +72,4 @@ class UserUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     date_of_birth: Optional[date] = None
+    pin_code: Optional[str] = None
