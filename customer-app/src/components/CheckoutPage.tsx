@@ -178,7 +178,7 @@ export default function CheckoutPage() {
         {orderMode !== 'dine_in' && (
           <div className={`checkout-section${fieldErrors.has('time') ? ' error' : ''}`}>
             <div className="co-section-title">{orderMode === 'pickup' ? 'Pickup Time' : 'Delivery Time'}</div>
-            <TimeSlotPicker onChange={(t) => { setPickupTime(t); saveDraft(); }} value={pickupTime} />
+            <TimeSlotPicker onChange={(t) => { setPickupTime(t); saveDraft(); }} value={pickupTime} mode={orderMode === 'delivery' ? 'delivery' : 'pickup'} />
           </div>
         )}
         <div className="checkout-section">

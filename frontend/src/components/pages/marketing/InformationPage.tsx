@@ -503,14 +503,14 @@ export default function InformationPage() {
 
             <div className="inf-11">
               <ImageUploadField
-                label={form.content_type === 'popup_banner' ? 'Cover — Image or Video' : 'Cover Image'}
+                label="Cover — Image or Video"
                 imageUrl={form.image_url}
                 onSet={(url) => setField('image_url', url)}
                 hint={form.content_type === 'popup_banner'
-                  ? 'JPEG, PNG, MP4, WebM — Max 25MB. Displayed fullscreen on overlay.'
-                  : 'JPEG, PNG — shown on PWA card and article header.'}
+                  ? 'JPEG, PNG, MP4, WebM — Max 50MB for fullscreen overlay'
+                  : 'JPEG, PNG, MP4, WebM — Max 25MB'}
                 folder={form.content_type}
-                allowVideo={form.content_type === 'popup_banner'}
+                allowVideo={true}
               />
             </div>
 

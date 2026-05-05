@@ -9,6 +9,7 @@ interface TimeSlotPickerProps {
   value: string | null;
   onChange: (time: string) => void;
   leadMinutes?: number;
+  mode?: 'pickup' | 'delivery';
 }
 
 function parseStoreHours(openingHours: Record<string, string> | undefined, date: Date): { open: number; close: number } {
@@ -83,7 +84,7 @@ function formatDateLabel(date: Date): string {
   return date.toLocaleDateString('en-MY', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-export default function TimeSlotPicker({ value, onChange, leadMinutes = 15 }: TimeSlotPickerProps) {
+export default function TimeSlotPicker({ value, onChange, leadMinutes = 15, mode = 'pickup' }: TimeSlotPickerProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const selectedStore = useUIStore(s => s.selectedStore);
   
@@ -112,7 +113,7 @@ export default function TimeSlotPicker({ value, onChange, leadMinutes = 15 }: Ti
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Clock size={16} color={LOKA.copper} />
-          <span className="font-bold text-text-primary tsp-title">Pickup Time</span>
+          <span className="font-bold text-text-primary tsp-title">{mode === 'pickup' ? 'Pickup Time' : 'Delivery Time'}</span>
         </div>
         <div className="flex items-center gap-2 tsp-date-nav">
           <button

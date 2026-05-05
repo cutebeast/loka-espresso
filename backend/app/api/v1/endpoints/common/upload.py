@@ -12,7 +12,7 @@ from app.models.user import RoleIDs
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
 
-MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB — covers images + videos across all content types
 MAX_DOC_SIZE = 10 * 1024 * 1024  # 10MB
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "video/mp4", "video/webm"}
 ALLOWED_DOC_TYPES = {"image/jpeg", "image/png", "application/pdf",
