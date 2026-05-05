@@ -109,9 +109,9 @@ export default function PaymentMethodsPage() {
             <div className="payment-empty-text">
               Add a card to enjoy seamless, one-tap checkout on all your orders.
             </div>
-            <button className="payment-empty-cta" onClick={handleAdd}>
+            <button className="payment-empty-cta" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} title="Card linking will be available with payment gateway integration">
               <Plus size={14} />
-              Add Your First Card
+              Add Card — Coming Soon
             </button>
           </div>
         ) : (

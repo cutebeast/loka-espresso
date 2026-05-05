@@ -186,9 +186,9 @@ export default function CheckoutPage() {
             <div className="co-payment-info"><div className="co-payment-label">Cash on Delivery</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div>
           </div>}
-          <div className="co-payment-card disabled"><div className="co-payment-icon co-payment-icon-visa">VISA</div><div className="co-payment-info"><div className="co-payment-label">Visa / Mastercard</div><div className="co-payment-desc">Coming soon</div></div><div className="co-payment-check" /></div>
-          <div className="co-payment-card disabled"><div className="co-payment-icon co-payment-icon-duitnow">D</div><div className="co-payment-info"><div className="co-payment-label">DuitNow</div><div className="co-payment-desc">Coming soon</div></div><div className="co-payment-check" /></div>
-          <div className="co-payment-card disabled"><div className="co-payment-icon co-payment-icon-tng">TnG</div><div className="co-payment-info"><div className="co-payment-label">Touch &apos;n Go eWallet</div><div className="co-payment-desc">Coming soon</div></div><div className="co-payment-check" /></div>
+          <div style={{ fontSize: 11, color: 'var(--loka-text-muted, #8A8078)', textAlign: 'center', padding: '8px 0 4px' }}>
+            More payment options (Visa, DuitNow, TnG) coming soon
+          </div>
         </div>
         <div className="co-summary-card">
           <div className="co-section-title">Order Summary</div>

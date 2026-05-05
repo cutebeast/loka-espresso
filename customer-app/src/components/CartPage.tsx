@@ -90,7 +90,7 @@ export default function CartPage() {
       setEditOptions(options);
       setEditItem({ id: item.menu_item_id, name: item.name, base_price: item.base_price ?? item.price, category_id: 0 } as MenuItem);
       setEditingItem(index);
-    } catch { /* ignore */ }
+    } catch { showToast('Failed to load options. Please try again.', 'error'); }
     finally { setEditLoading(false); }
   };
 

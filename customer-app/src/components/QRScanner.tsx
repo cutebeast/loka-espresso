@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Zap, ZapOff, Camera } from 'lucide-react';
+import { ArrowLeft, Zap, ZapOff, Camera, CameraOff, AlertTriangle } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { LOKA } from '@/lib/tokens';
 
@@ -15,6 +15,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState(false);
+  const [notSupported, setNotSupported] = useState(false);
   const [flashOn, setFlashOn] = useState(false);
 
   const stopScanner = useCallback(async () => {
@@ -30,6 +31,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
       setIsLoading(true);
       if (!navigator.mediaDevices?.getUserMedia) {
         setIsLoading(false);
+        setNotSupported(true);
         return;
       }
       const scanner = new Html5Qrcode('qr-reader');
@@ -93,15 +95,19 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
         {!hasPermission && !isLoading && (
           <div className="qr-permission">
             <div className="qr-permission-icon">
-              <Camera size={36} color={LOKA.copper} />
+              {notSupported ? <AlertTriangle size={28} color="#C9A84C" /> : <CameraOff size={28} color="#4A2210" />}
             </div>
-            <h2 className="qr-permission-title">Camera Access Needed</h2>
+            <h2 className="qr-permission-title">{notSupported ? 'Browser Not Supported' : 'Camera Access Needed'}</h2>
             <p className="qr-permission-text">
-              Allow camera access to scan QR codes for loyalty points, rewards, and in-store ordering.
+              {notSupported
+                ? 'Your browser does not support camera access. Please use a QR code link or ask staff for assistance.'
+                : 'Allow camera access to scan QR codes for loyalty points, rewards, and in-store ordering.'}
             </p>
-            <button className="qr-permission-btn" onClick={startScanner}>
-              Grant Camera Permission
-            </button>
+            {!notSupported && (
+              <button className="qr-permission-btn" onClick={startScanner}>
+                <Camera size={16} /> Allow Camera
+              </button>
+            )}
           </div>
         )}
 

@@ -74,6 +74,12 @@ export default function AppShell() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const prevRequestSignIn = useRef(requestSignIn);
 
+  // Scroll to top on page change
+  useEffect(() => {
+    const main = document.querySelector('main.scroll-container');
+    if (main) main.scrollTo({ top: 0, behavior: 'auto' });
+  }, [page]);
+
   // Calculate store distance
   useEffect(() => {
     const calc = async () => {
@@ -218,7 +224,7 @@ export default function AppShell() {
           </button>
         </motion.div>
       )}
-      {page === 'home' && <PromotionPopup />}
+      {page === 'home' && authDone && <PromotionPopup />}
 
       {/* Guest users skip auth flow entirely */}
       {!isGuest && !authDone ? (

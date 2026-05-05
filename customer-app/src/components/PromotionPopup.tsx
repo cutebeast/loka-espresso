@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import api from '@/lib/api';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -39,6 +40,7 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
   const [popups, setPopups] = useState<InformationCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const popupRef = useFocusTrap<HTMLDivElement>(isOpen);
 
   const checkPopup = useCallback(async () => {
     // Only show after auth flow completes (user either logged in or chose guest)
@@ -103,6 +105,7 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
 
           {/* Image popup */}
           <motion.div
+            ref={popupRef}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}

@@ -57,11 +57,12 @@ export default function OrdersPage() {
   useEffect(() => { fetchOrders(); }, []);
 
   const hasActive = orders.some(o => ACTIVE.includes(o.status?.toLowerCase()));
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     if (pollingRef.current) clearInterval(pollingRef.current);
     if (hasActive) pollingRef.current = setInterval(() => {
-      if (document.visibilityState === 'visible') fetchOrders();
+      if (document.visibilityState === 'visible') { fetchOrders(); setLastUpdated(new Date()); }
     }, 30000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [hasActive]);
@@ -155,7 +156,10 @@ export default function OrdersPage() {
 
         {activeOrders.length > 0 && (
           <>
-            <div className="orders-section-label">Active Orders</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="orders-section-label">Active Orders</div>
+              {lastUpdated && <span style={{ fontSize: 10, color: 'var(--loka-text-muted, #8A8078)' }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
+            </div>
             {activeOrders.map(order => {
               const step = activeStepIdx(order.status);
               const itemList = order.items?.map(i => i.name).join(', ') || '';
