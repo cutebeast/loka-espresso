@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import { BottomSheet } from '@/components/ui';
 import { useUIStore } from '@/stores/uiStore';
 import { AuthStepIndicator } from './AuthStepIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface PhoneInputProps {
   onSubmit: (phone: string) => Promise<void>;
@@ -32,6 +33,7 @@ interface LegalContent {
 type LegalKey = 'terms' | 'privacy';
 
 export function PhoneInput({ onSubmit }: PhoneInputProps) {
+  const { t } = useTranslation();
   const { setPage } = useUIStore();
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -64,7 +66,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
     const digits = phone.replace(/\D/g, '');
 
     if (!digits || digits.length < 7) {
-      setError('Please enter a valid phone number');
+      setError(t('auth.phoneInvalid'));
       return;
     }
 
@@ -74,7 +76,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
       const normalized = normalizePhone(phone, selectedCountry.dialCode);
       await onSubmit(normalized);
     } catch {
-      setError('Failed to send OTP. Please try again.');
+      setError(t('auth.sendOtpFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -114,7 +116,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
       setLegalContent(res.data);
     } catch {
       setLegalError(
-        `Unable to load ${key === 'terms' ? 'Terms of Service' : 'Privacy Policy'} right now.`,
+        t('auth.legalLoadFailed', { document: key === 'terms' ? t('auth.terms') : t('auth.privacy') }),
       );
     } finally {
       setLegalLoading(false);
@@ -128,8 +130,8 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
       <div className="auth-page">
         <AuthStepIndicator currentStep={1} />
 
-        <h2 className="auth-heading">Welcome back</h2>
-        <p className="auth-subheading">Sign in with your phone number to continue</p>
+        <h2 className="auth-heading">{t('auth.phoneTitle')}</h2>
+        <p className="auth-subheading">{t('auth.phoneSubtitleContinue')}</p>
 
         <form onSubmit={handleSubmit} className="pi-form">
           <div className="phone-wrapper">
@@ -138,7 +140,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
               type="button"
               className="country-selector"
               onClick={() => setShowCountryPicker(true)}
-              aria-label={`Country: ${selectedCountry.name} ${selectedCountry.dialCode}`}
+              aria-label={t('auth.countrySelectorAriaLabel', { name: selectedCountry.name, dialCode: selectedCountry.dialCode })}
             >
               <img
                 className="country-selector-flag"
@@ -158,7 +160,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
               type="tel"
               value={phone}
               onChange={handleChange}
-              placeholder="12 345 6789"
+              placeholder={t('auth.phonePlaceholder')}
               autoFocus
               inputMode="tel"
               autoComplete="tel-national"
@@ -171,23 +173,23 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
           )}
 
           <button type="submit" disabled={isDisabled} className="auth-btn">
-            {isLoading ? <div className="auth-btn-spinner" /> : 'Send OTP'}
+            {isLoading ? <div className="auth-btn-spinner" /> : t('auth.sendOtp')}
           </button>
 
           <p className="auth-legal">
-            By continuing you agree to our<br />
+            {t('auth.termsPrefixShort')}<br />
             <button type="button" className="auth-legal-link" onClick={() => void openLegalSheet('terms')}>
-              Terms of Service
+              {t('auth.terms')}
             </button>
-            {' '}and{' '}
+            {' '}{t('common.and')}{' '}
             <button type="button" className="auth-legal-link" onClick={() => void openLegalSheet('privacy')}>
-              Privacy Policy
+              {t('auth.privacy')}
             </button>
           </p>
 
           <div className="pi-divider">
             <span className="pi-divider-line" />
-            <span className="pi-divider-text">or</span>
+            <span className="pi-divider-text">{t('common.or')}</span>
             <span className="pi-divider-line" />
           </div>
 
@@ -200,7 +202,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
               ui.setIsGuest(true);
             }}
           >
-            Browse as Guest
+            {t('auth.guestBrowse')}
           </button>
 
           <div className="pi-spacer" />
@@ -211,7 +213,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
       <BottomSheet
         isOpen={showCountryPicker}
         onClose={closeCountryPicker}
-        title="Select country"
+        title={t('common.selectCountry')}
       >
         <div className="country-picker-body">
           {/* Search input */}
@@ -221,7 +223,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
               <input
                 type="text"
                 className="country-search-input"
-                placeholder="Search by name or code…"
+                placeholder={t('auth.countrySearch')}
                 value={countrySearch}
                 onChange={(e) => setCountrySearch(e.target.value)}
                 autoFocus
@@ -231,7 +233,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
                   type="button"
                   className="country-search-clear"
                   onClick={() => setCountrySearch('')}
-                  aria-label="Clear search"
+                  aria-label={t('common.clear')}
                 >
                   <X color="#8A8078" size={14} />
                 </button>
@@ -242,7 +244,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
           {/* Country list */}
           <div className="country-list">
             {!countrySearch && (
-              <div className="country-section-label">Popular</div>
+              <div className="country-section-label">{t('common.popular')}</div>
             )}
             {filteredCountries.map((country) => (
               <button
@@ -270,7 +272,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
             ))}
             {filteredCountries.length === 0 && countrySearch && (
               <div className="country-no-results">
-                No countries found for &ldquo;{countrySearch}&rdquo;
+                {t('auth.noCountriesFound', { search: countrySearch })}
               </div>
             )}
           </div>
@@ -281,7 +283,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
       <BottomSheet
         isOpen={activeLegalKey !== null}
         onClose={closeLegalSheet}
-        title={legalContent?.title || (activeLegalKey === 'terms' ? 'Terms of Service' : 'Privacy Policy')}
+        title={legalContent?.title || (activeLegalKey === 'terms' ? t('auth.terms') : t('auth.privacy'))}
       >
         {legalLoading ? (
           <div className="pi-skeleton-list">
@@ -305,7 +307,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
                     <Calendar color="#4A4038" size={16} />
                   </div>
                   <div>
-                    <div className="legal-updated-label">Last Updated</div>
+                    <div className="legal-updated-label">{t('common.lastUpdated')}</div>
                     <div className="legal-updated-date">
                       {new Date(legalContent.updated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </div>
@@ -335,7 +337,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
                 ))
               ) : (
                 <p className="legal-paragraph">
-                  {legalContent?.long_description || 'No content available.'}
+                  {legalContent?.long_description || t('common.noContentAvailable')}
                 </p>
               )}
             </div>

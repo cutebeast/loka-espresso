@@ -23,6 +23,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { GuestGate } from '@/components/auth/GuestGate';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import type { Order } from '@/lib/api';
 
@@ -39,6 +40,7 @@ export default function ProfilePage() {
   const { user, logout } = useAuthStore();
   const { points, tier } = useWalletStore();
   const { setPage } = useUIStore();
+  const { t } = useTranslation();
 
   const [showLogout, setShowLogout] = useState(false);
   const [recentOrders, setRecentOrders] = useState<OrderPreview[]>([]);
@@ -59,7 +61,7 @@ export default function ProfilePage() {
         const data: Order[] = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
         setRecentOrders(data.slice(0, 3).map((o) => ({
           id: o.id,
-          items: o.items?.map((i) => i.name).filter(Boolean).join(', ') || 'Order #' + o.id,
+          items: o.items?.map((i) => i.name).filter(Boolean).join(', ') || t('profile.orderNumber', { id: o.id }),
           date: o.created_at ? new Date(o.created_at).toLocaleDateString('en-MY', { month: 'short', day: 'numeric' }) : '',
           status: o.status || 'Completed',
           total: o.total || 0,
@@ -77,18 +79,18 @@ export default function ProfilePage() {
   const initials = user?.name?.charAt(0)?.toUpperCase() || 'U';
 
   const menuItems = [
-    { id: 'rewards', icon: Gift, label: 'My Rewards', iconClass: 'profile-icon-reward', onClick: () => setPage('my-rewards', { initialTab: 'rewards' }) },
-    { id: 'vouchers', icon: Ticket, label: 'My Vouchers', iconClass: 'profile-icon-voucher', onClick: () => setPage('my-rewards', { initialTab: 'vouchers' }) },
-    { id: 'referral', icon: Users, label: 'Referral', iconClass: 'profile-icon-referral', onClick: () => setPage('referral') },
-    { id: 'payment', icon: CreditCard, label: 'Payment Methods', iconClass: 'profile-icon-payment', onClick: () => setPage('payment-methods') },
-    { id: 'addresses', icon: MapPin, label: 'Saved Addresses', iconClass: 'profile-icon-address', onClick: () => setPage('saved-addresses') },
-    { id: 'card', icon: IdCard, label: 'My Card', iconClass: 'profile-icon-card', onClick: () => setPage('my-card') },
-    { id: 'notification', icon: Bell, label: 'Notifications', iconClass: 'profile-icon-notif', onClick: () => setPage('notifications') },
+    { id: 'rewards', icon: Gift, label: t('profile.myRewards'), iconClass: 'profile-icon-reward', onClick: () => setPage('my-rewards', { initialTab: 'rewards' }) },
+    { id: 'vouchers', icon: Ticket, label: t('profile.myVouchers'), iconClass: 'profile-icon-voucher', onClick: () => setPage('my-rewards', { initialTab: 'vouchers' }) },
+    { id: 'referral', icon: Users, label: t('profile.referral'), iconClass: 'profile-icon-referral', onClick: () => setPage('referral') },
+    { id: 'payment', icon: CreditCard, label: t('profile.paymentMethods'), iconClass: 'profile-icon-payment', onClick: () => setPage('payment-methods') },
+    { id: 'addresses', icon: MapPin, label: t('profile.savedAddresses'), iconClass: 'profile-icon-address', onClick: () => setPage('saved-addresses') },
+    { id: 'card', icon: IdCard, label: t('profile.myCard'), iconClass: 'profile-icon-card', onClick: () => setPage('my-card') },
+    { id: 'notification', icon: Bell, label: t('profile.notifications'), iconClass: 'profile-icon-notif', onClick: () => setPage('notifications') },
   ];
 
   const menuItems2 = [
-    { id: 'settings', icon: SlidersHorizontal, label: 'Settings', iconClass: 'profile-icon-settings', onClick: () => setPage('settings') },
-    { id: 'help', icon: Headset, label: 'Help & Support', iconClass: 'profile-icon-help', onClick: () => setPage('help-support') },
+    { id: 'settings', icon: SlidersHorizontal, label: t('profile.settings'), iconClass: 'profile-icon-settings', onClick: () => setPage('settings') },
+    { id: 'help', icon: Headset, label: t('profile.helpSupport'), iconClass: 'profile-icon-help', onClick: () => setPage('help-support') },
   ];
 
   function statusClass(status: string) {
@@ -103,34 +105,34 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="sub-page-header">
         <div className="sub-header-left">
-          <button className="sub-back-btn" onClick={() => setPage('home')} aria-label="Back">
+          <button className="sub-back-btn" onClick={() => setPage('home')} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
-          <h1 className="sub-page-title">Profile</h1>
+          <h1 className="sub-page-title">{t('profile.title')}</h1>
         </div>
-        <button className="sub-header-action" onClick={() => setPage('account-details')} aria-label="Edit profile">
+        <button className="sub-header-action" onClick={() => setPage('account-details')} aria-label={t('profile.editProfile')}>
           <Pen size={18} />
         </button>
       </div>
 
       {/* Content */}
       <div className="profile-scroll">
-        <GuestGate message="Sign in to view your profile, rewards, and order history.">
+        <GuestGate message={t('profile.guestMessage')}>
           {/* User card — gradient background */}
           <div className="profile-user-card" onClick={() => setPage('account-details')}>
             <div className="profile-avatar">{initials}</div>
             <div className="profile-user-info">
-              <div className="profile-user-name">{user?.name || 'Guest'}</div>
-              <div className="profile-user-phone">{user?.phone || 'No phone'}</div>
+              <div className="profile-user-name">{user?.name || t('profile.guest')}</div>
+              <div className="profile-user-phone">{user?.phone || t('profile.noPhone')}</div>
               <div className={`profile-tier-badge ${(tier || 'Bronze').toLowerCase()}`}>
-                <Crown size={12} /> {tier} Member
+                <Crown size={12} /> {t('profile.tierMember', { tier })}
               </div>
               {ptsToNext > 0 && (
                 <div className="profile-tier-progress">
                   <div className="profile-tier-track">
                     <div className="profile-tier-fill" style={{ width: `${progress}%` }} />
                   </div>
-                  <span className="profile-tier-text">{ptsToNext.toLocaleString()} pts to {nextTier}</span>
+                  <span className="profile-tier-text">{t('profile.ptsToNext', { points: ptsToNext.toLocaleString(), tier: nextTier })}</span>
                 </div>
               )}
             </div>
@@ -138,13 +140,13 @@ export default function ProfilePage() {
 
           {/* Recent orders */}
           <div className="profile-section-header">
-            <div className="profile-section-title">Recent Orders</div>
-            <button className="profile-see-all" onClick={() => setPage('orders')}>See All</button>
+            <div className="profile-section-title">{t('profile.recentOrders')}</div>
+            <button className="profile-see-all" onClick={() => setPage('orders')}>{t('common.seeAll')}</button>
           </div>
           <div className="profile-preview-card">
             {recentOrders.length === 0 ? (
               <div className="profile-empty-orders">
-                No orders yet
+                {t('profile.noOrders')}
               </div>
             ) : (
               recentOrders.map((order) => (
@@ -170,7 +172,7 @@ export default function ProfilePage() {
               ))
             )}
             <button className="profile-view-all" onClick={() => setPage('orders')}>
-              View all →
+              {t('profile.viewAll')}
             </button>
           </div>
 
@@ -212,7 +214,7 @@ export default function ProfilePage() {
               <div className="profile-menu-icon profile-icon-logout">
                 <LogOut size={18} />
               </div>
-              <span className="profile-menu-label profile-menu-label-red">Log Out</span>
+              <span className="profile-menu-label profile-menu-label-red">{t('profile.logout')}</span>
               <ChevronRight size={16} color={LOKA.danger} />
             </button>
           </div>
@@ -222,11 +224,11 @@ export default function ProfilePage() {
       {/* Logout modal */}
       <div className={`profile-modal-overlay ${showLogout ? 'show' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setShowLogout(false); }}>
         <div className="profile-modal-box">
-          <h3>Log out</h3>
-          <p>Are you sure you want to log out?</p>
+          <h3>{t('profile.logout')}</h3>
+          <p>{t('profile.logoutConfirm')}</p>
           <div className="profile-modal-btns">
-            <button className="profile-modal-btn profile-modal-btn-cancel" onClick={() => setShowLogout(false)}>Cancel</button>
-            <button className="profile-modal-btn profile-modal-btn-confirm" onClick={handleLogout}>Log out</button>
+            <button className="profile-modal-btn profile-modal-btn-cancel" onClick={() => setShowLogout(false)}>{t('common.cancel')}</button>
+            <button className="profile-modal-btn profile-modal-btn-confirm" onClick={handleLogout}>{t('profile.logout')}</button>
           </div>
         </div>
       </div>

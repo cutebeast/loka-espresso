@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AuthStepIndicator } from './AuthStepIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ProfileSetupProps {
   phone: string;
@@ -10,6 +11,7 @@ interface ProfileSetupProps {
 }
 
 export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,7 +20,7 @@ export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Please enter your name');
+      setError(t('auth.nameRequired'));
       return;
     }
     setIsLoading(true);
@@ -26,7 +28,7 @@ export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
     try {
       await onSubmit({ name: name.trim(), email: email.trim() || undefined });
     } catch {
-      setError('Failed to create profile. Please try again.');
+      setError(t('auth.profileCreateFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -36,8 +38,8 @@ export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
     <div className="auth-page">
       <AuthStepIndicator currentStep={3} />
 
-      <h2 className="auth-heading">Complete your profile</h2>
-      <p className="auth-subheading">Tell us a bit about yourself</p>
+      <h2 className="auth-heading">{t('auth.profileTitle')}</h2>
+      <p className="auth-subheading">{t('auth.profileSubtitle')}</p>
 
       {/* Avatar preview */}
       <div className="ps-avatar-wrap">
@@ -54,27 +56,27 @@ export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="ps-form">
-        <div className="auth-label">Full name</div>
+        <div className="auth-label">{t('auth.fullName')}</div>
         <div className="phone-wrapper">
           <input
             type="text"
             value={name}
             onChange={(e) => { setName(e.target.value); setError(''); }}
-            placeholder="Enter your name"
+            placeholder={t('auth.namePlaceholder')}
             autoFocus
             className="phone-input"
           />
         </div>
 
         <div className="auth-label">
-          Email <span className="ps-optional">(optional)</span>
+          {t('common.email')} <span className="ps-optional">{t('common.optionalLower')}</span>
         </div>
         <div className="phone-wrapper">
           <input
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setError(''); }}
-            placeholder="Enter your email"
+            placeholder={t('auth.emailPlaceholder')}
             className="phone-input"
           />
         </div>
@@ -84,7 +86,7 @@ export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
         )}
 
         <button type="submit" disabled={isLoading || !name.trim()} className="auth-btn">
-          {isLoading ? <div className="auth-btn-spinner" /> : 'Get Started'}
+          {isLoading ? <div className="auth-btn-spinner" /> : t('auth.getStarted')}
         </button>
 
         {onSkip && (
@@ -93,7 +95,7 @@ export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
             onClick={onSkip}
             className="ps-skip-btn"
           >
-            Skip for now
+            {t('auth.skipForNow')}
           </button>
         )}
 

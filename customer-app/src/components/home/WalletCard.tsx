@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { ChevronRight, Wallet, Crown, Award, Gift, Ticket } from 'lucide-react';
 import { useFitText } from '@/hooks/useFitText';
 
@@ -28,6 +29,7 @@ function formatPoints(value: number): string {
 }
 
 export default function WalletCard({ isGuest, isAuthenticated, balance, points, tier, onTopUp, onRewards, onVouchers, onSignIn }: WalletCardProps) {
+  const { t } = useTranslation();
   const amountRef = useRef<HTMLSpanElement>(null);
 
   useFitText(amountRef, [balance], 14, 0.5);
@@ -36,13 +38,13 @@ export default function WalletCard({ isGuest, isAuthenticated, balance, points, 
     return (
       <div className="wallet-card wallet-card-guest" onClick={onSignIn}>
         <div className="wallet-row">
-          <span className="balance-label"><Wallet size={16} color="#C9A84C" /> Loka Wallet</span>
+          <span className="balance-label"><Wallet size={16} color="#C9A84C" /> {t('home.wallet.lokaWallet')}</span>
         </div>
         <div className="wallet-row wallet-row-mt">
-          <span className="guest-wallet-text">Sign in to access wallet & rewards</span>
+          <span className="guest-wallet-text">{t('home.wallet.signInPrompt')}</span>
         </div>
         <div className="wallet-chip-row">
-          <span className="wallet-chip wallet-chip-signin">Sign In →</span>
+          <span className="wallet-chip wallet-chip-signin">{t('home.wallet.signIn')}</span>
         </div>
       </div>
     );
@@ -51,12 +53,12 @@ export default function WalletCard({ isGuest, isAuthenticated, balance, points, 
   return (
     <div className="wallet-card">
       <div className="wallet-row">
-        <span className="balance-label"><Wallet size={16} color="#C9A84C" /> Loka Balance</span>
+        <span className="balance-label"><Wallet size={16} color="#C9A84C" /> {t('home.wallet.lokaBalance')}</span>
         <button
           className="homepage-topup-btn"
           onClick={(e) => { e.stopPropagation(); onTopUp(); }}
         >
-          Top Up <ChevronRight size={12} />
+          {t('home.wallet.topUp')} <ChevronRight size={12} />
         </button>
       </div>
       <div className="wallet-row wallet-row-mt">
@@ -66,20 +68,20 @@ export default function WalletCard({ isGuest, isAuthenticated, balance, points, 
         </span>
         <span className="homepage-points-badge">
           <span className="homepage-points-icon"><Crown size={16} color="#C9A84C" /></span>
-          <span className="homepage-points-value">{formatPoints(points)} pts</span>
+          <span className="homepage-points-value">{formatPoints(points)} {t('home.wallet.pts')}</span>
         </span>
       </div>
       <div className="wallet-tier-row">
         <div className="wallet-tier-badge">
-          <Award size={14} color="#C4893A" /> {tier} Member
+          <Award size={14} color="#C4893A" /> {t('home.wallet.tierMember', { tier })}
         </div>
       </div>
       <div className="wallet-chip-row">
         <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onRewards(); }}>
-          <Gift size={14} color="#3B4A1A" /> Rewards
+          <Gift size={14} color="#3B4A1A" /> {t('home.wallet.rewards')}
         </span>
         <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onVouchers(); }}>
-          <Ticket size={14} color="#C4893A" /> Vouchers
+          <Ticket size={14} color="#C4893A" /> {t('home.wallet.vouchers')}
         </span>
       </div>
     </div>

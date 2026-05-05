@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState, memo, useMemo } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { resolveAssetUrl } from '@/lib/tokens';
 import type { PromoBanner, InformationCard } from '@/lib/api';
 
@@ -11,16 +12,17 @@ const InfoCard = memo(function InfoCard({
   card: InformationCard;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   const cardImage = resolveAssetUrl(card.image_url);
   return (
     <div className="homepage-info-card" onClick={onClick}>
       {cardImage && <img src={cardImage} alt="" className="card-bg-img" loading="lazy" />}
       <div className="homepage-info-content">
-        <span className="homepage-info-badge">{card.content_type === 'product' ? 'Product' : 'Experience'}</span>
+        <span className="homepage-info-badge">{card.content_type === 'product' ? t('home.badgeProduct') : t('home.badgeExperience')}</span>
         <div className="homepage-info-title">{card.title}</div>
         {card.short_description && <div className="homepage-info-desc">{card.short_description}</div>}
         <button className="homepage-info-btn" onClick={(e) => { e.stopPropagation(); onClick(); }}>
-          Learn more
+          {t('home.learnMore')}
         </button>
       </div>
     </div>
@@ -34,6 +36,7 @@ const PromoCard = memo(function PromoCard({
   banner: PromoBanner;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   const bannerImage = resolveAssetUrl(banner.image_url);
   return (
     <div className="homepage-promo-card" onClick={onClick}>
@@ -42,7 +45,7 @@ const PromoCard = memo(function PromoCard({
         <div className="homepage-promo-title">{banner.title}</div>
         {banner.short_description && <div className="homepage-promo-sub">{banner.short_description}</div>}
         <button className="homepage-promo-btn" onClick={(e) => { e.stopPropagation(); onClick(); }}>
-          {banner.action_type === 'survey' ? 'Take survey' : banner.action_type === 'detail' ? 'Learn more' : 'View'}
+          {banner.action_type === 'survey' ? t('home.takeSurvey') : banner.action_type === 'detail' ? t('home.learnMore') : t('home.view')}
         </button>
       </div>
     </div>
@@ -61,6 +64,7 @@ interface HomeCarouselProps {
 }
 
 export default function HomeCarousel({ banners, loading, infoCards, productCards, onPromoClick, onInfoClick, onViewAllPromos, onViewAllDiscover }: HomeCarouselProps) {
+  const { t } = useTranslation();
   const promoScrollRef = useRef<HTMLDivElement>(null);
   const discoverScrollRef = useRef<HTMLDivElement>(null);
   const [promoIndex, setPromoIndex] = useState(0);
@@ -124,9 +128,9 @@ export default function HomeCarousel({ banners, loading, infoCards, productCards
       ) : showDiscover ? (
         <div>
           <div className="home-section-header">
-            <h3 className="home-section-title">Discover</h3>
+            <h3 className="home-section-title">{t('home.discoverTitle')}</h3>
             <button className="home-see-all-link" onClick={onViewAllDiscover}>
-              View all →
+              {t('home.viewAll')}
             </button>
           </div>
           <div className="homepage-carousel" ref={discoverScrollRef} onScroll={handleDiscoverScroll}>
@@ -147,7 +151,7 @@ export default function HomeCarousel({ banners, loading, infoCards, productCards
                   const el = discoverScrollRef.current;
                   if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
                 }}
-                aria-label={`Go to slide ${i + 1}`}
+                aria-label={t('home.goToSlide', { n: i + 1 })}
               />
             ))}
           </div>
@@ -172,9 +176,9 @@ export default function HomeCarousel({ banners, loading, infoCards, productCards
       ) : showPromos ? (
         <div>
           <div className="home-section-header">
-            <h3 className="home-section-title">Promotions</h3>
+            <h3 className="home-section-title">{t('home.promotionsTitle')}</h3>
             <button className="home-see-all-link" onClick={onViewAllPromos}>
-              View all →
+              {t('home.viewAll')}
             </button>
           </div>
           <div className="homepage-carousel" ref={promoScrollRef} onScroll={handlePromoScroll}>
@@ -195,7 +199,7 @@ export default function HomeCarousel({ banners, loading, infoCards, productCards
                   const el = promoScrollRef.current;
                   if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
                 }}
-                aria-label={`Go to slide ${i + 1}`}
+                aria-label={t('home.goToSlide', { n: i + 1 })}
               />
             ))}
           </div>

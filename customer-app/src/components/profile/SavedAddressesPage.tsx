@@ -6,6 +6,7 @@ import { MapPin, Home, Building2, HelpCircle, Trash2, Pencil, Plus, Clock } from
 import { useUIStore } from '@/stores/uiStore';
 import { PageHeader } from '@/components/shared';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import { LOKA } from '@/lib/tokens';
 
@@ -29,6 +30,7 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 
 export default function SavedAddressesPage() {
   const { setPage, showToast, selectedStore } = useUIStore();
+  const { t } = useTranslation();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -80,7 +82,7 @@ export default function SavedAddressesPage() {
   };
 
   const handleSave = async () => {
-    if (!unit.trim() && !line1.trim()) { showToast('Address is required', 'error'); return; }
+    if (!unit.trim() && !line1.trim()) { showToast(t('toast.addressRequired'), 'error'); return; }
     setSaving(true);
     const payload: any = {
       label: formLabel, address: line1.trim(), apartment: unit.trim() || undefined,
@@ -90,31 +92,32 @@ export default function SavedAddressesPage() {
     try {
       if (editingId) {
         await api.put(`/users/me/addresses/${editingId}`, payload);
-        showToast('Address updated', 'success');
+        showToast(t('toast.addressUpdated'), 'success');
       } else {
         await api.post('/users/me/addresses', payload);
-        showToast('Address saved', 'success');
+        showToast(t('toast.addressSaved'), 'success');
       }
       setModalOpen(false);
       fetchAddresses();
-    } catch { showToast('Failed to save', 'error'); }
+    } catch { showToast(t('toast.addressSaveFailed'), 'error'); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await api.delete(`/users/me/addresses/${id}`);
-      showToast('Address deleted', 'success');
+      showToast(t('toast.addressDeleted'), 'success');
       setDeleteTarget(null);
       fetchAddresses();
-    } catch { showToast('Failed to delete', 'error'); }
+    } catch { showToast(t('toast.addressDeleteFailed'), 'error'); }
   };
 
   const getDistance = (addr: Address): string | null => {
     if (!addr.lat || !addr.lng || !selectedStore?.lat || !selectedStore?.lng) return null;
     const km = haversineDistance(addr.lat, addr.lng, selectedStore.lat, selectedStore.lng);
     const min = Math.round((km / 30) * 60);
-    return `${km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km'} · ~${min} min drive`;
+    const distance = km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km';
+    return t('savedAddresses.distance', { distance, minutes: min });
   };
 
   const fullDisplay = (addr: Address): string => {
@@ -135,7 +138,7 @@ export default function SavedAddressesPage() {
 
   return (
     <div className="sav2-page">
-      <PageHeader title="Saved Addresses" onBack={() => setPage('profile')} />
+      <PageHeader title={t('savedAddresses.title')} onBack={() => setPage('profile')} />
       <div className="sav2-content">
         {loading ? (
           <div className="sav2-skeleton-list">
@@ -144,8 +147,8 @@ export default function SavedAddressesPage() {
         ) : addresses.length === 0 ? (
           <div className="sav2-empty">
             <div className="sav2-empty-icon"><MapPin size={28} color={LOKA.borderLight} /></div>
-            <p className="sav2-empty-title">No saved addresses</p>
-            <p className="sav2-empty-desc">Add an address for faster delivery checkout</p>
+            <p className="sav2-empty-title">{t('savedAddresses.noAddresses')}</p>
+            <p className="sav2-empty-desc">{t('savedAddresses.noAddressesDesc')}</p>
           </div>
         ) : (
           addresses.map((addr: Address) => {
@@ -168,9 +171,9 @@ export default function SavedAddressesPage() {
                 </div>
                 {confirm && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="sav2-delete-confirm">
-                    <span className="sav2-delete-confirm-text">Delete this address?</span>
-                    <button onClick={() => handleDelete(addr.id)} className="sav2-delete-confirm-yes">Delete</button>
-                    <button onClick={() => setDeleteTarget(null)} className="sav2-delete-confirm-no">Cancel</button>
+                    <span className="sav2-delete-confirm-text">{t('savedAddresses.deleteConfirm')}</span>
+                    <button onClick={() => handleDelete(addr.id)} className="sav2-delete-confirm-yes">{t('common.delete')}</button>
+                    <button onClick={() => setDeleteTarget(null)} className="sav2-delete-confirm-no">{t('common.cancel')}</button>
                   </motion.div>
                 )}
               </motion.div>
@@ -178,11 +181,11 @@ export default function SavedAddressesPage() {
           })
         )}
         <motion.button whileTap={{ scale: 0.98 }} onClick={openAdd} className="sav2-add-btn">
-          <Plus size={18} /> Add New Address
+          <Plus size={18} /> {t('savedAddresses.addNewAddress')}
         </motion.button>
       </div>
 
-      <BottomSheet isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Edit Address' : 'Add New Address'}>
+      <BottomSheet isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? t('savedAddresses.editAddress') : t('savedAddresses.addNewAddress')}>
         <div className="sheet-body">
           <div className="sav2-label-row">
             {LABELS.map(lbl => {
@@ -198,35 +201,35 @@ export default function SavedAddressesPage() {
             })}
           </div>
           <div className="sav2-field">
-            <label className="sav2-field-label">Unit / Apartment No.</label>
-            <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g. 123 or A-3-5" autoComplete="address-line1" className="sav2-input" />
+            <label className="sav2-field-label">{t('savedAddresses.unit')}</label>
+            <input value={unit} onChange={e => setUnit(e.target.value)} placeholder={t('savedAddresses.unitPlaceholder')} autoComplete="address-line1" className="sav2-input" />
           </div>
           <div className="sav2-field">
-            <label className="sav2-field-label">Address Line 1</label>
-            <input value={line1} onChange={e => setLine1(e.target.value)} placeholder="Jalan / Lorong / Persiaran" autoComplete="street-address" className="sav2-input" />
+            <label className="sav2-field-label">{t('savedAddresses.addressLine1')}</label>
+            <input value={line1} onChange={e => setLine1(e.target.value)} placeholder={t('savedAddresses.addressLine1Placeholder')} autoComplete="street-address" className="sav2-input" />
           </div>
           <div className="sav2-field">
-            <label className="sav2-field-label">Address Line 2 (optional)</label>
-            <input value={line2} onChange={e => setLine2(e.target.value)} placeholder="Building / Taman name" autoComplete="address-line2" className="sav2-input" />
+            <label className="sav2-field-label">{t('savedAddresses.addressLine2')}</label>
+            <input value={line2} onChange={e => setLine2(e.target.value)} placeholder={t('savedAddresses.addressLine2Placeholder')} autoComplete="address-line2" className="sav2-input" />
           </div>
           <div className="sav2-field">
-            <label className="sav2-field-label" htmlFor="sa-city">City</label>
-            <input id="sa-city" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Cheras, Petaling Jaya" className="sav2-input" />
+            <label className="sav2-field-label" htmlFor="sa-city">{t('savedAddresses.city')}</label>
+            <input id="sa-city" value={city} onChange={e => setCity(e.target.value)} placeholder={t('savedAddresses.cityPlaceholder')} className="sav2-input" />
           </div>
           <div className="sav2-field-row">
             <div className="sav2-field sav2-field-half">
-              <label className="sav2-field-label" htmlFor="sa-postcode">Postcode</label>
-            <input id="sa-postcode" value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric" maxLength={5} placeholder="50400" className="sav2-input" />
+              <label className="sav2-field-label" htmlFor="sa-postcode">{t('savedAddresses.postcode')}</label>
+            <input id="sa-postcode" value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric" maxLength={5} placeholder={t('savedAddresses.postcodePlaceholder')} className="sav2-input" />
             </div>
             <div className="sav2-field sav2-field-half">
-              <label className="sav2-field-label" htmlFor="sa-state">State</label>
+              <label className="sav2-field-label" htmlFor="sa-state">{t('savedAddresses.state')}</label>
               <select value={state} onChange={e => setState(e.target.value)} className="sav2-input" style={{ appearance:'none', backgroundImage:'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236A7A8A\' stroke-width=\'2\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E")', backgroundRepeat:'no-repeat', backgroundPosition:'right 14px center', paddingRight:44 }}>
                 {STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
           <button onClick={handleSave} disabled={saving} className="sav2-save-btn mt-1">
-            {saving ? 'Saving...' : 'Save Address'}
+            {saving ? t('common.loading') : t('savedAddresses.saveAddress')}
           </button>
         </div>
       </BottomSheet>

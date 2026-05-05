@@ -2,6 +2,7 @@
 
 import { memo, useRef } from 'react';
 import { Coffee } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useFitText } from '@/hooks/useFitText';
 import type { MenuItem } from '@/lib/api';
@@ -14,6 +15,7 @@ const ProductCard = memo(function ProductCard({
   item: MenuItem;
   onAdd: () => void;
 }) {
+  const { t } = useTranslation();
   const imgSrc = resolveAssetUrl(item.image_url);
   const priceRef = useRef<HTMLDivElement>(null);
   useFitText(priceRef, [item.base_price], 10, 0.5);
@@ -32,7 +34,7 @@ const ProductCard = memo(function ProductCard({
         <div className="product-name">{item.name}</div>
         <div className="product-price" ref={priceRef}>{formatPrice(item.base_price)}</div>
         <button className="add-btn" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
-          <Plus size={12} strokeWidth={2.5} /> Add
+          <Plus size={12} strokeWidth={2.5} /> {t('home.add')}
         </button>
       </div>
     </div>
@@ -47,15 +49,16 @@ interface PromotionsSectionProps {
 }
 
 export default function PromotionsSection({ featuredItems, loading, onAddToCart, onSeeAll }: PromotionsSectionProps) {
+  const { t } = useTranslation();
   return (
     <div>
       <div className="home-section-header">
-        <h3 className="home-section-title">Today&apos;s picks</h3>
+        <h3 className="home-section-title">{t('home.todaysPicks')}</h3>
         <button
           onClick={onSeeAll}
           className="link home-see-all-link"
         >
-          See all <ArrowRight size={12} />
+          {t('home.seeAll')} <ArrowRight size={12} />
         </button>
       </div>
 
@@ -77,7 +80,7 @@ export default function PromotionsSection({ featuredItems, loading, onAddToCart,
       ) : featuredItems.length === 0 ? (
         <div className="home-empty">
           <div className="home-empty-icon"><Coffee size={32} strokeWidth={1.5} /></div>
-          <p className="home-empty-text">No items available yet</p>
+          <p className="home-empty-text">{t('home.noItemsAvailable')}</p>
         </div>
       ) : (
         <div className="product-scroll">

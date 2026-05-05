@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Search, X, ArrowLeft, Plus, Coffee, Star, RefreshCw } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
@@ -11,6 +12,7 @@ import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 
 export default function MenuPage() {
+  const { t } = useTranslation();
   const {
     categories,
     menuItems,
@@ -53,11 +55,11 @@ export default function MenuPage() {
       setCategories([]);
       setMenuItems([]);
       setLoadError(true);
-      showToast('Failed to load menu. Check your connection.', 'error');
+      showToast(t('menu.loadErrorToast'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [setCategories, setMenuItems, showToast]);
+  }, [setCategories, setMenuItems, showToast, t]);
 
   useEffect(() => {
     loadMenu();
@@ -115,7 +117,7 @@ export default function MenuPage() {
     .map((cat) => ({ category: cat, items: filteredItems.filter((item) => item.category_id === cat.id) }))
     .filter((group) => group.items.length > 0), [categories, filteredItems]);
 
-  const allCats = useMemo(() => [{ id: null as number | null, name: 'All' }, ...categories.map((c) => ({ id: c.id, name: c.name }))], [categories]);
+  const allCats = useMemo(() => [{ id: null as number | null, name: t('menu.all') }, ...categories.map((c) => ({ id: c.id, name: c.name }))], [categories, t]);
 
   const scrollToCategory = useCallback((categoryId: number | null) => {
     setActiveCategoryId(categoryId);
@@ -148,7 +150,7 @@ export default function MenuPage() {
               <input
                 type="text"
                 autoFocus
-                placeholder="Search items..."
+                placeholder={t('menu.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="menu-search-input"
@@ -163,18 +165,18 @@ export default function MenuPage() {
               onClick={() => { setShowSearch(false); setSearchQuery(''); }}
               className="menu-search-cancel"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         ) : (
           <>
             <div className="menu-header-left">
-              <button className="menu-back-btn" onClick={() => setPage('home')} aria-label="Back">
+              <button className="menu-back-btn" onClick={() => setPage('home')} aria-label={t('common.back')}>
                 <ArrowLeft size={20} />
               </button>
-              <h1 className="menu-title">Menu</h1>
+              <h1 className="menu-title">{t('menu.title')}</h1>
             </div>
-            <button className="menu-search-btn" onClick={() => setShowSearch(true)} aria-label="Search">
+            <button className="menu-search-btn" onClick={() => setShowSearch(true)} aria-label={t('menu.search')}>
               <Search size={18} />
             </button>
           </>
@@ -225,16 +227,16 @@ export default function MenuPage() {
               <Coffee size={24} color={LOKA.copper} strokeWidth={1.5} />
             </div>
             <p className="menu-empty-title">
-              {searchQuery ? `No items match "${searchQuery}"` : loadError ? 'Unable to load menu' : 'No items available'}
+              {searchQuery ? t('menu.noSearchResults', { query: searchQuery }) : loadError ? t('menu.loadError') : t('menu.noItemsAvailable')}
             </p>
             {searchQuery && (
               <button className="btn btn-primary btn-pill" onClick={() => setSearchQuery('')}>
-                Clear search
+                {t('menu.clearSearch')}
               </button>
             )}
             {loadError && (
               <button className="btn btn-primary btn-pill mt-2" onClick={loadMenu}>
-                Retry
+                {t('common.retry')}
               </button>
             )}
           </div>
@@ -288,7 +290,7 @@ export default function MenuPage() {
                             className="menu-add-btn"
                             onClick={(e) => { e.stopPropagation(); openItem(item); }}
                           >
-                            <Plus size={14} strokeWidth={2.5} /> Add
+                            <Plus size={14} strokeWidth={2.5} /> {t('common.add')}
                           </button>
                         </div>
                       </div>

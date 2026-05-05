@@ -13,6 +13,7 @@ import { DEFAULT_COUNTRY, ALL_COUNTRIES, searchCountries, flagUrl } from '@/lib/
 import type { Country } from '@/lib/countries';
 import api from '@/lib/api';
 import type { UserProfile } from '@/lib/api';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Step = 'phone' | 'otp' | 'profile';
 
@@ -23,6 +24,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
+  const { t } = useTranslation();
   const { setUser, setIsNewUser, setPhone: setStorePhone, setAuthDone } = useAuthStore();
   const { showToast, setIsGuest } = useUIStore();
   const { refreshWallet } = useWalletStore();
@@ -93,7 +95,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
 
   const handleSendOtp = async () => {
     const digits = phoneValue.replace(/\D/g, '');
-    if (digits.length < 7) { setPhoneError('Please enter a valid phone number'); return; }
+    if (digits.length < 7) { setPhoneError(t('auth.phoneInvalid')); return; }
     setPhoneLoading(true); setPhoneError('');
     try {
       const normalized = normalizePhone(phoneValue, selectedCountry.dialCode);
@@ -105,7 +107,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
       if (process.env.NEXT_PUBLIC_OTP_BYPASS === 'true') {
         await verifyOtp('000000');
       } else { setStep('otp'); }
-    } catch (err) { showToast(apiError(err, 'Failed to send OTP.'), 'error'); }
+    } catch (err) { showToast(apiError(err, t('auth.sendOtpFailed')), 'error'); }
     finally { setPhoneLoading(false); }
   };
 
@@ -139,10 +141,10 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
 
   const handleVerifyOtp = async () => {
     const code = otp.join('');
-    if (code.length !== 6) { setOtpError('Please enter the complete 6-digit code'); return; }
+    if (code.length !== 6) { setOtpError(t('auth.otpIncomplete')); return; }
     setOtpLoading(true); setOtpError('');
       try { const data = await verifyOtp(code); haptic('success'); if (!data.is_new_user) finishAuth(); }
-    catch (err) { showToast(apiError(err, 'Invalid OTP. Please try again.'), 'error'); setOtp(['', '', '', '', '', '']); otpRefs.current[0]?.focus(); }
+    catch (err) { showToast(apiError(err, t('auth.otpInvalidError')), 'error'); setOtp(['', '', '', '', '', '']); otpRefs.current[0]?.focus(); }
     finally { setOtpLoading(false); }
   };
 
@@ -160,20 +162,20 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
       setOtpSessionId(res.data?.session_id ?? otpSessionId);
       setResendTimer(Number(res.data?.retry_after_seconds ?? 60));
       setOtp(['', '', '', '', '', '']); otpRefs.current[0]?.focus();
-    } catch (err) { showToast(apiError(err, 'Failed to resend OTP.'), 'warning'); }
+    } catch (err) { showToast(apiError(err, t('auth.resendFailed')), 'warning'); }
   };
 
   // ── Profile ──
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profileName.trim()) { setProfileError('Please enter your name'); return; }
+    if (!profileName.trim()) { setProfileError(t('auth.nameRequired')); return; }
     setProfileLoading(true); setProfileError('');
     try {
       await api.post('/auth/register', { name: profileName.trim() });
       const me = await api.get('/users/me'); setUser(me.data as UserProfile);
       setIsNewUser(false);
       finishAuth();
-    } catch { showToast('Failed to save profile.', 'error'); }
+    } catch { showToast(t('auth.saveProfileFailed'), 'error'); }
     finally { setProfileLoading(false); }
   };
 
@@ -197,7 +199,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
   })();
 
   const stepProgressClass = step === 'phone' ? 'p1' : step === 'otp' ? 'p2' : 'p3';
-  const stepLabelText = step === 'phone' ? 'Step 1 of 3 — Phone number' : step === 'otp' ? 'Step 2 of 3 — Verification' : 'Step 3 of 3 — Profile setup';
+  const stepLabelText = step === 'phone' ? t('auth.step1Label') : step === 'otp' ? t('auth.step2Label') : t('auth.step3Label');
   const flag = flagUrl(selectedCountry.code);
 
   return (
@@ -206,14 +208,14 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
         isOpen={isOpen}
         onClose={handleClose}
         title={
-          step === 'phone' ? 'Welcome back' :
-          step === 'otp' ? 'Enter code' :
-          'Complete your profile'
+          step === 'phone' ? t('auth.phoneTitle') :
+          step === 'otp' ? t('auth.otpTitle') :
+          t('auth.profileTitle')
         }
         meta={
-          step === 'phone' ? 'Sign in with your phone number' :
-          step === 'otp' ? `Sent to ${displayPhone}` :
-          'Tell us a bit about yourself'
+          step === 'phone' ? t('auth.phoneSubtitle') :
+          step === 'otp' ? t('auth.sentTo', { phone: displayPhone }) :
+          t('auth.profileSubtitle')
         }
         variant="bottom"
       >
@@ -239,11 +241,11 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
             {phoneError && <p id="phone-error" className="text-sm text-danger font-bold">{phoneError}</p>}
             <button type="submit" disabled={phoneLoading || phoneValue.replace(/\D/g, '').length < 7}
               className="btn btn-primary w-full h-12 rounded-xl text-base font-semibold mt-2">
-              {phoneLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : 'Send Code'}
+              {phoneLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : t('auth.sendCode')}
             </button>
             <button type="button" className="guest-link"
               onClick={() => { useUIStore.getState().setIsGuest(true); onClose(); }}>
-              Continue as Guest
+              {t('auth.continueAsGuest')}
             </button>
           </form>
         )}
@@ -257,23 +259,23 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
                   onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
                   onFocus={(e) => e.currentTarget.select()}
-                  aria-label={`Digit ${index + 1}`}
+                  aria-label={t('auth.digitAriaLabel', { index: index + 1 })}
                   className={`w-12 h-14 rounded-xl border-2 text-center text-xl font-bold outline-none transition-colors flex-shrink-0 ${digit ? 'border-primary bg-primary-50 text-primary' : 'border-border bg-bg-light text-text-primary'} focus:border-primary focus:ring-2 focus:ring-primary/15`} />
               ))}
             </div>
             <p className="text-sm text-text-secondary text-center">
-              Didn&apos;t receive it?{' '}
+              {t('auth.didntReceiveIt')}{' '}
               <button type="button" className="text-primary font-semibold disabled:text-text-muted"
                 onClick={handleResendOtp} disabled={resendTimer > 0}>
-                {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend code'}
+                {resendTimer > 0 ? t('auth.resendIn', { seconds: resendTimer }) : t('auth.resendOtp')}
               </button>
             </p>
             {otpError && <p id="otp-error" className="text-sm text-danger font-bold text-center">{otpError}</p>}
             <button type="button" className="text-sm text-text-secondary text-center underline"
-              onClick={() => setStep('phone')}>Change phone number</button>
+              onClick={() => setStep('phone')}>{t('auth.changePhoneNumber')}</button>
             <button onClick={handleVerifyOtp} disabled={otpLoading || otp.some((d) => !d)}
               className="btn btn-primary w-full h-12 rounded-xl text-base font-semibold mt-1">
-              {otpLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : 'Verify & Continue'}
+              {otpLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : t('auth.verify')}
             </button>
           </div>
         )}
@@ -286,37 +288,37 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
                 {profileName ? profileName.trim()[0].toUpperCase() : <User color="#8A8078" size={24} />}
               </div>
               <div>
-                <p className="text-xs text-text-muted font-medium">Your account</p>
+                <p className="text-xs text-text-muted font-medium">{t('auth.yourAccount')}</p>
                 <p className="text-sm font-semibold text-text-primary">
-                  {profileName.trim() || 'Set up your Loka profile'}
+                  {profileName.trim() || t('auth.setupProfile')}
                 </p>
               </div>
             </div>
             <div>
-              <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">Full name</div>
+              <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">{t('auth.fullName')}</div>
               <input type="text" value={profileName}
                 onChange={(e) => { setProfileName(e.target.value); setProfileError(''); }}
-                placeholder="Your name" autoFocus
+                placeholder={t('auth.namePlaceholder')} autoFocus
                 className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none text-base text-text-primary placeholder-text-muted transition-colors" aria-invalid={!!profileError} aria-describedby={profileError ? "profile-error" : undefined} />
             </div>
             {profileError && <p id="profile-error" className="text-sm text-danger font-bold">{profileError}</p>}
             <button type="submit" disabled={profileLoading || !profileName.trim()}
               className="btn btn-primary w-full h-12 rounded-xl text-base font-semibold mt-2">
-              {profileLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : 'Get Started'}
+              {profileLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : t('auth.getStarted')}
             </button>
             <button type="button" onClick={handleProfileSkip}
-              className="text-sm text-text-secondary text-center underline w-full py-2">Skip for now</button>
+              className="text-sm text-text-secondary text-center underline w-full py-2">{t('auth.skipForNow')}</button>
           </form>
         )}
       </Modal>
 
       {/* Country picker bottom sheet */}
-      <BottomSheet isOpen={showCountryPicker} onClose={() => { setShowCountryPicker(false); setCountrySearch(''); }} title="Select country">
+      <BottomSheet isOpen={showCountryPicker} onClose={() => { setShowCountryPicker(false); setCountrySearch(''); }} title={t('common.selectCountry')}>
         <div className="country-picker-body">
           <div className="country-search-wrap">
             <div className="country-search-inner">
               <Search color="#8A8078" size={14} className="country-search-icon" />
-              <input type="text" className="country-search-input" placeholder="Search by name or code…"
+              <input type="text" className="country-search-input" placeholder={t('auth.countrySearch')}
                 value={countrySearch} onChange={(e) => setCountrySearch(e.target.value)} autoFocus />
               {countrySearch && (
                 <button type="button" className="country-search-clear" onClick={() => setCountrySearch('')}>
@@ -326,7 +328,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
             </div>
           </div>
           <div className="country-list">
-            {!countrySearch && <div className="country-section-label">All countries</div>}
+            {!countrySearch && <div className="country-section-label">{t('common.allCountries')}</div>}
             {filteredCountries.map((country) => (
               <button key={country.code} type="button"
                 className={`country-item${country.code === selectedCountry.code ? ' country-item-selected' : ''}`}
@@ -339,7 +341,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
                 )}
               </button>
             ))}
-            {filteredCountries.length === 0 && countrySearch && <div className="country-no-results">No countries found</div>}
+            {filteredCountries.length === 0 && countrySearch && <div className="country-no-results">{t('common.noCountriesFound')}</div>}
           </div>
         </div>
       </BottomSheet>

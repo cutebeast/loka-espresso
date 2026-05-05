@@ -3,15 +3,8 @@
 import { motion } from 'framer-motion';
 import { Home, Coffee, Crown, Clock, User } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { PageId } from '@/lib/api';
-
-const allNavItems: { id: PageId; label: string; icon: typeof Home; badgeKey?: string }[] = [
-  { id: 'home', label: 'Home', icon: Home },
-  { id: 'menu', label: 'Menu', icon: Coffee, badgeKey: 'cart' },
-  { id: 'rewards', label: 'Rewards', icon: Crown },
-  { id: 'orders', label: 'Orders', icon: Clock },
-  { id: 'profile', label: 'Profile', icon: User },
-];
 
 function getActiveNavId(page: PageId): PageId {
   if (page === 'checkout') return 'menu';
@@ -29,8 +22,17 @@ interface BottomNavProps {
 }
 
 export default function BottomNav({ page, onNavigate }: BottomNavProps) {
+  const { t } = useTranslation();
   const activeNavId = getActiveNavId(page);
   const cartCount = useCartStore((s) => s.items?.length ?? 0);
+
+  const allNavItems: { id: PageId; label: string; icon: typeof Home; badgeKey?: string }[] = [
+    { id: 'home', label: t('nav.home'), icon: Home },
+    { id: 'menu', label: t('nav.menu'), icon: Coffee, badgeKey: 'cart' },
+    { id: 'rewards', label: t('nav.rewards'), icon: Crown },
+    { id: 'orders', label: t('nav.orders'), icon: Clock },
+    { id: 'profile', label: t('nav.profile'), icon: User },
+  ];
 
   return (
     <nav className="bottom-nav">

@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { resolveAssetUrl } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 import DatePicker from '@/components/ui/DatePicker';
 import api from '@/lib/api';
 
@@ -13,6 +14,7 @@ export default function AccountDetailsPage() {
   const { user, setUser } = useAuthStore();
   const { tier } = useWalletStore();
   const { setPage, showToast } = useUIStore();
+  const { t } = useTranslation();
 
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -41,7 +43,7 @@ export default function AccountDetailsPage() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      showToast('Name is required', 'error');
+      showToast(t('toast.nameRequired'), 'error');
       return;
     }
     setSaving(true);
@@ -55,7 +57,7 @@ export default function AccountDetailsPage() {
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
     } catch {
-      showToast('Failed to update profile', 'error');
+      showToast(t('toast.profileFailed'), 'error');
     } finally {
       setSaving(false);
     }
@@ -72,9 +74,9 @@ export default function AccountDetailsPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setUser(res.data);
-      showToast('Photo updated!', 'success');
+      showToast(t('toast.photoUpdated'), 'success');
     } catch {
-      showToast('Failed to upload photo', 'error');
+      showToast(t('toast.photoUploadFailed'), 'error');
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -85,10 +87,10 @@ export default function AccountDetailsPage() {
     <div className="edit-profile-screen">
       <div className="sub-page-header">
         <div className="sub-header-left">
-          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label="Back">
+          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
-          <h1 className="sub-page-title">Edit Profile</h1>
+          <h1 className="sub-page-title">{t('accountDetails.title')}</h1>
         </div>
         <div className="ad-spacer" />
       </div>
@@ -100,7 +102,7 @@ export default function AccountDetailsPage() {
             {avatarUrl ? (
               <img
                 src={avatarUrl}
-                alt="Profile photo"
+                alt={t('accountDetails.profilePhotoAlt')}
                 className="ad-avatar-img"
               />
             ) : (
@@ -111,10 +113,10 @@ export default function AccountDetailsPage() {
             </div>
           </div>
           <span className="ad-avatar-upload-text">
-            {uploadingAvatar ? 'Uploading...' : 'Upload Photo'}
+            {uploadingAvatar ? t('common.loading') : t('accountDetails.uploadPhoto')}
           </span>
           {memberSince && (
-            <div className="ad-account-meta">Member since {memberSince}</div>
+            <div className="ad-account-meta">{t('accountDetails.memberSince', { date: memberSince })}</div>
           )}
           <input
             ref={fileInputRef}
@@ -126,46 +128,46 @@ export default function AccountDetailsPage() {
         </div>
 
         {/* Personal Information */}
-        <div className="ad-group-header">Personal Information</div>
+        <div className="ad-group-header">{t('accountDetails.personalInfo')}</div>
         <div className="ad-form-card">
           <div className="ad-form-field">
-            <label className="ad-form-label" htmlFor="ad-name">Full Name</label>
+            <label className="ad-form-label" htmlFor="ad-name">{t('accountDetails.fullName')}</label>
             <input
               type="text"
               className="ad-form-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
+              placeholder={t('accountDetails.namePlaceholder')}
               autoComplete="name"
             />
           </div>
           <div className="ad-form-field">
-            <label className="ad-form-label" htmlFor="ad-dob">Date of Birth</label>
+            <label className="ad-form-label" htmlFor="ad-dob">{t('accountDetails.dateOfBirth')}</label>
             <DatePicker
               value={dob}
               onChange={setDob}
-              placeholder="Select your date of birth"
-              label="Date of Birth"
+              placeholder={t('accountDetails.dobPlaceholder')}
+              label={t('accountDetails.dateOfBirth')}
             />
           </div>
         </div>
 
         {/* Contact Information */}
-        <div className="ad-group-header">Contact Information</div>
+        <div className="ad-group-header">{t('accountDetails.contactInfo')}</div>
         <div className="ad-form-card">
           <div className="ad-form-field">
-            <label className="ad-form-label" htmlFor="ad-email">Email</label>
+            <label className="ad-form-label" htmlFor="ad-email">{t('accountDetails.email')}</label>
             <input
               type="email"
               className="ad-form-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
+              placeholder={t('accountDetails.emailPlaceholder')}
               autoComplete="email"
             />
           </div>
           <div className="ad-form-field">
-            <label className="ad-form-label" htmlFor="ad-phone">Phone</label>
+            <label className="ad-form-label" htmlFor="ad-phone">{t('accountDetails.phone')}</label>
             <input
               type="tel"
               className="ad-form-input ad-form-input-muted"
@@ -176,10 +178,10 @@ export default function AccountDetailsPage() {
         </div>
 
         {/* Account Metadata */}
-        <div className="ad-group-header">Account</div>
+        <div className="ad-group-header">{t('accountDetails.account')}</div>
         <div className="ad-form-card">
           <div className="ad-form-field">
-            <label className="ad-form-label" htmlFor="ad-created">Account Created</label>
+            <label className="ad-form-label" htmlFor="ad-created">{t('accountDetails.accountCreated')}</label>
             <input
               type="text"
               className="ad-form-input ad-form-input-muted"
@@ -188,7 +190,7 @@ export default function AccountDetailsPage() {
             />
           </div>
           <div className="ad-form-field">
-            <label className="ad-form-label" htmlFor="ad-tier">Membership Tier</label>
+            <label className="ad-form-label" htmlFor="ad-tier">{t('accountDetails.membershipTier')}</label>
             <div className="pt-1">
               <span className={`ad-tier-badge ${(tier || 'Bronze').toLowerCase()}`}>
                 <Crown size={14} /> {tier}
@@ -198,13 +200,13 @@ export default function AccountDetailsPage() {
         </div>
 
         <button className="ad-save-btn" onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving...' : 'Save Changes'}
+          {saving ? t('common.loading') : t('accountDetails.saveChanges')}
         </button>
 
         {showSuccess && (
           <p className="ad-success-msg">
             <CheckCircle size={16} className="ad-success-icon" />
-            Profile updated successfully
+            {t('accountDetails.saveSuccess')}
           </p>
         )}
       </div>

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { AuthStepIndicator } from './AuthStepIndicator';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface OTPInputProps {
   phone: string;
@@ -13,6 +14,7 @@ interface OTPInputProps {
 }
 
 export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds = 60, onBack }: OTPInputProps) {
+  const { t } = useTranslation();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -65,13 +67,13 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
 
   const handleVerify = async () => {
     const code = otp.join('');
-    if (code.length !== 6) { setError('Please enter the complete 6-digit code'); return; }
+    if (code.length !== 6) { setError(t('auth.otpIncomplete')); return; }
     setIsLoading(true);
     setError('');
     try {
       await onSubmit(code);
     } catch {
-      setError('Invalid OTP. Please try again.');
+      setError(t('auth.otpInvalidError'));
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } finally {
@@ -87,7 +89,7 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } catch {
-      setError('Failed to resend OTP.');
+      setError(t('auth.resendFailed'));
     }
   };
 
@@ -114,12 +116,12 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
 
       <button onClick={onBack} className="auth-back-btn">
         <ArrowLeft size={16} />
-        Back
+        {t('common.back')}
       </button>
 
-      <h2 className="auth-heading">Enter code</h2>
+      <h2 className="auth-heading">{t('auth.otpTitle')}</h2>
       <p className="auth-subheading">
-        We sent a 6‑digit code to <strong className="otp-phone">{displayPhone}</strong>
+        {t('auth.otpSubtitle')} <strong className="otp-phone">{displayPhone}</strong>
       </p>
 
       <div className="otp-grid" onPaste={handlePaste}>
@@ -134,7 +136,7 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
             value={digit}
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
-            aria-label={`Digit ${index + 1}`}
+            aria-label={t('auth.digitAriaLabel', { index: index + 1 })}
             className={`otp-box ${digit ? 'filled' : ''} ${index === filledCount && !digit ? 'active-border' : ''}`}
             onFocus={(e) => e.currentTarget.select()}
           />
@@ -149,12 +151,12 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
       </div>
 
       <div className="otp-resend-row">
-        <span className="otp-resend-text">Didn&apos;t receive the code?</span>
+        <span className="otp-resend-text">{t('auth.didntReceiveCode')}</span>
         <span
           className={`otp-resend-timer ${resendTimer > 0 ? 'disabled' : ''}`}
           onClick={resendTimer > 0 ? undefined : handleResend}
         >
-          {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend code'}
+          {resendTimer > 0 ? t('auth.resendIn', { seconds: resendTimer }) : t('auth.resendOtp')}
         </span>
       </div>
 
@@ -163,7 +165,7 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
       )}
 
       <button onClick={handleVerify} disabled={isLoading || otp.some((d) => !d)} className="auth-btn">
-        {isLoading ? <div className="auth-btn-spinner" /> : 'Verify & Continue'}
+        {isLoading ? <div className="auth-btn-spinner" /> : t('auth.verify')}
       </button>
 
       <div className="otp-spacer" />

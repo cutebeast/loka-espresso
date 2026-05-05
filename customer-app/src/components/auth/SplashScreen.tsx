@@ -2,12 +2,14 @@
 
 import { useEffect } from 'react';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
 export function SplashScreen({ onFinish }: SplashScreenProps) {
+  const { t } = useTranslation();
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -77,10 +79,10 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         </div>
 
         <div className={`splash-title-v2 ${reducedMotion ? '' : 'animate-fade-up-1'}`}>
-          LOKA
+          {t('auth.splashTitle')}
         </div>
         <div className={`splash-tagline-v2 ${reducedMotion ? '' : 'animate-fade-up-2'}`}>
-          Espresso · since 2026
+          {t('auth.splashTagline')}
         </div>
 
         <div className={`splash-progress-wrap ${reducedMotion ? '' : 'animate-fade-up-3'}`}>

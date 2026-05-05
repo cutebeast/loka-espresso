@@ -2,11 +2,13 @@
 
 import { motion } from 'framer-motion';
 import { ShoppingCart } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
 import { formatPrice } from '@/lib/tokens';
 
 export default function FloatingCartBar() {
+  const { t } = useTranslation();
   const items = useCartStore((s) => s.items);
   const { setPage } = useUIStore();
 
@@ -32,10 +34,10 @@ export default function FloatingCartBar() {
           </span>
         </div>
         <span>
-          {count} item{count !== 1 ? 's' : ''} · {formatPrice(total)}
+          {t('menu.cartItemCount', { count })} · {formatPrice(total)}
         </span>
       </div>
-      <span className="floating-cart-arrow">View cart →</span>
+      <span className="floating-cart-arrow">{t('menu.viewCart')}</span>
     </motion.button>
   );
 }

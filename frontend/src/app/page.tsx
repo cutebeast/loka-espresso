@@ -81,7 +81,7 @@ function PageRenderer({ page, loading, dashboard, orders, ordersTotal, tables, l
 
       {page === 'tables' && <TablesPage tables={tables} selectedStore={selectedStore} storeObj={storeObj} onRefresh={fetchTables} stores={stores} onStoreChange={setSelectedStore} onViewOrder={() => { setOrdersStatus(''); handlePageChange('orders'); }} />}
 
-      {page === 'staff' && <StaffPage />}
+      {page === 'staff' && <ErrorBoundary><StaffPage /></ErrorBoundary>}
 
       {page === 'rewards' && <RewardsPage />}
       {page === 'vouchers' && <VouchersPage />}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle2, XCircle, Info, AlertTriangle, Star } from 'lucide-react';
 
@@ -23,6 +24,7 @@ const ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function Toast({ toast, onDismiss }: { toast: ToastData; onDismiss: () => void }) {
+  const { t } = useTranslation();
   useEffect(() => {
     const timer = setTimeout(onDismiss, toast.primaryAction ? 6000 : 5000);
     return () => clearTimeout(timer);
@@ -56,7 +58,7 @@ export default function Toast({ toast, onDismiss }: { toast: ToastData; onDismis
             </div>
           )}
         </div>
-        <button className="toast-v2-close" onClick={onDismiss} aria-label="Close">
+        <button className="toast-v2-close" onClick={onDismiss} aria-label={t('common.close')}>
           <X size={12} />
         </button>
       </div>

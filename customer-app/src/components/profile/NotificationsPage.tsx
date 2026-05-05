@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Bell, Package, Gift, Wallet, Star, Info, Calendar, X } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 
 interface Notification {
@@ -35,42 +36,43 @@ const TYPE_CLASS: Record<string, string> = {
 };
 
 const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'order', label: 'Orders' },
-  { id: 'reward', label: 'Rewards' },
-  { id: 'wallet', label: 'Wallet' },
-  { id: 'loyalty', label: 'Loyalty' },
-  { id: 'promo', label: 'Promos' },
-  { id: 'info', label: 'Info' },
+  { id: 'all' },
+  { id: 'order' },
+  { id: 'reward' },
+  { id: 'wallet' },
+  { id: 'loyalty' },
+  { id: 'promo' },
+  { id: 'info' },
 ];
 
-function timeAgo(dateStr?: string): string {
+function timeAgo(dateStr: string | undefined, t: (key: string, options?: Record<string, string | number>) => string): string {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('notifications.timeAgo.justNow');
+  if (mins < 60) return t('notifications.timeAgo.minutes', { minutes: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t('notifications.timeAgo.hours', { hours: hrs });
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return t('notifications.timeAgo.days', { days });
   return new Date(dateStr).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
 }
 
 function getDateGroup(dateStr?: string): string {
-  if (!dateStr) return 'Earlier';
+  if (!dateStr) return 'earlier';
   const date = new Date(dateStr);
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  if (date.toDateString() === today.toDateString()) return 'Today';
-  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return 'Earlier';
+  if (date.toDateString() === today.toDateString()) return 'today';
+  if (date.toDateString() === yesterday.toDateString()) return 'yesterday';
+  return 'earlier';
 }
 
 export default function NotificationsPage() {
   const { setPage, showToast } = useUIStore();
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -110,7 +112,7 @@ export default function NotificationsPage() {
         await api.put(`/notifications/${n.id}/read`);
       }
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    } catch { showToast('Failed to mark all as read', 'error'); }
+    } catch { showToast(t('toast.notificationReadFailed'), 'error'); }
     finally { setMarkingAll(false); }
   };
 
@@ -127,15 +129,15 @@ export default function NotificationsPage() {
     groups[group].push(n);
   });
 
-  const groupOrder = ['Today', 'Yesterday', 'Earlier'];
+  const groupOrder = ['today', 'yesterday', 'earlier'];
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
     <div className="notif-screen">
       {/* Header */}
       <div className="notif-header">
-        <h1 className="notif-title">Notifications</h1>
-        <button className="notif-close-btn" onClick={() => setPage('profile')} aria-label="Close">
+        <h1 className="notif-title">{t('notifications.title')}</h1>
+        <button className="notif-close-btn" onClick={() => setPage('profile')} aria-label={t('common.close')}>
           <X size={18} />
         </button>
       </div>
@@ -143,7 +145,7 @@ export default function NotificationsPage() {
       {/* Mark all as read */}
       {unreadCount > 0 && (
         <button className="notif-mark-read" onClick={handleMarkAllRead} disabled={markingAll}>
-          {markingAll ? 'Marking…' : '✓ Mark all as read'}
+          {markingAll ? t('notifications.markingAll') : t('notifications.markAllAsRead')}
         </button>
       )}
 
@@ -155,7 +157,7 @@ export default function NotificationsPage() {
             className={`notif-filter-chip ${activeFilter === f.id ? 'active' : ''}`}
             onClick={() => setActiveFilter(f.id)}
           >
-            {f.label}
+            {t(`notifications.filters.${f.id}`)}
           </button>
         ))}
       </div>
@@ -173,9 +175,9 @@ export default function NotificationsPage() {
         <div className="notif-content">
           <div className="notif-empty">
             <Bell size={48} strokeWidth={1.2} className="notif-empty-icon" />
-            <div className="notif-empty-title">No notifications</div>
+            <div className="notif-empty-title">{t('notifications.noNotifications')}</div>
             <p className="notif-empty-desc">
-              We&apos;ll let you know about orders, rewards, and special events.
+              {t('notifications.noNotificationsDesc')}
             </p>
           </div>
         </div>
@@ -186,7 +188,7 @@ export default function NotificationsPage() {
             if (!items || items.length === 0) return null;
             return (
               <div key={group}>
-                <div className="notif-date-group">{group}</div>
+                <div className="notif-date-group">{t(`notifications.dateGroup.${group}`)}</div>
                 {items.map((n) => {
                   const Icon = TYPE_ICON[n.type || ''] || Bell;
                   const iconClass = TYPE_CLASS[n.type || ''] || 'notif-icon-info';
@@ -205,7 +207,7 @@ export default function NotificationsPage() {
                           {!n.is_read && <span className="notif-unread-dot" />}
                         </div>
                         {n.body && <div className="notif-desc">{n.body}</div>}
-                        <div className="notif-time">{timeAgo(n.created_at)}</div>
+                        <div className="notif-time">{timeAgo(n.created_at, t)}</div>
                       </div>
                     </div>
                   );
@@ -215,7 +217,7 @@ export default function NotificationsPage() {
           })}
           {filtered.length > 0 && (
             <div className="notif-retention-note">
-              Notifications are automatically cleared after {retentionDays} days.
+              {t('notifications.retentionNote', { days: retentionDays })}
             </div>
           )}
         </div>

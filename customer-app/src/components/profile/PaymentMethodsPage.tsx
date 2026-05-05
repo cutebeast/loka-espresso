@@ -5,6 +5,7 @@ import { ArrowLeft, Wallet, Plus, Trash2, CreditCard } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';
+import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import { formatPrice, LOKA } from '@/lib/tokens';
 
@@ -20,6 +21,7 @@ interface PaymentMethodItem {
 export default function PaymentMethodsPage() {
   const { setPage, showToast } = useUIStore();
   const { balance } = useWalletStore();
+  const { t } = useTranslation();
   const [methods, setMethods] = useState<PaymentMethodItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,23 +36,23 @@ export default function PaymentMethodsPage() {
     try {
       await api.delete(`/payments/methods/${id}`);
       setMethods((prev) => prev.filter((m) => m.id !== id));
-      showToast('Card removed', 'success');
+      showToast(t('toast.cardRemoved'), 'success');
     } catch {
-      showToast('Failed to remove card', 'error');
+      showToast(t('toast.cardRemoveFailed'), 'error');
     }
   };
 
   const handleAdd = () => {
-    showToast('Card linking will be available with payment gateway integration', 'info');
+    showToast(t('toast.cardLinkingSoon'), 'info');
   };
 
   const handleSetDefault = async (id: number) => {
     try {
       await api.put(`/payments/methods/${id}/default`);
       setMethods(prev => prev.map(m => ({ ...m, is_default: m.id === id })));
-      showToast('Default card updated', 'success');
+      showToast(t('toast.defaultCardUpdated'), 'success');
     } catch {
-      showToast('Failed to update', 'error');
+      showToast(t('toast.cardUpdateFailed'), 'error');
     }
   };
 
@@ -72,10 +74,10 @@ export default function PaymentMethodsPage() {
     <div className="payment-screen">
       <div className="sub-page-header">
         <div className="sub-header-left">
-          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label="Back">
+          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
-          <h1 className="sub-page-title">Payment Methods</h1>
+          <h1 className="sub-page-title">{t('paymentMethods.title')}</h1>
         </div>
         <div className="w-9" />
       </div>
@@ -84,19 +86,19 @@ export default function PaymentMethodsPage() {
         {/* Wallet Card */}
         <div className="payment-wallet-card">
           <div className="payment-wallet-row">
-            <span className="payment-wallet-label">Wallet Balance</span>
-            <span className="payment-wallet-badge">Active</span>
+            <span className="payment-wallet-label">{t('paymentMethods.walletBalance')}</span>
+            <span className="payment-wallet-badge">{t('paymentMethods.active')}</span>
           </div>
           <div className="payment-wallet-amount">{formatPrice(balance)}</div>
-          <div className="payment-wallet-sub">Available for purchases</div>
+          <div className="payment-wallet-sub">{t('paymentMethods.availableForPurchases')}</div>
           <button className="payment-topup-btn" onClick={() => setPage('wallet')}>
             <Plus size={18} />
-            Top Up Wallet
+            {t('paymentMethods.topUpWallet')}
           </button>
         </div>
 
         {/* Saved Cards */}
-        <div className="payment-section-title">Saved Cards</div>
+        <div className="payment-section-title">{t('paymentMethods.savedCards')}</div>
 
         {loading ? (
           [1, 2].map(i => <Skeleton key={i} className="skeleton pm-skeleton" />)
@@ -105,13 +107,13 @@ export default function PaymentMethodsPage() {
             <div className="payment-empty-icon">
               <CreditCard size={32} color={LOKA.copper} />
             </div>
-            <div className="payment-empty-title">No payment methods yet</div>
+            <div className="payment-empty-title">{t('paymentMethods.noMethods')}</div>
             <div className="payment-empty-text">
-              Add a card to enjoy seamless, one-tap checkout on all your orders.
+              {t('paymentMethods.noMethodsDesc')}
             </div>
-            <button className="payment-empty-cta" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} title="Card linking will be available with payment gateway integration">
+            <button className="payment-empty-cta" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} title={t('toast.cardLinkingSoon')}>
               <Plus size={14} />
-              Add Card — Coming Soon
+              {t('paymentMethods.addCardComingSoon')}
             </button>
           </div>
         ) : (
@@ -122,17 +124,17 @@ export default function PaymentMethodsPage() {
               </div>
               <div className="payment-card-info">
                 <div className="payment-card-number">
-                  {brandLabel(m.provider, m.type)} {m.last4 ? `ending in ${m.last4}` : ''}
+                  {t('paymentMethods.endingIn', { brand: brandLabel(m.provider, m.type), last4: m.last4 || '' })}
                 </div>
-                {m.expiry && <div className="payment-card-expiry">Expires {m.expiry}</div>}
+                {m.expiry && <div className="payment-card-expiry">{t('paymentMethods.expires', { expiry: m.expiry })}</div>}
                 <div className="payment-card-default">
                   <div className={`payment-default-toggle ${m.is_default ? '' : 'off'}`} onClick={() => !m.is_default && handleSetDefault(m.id)} />
                   <span className={`payment-default-label ${m.is_default ? '' : 'off'}`}>
-                    {m.is_default ? 'Default' : 'Set as default'}
+                    {m.is_default ? t('paymentMethods.default') : t('paymentMethods.setAsDefault')}
                   </span>
                 </div>
               </div>
-              <button className="payment-remove-btn" onClick={() => handleRemove(m.id)}>Remove</button>
+              <button className="payment-remove-btn" onClick={() => handleRemove(m.id)}>{t('common.remove')}</button>
             </div>
           ))
         )}
@@ -140,7 +142,7 @@ export default function PaymentMethodsPage() {
         {methods.length > 0 && (
           <button className="payment-add-btn" onClick={handleAdd}>
             <Plus size={18} />
-            Add New Card
+            {t('paymentMethods.addNewCard')}
           </button>
         )}
       </div>
