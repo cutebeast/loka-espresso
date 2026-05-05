@@ -336,8 +336,8 @@ export default function InformationPage() {
       header: 'Type',
       width: '110px',
       render: (row) => (
-        <span className={`badge ${row.content_type === 'product' ? 'badge-blue' : row.content_type === 'event' ? 'badge-yellow' : row.content_type === 'system' ? 'badge-gray' : 'badge-green'}`}>
-          {row.content_type === 'product' ? 'Product' : row.content_type === 'event' ? 'Event' : row.content_type === 'system' ? 'System' : 'Info'}
+        <span className={`badge ${row.content_type === 'product' ? 'badge-blue' : row.content_type === 'popup_banner' ? 'badge-yellow' : row.content_type === 'system' ? 'badge-gray' : 'badge-green'}`}>
+          {row.content_type === 'product' ? 'Product' : row.content_type === 'popup_banner' ? 'Popup Banner' : row.content_type === 'system' ? 'System' : 'Info'}
         </span>
       ),
     },
@@ -400,7 +400,7 @@ export default function InformationPage() {
               </div>
             </div>
 
-            {form.content_type !== 'event' && (<>
+            {form.content_type !== 'popup_banner' && (<>
             <div className="inf-3">
               <label className="iform-label">
                 Slug <span className="inf-4">(QR code URL — leave blank to auto-generate)</span>
@@ -423,7 +423,7 @@ export default function InformationPage() {
               <input type="text" value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} placeholder="Brief text shown on PWA card" />
             </div>
 
-            {form.content_type !== 'event' ? (
+            {form.content_type !== 'popup_banner' ? (
             <div className="inf-48">
               <label className="iform-label">Sections <span className="inf-50">(structured content)</span></label>
               {form.sections.map((section, si) => (
@@ -515,7 +515,7 @@ export default function InformationPage() {
               />
             </div>
 
-            {form.content_type !== 'event' && (
+            {form.content_type !== 'popup_banner' && (
             <div className="inf-12">
               <GalleryUploadField
                 label="Image Gallery"
@@ -534,7 +534,7 @@ export default function InformationPage() {
               </select>
             </div>
 
-            {form.content_type === 'event' && (
+            {form.content_type === 'popup_banner' && (
               <div className="inf-15">
                 <label className="inf-16">Promotion CTA (optional)</label>
                 <div className="inf-17">
@@ -588,7 +588,7 @@ export default function InformationPage() {
           <option value="">All Types</option>
           <option value="information">Information</option>
           <option value="product">Product</option>
-          <option value="event">Event</option>
+          <option value="popup_banner">Popup Banner</option>
           <option value="system">System</option>
         </select>
         <button className="btn btn-primary" onClick={openNew}>
@@ -654,7 +654,7 @@ function ImageUploadField({ label, imageUrl, onSet, hint, folder, allowVideo, po
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const endpoint = folder === 'product' ? '/upload/products-image' : folder === 'event' ? '/upload/events-image' : '/upload/information-image';
+      const endpoint = folder === 'product' ? '/upload/products-image' : folder === 'popup_banner' ? '/upload/information-image' : '/upload/information-image';
       const res = await apiUpload(endpoint, fd);
       if (res.ok) {
         const data = await res.json();
@@ -705,7 +705,7 @@ function GalleryUploadField({ label, urls, onSet, hint, folder }: { label: strin
       for (const file of Array.from(files)) {
         const fd = new FormData();
         fd.append('file', file);
-        const endpoint = folder === 'product' ? '/upload/products-image' : folder === 'event' ? '/upload/events-image' : '/upload/information-image';
+        const endpoint = folder === 'product' ? '/upload/products-image' : folder === 'popup_banner' ? '/upload/information-image' : '/upload/information-image';
         const res = await apiUpload(endpoint, fd);
         if (res.ok) {
           const data = await res.json();

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "translate": "node scripts/translate.mjs"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",

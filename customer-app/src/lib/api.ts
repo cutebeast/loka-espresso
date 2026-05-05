@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { localeStore } from '@/stores/localeStore';
 
 export const API_BASE = '/api/v1';
 
@@ -7,6 +8,15 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true, // Send httpOnly cookies automatically
   timeout: 30000, // 30-second request timeout
+});
+
+// Inject user's preferred locale into every request
+api.interceptors.request.use((config) => {
+  const locale = localeStore.getState().locale;
+  if (locale) {
+    config.headers['Accept-Language'] = locale;
+  }
+  return config;
 });
 
 // Prevents multiple simultaneous refresh attempts from triggering multiple reloads

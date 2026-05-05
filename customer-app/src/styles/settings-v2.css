@@ -59,6 +59,14 @@
 
 .settings-icon-terms  { background: var(--loka-cream); color: var(--loka-accent-brown); }
 .settings-icon-privacy { background: var(--color-success-light); color: var(--loka-primary); }
+.settings-icon-language { background: var(--loka-bg); color: var(--loka-primary); border: 1px solid var(--loka-border-light); }
+
+.settings-menu-check {
+  color: var(--loka-primary);
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
 
 .settings-menu-label {
   flex: 1;

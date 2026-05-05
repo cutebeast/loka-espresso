@@ -262,7 +262,7 @@ class LoyaltyTierCreate(BaseModel):
     sort_order: int = 0
 
 
-_VALID_CONTENT_TYPES = {"system", "information", "product", "event"}
+_VALID_CONTENT_TYPES = {"system", "information", "product", "popup_banner"}
 
 
 class InformationCardCreate(BaseModel):

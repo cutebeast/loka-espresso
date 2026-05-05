@@ -48,7 +48,7 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
     const state = useAuthStore.getState();
     if (!state.authDone) return;
     try {
-      const res = await api.get('/content/information?content_type=event&limit=1');
+      const res = await api.get('/content/information?content_type=popup_banner&limit=1');
       const data = Array.isArray(res.data) ? res.data : [];
       if (data.length === 0) return;
       const card = data[0] as InformationCard;
@@ -87,15 +87,16 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
 
   const popup = popups[currentIndex];
   const imageUrl = resolveAssetUrl(popup.image_url);
+  const isVideo = popup.image_url && /\.(mp4|webm)($|\?)/i.test(popup.image_url);
+  const visibleSections = (popup.sections || []).filter(s => s.visible !== false);
 
-  // If no image, don't show anything — promotion popups are image-only
+  // If no image/video, don't show anything
   if (!imageUrl) return null;
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -106,7 +107,6 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
             aria-hidden="true"
           />
 
-          {/* Image popup */}
           <motion.div
             ref={popupRef}
             initial={{ opacity: 0, scale: 0.9 }}
@@ -120,16 +120,30 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
               role="dialog"
               aria-modal="true"
             >
-              {/* Centered image on transparent background */}
-              <div className="relative w-full h-full flex items-center justify-center bg-transparent">
-                <img
-                  src={imageUrl}
-                  alt={popup.title || 'Event'}
-                  className="max-w-full max-h-full object-contain"
-                  loading="eager"
-                />
+              <div className="relative w-full h-full flex items-center justify-center bg-black">
+                {isVideo ? (
+                  <video src={imageUrl} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+                ) : (
+                  <img src={imageUrl} alt={popup.title || 'Promotion'} className="w-full h-full object-cover" loading="eager" />
+                )}
 
-                {/* Close button — top right */}
+                {/* Sections overlay on top of image/video */}
+                {visibleSections.length > 0 && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-12 pb-6 px-5">
+                    {visibleSections.map((s, i) => (
+                      <div key={i} style={{ marginBottom: i < visibleSections.length - 1 ? 12 : 0 }}>
+                        {s.title && <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 4 }}>{s.title}</div>}
+                        {s.body && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5 }}>{s.body}</p>}
+                        {s.list && s.list.length > 0 && (
+                          <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>
+                            {s.list.map((item, j) => <li key={j} style={{ marginBottom: 2 }}>{item}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <button
                   onClick={handleClose}
                   className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors"

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, FileText, Shield, ChevronRight, Coffee } from 'lucide-react';
+import { ArrowLeft, FileText, Shield, ChevronRight, Coffee, Globe } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { localeStore } from '@/stores/localeStore';
+import { getSupportedLocales } from '@/lib/i18n';
 import api from '@/lib/api';
 
 const FALLBACK_ABOUT = "Born from a passion for authentic Turkish coffee culture, Loka Espresso brings the warmth of centuries-old coffee traditions to every cup. Our beans are sourced from the finest regions — roasted in small batches to honour the craft.";
@@ -33,6 +35,32 @@ export default function SettingsPage() {
       </div>
 
       <div className="settings-content-scroll">
+        {/* Language */}
+        <div className="settings-section-title">Language</div>
+        <div className="settings-menu-card">
+          {getSupportedLocales().map((code) => (
+            <button
+              key={code}
+              className="settings-menu-item"
+              onClick={() => localeStore.getState().setLocale(code)}
+            >
+              <div className="settings-menu-icon settings-icon-language">
+                <Globe size={18} />
+              </div>
+              <span className="settings-menu-label">
+                {code === 'en' && 'English'}
+                {code === 'ms' && 'Bahasa Malaysia'}
+                {code === 'zh' && '中文 (简体)'}
+                {code === 'ta' && 'தமிழ்'}
+                {code === 'tr' && 'Türkçe'}
+              </span>
+              {localeStore.getState().locale === code && (
+                <span className="settings-menu-check">✓</span>
+              )}
+            </button>
+          ))}
+        </div>
+
         {/* Privacy & Legal */}
         <div className="settings-section-title">Privacy &amp; Legal</div>
         <div className="settings-menu-card">
