@@ -17,6 +17,7 @@ import { resolveAppUrl } from '@/lib/tokens';
 import { getBrowserLocation } from '@/lib/geolocation';
 import OfflineBanner from '@/components/shared/OfflineBanner';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useA2HS } from '@/hooks/useA2HS';
 import PromotionPopup from '@/components/PromotionPopup';
 import StorePickerModal from '@/components/StorePickerModal';
@@ -53,6 +54,7 @@ const MyCardPage = dynamic(() => import('./MyCardPage'), { ssr: false });
 const OrderDetailPage = dynamic(() => import('./OrderDetailPage'), { ssr: false });
 
 export default function AppShell() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const {
     page, selectedStore, stores, toast, pageParams, isGuest, requestSignIn,
@@ -83,7 +85,7 @@ export default function AppShell() {
     if ((showStoreModal || showStorePicker) && stores.length === 0) {
       api.get('/content/stores')
         .then((res) => setStores(res.data))
-        .catch(() => showToast('Failed to load stores', 'error'));
+        .catch(() => showToast(t('toast.storesLoadFailed'), 'error'));
     }
   }, [showStoreModal, showStorePicker, stores.length, setStores, showToast]);
 
@@ -196,7 +198,7 @@ export default function AppShell() {
           animate={{ opacity: 1, y: 0 }}
           className="sw-update-banner"
         >
-          <span className="sw-update-text">A new version is available</span>
+          <span className="sw-update-text">{t('common.newVersionAvailable')}</span>
           <button
             className="sw-update-btn"
             onClick={() => {
@@ -206,7 +208,7 @@ export default function AppShell() {
               window.location.reload();
             }}
           >
-            Refresh
+            {t('common.refresh')}
           </button>
         </motion.div>
       )}
@@ -241,7 +243,7 @@ export default function AppShell() {
                 className="a2hs-modal-wrap"
               >
                 <div className="a2hs-modal-box">
-                  <h3 className="a2hs-modal-title">Add to Home Screen</h3>
+                  <h3 className="a2hs-modal-title">{t('common.addToHomeScreen')}</h3>
                   <div className="a2hs-app-row">
                     <img
                       src="/icon-192.png"
@@ -258,13 +260,13 @@ export default function AppShell() {
                       onClick={a2hs.dismiss}
                       className="a2hs-btn-cancel"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       onClick={a2hs.promptInstall}
                       className="a2hs-btn-add"
                     >
-                      Add
+                      {t('common.add')}
                     </button>
                   </div>
                 </div>
@@ -336,7 +338,7 @@ export default function AppShell() {
                   articleSlug = parsed.slug || '';
                 }
               } catch {
-                showToast('Invalid QR code format', 'error');
+                showToast(t('toast.invalidQrFormat'), 'error');
                 return;
               }
               if (articleSlug) {
@@ -344,7 +346,7 @@ export default function AppShell() {
                 return;
               }
               if (!storeSlug || !tableId) {
-                showToast('Invalid QR code', 'error');
+                showToast(t('toast.invalidQrCode'), 'error');
                 return;
               }
               try {
@@ -363,9 +365,9 @@ export default function AppShell() {
                 const storeList: StoreType[] = storeRes.data;
                 const found = storeList.find((s) => s.id === data.store_id);
                 if (found) setStore(found);
-                showToast(`Table ${data.table_number} at ${data.store_name}`, 'success');
+                showToast(t('toast.tableScanned', { table: data.table_number, store: data.store_name }), 'success');
               } catch (err: unknown) {
-                const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Failed to scan table';
+                const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('toast.scanTableFailed');
                 showToast(msg, 'error');
               }
             }}
@@ -383,7 +385,7 @@ export default function AppShell() {
       <div className="rotate-prompt">
         <div className="rotate-prompt-inner">
           <div className="rotate-prompt-icon"><Smartphone color="#4A4038" size={32} /></div>
-          <p className="rotate-prompt-text">Please rotate your device to portrait</p>
+          <p className="rotate-prompt-text">{t('common.rotateToPortrait')}</p>
         </div>
       </div>
     </div>

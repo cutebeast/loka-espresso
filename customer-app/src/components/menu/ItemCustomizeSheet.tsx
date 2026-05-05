@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Plus, ShoppingCart, Coffee, AlertTriangle } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { MenuItem, CustomizationOption } from '@/lib/api';
 import { resolveAssetUrl, formatPrice, LOKA } from '@/lib/tokens';
 
@@ -42,16 +43,6 @@ const MILK_COLORS: Record<string, string> = {
   'lactose-free': '#FAF8F2',
 };
 
-/** Derive allergen warnings from dietary_tags */
-function getAllergenWarning(item: MenuItem): string | null {
-  const tags = item.dietary_tags;
-  if (!tags) return null;
-  const hasDairyFree = tags.some(t => t.toLowerCase() === 'dairy-free');
-  if (hasDairyFree) return null;
-  if (tags.some(t => t.toLowerCase() === 'vegan')) return null;
-  return 'Contains dairy (milk). May contain traces of nuts.';
-}
-
 export default function ItemCustomizeSheet({
   item,
   isOpen,
@@ -61,6 +52,7 @@ export default function ItemCustomizeSheet({
   customizations = [],
   initialSelections,
 }: ItemCustomizeSheetProps) {
+  const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
   const [notes, setNotes] = useState('');
@@ -89,6 +81,15 @@ export default function ItemCustomizeSheet({
       return [...existing, { id: opt.id, name: opt.name, option_type: opt.option_type, price_adjustment: opt.price_adjustment }];
     });
   }, []);
+
+  const getAllergenWarning = useCallback((item: MenuItem): string | null => {
+    const tags = item.dietary_tags;
+    if (!tags) return null;
+    const hasDairyFree = tags.some(t => t.toLowerCase() === 'dairy-free');
+    if (hasDairyFree) return null;
+    if (tags.some(t => t.toLowerCase() === 'vegan')) return null;
+    return t('menu.allergenWarning');
+  }, [t]);
 
   const basePrice = item?.base_price ?? 0;
   const optionDelta = selectedOptions.reduce((sum, o) => sum + o.price_adjustment, 0);
@@ -142,7 +143,7 @@ export default function ItemCustomizeSheet({
                   <Coffee size={56} color={LOKA.brown} strokeWidth={1.2} />
                 </div>
               )}
-              <button onClick={onClose} className="ics-close-btn" aria-label="Close">
+              <button onClick={onClose} className="ics-close-btn" aria-label={t('common.close')}>
                 <X size={14} />
               </button>
             </div>
@@ -183,16 +184,16 @@ export default function ItemCustomizeSheet({
                   <div key={type} className="ics-group">
                     <div className="ics-group-header">
                       <span className="ics-group-title">
-                        {type === 'other' ? 'Options' : type}
+                        {type === 'other' ? t('menu.options') : type}
                         {hasPopular && (
                           <span className="ics-popular-badge">
                             <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                            Popular
+                            {t('menu.popular')}
                           </span>
                         )}
                       </span>
                       <span className="ics-group-req">
-                        {isSize ? 'Required' : 'Optional'}
+                        {isSize ? t('menu.required') : t('common.optional')}
                       </span>
                     </div>
 
@@ -202,6 +203,7 @@ export default function ItemCustomizeSheet({
                         {opts.map((opt) => {
                           const key = opt.name.toLowerCase();
                           const cup = CUP_SIZES[key] || CUP_SIZES['regular'];
+                          const cupLabelKey = key in CUP_SIZES ? key : 'regular';
                           const sel = isSelected(opt.id);
                           return (
                             <div
@@ -216,7 +218,7 @@ export default function ItemCustomizeSheet({
                                   <path d={`M${cup.w - 6} ${cup.h / 3} C${cup.w} ${cup.h / 3} ${cup.w + 3} ${cup.h / 2} ${cup.w + 3} ${cup.h / 2 + 3} C${cup.w + 3} ${cup.h / 2 + 8} ${cup.w} ${cup.h / 2 + 10} ${cup.w - 6} ${cup.h / 2 + 10}`} stroke={LOKA.brown} strokeWidth="2" fill="none" />
                                 </svg>
                               </div>
-                              <span className="ics-cup-label">{cup.label || opt.name}</span>
+                              <span className="ics-cup-label">{t(`menu.cup.${cupLabelKey}`)}</span>
                               <span className="ics-cup-price">{formatPrice(basePrice + opt.price_adjustment)}</span>
                             </div>
                           );
@@ -249,11 +251,11 @@ export default function ItemCustomizeSheet({
 
               {/* Special instructions */}
               <div className="ics-notes-section">
-                <div className="ics-notes-title">Special instructions</div>
+                <div className="ics-notes-title">{t('menu.specialInstructions')}</div>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g., Less foam, extra hot..."
+                  placeholder={t('menu.specialInstructionsPlaceholder')}
                   className="ics-textarea"
                 />
               </div>
@@ -271,7 +273,9 @@ export default function ItemCustomizeSheet({
                 </button>
               </div>
               <button onClick={handleAdd} className="ics-add-btn">
-                Add{quantity > 1 ? ` ${quantity} ·` : ''} {formatPrice(totalPrice * quantity)}
+                {quantity > 1
+                  ? t('menu.addQuantity', { quantity, price: formatPrice(totalPrice * quantity) })
+                  : t('menu.addPrice', { price: formatPrice(totalPrice * quantity) })}
               </button>
             </div>
           </motion.div>

@@ -1,40 +1,30 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, Clock, Package, Gift, AlertCircle, MessageSquare, PartyPopper } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Package, Gift, AlertCircle, MessageSquare, PartyPopper } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 
 const FAQ_ITEMS = [
-  {
-    q: 'How do I redeem my rewards?',
-    a: 'Go to the Rewards page from the Profile menu. Browse available rewards, tap one to see details, and tap "Redeem". Show the generated code to the cashier at checkout.',
-  },
-  {
-    q: 'Where is my order?',
-    a: 'Track your order status on the Orders page in the bottom navigation. Active orders show real-time progress, and past orders show delivery history.',
-  },
-  {
-    q: 'How does the loyalty program work?',
-    a: 'Earn points on every order. As your points grow, you unlock higher tiers (Silver, Gold, Platinum) with better rewards and perks.',
-  },
-  {
-    q: 'Can I cancel my order?',
-    a: 'Orders can be cancelled while in "Pending" or "Confirmed" status. Tap on the order in the Orders page and select "Cancel Order" if available.',
-  },
+  { id: 'q1' },
+  { id: 'q2' },
+  { id: 'q3' },
+  { id: 'q4' },
 ];
 
 const SUBJECTS = [
-  { id: 'feedback', label: 'General', icon: MessageSquare, bg: '#F5F0E6', stroke: '#4A2210' },
-  { id: 'order', label: 'Order Issue', icon: Package, bg: '#FFF3E0', stroke: '#C4893A' },
-  { id: 'rewards', label: 'Rewards', icon: Gift, bg: '#E6F0E8', stroke: '#3B4A1A' },
-  { id: 'technical', label: 'Technical', icon: AlertCircle, bg: '#FDEAEA', stroke: '#C75050' },
+  { id: 'feedback', icon: MessageSquare, bg: '#F5F0E6', stroke: '#4A2210' },
+  { id: 'order', icon: Package, bg: '#FFF3E0', stroke: '#C4893A' },
+  { id: 'rewards', icon: Gift, bg: '#E6F0E8', stroke: '#3B4A1A' },
+  { id: 'technical', icon: AlertCircle, bg: '#FDEAEA', stroke: '#C75050' },
 ];
 
 export default function HelpSupportPage() {
   const { user } = useAuthStore();
   const { setPage, showToast, selectedStore } = useUIStore();
+  const { t } = useTranslation();
   const storeId = selectedStore?.id;
 
   const [name, setName] = useState(user?.name || '');
@@ -48,11 +38,11 @@ export default function HelpSupportPage() {
 
   const handleSubmit = async () => {
     if (!name.trim() || !email.trim() || !subject || !message.trim()) {
-      showToast('Please fill all required fields', 'error');
+      showToast(t('toast.fieldsRequired'), 'error');
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      showToast('Please enter a valid email address', 'error');
+      showToast(t('toast.emailInvalid'), 'error');
       return;
     }
     setSending(true);
@@ -67,7 +57,7 @@ export default function HelpSupportPage() {
       setSubject('');
       setMessage('');
     } catch {
-      showToast('Failed to send message', 'error');
+      showToast(t('toast.feedbackFailed'), 'error');
     } finally {
       setSending(false);
     }
@@ -77,10 +67,10 @@ export default function HelpSupportPage() {
     <div className="support-screen">
       <div className="sub-page-header">
         <div className="sub-header-left">
-          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label="Back">
+          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
-          <h1 className="sub-page-title">Help &amp; Support</h1>
+          <h1 className="sub-page-title">{t('helpSupport.title')}</h1>
         </div>
         <div className="ad-spacer" />
       </div>
@@ -90,7 +80,7 @@ export default function HelpSupportPage() {
           <>
             {/* FAQ Section */}
             <div className="support-faq-section">
-              <div className="support-faq-title">Frequently Asked Questions</div>
+              <div className="support-faq-title">{t('helpSupport.faqTitle')}</div>
               {FAQ_ITEMS.map((item, i) => {
                 const isOpen = expandedFaq === i;
                 return (
@@ -99,7 +89,7 @@ export default function HelpSupportPage() {
                       className="support-faq-item"
                       onClick={() => setExpandedFaq(isOpen ? null : i)}
                     >
-                      <span className="support-faq-text">{item.q}</span>
+                      <span className="support-faq-text">{t(`helpSupport.faq.${item.id}` as const)}</span>
                       {isOpen ? (
                         <ChevronUp size={16} className="support-faq-chevron" />
                       ) : (
@@ -107,7 +97,7 @@ export default function HelpSupportPage() {
                       )}
                     </button>
                     {isOpen && (
-                      <div className="support-faq-answer">{item.a}</div>
+                      <div className="support-faq-answer">{t(`helpSupport.faq.a${item.id.slice(1)}` as const)}</div>
                     )}
                   </div>
                 );
@@ -117,39 +107,39 @@ export default function HelpSupportPage() {
             {/* Contact Form */}
             <div className="support-form-section">
               <div className="support-input-group">
-                <label className="support-input-label" htmlFor="hs-name">Your Name</label>
+                <label className="support-input-label" htmlFor="hs-name">{t('helpSupport.yourName')}</label>
             <input id="hs-name"                   type="text"
                   className="support-input-field"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder={t('helpSupport.namePlaceholder')}
                 />
               </div>
 
               <div className="support-input-group">
-                <label className="support-input-label">Email</label>
+                <label className="support-input-label">{t('helpSupport.email')}</label>
                 <input
                   type="email"
                   className="support-input-field"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t('helpSupport.emailPlaceholder')}
                 />
               </div>
 
               <div className="support-input-group">
-                <label className="support-input-label">Phone (optional)</label>
+                <label className="support-input-label">{t('helpSupport.phoneOptional')}</label>
                 <input
                   type="tel"
                   className="support-input-field"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+60 12 345 6789"
+                  placeholder={t('helpSupport.phonePlaceholder')}
                 />
               </div>
 
               <div className="support-input-group">
-                <label className="support-input-label" htmlFor="hs-subject">Subject</label>
+                <label className="support-input-label" htmlFor="hs-subject">{t('helpSupport.subject')}</label>
                 <div className="support-subject-cards">
                   {SUBJECTS.map((s) => {
                     const Icon = s.icon;
@@ -163,7 +153,7 @@ export default function HelpSupportPage() {
                         <div className="support-subject-icon" style={{ background: s.bg as string }}>
                           <Icon size={16} stroke={s.stroke} />
                         </div>
-                        <span className="support-subject-label">{s.label}</span>
+                        <span className="support-subject-label">{t(`helpSupport.subjects.${s.id}`)}</span>
                       </div>
                     );
                   })}
@@ -171,17 +161,17 @@ export default function HelpSupportPage() {
               </div>
 
               <div className="support-input-group">
-                <label className="support-input-label">Message</label>
+                <label className="support-input-label">{t('helpSupport.message')}</label>
                 <textarea
                   className="support-input-field"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Tell us how we can help..."
+                  placeholder={t('helpSupport.messagePlaceholder')}
                 />
               </div>
 
               <button className="support-submit-btn" onClick={handleSubmit} disabled={sending}>
-                {sending ? 'Sending...' : 'Send Message'}
+                {sending ? t('common.loading') : t('helpSupport.sendMessage')}
               </button>
             </div>
           </>
@@ -189,10 +179,10 @@ export default function HelpSupportPage() {
           /* Celebratory Success */
           <div className="support-celebratory">
             <div className="support-celebratory-icon"><PartyPopper color="#C9A84C" size={40} /></div>
-            <h3>Message Sent!</h3>
-            <p>Thank you for reaching out. Our team will get back to you within 24 hours.</p>
+            <h3>{t('helpSupport.messageSent')}</h3>
+            <p>{t('helpSupport.messageSentDesc')}</p>
             <button className="support-celebratory-back" onClick={() => setPage('home')}>
-              Back to Home
+              {t('helpSupport.backToHome')}
             </button>
           </div>
         )}

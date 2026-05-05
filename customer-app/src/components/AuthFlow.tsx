@@ -11,6 +11,7 @@ import { PhoneInput } from '@/components/auth/PhoneInput';
 import { OTPInput } from '@/components/auth/OTPInput';
 import { ProfileSetup } from '@/components/auth/ProfileSetup';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type AuthStep = 'splash' | 'phone' | 'otp' | 'profile' | 'done';
 
@@ -41,6 +42,7 @@ async function fetchAndSetUser() {
 }
 
 export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
+  const { t } = useTranslation();
   const { isAuthenticated, setIsNewUser, setPhone } = useAuthStore();
   const { showToast } = useUIStore();
   const reducedMotion = useReducedMotion();
@@ -84,7 +86,7 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
         setAuthStep('otp');
       }
     } catch (error) {
-      showToast(getApiErrorMessage(error, 'Failed to log in. Please try again.'), 'error', 'Login failed');
+      showToast(getApiErrorMessage(error, t('toast.loginFailed')), 'error', t('toast.loginFailedTitle'));
     } finally {
       setLoadingAuth(false);
     }
@@ -98,8 +100,8 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
       if (is_new_user) { setIsNewUser(true); setAuthStep('profile'); }
       else { await fetchAndSetUser(); setIsNewUser(false); onAuthDone(); setAuthStep('done'); }
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Invalid OTP. Please try again.');
-      showToast(message, 'error', 'Verification failed');
+      const message = getApiErrorMessage(error, t('toast.verificationFailed'));
+      showToast(message, 'error', t('toast.verificationFailedTitle'));
       throw error;
     } finally {
       setLoadingAuth(false);
@@ -111,9 +113,9 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
       const res = await api.post('/auth/send-otp', { phone: phoneNumber });
       setOtpSessionId(res.data?.session_id ?? otpSessionId);
       setOtpRetryAfter(Number(res.data?.retry_after_seconds ?? 60));
-      showToast('OTP resent successfully', 'success');
+      showToast(t('toast.otpResent'), 'success');
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Failed to resend OTP');
+      const message = getApiErrorMessage(error, t('toast.otpResendFailed'));
       showToast(message, 'error');
       throw error;
     }
@@ -127,9 +129,9 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
       setIsNewUser(false);
       onAuthDone();
       setAuthStep('done');
-      showToast('Welcome to Loka Espresso!', 'success');
+      showToast(t('toast.profileSaved'), 'success');
     } catch {
-      showToast('Failed to save profile. Please try again.', 'error');
+      showToast(t('toast.profileFailed'), 'error');
     } finally {
       setLoadingAuth(false);
     }
@@ -187,7 +189,7 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
           >
             <div className="flex flex-col items-center">
               <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-text-muted mt-3">Please wait...</p>
+              <p className="text-sm text-text-muted mt-3">{t('common.pleaseWait')}</p>
             </div>
           </motion.div>
         )}

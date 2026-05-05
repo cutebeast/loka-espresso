@@ -6,6 +6,7 @@ import { LOKA } from '@/lib/tokens';
 import { useAuthStore } from '@/stores/authStore';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import api from '@/lib/api';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface SavedAddress {
   id: number; label: string; address: string; apartment?: string;
@@ -18,15 +19,17 @@ interface Props {
   onChange: (a: { address: string; lat?: number; lng?: number } | null) => void;
 }
 
-const LABELS = ['Home', 'Office', 'Other'] as const;
 const ICONS: Record<string, typeof Home> = { Home, Office: Building2, Other: HelpCircle };
 const STATES = ['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan',
   'Pahang','Perak','Perlis','Pulau Pinang','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'];
 
 export default function DeliveryAddressCard({ value, onChange }: Props) {
+  const { t } = useTranslation();
+  const LABELS = [t('checkout.labelHome'), t('checkout.labelOffice'), t('checkout.labelOther')] as const;
+
   /* Sheet state */
   const [open, setOpen] = useState(false);
-  const [label, setLabel] = useState('Home');
+  const [label, setLabel] = useState(LABELS[0]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [unit, setUnit] = useState('');
@@ -107,7 +110,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
       const sFull = s.apartment ? `${s.apartment}, ${s.address}` : s.address;
       return value?.address?.includes(s.address) || value?.address?.includes(sFull);
     });
-    setLabel(match?.label || 'Home');
+    setLabel(match?.label || LABELS[0]);
     setName(user?.name || '');
     setPhone(user?.phone || '');
     setErr('');
@@ -117,7 +120,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
 
   /* Save */
   const save = async () => {
-    if (!unit.trim() && !line1.trim()) { setErr('Address is required'); return; }
+    if (!unit.trim() && !line1.trim()) { setErr(t('checkout.addressRequired')); return; }
     setSaving(true); setErr('');
     const p: string[] = [];
     if (unit.trim()) p.push(unit.trim());
@@ -188,18 +191,18 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
           <div className="dac-display-info">
             {info.label && <div className="dac-display-label">{info.label}</div>}
             <div className="dac-display-address">{info.formatted}</div>
-            <button onClick={openSheet} className="dac-change-btn">Change address</button>
+            <button onClick={openSheet} className="dac-change-btn">{t('checkout.changeAddress')}</button>
           </div>
         </div>
       ) : (
         <div className="dac-empty-card">
           <div className="dac-empty-icon"><MapPin size={20} color={LOKA.copper} /></div>
-          <span className="dac-empty-text">Add delivery address</span>
-          <button onClick={openSheet} className="dac-empty-btn">Enter Address</button>
+          <span className="dac-empty-text">{t('checkout.addDeliveryAddress')}</span>
+          <button onClick={openSheet} className="dac-empty-btn">{t('checkout.enterAddress')}</button>
         </div>
       )}
 
-      <BottomSheet isOpen={open} onClose={closeSheet} title={has ? 'Change Address' : 'Delivery Address'}>
+      <BottomSheet isOpen={open} onClose={closeSheet} title={has ? t('checkout.changeAddressTitle') : t('checkout.deliveryAddressTitle')}>
         <div className="sheet-body">
 
         {/* Label pills — auto-fill from DB for selected label */}
@@ -216,36 +219,36 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
 
         {/* Unit / Apartment No */}
         <div className="dac-sheet-field">
-          <label className="dac-sheet-label">Unit / Apartment No.</label>
-          <input value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g. 123 or A-3-5" autoComplete="address-line1" className="dac-input" />
+          <label className="dac-sheet-label">{t('checkout.unitLabel')}</label>
+          <input value={unit} onChange={e => setUnit(e.target.value)} placeholder={t('checkout.unitPlaceholder')} autoComplete="address-line1" className="dac-input" />
         </div>
 
         {/* Address Line 1 */}
         <div className="dac-sheet-field">
-          <label className="dac-sheet-label">Address Line 1</label>
-          <input value={line1} onChange={e => setLine1(e.target.value)} placeholder="Jalan / Lorong / Persiaran" autoComplete="street-address" className="dac-input" />
+          <label className="dac-sheet-label">{t('checkout.addressLine1')}</label>
+          <input value={line1} onChange={e => setLine1(e.target.value)} placeholder={t('checkout.addressLine1Placeholder')} autoComplete="street-address" className="dac-input" />
         </div>
 
         {/* Address Line 2 */}
         <div className="dac-sheet-field">
-          <label className="dac-sheet-label">Address Line 2 (optional)</label>
-          <input value={line2} onChange={e => setLine2(e.target.value)} placeholder="Building / Taman name" autoComplete="address-line2" className="dac-input" />
+          <label className="dac-sheet-label">{t('checkout.addressLine2')}</label>
+          <input value={line2} onChange={e => setLine2(e.target.value)} placeholder={t('checkout.addressLine2Placeholder')} autoComplete="address-line2" className="dac-input" />
         </div>
 
         {/* City */}
         <div className="dac-sheet-field">
-          <label className="dac-sheet-label">City</label>
-          <input value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Cheras, Petaling Jaya" autoComplete="address-level2" className="dac-input" />
+          <label className="dac-sheet-label">{t('checkout.cityLabel')}</label>
+          <input value={city} onChange={e => setCity(e.target.value)} placeholder={t('checkout.cityPlaceholder')} autoComplete="address-level2" className="dac-input" />
         </div>
 
         {/* Postcode | State */}
         <div className="dac-sheet-row">
           <div className="dac-sheet-field dac-sheet-field-half">
-            <label className="dac-sheet-label">Postcode</label>
+            <label className="dac-sheet-label">{t('checkout.postcodeLabel')}</label>
             <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric" maxLength={5} placeholder="50400" autoComplete="postal-code" className="dac-input" />
           </div>
           <div className="dac-sheet-field dac-sheet-field-half">
-            <label className="dac-sheet-label">State</label>
+            <label className="dac-sheet-label">{t('checkout.stateLabel')}</label>
             <select value={state} onChange={e => setState(e.target.value)} className="dac-select">
               {STATES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -256,7 +259,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
         <div className="dac-sheet-field hidden"></div>
 
         {err && <p className="dac-error">{err}</p>}
-        <button onClick={save} className="dac-save-btn" disabled={saving}>{saving ? 'Saving...' : 'Save Address'}</button>
+        <button onClick={save} className="dac-save-btn" disabled={saving}>{saving ? t('common.saving') : t('checkout.saveAddress')}</button>
         </div>
       </BottomSheet>
     </div>

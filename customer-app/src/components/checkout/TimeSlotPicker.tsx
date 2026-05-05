@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react';
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LOKA } from '@/lib/tokens';
 import { useUIStore } from '@/stores/uiStore';
+import { useTranslation } from '@/hooks/useTranslation';
+import { t } from '@/lib/i18n';
 
 interface TimeSlotPickerProps {
   value: string | null;
@@ -30,7 +32,7 @@ function generateTimeSlots(leadMinutes: number, baseDate: Date, openingHours?: R
   const now = new Date();
   const start = new Date(baseDate.getTime());
   const hours = parseStoreHours(openingHours, baseDate);
-  
+
   if (isSameDay(baseDate, now)) {
     start.setTime(now.getTime() + leadMinutes * 60 * 1000);
     start.setMinutes(Math.ceil(start.getMinutes() / 15) * 15, 0, 0);
@@ -50,7 +52,7 @@ function generateTimeSlots(leadMinutes: number, baseDate: Date, openingHours?: R
     slots.push(slot.toISOString());
     if (slots.length >= count) break;
   }
-  
+
   if (slots.length === 0 && !isSameDay(baseDate, now)) {
     const fallback = new Date(baseDate);
     fallback.setHours(9, 0, 0, 0);
@@ -58,7 +60,7 @@ function generateTimeSlots(leadMinutes: number, baseDate: Date, openingHours?: R
       slots.push(new Date(fallback.getTime() + i * 30 * 60 * 1000).toISOString());
     }
   }
-  
+
   return slots;
 }
 
@@ -78,16 +80,17 @@ function formatDateLabel(date: Date): string {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  
-  if (isSameDay(date, today)) return 'Today';
-  if (isSameDay(date, tomorrow)) return 'Tomorrow';
+
+  if (isSameDay(date, today)) return t('common.today');
+  if (isSameDay(date, tomorrow)) return t('common.tomorrow');
   return date.toLocaleDateString('en-MY', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 export default function TimeSlotPicker({ value, onChange, leadMinutes = 15, mode = 'pickup' }: TimeSlotPickerProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const selectedStore = useUIStore(s => s.selectedStore);
-  
+  const { t } = useTranslation();
+
   const slots = useMemo(() => generateTimeSlots(leadMinutes, selectedDate, selectedStore?.opening_hours as Record<string, string> | undefined), [leadMinutes, selectedDate, selectedStore?.opening_hours]);
 
   const hasSlots = slots.length > 0;
@@ -113,14 +116,14 @@ export default function TimeSlotPicker({ value, onChange, leadMinutes = 15, mode
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Clock size={16} color={LOKA.copper} />
-          <span className="font-bold text-text-primary tsp-title">{mode === 'pickup' ? 'Pickup Time' : 'Delivery Time'}</span>
+          <span className="font-bold text-text-primary tsp-title">{mode === 'pickup' ? t('checkout.pickupTime') : t('checkout.deliveryTime')}</span>
         </div>
         <div className="flex items-center gap-2 tsp-date-nav">
           <button
             onClick={goToPrevDay}
             disabled={!canGoBack}
             className={`tsp-date-btn ${!canGoBack ? 'tsp-date-btn-disabled' : ''}`}
-            aria-label="Previous day"
+            aria-label={t('checkout.previousDay')}
           >
             <ChevronLeft size={14} />
           </button>
@@ -128,7 +131,7 @@ export default function TimeSlotPicker({ value, onChange, leadMinutes = 15, mode
           <button
             onClick={goToNextDay}
             className="tsp-date-btn"
-            aria-label="Next day"
+            aria-label={t('checkout.nextDay')}
           >
             <ChevronRight size={14} />
           </button>
@@ -145,14 +148,14 @@ export default function TimeSlotPicker({ value, onChange, leadMinutes = 15, mode
                 onClick={() => onChange(slot)}
                 className={`py-2.5 px-4 rounded-xl cursor-pointer whitespace-nowrap shrink-0 transition-all border-none tsp-slot ${isSelected ? 'tsp-slot-selected' : ''}`}
               >
-                {isFirst ? `ASAP · ~${formatTime(slot)}` : formatTime(slot)}
+                {isFirst ? t('checkout.asapTime', { time: formatTime(slot) }) : formatTime(slot)}
               </button>
             );
           })}
         </div>
       ) : (
         <p className="text-sm text-text-muted tsp-no-slots">
-          No slots available. Try a different day.
+          {t('checkout.noSlots')}
         </p>
       )}
     </div>

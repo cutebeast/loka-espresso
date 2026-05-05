@@ -49,17 +49,7 @@ export default function StaffPage() {
   const isHQ = selectedStore === 'all';
 
   // Tab
-  const [tab, setTab] = useState<'staff' | 'shifts' | 'clock'>('staff');
-
-  // Shift state
-  const [shifts, setShifts] = useState<any[]>([]);
-  const [shiftsLoading, setShiftsLoading] = useState(false);
-
-  // Clock state
-  const [clockStaffId, setClockStaffId] = useState('');
-  const [clockPin, setClockPin] = useState('');
-  const [clocking, setClocking] = useState(false);
-  const [clockResult, setClockResult] = useState<{success: boolean; message: string} | null>(null);
+  const [tab, setTab] = useState<'staff'>('staff');
 
   // Staff list state
   const [staffList, setStaffList] = useState<MerchantStaffMember[]>([]);
@@ -133,48 +123,6 @@ export default function StaffPage() {
     setTempPassword(null);
     setResetPasswordResult(null);
   }, [selectedStore]);
-
-  // Fetch shifts when tab is selected
-  const fetchShifts = useCallback(async () => {
-    if (!activeStoreId) return;
-    setShiftsLoading(true);
-    try {
-      const res = await apiFetch(`/admin/stores/${activeStoreId}/shifts`);
-      if (res.ok) setShifts(await res.json());
-    } catch { console.error('Failed to fetch shifts'); }
-    finally { setShiftsLoading(false); }
-  }, [activeStoreId]);
-
-  useEffect(() => { if (tab === 'shifts') fetchShifts(); }, [tab, fetchShifts]);
-
-  async function clockIn() {
-    const sid = parseInt(clockStaffId);
-    if (!sid) { setClockResult({success: false, message: 'Enter a staff ID'}); return; }
-    if (!clockPin) { setClockResult({success: false, message: 'Enter PIN'}); return; }
-    setClocking(true); setClockResult(null);
-    try {
-      const res = await apiFetch(`/admin/staff/${sid}/clock-in`, undefined, {
-        method: 'POST', body: JSON.stringify({ pin_code: clockPin }),
-      });
-      const data = await res.json().catch(() => ({}));
-      setClockResult({success: res.ok, message: data.message || data.detail || 'Clock in successful'});
-      if (res.ok) { setClockStaffId(''); setClockPin(''); }
-    } catch { setClockResult({success: false, message: 'Network error'}); }
-    finally { setClocking(false); }
-  }
-
-  async function clockOut() {
-    const sid = parseInt(clockStaffId);
-    if (!sid) { setClockResult({success: false, message: 'Enter a staff ID'}); return; }
-    setClocking(true); setClockResult(null);
-    try {
-      const res = await apiFetch(`/admin/staff/${sid}/clock-out`, undefined, { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      setClockResult({success: res.ok, message: data.message || data.detail || 'Clock out successful'});
-      if (res.ok) { setClockStaffId(''); setClockPin(''); }
-    } catch { setClockResult({success: false, message: 'Network error'}); }
-    finally { setClocking(false); }
-  }
 
   function handleUserTypeChange(newTypeId: number) {
     setUserTypeId(newTypeId);
@@ -432,7 +380,7 @@ export default function StaffPage() {
       </Drawer>
 
       {/* LIST VIEW */}
-      {/* Store Selector — top left, consistent across tabs */}
+      {/* Store Selector */}
       <div className="sp-18" style={{ marginBottom: 0 }}>
         <div className="sp-19">
           <StoreSelector
@@ -444,22 +392,8 @@ export default function StaffPage() {
         </div>
       </div>
 
-      {/* Tab bar + New Staff button */}
-      <div className="sp-18" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setTab('staff')} className={`ip-tab ${tab === 'staff' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
-            <i className="fas fa-users" style={{ marginRight: 4 }}></i> Staff
-          </button>
-          <button onClick={() => setTab('shifts')} className={`ip-tab ${tab === 'shifts' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
-            <i className="fas fa-clock" style={{ marginRight: 4 }}></i> Shifts
-          </button>
-          <button onClick={() => setTab('clock')} className={`ip-tab ${tab === 'clock' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
-            <i className="fas fa-sign-in-alt" style={{ marginRight: 4 }}></i> Clock In/Out
-          </button>
-        </div>
-        {tab === 'staff' && (
-          <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Staff</button>
-        )}
+            <div className="sp-18" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
+        <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Staff</button>
       </div>
 
       {error && (
@@ -583,69 +517,6 @@ export default function StaffPage() {
       />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={fetchStaff} loading={loading} />
-      {tab === 'shifts' && (
-        <div>
-          {!activeStoreId ? (
-            <p style={{ textAlign: 'center', color: '#6B7280', padding: 32 }}>Select a store above to view shift history.</p>
-          ) : shiftsLoading ? (
-            <p style={{ textAlign: 'center', padding: 32 }}>Loading shifts...</p>
-          ) : shifts.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#6B7280', padding: 32 }}>No shifts recorded for this store.</p>
-          ) : (
-            <table className="dt-table">
-              <thead>
-                <tr>
-                  <th>Staff</th>
-                  <th>Clock In</th>
-                  <th>Clock Out</th>
-                  <th>Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shifts.map((s: any) => {
-                  const clockIn = new Date(s.clock_in);
-                  const clockOut = s.clock_out ? new Date(s.clock_out) : null;
-                  const duration = clockOut ? Math.round((clockOut.getTime() - clockIn.getTime()) / 3600000 * 10) / 10 : null;
-                  return (
-                    <tr key={s.id} className="dt-row">
-                      <td>{s.staff?.name || `Staff #${s.staff_id}`}</td>
-                      <td>{clockIn.toLocaleString()}</td>
-                      <td>{clockOut ? clockOut.toLocaleString() : <span className="badge badge-green">Active</span>}</td>
-                      <td>{duration != null ? `${duration}h` : '—'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-      {tab === 'clock' && (
-        <div style={{ maxWidth: 480, margin: '0 auto' }}>
-          <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, textAlign: 'center' }}>
-            <i className="fas fa-clock" style={{ marginRight: 8 }}></i>Staff Clock In / Out
-          </h4>
-          {clockResult && (
-            <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, background: clockResult.success ? '#F0FDF4' : '#FEF2F2', color: clockResult.success ? '#16A34A' : '#DC2626' }}>
-              <i className={`fas ${clockResult.success ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i> {clockResult.message}
-            </div>
-          )}
-          <div className="df-grid">
-            <div className="df-field">
-              <label className="df-label">Staff ID</label>
-              <input type="number" value={clockStaffId} onChange={e => setClockStaffId(e.target.value)} placeholder="Enter staff ID" disabled={clocking} />
-            </div>
-            <div className="df-field">
-              <label className="df-label">PIN (clock in only)</label>
-              <input type="password" value={clockPin} onChange={e => setClockPin(e.target.value)} placeholder="PIN" maxLength={6} disabled={clocking} />
-            </div>
-          </div>
-          <div className="df-actions" style={{ marginTop: 12 }}>
-            <button className="btn btn-primary" onClick={clockIn} disabled={clocking}>{clocking ? '...' : 'Clock In'}</button>
-            <button className="btn" onClick={clockOut} disabled={clocking}>{clocking ? '...' : 'Clock Out'}</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

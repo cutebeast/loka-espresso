@@ -43,6 +43,7 @@ const navGroups = [
     { id: 'orders' as PageId, icon: 'fa-clipboard-list', label: 'Orders' },
     { id: 'inventory' as PageId, icon: 'fa-boxes-stacked', label: 'Inventory' },
     { id: 'staff' as PageId, icon: 'fa-user-tie', label: 'Staff' },
+    { id: 'shifts' as PageId, icon: 'fa-clock', label: 'Shifts' },
   ]},
   { label: 'CRM & Marketing', icon: 'fa-bullhorn', items: [
     { id: 'customers' as PageId, icon: 'fa-users', label: 'Customers' },

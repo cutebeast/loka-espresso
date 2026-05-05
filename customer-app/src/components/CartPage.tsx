@@ -17,10 +17,10 @@ import {
   Store,
   MapPin,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useConfigStore } from '@/stores/configStore';
-
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import api from '@/lib/api';
 import type { MenuItem, CustomizationOption as ApiCustomOption } from '@/lib/api';
@@ -48,12 +48,13 @@ function getCustomizationTags(customizations: Record<string, unknown> | undefine
 }
 
 const ORDER_MODES = [
-  { key: 'pickup' as const, label: 'Pickup' },
-  { key: 'delivery' as const, label: 'Delivery' },
-  { key: 'dine_in' as const, label: 'Dine-in' },
+  { key: 'pickup' as const, labelKey: 'cart.mode.pickup' },
+  { key: 'delivery' as const, labelKey: 'cart.mode.delivery' },
+  { key: 'dine_in' as const, labelKey: 'cart.mode.dineIn' },
 ];
 
 export default function CartPage() {
+  const { t } = useTranslation();
   const { items, updateQuantity, updateItem, getTotal, getItemCount, clearCart, orderNote, setOrderNote } = useCartStore();
   const { orderMode, setOrderMode, selectedStore, dineInSession, setDineInSession, setPage, showToast, setShowStorePicker, setCheckoutDraft, isGuest, triggerSignIn } = useUIStore();
   const { config } = useConfigStore();
@@ -89,7 +90,7 @@ export default function CartPage() {
       setEditOptions(options);
       setEditItem({ id: item.menu_item_id, name: item.name, base_price: item.base_price ?? item.price, category_id: 0 } as MenuItem);
       setEditingItem(index);
-    } catch { showToast('Failed to load options. Please try again.', 'error'); }
+    } catch { showToast(t('toast.genericError'), 'error'); }
     finally { setEditLoading(false); }
   };
 
@@ -118,10 +119,10 @@ export default function CartPage() {
         <div className="cart-empty-icon">
           <ShoppingBag size={32} color={LOKA.primary} />
         </div>
-        <p className="cart-empty-title">Your cart is empty</p>
-        <p className="cart-empty-text">Looks like you haven&apos;t added anything yet</p>
+        <p className="cart-empty-title">{t('cart.emptyTitle')}</p>
+        <p className="cart-empty-text">{t('cart.emptySubtitle')}</p>
         <button className="cart-empty-btn" onClick={() => setPage('menu')}>
-          Browse Menu <ArrowRight size={18} />
+          {t('cart.browseMenu')} <ArrowRight size={18} />
         </button>
       </div>
     );
@@ -131,12 +132,12 @@ export default function CartPage() {
     <div className="cart-screen">
       {/* Header */}
       <div className="cart-header">
-        <button className="cart-back-btn" onClick={() => setPage('menu')} aria-label="Back">
+        <button className="cart-back-btn" onClick={() => setPage('menu')} aria-label={t('common.back')}>
           <ArrowLeft size={20} />
         </button>
-        <h3 className="cart-header-title">Your Cart <span className="cart-header-count">({itemCount} item{itemCount !== 1 ? 's' : ''})</span></h3>
+        <h3 className="cart-header-title">{t('cart.title')} <span className="cart-header-count">({t('cart.itemCount', { count: itemCount })})</span></h3>
         <button className="cart-header-clear" onClick={() => setShowClearConfirm(true)}>
-          Clear
+          {t('cart.clear')}
         </button>
       </div>
 
@@ -148,8 +149,8 @@ export default function CartPage() {
               <span className="cart-emoji"><Utensils size={16} /></span>
             </div>
             <div className="cart-context-text">
-              <p className="cart-context-title">Table {dineInSession.tableNumber} · {dineInSession.storeName}</p>
-              <p className="cart-context-sub">Dine-in</p>
+              <p className="cart-context-title">{t('cart.tableInfo', { tableNumber: dineInSession.tableNumber, storeName: dineInSession.storeName })}</p>
+              <p className="cart-context-sub">{t('cart.mode.dineIn')}</p>
             </div>
             <button
               className="cart-context-action"
@@ -164,14 +165,14 @@ export default function CartPage() {
               <span className="cart-emoji"><Store size={16} /></span>
             </div>
             <div className="cart-context-text">
-              <p className="cart-context-title">{selectedStore?.name || 'Select a store'}</p>
-              <p className="cart-context-sub">{orderMode === 'pickup' ? 'Pickup' : 'Delivery'}</p>
+              <p className="cart-context-title">{selectedStore?.name || t('cart.selectStore')}</p>
+              <p className="cart-context-sub">{orderMode === 'pickup' ? t('cart.mode.pickup') : t('cart.mode.delivery')}</p>
             </div>
             <button
               className="cart-context-action copper"
               onClick={() => setShowStorePicker(true)}
             >
-              <MapPin size={14} /> Select Store
+              <MapPin size={14} /> {t('cart.selectStoreBtn')}
             </button>
           </div>
         )}
@@ -183,25 +184,26 @@ export default function CartPage() {
           {ORDER_MODES.map((m) => {
             const isActive = orderMode === m.key;
             const isDineInDisabled = m.key === 'dine_in' && !dineInSession;
+            const label = t(`cart.mode.${m.key === 'dine_in' ? 'dineIn' : m.key}`);
             return (
               <button
                 key={m.key}
                 className={`cart-mode-btn ${isActive ? 'active' : ''} ${isDineInDisabled ? 'disabled' : ''}`}
                   onClick={() => {
                     if (isDineInDisabled) {
-                      showToast('Please ask service crew for QR code to dine in', 'info', 'Dine-in Unavailable');
+                      showToast(t('toast.dineInUnavailable'), 'info', t('toast.dineInUnavailableTitle'));
                       return;
                     }
                     if (dineInSession && m.key !== 'dine_in') {
-                      showToast('Please finish your dine-in session first', 'info');
+                      showToast(t('toast.finishDineInFirst'), 'info');
                       return;
                     }
                     handleOrderModeChange(m.key);
                 }}
-                title={isDineInDisabled ? 'Scan table QR to enable' : undefined}
+                title={isDineInDisabled ? t('cart.scanTable') : undefined}
               >
                 {isDineInDisabled && <QrCode size={14} className="mr-1" />}
-                {m.label}
+                {label}
               </button>
             );
           })}
@@ -254,15 +256,15 @@ export default function CartPage() {
                   <div className="cart-item-row">
                     {(item.customization_count ?? 0) > 0 ? (
                       <button className="cart-edit-btn" onClick={() => openCustomize(index)}>
-                        <Sliders size={12} /> Add-ons
+                        <Sliders size={12} /> {t('cart.addons')}
                       </button>
                     ) : <span />}
                     <button
                       className="cart-remove-btn"
                       onClick={() => updateQuantity(index, 0)}
-                      aria-label={`Remove ${item.name}`}
+                      aria-label={t('common.remove') + ' ' + item.name}
                     >
-                      <Trash2 size={12} /> Remove
+                      <Trash2 size={12} /> {t('common.remove')}
                     </button>
                   </div>
                   <div className="cart-item-row">
@@ -290,10 +292,10 @@ export default function CartPage() {
 
         {/* Notes */}
         <div className="cart-notes-card">
-          <div className="cart-notes-label">Order note (optional)</div>
+          <div className="cart-notes-label">{t('cart.orderNote') + ' ' + t('common.optionalLower')}</div>
           <textarea
             className="cart-notes-input"
-            placeholder="Any special requests…"
+            placeholder={t('cart.orderNotePlaceholder')}
             value={orderNote}
             onChange={(e) => setOrderNote(e.target.value)}
           />
@@ -302,22 +304,22 @@ export default function CartPage() {
         {/* Summary */}
         <div className="cart-summary-card">
           <div className="cart-summary-row">
-            <span>Subtotal ({itemCount} item{itemCount !== 1 ? 's' : ''})</span>
+            <span>{t('cart.subtotal') + ' (' + t('cart.itemCount', { count: itemCount }) + ')'}</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
           {orderMode === 'delivery' && (deliveryFee > 0 ? (
             <div className="cart-summary-row">
-              <span>Delivery fee</span>
+              <span>{t('cart.deliveryFee')}</span>
               <span>{formatPrice(deliveryFee)}</span>
             </div>
           ) : (
             <div className="cart-summary-row">
-              <span>Delivery fee</span>
-              <span className="cart-delivery-free">Free</span>
+              <span>{t('cart.deliveryFee')}</span>
+              <span className="cart-delivery-free">{t('cart.free')}</span>
             </div>
           ))}
           <div className="cart-summary-row total">
-            <span>Total</span>
+            <span>{t('cart.total')}</span>
             <span>{formatPrice(total)}</span>
           </div>
         </div>
@@ -328,13 +330,13 @@ export default function CartPage() {
         {orderMode === 'delivery' && config.min_order_delivery > 0 && subtotal < config.min_order_delivery && (
           <div className="cart-delivery-min">
             <ShoppingBag size={16} color={LOKA.brown} />
-            <span>Add {formatPrice(config.min_order_delivery - subtotal)} more for delivery</span>
+            <span>{t('cart.deliveryMin', { amount: formatPrice(config.min_order_delivery - subtotal) })}</span>
           </div>
         )}
         {orderMode === 'dine_in' && !dineInSession ? (
           <button className="cart-scan-btn" onClick={handleScanQR}>
             <QrCode size={18} />
-            Scan table QR to dine in
+            {t('cart.scanTable')}
           </button>
         ) : (
           <button
@@ -353,7 +355,7 @@ export default function CartPage() {
             }}
             disabled={belowDeliveryMinimum}
           >
-            <span>Proceed to Checkout</span>
+            <span>{t('cart.checkout')}</span>
             <span className="cart-checkout-price">{formatPrice(total)}</span>
           </button>
         )}
@@ -362,11 +364,11 @@ export default function CartPage() {
       {/* Clear Cart Confirmation Modal */}
       <div className={`profile-modal-overlay ${showClearConfirm ? 'show' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setShowClearConfirm(false); }}>
         <div className="profile-modal-box">
-          <h3>Clear cart?</h3>
-          <p>This will remove {itemCount} item{itemCount !== 1 ? 's' : ''} from your cart.</p>
+          <h3>{t('cart.clearConfirm')}</h3>
+          <p>{t('cart.removeConfirm', { count: itemCount })}</p>
           <div className="profile-modal-btns">
-            <button className="profile-modal-btn profile-modal-btn-cancel" onClick={() => setShowClearConfirm(false)}>Keep Items</button>
-            <button className="profile-modal-btn profile-modal-btn-confirm" onClick={handleClearCart}>Clear Cart</button>
+            <button className="profile-modal-btn profile-modal-btn-cancel" onClick={() => setShowClearConfirm(false)}>{t('cart.keepItems')}</button>
+            <button className="profile-modal-btn profile-modal-btn-confirm" onClick={handleClearCart}>{t('cart.clearCart')}</button>
           </div>
         </div>
       </div>

@@ -19,6 +19,7 @@ const TablesPage = dynamic(() => import('@/components/pages/store-ops/TablesPage
 const KitchenDisplayPage = dynamic(() => import('@/components/pages/store-ops/KitchenDisplayPage'), { ssr: false });
 const InventoryPage = dynamic(() => import('@/components/pages/store-ops/InventoryPage'), { ssr: false });
 const StaffPage = dynamic(() => import('@/components/pages/store-ops/StaffPage'), { ssr: false });
+const ShiftsPage = dynamic(() => import('@/components/pages/store-ops/ShiftsPage'), { ssr: false });
 const RewardsPage = dynamic(() => import('@/components/pages/marketing/RewardsPage'), { ssr: false });
 const VouchersPage = dynamic(() => import('@/components/pages/marketing/VouchersPage'), { ssr: false });
 const CustomersPage = dynamic(() => import('@/components/pages/marketing/CustomersPage'), { ssr: false });
@@ -45,6 +46,7 @@ const PAGE_TITLES: Record<PageId, string> = {
   inventory: 'Inventory',
   tables: 'Tables',
   staff: 'Staff',
+  shifts: 'Shifts',
   rewards: 'Rewards',
   vouchers: 'Vouchers',
   promotions: 'Promotions',
@@ -82,6 +84,7 @@ function PageRenderer({ page, loading, dashboard, orders, ordersTotal, tables, l
       {page === 'tables' && <TablesPage tables={tables} selectedStore={selectedStore} storeObj={storeObj} onRefresh={fetchTables} stores={stores} onStoreChange={setSelectedStore} onViewOrder={() => { setOrdersStatus(''); handlePageChange('orders'); }} />}
 
       {page === 'staff' && <ErrorBoundary><StaffPage /></ErrorBoundary>}
+      {page === 'shifts' && <ShiftsPage />}
 
       {page === 'rewards' && <RewardsPage />}
       {page === 'vouchers' && <VouchersPage />}
