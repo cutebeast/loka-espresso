@@ -511,6 +511,7 @@ export default function InformationPage() {
                   : 'JPEG, PNG, MP4, WebM — Max 25MB. Landscape/horizontal (16:9) for in-article display.'}
                 folder={form.content_type}
                 allowVideo={true}
+                portrait={form.content_type === 'popup_banner'}
               />
             </div>
 
@@ -617,13 +618,38 @@ export default function InformationPage() {
   );
 }
 
-function ImageUploadField({ label, imageUrl, onSet, hint, folder, allowVideo }: { label: string; imageUrl: string; onSet: (url: string) => void; hint?: string; folder?: string; allowVideo?: boolean }) {
+function ImageUploadField({ label, imageUrl, onSet, hint, folder, allowVideo, portrait }: { label: string; imageUrl: string; onSet: (url: string) => void; hint?: string; folder?: string; allowVideo?: boolean; portrait?: boolean }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [ratioError, setRatioError] = useState('');
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setRatioError('');
+
+    // Validate aspect ratio for image files (skip video — can't read dimensions client-side)
+    if (portrait !== undefined && file.type.startsWith('image/')) {
+      try {
+        const dimensions = await new Promise<{w: number; h: number}>((resolve, reject) => {
+          const img = new window.Image();
+          img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+          img.onerror = () => reject(new Error('Failed to load image'));
+          img.src = URL.createObjectURL(file);
+        });
+        URL.revokeObjectURL(URL.createObjectURL(file));
+        const isPortrait = dimensions.h > dimensions.w;
+        if (portrait && !isPortrait) {
+          setRatioError('This content type requires a portrait/vertical image (height > width). Please select a portrait image.');
+          return;
+        }
+        if (!portrait && isPortrait) {
+          setRatioError('This content type requires a landscape/horizontal image (width > height). Please select a landscape image.');
+          return;
+        }
+      } catch { /* skip validation if image load fails */ }
+    }
+
     setUploading(true);
     try {
       const fd = new FormData();
@@ -639,11 +665,11 @@ function ImageUploadField({ label, imageUrl, onSet, hint, folder, allowVideo }: 
 
   const isVideo = imageUrl && /\.(mp4|webm)($|\?)/i.test(imageUrl);
   const formats = allowVideo ? 'JPEG, PNG, MP4, WebM' : 'JPEG, PNG';
-  const maxSize = 'Max 25MB';
 
   return (
     <div>
       <label className="iform-label">{label}</label>
+      {ratioError && <div style={{ color: '#DC2626', fontSize: 12, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}><i className="fas fa-exclamation-circle"></i> {ratioError}</div>}
       <div className="iuf-48">
         <input type="file" ref={fileRef} accept={allowVideo ? 'image/*,video/mp4,video/webm' : 'image/*'} onChange={handleUpload} className="iuf-49" />
         <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
