@@ -79,8 +79,13 @@ export default function OrderDetailPage() {
     finally { setReordering(false); }
   };
 
+  const CANCELLABLE = ['pending', 'confirmed'];
   const handleCancel = async () => {
     if (!order) return;
+    if (!CANCELLABLE.includes(order.status?.toLowerCase())) {
+      showToast('This order can no longer be cancelled', 'error');
+      return;
+    }
     setCancelling(true);
     try { await api.post(`/orders/${order.id}/cancel`); showToast('Order cancelled', 'info'); updateOrder(order.id, { status: 'cancelled' }); setOrder(o => o ? { ...o, status: 'cancelled' } : o); }
     catch { showToast('Failed to cancel', 'error'); }

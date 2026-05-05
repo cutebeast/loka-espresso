@@ -91,10 +91,10 @@ const iconOptions = [
 ];
 
 const contentTypeOptions = [
-  { value: 'information', label: 'Information' },
-  { value: 'product',     label: 'Product' },
-  { value: 'promotion',   label: 'Promotion' },
-  { value: 'system',      label: 'System' },
+  { value: 'information',  label: 'Information' },
+  { value: 'product',      label: 'Product' },
+  { value: 'popup_banner', label: 'Popup Banner' },
+  { value: 'system',       label: 'System' },
 ];
 
 export default function InformationPage() {
@@ -503,11 +503,12 @@ export default function InformationPage() {
 
             <div className="inf-11">
               <ImageUploadField
-                label="Card Image"
+                label={form.content_type === 'popup_banner' ? 'Image / Video' : 'Card Image'}
                 imageUrl={form.image_url}
                 onSet={(url) => setField('image_url', url)}
-                hint="Cover image shown on PWA card and article header."
+                hint={form.content_type === 'popup_banner' ? 'Cover image or video shown on PWA card.' : 'Cover image shown on PWA card and article header.'}
                 folder={form.content_type}
+                allowVideo={form.content_type === 'popup_banner'}
               />
             </div>
 
@@ -614,7 +615,7 @@ export default function InformationPage() {
   );
 }
 
-function ImageUploadField({ label, imageUrl, onSet, hint, folder }: { label: string; imageUrl: string; onSet: (url: string) => void; hint?: string; folder?: string }) {
+function ImageUploadField({ label, imageUrl, onSet, hint, folder, allowVideo }: { label: string; imageUrl: string; onSet: (url: string) => void; hint?: string; folder?: string; allowVideo?: boolean }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -631,20 +632,28 @@ function ImageUploadField({ label, imageUrl, onSet, hint, folder }: { label: str
         const data = await res.json();
         onSet(data.url);
       }
-    } catch { console.error('Image upload failed'); } finally { setUploading(false); }
+    } catch { console.error('Upload failed'); } finally { setUploading(false); }
   }
+
+  const isVideo = imageUrl && /\.(mp4|webm)($|\?)/i.test(imageUrl);
 
   return (
     <div>
       <label className="iform-label">{label}</label>
       <div className="iuf-48">
-        <input type="file" ref={fileRef} accept="image/*" onChange={handleUpload} className="iuf-49" />
+        <input type="file" ref={fileRef} accept={allowVideo ? 'image/*,video/mp4,video/webm' : 'image/*'} onChange={handleUpload} className="iuf-49" />
         <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-          {uploading ? 'Uploading...' : 'Upload'}
+          {uploading ? 'Uploading...' : allowVideo ? 'Upload Image/Video' : 'Upload'}
         </button>
         {imageUrl && (
           <>
-            <img src={imageUrl} alt="" width={60} height={40} className="iuf-50" style={{ borderRadius: 4, objectFit: 'cover' }} />
+            {isVideo ? (
+              <span className="iuf-50" style={{ width: 60, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', borderRadius: 4, fontSize: 10, color: '#3B4A1A' }}>
+                <i className="fas fa-video" style={{ marginRight: 4 }}></i>MP4
+              </span>
+            ) : (
+              <img src={imageUrl} alt="" width={60} height={40} className="iuf-50" style={{ borderRadius: 4, objectFit: 'cover' }} />
+            )}
             <button type="button" className="btn btn-sm iuf-51" onClick={() => onSet('')} ><i className="fas fa-times"></i></button>
           </>
         )}

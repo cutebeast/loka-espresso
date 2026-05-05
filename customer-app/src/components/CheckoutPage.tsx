@@ -194,9 +194,8 @@ export default function CheckoutPage() {
             <div className="co-payment-info"><div className="co-payment-label">Cash on Delivery</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div>
           </div>}
-          <div className="co-voucher-hint">
-            More payment options (Visa, DuitNow, TnG) coming soon
-          </div>
+          {/* Additional payment methods hidden until gateway integration */}
+          {/* <div className="co-voucher-hint">More payment options (Visa, DuitNow, TnG) coming soon</div> */}
         </div>
         <div className="co-summary-card">
           <div className="co-section-title">Order Summary</div>

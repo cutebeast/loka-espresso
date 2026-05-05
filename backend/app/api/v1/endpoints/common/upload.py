@@ -12,12 +12,9 @@ from app.models.user import RoleIDs
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
 
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB
 MAX_DOC_SIZE = 10 * 1024 * 1024  # 10MB
-MAX_IMAGE_WIDTH = 1200  # px
-MAX_IMAGE_HEIGHT = 1200  # px
-JPEG_QUALITY = 85
-ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png"}
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "video/mp4", "video/webm"}
 ALLOWED_DOC_TYPES = {"image/jpeg", "image/png", "application/pdf",
                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                      "application/vnd.ms-excel", "text/csv"}
@@ -25,6 +22,8 @@ ALLOWED_DOC_TYPES = {"image/jpeg", "image/png", "application/pdf",
 MAGIC_BYTES = {
     "image/jpeg": [(b"\xff\xd8\xff",)],
     "image/png": [(b"\x89PNG\r\n\x1a\n",)],
+    "video/mp4": [(b"ftyp",)],  # MP4 starts with ftyp box at offset 4
+    "video/webm": [(b"\x1a\x45\xdf\xa3",)],  # WebM/Matroska magic
     "application/pdf": [(b"%PDF",)],
 }
 
@@ -84,7 +83,7 @@ async def _upload_validated(file: UploadFile, folder: str) -> dict:
     """Validate, process (resize/optimize), and save uploaded image."""
     settings = get_settings()
     if not file.content_type or file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG and PNG images accepted")
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, MP4, and WebM files accepted")
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB")
