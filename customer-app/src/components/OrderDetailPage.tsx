@@ -166,7 +166,7 @@ export default function OrderDetailPage() {
             <div className="od-section-title">{order.order_type === 'delivery' ? 'Delivery Info' : 'Contact'}</div>
             {order.recipient_name && (
               <div className="od-info-row">
-                <div className="od-info-icon green"><User size={14} /></div>
+                <div className="od-info-icon green"><User color="#8A8078" size={14} /></div>
                 <div className="od-info-text">
                   <div className="od-info-label">{order.recipient_name}</div>
                 </div>
@@ -197,7 +197,7 @@ export default function OrderDetailPage() {
         <div className="od-section">
           <div className="od-section-title">Order Type</div>
           <div className="od-info-row" style={{ padding: 0 }}>
-            <div className="od-info-icon green">{order.order_type === 'delivery' ? <Truck size={14} /> : order.order_type === 'dine_in' ? <Utensils size={14} /> : <ShoppingBag size={14} />}</div>
+            <div className="od-info-icon green">{order.order_type === 'delivery' ? <Truck color="#C4893A" size={14} /> : order.order_type === 'dine_in' ? <Utensils color="#4A2210" size={14} /> : <ShoppingBag color="#4A2210" size={14} />}</div>
             <div className="od-info-text">
               <div className="od-info-label">{order.order_type === 'delivery' ? 'Delivery' : order.order_type === 'dine_in' ? 'Dine-in' : 'Pickup'}</div>
               <div className="od-info-value">{order.store_name ? `From ${order.store_name}` : order.store_address || `Store #${order.store_id || '?'}`}</div>

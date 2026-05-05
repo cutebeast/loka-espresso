@@ -391,7 +391,7 @@ export default function AppShell() {
 
       <div className="rotate-prompt">
         <div className="rotate-prompt-inner">
-          <div className="rotate-prompt-icon"><Smartphone size={32} /></div>
+          <div className="rotate-prompt-icon"><Smartphone color="#4A4038" size={32} /></div>
           <p className="rotate-prompt-text">Please rotate your device to portrait</p>
         </div>
       </div>

@@ -185,7 +185,7 @@ export default function HelpSupportPage() {
         ) : (
           /* Celebratory Success */
           <div className="support-celebratory">
-            <div className="support-celebratory-icon"><PartyPopper size={40} /></div>
+            <div className="support-celebratory-icon"><PartyPopper color="#C9A84C" size={40} /></div>
             <h3>Message Sent!</h3>
             <p>Thank you for reaching out. Our team will get back to you within 24 hours.</p>
             <button className="support-celebratory-back" onClick={() => setPage('home')}>

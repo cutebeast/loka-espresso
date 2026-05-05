@@ -299,7 +299,7 @@ export default function MenuPage() {
                           </div>
                         )}
                         {item.is_featured && (
-                          <span className="menu-img-badge"><Star size={12} fill="currentColor" /></span>
+                          <span className="menu-img-badge"><Star color="#C9A84C" size={12} fill="currentColor" /></span>
                         )}
                       </div>
                       <div className="menu-product-info">

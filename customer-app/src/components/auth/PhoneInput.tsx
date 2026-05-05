@@ -149,7 +149,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
                 loading="eager"
               />
               <span className="country-selector-code">{selectedCountry.dialCode}</span>
-              <ChevronDown size={10} className="country-selector-chevron" />
+              <ChevronDown color="#8A8078" size={10} className="country-selector-chevron" />
             </button>
 
             <span className="phone-divider" />
@@ -217,7 +217,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
           {/* Search input */}
           <div className="country-search-wrap">
             <div className="country-search-inner">
-              <Search size={14} className="country-search-icon" />
+              <Search color="#8A8078" size={14} className="country-search-icon" />
               <input
                 type="text"
                 className="country-search-input"
@@ -233,7 +233,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
                   onClick={() => setCountrySearch('')}
                   aria-label="Clear search"
                 >
-                  <X size={14} />
+                  <X color="#8A8078" size={14} />
                 </button>
               )}
             </div>
@@ -302,7 +302,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
               <>
                 <div className="legal-updated-banner">
                   <div className="legal-updated-icon">
-                    <Calendar size={16} />
+                    <Calendar color="#4A4038" size={16} />
                   </div>
                   <div>
                     <div className="legal-updated-label">Last Updated</div>

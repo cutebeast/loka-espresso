@@ -12,7 +12,7 @@ export default function DineInTableCard({ tableNumber, storeName, onScanDifferen
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-copper-soft ditc-card">
       <div className="w-12 h-12 rounded-[14px] bg-copper flex items-center justify-center shrink-0">
-        <span className="ditc-emoji"><Utensils size={24} /></span>
+        <span className="ditc-emoji"><Utensils color="#4A2210" size={24} /></span>
       </div>
       <div className="flex-1">
         <p className="text-base font-bold text-brown">

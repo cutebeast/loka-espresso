@@ -250,7 +250,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
                   <div className={`info-card-tag ${tagClass}`}>{tag}</div>
                 </div>
                 <div className="info-card-arrow">
-                  <ChevronRight size={16} />
+                  <ChevronRight color="#8A8078" size={16} />
                 </div>
               </div>
             );
@@ -343,10 +343,10 @@ function ImageCarousel({ images }: { images: string[] }) {
       {total > 1 && (
         <>
           <button className="info-carousel-arrow info-carousel-arrow-left" onClick={prev} aria-label="Previous">
-            <ChevronLeft size={14} strokeWidth={3} />
+            <ChevronLeft color="#8A8078" size={14} strokeWidth={3} />
           </button>
           <button className="info-carousel-arrow info-carousel-arrow-right" onClick={next} aria-label="Next">
-            <ChevronRight size={14} strokeWidth={3} />
+            <ChevronRight color="#8A8078" size={14} strokeWidth={3} />
           </button>
         </>
       )}

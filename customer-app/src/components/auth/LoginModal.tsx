@@ -229,7 +229,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
               <button type="button" className="country-selector" onClick={() => setShowCountryPicker(true)}>
                 <img className="country-selector-flag" src={flag} alt={selectedCountry.name} width="24" height="16" />
                 <span className="country-selector-code">{selectedCountry.dialCode}</span>
-                <ChevronDown size={10} className="country-selector-chevron" />
+                <ChevronDown color="#8A8078" size={10} className="country-selector-chevron" />
               </button>
               <span className="phone-divider" />
               <input ref={phoneInputRef} type="tel" value={phoneValue} onChange={handlePhoneChange}
@@ -282,7 +282,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
           <form onSubmit={handleProfileSubmit} className="flex flex-col gap-4">
             <div className="flex items-center gap-4 mb-2">
               <div className={`lm-avatar ${profileName ? 'lm-avatar-filled' : ''}`}>
-                {profileName ? profileName.trim()[0].toUpperCase() : <User size={24} />}
+                {profileName ? profileName.trim()[0].toUpperCase() : <User color="#8A8078" size={24} />}
               </div>
               <div>
                 <p className="text-xs text-text-muted font-medium">Your account</p>
@@ -314,12 +314,12 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
         <div className="country-picker-body">
           <div className="country-search-wrap">
             <div className="country-search-inner">
-              <Search size={14} className="country-search-icon" />
+              <Search color="#8A8078" size={14} className="country-search-icon" />
               <input type="text" className="country-search-input" placeholder="Search by name or code…"
                 value={countrySearch} onChange={(e) => setCountrySearch(e.target.value)} autoFocus />
               {countrySearch && (
                 <button type="button" className="country-search-clear" onClick={() => setCountrySearch('')}>
-                  <X size={14} />
+                  <X color="#8A8078" size={14} />
                 </button>
               )}
             </div>
@@ -334,7 +334,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
                 <span className="country-item-name">{country.name}</span>
                 <span className="country-item-code">{country.dialCode}</span>
                 {country.code === selectedCountry.code && (
-                  <div className="country-item-check"><Check size={14} /></div>
+                  <div className="country-item-check"><Check color="#3B4A1A" size={14} /></div>
                 )}
               </button>
             ))}
