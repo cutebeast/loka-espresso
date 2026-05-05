@@ -1,8 +1,16 @@
-# Final Report — 2026-05-04
+# Final Report — 2026-05-05
 
 ## Summary
 
-**Total work:** 17 commits across backend, admin frontend, PWA, tests, docs, and scripts.
+**Total work:** 25 commits across backend, admin frontend, PWA, tests, docs, and scripts.
+
+| Area | What changed |
+|------|-------------|
+| Backend | 7 fixes + staff PIN self-service + wallet/deduct move + 3 dead endpoint deletions |
+| Admin Frontend | Zustand refactor, wallet add/deduct, shifts tab, clock-in/out, low stock badge, broadcast send, profile PIN update |
+| PWA | Design audit: emoji→lucide, inline SVG→lucide, brand colors, dead Toast deletion, 5 boilerplate SVGs removed |
+| Tests | 70 passing (17 existing + 53 new integration) |
+| Scripts | 28 broken paths fixed |
 
 | Area | What changed |
 |------|-------------|
