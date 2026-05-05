@@ -27,6 +27,5 @@ export * from './SearchBar';
 export * from './Select';
 export * from './StatusChip';
 export * from './Tabs';
-export * from './Toast';
 export * from './Toggle';
 export * from './Avatar';

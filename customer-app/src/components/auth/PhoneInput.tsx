@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState, useMemo } from 'react';
+import { Search, X, ChevronDown, Calendar } from 'lucide-react';
 import { normalizePhone, formatPhoneForDisplay } from '@/lib/phone';
 import { DEFAULT_COUNTRY, ALL_COUNTRIES, searchCountries, flagUrl } from '@/lib/countries';
 import type { Country } from '@/lib/countries';
@@ -148,9 +149,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
                 loading="eager"
               />
               <span className="country-selector-code">{selectedCountry.dialCode}</span>
-              <svg className="country-selector-chevron" width="10" height="6" viewBox="0 0 10 6" fill="none">
-                <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ChevronDown size={10} className="country-selector-chevron" />
             </button>
 
             <span className="phone-divider" />
@@ -218,10 +217,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
           {/* Search input */}
           <div className="country-search-wrap">
             <div className="country-search-inner">
-              <svg className="country-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <path d="M21 21l-4.35-4.35" />
-              </svg>
+              <Search size={14} className="country-search-icon" />
               <input
                 type="text"
                 className="country-search-input"
@@ -237,7 +233,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
                   onClick={() => setCountrySearch('')}
                   aria-label="Clear search"
                 >
-                  <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  <X size={14} />
                 </button>
               )}
             </div>
@@ -306,7 +302,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
               <>
                 <div className="legal-updated-banner">
                   <div className="legal-updated-icon">
-                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <Calendar size={16} />
                   </div>
                   <div>
                     <div className="legal-updated-label">Last Updated</div>

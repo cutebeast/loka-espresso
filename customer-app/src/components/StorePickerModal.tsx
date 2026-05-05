@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Store, MapPin, Check, X, Clock, Navigation } from 'lucide-react';
+import { Store, MapPin, Check, X, Clock, Navigation, Search } from 'lucide-react';
 import { getStoresWithDistance } from '@/lib/geolocation';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 import type { Store as StoreType } from '@/lib/api';
@@ -83,9 +83,7 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
 
         <div className="store-picker-search-wrap">
           <div className="store-picker-search-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="store-picker-search-icon" aria-hidden>
-              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
+            <Search size={16} className="store-picker-search-icon" strokeWidth={2} />
             <input
               type="text"
               value={storeSearch}

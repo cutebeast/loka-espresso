@@ -14,6 +14,8 @@ import {
   Pen,
   Trash2,
   Sliders,
+  Utensils,
+  Store,
 } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -144,7 +146,7 @@ export default function CartPage() {
         {orderMode === 'dine_in' && dineInSession ? (
           <div className="cart-context-card dinein">
             <div className="cart-context-icon copper">
-              <span className="cart-emoji">🍽️</span>
+              <span className="cart-emoji"><Utensils size={16} /></span>
             </div>
             <div className="cart-context-text">
               <p className="cart-context-title">Table {dineInSession.tableNumber} · {dineInSession.storeName}</p>
@@ -160,7 +162,7 @@ export default function CartPage() {
         ) : (
           <div className="cart-context-card store">
             <div className="cart-context-icon copper-light">
-              <span className="cart-emoji">🏪</span>
+              <span className="cart-emoji"><Store size={16} /></span>
             </div>
             <div className="cart-context-text">
               <p className="cart-context-title">{selectedStore?.name || 'Select a store'}</p>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Wallet, Crown, Award, Gift, Ticket } from 'lucide-react';
 import { useFitText } from '@/hooks/useFitText';
 
 interface WalletCardProps {
@@ -36,7 +36,7 @@ export default function WalletCard({ isGuest, isAuthenticated, balance, points, 
     return (
       <div className="wallet-card wallet-card-guest" onClick={onSignIn}>
         <div className="wallet-row">
-          <span className="balance-label">💰 Loka Wallet</span>
+          <span className="balance-label"><Wallet size={16} /> Loka Wallet</span>
         </div>
         <div className="wallet-row wallet-row-mt">
           <span className="guest-wallet-text">Sign in to access wallet & rewards</span>
@@ -51,7 +51,7 @@ export default function WalletCard({ isGuest, isAuthenticated, balance, points, 
   return (
     <div className="wallet-card">
       <div className="wallet-row">
-        <span className="balance-label">💰 Loka Balance</span>
+        <span className="balance-label"><Wallet size={16} /> Loka Balance</span>
         <button
           className="homepage-topup-btn"
           onClick={(e) => { e.stopPropagation(); onTopUp(); }}
@@ -65,21 +65,21 @@ export default function WalletCard({ isGuest, isAuthenticated, balance, points, 
           <span className="amount-number" ref={amountRef}>{formatRM(balance)}</span>
         </span>
         <span className="homepage-points-badge">
-          <span className="homepage-points-icon">👑</span>
+          <span className="homepage-points-icon"><Crown size={16} /></span>
           <span className="homepage-points-value">{formatPoints(points)} pts</span>
         </span>
       </div>
       <div className="wallet-tier-row">
         <div className="wallet-tier-badge">
-          🏆 {tier} Member
+          <Award size={14} /> {tier} Member
         </div>
       </div>
       <div className="wallet-chip-row">
         <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onRewards(); }}>
-          🎁 Rewards
+          <Gift size={14} /> Rewards
         </span>
         <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onVouchers(); }}>
-          🎟️ Vouchers
+          <Ticket size={14} /> Vouchers
         </span>
       </div>
     </div>

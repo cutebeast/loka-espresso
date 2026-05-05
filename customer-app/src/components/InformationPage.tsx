@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, ChevronRight, Info, Clock, Star, Share2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ChevronLeft, Info, Clock, Star, Share2 } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { InformationCard as ApiInformationCard } from '@/lib/api';
@@ -343,10 +343,10 @@ function ImageCarousel({ images }: { images: string[] }) {
       {total > 1 && (
         <>
           <button className="info-carousel-arrow info-carousel-arrow-left" onClick={prev} aria-label="Previous">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+            <ChevronLeft size={14} strokeWidth={3} />
           </button>
           <button className="info-carousel-arrow info-carousel-arrow-right" onClick={next} aria-label="Next">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <ChevronRight size={14} strokeWidth={3} />
           </button>
         </>
       )}

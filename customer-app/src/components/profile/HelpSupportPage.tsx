@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp, Clock, Package, Gift, AlertCircle, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Clock, Package, Gift, AlertCircle, MessageSquare, PartyPopper } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
@@ -185,7 +185,7 @@ export default function HelpSupportPage() {
         ) : (
           /* Celebratory Success */
           <div className="support-celebratory">
-            <div className="support-celebratory-icon">🎉</div>
+            <div className="support-celebratory-icon"><PartyPopper size={40} /></div>
             <h3>Message Sent!</h3>
             <p>Thank you for reaching out. Our team will get back to you within 24 hours.</p>
             <button className="support-celebratory-back" onClick={() => setPage('home')}>

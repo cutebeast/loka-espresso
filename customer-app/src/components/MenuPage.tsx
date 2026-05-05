@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Search, X, ArrowLeft, Plus, Coffee } from 'lucide-react';
+import { Search, X, ArrowLeft, Plus, Coffee, Star } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
@@ -299,7 +299,7 @@ export default function MenuPage() {
                           </div>
                         )}
                         {item.is_featured && (
-                          <span className="menu-img-badge">⭐</span>
+                          <span className="menu-img-badge"><Star size={12} fill="currentColor" /></span>
                         )}
                       </div>
                       <div className="menu-product-info">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  ArrowLeft, Wallet, Banknote, CheckCircle2, Loader2, UtensilsCrossed, Coffee, Tag, QrCode, ChevronRight,
+  ArrowLeft, Wallet, Banknote, CheckCircle2, Loader2, UtensilsCrossed, Coffee, Tag, QrCode, ChevronRight, Utensils, Store,
 } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -131,13 +131,13 @@ export default function CheckoutPage() {
         {orderMode === 'dine_in' && dineInSession && (
           <div className="checkout-section">
             <div className="co-section-title">Table</div>
-            <div className="co-store-info"><div className="co-store-icon">🍽️</div><div><div className="co-store-name">Table {dineInSession.tableNumber}</div><div className="co-store-address">{dineInSession.storeName}</div></div></div>
+            <div className="co-store-info"><div className="co-store-icon"><Utensils size={16} /></div><div><div className="co-store-name">Table {dineInSession.tableNumber}</div><div className="co-store-address">{dineInSession.storeName}</div></div></div>
           </div>
         )}
         {(orderMode === 'pickup' || orderMode === 'delivery') && selectedStore && (
           <div className="checkout-section">
             <div className="co-section-title">Store</div>
-            <div className="co-store-info"><div className="co-store-icon">🏪</div><div><div className="co-store-name">{selectedStore.name}</div><div className="co-store-address">{selectedStore.address}</div></div></div>
+            <div className="co-store-info"><div className="co-store-icon"><Store size={16} /></div><div><div className="co-store-name">{selectedStore.name}</div><div className="co-store-address">{selectedStore.address}</div></div></div>
           </div>
         )}
         {orderMode === 'delivery' && (

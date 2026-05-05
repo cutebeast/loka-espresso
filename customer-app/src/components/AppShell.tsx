@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Smartphone } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 
@@ -390,7 +391,7 @@ export default function AppShell() {
 
       <div className="rotate-prompt">
         <div className="rotate-prompt-inner">
-          <div className="rotate-prompt-icon">📱</div>
+          <div className="rotate-prompt-icon"><Smartphone size={32} /></div>
           <p className="rotate-prompt-text">Please rotate your device to portrait</p>
         </div>
       </div>

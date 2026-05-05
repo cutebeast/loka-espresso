@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Search, X, Check, ChevronDown, User } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { BottomSheet } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
@@ -228,9 +229,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
               <button type="button" className="country-selector" onClick={() => setShowCountryPicker(true)}>
                 <img className="country-selector-flag" src={flag} alt={selectedCountry.name} width="24" height="16" />
                 <span className="country-selector-code">{selectedCountry.dialCode}</span>
-                <svg className="country-selector-chevron" width="10" height="6" viewBox="0 0 10 6" fill="none">
-                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronDown size={10} className="country-selector-chevron" />
               </button>
               <span className="phone-divider" />
               <input ref={phoneInputRef} type="tel" value={phoneValue} onChange={handlePhoneChange}
@@ -283,7 +282,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
           <form onSubmit={handleProfileSubmit} className="flex flex-col gap-4">
             <div className="flex items-center gap-4 mb-2">
               <div className={`lm-avatar ${profileName ? 'lm-avatar-filled' : ''}`}>
-                {profileName ? profileName.trim()[0].toUpperCase() : '👤'}
+                {profileName ? profileName.trim()[0].toUpperCase() : <User size={24} />}
               </div>
               <div>
                 <p className="text-xs text-text-muted font-medium">Your account</p>
@@ -315,12 +314,12 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
         <div className="country-picker-body">
           <div className="country-search-wrap">
             <div className="country-search-inner">
-              <svg className="country-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <Search size={14} className="country-search-icon" />
               <input type="text" className="country-search-input" placeholder="Search by name or code…"
                 value={countrySearch} onChange={(e) => setCountrySearch(e.target.value)} autoFocus />
               {countrySearch && (
                 <button type="button" className="country-search-clear" onClick={() => setCountrySearch('')}>
-                  <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  <X size={14} />
                 </button>
               )}
             </div>
@@ -335,7 +334,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
                 <span className="country-item-name">{country.name}</span>
                 <span className="country-item-code">{country.dialCode}</span>
                 {country.code === selectedCountry.code && (
-                  <div className="country-item-check"><svg viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg></div>
+                  <div className="country-item-check"><Check size={14} /></div>
                 )}
               </button>
             ))}
