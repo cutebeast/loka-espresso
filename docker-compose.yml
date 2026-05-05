@@ -41,8 +41,10 @@ services:
     command: sh -c "chown -R appuser:appuser /app/uploads && exec su appuser -c 'uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2'"
     env_file:
       - .env
+      - .env.local
     environment:
       DATABASE_URL: postgresql+asyncpg://fnb:${DB_PASSWORD}@db:5432/fnb
+      REDIS_URL: redis://redis:6379/0
       UPLOAD_DIR: /app/uploads
     ports:
       - "3002:8000"
