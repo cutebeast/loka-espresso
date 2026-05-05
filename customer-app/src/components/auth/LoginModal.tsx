@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Search, X, Check, ChevronDown, User } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { haptic } from '@/lib/haptics';
 import { BottomSheet } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -140,7 +141,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
     const code = otp.join('');
     if (code.length !== 6) { setOtpError('Please enter the complete 6-digit code'); return; }
     setOtpLoading(true); setOtpError('');
-    try { const data = await verifyOtp(code); if (!data.is_new_user) finishAuth(); }
+      try { const data = await verifyOtp(code); haptic('success'); if (!data.is_new_user) finishAuth(); }
     catch (err) { showToast(apiError(err, 'Invalid OTP. Please try again.'), 'error'); setOtp(['', '', '', '', '', '']); otpRefs.current[0]?.focus(); }
     finally { setOtpLoading(false); }
   };

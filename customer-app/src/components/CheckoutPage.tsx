@@ -5,6 +5,7 @@ import {
   ArrowLeft, Wallet, Banknote, CheckCircle2, Loader2, UtensilsCrossed, Coffee, Tag, QrCode, ChevronRight, Utensils, Store,
 } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
+import { haptic } from '@/lib/haptics';
 import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useConfigStore } from '@/stores/configStore';
@@ -92,6 +93,7 @@ export default function CheckoutPage() {
         tableId: dineInSession?.tableId,
       });
       clearCheckoutDraft();
+      haptic('success');
       setPage('order-detail', { orderId: result.id });
     } catch (e: any) { showToast(e?.response?.data?.detail || 'Order failed', 'error'); }
     finally { setPlacing(false); }

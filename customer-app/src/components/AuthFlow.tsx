@@ -185,9 +185,9 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
             transition={reducedMotion ? { duration: 0 } : undefined}
             className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
           >
-            <div className="bg-white rounded-2xl px-8 py-6 shadow-xl">
-              <div className="w-8 h-8 border-3 border-[#384B16] border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-sm text-[#6A7A8A] mt-3">Please wait...</p>
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 border-3" style={{ borderColor: '#3B4A1A', borderTopColor: 'transparent', borderRadius: '50%' }} />
+              <p style={{ fontSize: '0.875rem', color: '#8A8078', marginTop: '0.75rem' }}>Please wait...</p>
             </div>
           </motion.div>
         )}

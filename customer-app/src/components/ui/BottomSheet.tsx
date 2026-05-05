@@ -3,6 +3,7 @@
 import { ReactNode, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ interface BottomSheetProps {
    ============================================ */
 
 export function BottomSheet({ isOpen, onClose, title, children, footer }: BottomSheetProps) {
+  const sheetRef = useFocusTrap<HTMLDivElement>(isOpen);
   return (
     <AnimatePresence>
       {isOpen && (
@@ -31,6 +33,7 @@ export function BottomSheet({ isOpen, onClose, title, children, footer }: Bottom
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
+            ref={sheetRef}
             drag="y"
             dragConstraints={{ top: 0 }}
             dragElastic={0.15}

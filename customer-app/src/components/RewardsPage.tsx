@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, Crown, Star, ChevronRight, Gift, Calendar, List, Circle, CheckCircle } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
+import { haptic } from '@/lib/haptics';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { Reward } from '@/lib/api';
@@ -39,8 +40,8 @@ export default function RewardsPage() {
     try {
       const res = await api.post(`/rewards/${reward.id}/redeem`);
       const code = res.data?.redemption_code || res.data?.code || '';
-      if (code) { setRedemptionSuccess(true); setRedemptionCode(code); }
-      else { setRedemptionSuccess(true); showToast('Reward redeemed!', 'success'); }
+      if (code) { haptic('success'); setRedemptionSuccess(true); setRedemptionCode(code); }
+      else { haptic('success'); setRedemptionSuccess(true); showToast('Reward redeemed!', 'success'); }
     } catch { showToast('Failed to redeem', 'error'); }
     finally { setRedeeming(null); }
   };

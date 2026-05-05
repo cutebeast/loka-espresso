@@ -51,6 +51,10 @@ export default function HelpSupportPage() {
       showToast('Please fill all required fields', 'error');
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      showToast('Please enter a valid email address', 'error');
+      return;
+    }
     setSending(true);
     try {
       await api.post('/feedback', {

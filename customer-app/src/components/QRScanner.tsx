@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Zap, ZapOff, Camera, CameraOff, AlertTriangle } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { haptic } from '@/lib/haptics';
 import { LOKA } from '@/lib/tokens';
 
 interface QRScannerProps {
@@ -40,6 +41,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
+          haptic('success');
           onScan(decodedText);
           stopScanner();
         },
