@@ -39,11 +39,11 @@ export default function WalletPage() {
     if (!useAuthStore.getState().isAuthenticated) return;
     try {
       const res = await api.get('/wallet');
-      setBalance(res.data?.balance ?? balance);
+      setBalance(res.data?.balance ?? 0);
     } catch (err) { console.error('[WalletPage] Failed to fetch balance:', err);
       // keep existing
     }
-  }, [balance, setBalance]);
+  }, [setBalance]);
 
   const fetchTransactions = useCallback(async () => {
     setLoadingTx(true);

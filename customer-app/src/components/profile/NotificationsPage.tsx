@@ -70,7 +70,7 @@ function getDateGroup(dateStr?: string): string {
 }
 
 export default function NotificationsPage() {
-  const { setPage } = useUIStore();
+  const { setPage, showToast } = useUIStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -99,13 +99,19 @@ export default function NotificationsPage() {
     } catch { console.error('[Notifications] Failed to mark read'); }
   };
 
+  const [markingAll, setMarkingAll] = useState(false);
   const handleMarkAllRead = async () => {
     const unread = notifications.filter((n) => !n.is_read);
     if (unread.length === 0) return;
+    setMarkingAll(true);
     try {
-      await Promise.all(unread.map((n) => api.put(`/notifications/${n.id}/read`)));
+      // Sequential to avoid flooding the API; if one fails, stop and show error
+      for (const n of unread) {
+        await api.put(`/notifications/${n.id}/read`);
+      }
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    } catch { console.error('[Notifications] Failed to mark read'); }
+    } catch { showToast('Failed to mark all as read', 'error'); }
+    finally { setMarkingAll(false); }
   };
 
   /* Filter */
@@ -136,8 +142,8 @@ export default function NotificationsPage() {
 
       {/* Mark all as read */}
       {unreadCount > 0 && (
-        <button className="notif-mark-read" onClick={handleMarkAllRead}>
-          ✓ Mark all as read
+        <button className="notif-mark-read" onClick={handleMarkAllRead} disabled={markingAll}>
+          {markingAll ? 'Marking…' : '✓ Mark all as read'}
         </button>
       )}
 

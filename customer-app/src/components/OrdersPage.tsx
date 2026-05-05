@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { RefreshCw, ShoppingBag, Receipt, Clock, RotateCcw } from 'lucide-react';
+import { RefreshCw, ShoppingBag, Receipt, Clock, RotateCcw, Coffee } from 'lucide-react';
 import { useOrderStore } from '@/stores/orderStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -9,7 +9,6 @@ import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
 import type { Order, CartItem } from '@/lib/api';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
-import { Coffee } from 'lucide-react';
 
 function getStatusBadge(status: string): { label: string; cls: string } {
   const s = status?.toLowerCase();
@@ -42,7 +41,6 @@ export default function OrdersPage() {
   const { orders, setOrders, setCurrentOrder, isLoading, setIsLoading } = useOrderStore();
   const { setPage, showToast } = useUIStore();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
 
   const fetchOrders = useCallback(async () => {
     if (!useAuthStore.getState().isAuthenticated) return;
@@ -102,7 +100,7 @@ export default function OrdersPage() {
   const [hasMorePast, setHasMorePast] = useState(true);
   const pastOrdersDisplay = allPastOrders.slice(0, 5);
 
-  const loadPastOrders = async (reset = false) => {
+  const loadPastOrders = useCallback(async (reset = false) => {
     setLoadingPast(true);
     try {
       const p = reset ? 1 : pastPage + 1;
@@ -119,9 +117,9 @@ export default function OrdersPage() {
       setHasMorePast(past.length === 10);
     } catch (err) { console.error('[OrdersPage] Failed to load past orders:', err); }
     finally { setLoadingPast(false); }
-  };
+  }, [pastPage]);
 
-  useEffect(() => { loadPastOrders(true); }, []);
+  useEffect(() => { loadPastOrders(true); }, [loadPastOrders]);
 
   if (!isLoading && orders.length === 0) {
     return (

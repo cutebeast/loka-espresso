@@ -7,8 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
 import api from '@/lib/api';
-import type { MenuItem, PromoBanner, InformationCard, CustomizationOption } from '@/lib/api';
-import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
+import type { MenuItem, PromoBanner, InformationCard } from '@/lib/api';
 
 import { HomeCarousel, WalletCard, PromotionsSection } from './home';
 
@@ -26,9 +25,6 @@ export default function HomePage() {
   const [productCards, setProductCards] = useState<InformationCard[]>([]);
   const [loadingInfo, setLoadingInfo] = useState(true);
   const isLoading = loadingFeatured || loadingBanners || loadingInfo;
-  const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
-  const [availableOptions, setAvailableOptions] = useState<CustomizationOption[]>([]);
-  const [loadingOptions, _setLoadingOptions] = useState(false);
 
   const loadFeatured = useCallback(async () => {
     setLoadingFeatured(true);
@@ -121,10 +117,6 @@ export default function HomePage() {
     addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, base_price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id, customization_count: item.customization_count ?? 0 });
   };
 
-  const handleCustomizeAdd = (_item: MenuItem, _quantity: number, _opts: unknown[], _totalPrice: number) => {
-    setCustomizeItem(null);
-  };
-
   const pageVariants = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { duration: 0.3 } },
@@ -183,17 +175,6 @@ export default function HomePage() {
         </motion.div>
       </motion.div>
 
-      <ItemCustomizeSheet
-        item={customizeItem}
-        isOpen={!!customizeItem}
-        onClose={() => {
-          setCustomizeItem(null);
-          setAvailableOptions([]);
-        }}
-        onAdd={handleCustomizeAdd}
-        loadingOptions={loadingOptions}
-        customizations={availableOptions}
-      />
     </>
   );
 }

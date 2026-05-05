@@ -1,25 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useUIStore } from '@/stores/uiStore';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
 
 export function useNotifications() {
-  const toast = useUIStore((s) => s.toast);
-  const hideToast = useUIStore((s) => s.hideToast);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [unreadCount, setUnreadCount] = useState(0);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Toast auto-hide
-  useEffect(() => {
-    if (toast) {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = setTimeout(() => hideToast(), 3000);
-    }
-    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
-  }, [toast, hideToast]);
+  // Note: Toast auto-dismiss is handled by the Toast component itself
+  // (5s default, 6s if actions present). Do NOT add a second timer here.
 
   const fetchUnreadCount = useCallback(async () => {
     if (!isAuthenticated) return;

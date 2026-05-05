@@ -11,11 +11,11 @@ import {
   Coffee,
   QrCode,
   X,
-  Pen,
   Trash2,
   Sliders,
   Utensils,
   Store,
+  MapPin,
 } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -63,7 +63,6 @@ export default function CartPage() {
   const [editOptions, setEditOptions] = useState<ApiCustomOption[]>([]);
   const [editLoading, setEditLoading] = useState(false);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
-
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
   const total = subtotal + deliveryFee;

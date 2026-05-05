@@ -6,17 +6,9 @@ import { Search, X, ArrowLeft, Plus, Coffee, Star, RefreshCw } from 'lucide-reac
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
-import type { MenuItem, CustomizationOption } from '@/lib/api';
+import type { MenuItem } from '@/lib/api';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
-import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
-
-interface SelectedOption {
-  id: number;
-  name: string;
-  option_type: string;
-  price_adjustment: number;
-}
 
 export default function MenuPage() {
   const {
@@ -39,10 +31,7 @@ export default function MenuPage() {
   const [loadError, setLoadError] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
-  const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [availableOptions, setAvailableOptions] = useState<CustomizationOption[]>([]);
-  const [loadingOptions, setLoadingOptions] = useState(false);
+
   const [selectedDietaryTag, setSelectedDietaryTag] = useState<string | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
 
@@ -96,39 +85,9 @@ export default function MenuPage() {
     };
   }, [categories, menuItems]);
 
-  const loadCustomizations = useCallback(async (item: MenuItem) => {
-    setLoadingOptions(true);
-    try {
-      const res = await api.get(`/menu/items/${item.id}/customizations`);
-      setAvailableOptions(res.data ?? []);
-    } catch {
-      setAvailableOptions(item.customization_options ?? []);
-    } finally {
-      setLoadingOptions(false);
-    }
-  }, []);
-
   const openItem = useCallback((item: MenuItem) => {
     addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, base_price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id, customization_count: item.customization_count ?? 0 });
   }, [addItem, selectedStore?.id]);
-
-  const handleSheetAdd = useCallback(
-    (item: MenuItem, quantity: number, customizations: SelectedOption[], totalPrice: number) => {
-      addItem({
-        menu_item_id: item.id,
-        name: item.name,
-        price: totalPrice,
-        base_price: item.base_price,
-        quantity,
-        store_id: selectedStore?.id,
-        customizations: customizations.length > 0
-          ? { options: customizations.map((o) => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) }
-          : {},
-        customization_option_ids: customizations.length > 0 ? customizations.map((o) => o.id) : [],
-      });
-    },
-    [addItem, selectedStore],
-  );
 
   const debouncedSearch = useDebounce(searchQuery, 150);
 
@@ -340,14 +299,7 @@ export default function MenuPage() {
 
       <FloatingCartBar />
 
-      <ItemCustomizeSheet
-        item={detailItem}
-        isOpen={sheetOpen}
-        onClose={() => { setSheetOpen(false); setDetailItem(null); setAvailableOptions([]); }}
-        onAdd={handleSheetAdd}
-        loadingOptions={loadingOptions}
-        customizations={availableOptions}
-      />
+
     </div>
   );
 }

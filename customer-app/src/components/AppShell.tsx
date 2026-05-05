@@ -67,8 +67,6 @@ export default function AppShell() {
   const { unreadCount, fetchUnreadCount } = useNotifications();
 
   const [showStoreModal, setShowStoreModal] = useState(false);
-  const [, setStoreSearch] = useState('');
-  const [, setSelectedStoreDistance] = useState('');
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [swUpdateAvailable, setSwUpdateAvailable] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -79,18 +77,6 @@ export default function AppShell() {
     const main = document.querySelector('main.scroll-container');
     if (main) main.scrollTo({ top: 0, behavior: 'auto' });
   }, [page]);
-
-  // Calculate store distance
-  useEffect(() => {
-    const calc = async () => {
-      if (selectedStore && selectedStore.lat != null && selectedStore.lng != null) {
-        const { getDistanceToStore } = await import('@/lib/geolocation');
-        const dist = await getDistanceToStore(selectedStore);
-        setSelectedStoreDistance(dist || '');
-      }
-    };
-    calc();
-  }, [selectedStore]);
 
   // Load stores when modal opens
   useEffect(() => {
@@ -313,9 +299,8 @@ export default function AppShell() {
                   setSelectedStore(store);
                   setShowStoreModal(false);
                   setShowStorePicker(false);
-                  setStoreSearch('');
                 }}
-                onClose={() => { setShowStoreModal(false); setShowStorePicker(false); setStoreSearch(''); }}
+                onClose={() => { setShowStoreModal(false); setShowStorePicker(false); }}
               />
             )}
           </AnimatePresence>
