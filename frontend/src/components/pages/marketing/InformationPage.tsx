@@ -664,7 +664,6 @@ function ImageUploadField({ label, imageUrl, onSet, hint, folder, allowVideo, po
   }
 
   const isVideo = imageUrl && /\.(mp4|webm)($|\?)/i.test(imageUrl);
-  const formats = allowVideo ? 'JPEG, PNG, MP4, WebM' : 'JPEG, PNG';
 
   return (
     <div>
@@ -688,7 +687,7 @@ function ImageUploadField({ label, imageUrl, onSet, hint, folder, allowVideo, po
           </>
         )}
       </div>
-      <div className="iuf-52"><span className="iuf-53"><i className="fas fa-info-circle"></i></span>{hint || `${formats} — ${maxSize}`}</div>
+      <div className="iuf-52"><span className="iuf-53"><i className="fas fa-info-circle"></i></span>{hint}</div>
     </div>
   );
 }
