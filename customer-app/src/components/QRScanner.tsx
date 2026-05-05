@@ -5,6 +5,7 @@ import { ArrowLeft, Zap, ZapOff, Camera, CameraOff, AlertTriangle } from 'lucide
 import { Html5Qrcode } from 'html5-qrcode';
 import { haptic } from '@/lib/haptics';
 import { LOKA } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface QRScannerProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface QRScannerProps {
 }
 
 export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
+  const { t } = useTranslation();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState(false);
@@ -77,14 +79,14 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
     <div className="qr-screen">
       {/* Header over camera */}
       <div className="qr-header">
-        <button className="qr-back-btn" onClick={onClose} aria-label="Close">
+        <button className="qr-back-btn" onClick={onClose} aria-label={t('common.close')}>
           <ArrowLeft size={18} />
         </button>
-        <span className="qr-title">Scan QR Code</span>
+        <span className="qr-title">{t('qr.title')}</span>
         <button
           className={`qr-flash-btn ${flashOn ? 'active' : ''}`}
           onClick={toggleFlash}
-          aria-label="Toggle flash"
+          aria-label={t('qr.toggleFlash')}
         >
           {flashOn ? <Zap size={18} /> : <ZapOff size={18} />}
         </button>
@@ -130,13 +132,13 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
       {isLoading && (
         <div className="qr-loading">
           <div className="qr-spinner" />
-          <p className="qr-loading-text">Starting camera…</p>
+          <p className="qr-loading-text">{t('qr.startingCamera')}</p>
         </div>
       )}
 
       {hasPermission && (
         <div className="qr-prompt">
-          <div className="qr-prompt-title">Point camera at QR code</div>
+          <div className="qr-prompt-title">{t('qr.pointCamera')}</div>
           <div className="qr-prompt-sub">
             Align the code within the frame to scan automatically
           </div>

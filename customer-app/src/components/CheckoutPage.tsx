@@ -17,6 +17,7 @@ import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { haversineKm } from '@/lib/geolocation';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface CustomizationOption {
   id: number;
@@ -30,12 +31,13 @@ interface CustomizationStructure {
 }
 
 const ORDER_TYPES = [
-  { key: 'pickup' as const, label: 'Pickup' },
-  { key: 'delivery' as const, label: 'Delivery' },
-  { key: 'dine_in' as const, label: 'Dine-in' },
+  { key: 'pickup' as const, labelKey: 'cart.mode.pickup' },
+  { key: 'delivery' as const, labelKey: 'cart.mode.delivery' },
+  { key: 'dine_in' as const, labelKey: 'cart.mode.dineIn' },
 ];
 
 export default function CheckoutPage() {
+  const { t } = useTranslation();
   const { items, getTotal, getItemCount, orderNote } = useCartStore();
   const { orderMode, setOrderMode, selectedStore, setPage, showToast, checkoutDraft, setCheckoutDraft, clearCheckoutDraft, dineInSession } = useUIStore();
   const { balance, refreshWallet } = useWalletStore();
@@ -93,8 +95,8 @@ export default function CheckoutPage() {
     if (orderMode === 'delivery' && !deliveryAddress?.address) missing.add('address');
     if (orderMode === 'pickup' && !selectedStore) missing.add('store');
     if (orderMode !== 'dine_in' && !pickupTime) missing.add('time');
-    if (missing.size > 0) { setFieldErrors(missing); showToast('Please fill in the highlighted fields', 'error'); return; }
-    if (deliveryOutOfRange) { showToast('Delivery address is outside store service area', 'error'); return; }
+    if (missing.size > 0) { setFieldErrors(missing); showToast(t('checkout.fieldErrors'), 'error'); return; }
+    if (deliveryOutOfRange) { showToast(t('toast.outOfRange'), 'error'); return; }
     setFieldErrors(new Set());
     setPlacing(true);
     try {
@@ -111,7 +113,7 @@ export default function CheckoutPage() {
       clearCheckoutDraft();
       haptic('success');
       setPage('order-detail', { orderId: result.id });
-    } catch (e: any) { showToast(e?.response?.data?.detail || 'Order failed', 'error'); }
+    } catch (e: any) { showToast(e?.response?.data?.detail || t('toast.orderFailed'), 'error'); }
     finally { setPlacing(false); }
   };
 
@@ -120,12 +122,12 @@ export default function CheckoutPage() {
     <div className="checkout-screen">
       <div className="checkout-header">
         <button className="checkout-back-btn" onClick={() => { saveDraft(); setPage('cart'); }}><ArrowLeft size={20} /></button>
-        <h3 className="checkout-title">Checkout</h3>
-        {draftSaved && <span className="checkout-draft-saved">Draft saved</span>}
+        <h3 className="checkout-title">{t('checkout.title')}</h3>
+        {draftSaved && <span className="checkout-draft-saved">{t('checkout.draftSaved')}</span>}
       </div>
       <div className="checkout-scroll">
         <div className="checkout-section">
-          <div className="co-section-title">Order Type</div>
+          <div className="co-section-title">{t('checkout.orderType')}</div>
           <div className="co-type-pills">
             {ORDER_TYPES.map(ot => {
               const isDineIn = ot.key === 'dine_in';
@@ -135,86 +137,86 @@ export default function CheckoutPage() {
                 className={`co-type-pill ${isCurrent ? 'active' : ''} ${isDineIn && !dineInSession ? 'disabled' : ''}`}
                 onClick={() => {
                   if (isDineInLocked && ot.key !== 'dine_in') {
-                    showToast('Dine-in session active — cannot switch order type', 'info');
+                    showToast(t('toast.dineInLocked'), 'info');
                     return;
                   }
                   if (isClicable) setOrderMode(ot.key);
-                  else showToast('Scan a table QR code to enable dine-in', 'info');
+                  else showToast(t('toast.dineInUnavailable'), 'info');
                 }}
                 disabled={isDineInLocked && ot.key !== 'dine_in'}>
-                {isDineIn && <QrCode size={14} className="mr-1" />}{ot.label}
+                {isDineIn && <QrCode size={14} className="mr-1" />}{t(ot.labelKey)}
               </button>;
             })}
           </div>
         </div>
         {orderMode === 'dine_in' && dineInSession && (
           <div className="checkout-section">
-            <div className="co-section-title">Table</div>
-            <div className="co-store-info"><div className="co-store-icon"><Utensils size={16} /></div><div><div className="co-store-name">Table {dineInSession.tableNumber}</div><div className="co-store-address">{dineInSession.storeName}</div></div></div>
+            <div className="co-section-title">{t('checkout.table')}</div>
+            <div className="co-store-info"><div className="co-store-icon"><Utensils size={16} /></div><div><div className="co-store-name">{t('checkout.tableNumber', { number: dineInSession.tableNumber })}</div><div className="co-store-address">{dineInSession.storeName}</div></div></div>
           </div>
         )}
         {(orderMode === 'pickup' || orderMode === 'delivery') && selectedStore && (
           <div className="checkout-section">
-            <div className="co-section-title">Store</div>
+            <div className="co-section-title">{t('checkout.store')}</div>
             <div className="co-store-info"><div className="co-store-icon"><Store size={16} /></div><div><div className="co-store-name">{selectedStore.name}</div><div className="co-store-address">{selectedStore.address}</div></div></div>
           </div>
         )}
         {orderMode === 'delivery' && (
           <div className={`checkout-section${fieldErrors.has('address') ? ' error' : ''}`}>
-            <div className="co-section-title">Delivery Address</div>
+            <div className="co-section-title">{t('checkout.deliveryAddress')}</div>
             <div className="co-delivery-fields">
-              <div className="co-delivery-field"><label className="co-delivery-label">Recipient&apos;s Name</label><input value={recipientName} onChange={e => { setRecipientName(e.target.value); saveDraft(); }} placeholder="Your full name" autoComplete="name" className="co-delivery-input" /></div>
-              <div className="co-delivery-field"><label className="co-delivery-label">Recipient&apos;s Phone</label><input value={recipientPhone} onChange={e => { setRecipientPhone(e.target.value); saveDraft(); }} placeholder="60123456789" autoComplete="tel" inputMode="tel" className="co-delivery-input" /></div>
+              <div className="co-delivery-field"><label className="co-delivery-label">{t('checkout.recipientName')}</label><input value={recipientName} onChange={e => { setRecipientName(e.target.value); saveDraft(); }} placeholder={t('checkout.namePlaceholder')} autoComplete="name" className="co-delivery-input" /></div>
+              <div className="co-delivery-field"><label className="co-delivery-label">{t('checkout.recipientPhone')}</label><input value={recipientPhone} onChange={e => { setRecipientPhone(e.target.value); saveDraft(); }} placeholder="60123456789" autoComplete="tel" inputMode="tel" className="co-delivery-input" /></div>
             </div>
             <DeliveryAddressCard value={deliveryAddress} onChange={(addr) => { setDeliveryAddress(addr); saveDraft(); }} />
-            <div className="co-delivery-field mt-2"><label className="co-delivery-label">Delivery Instructions (optional)</label><input value={deliveryInstr} onChange={e => { setDeliveryInstr(e.target.value); saveDraft(); }} placeholder="e.g., Ring doorbell twice" autoComplete="off" className="co-delivery-input" /></div>
+            <div className="co-delivery-field mt-2"><label className="co-delivery-label">{t('checkout.deliveryInstructions')}</label><input value={deliveryInstr} onChange={e => { setDeliveryInstr(e.target.value); saveDraft(); }} placeholder={t('checkout.deliveryInstrPlaceholder')} autoComplete="off" className="co-delivery-input" /></div>
             {deliveryOutOfRange && selectedStore && (
               <div className="co-delivery-out-of-range">
-                This store only delivers within a {selectedStore.delivery_radius_km} km radius. The delivery address is outside this area. Please choose a closer store or switch to pickup.
+                {t('checkout.outOfRange', { radius: selectedStore.delivery_radius_km ?? 0 })}
               </div>
             )}
           </div>
         )}
         {orderMode !== 'dine_in' && (
           <div className={`checkout-section${fieldErrors.has('time') ? ' error' : ''}`}>
-            <div className="co-section-title">{orderMode === 'pickup' ? 'Pickup Time' : 'Delivery Time'}</div>
+            <div className="co-section-title">{orderMode === 'pickup' ? t('checkout.pickupTime') : t('checkout.deliveryTime')}</div>
             <TimeSlotPicker onChange={(t) => { setPickupTime(t); saveDraft(); }} value={pickupTime} mode={orderMode === 'delivery' ? 'delivery' : 'pickup'} leadMinutes={selectedStore?.pickup_lead_minutes ?? 15} />
           </div>
         )}
         <div className="checkout-section">
-          <div className="co-section-title">Voucher &amp; Rewards</div>
+          <div className="co-section-title">{t('checkout.voucherRewards')}</div>
           <button className="co-reward-card" onClick={() => setShowRewardSheet(true)}>
-            <div className="co-reward-left"><div className="co-reward-icon"><Tag size={16} color={LOKA.copper} /></div><span className="co-reward-text">{discountType ? `${discountType === 'voucher' ? 'Voucher' : 'Reward'} applied (-${formatPrice(discount)})` : 'Apply Voucher or Reward'}</span></div>
+            <div className="co-reward-left"><div className="co-reward-icon"><Tag size={16} color={LOKA.copper} /></div><span className="co-reward-text">{discountType ? `${discountType === 'voucher' ? t('checkout.voucher') : t('checkout.reward')} applied (-${formatPrice(discount)})` : t('checkout.applyVoucher')}</span></div>
             <ChevronRight size={16} color={LOKA.textMuted} />
           </button>
         </div>
         <div className="checkout-section">
-          <div className="co-section-title">Order Notes</div>
-          {notes ? <div className="co-notes-display">{notes}</div> : <div className="co-notes-display co-notes-empty">No special requests. Add notes from your cart.</div>}
+          <div className="co-section-title">{t('checkout.orderNotes')}</div>
+          {notes ? <div className="co-notes-display">{notes}</div> : <div className="co-notes-display co-notes-empty">{t('checkout.noNotes')}</div>}
         </div>
         <div className="checkout-section">
-          <div className="co-section-title">Payment Method</div>
+          <div className="co-section-title">{t('checkout.paymentMethod')}</div>
           {orderMode !== 'dine_in' && (
             <div className="co-wallet-balance" onClick={() => setPaymentMethod('wallet')}>
               <div className="co-payment-icon co-payment-icon-wallet"><Wallet size={16} color="#fff" /></div>
-              <div className="flex-1"><div className="co-wallet-label">Wallet Balance</div><div className="co-wallet-amount">{formatPrice(balance)}</div></div>
+              <div className="flex-1"><div className="co-wallet-label">{t('checkout.walletBalance')}</div><div className="co-wallet-amount">{formatPrice(balance)}</div></div>
               {paymentMethod === 'wallet' && <CheckCircle2 size={18} color="#fff" />}
             </div>
           )}
           {orderMode !== 'delivery' && <div className={`co-payment-card ${paymentMethod === 'pay_at_store' ? 'selected' : ''}`} onClick={() => setPaymentMethod('pay_at_store')}>
             <div className="co-payment-icon co-payment-icon-cash"><Banknote size={14} color="#fff" /></div>
-            <div className="co-payment-info"><div className="co-payment-label">{orderMode === 'dine_in' ? 'Pay at Counter' : 'Pay at Store'}</div></div>
+            <div className="co-payment-info"><div className="co-payment-label">{orderMode === 'dine_in' ? t('checkout.payAtCounter') : t('checkout.payAtStore')}</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div></div>}
           {orderMode === 'delivery' && <div className={`co-payment-card ${paymentMethod === 'cod' ? 'selected' : ''}`} onClick={() => setPaymentMethod('cod')}>
             <div className="co-payment-icon co-payment-icon-cash"><Banknote size={14} color="#fff" /></div>
-            <div className="co-payment-info"><div className="co-payment-label">Cash on Delivery</div></div>
+            <div className="co-payment-info"><div className="co-payment-label">{t('checkout.cashOnDelivery')}</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div>
           </div>}
           {/* Additional payment methods hidden until gateway integration */}
           {/* <div className="co-voucher-hint">More payment options (Visa, DuitNow, TnG) coming soon</div> */}
         </div>
         <div className="co-summary-card">
-          <div className="co-section-title">Order Summary</div>
+          <div className="co-section-title">{t('checkout.orderSummary')}</div>
           <div className="co-order-items-list">
             {items.map((item, i) => {
               const cust = item.customizations as CustomizationStructure | undefined;
@@ -232,26 +234,26 @@ export default function CheckoutPage() {
               );
             })}
           </div>
-          <div className="co-summary-row"><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div>
-          {deliveryFee > 0 && <div className="co-summary-row"><span>Delivery fee</span><span>{formatPrice(deliveryFee)}</span></div>}
-          {deliveryFee === 0 && orderMode === 'delivery' && <div className="co-summary-row"><span>Delivery fee</span><span className="co-summary-free">Free</span></div>}
-          {discount > 0 && <div className="co-summary-row"><span>Discount</span><span>-{formatPrice(discount)}</span></div>}
-          <div className="co-summary-row total"><span>Total</span><span>{formatPrice(total)}</span></div>
+          <div className="co-summary-row"><span>{t('cart.subtotal')}</span><span>{formatPrice(subtotal)}</span></div>
+          {deliveryFee > 0 && <div className="co-summary-row"><span>{t('cart.deliveryFee')}</span><span>{formatPrice(deliveryFee)}</span></div>}
+          {deliveryFee === 0 && orderMode === 'delivery' && <div className="co-summary-row"><span>{t('cart.deliveryFee')}</span><span className="co-summary-free">{t('cart.free')}</span></div>}
+          {discount > 0 && <div className="co-summary-row"><span>{t('checkout.discount')}</span><span>-{formatPrice(discount)}</span></div>}
+          <div className="co-summary-row total"><span>{t('cart.total')}</span><span>{formatPrice(total)}</span></div>
         </div>
       </div>
       <div className="checkout-footer">
         <div className="checkout-footer-row">
-          <div><div className="checkout-footer-total-label">Total</div><div className="checkout-footer-total">{formatPrice(total)}</div></div>
-          <div className="checkout-footer-count">{items.length} item{items.length !== 1 ? 's' : ''}</div>
+          <div><div className="checkout-footer-total-label">{t('cart.total')}</div><div className="checkout-footer-total">{formatPrice(total)}</div></div>
+          <div className="checkout-footer-count">{t('cart.itemCount', { count: items.length })}</div>
         </div>
         {requiresWallet && !walletSufficient ? (
-          <button className="co-topup-btn" onClick={() => setPage('wallet')}><Wallet size={18} /> Top up {formatPrice(total - balance)} to continue</button>
+          <button className="co-topup-btn" onClick={() => setPage('wallet')}><Wallet size={18} /> {t('checkout.topUpToContinue', { amount: formatPrice(total - balance) })}</button>
         ) : (
-          <button className="co-place-order-btn" onClick={handlePlaceOrder} disabled={placing}>{placing ? <Loader2 size={18} className="spinning" /> : <UtensilsCrossed size={18} />}{placing ? 'Placing order...' : `Place Order · ${formatPrice(total)}`}</button>
+          <button className="co-place-order-btn" onClick={handlePlaceOrder} disabled={placing}>{placing ? <Loader2 size={18} className="spinning" /> : <UtensilsCrossed size={18} />}{placing ? t('checkout.placingOrder') : t('checkout.placeOrderPrice', { price: formatPrice(total) })}</button>
         )}
       </div>
     </div>
-    <BottomSheet isOpen={showRewardSheet} onClose={() => setShowRewardSheet(false)} title="Voucher & Rewards">
+    <BottomSheet isOpen={showRewardSheet} onClose={() => setShowRewardSheet(false)} title={t('checkout.voucherRewards')}>
       <div className="sheet-body">
         <VoucherRewardSelector subtotal={subtotal} selectedType={discountType || 'none'} selectedCode={discountCode}
           onChange={(type, code, val) => { setDiscountType(type === 'none' ? null : type); setDiscountCode(code || ''); setDiscountValue(val || 0); }} />

@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -25,6 +26,7 @@ interface DatePickerProps {
 }
 
 export default function DatePicker({ value, onChange, placeholder = 'Select date', label }: DatePickerProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const parsed = value ? value.split('-').map(Number) : null;
@@ -99,18 +101,18 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
           <div className="datepicker-sheet">
             <div className="datepicker-sheet-header">
               <button className="datepicker-sheet-btn datepicker-cancel" onClick={() => setOpen(false)}>
-                Cancel
+                {t('common.cancel')}
               </button>
               {label && <span className="datepicker-sheet-label">{label}</span>}
               <button className="datepicker-sheet-btn datepicker-done" onClick={apply}>
-                Done
+                {t('common.done')}
               </button>
             </div>
 
             <div className="datepicker-columns">
               {/* Month */}
               <div className="datepicker-column">
-                <div className="datepicker-column-label">Month</div>
+                <div className="datepicker-column-label">{t('common.month')}</div>
                 <div
                   ref={monthRef}
                   className="datepicker-scroll"
@@ -130,7 +132,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
 
               {/* Day */}
               <div className="datepicker-column">
-                <div className="datepicker-column-label">Day</div>
+                <div className="datepicker-column-label">{t('common.day')}</div>
                 <div
                   ref={dayRef}
                   className="datepicker-scroll"
@@ -150,7 +152,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
 
               {/* Year */}
               <div className="datepicker-column">
-                <div className="datepicker-column-label">Year</div>
+                <div className="datepicker-column-label">{t('common.year')}</div>
                 <div
                   ref={yearRef}
                   className="datepicker-scroll"

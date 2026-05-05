@@ -5,6 +5,7 @@ import { ArrowLeft, Gift, Ticket, Clock, QrCode, Shield } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import type { UserReward, UserVoucher } from '@/lib/api';
 import { LOKA, resolveAssetUrl } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface MyRewardsPageProps {
   onBack: () => void;
@@ -14,6 +15,7 @@ interface MyRewardsPageProps {
 type Tab = 'rewards' | 'vouchers';
 
 export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps) {
+  const { t } = useTranslation();
   const { rewards, vouchers, refreshWallet } = useWalletStore();
 
   const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'rewards');
@@ -48,10 +50,10 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
     <div className="myrv-screen">
       <div className="sub-page-header">
         <div className="sub-header-left">
-          <button className="sub-back-btn" onClick={onBack} aria-label="Back">
+          <button className="sub-back-btn" onClick={onBack} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
-          <h1 className="sub-page-title">My Rewards &amp; Vouchers</h1>
+          <h1 className="sub-page-title">{t('myRewards.title')}</h1>
         </div>
         <div className="w-9" />
       </div>
@@ -60,7 +62,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
       {totalOwned > 0 && (
         <div className="myrv-progress-section">
           <div className="myrv-progress-header">
-            <span className="myrv-progress-label">Rewards & vouchers used this month</span>
+            <span className="myrv-progress-label">{t('myRewards.usedThisMonth')}</span>
             <span className="myrv-progress-value">{usedThisMonth} of {totalOwned}</span>
           </div>
           <div className="myrv-progress-bar">
@@ -83,8 +85,8 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
           availableRewards.length === 0 ? (
             <div className="myrv-empty">
               <div className="myrv-empty-icon"><Gift size={40} color={LOKA.borderLight} /></div>
-              <div className="myrv-empty-title">No rewards yet</div>
-              <div className="myrv-empty-desc">Redeem your points to earn rewards and start collecting today.</div>
+              <div className="myrv-empty-title">{t('myRewards.noRewards')}</div>
+              <div className="myrv-empty-desc">{t('myRewards.redeemDesc')}</div>
             </div>
           ) : (
             availableRewards.map((reward) => {
@@ -100,11 +102,11 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                   </div>
                   <div className="myrv-item-body">
                     <div className="myrv-item-title">{reward.reward_name}</div>
-                    <div className="myrv-item-hint">Tap to view details</div>
+                    <div className="myrv-item-hint">{t('myRewards.tapToView')}</div>
                     {days != null && (
                       <span className={`myrv-countdown ${getCountdownClass(days)}`}>
                         <Clock size={12} />
-                        {days <= 0 ? 'Expires today' : `Expires in ${days} day${days !== 1 ? 's' : ''}`}
+                        {days <= 0 ? t('myRewards.expiresToday') : t('myRewards.expiresIn', { count: days, days })}
                       </span>
                     )}
                     {reward.expires_at && (
@@ -118,8 +120,8 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
         ) : availableVouchers.length === 0 ? (
           <div className="myrv-empty">
             <div className="myrv-empty-icon"><Ticket size={40} color={LOKA.borderLight} /></div>
-            <div className="myrv-empty-title">No vouchers yet</div>
-            <div className="myrv-empty-desc">Claim promotions and complete surveys to earn vouchers.</div>
+            <div className="myrv-empty-title">{t('myRewards.noVouchers')}</div>
+            <div className="myrv-empty-desc">{t('myRewards.claimDesc')}</div>
           </div>
         ) : (
           availableVouchers.map((voucher) => {
@@ -130,18 +132,18 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                   <Ticket size={24} />
                 </div>
                 <div className="myrv-item-body">
-                  <div className="myrv-voucher-source">{voucher.source || 'Promo Voucher'}</div>
+                  <div className="myrv-voucher-source">{voucher.source || t('myRewards.promoVoucher')}</div>
                   <div className="myrv-voucher-discount">
                     {voucher.discount_type === 'percentage' || voucher.discount_type === 'percent'
                       ? `${voucher.discount_value}% OFF`
                       : voucher.discount_type === 'free_item'
-                        ? 'Free Item'
+                        ? t('myRewards.freeItem')
                         : `RM ${Number(voucher.discount_value).toFixed(2)} OFF`}
                   </div>
                   {days != null && (
                     <span className={`myrv-countdown ${getCountdownClass(days)}`}>
                       <Clock size={12} />
-                      {days <= 0 ? 'Expires today' : `Expires in ${days} day${days !== 1 ? 's' : ''}`}
+                      {days <= 0 ? t('myRewards.expiresToday') : t('myRewards.expiresIn', { count: days, days })}
                     </span>
                   )}
                   {voucher.expires_at && (
@@ -160,19 +162,19 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
           <div className="myrv-sheet">
             <div className="myrv-sheet-handle" />
             <div className="myrv-sheet-title">{selectedReward.reward_name}</div>
-            <div className="myrv-sheet-sub">Show this to the cashier at checkout</div>
+            <div className="myrv-sheet-sub">{t('myRewards.showToCashier')}</div>
             <div className="myrv-sheet-info">
               <div className="myrv-sheet-info-icon">
                 <QrCode size={40} color="var(--loka-primary)" />
               </div>
               <div className="myrv-sheet-info-text">
-                Your unique redemption code will be scanned by our staff at the counter. No need to memorize or share any codes.
+                {t('myRewards.redemptionInfo')}
               </div>
             </div>
             {selectedReward.expires_at && (
               <div className="myrv-sheet-expiry">Expires {formatDate(selectedReward.expires_at)}</div>
             )}
-            <button className="myrv-sheet-close-btn" onClick={() => setSelectedReward(null)}>Done</button>
+            <button className="myrv-sheet-close-btn" onClick={() => setSelectedReward(null)}>{t('common.done')}</button>
           </div>
         </div>
       )}
@@ -186,24 +188,24 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
               {selectedVoucher.discount_type === 'percentage' || selectedVoucher.discount_type === 'percent'
                 ? `${selectedVoucher.discount_value}% OFF`
                 : selectedVoucher.discount_type === 'free_item'
-                  ? 'Free Item'
+                  ? t('myRewards.freeItem')
                   : `RM ${Number(selectedVoucher.discount_value).toFixed(2)} OFF`}
             </div>
             <div className="myrv-sheet-sub">
-              {selectedVoucher.source || 'Promo Voucher'} · Min spend: RM {Number(selectedVoucher.min_spend || 0).toFixed(2)}
+              {selectedVoucher.source || t('myRewards.promoVoucher')} · {t('myRewards.minSpend', { amount: Number(selectedVoucher.min_spend || 0).toFixed(2) })}
             </div>
             <div className="myrv-sheet-info">
               <div className="myrv-sheet-info-icon">
                 <Shield size={40} color="var(--loka-primary)" />
               </div>
               <div className="myrv-sheet-info-text">
-                Your voucher is linked to your account. It will be automatically applied at checkout or scanned by our staff. No code sharing needed.
+                {t('myRewards.voucherInfo')}
               </div>
             </div>
             {selectedVoucher.expires_at && (
               <div className="myrv-sheet-expiry">Expires {formatDate(selectedVoucher.expires_at)}</div>
             )}
-            <button className="myrv-sheet-close-btn" onClick={() => setSelectedVoucher(null)}>Done</button>
+            <button className="myrv-sheet-close-btn" onClick={() => setSelectedVoucher(null)}>{t('common.done')}</button>
           </div>
         </div>
       )}

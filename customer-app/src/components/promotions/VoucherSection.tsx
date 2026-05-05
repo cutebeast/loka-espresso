@@ -4,6 +4,7 @@ import { Gift, ArrowLeft, ArrowRight, Calendar, Clock, Star, Tag, PenLine, HelpC
 import { RedemptionCodeModal } from '@/components/shared';
 import { useUIStore } from '@/stores/uiStore';
 import { resolveAssetUrl } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { PromoBanner } from '@/lib/api';
 
 interface BannerStatus {
@@ -67,6 +68,7 @@ export default function VoucherSection({
   onCopyVoucher,
   onGoToWallet,
 }: VoucherSectionProps) {
+  const { t } = useTranslation();
   const img = resolveAssetUrl(selectedPromo.image_url);
   const tagText = selectedPromo.action_type === 'survey' ? 'Survey' : selectedPromo.action_type === 'detail' ? 'Offer' : 'Promo';
   const isSurvey = selectedPromo.action_type === 'survey';
@@ -138,16 +140,16 @@ export default function VoucherSection({
         </div>
 
         <p className="rd-desc">
-          {selectedPromo.long_description || selectedPromo.short_description || 'No description available.'}
+          {selectedPromo.long_description || selectedPromo.short_description || t('promotions.noDescription')}
         </p>
 
         {/* ── Survey Flow ── */}
         {isSurvey && isGuest && !surveyAlreadyDone && (
           <div className="guest-locked">
             <div className="guest-locked-icon" onClick={() => useUIStore.getState().triggerSignIn()} role="button" tabIndex={0}><Gift size={28} /></div>
-            <div className="guest-locked-title">Sign in to participate</div>
-            <div className="guest-locked-desc">Create an account to complete surveys and earn rewards.</div>
-            <button className="guest-locked-btn" onClick={() => useUIStore.getState().triggerSignIn()}>Sign In</button>
+            <div className="guest-locked-title">{t('promotions.signInToParticipate')}</div>
+            <div className="guest-locked-desc">{t('promotions.signInToParticipateDesc')}</div>
+            <button className="guest-locked-btn" onClick={() => useUIStore.getState().triggerSignIn()}>{t('auth.signIn')}</button>
           </div>
         )}
         {isSurvey && !isGuest && surveyQuestions.length > 0 && !surveyAlreadyDone && (
@@ -194,7 +196,7 @@ export default function VoucherSection({
                 {q.question_type === 'text' && (
                   <textarea
                     className="promo-survey-textarea"
-                    placeholder="Type your answer..."
+                    placeholder={t('promotions.typeAnswer')}
                     onChange={(e) => onSurveyAnswer(q.id, e.target.value)}
                   />
                 )}
@@ -204,7 +206,7 @@ export default function VoucherSection({
                     className="promo-survey-select"
                     onChange={(e) => onSurveyAnswer(q.id, e.target.value)}
                   >
-                    <option value="">Select an option</option>
+                    <option value="">{t('promotions.selectOption')}</option>
                     {q.options.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
                   </select>
                 )}
@@ -224,7 +226,7 @@ export default function VoucherSection({
         {isSurvey && surveyAlreadyDone && (
           <div className="rd-success-state">
             <CheckCircle size={48} className="promo-success-icon" />
-            <p>Survey completed!</p>
+            <p>{t('promotions.surveyCompleted')}</p>
             <p className="rd-success-sub">Thank you for your feedback. Your reward has been added to your wallet.</p>
           </div>
         )}

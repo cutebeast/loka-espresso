@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 interface Props {
   children: React.ReactNode;
@@ -35,12 +36,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
         <div className="eb-container">
           <div className="eb-inner">
             <div className="eb-icon"><AlertTriangle size={28} color="#C9A84C" /></div>
-            <h2 className="eb-title">Something went wrong</h2>
+            <h2 className="eb-title">{t('common.error')}</h2>
             <p className="eb-message">
-              An unexpected error occurred. Please try again.
+              {t('errorBoundary.message')}
             </p>
             <button onClick={this.handleReload} className="eb-btn">
-              Reload Page
+              {t('errorBoundary.reload')}
             </button>
           </div>
         </div>

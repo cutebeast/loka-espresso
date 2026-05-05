@@ -6,6 +6,8 @@ import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
+import { useTranslation } from '@/hooks/useTranslation';
+import { t } from '@/lib/i18n';
 import type { LoyaltyHistoryEntry, Transaction } from '@/lib/api';
 
 type Tab = 'loyalty' | 'wallet';
@@ -29,13 +31,20 @@ function getDateGroup(dateStr: string): string {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const txDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const diff = Math.floor((today.getTime() - txDay.getTime()) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff <= 7) return 'This Week';
-  if (diff <= 30) return 'This Month';
-  return 'Earlier';
+  if (diff === 0) return t('common.today');
+  if (diff <= 7) return t('common.thisWeek');
+  if (diff <= 30) return t('common.thisMonth');
+  return t('common.earlier');
+}
+
+function categoryLabel(type: string): string {
+  const key = `history.category.${type.toLowerCase()}`;
+  const translated = t(key);
+  return translated !== key ? translated : (type ? type.charAt(0).toUpperCase() + type.slice(1) : '');
 }
 
 export default function HistoryPage() {
+  const { t } = useTranslation();
   const { setPage, showToast } = useUIStore();
   const { points, balance } = useWalletStore();
   const { setTransactions: setWalletTransactions } = useWalletStore();
@@ -58,11 +67,11 @@ export default function HistoryPage() {
         setWalletTransactions(txs);
       }
     } catch {
-      showToast('Failed to load', 'error');
+      showToast(t('toast.loadHistoryFailed'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [activeTab, showToast, setWalletTransactions]);
+  }, [activeTab, showToast, setWalletTransactions, t]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -79,7 +88,7 @@ export default function HistoryPage() {
 
   const loyaltyGroups = groupByDate(loyaltyHistory);
   const walletGroups = groupByDate(walletHistory);
-  const groupOrder = ['Today', 'This Week', 'This Month', 'Earlier'];
+  const groupOrder = [t('common.today'), t('common.thisWeek'), t('common.thisMonth'), t('common.earlier')];
 
   /* Summary stats */
   const loyaltyEarned = loyaltyHistory.filter(t => (t.points || 0) > 0).reduce((s, t) => s + (t.points || 0), 0);
@@ -92,37 +101,37 @@ export default function HistoryPage() {
     <div className="history-screen">
       <div className="sub-page-header">
         <div className="sub-header-left">
-          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label="Back">
+          <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
-          <h1 className="sub-page-title">Transaction History</h1>
+          <h1 className="sub-page-title">{t('history.title')}</h1>
         </div>
         <div className="w-9" />
       </div>
 
       <div className="history-tab-bar">
         <button className={`history-tab ${activeTab === 'loyalty' ? 'active' : ''}`} onClick={() => setActiveTab('loyalty')}>
-          Loyalty
+          {t('history.loyaltyTab')}
         </button>
         <button className={`history-tab ${activeTab === 'wallet' ? 'active' : ''}`} onClick={() => setActiveTab('wallet')}>
-          Wallet
+          {t('history.walletTab')}
         </button>
       </div>
 
       {/* Monthly Summary */}
       <div className="history-summary">
-        <div className="history-summary-label">{nowMonth} Summary</div>
+        <div className="history-summary-label">{t('history.monthSummary', { month: nowMonth })}</div>
         <div className="history-summary-row">
           {activeTab === 'loyalty' ? (
             <>
               <div className="history-summary-stat">
                 <div className="history-summary-value">+{loyaltyEarned.toLocaleString()}</div>
-                <div className="history-summary-lbl">Earned</div>
+                <div className="history-summary-lbl">{t('history.earned')}</div>
               </div>
               <div className="history-summary-divider" />
               <div className="history-summary-stat">
                 <div className="history-summary-value">−{loyaltyRedeemed.toLocaleString()}</div>
-                <div className="history-summary-lbl">Redeemed</div>
+                <div className="history-summary-lbl">{t('history.redeemed')}</div>
               </div>
               <div className="history-summary-divider" />
             </>
@@ -130,12 +139,12 @@ export default function HistoryPage() {
             <>
               <div className="history-summary-stat">
                 <div className="history-summary-value">+RM {walletIn.toFixed(0)}</div>
-                <div className="history-summary-lbl">Top-ups</div>
+                <div className="history-summary-lbl">{t('history.topUps')}</div>
               </div>
               <div className="history-summary-divider" />
               <div className="history-summary-stat">
                 <div className="history-summary-value">−RM {walletOut.toFixed(0)}</div>
-                <div className="history-summary-lbl">Spent</div>
+                <div className="history-summary-lbl">{t('history.spent')}</div>
               </div>
               <div className="history-summary-divider" />
             </>
@@ -144,7 +153,7 @@ export default function HistoryPage() {
             <div className="history-summary-value">
               {activeTab === 'loyalty' ? points.toLocaleString() : `RM ${balance.toFixed(0)}`}
             </div>
-            <div className="history-summary-lbl">Balance</div>
+            <div className="history-summary-lbl">{t('history.balance')}</div>
           </div>
         </div>
       </div>
@@ -157,8 +166,8 @@ export default function HistoryPage() {
         ) : (activeTab === 'loyalty' ? loyaltyHistory : walletHistory).length === 0 ? (
           <div className="history-empty">
             <div className="history-empty-icon"><Star size={48} /></div>
-            <div className="history-empty-title">No transactions yet</div>
-            <div className="history-empty-desc">Your {activeTab === 'loyalty' ? 'loyalty' : 'wallet'} activity will appear here</div>
+            <div className="history-empty-title">{t('history.noTransactions')}</div>
+            <div className="history-empty-desc">{activeTab === 'loyalty' ? t('history.emptyDescLoyalty') : t('history.emptyDescWallet')}</div>
           </div>
         ) : (
           groupOrder.map(group => {
@@ -166,12 +175,12 @@ export default function HistoryPage() {
             if (!items?.length) return null;
             return (
               <div key={group}>
-                <div className="history-date-group">{group}</div>
+                <div className="history-date-group">{t('common.' + group.toLowerCase().replace(' ', ''))}</div>
                 {items.map((item, idx) => {
                   const isPositive = activeTab === 'loyalty' ? ((item as LoyaltyHistoryEntry).points || 0) > 0 : (item as Transaction).amount > 0;
                   const type = (item.type || '').toLowerCase();
                   const IconComp = CATEGORY_ICONS[type] || CATEGORY_ICONS.default;
-                  const catLabel = type ? type.charAt(0).toUpperCase() + type.slice(1) : '';
+                  const catLabel = categoryLabel(type);
                   return (
                     <div key={item.id || idx} className="history-tx-card">
                       <div className={`history-tx-icon ${isPositive ? 'credit' : 'debit'}`}>
@@ -179,7 +188,7 @@ export default function HistoryPage() {
                       </div>
                       <div className="history-tx-info">
                         <div className="history-tx-desc-row">
-                          <span className="history-tx-desc">{item.description || (isPositive ? 'Credited' : 'Debited')}</span>
+                          <span className="history-tx-desc">{item.description || (isPositive ? t('history.credited') : t('history.debited'))}</span>
                           {catLabel && <span className="history-tx-cat">{catLabel}</span>}
                         </div>
                         <div className="history-tx-date">

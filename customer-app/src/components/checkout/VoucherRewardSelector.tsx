@@ -5,6 +5,7 @@ import { Tag, Gift, CheckCircle2 } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import api from '@/lib/api';
 import { LOKA, formatPrice } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface VoucherRewardSelectorProps {
   subtotal: number;
@@ -14,6 +15,7 @@ interface VoucherRewardSelectorProps {
 }
 
 export default function VoucherRewardSelector({ subtotal, selectedType, selectedCode, onChange }: VoucherRewardSelectorProps) {
+  const { t } = useTranslation();
   const { vouchers, rewards } = useWalletStore();
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherLoading, setVoucherLoading] = useState(false);
@@ -42,11 +44,11 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
       const discountVal = res.data?.discount_value || 0;
       onChange('voucher', voucherInput.trim(), discountVal);
     } catch {
-      setVoucherError('Invalid voucher');
+      setVoucherError(t('checkout.invalidVoucher'));
     } finally {
       setVoucherLoading(false);
     }
-  }, [voucherInput, subtotal, onChange]);
+  }, [voucherInput, subtotal, onChange, t]);
 
   const handleSelectVoucher = (code: string, discountValue: number) => {
     if (selectedType === 'voucher' && selectedCode === code) {
@@ -69,16 +71,16 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Tag size={16} color={LOKA.copper} />
-        <span className="font-bold text-text-primary vrs-title">Voucher or Reward</span>
+        <span className="font-bold text-text-primary vrs-title">{t('checkout.voucherOrReward')}</span>
       </div>
 
       {selectedType === 'reward' ? (
         <div className="py-3 px-3.5 bg-copper-soft rounded-xl mb-3">
           <p className="text-text-primary vrs-reward-banner">
-            <strong>Reward selected:</strong> {selectedCode}
+            <strong>{t('checkout.rewardSelected')}</strong> {selectedCode}
           </p>
           <p className="text-[11px] text-text-muted mt-1">
-            Remove reward to use a voucher code
+            {t('checkout.removeRewardHint')}
           </p>
         </div>
       ) : (
@@ -92,7 +94,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                 if (selectedType === 'voucher') onChange('none');
                 setVoucherError('');
               }}
-              placeholder="Enter voucher code"
+              placeholder={t('checkout.voucherPlaceholder')}
               aria-invalid={!!voucherError}
               aria-describedby={voucherError ? 'voucher-error' : undefined}
               className={`flex-1 py-2.5 px-3.5 rounded-xl bg-white text-sm text-text-primary outline-none vrs-input ${voucherError ? 'vrs-input-error' : ''}`}
@@ -102,7 +104,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
               disabled={!voucherInput.trim() || voucherLoading}
               className={`py-2.5 px-4 rounded-xl text-white font-bold border-none cursor-pointer vrs-apply-btn ${selectedType === 'voucher' ? 'vrs-apply-btn-active' : 'vrs-apply-btn-inactive'} ${voucherLoading ? 'vrs-apply-btn-loading' : ''}`}
             >
-              {voucherLoading ? '...' : selectedType === 'voucher' ? 'Applied' : 'Apply'}
+              {voucherLoading ? '...' : selectedType === 'voucher' ? t('checkout.applied') : t('common.apply')}
             </button>
           </div>
           {voucherError && (
@@ -117,12 +119,12 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
       {availableVouchers.length > 0 && (
         <div className="mb-3">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">
-            Your Vouchers
+            {t('checkout.yourVouchers')}
           </p>
           <div className="flex flex-col gap-1.5">
             {availableVouchers.slice(0, 3).map(v => {
               const isSelected = selectedType === 'voucher' && selectedCode === v.code;
-              const discountVal = v.discount_type === 'percentage' 
+              const discountVal = v.discount_type === 'percentage'
                 ? (subtotal * v.discount_value / 100)
                 : v.discount_value;
               return (
@@ -139,8 +141,8 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                   <div className="flex-1">
                     <p className="font-semibold text-text-primary vrs-code">{v.code}</p>
                     <p className="text-[11px] text-text-muted">
-                      {v.discount_type === 'percentage' ? `${v.discount_value}% off` : `${formatPrice(v.discount_value)} off`}
-                      {v.min_spend ? ` · Min ${formatPrice(v.min_spend)}` : ''}
+                      {v.discount_type === 'percentage' ? t('checkout.percentageOff', { value: v.discount_value }) : t('checkout.amountOff', { amount: formatPrice(v.discount_value) })}
+                      {v.min_spend ? t('checkout.minSpend', { amount: formatPrice(v.min_spend) }) : ''}
                     </p>
                   </div>
                   <Gift size={14} color={LOKA.copper} />
@@ -154,10 +156,10 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
       {availableRewards.length > 0 && selectedType === 'voucher' && (
         <div className="py-3 px-3.5 bg-copper-soft rounded-xl">
           <p className="text-text-primary vrs-reward-banner">
-            <strong>Voucher selected:</strong> {selectedCode}
+            <strong>{t('checkout.voucherSelected')}</strong> {selectedCode}
           </p>
           <p className="text-[11px] text-text-muted mt-1">
-            Remove voucher to use a reward
+            {t('checkout.removeVoucherHint')}
           </p>
         </div>
       )}
@@ -165,7 +167,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
       {availableRewards.length > 0 && selectedType !== 'voucher' && (
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">
-            Your Rewards
+            {t('checkout.yourRewards')}
           </p>
           <div className="flex flex-col gap-1.5">
             {availableRewards.slice(0, 3).map(r => {
@@ -187,7 +189,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-text-primary vrs-code">{r.reward_name}</p>
-                    <p className="text-[11px] text-text-muted">{parseRewardSnapshot(r.reward_snapshot).description || 'Reward'}</p>
+                    <p className="text-[11px] text-text-muted">{parseRewardSnapshot(r.reward_snapshot).description || t('checkout.rewardFallback')}</p>
                   </div>
                   <Gift size={14} color={LOKA.copper} />
                 </button>

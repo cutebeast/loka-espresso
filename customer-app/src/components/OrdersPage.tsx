@@ -9,18 +9,22 @@ import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';
 import type { Order, CartItem } from '@/lib/api';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
+import { t } from '@/lib/i18n';
 
 function getStatusBadge(status: string): { label: string; cls: string } {
   const s = status?.toLowerCase();
-  if (s === 'delivered' || s === 'completed') return { label: 'Delivered', cls: 'delivered' };
-  if (s === 'cancelled') return { label: 'Cancelled', cls: 'cancelled' };
-  return { label: status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || '', cls: '' };
+  if (s === 'delivered' || s === 'completed') return { label: t('orders.status.delivered'), cls: 'delivered' };
+  if (s === 'cancelled') return { label: t('orders.status.cancelled'), cls: 'cancelled' };
+  const key = `orders.status.${s}`;
+  const translated = t(key);
+  return { label: translated !== key ? translated : (status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || ''), cls: '' };
 }
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   const now = new Date();
-  if (d.toDateString() === now.toDateString()) return `Today, ${d.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}`;
+  if (d.toDateString() === now.toDateString()) return `${t('common.today')}, ${d.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}`;
   return d.toLocaleDateString('en-MY', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
@@ -38,6 +42,7 @@ function activeStepIdx(status: string): number {
 }
 
 export default function OrdersPage() {
+  const { t } = useTranslation();
   const { orders, setOrders, setCurrentOrder, isLoading, setIsLoading } = useOrderStore();
   const { setPage, showToast } = useUIStore();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -48,9 +53,9 @@ export default function OrdersPage() {
     try {
       const res = await api.get('/orders', { params: { page_size: 20 } });
       setOrders(Array.isArray(res.data) ? res.data : (res.data?.items ?? []));
-    } catch { showToast('Failed to load orders', 'error'); }
+    } catch { showToast(t('toast.loadOrdersFailed'), 'error'); }
     finally { setIsLoading(false); }
-  }, []);
+  }, [setIsLoading, setOrders, showToast, t]);
 
   useEffect(() => { fetchOrders(); }, []);
 
@@ -63,7 +68,7 @@ export default function OrdersPage() {
       if (document.visibilityState === 'visible') { fetchOrders(); setLastUpdated(new Date()); }
     }, 30000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
-  }, [hasActive]);
+  }, [hasActive, fetchOrders]);
 
   const openDetail = (order: Order) => {
     setCurrentOrder(order);
@@ -71,7 +76,7 @@ export default function OrdersPage() {
   };
 
   const handleReorder = async (order: Order) => {
-    if (!order.store_id) { showToast('Cannot reorder: store missing', 'error'); return; }
+    if (!order.store_id) { showToast(t('toast.cannotReorder'), 'error'); return; }
     try {
       const res = await api.post(`/orders/${order.id}/reorder`);
       const { clearCart } = useCartStore.getState();
@@ -90,7 +95,7 @@ export default function OrdersPage() {
         useCartStore.getState().addItem(cartItem);
       }
       setPage('cart');
-    } catch { showToast('Failed to reorder', 'error'); }
+    } catch { showToast(t('toast.reorderFailed'), 'error'); }
   };
 
   const activeOrders = orders.filter(o => ACTIVE.includes(o.status?.toLowerCase()));
@@ -124,13 +129,13 @@ export default function OrdersPage() {
   if (!isLoading && orders.length === 0) {
     return (
       <div className="orders-screen">
-        <div className="orders-header"><h1 className="orders-title">Orders</h1></div>
+        <div className="orders-header"><h1 className="orders-title">{t('orders.title')}</h1></div>
         <div className="orders-scroll flex items-center justify-center">
           <div className="orders-empty">
             <div className="orders-empty-icon"><ShoppingBag size={32} color={LOKA.borderLight} /></div>
-            <p className="orders-empty-title">No orders yet</p>
-            <p className="orders-empty-text">Your order history will appear here</p>
-            <button className="orders-empty-btn" onClick={() => setPage('menu')}>Start Ordering</button>
+            <p className="orders-empty-title">{t('orders.emptyTitle')}</p>
+            <p className="orders-empty-text">{t('orders.emptySubtitle')}</p>
+            <button className="orders-empty-btn" onClick={() => setPage('menu')}>{t('orders.startOrdering')}</button>
           </div>
         </div>
       </div>
@@ -140,23 +145,23 @@ export default function OrdersPage() {
   return (
     <div className="orders-screen">
       <div className="orders-header">
-        <h1 className="orders-title">Orders</h1>
+        <h1 className="orders-title">{t('orders.title')}</h1>
         {hasActive && (
-          <span className="orders-auto-badge"><span className="orders-pulse-dot" /> Auto-updating</span>
+          <span className="orders-auto-badge"><span className="orders-pulse-dot" /> {t('orders.autoUpdating')}</span>
         )}
       </div>
 
       <div className="orders-scroll">
         <button className="orders-pull-refresh" onClick={fetchOrders} disabled={isLoading}>
           {isLoading ? <span className="orders-refresh-icon" /> : <RefreshCw size={14} />}
-          Tap to refresh
+          {t('orders.tapToRefresh')}
         </button>
 
         {activeOrders.length > 0 && (
           <>
             <div className="flex items-center justify-between">
-              <div className="orders-section-label">Active Orders</div>
-              {lastUpdated && <span className="orders-last-updated">Updated {lastUpdated.toLocaleTimeString()}</span>}
+              <div className="orders-section-label">{t('orders.activeOrders')}</div>
+              {lastUpdated && <span className="orders-last-updated">{t('orders.updatedAt', { time: lastUpdated.toLocaleTimeString() })}</span>}
             </div>
             {activeOrders.map(order => {
               const step = activeStepIdx(order.status);
@@ -166,10 +171,10 @@ export default function OrdersPage() {
                   <div className="orders-active-header">
                     <div className="orders-active-icon"><Receipt size={20} color="#fff" /></div>
                     <div className="flex-1">
-                      <div className="orders-active-number">Order #{order.order_number}</div>
+                      <div className="orders-active-number">{t('orders.orderNumber', { number: order.order_number })}</div>
                       <div className="orders-active-date">{formatDate(order.created_at)}</div>
                     </div>
-                    <span className="orders-active-status-chip">{order.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                    <span className="orders-active-status-chip">{getStatusBadge(order.status).label}</span>
                   </div>
                   <div className="orders-progress-mini">
                     {STEPS.map((s, i) => (
@@ -178,12 +183,12 @@ export default function OrdersPage() {
                   </div>
                   <div className="orders-eta-row">
                     <div className="orders-eta-icon"><Clock size={14} color="#fff" /></div>
-                    Estimated ready in ~{5 + (4 - step) * 5} min
+                    {t('orders.eta', { minutes: 5 + (4 - step) * 5 })}
                   </div>
                   <div className="orders-active-items">{itemList}</div>
                   <div className="orders-active-footer">
                     <span className="orders-active-total">{formatPrice(order.total)}</span>
-                    <button className="orders-track-btn" onClick={e => { e.stopPropagation(); openDetail(order); }}>Track Order</button>
+                    <button className="orders-track-btn" onClick={e => { e.stopPropagation(); openDetail(order); }}>{t('orders.trackOrder')}</button>
                   </div>
                 </div>
               );
@@ -194,9 +199,9 @@ export default function OrdersPage() {
         {pastOrdersDisplay.length > 0 && (
           <>
             <div className="orders-section-label flex items-center justify-between">
-              <span>Past Orders</span>
+              <span>{t('orders.pastOrders')}</span>
               {allPastOrders.length > 5 && (
-                <span className="orders-total-count">{allPastOrders.length} total</span>
+                <span className="orders-total-count">{t('orders.totalCount', { count: allPastOrders.length })}</span>
               )}
             </div>
             {pastOrdersDisplay.map(order => {
@@ -209,13 +214,13 @@ export default function OrdersPage() {
                     {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt="" loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={20} color={LOKA.primary} />}
                   </div>
                   <div className="orders-past-info">
-                    <div className="orders-past-number">Order #{order.order_number}</div>
+                    <div className="orders-past-number">{t('orders.orderNumber', { number: order.order_number })}</div>
                     <div className="orders-past-date">{formatDate(order.created_at)} · {itemPreview}</div>
                     <div className="orders-past-bottom">
                       <span className="orders-past-total">{formatPrice(order.total)}</span>
                       <div className="flex gap-2 items-center">
                         <span className={`orders-status-badge ${badge.cls}`}>{badge.label}</span>
-                        <button className="orders-reorder-btn" onClick={e => { e.stopPropagation(); handleReorder(order); }}><RotateCcw size={12} /> Reorder</button>
+                        <button className="orders-reorder-btn" onClick={e => { e.stopPropagation(); handleReorder(order); }}><RotateCcw size={12} /> {t('orders.reorder')}</button>
                       </div>
                     </div>
                   </div>
@@ -225,7 +230,7 @@ export default function OrdersPage() {
             {hasMorePast && (
               <button onClick={() => loadPastOrders(false)} disabled={loadingPast}
                 className="orders-load-more-btn">
-                {loadingPast ? 'Loading...' : `Load More (${allPastOrders.length - pastOrdersDisplay.length} more)`}
+                {loadingPast ? t('common.loading') : t('orders.loadMore', { count: allPastOrders.length - pastOrdersDisplay.length })}
               </button>
             )}
           </>

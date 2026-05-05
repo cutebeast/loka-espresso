@@ -17,15 +17,17 @@ import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
 import { formatPrice, LOKA } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const TOPUP_AMOUNTS = [
-  { amount: 20, label: 'Starter' },
-  { amount: 50, label: 'Popular' },
-  { amount: 100, label: 'Value' },
-  { amount: 200, label: 'Premium' },
+  { amount: 20, labelKey: 'wallet.labelStarter' },
+  { amount: 50, labelKey: 'wallet.labelPopular' },
+  { amount: 100, labelKey: 'wallet.labelValue' },
+  { amount: 200, labelKey: 'wallet.labelPremium' },
 ];
 
 export default function WalletPage() {
+  const { t } = useTranslation();
   const { balance, setBalance, transactions, setTransactions } = useWalletStore();
   const { setPage, showToast } = useUIStore();
 
@@ -82,7 +84,7 @@ export default function WalletPage() {
   const handleTopUp = async () => {
     const amount = getTopUpAmount();
     if (!amount) {
-      showToast('Select or enter a valid amount (min RM 5)', 'error');
+      showToast(t('wallet.minTopUp'), 'error');
       return;
     }
     setShowConfirm(true);
@@ -95,13 +97,13 @@ export default function WalletPage() {
     setToppingUp(true);
     try {
       await api.post('/wallet/topup', { amount });
-      showToast(`Successfully topped up ${formatPrice(amount)}`, 'success');
+      showToast(t('toast.topUpSuccess', { amount: formatPrice(amount) }), 'success');
       await fetchBalance();
       await fetchTransactions();
       setSelectedAmount(null);
       setCustomAmount('');
     } catch (err) { console.error('[WalletPage] Top-up failed:', err);
-      showToast('Top-up failed. Please try again.', 'error');
+      showToast(t('toast.topUpFailed'), 'error');
     } finally {
       setToppingUp(false);
     }
@@ -111,19 +113,19 @@ export default function WalletPage() {
     <div className="topup-screen">
       {/* Header */}
       <div className="topup-header">
-        <button className="topup-back-btn" onClick={() => setPage('profile')} aria-label="Back">
+        <button className="topup-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="topup-title">Top Up</h1>
+        <h1 className="topup-title">{t('wallet.topUpTitle')}</h1>
       </div>
 
       {/* Scrollable Content */}
       <div className="topup-scroll">
-        <GuestGate message="Sign in to manage your Loka wallet and top up balance.">
+        <GuestGate message={t('wallet.guestMessage')}>
         {/* Balance Card */}
         <div className="topup-balance-card">
           <div>
-            <div className="topup-balance-label">Loka Balance</div>
+            <div className="topup-balance-label">{t('wallet.lokaBalance')}</div>
             <div className="topup-balance-amount">{formatPrice(balance)}</div>
           </div>
           <Wallet size={28} className="co-wallet-icon" />
@@ -131,16 +133,16 @@ export default function WalletPage() {
 
         {/* Online Top Up */}
         <div>
-          <div className="topup-section-title">Quick Top Up</div>
+          <div className="topup-section-title">{t('wallet.quickTopUp')}</div>
           <div className="topup-amount-grid topup-amount-grid-4col">
-            {TOPUP_AMOUNTS.map(({ amount, label }) => (
+            {TOPUP_AMOUNTS.map(({ amount, labelKey }) => (
               <button
                 key={amount}
                 className={`topup-amount-btn ${selectedAmount === amount ? 'selected' : ''}`}
                 onClick={() => handleSelectAmount(amount)}
               >
                 <span className="topup-preset-amount">RM {amount}</span>
-                <span className="topup-preset-label">{label}</span>
+                <span className="topup-preset-label">{t(labelKey)}</span>
               </button>
             ))}
           </div>
@@ -149,7 +151,7 @@ export default function WalletPage() {
             <input
               type="number"
               className="topup-custom-input"
-              placeholder="Other amount"
+              placeholder={t('wallet.otherAmount')}
               min={5}
               value={customAmount}
               onChange={(e) => handleCustomChange(e.target.value)}
@@ -160,31 +162,29 @@ export default function WalletPage() {
             onClick={handleTopUp}
             disabled={toppingUp || !getTopUpAmount()}
           >
-            {toppingUp ? 'Processing…' : <><Plus size={18} /> Continue to Pay</>}
+            {toppingUp ? t('common.processing') : <><Plus size={18} /> {t('wallet.continueToPay')}</>}
           </button>
         </div>
 
         {/* Offline Top Up */}
         <div>
-          <div className="topup-section-title">Offline Top Up</div>
+          <div className="topup-section-title">{t('wallet.offlineTopUp')}</div>
           <div className="topup-offline-card">
             <div className="topup-offline-icon">
               <Store size={32} />
             </div>
             <p className="topup-offline-text">
-              You can also top up with cash at any Loka Espresso outlet.
-              <br />
-              Just scan your loyalty QR at the counter.
+              {t('wallet.offlineTopUpDesc')}
             </p>
             <button className="topup-store-btn" onClick={() => setPage('menu')}>
-              <MapPin size={16} /> Find Nearest Store
+              <MapPin size={16} /> {t('wallet.findNearestStore')}
             </button>
           </div>
         </div>
 
         {/* Recent Transactions */}
         <div>
-          <div className="topup-section-title">Recent Transactions</div>
+          <div className="topup-section-title">{t('wallet.recentTransactions')}</div>
           {loadingTx ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -203,7 +203,7 @@ export default function WalletPage() {
               <div className="topup-empty-icon">
                 <Wallet size={24} color={LOKA.border} />
               </div>
-              <p className="home-empty-text">No transactions yet</p>
+              <p className="home-empty-text">{t('wallet.noTransactions')}</p>
             </div>
           ) : (
             <div className="topup-tx-list">
@@ -246,13 +246,13 @@ export default function WalletPage() {
       {showConfirm && (
         <div className="profile-modal-overlay show" onClick={() => setShowConfirm(false)}>
           <div className="profile-modal-box">
-            <h3>Confirm Top Up</h3>
+            <h3>{t('wallet.confirmTopUp')}</h3>
             <p className="mb-4">
-              Top up <strong>{formatPrice(getTopUpAmount() || 0)}</strong> to your wallet?
+              {t('wallet.confirmTopUpMessage', { amount: formatPrice(getTopUpAmount() || 0) })}
             </p>
             <div className="profile-modal-btns">
-              <button className="profile-modal-btn profile-modal-btn-cancel" onClick={() => setShowConfirm(false)}>Cancel</button>
-              <button className="profile-modal-btn profile-modal-btn-confirm" onClick={executeTopUp}>Confirm</button>
+              <button className="profile-modal-btn profile-modal-btn-cancel" onClick={() => setShowConfirm(false)}>{t('common.cancel')}</button>
+              <button className="profile-modal-btn profile-modal-btn-confirm" onClick={executeTopUp}>{t('common.confirm')}</button>
             </div>
           </div>
         </div>

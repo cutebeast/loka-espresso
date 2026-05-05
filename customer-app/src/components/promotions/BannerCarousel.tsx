@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Gift, Clock } from 'lucide-react';
 import { TypePill } from '@/components/shared';
 import { resolveAssetUrl } from '@/lib/tokens';
@@ -26,6 +27,7 @@ interface BannerCarouselProps {
 }
 
 export default function BannerCarousel({ promotions, loading, onSelectPromo }: BannerCarouselProps) {
+  const { t } = useTranslation();
   if (loading) {
     return (
       <div className="promo-skeleton-list">
@@ -38,8 +40,8 @@ export default function BannerCarousel({ promotions, loading, onSelectPromo }: B
     return (
       <div className="promo-empty">
         <Gift size={40} className="promo-empty-icon" />
-        <p className="promo-empty-title">No active promotions</p>
-        <p className="promo-empty-desc">Check back soon for new offers</p>
+        <p className="promo-empty-title">{t('promotions.noPromotions')}</p>
+        <p className="promo-empty-desc">{t('promotions.checkBackSoon')}</p>
       </div>
     );
   }
@@ -48,7 +50,7 @@ export default function BannerCarousel({ promotions, loading, onSelectPromo }: B
     <div className="promo-list">
       {promotions.map((promo) => {
         const img = resolveAssetUrl(promo.image_url);
-        const tagText = promo.action_type === 'survey' ? 'Survey' : promo.action_type === 'detail' ? 'Offer' : 'Promo';
+        const tagText = promo.action_type === 'survey' ? t('promotions.survey') : promo.action_type === 'detail' ? t('promotions.offer') : t('promotions.promo');
         return (
           <motion.button
             key={promo.id}

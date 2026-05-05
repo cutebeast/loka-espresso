@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WifiOff, Wifi, RefreshCw } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const RETRY_INTERVAL = 15;
 
@@ -11,6 +12,7 @@ function getInitialOnline() {
 }
 
 export default function OfflineBanner() {
+  const { t } = useTranslation();
   const [isOnline, setIsOnline] = useState<boolean>(getInitialOnline);
   const [showBanner, setShowBanner] = useState<boolean>(() => !getInitialOnline());
   const [countdown, setCountdown] = useState(RETRY_INTERVAL);
@@ -74,13 +76,13 @@ export default function OfflineBanner() {
       {isOnline ? (
         <>
           <Wifi size={16} />
-          <span>Back online</span>
+          <span>{t('common.backOnline')}</span>
         </>
       ) : (
         <>
           <WifiOff size={16} />
           <span className="flex-1">
-            You&apos;re offline. Some features may be unavailable.
+            {t('toast.offline')}
           </span>
           {countdown > 0 && (
             <span className="flex items-center gap-1 text-xs opacity-85">

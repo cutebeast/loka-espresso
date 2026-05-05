@@ -13,14 +13,14 @@ import { APP_NAME, LOGO_URL } from '@/lib/config';
 const PAGE_VISIBILITY: Record<number, Set<string>> = {
   1: new Set([
     'dashboard', 'orders', 'kitchen',
-    'menu', 'inventory', 'tables', 'staff', 'walletTopup', 'posterminal',
+    'menu', 'inventory', 'tables', 'staff', 'shifts', 'walletTopup', 'posterminal',
     'customers', 'rewards', 'vouchers', 'promotions', 'information', 'notifications', 'feedback',
     'reports', 'marketingreports',
     'store', 'settings', 'pwa', 'loyaltyrules', 'auditlog',
   ]),
   2: new Set([
     'dashboard', 'orders', 'kitchen',
-    'inventory', 'tables', 'staff', 'walletTopup', 'posterminal',
+    'inventory', 'tables', 'staff', 'shifts', 'walletTopup', 'posterminal',
     'customers', 'rewards', 'vouchers', 'promotions', 'information', 'notifications', 'feedback',
     'reports', 'marketingreports',
     'store',

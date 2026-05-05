@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, Calendar, Search, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 
 interface LegalSection {
@@ -25,6 +26,7 @@ interface LegalPageProps {
 }
 
 export default function LegalPage({ legalKey }: LegalPageProps) {
+  const { t } = useTranslation();
   const { setPage, pageParams } = useUIStore();
   const key = legalKey || (pageParams.legalKey as 'terms' | 'privacy') || 'terms';
   const backTo = (pageParams.backTo as 'profile' | 'settings') || 'profile';
@@ -93,7 +95,7 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
   return (
     <div className="legal-screen">
       <div className="legal-header">
-        <button className="legal-back-btn" onClick={() => setPage(backTo)} aria-label="Back">
+        <button className="legal-back-btn" onClick={() => setPage(backTo)} aria-label={t('common.back')}>
           <ArrowLeft size={20} />
         </button>
         <h1 className="legal-page-title">{title}</h1>
@@ -117,7 +119,7 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
                   <Calendar size={16} color="#fff" />
                 </div>
                 <div>
-                  <div className="legal-updated-label">Last Updated</div>
+                  <div className="legal-updated-label">{t('common.lastUpdated')}</div>
                   <div className="legal-updated-date">{updatedAt}</div>
                 </div>
               </div>
@@ -137,7 +139,7 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
             {/* Table of Contents — only show when no search filter active */}
             {!search.trim() && sections.length > 0 && (
               <div className="legal-toc-card" ref={tocRef}>
-                <div className="legal-toc-title">Table of Contents</div>
+                <div className="legal-toc-title">{t('legal.tableOfContents')}</div>
                 {sections.map((s, i) => (
                   <button key={i} className="legal-toc-item" onClick={() => scrollToSection(i)}>
                     <span className="legal-toc-num">{i + 1}</span>

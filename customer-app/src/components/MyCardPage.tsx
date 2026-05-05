@@ -5,6 +5,7 @@ import { ArrowLeft, Share2, QrCode, Star, Clock, Settings } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import QRCode from 'qrcode';
 import api from '@/lib/api';
 import { LOKA } from '@/lib/tokens';
@@ -12,6 +13,7 @@ import { LOKA } from '@/lib/tokens';
 const TIERS = ['Bronze', 'Silver', 'Gold', 'Platinum'];
 
 export default function MyCardPage() {
+  const { t } = useTranslation();
   const { setPage, showToast } = useUIStore();
   const { points, tier } = useWalletStore();
   const { user } = useAuthStore();
@@ -63,18 +65,18 @@ export default function MyCardPage() {
   return (
     <div className="mycard-screen">
       <div className="mycard-header">
-        <button className="mycard-back-btn" onClick={() => setPage('profile')} aria-label="Back">
+        <button className="mycard-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="mycard-title">My Card</h1>
+        <h1 className="mycard-title">{t('myCard.title')}</h1>
       </div>
 
       <div className="mycard-content">
         {/* Physical card */}
         <div className="mycard-physical" ref={cardRef}>
           <div className="mycard-top">
-            <div className="mycard-brand">Loka Espresso</div>
-            <div className="mycard-tier-badge">{tier} Member</div>
+            <div className="mycard-brand">{t('myCard.brand')}</div>
+            <div className="mycard-tier-badge">{t('profile.tierMember', { tier })}</div>
           </div>
 
           <div className="mycard-middle">
@@ -87,7 +89,7 @@ export default function MyCardPage() {
                 )}
               </div>
               <div className="mycard-member-info">
-                <div className="mycard-member-name">{user?.name || 'Member'}</div>
+                <div className="mycard-member-name">{user?.name || t('myCard.member')}</div>
                 <div className="mycard-member-id">{memberId}</div>
               </div>
             </div>
@@ -96,7 +98,7 @@ export default function MyCardPage() {
           <div className="mycard-bottom">
             <div className="mycard-points-display">
               <div className="mycard-pts-val">{points.toLocaleString()}</div>
-              <div className="mycard-pts-label">Total Points</div>
+              <div className="mycard-pts-label">{t('myCard.totalPoints')}</div>
             </div>
             {memberSince && <div className="mycard-since">Since {memberSince.split(' ')[0]} {memberSince.split(' ')[1]?.slice(0,3)}</div>}
           </div>

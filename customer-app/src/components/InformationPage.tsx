@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import type { InformationCard as ApiInformationCard } from '@/lib/api';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type InformationCard = ApiInformationCard;
 
@@ -38,6 +39,7 @@ function tagLabel(contentType?: string | null): string {
 }
 
 export default function InformationPage({ onBack, preselectedId, preselectedSlug, contentType }: InformationPageProps) {
+  const { t } = useTranslation();
   const { showToast } = useUIStore();
   const [cards, setCards] = useState<InformationCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,7 +145,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
             </>
           )}
           <div className="info-detail-hero-overlay" />
-          <button className="info-detail-back-btn" onClick={() => setSelectedCard(null)} aria-label="Back">
+          <button className="info-detail-back-btn" onClick={() => setSelectedCard(null)} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
           <span className={`info-detail-tag ${selectedCard.content_type === 'product' ? 'product' : 'experience'}`}>
@@ -187,7 +189,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
 
         <div className="info-detail-footer">
           <button className="info-share-btn" onClick={handleShare}>
-            <span>Share</span>
+            <span>{t('common.share')}</span>
             <Share2 size={18} />
           </button>
         </div>
@@ -201,7 +203,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
       {/* Header */}
       <div className="info-header">
         <div className="info-header-left">
-          <button className="info-back-btn" onClick={onBack} aria-label="Back">
+          <button className="info-back-btn" onClick={onBack} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
           <h1 className="info-page-title">{pageLabel}</h1>
@@ -235,7 +237,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
             <p className="info-empty-title">
               {activeTab === 'product' ? 'No products available' : 'No articles available'}
             </p>
-            <p className="info-empty-desc">Check back soon for updates</p>
+            <p className="info-empty-desc">{t('information.checkBackSoon')}</p>
           </div>
         ) : (
           cards.map((card) => {

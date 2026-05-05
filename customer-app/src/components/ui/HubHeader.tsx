@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Search, RotateCcw, QrCode, Settings2 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { NotificationBell } from './NotificationBell';
 import { TierBadge } from './TierBadge';
 
@@ -22,11 +23,11 @@ interface HubHeaderProps {
   extraRight?: ReactNode;
 }
 
-function getGreeting(): string {
+function getGreeting(t: (k: string) => string): string {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return t('home.greetingMorning');
+  if (h < 17) return t('home.greetingAfternoon');
+  return t('home.greetingEvening');
 }
 
 export function HubHeader({
@@ -42,37 +43,38 @@ export function HubHeader({
   onSettingsClick,
   extraRight,
 }: HubHeaderProps) {
+  const { t } = useTranslation();
   const renderLeft = (): ReactNode => {
     switch (variant) {
       case 'home':
         return (
           <div className="flex flex-col gap-1 min-w-0">
             <span className="text-xs font-medium text-text-muted">
-              {getGreeting()}
+              {getGreeting(t)}
             </span>
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-lg font-extrabold text-copper tracking-tight truncate uppercase">
-                {userName || 'Guest'}
+                {userName || t('profile.guest')}
               </span>
               <TierBadge tier={tier} />
             </div>
           </div>
         );
       case 'menu':
-        return <h1 className="text-lg font-extrabold text-text-primary tracking-tight">Menu</h1>;
+        return <h1 className="text-lg font-extrabold text-text-primary tracking-tight">{t('nav.menu')}</h1>;
       case 'rewards':
         return (
           <div className="flex flex-col gap-0.5">
-            <h1 className="text-lg font-extrabold text-text-primary tracking-tight">Rewards</h1>
+            <h1 className="text-lg font-extrabold text-text-primary tracking-tight">{t('nav.rewards')}</h1>
             {points != null && (
-              <span className="text-xs font-medium text-text-muted">{points.toLocaleString()} pts</span>
+              <span className="text-xs font-medium text-text-muted">{t('profile.pts', { points: points.toLocaleString() })}</span>
             )}
           </div>
         );
       case 'orders':
-        return <h1 className="text-lg font-extrabold text-text-primary tracking-tight">Orders</h1>;
+        return <h1 className="text-lg font-extrabold text-text-primary tracking-tight">{t('nav.orders')}</h1>;
       case 'profile':
-        return <h1 className="text-lg font-extrabold text-text-primary tracking-tight">Account</h1>;
+        return <h1 className="text-lg font-extrabold text-text-primary tracking-tight">{t('nav.profile')}</h1>;
       default:
         return null;
     }
@@ -89,7 +91,7 @@ export function HubHeader({
           whileTap={{ scale: 0.9 }}
           onClick={onQRScanClick}
           className="w-11 h-11 rounded-xl bg-copper-10 flex items-center justify-center cursor-pointer border border-copper-30"
-          aria-label="Scan table QR"
+          aria-label={t('home.scanQR')}
           title="Scan table QR"
         >
           <QrCode size={17} strokeWidth={2.2} className="text-copper" />
@@ -105,7 +107,7 @@ export function HubHeader({
           whileTap={{ scale: 0.9 }}
           onClick={onSearchClick}
           className="w-11 h-11 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
-          aria-label="Search menu"
+          aria-label={t('menu.search')}
         >
           <Search size={17} strokeWidth={1.8} className="text-text-primary" />
         </motion.button>
@@ -120,7 +122,7 @@ export function HubHeader({
           whileTap={{ scale: 0.9 }}
           onClick={onRefreshClick}
           className="w-11 h-11 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
-          aria-label="Refresh orders"
+          aria-label={t('orders.tapToRefresh')}
         >
           <RotateCcw size={17} strokeWidth={1.8} className="text-text-primary" />
         </motion.button>
@@ -135,7 +137,7 @@ export function HubHeader({
           whileTap={{ scale: 0.9 }}
           onClick={onSettingsClick}
           className="w-11 h-11 rounded-xl bg-surface flex items-center justify-center cursor-pointer border border-border-subtle"
-          aria-label="Settings"
+          aria-label={t('settings.title')}
         >
           <Settings2 size={17} strokeWidth={1.8} className="text-text-primary" />
         </motion.button>

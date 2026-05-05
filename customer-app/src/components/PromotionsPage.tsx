@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import type { PromoBanner } from '@/lib/api';
 import { VoucherSection } from './promotions';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface BannerStatus {
   action_type: string;
@@ -33,6 +34,7 @@ interface PromotionsPageProps {
 }
 
 export default function PromotionsPage({ onBack, preselectedId }: PromotionsPageProps) {
+  const { t } = useTranslation();
   const { showToast, setPage, isGuest } = useUIStore();
   const [promotions, setPromotions] = useState<PromoBanner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,23 +97,23 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
   }, [preselectedId, promotions, selectedPromo, loadSurveyQuestions]);
 
   const handleClaim = async (promo: PromoBanner) => {
-    if (isGuest) { showToast('Sign in to claim offers', 'info'); return; }
+    if (isGuest) { showToast(t('promotions.signInToClaim'), 'info'); return; }
     setClaiming(promo.id);
     try {
       const res = await api.post(`/promos/banners/${promo.id}/claim`);
       const code = res.data?.voucher_code || res.data?.redemption_code || '';
       if (code) { setShowVoucher(code); await loadPromotions(); }
-      else showToast('Offer claimed! Check your vouchers.', 'success');
-    } catch (err) { console.error('[PromotionsPage] Claim failed:', err); showToast('Failed to claim offer', 'error'); }
+      else showToast(t('promotions.offerClaimed'), 'success');
+    } catch (err) { console.error('[PromotionsPage] Claim failed:', err); showToast(t('promotions.failedToClaim'), 'error'); }
     finally { setClaiming(null); }
   };
 
   const handleSubmitSurvey = async () => {
-    if (isGuest) { showToast('Sign in to submit surveys', 'info'); return; }
+    if (isGuest) { showToast(t('promotions.signInToSurvey'), 'info'); return; }
     if (!selectedPromo?.survey_id) return;
     const unanswered = surveyQuestions.filter((q) => q.is_required && !surveyAnswers[q.id]);
     if (unanswered.length > 0) {
-      showToast('Please answer all required questions', 'error');
+      showToast(t('promotions.answerRequired'), 'error');
       return;
     }
     setSubmittingSurvey(true);
@@ -125,7 +127,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       });
       const res = await api.post(`/surveys/${selectedPromo.survey_id}/submit`, { answers });
       if (res.data?.success === false) {
-        showToast(res.data.message || 'Already submitted', 'info');
+        showToast(res.data.message || t('promotions.alreadySubmitted'), 'info');
         setSurveyCompleted(true);
       } else {
         const code = res.data?.voucher_code || '';
@@ -192,7 +194,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       <div className="promotions-header">
         <div className="promotions-header-left">
           <button className="promotions-back-btn" onClick={onBack}><ArrowLeft size={20} /></button>
-          <h1 className="promotions-page-title">Promotions</h1>
+          <h1 className="promotions-page-title">{t('promotions.title')}</h1>
         </div>
       </div>
 
@@ -206,7 +208,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
                 <div className="promotions-promo-content">
                   <div className="promotions-promo-title">{promo.title}</div>
                   {promo.short_description && <div className="promotions-promo-sub">{promo.short_description}</div>}
-                  <button className="promotions-promo-btn" onClick={(e) => { e.stopPropagation(); handleSelectPromo(promo); }}>View</button>
+                  <button className="promotions-promo-btn" onClick={(e) => { e.stopPropagation(); handleSelectPromo(promo); }}>{t('common.view')}</button>
                 </div>
               </div>
             ))}
@@ -216,16 +218,16 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
 
       {/* Tab bar */}
       <div className="promotions-tab-bar">
-        <button className="promotions-tab" onClick={() => setPage('rewards')}>Point Rewards</button>
-        <button className="promotions-tab active">Promotions</button>
+        <button className="promotions-tab" onClick={() => setPage('rewards')}>{t('promotions.pointRewards')}</button>
+        <button className="promotions-tab active">{t('promotions.title')}</button>
       </div>
 
       {/* Empty state */}
       {!loading && promotions.length === 0 && (
         <div className="promotions-empty">
           <div className="promotions-empty-icon"><Gift size={40} color={LOKA.borderLight} /></div>
-          <p className="promotions-empty-title">No promotions available</p>
-          <p className="promotions-empty-text">Check back soon for new offers</p>
+          <p className="promotions-empty-title">{t('promotions.noPromotions')}</p>
+          <p className="promotions-empty-text">{t('promotions.checkBackSoon')}</p>
         </div>
       )}
 

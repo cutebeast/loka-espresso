@@ -6,6 +6,7 @@ import { Store, MapPin, Check, X, Clock, Navigation, Search } from 'lucide-react
 import { getStoresWithDistance } from '@/lib/geolocation';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 import type { Store as StoreType } from '@/lib/api';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface StorePickerModalProps {
   stores: StoreType[];
@@ -16,6 +17,7 @@ interface StorePickerModalProps {
 }
 
 export default function StorePickerModal({ stores, selectedStore, userLocation, onSelect, onClose }: StorePickerModalProps) {
+  const { t } = useTranslation();
   const [storeSearch, setStoreSearch] = useState('');
   const [storesWithDist, setStoresWithDist] = useState<Array<StoreType & { distance?: string; distanceKm?: number }>>([]);
 
@@ -59,14 +61,14 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
           <div>
             <div className="store-picker-label">
               <MapPin size={11} className="store-picker-label-icon" />
-              Pickup location
+              {t('storePicker.pickupLocation')}
             </div>
-            <h3 className="store-picker-title">Select your Loka</h3>
+            <h3 className="store-picker-title">{t('storePicker.title')}</h3>
           </div>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="store-picker-close"
           >
             <X size={18} />
@@ -88,23 +90,23 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
               type="text"
               value={storeSearch}
               onChange={(e) => setStoreSearch(e.target.value)}
-              placeholder="Search by name or area"
+              placeholder={t('storePicker.searchPlaceholder')}
               className="store-picker-search-input"
             />
             {storeSearch && (
-              <button onClick={() => setStoreSearch('')} aria-label="Clear" className="store-picker-search-clear">
+              <button onClick={() => setStoreSearch('')} aria-label={t('common.clear')} className="store-picker-search-clear">
                 <X size={14} />
               </button>
             )}
           </div>
         </div>
         <div className="store-picker-section-label">
-          {storeSearch ? `${visible.length} result${visible.length === 1 ? '' : 's'}` : 'Nearest to you'}
+          {storeSearch ? t('storePicker.results', { count: visible.length }) : t('storePicker.nearestToYou')}
         </div>
         <div className="scroll-container store-picker-scroll">
           {visible.length === 0 ? (
             <div className="store-picker-empty">
-              {storeSearch ? `No stores match "${storeSearch}"` : 'No stores available'}
+              {storeSearch ? t('storePicker.noMatch', { search: storeSearch }) : t('storePicker.noStores')}
             </div>
           ) : visible.map((store) => {
             const isSelected = selectedStore?.id === store.id;
@@ -121,11 +123,11 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
                 <div className="store-picker-item-info">
                   <div className="store-picker-item-name">{store.name}</div>
                   {store.address && <div className="store-picker-item-address">{store.address}</div>}
-                  <span className="store-picker-item-status">Open now</span>
+                  <span className="store-picker-item-status">{t('storePicker.openNow')}</span>
                   {store.pickup_lead_minutes != null && (
                     <div className="store-picker-pickup-badge">
                       <Clock size={12} />
-                      <span>Ready in ~{store.pickup_lead_minutes} min</span>
+                      <span>{t('storePicker.readyIn', { minutes: store.pickup_lead_minutes })}</span>
                     </div>
                   )}
                   {store.distance && (
