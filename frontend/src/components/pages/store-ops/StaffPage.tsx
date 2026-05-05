@@ -48,6 +48,13 @@ export default function StaffPage() {
   const activeStoreId = selectedStore !== 'all' && selectedStore ? selectedStore : '';
   const isHQ = selectedStore === 'all';
 
+  // Tab
+  const [tab, setTab] = useState<'staff' | 'shifts'>('staff');
+
+  // Shift state
+  const [shifts, setShifts] = useState<any[]>([]);
+  const [shiftsLoading, setShiftsLoading] = useState(false);
+
   // Staff list state
   const [staffList, setStaffList] = useState<MerchantStaffMember[]>([]);
   const [loading, setLoading] = useState(false);
@@ -120,6 +127,19 @@ export default function StaffPage() {
     setTempPassword(null);
     setResetPasswordResult(null);
   }, [selectedStore]);
+
+  // Fetch shifts when tab is selected
+  const fetchShifts = useCallback(async () => {
+    if (!activeStoreId) return;
+    setShiftsLoading(true);
+    try {
+      const res = await apiFetch(`/admin/stores/${activeStoreId}/shifts`);
+      if (res.ok) setShifts(await res.json());
+    } catch { console.error('Failed to fetch shifts'); }
+    finally { setShiftsLoading(false); }
+  }, [activeStoreId]);
+
+  useEffect(() => { if (tab === 'shifts') fetchShifts(); }, [tab, fetchShifts]);
 
   function handleUserTypeChange(newTypeId: number) {
     setUserTypeId(newTypeId);
@@ -378,6 +398,15 @@ export default function StaffPage() {
 
       {/* LIST VIEW */}
       <div className="sp-18">
+        {/* Tab bar */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <button onClick={() => setTab('staff')} className={`ip-tab ${tab === 'staff' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
+            <i className="fas fa-users" style={{ marginRight: 4 }}></i> Staff
+          </button>
+          <button onClick={() => setTab('shifts')} className={`ip-tab ${tab === 'shifts' ? 'ip-tab-active' : 'ip-tab-inactive'}`}>
+            <i className="fas fa-clock" style={{ marginRight: 4 }}></i> Shifts
+          </button>
+        </div>
         <div className="sp-19">
           <StoreSelector
             stores={stores.filter(s => String(s.id) !== '0')}
@@ -386,7 +415,9 @@ export default function StaffPage() {
             allLabel="All Stores (HQ view)"
           />
         </div>
+        {tab === 'staff' && (
         <button className="btn btn-primary" onClick={openCreate}><i className="fas fa-plus"></i> New Staff</button>
+      )}
       </div>
 
       {error && (
@@ -510,6 +541,39 @@ export default function StaffPage() {
       />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={fetchStaff} loading={loading} />
+      {tab === 'shifts' && (
+        <div>
+          {shiftsLoading && <p style={{ textAlign: 'center', padding: 32 }}>Loading shifts...</p>}
+          {!shiftsLoading && shifts.length === 0 && <p style={{ textAlign: 'center', color: '#6B7280', padding: 32 }}>No shifts recorded for this store.</p>}
+          {!shiftsLoading && shifts.length > 0 && (
+            <table className="dt-table">
+              <thead>
+                <tr>
+                  <th>Staff</th>
+                  <th>Clock In</th>
+                  <th>Clock Out</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shifts.map((s: any) => {
+                  const clockIn = new Date(s.clock_in);
+                  const clockOut = s.clock_out ? new Date(s.clock_out) : null;
+                  const duration = clockOut ? Math.round((clockOut.getTime() - clockIn.getTime()) / 3600000 * 10) / 10 : null;
+                  return (
+                    <tr key={s.id} className="dt-row">
+                      <td>{s.staff?.name || `Staff #${s.staff_id}`}</td>
+                      <td>{clockIn.toLocaleString()}</td>
+                      <td>{clockOut ? clockOut.toLocaleString() : <span className="badge badge-green">Active</span>}</td>
+                      <td>{duration != null ? `${duration}h` : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }

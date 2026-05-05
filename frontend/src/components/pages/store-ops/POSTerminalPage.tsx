@@ -43,6 +43,12 @@ export default function POSTerminalPage() {
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showGuide, setShowGuide] = useState(false);
 
+  // Clock-in/out state
+  const [staffId, setStaffId] = useState('');
+  const [clockPin, setClockPin] = useState('');
+  const [clocking, setClocking] = useState(false);
+  const [clockResult, setClockResult] = useState<{success: boolean; message: string} | null>(null);
+
   const fetchWallet = useCallback(async (customerId: number) => {
       setLoadingWallet(true);
     setWalletError('');
@@ -117,6 +123,36 @@ export default function POSTerminalPage() {
     }
   }
 
+  async function clockIn() {
+    const sid = parseInt(staffId);
+    if (!sid) { setClockResult({success: false, message: 'Enter a staff ID'}); return; }
+    if (!clockPin) { setClockResult({success: false, message: 'Enter PIN'}); return; }
+    setClocking(true); setClockResult(null);
+    try {
+      const res = await apiFetch(`/admin/staff/${sid}/clock-in`, undefined, {
+        method: 'POST',
+        body: JSON.stringify({ pin_code: clockPin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setClockResult({success: res.ok, message: data.message || data.detail || 'Clock in successful'});
+      if (res.ok) { setStaffId(''); setClockPin(''); }
+    } catch { setClockResult({success: false, message: 'Network error'}); }
+    finally { setClocking(false); }
+  }
+
+  async function clockOut() {
+    const sid = parseInt(staffId);
+    if (!sid) { setClockResult({success: false, message: 'Enter a staff ID'}); return; }
+    setClocking(true); setClockResult(null);
+    try {
+      const res = await apiFetch(`/admin/staff/${sid}/clock-out`, undefined, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      setClockResult({success: res.ok, message: data.message || data.detail || 'Clock out successful'});
+      if (res.ok) { setStaffId(''); setClockPin(''); }
+    } catch { setClockResult({success: false, message: 'Network error'}); }
+    finally { setClocking(false); }
+  }
+
   return (
     <div>
       <h2 className="ptp-0">
@@ -171,6 +207,34 @@ export default function POSTerminalPage() {
       />
 
       <CheckoutPanel result={result} />
+
+      {/* Staff Clock In/Out */}
+      <div className="card" style={{ marginTop: 16, padding: 16 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}><i className="fas fa-clock" style={{ marginRight: 8 }}></i>Staff Clock</h3>
+        {clockResult && (
+          <div className={clockResult.success ? 'cdp-success' : 'alert alert-red'} style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <i className={`fas ${clockResult.success ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i> {clockResult.message}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <div className="df-field" style={{ flex: 1 }}>
+            <label className="df-label">Staff ID</label>
+            <input type="number" value={staffId} onChange={e => setStaffId(e.target.value)} placeholder="Enter staff ID" disabled={clocking} />
+          </div>
+          <div className="df-field" style={{ flex: 1 }}>
+            <label className="df-label">PIN (for clock in)</label>
+            <input type="password" value={clockPin} onChange={e => setClockPin(e.target.value)} placeholder="PIN" disabled={clocking} maxLength={6} />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-primary" onClick={clockIn} disabled={clocking}>
+              {clocking ? '...' : 'Clock In'}
+            </button>
+            <button className="btn" onClick={clockOut} disabled={clocking}>
+              {clocking ? '...' : 'Clock Out'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
