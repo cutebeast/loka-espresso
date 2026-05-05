@@ -503,10 +503,12 @@ export default function InformationPage() {
 
             <div className="inf-11">
               <ImageUploadField
-                label={form.content_type === 'popup_banner' ? 'Image / Video' : 'Card Image'}
+                label={form.content_type === 'popup_banner' ? 'Cover — Image or Video' : 'Cover Image'}
                 imageUrl={form.image_url}
                 onSet={(url) => setField('image_url', url)}
-                hint={form.content_type === 'popup_banner' ? 'Cover image or video shown on PWA card.' : 'Cover image shown on PWA card and article header.'}
+                hint={form.content_type === 'popup_banner'
+                  ? 'JPEG, PNG, MP4, WebM — Max 25MB. Displayed fullscreen on overlay.'
+                  : 'JPEG, PNG — shown on PWA card and article header.'}
                 folder={form.content_type}
                 allowVideo={form.content_type === 'popup_banner'}
               />
@@ -515,10 +517,10 @@ export default function InformationPage() {
             {form.content_type !== 'event' && (
             <div className="inf-12">
               <GalleryUploadField
-                label="Gallery Images"
+                label="Image Gallery"
                 urls={form.gallery_urls}
                 onSet={(urls) => setField('gallery_urls', urls)}
-                hint="Additional images shown as a swipeable gallery inside the article."
+                hint="JPEG, PNG — additional images shown as swipeable gallery. Images only, no video."
                 folder={form.content_type}
               />
             </div>
@@ -636,6 +638,8 @@ function ImageUploadField({ label, imageUrl, onSet, hint, folder, allowVideo }: 
   }
 
   const isVideo = imageUrl && /\.(mp4|webm)($|\?)/i.test(imageUrl);
+  const formats = allowVideo ? 'JPEG, PNG, MP4, WebM' : 'JPEG, PNG';
+  const maxSize = 'Max 25MB';
 
   return (
     <div>
@@ -643,13 +647,13 @@ function ImageUploadField({ label, imageUrl, onSet, hint, folder, allowVideo }: 
       <div className="iuf-48">
         <input type="file" ref={fileRef} accept={allowVideo ? 'image/*,video/mp4,video/webm' : 'image/*'} onChange={handleUpload} className="iuf-49" />
         <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-          {uploading ? 'Uploading...' : allowVideo ? 'Upload Image/Video' : 'Upload'}
+          {uploading ? 'Uploading...' : 'Browse'}
         </button>
         {imageUrl && (
           <>
             {isVideo ? (
-              <span className="iuf-50" style={{ width: 60, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', borderRadius: 4, fontSize: 10, color: '#3B4A1A' }}>
-                <i className="fas fa-video" style={{ marginRight: 4 }}></i>MP4
+              <span className="iuf-50" style={{ width: 60, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', borderRadius: 4, fontSize: 10, fontWeight: 600, color: '#3B4A1A' }}>
+                <i className="fas fa-video" style={{ marginRight: 4 }}></i>VIDEO
               </span>
             ) : (
               <img src={imageUrl} alt="" width={60} height={40} className="iuf-50" style={{ borderRadius: 4, objectFit: 'cover' }} />
@@ -658,7 +662,7 @@ function ImageUploadField({ label, imageUrl, onSet, hint, folder, allowVideo }: 
           </>
         )}
       </div>
-      {hint && <div className="iuf-52"><span className="iuf-53"><i className="fas fa-info-circle"></i></span>{hint}</div>}
+      <div className="iuf-52"><span className="iuf-53"><i className="fas fa-info-circle"></i></span>{hint || `${formats} — ${maxSize}`}</div>
     </div>
   );
 }

@@ -246,6 +246,11 @@
 }
 .co-delivery-input:focus { border-color: var(--loka-primary); background: var(--loka-bg-card); }
 .co-delivery-input::placeholder { color: var(--loka-border); }
+.co-delivery-out-of-range {
+  margin-top: 10px; padding: 10px 12px;
+  background: #FDEAEA; color: #C75050;
+  border-radius: 8px; font-size: 13px; line-height: 1.4;
+}
 
 /* ── Voucher / Reward card (grey bg, opens sheet) ── */
 .co-reward-card {

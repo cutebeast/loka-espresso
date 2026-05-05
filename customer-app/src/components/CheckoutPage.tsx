@@ -14,6 +14,7 @@ import { placeOrder } from '@/lib/cartSync';
 import TimeSlotPicker from '@/components/checkout/TimeSlotPicker';
 import DeliveryAddressCard from '@/components/checkout/DeliveryAddressCard';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { haversineKm } from '@/lib/geolocation';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
 
@@ -72,6 +73,15 @@ export default function CheckoutPage() {
   const requiresWallet = paymentMethod === 'wallet';
   const walletSufficient = balance >= total;
 
+  // Delivery radius: check distance from store to delivery address (not user location)
+  const deliveryOutOfRange = (() => {
+    if (orderMode !== 'delivery' || !selectedStore?.lat || !selectedStore?.lng || !deliveryAddress?.lat || !deliveryAddress?.lng) return false;
+    const radius = selectedStore.delivery_radius_km;
+    if (radius == null || radius <= 0) return false;
+    const dist = haversineKm(selectedStore.lat, selectedStore.lng, deliveryAddress.lat, deliveryAddress.lng);
+    return dist > radius;
+  })();
+
   const saveDraft = () => {
     setCheckoutDraft({ orderMode, selectedStore, deliveryAddress, pickupTime, paymentMethod, notes: orderNote, voucherCode: discountCode, rewardCode: discountCode, recipientName, recipientPhone, deliveryInstructions: deliveryInstr });
     setDraftSaved(true);
@@ -84,6 +94,7 @@ export default function CheckoutPage() {
     if (orderMode === 'pickup' && !selectedStore) missing.add('store');
     if (orderMode !== 'dine_in' && !pickupTime) missing.add('time');
     if (missing.size > 0) { setFieldErrors(missing); showToast('Please fill in the highlighted fields', 'error'); return; }
+    if (deliveryOutOfRange) { showToast('Delivery address is outside store service area', 'error'); return; }
     setFieldErrors(new Set());
     setPlacing(true);
     try {
@@ -157,6 +168,11 @@ export default function CheckoutPage() {
             </div>
             <DeliveryAddressCard value={deliveryAddress} onChange={(addr) => { setDeliveryAddress(addr); saveDraft(); }} />
             <div className="co-delivery-field mt-2"><label className="co-delivery-label">Delivery Instructions (optional)</label><input value={deliveryInstr} onChange={e => { setDeliveryInstr(e.target.value); saveDraft(); }} placeholder="e.g., Ring doorbell twice" autoComplete="off" className="co-delivery-input" /></div>
+            {deliveryOutOfRange && selectedStore && (
+              <div className="co-delivery-out-of-range">
+                This store only delivers within a {selectedStore.delivery_radius_km} km radius. The delivery address is outside this area. Please choose a closer store or switch to pickup.
+              </div>
+            )}
           </div>
         )}
         {orderMode !== 'dine_in' && (
