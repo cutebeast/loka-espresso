@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Image from 'next/image';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { Select, Drawer, DataTable, type ColumnDef } from '@/components/ui';
 
@@ -101,7 +100,7 @@ export default function RewardsPage() {
       width: '70px',
       render: (row) => (
         row.image_url ? (
-          <Image src={cacheBust(row.image_url)} alt="" width={48} height={48} style={{ borderRadius: 6, objectFit: 'cover' }} />
+          <img src={cacheBust(row.image_url)} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         ) : (
           <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', borderRadius: 6 }}>
             <i className="fas fa-gift" style={{ color: '#999' }}></i>
@@ -361,7 +360,7 @@ function RewardFormPage({ existingReward, onBack }: { existingReward: RewardItem
               </button>
               {imageUrl && (
                 <>
-                  <Image src={imageUrl} alt="" width={40} height={40} className="rfp-41" />
+                  <img src={imageUrl} alt="" width={40} height={40} className="rfp-41" style={{ borderRadius: 4, objectFit: 'cover' }} />
                   <button className="btn btn-sm rfp-42" onClick={() => setImageUrl('')} ><i className="fas fa-times"></i></button>
                 </>
               )}

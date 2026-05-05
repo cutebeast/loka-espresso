@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Image from 'next/image';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { Select, DataTable, Drawer, type ColumnDef } from '@/components/ui';
 
@@ -200,7 +199,7 @@ export default function BannerManager() {
       width: '100px',
       render: (row) => (
         row.image_url ? (
-          <Image src={cacheBust(row.image_url)} alt="" width={80} height={45} style={{ borderRadius: 4, objectFit: 'cover' }} />
+          <img src={cacheBust(row.image_url)} alt="" style={{ width: 80, height: 45, borderRadius: 4, objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         ) : (
           <div style={{ width: 80, height: 45, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', borderRadius: 4 }}>
             <i className="fas fa-image"></i>
@@ -433,7 +432,7 @@ function ImageUploadField({ label, imageUrl, onSet, hint }: { label: string; ima
         </button>
         {imageUrl && (
           <>
-            <Image src={imageUrl} alt="" width={40} height={28} className="iuf-54" />
+            <img src={imageUrl} alt="" width={40} height={28} className="iuf-54" style={{ borderRadius: 4, objectFit: 'cover' }} />
             <button type="button" className="btn btn-sm iuf-55" onClick={() => onSet('')} ><i className="fas fa-times"></i></button>
           </>
         )}

@@ -65,10 +65,13 @@ export default function MenuPage() {
 
   /* intersection observer for active category */
   useEffect(() => {
+    const mountedRef = { current: true };
     if (observerRef.current) observerRef.current.disconnect();
     const rafId = requestAnimationFrame(() => {
+      if (!mountedRef.current) return;
       observerRef.current = new IntersectionObserver(
         (entries) => {
+          if (!mountedRef.current) return;
           const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
           if (visible.length > 0) {
             const id = Number(visible[0].target.getAttribute('data-category-id'));
@@ -77,9 +80,10 @@ export default function MenuPage() {
         },
         { rootMargin: '-20% 0px -70% 0px', threshold: [0, 0.5, 1] }
       );
-      sectionRefs.current.forEach((el) => { if (el) observerRef.current?.observe(el); });
+      sectionRefs.current.forEach((el) => { if (el && mountedRef.current) observerRef.current?.observe(el); });
     });
     return () => {
+      mountedRef.current = false;
       cancelAnimationFrame(rafId);
       observerRef.current?.disconnect();
     };

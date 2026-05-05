@@ -1,5 +1,6 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { Home, Coffee, Crown, Clock, User } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import type { PageId } from '@/lib/api';
@@ -40,10 +41,17 @@ export default function BottomNav({ page, onNavigate }: BottomNavProps) {
           <button
             key={id}
             onClick={() => onNavigate(id)}
-            className={`nav-item${isActive ? ' active active-pill' : ''}`}
+            className={`nav-item${isActive ? ' active' : ''}`}
             aria-label={label}
             aria-current={isActive ? 'page' : undefined}
           >
+            {isActive && (
+              <motion.div
+                layoutId="active-pill"
+                className="nav-active-pill"
+                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+              />
+            )}
             <span className="nav-icon-wrap">
               <Icon size={22} strokeWidth={isActive ? 2.4 : 1.8} />
               {badgeCount > 0 && (
