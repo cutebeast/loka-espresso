@@ -585,9 +585,13 @@ export default function StaffPage() {
       <Pagination page={page} totalPages={totalPages} onPageChange={fetchStaff} loading={loading} />
       {tab === 'shifts' && (
         <div>
-          {shiftsLoading && <p style={{ textAlign: 'center', padding: 32 }}>Loading shifts...</p>}
-          {!shiftsLoading && shifts.length === 0 && <p style={{ textAlign: 'center', color: '#6B7280', padding: 32 }}>No shifts recorded for this store.</p>}
-          {!shiftsLoading && shifts.length > 0 && (
+          {!activeStoreId ? (
+            <p style={{ textAlign: 'center', color: '#6B7280', padding: 32 }}>Select a store above to view shift history.</p>
+          ) : shiftsLoading ? (
+            <p style={{ textAlign: 'center', padding: 32 }}>Loading shifts...</p>
+          ) : shifts.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#6B7280', padding: 32 }}>No shifts recorded for this store.</p>
+          ) : (
             <table className="dt-table">
               <thead>
                 <tr>
@@ -614,6 +618,32 @@ export default function StaffPage() {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+      {tab === 'clock' && (
+        <div style={{ maxWidth: 480, margin: '0 auto' }}>
+          <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, textAlign: 'center' }}>
+            <i className="fas fa-clock" style={{ marginRight: 8 }}></i>Staff Clock In / Out
+          </h4>
+          {clockResult && (
+            <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, background: clockResult.success ? '#F0FDF4' : '#FEF2F2', color: clockResult.success ? '#16A34A' : '#DC2626' }}>
+              <i className={`fas ${clockResult.success ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i> {clockResult.message}
+            </div>
+          )}
+          <div className="df-grid">
+            <div className="df-field">
+              <label className="df-label">Staff ID</label>
+              <input type="number" value={clockStaffId} onChange={e => setClockStaffId(e.target.value)} placeholder="Enter staff ID" disabled={clocking} />
+            </div>
+            <div className="df-field">
+              <label className="df-label">PIN (clock in only)</label>
+              <input type="password" value={clockPin} onChange={e => setClockPin(e.target.value)} placeholder="PIN" maxLength={6} disabled={clocking} />
+            </div>
+          </div>
+          <div className="df-actions" style={{ marginTop: 12 }}>
+            <button className="btn btn-primary" onClick={clockIn} disabled={clocking}>{clocking ? '...' : 'Clock In'}</button>
+            <button className="btn" onClick={clockOut} disabled={clocking}>{clocking ? '...' : 'Clock Out'}</button>
+          </div>
         </div>
       )}
     </div>

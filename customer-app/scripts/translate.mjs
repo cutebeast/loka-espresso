@@ -3,18 +3,20 @@
  * Bulk translation script for LOKA Espresso i18n.
  *
  * Usage:
- *   npm run translate
+ *   DEEPL_API_KEY=xxx DEEPSEEK_API_KEY=yyy npm run translate
  *
- * Strategy (in priority order):
- * 1. Call internal API endpoint if TRANSLATE_API_ENDPOINT is set.
- *    The backend can route to any LLM (self-hosted, DeepSeek, OpenAI, etc.)
- * 2. Call DeepL API directly if DEEPL_API_KEY is set.
- * 3. Copy English fallback to missing keys as a last resort.
+ * Priority:
+ * 1. DeepL API direct — primary (best quality for short UI phrases)
+ * 2. DeepSeek API (deepseek-chat model — fast / cheap) — fallback
+ * 3. English copy — last resort
  *
  * Environment variables:
- *   TRANSLATE_API_ENDPOINT  e.g. "https://admin.loyaltysystem.uk/api/v1/translate/bulk"
- *   DEEPL_API_KEY           Your DeepL API key
+ *   DEEPL_API_KEY           DeepL API key (primary)
  *   DEEPL_API_URL           "https://api-free.deepl.com/v2/translate" (default)
+ *   DEEPSEEK_API_KEY        DeepSeek API key (fallback)
+ *   DEEPSEEK_API_URL        "https://api.deepseek.com/v1/chat/completions" (default)
+ *   DEEPSEEK_MODEL          "deepseek-chat" (default — the fast V3 model)
+ *   TRANSLATE_API_ENDPOINT  Your own backend endpoint (overrides everything if set)
  */
 
 import fs from 'fs/promises';
@@ -27,8 +29,18 @@ const SOURCE_LANG = 'en';
 const TARGET_LANGS = ['ms', 'zh', 'ta', 'tr'];
 
 const API_ENDPOINT = process.env.TRANSLATE_API_ENDPOINT;
+const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY;
+const DEEPSEEK_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1/chat/completions';
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
 const DEEPL_KEY = process.env.DEEPL_API_KEY;
 const DEEPL_URL = process.env.DEEPL_API_URL || 'https://api-free.deepl.com/v2/translate';
+
+const LOCALE_NAMES = {
+  ms: 'Malay (Bahasa Malaysia)',
+  zh: 'Simplified Chinese',
+  ta: 'Tamil',
+  tr: 'Turkish',
+};
 
 /** Flatten a nested JSON object into dot-notation keys. */
 function flatten(obj, prefix = '') {
@@ -69,10 +81,66 @@ async function translateViaApi(texts, targetLang) {
   });
   if (!res.ok) throw new Error(`API returned ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  // Expect { translations: ["...", "..."] } or { results: ["...", "..."] }
   const results = data.translations ?? data.results ?? data;
   if (!Array.isArray(results) || results.length !== texts.length) {
     throw new Error('Unexpected API response format');
+  }
+  return results;
+}
+
+/** Call DeepSeek API (deepseek-chat model) for bulk translation. */
+async function translateViaDeepSeek(texts, targetLang) {
+  const langName = LOCALE_NAMES[targetLang] || targetLang;
+  const prompt = `Translate the following UI strings from English to ${langName}.
+Rules:
+- Preserve all placeholders like {count}, {amount}, {name}, {points}, {tier}, {radius}, {minutes} exactly as-is. Do NOT translate text inside curly braces.
+- Keep the tone friendly and concise (suitable for a mobile app).
+- Return ONLY a JSON array of translated strings in the exact same order. No explanations, no markdown.`;
+
+  const userContent = JSON.stringify(texts, null, 2);
+
+  const res = await fetch(DEEPSEEK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${DEEPSEEK_KEY}`,
+    },
+    body: JSON.stringify({
+      model: DEEPSEEK_MODEL,
+      messages: [
+        { role: 'system', content: prompt },
+        { role: 'user', content: userContent },
+      ],
+      temperature: 0.3,
+      max_tokens: 4096,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`DeepSeek returned ${res.status}: ${text}`);
+  }
+
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('DeepSeek returned empty content');
+
+  // Parse JSON — DeepSeek might return {"translations": [...]} or just raw JSON array
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    // Sometimes it wraps in markdown code blocks
+    const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
+    parsed = JSON.parse(cleaned);
+  }
+
+  const results = Array.isArray(parsed) ? parsed : parsed.translations ?? parsed.results;
+  if (!Array.isArray(results) || results.length !== texts.length) {
+    console.error('[translate] DeepSeek response mismatch. Expected', texts.length, 'items, got', results?.length);
+    console.error('[translate] Raw response:', content);
+    throw new Error('DeepSeek response format mismatch');
   }
   return results;
 }
@@ -99,7 +167,7 @@ async function translateBatch(texts, targetLang) {
   if (texts.length === 0) return [];
   if (API_ENDPOINT) return translateViaApi(texts, targetLang);
   if (DEEPL_KEY) return translateViaDeepL(texts, targetLang);
-  // Fallback: return English text unchanged
+  if (DEEPSEEK_KEY) return translateViaDeepSeek(texts, targetLang);
   return [...texts];
 }
 
@@ -108,11 +176,11 @@ async function main() {
   console.log(`[translate] Source: ${SOURCE_LANG}`);
   console.log(`[translate] Targets: ${TARGET_LANGS.join(', ')}`);
 
-  if (API_ENDPOINT) console.log(`[translate] Using API endpoint: ${API_ENDPOINT}`);
-  else if (DEEPL_KEY) console.log(`[translate] Using DeepL directly`);
+  if (API_ENDPOINT) console.log(`[translate] Using internal API: ${API_ENDPOINT}`);
+  else if (DEEPL_KEY) console.log(`[translate] Using DeepL (primary)`);
+  else if (DEEPSEEK_KEY) console.log(`[translate] Using DeepSeek (${DEEPSEEK_MODEL}) fallback`);
   else console.log(`[translate] No API configured — copying English fallbacks`);
 
-  // Load source English dictionary
   const sourcePath = path.join(LOCALES_DIR, `${SOURCE_LANG}.json`);
   const sourceRaw = await fs.readFile(sourcePath, 'utf-8');
   const sourceDict = JSON.parse(sourceRaw);
@@ -126,10 +194,9 @@ async function main() {
       const targetRaw = await fs.readFile(targetPath, 'utf-8');
       targetFlat = flatten(JSON.parse(targetRaw));
     } catch {
-      // File doesn't exist or is empty — start fresh
+      // Start fresh
     }
 
-    // Find missing keys
     const missingKeys = sourceKeys.filter((k) => !(k in targetFlat));
     if (missingKeys.length === 0) {
       console.log(`[translate] ${targetLang}: all keys present ✓`);
@@ -138,21 +205,25 @@ async function main() {
 
     console.log(`[translate] ${targetLang}: ${missingKeys.length} missing keys`);
 
-    // Batch translate in chunks of 50 (API rate limit / payload size friendliness)
-    const CHUNK_SIZE = 50;
+    // DeepL supports up to 50 texts per request; DeepSeek can handle larger batches
+    const CHUNK_SIZE = DEEPL_KEY ? 50 : 60;
     for (let i = 0; i < missingKeys.length; i += CHUNK_SIZE) {
       const chunkKeys = missingKeys.slice(i, i + CHUNK_SIZE);
       const chunkTexts = chunkKeys.map((k) => sourceFlat[k]);
-      const translations = await translateBatch(chunkTexts, targetLang);
-
-      for (let j = 0; j < chunkKeys.length; j++) {
-        targetFlat[chunkKeys[j]] = translations[j];
+      try {
+        const translations = await translateBatch(chunkTexts, targetLang);
+        for (let j = 0; j < chunkKeys.length; j++) {
+          targetFlat[chunkKeys[j]] = translations[j];
+        }
+        console.log(`[translate] ${targetLang}: translated ${Math.min(i + CHUNK_SIZE, missingKeys.length)}/${missingKeys.length}`);
+      } catch (err) {
+        console.error(`[translate] ${targetLang}: chunk failed, falling back to English`, err.message);
+        for (const k of chunkKeys) {
+          targetFlat[k] = sourceFlat[k];
+        }
       }
-
-      console.log(`[translate] ${targetLang}: translated ${Math.min(i + CHUNK_SIZE, missingKeys.length)}/${missingKeys.length}`);
     }
 
-    // Write updated target file
     const targetDict = unflatten(targetFlat);
     await fs.writeFile(targetPath, JSON.stringify(targetDict, null, 2) + '\n', 'utf-8');
     console.log(`[translate] ${targetLang}: saved ✓`);
