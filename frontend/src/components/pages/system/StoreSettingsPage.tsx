@@ -246,6 +246,8 @@ function StoreForm({ onClose, existingStore }: { onClose: () => void; existingSt
           )}
           {!existingStore?.image_url && <div className="df-hint">Upload a store photo</div>}
         </div>
+        </>
+        )}
       </div>
 
       {!isHQ && (
