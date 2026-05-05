@@ -174,7 +174,7 @@ export default function RewardsPage() {
               return (
                 <div key={reward.id} className="reward-card-improved" onClick={() => setSelectedReward(reward)}>
                   <div className="reward-thumb">
-                    {img ? <img src={img} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /> : <Gift size={24} color={LOKA.border} />}
+                    {img ? <img src={img} alt="" loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Gift size={24} color={LOKA.border} />}
                   </div>
                   <div className="reward-info">
                     <div className="reward-points-tag">{reward.points_cost.toLocaleString()} pts</div>

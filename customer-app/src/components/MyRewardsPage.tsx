@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Gift, Ticket, Clock, QrCode, Shield } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import type { UserReward, UserVoucher } from '@/lib/api';
-import { LOKA } from '@/lib/tokens';
+import { LOKA, resolveAssetUrl } from '@/lib/tokens';
 
 interface MyRewardsPageProps {
   onBack: () => void;
@@ -53,7 +53,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
           </button>
           <h1 className="sub-page-title">My Rewards &amp; Vouchers</h1>
         </div>
-        <div style={{ width: 36 }} />
+        <div className="w-9" />
       </div>
 
       {/* Progress indicator */}
@@ -93,7 +93,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                 <div key={reward.id} className="myrv-owned-card" onClick={() => setSelectedReward(reward)}>
                   <div className="myrv-item-thumb">
                     {reward.reward_image_url ? (
-                      <img src={reward.reward_image_url} alt="" loading="lazy" />
+                      <img src={resolveAssetUrl(reward.reward_image_url) ?? undefined} alt="" loading="lazy" />
                     ) : (
                       <Gift size={24} />
                     )}

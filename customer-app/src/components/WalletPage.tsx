@@ -247,7 +247,7 @@ export default function WalletPage() {
         <div className="profile-modal-overlay show" onClick={() => setShowConfirm(false)}>
           <div className="profile-modal-box">
             <h3>Confirm Top Up</h3>
-            <p style={{ marginBottom: 16 }}>
+            <p className="mb-4">
               Top up <strong>{formatPrice(getTopUpAmount() || 0)}</strong> to your wallet?
             </p>
             <div className="profile-modal-btns">

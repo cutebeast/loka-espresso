@@ -117,9 +117,8 @@ export default function HelpSupportPage() {
             {/* Contact Form */}
             <div className="support-form-section">
               <div className="support-input-group">
-                <label className="support-input-label">Your Name</label>
-                <input
-                  type="text"
+                <label className="support-input-label" htmlFor="hs-name">Your Name</label>
+            <input id="hs-name"                   type="text"
                   className="support-input-field"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -150,7 +149,7 @@ export default function HelpSupportPage() {
               </div>
 
               <div className="support-input-group">
-                <label className="support-input-label">Subject</label>
+                <label className="support-input-label" htmlFor="hs-subject">Subject</label>
                 <div className="support-subject-cards">
                   {SUBJECTS.map((s) => {
                     const Icon = s.icon;

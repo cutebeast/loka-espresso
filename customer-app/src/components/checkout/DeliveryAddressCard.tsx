@@ -253,7 +253,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
         </div>
 
         {/* Delivery Instructions (not saved to DB) */}
-        <div className="dac-sheet-field" style={{ display: 'none' }}></div>
+        <div className="dac-sheet-field hidden"></div>
 
         {err && <p className="dac-error">{err}</p>}
         <button onClick={save} className="dac-save-btn" disabled={saving}>{saving ? 'Saving...' : 'Save Address'}</button>

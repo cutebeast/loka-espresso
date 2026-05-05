@@ -102,7 +102,7 @@ export default function OrderDetailPage() {
           <button className="order-detail-back" onClick={() => setPage('orders')}><ArrowLeft size={20} /></button>
           <h1 className="order-detail-title">Order Details</h1>
         </div>
-        <div className="order-detail-scroll" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading…</div>
+        <div className="order-detail-scroll flex items-center justify-center">Loading…</div>
       </div>
     );
   }
@@ -135,8 +135,8 @@ export default function OrderDetailPage() {
         <div className="od-section">
           <div className="od-section-title">Order Status</div>
           <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--loka-accent-copper)' }}>{displayStatus}</div>
-            <div style={{ fontSize: 12, color: 'var(--loka-text-muted)', marginTop: 2 }}>
+            <div className="text-sm font-semibold" style={{ color: 'var(--loka-accent-copper)' }}>{displayStatus}</div>
+            <div className="text-xs text-muted mt-1">
               {order.status === 'completed' ? 'Enjoy your order!' : order.status === 'cancelled' ? 'This order was cancelled' : 'Your order is being processed'}
             </div>
           </div>
@@ -202,7 +202,7 @@ export default function OrderDetailPage() {
               <div className="od-info-label">{order.order_type === 'delivery' ? 'Delivery' : order.order_type === 'dine_in' ? 'Dine-in' : 'Pickup'}</div>
               <div className="od-info-value">{order.store_name ? `From ${order.store_name}` : order.store_address || `Store #${order.store_id || '?'}`}</div>
               {order.store_address && order.store_name && (
-                <div className="od-info-value" style={{ fontSize: 11, marginTop: 2 }}>{order.store_address}</div>
+                <div className="od-info-value text-xxs mt-1">{order.store_address}</div>
               )}
             </div>
           </div>
@@ -219,7 +219,7 @@ export default function OrderDetailPage() {
             return (
               <div key={i} className="od-item-row">
                 <div className="od-item-thumb">
-                  {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /> : <Coffee size={18} color={LOKA.primary} />}
+                  {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt="" loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={18} color={LOKA.primary} />}
                 </div>
                 <div className="od-item-details">
                   <div className="od-item-name">{item.name}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</div>
@@ -249,7 +249,7 @@ export default function OrderDetailPage() {
         {/* Actions */}
         <div className="od-action-bar">
           <button className="od-reorder-btn" onClick={handleReorder} disabled={reordering}>
-            <RotateCcw size={16} style={{ marginRight: 6 }} />
+            <RotateCcw size={16} className="mr-1" />
             {reordering ? 'Adding to cart…' : 'Reorder All Items'}
           </button>
           <div className="od-secondary-actions">

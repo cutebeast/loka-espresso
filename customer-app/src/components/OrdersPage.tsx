@@ -127,7 +127,7 @@ export default function OrdersPage() {
     return (
       <div className="orders-screen">
         <div className="orders-header"><h1 className="orders-title">Orders</h1></div>
-        <div className="orders-scroll" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="orders-scroll flex items-center justify-center">
           <div className="orders-empty">
             <div className="orders-empty-icon"><ShoppingBag size={32} color={LOKA.borderLight} /></div>
             <p className="orders-empty-title">No orders yet</p>
@@ -156,7 +156,7 @@ export default function OrdersPage() {
 
         {activeOrders.length > 0 && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="flex items-center justify-between">
               <div className="orders-section-label">Active Orders</div>
               {lastUpdated && <span style={{ fontSize: 10, color: 'var(--loka-text-muted, #8A8078)' }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
             </div>
@@ -167,7 +167,7 @@ export default function OrdersPage() {
                 <div key={order.id} className="orders-active-card" onClick={() => openDetail(order)}>
                   <div className="orders-active-header">
                     <div className="orders-active-icon"><Receipt size={20} color="#fff" /></div>
-                    <div style={{ flex: 1 }}>
+                    <div className="flex-1">
                       <div className="orders-active-number">Order #{order.order_number}</div>
                       <div className="orders-active-date">{formatDate(order.created_at)}</div>
                     </div>
@@ -195,7 +195,7 @@ export default function OrdersPage() {
 
         {pastOrdersDisplay.length > 0 && (
           <>
-            <div className="orders-section-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="orders-section-label flex items-center justify-between">
               <span>Past Orders</span>
               {allPastOrders.length > 5 && (
                 <span style={{ fontSize: 12, color: LOKA.textMuted }}>{allPastOrders.length} total</span>
@@ -208,14 +208,14 @@ export default function OrdersPage() {
               return (
                 <div key={order.id} className="orders-past-card" onClick={() => openDetail(order)}>
                   <div className="orders-past-thumb">
-                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /> : <Coffee size={20} color={LOKA.primary} />}
+                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt="" loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={20} color={LOKA.primary} />}
                   </div>
                   <div className="orders-past-info">
                     <div className="orders-past-number">Order #{order.order_number}</div>
                     <div className="orders-past-date">{formatDate(order.created_at)} · {itemPreview}</div>
                     <div className="orders-past-bottom">
                       <span className="orders-past-total">{formatPrice(order.total)}</span>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <div className="flex gap-2 items-center">
                         <span className={`orders-status-badge ${badge.cls}`}>{badge.label}</span>
                         <button className="orders-reorder-btn" onClick={e => { e.stopPropagation(); handleReorder(order); }}><RotateCcw size={12} /> Reorder</button>
                       </div>

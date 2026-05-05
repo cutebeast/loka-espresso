@@ -53,7 +53,7 @@ export default function ListCard({
             src={resolveAssetUrl(imageUrl) ?? undefined}
             alt={title}
             onError={() => setImageError(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            className="w-full h-full object-cover"
           />
         ) : (
           <Gift size={28} color={LOKA.brown} strokeWidth={1.5} />

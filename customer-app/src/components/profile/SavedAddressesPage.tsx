@@ -210,22 +210,22 @@ export default function SavedAddressesPage() {
             <input value={line2} onChange={e => setLine2(e.target.value)} placeholder="Building / Taman name" className="sav2-input" />
           </div>
           <div className="sav2-field">
-            <label className="sav2-field-label">City</label>
-            <input value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Cheras, Petaling Jaya" className="sav2-input" />
+            <label className="sav2-field-label" htmlFor="sa-city">City</label>
+            <input id="sa-city" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Cheras, Petaling Jaya" className="sav2-input" />
           </div>
           <div className="sav2-field-row">
             <div className="sav2-field sav2-field-half">
-              <label className="sav2-field-label">Postcode</label>
-              <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric" maxLength={5} placeholder="50400" className="sav2-input" />
+              <label className="sav2-field-label" htmlFor="sa-postcode">Postcode</label>
+            <input id="sa-postcode" value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric" maxLength={5} placeholder="50400" className="sav2-input" />
             </div>
             <div className="sav2-field sav2-field-half">
-              <label className="sav2-field-label">State</label>
+              <label className="sav2-field-label" htmlFor="sa-state">State</label>
               <select value={state} onChange={e => setState(e.target.value)} className="sav2-input" style={{ appearance:'none', backgroundImage:'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236A7A8A\' stroke-width=\'2\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E")', backgroundRepeat:'no-repeat', backgroundPosition:'right 14px center', paddingRight:44 }}>
                 {STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
-          <button onClick={handleSave} disabled={saving} className="sav2-save-btn" style={{ marginTop: 4 }}>
+          <button onClick={handleSave} disabled={saving} className="sav2-save-btn mt-1">
             {saving ? 'Saving...' : 'Save Address'}
           </button>
         </div>

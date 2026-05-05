@@ -77,7 +77,7 @@ export default function PaymentMethodsPage() {
           </button>
           <h1 className="sub-page-title">Payment Methods</h1>
         </div>
-        <div style={{ width: 36 }} />
+        <div className="w-9" />
       </div>
 
       <div className="payment-content-scroll">

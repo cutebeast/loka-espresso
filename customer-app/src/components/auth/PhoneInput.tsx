@@ -167,7 +167,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
           </div>
 
           {error && (
-            <p className="pi-error">{error}</p>
+            <p id="phone-error" className="pi-error">{error}</p>
           )}
 
           <button type="submit" disabled={isDisabled} className="auth-btn">

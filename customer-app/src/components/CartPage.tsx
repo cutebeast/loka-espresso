@@ -201,7 +201,7 @@ export default function CartPage() {
                 }}
                 title={isDineInDisabled ? 'Scan table QR to enable' : undefined}
               >
-                {isDineInDisabled && <QrCode size={14} style={{ marginRight: 4 }} />}
+                {isDineInDisabled && <QrCode size={14} className="mr-1" />}
                 {m.label}
               </button>
             );

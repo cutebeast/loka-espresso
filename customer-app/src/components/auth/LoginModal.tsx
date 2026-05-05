@@ -234,9 +234,9 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
               </button>
               <span className="phone-divider" />
               <input ref={phoneInputRef} type="tel" value={phoneValue} onChange={handlePhoneChange}
-                placeholder="12 345 6789" inputMode="tel" autoComplete="tel-national" className="phone-input" />
+                placeholder="12 345 6789" inputMode="tel" autoComplete="tel-national" className="phone-input" aria-invalid={!!phoneError} aria-describedby={phoneError ? "phone-error" : undefined} />
             </div>
-            {phoneError && <p className="text-sm text-danger font-bold">{phoneError}</p>}
+            {phoneError && <p id="phone-error" className="text-sm text-danger font-bold">{phoneError}</p>}
             <button type="submit" disabled={phoneLoading || phoneValue.replace(/\D/g, '').length < 7}
               className="btn btn-primary w-full h-12 rounded-xl text-base font-semibold mt-2">
               {phoneLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : 'Send Code'}
@@ -268,7 +268,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
                 {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend code'}
               </button>
             </p>
-            {otpError && <p className="text-sm text-danger font-bold text-center">{otpError}</p>}
+            {otpError && <p id="otp-error" className="text-sm text-danger font-bold text-center">{otpError}</p>}
             <button type="button" className="text-sm text-text-secondary text-center underline"
               onClick={() => setStep('phone')}>Change phone number</button>
             <button onClick={handleVerifyOtp} disabled={otpLoading || otp.some((d) => !d)}
@@ -297,9 +297,9 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
               <input type="text" value={profileName}
                 onChange={(e) => { setProfileName(e.target.value); setProfileError(''); }}
                 placeholder="Your name" autoFocus
-                className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none text-base text-text-primary placeholder-text-muted transition-colors" />
+                className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none text-base text-text-primary placeholder-text-muted transition-colors" aria-invalid={!!profileError} aria-describedby={profileError ? "profile-error" : undefined} />
             </div>
-            {profileError && <p className="text-sm text-danger font-bold">{profileError}</p>}
+            {profileError && <p id="profile-error" className="text-sm text-danger font-bold">{profileError}</p>}
             <button type="submit" disabled={profileLoading || !profileName.trim()}
               className="btn btn-primary w-full h-12 rounded-xl text-base font-semibold mt-2">
               {profileLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : 'Get Started'}

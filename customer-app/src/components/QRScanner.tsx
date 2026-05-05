@@ -92,7 +92,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
 
       {/* Camera viewport */}
       <div className="qr-camera-area">
-        <div id="qr-reader" style={{ width: '100%', height: '100%' }} />
+        <div id="qr-reader" className="w-full h-full" />
 
         {!hasPermission && !isLoading && (
           <div className="qr-permission">

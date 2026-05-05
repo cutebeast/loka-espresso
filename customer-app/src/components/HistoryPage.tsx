@@ -97,7 +97,7 @@ export default function HistoryPage() {
           </button>
           <h1 className="sub-page-title">Transaction History</h1>
         </div>
-        <div style={{ width: 36 }} />
+        <div className="w-9" />
       </div>
 
       <div className="history-tab-bar">

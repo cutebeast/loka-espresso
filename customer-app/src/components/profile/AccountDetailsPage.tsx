@@ -129,7 +129,7 @@ export default function AccountDetailsPage() {
         <div className="ad-group-header">Personal Information</div>
         <div className="ad-form-card">
           <div className="ad-form-field">
-            <label className="ad-form-label">Full Name</label>
+            <label className="ad-form-label" htmlFor="ad-name">Full Name</label>
             <input
               type="text"
               className="ad-form-input"
@@ -139,7 +139,7 @@ export default function AccountDetailsPage() {
             />
           </div>
           <div className="ad-form-field">
-            <label className="ad-form-label">Date of Birth</label>
+            <label className="ad-form-label" htmlFor="ad-dob">Date of Birth</label>
             <DatePicker
               value={dob}
               onChange={setDob}
@@ -153,7 +153,7 @@ export default function AccountDetailsPage() {
         <div className="ad-group-header">Contact Information</div>
         <div className="ad-form-card">
           <div className="ad-form-field">
-            <label className="ad-form-label">Email</label>
+            <label className="ad-form-label" htmlFor="ad-email">Email</label>
             <input
               type="email"
               className="ad-form-input"
@@ -163,7 +163,7 @@ export default function AccountDetailsPage() {
             />
           </div>
           <div className="ad-form-field">
-            <label className="ad-form-label">Phone</label>
+            <label className="ad-form-label" htmlFor="ad-phone">Phone</label>
             <input
               type="tel"
               className="ad-form-input ad-form-input-muted"
@@ -177,7 +177,7 @@ export default function AccountDetailsPage() {
         <div className="ad-group-header">Account</div>
         <div className="ad-form-card">
           <div className="ad-form-field">
-            <label className="ad-form-label">Account Created</label>
+            <label className="ad-form-label" htmlFor="ad-created">Account Created</label>
             <input
               type="text"
               className="ad-form-input ad-form-input-muted"
@@ -186,7 +186,7 @@ export default function AccountDetailsPage() {
             />
           </div>
           <div className="ad-form-field">
-            <label className="ad-form-label">Membership Tier</label>
+            <label className="ad-form-label" htmlFor="ad-tier">Membership Tier</label>
             <div style={{ paddingTop: 4 }}>
               <span className={`ad-tier-badge ${(tier || 'Bronze').toLowerCase()}`}>
                 <Crown size={14} /> {tier}

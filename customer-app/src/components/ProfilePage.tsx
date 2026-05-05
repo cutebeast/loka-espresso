@@ -175,7 +175,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Menu links */}
-          <div style={{ height: 12 }} />
+          <div className="h-3" />
           <div className="profile-menu-card">
             {menuItems.map((item) => {
               const Icon = item.icon;

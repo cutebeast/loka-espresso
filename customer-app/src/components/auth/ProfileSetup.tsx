@@ -80,7 +80,7 @@ export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
         </div>
 
         {error && (
-          <p className="ps-error">{error}</p>
+          <p id="profile-error" className="ps-error">{error}</p>
         )}
 
         <button type="submit" disabled={isLoading || !name.trim()} className="auth-btn">

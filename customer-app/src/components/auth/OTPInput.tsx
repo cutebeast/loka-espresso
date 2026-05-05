@@ -159,7 +159,7 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
       </div>
 
       {error && (
-        <p className="otp-error">{error}</p>
+        <p id="otp-error" className="otp-error">{error}</p>
       )}
 
       <button onClick={handleVerify} disabled={isLoading || otp.some((d) => !d)} className="auth-btn">
