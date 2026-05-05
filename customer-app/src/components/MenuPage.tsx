@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Search, X, ArrowLeft, Plus, Coffee, Star } from 'lucide-react';
+import { Search, X, ArrowLeft, Plus, Coffee, Star, RefreshCw } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import api from '@/lib/api';

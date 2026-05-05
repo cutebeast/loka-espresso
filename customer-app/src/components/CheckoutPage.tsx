@@ -59,6 +59,7 @@ export default function CheckoutPage() {
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
   const [showRewardSheet, setShowRewardSheet] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
+  const [draftSaved, setDraftSaved] = useState(false);
 
   useEffect(() => { refreshWallet(); }, [refreshWallet]);
   useEffect(() => { if (user && !checkoutDraft.recipientName && !recipientName) { setRecipientName(user.name || ''); setRecipientPhone(user.phone || ''); } }, [user]);
@@ -71,7 +72,11 @@ export default function CheckoutPage() {
   const requiresWallet = paymentMethod === 'wallet';
   const walletSufficient = balance >= total;
 
-  const saveDraft = () => setCheckoutDraft({ orderMode, selectedStore, deliveryAddress, pickupTime, paymentMethod, notes, voucherCode: discountCode, rewardCode: discountCode, recipientName, recipientPhone, deliveryInstructions: deliveryInstr });
+  const saveDraft = () => {
+    setCheckoutDraft({ orderMode, selectedStore, deliveryAddress, pickupTime, paymentMethod, notes: orderNote, voucherCode: discountCode, rewardCode: discountCode, recipientName, recipientPhone, deliveryInstructions: deliveryInstr });
+    setDraftSaved(true);
+    setTimeout(() => setDraftSaved(false), 1500);
+  };
 
   const handlePlaceOrder = async () => {
     const missing = new Set<string>();
@@ -105,6 +110,7 @@ export default function CheckoutPage() {
       <div className="checkout-header">
         <button className="checkout-back-btn" onClick={() => { saveDraft(); setPage('cart'); }}><ArrowLeft size={20} /></button>
         <h3 className="checkout-title">Checkout</h3>
+        {draftSaved && <span className="checkout-draft-saved">Draft saved</span>}
       </div>
       <div className="checkout-scroll">
         <div className="checkout-section">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, Crown, Star, ChevronRight, Gift, Calendar, List, Circle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Crown, Star, ChevronRight, Gift, Calendar, List, Circle, CheckCircle, RefreshCw } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { haptic } from '@/lib/haptics';
 import { useUIStore } from '@/stores/uiStore';
