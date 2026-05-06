@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch, formatRM } from '@/lib/merchant-api';
+import { useToastStore } from '@/stores/toastStore';
 
 import { Select, Drawer, DataTable, type ColumnDef } from '@/components/ui';
 
@@ -85,7 +86,7 @@ export default function VouchersPage() {
         setTotalPages(data.total_pages || 1);
         setPage(p);
       }
-    } catch { setError('Failed to load vouchers'); setVouchers([]); setTotal(0); setTotalPages(1); } finally { setLoading(false); }
+    } catch { console.error('Failed to load vouchers'); setError('Failed to load vouchers'); setVouchers([]); setTotal(0); setTotalPages(1); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchVouchers(1); }, [fetchVouchers]);
@@ -113,7 +114,7 @@ export default function VouchersPage() {
     try {
       await apiFetch(`/admin/vouchers/${v.id}`, undefined, { method: 'PUT', body: JSON.stringify({ is_active: !v.is_active }) });
       fetchVouchers(page);
-    } catch { setError('Failed to toggle voucher status'); }
+    } catch { console.error('Failed to toggle voucher status'); setError('Failed to toggle voucher status'); }
   }
 
   async function handleDelete(id: number) {
@@ -121,7 +122,7 @@ export default function VouchersPage() {
       await apiFetch(`/admin/vouchers/${id}`, undefined, { method: 'DELETE' });
       setConfirmDelete(null);
       fetchVouchers(page);
-    } catch { setError('Failed to delete voucher'); setConfirmDelete(null); }
+    } catch { console.error('Failed to delete voucher'); setError('Failed to delete voucher'); setConfirmDelete(null); }
   }
 
   function renderDiscount(v: VoucherItem) {
@@ -269,8 +270,9 @@ function VoucherFormPage({ existingVoucher, onBack }: { existingVoucher: any | n
       const method = isEdit ? 'PUT' : 'POST';
       const res = await apiFetch(url, undefined, { method, body: JSON.stringify(payload) });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
+      useToastStore.getState().showToast('Voucher saved');
       onBack();
-    } catch { setError('Network error'); } finally { setSaving(false); }
+    } catch { console.error('Network error'); setError('Network error'); } finally { setSaving(false); }
   }
 
   return (

@@ -323,11 +323,12 @@ async def register(request: Request, req: RegisterRequest, user: User = Depends(
     if req.name:
         user.name = req.name
     if req.email:
+        email = req.email.strip().lower()
         from app.models.customer import Customer
-        existing = await db.execute(select(Customer).where(Customer.email == req.email))
+        existing = await db.execute(select(Customer).where(func.lower(Customer.email) == email))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email already registered")
-        user.email = req.email
+        user.email = email
     await db.flush()
     return user
 
@@ -336,7 +337,8 @@ async def register(request: Request, req: RegisterRequest, user: User = Depends(
 @limiter.limit("10/minute")
 async def login_password(request: Request, req: LoginPasswordRequest, db: AsyncSession = Depends(get_db)):
     from app.models.admin_user import AdminUser
-    result = await db.execute(select(AdminUser).where(AdminUser.email == req.email))
+    email = req.email.strip().lower()
+    result = await db.execute(select(AdminUser).where(func.lower(AdminUser.email) == email))
     user = result.scalar_one_or_none()
     if not user or not user.password_hash or not verify_password(req.password, user.password_hash):
         # Log failed login attempt

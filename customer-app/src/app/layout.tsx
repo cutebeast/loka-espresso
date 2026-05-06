@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import { LangAttribute } from "@/components/shared/LangAttribute";
+import { LocaleProviderWrapper } from "@/components/LocaleProviderWrapper";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -84,7 +85,7 @@ export default function RootLayout({
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:text-gray-900 focus:px-4 focus:py-2 focus:rounded focus:shadow-lg">Skip to content</a>
         <LangAttribute />
         <ServiceWorkerRegistrar />
-        {children}
+        <LocaleProviderWrapper>{children}</LocaleProviderWrapper>
       </body>
     </html>
   );

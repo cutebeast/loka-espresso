@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Crown, Star, ChevronRight, Gift, Calendar, List,
 import { useWalletStore } from '@/stores/walletStore';
 import { haptic } from '@/lib/haptics';
 import { useUIStore } from '@/stores/uiStore';
+import { useConfigStore } from '@/stores/configStore';
 import api from '@/lib/api';
 import type { Reward } from '@/lib/api';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
@@ -16,6 +17,7 @@ export default function RewardsPage() {
   const { t } = useTranslation();
   const { points, tier } = useWalletStore();
   const { setPage, showToast } = useUIStore();
+  const tiers = useConfigStore((s) => s.tiers);
   const [activeTab, setActiveTab] = useState<Tab>('rewards');
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,12 +50,10 @@ export default function RewardsPage() {
     finally { setRedeeming(null); }
   };
 
-  const tierThresholds: Record<string, number> = { Bronze: 0, Silver: 1000, Gold: 3000, Platinum: 5000 };
-  const tiers = Object.keys(tierThresholds);
-  const currentTierIdx = tiers.indexOf(tier || 'Bronze');
-  const nextTier = tiers[currentTierIdx + 1] || 'Platinum';
-  const nextThreshold = tierThresholds[nextTier] || 5000;
-  const progress = Math.min((points / nextThreshold) * 100, 100);
+  const currentTierIdx = tiers.findIndex(t => t.name === (tier || tiers[0]?.name));
+  const nextTier = tiers[currentTierIdx + 1] || tiers[tiers.length - 1];
+  const nextThreshold = nextTier?.min_points ?? 5000;
+  const progress = nextThreshold > 0 ? Math.min((points / nextThreshold) * 100, 100) : 100;
 
   /* ── Redemption code modal ── */
   if (redemptionCode) {
@@ -82,7 +82,7 @@ export default function RewardsPage() {
         <div className="detail-body">
           <h1 className="detail-title">{selectedReward.name}</h1>
           <div className="detail-points-row">
-            <span className="detail-points-pill"><Crown size={14} /> {selectedReward.points_cost.toLocaleString()} pts</span>
+            <span className="detail-points-pill"><Crown size={14} /> {selectedReward.points_cost.toLocaleString()} {t('common.pointsAbbr')}</span>
             <span className="detail-stock-pill"><Circle size={8} fill={LOKA.danger} /> {t('rewards.limitedStock')}</span>
           </div>
           {selectedReward.short_description && (
@@ -92,8 +92,8 @@ export default function RewardsPage() {
             <>
               <div className="rd-section-title"><List size={16} /> {t('rewards.termsConditions')}</div>
               <ul className="rd-terms-list">
-                {selectedReward.terms.map((t, i) => (
-                  <li key={i}><Circle size={10} fill="currentColor" /> {t}</li>
+                {selectedReward.terms.map((term, i) => (
+                  <li key={i}><Circle size={10} fill="currentColor" /> {term}</li>
                 ))}
               </ul>
             </>
@@ -141,16 +141,18 @@ export default function RewardsPage() {
       </div>
 
       {/* Progress to next tier */}
+      {tiers.length > 0 && nextTier && (
       <div className="progress-section">
         <div className="progress-header">
-          <span className="progress-title">{t('rewards.progressToTier', { tier: nextTier })}</span>
-          <span className="progress-value">{points.toLocaleString()} / {nextThreshold.toLocaleString()} pts</span>
+          <span className="progress-title">{t('rewards.progressToTier', { tier: nextTier.name })}</span>
+          <span className="progress-value">{points.toLocaleString()} / {nextThreshold.toLocaleString()} {t('common.pointsAbbr')}</span>
         </div>
         <div className="progress-bar-track">
           <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
         </div>
-        <div className="progress-hint">{nextThreshold - points > 0 ? t('rewards.pointsToUnlock', { points: (nextThreshold - points).toLocaleString(), tier: nextTier }) : t('rewards.reachedTier', { tier: nextTier })}</div>
+        <div className="progress-hint">{nextThreshold - points > 0 ? t('rewards.pointsToUnlock', { points: (nextThreshold - points).toLocaleString(), tier: nextTier.name }) : t('rewards.reachedTier', { tier: nextTier.name })}</div>
       </div>
+      )}
       </div>
 
       {/* Tabs */}
@@ -179,7 +181,7 @@ export default function RewardsPage() {
                     {img ? <img src={img} alt="" loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Gift size={24} color={LOKA.border} />}
                   </div>
                   <div className="reward-info">
-                    <div className="reward-points-tag">{reward.points_cost.toLocaleString()} pts</div>
+                    <div className="reward-points-tag">{reward.points_cost.toLocaleString()} {t('common.pointsAbbr')}</div>
                     <div className="reward-name">{reward.name}</div>
                     <div className="reward-desc">{reward.short_description || ''}</div>
                   </div>

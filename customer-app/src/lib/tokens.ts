@@ -91,19 +91,25 @@ export const LOKA = {
   shadowWallet: '0 12px 24px -8px rgba(26, 35, 9, 0.35)',
 } as const;
 
-/** Format a number as Malaysian Ringgit */
+import { useConfigStore } from '@/stores/configStore';
+
+// ... (rest of file above line 94)
+
+/** Format a number using the configured currency symbol. */
 export function formatPrice(val: number | string): string {
-  return `RM ${Number(val).toFixed(2)}`;
+  const symbol = useConfigStore.getState().config.currency_symbol || 'RM';
+  return `${symbol} ${Number(val).toFixed(2)}`;
 }
 
 const ADMIN_BASE = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin.loyaltysystem.uk';
 const APP_BASE = process.env.NEXT_PUBLIC_APP_URL || 'https://app.loyaltysystem.uk';
 
-/** Resolve an asset path to a full URL using the admin base. */
+/** Resolve an asset path to a same-origin API URL to avoid CSP issues. */
 export function resolveAssetUrl(path: string | null | undefined): string | null {
   if (!path) return null;
-  const url = path.startsWith('http') ? path : `${ADMIN_BASE}${path}`;
-  return url;
+  if (path.startsWith('http')) return path;
+  const relative = path.replace(/^\/uploads\//, '');
+  return `/api/v1/upload/files/${relative}`;
 }
 
 /** Resolve the app URL for deep links */

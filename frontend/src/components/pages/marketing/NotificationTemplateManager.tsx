@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import type { NotificationTemplate } from '@/lib/merchant-types';
+import { useToastStore } from '@/stores/toastStore';
 
 const NOTIF_TYPES = [
   { value: 'broadcast', label: 'Broadcast' },
@@ -45,8 +46,9 @@ function TemplateForm({ onSave, onCancel, existing }: { onSave: () => void; onCa
           method: 'POST', body: JSON.stringify(payload),
         });
       }
+      useToastStore.getState().showToast('Template saved');
       onSave();
-    } catch { /* ignore */ } finally { setSaving(false); }
+    } catch { console.error('Failed to save template'); } finally { setSaving(false); }
   }
 
   return (
@@ -97,7 +99,7 @@ export default function NotificationTemplateManager() {
     setLoading(true);
     apiFetch('/admin/notification-templates', undefined, {})
       .then(async r => { if (r.ok) setTemplates(await r.json()); })
-      .catch(() => setTemplates([]))
+      .catch(() => { console.error('Failed to fetch templates'); setTemplates([]); })
       .finally(() => setLoading(false));
   };
 

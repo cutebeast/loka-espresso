@@ -15,6 +15,8 @@ class StoreOut(BaseModel):
     opening_hours: Optional[dict] = None
     pickup_lead_minutes: int = 15
     delivery_radius_km: Optional[float] = None
+    delivery_fee: Optional[float] = None
+    min_order: Optional[float] = None
     pos_integration_enabled: bool = False
     delivery_integration_enabled: bool = False
     is_active: bool = True

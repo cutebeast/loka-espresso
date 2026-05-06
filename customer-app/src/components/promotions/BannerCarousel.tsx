@@ -7,11 +7,12 @@ import { TypePill } from '@/components/shared';
 import { resolveAssetUrl } from '@/lib/tokens';
 import type { PromoBanner } from '@/lib/api';
 
-function getDaysLeft(end: string | null) {
-  if (!end) return 'Ongoing';
+function getDaysLeftKey(end: string | null): { key: string; params?: Record<string, number> } {
+  if (!end) return { key: 'promotions.ongoing' };
   const diff = Math.ceil((new Date(end).getTime() - Date.now()) / 86400000);
-  if (diff <= 0) return 'Ended';
-  return diff === 1 ? '1 day left' : `${diff} days left`;
+  if (diff <= 0) return { key: 'promotions.ended' };
+  if (diff === 1) return { key: 'promotions.dayLeft' };
+  return { key: 'promotions.daysLeft', params: { count: diff } };
 }
 
 function getTagVariant(t: string | null): 'offer' | 'survey' | 'limited' | 'system' {
@@ -80,7 +81,7 @@ export default function BannerCarousel({ promotions, loading, onSelectPromo }: B
                 </p>
               )}
               <span className="promo-list-card-meta">
-                <Clock size={10} /> {getDaysLeft(promo.end_date)}
+                <Clock size={10} /> {(() => { const d = getDaysLeftKey(promo.end_date); return t(d.key, d.params as Record<string, string | number> | undefined); })()}
               </span>
             </div>
           </motion.button>

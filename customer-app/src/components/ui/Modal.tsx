@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface ModalProps {
 
 export function Modal({ isOpen, onClose, title, meta, children, footer, variant = 'bottom' }: ModalProps) {
   const containerRef = useFocusTrap<HTMLDivElement>(isOpen);
+  const { t } = useTranslation();
 
   return (
     <AnimatePresence>
@@ -57,7 +59,7 @@ export function Modal({ isOpen, onClose, title, meta, children, footer, variant 
                       )}
                       <button
                         onClick={onClose}
-                        aria-label="Close"
+                        aria-label={t('common.close')}
                         className="modal-close"
                       >
                         <X size={16} />

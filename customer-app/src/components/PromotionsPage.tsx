@@ -132,12 +132,12 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       } else {
         const code = res.data?.voucher_code || '';
         if (code) setShowVoucher(code);
-        else showToast('Survey submitted! Thank you.', 'success');
+        else showToast(t('toast.surveySubmitted'), 'success');
         setSurveyCompleted(true);
         await loadPromotions();
       }
     } catch (err) { console.error('[PromotionsPage] Failed to submit survey:', err);
-      showToast('Failed to submit survey', 'error');
+      showToast(t('promotions.failedToSubmit'), 'error');
     } finally {
       setSubmittingSurvey(false);
     }
@@ -182,7 +182,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         onSubmitSurvey={handleSubmitSurvey}
         onSurveyAnswer={handleSurveyAnswer}
         onCloseVoucher={() => { setShowVoucher(null); setSelectedPromo(null); }}
-        onCopyVoucher={() => { showToast('Code copied!', 'success'); setPage('my-rewards'); }}
+        onCopyVoucher={() => { showToast(t('toast.codeCopied'), 'success'); setPage('my-rewards'); }}
         onGoToWallet={() => { setPage('my-rewards'); setSelectedPromo(null); }}
       />
     );

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { apiFetch, apiUpload } from '@/lib/merchant-api';
 import type { MerchantStore } from '@/lib/merchant-types';
 import { Drawer } from '@/components/ui';
+import { useToastStore } from '@/stores/toastStore';
 
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<string, string> = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
@@ -81,7 +82,7 @@ export default function StoreSettingsPage({ stores, onRefresh }: StoreSettingsPa
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Failed to reactivate'); return; }
       }
       onRefresh();
-    } catch { setError('Network error'); }
+    } catch { console.error('Failed to toggle store'); setError('Network error'); }
   }
 
   return (
@@ -183,8 +184,9 @@ function StoreForm({ onClose, existingStore }: { onClose: () => void; existingSt
       const method = isEdit ? 'PUT' : 'POST';
       const res = await apiFetch(url, undefined, { method, body: JSON.stringify(payload) });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
+      useToastStore.getState().showToast('Store saved');
       onClose();
-    } catch { setError('Network error'); } finally { setSaving(false); }
+    } catch { console.error('Failed to save store'); setError('Network error'); } finally { setSaving(false); }
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
+import { useToastStore } from '@/stores/toastStore';
 
 import { Select, DataTable, type ColumnDef, Drawer } from '@/components/ui';
 
@@ -127,6 +128,7 @@ export default function SurveysPage({ onSwitchToPromotions: _onSwitchToPromotion
         setSurveyEditing(detail);
       }
     } catch (err: any) {
+      console.error('Failed to load survey', err);
       setSurveyError(err.message || 'Failed to load survey');
     }
   }
@@ -152,6 +154,7 @@ export default function SurveysPage({ onSwitchToPromotions: _onSwitchToPromotion
       }
       fetchSurveyList(surveyPage);
     } catch (err: any) {
+      console.error('Failed to toggle survey', err);
       setSurveyError(err.message || 'Network error');
     }
   }
@@ -206,8 +209,10 @@ export default function SurveysPage({ onSwitchToPromotions: _onSwitchToPromotion
         setSurveyError(data.detail || `Failed (${res.status})`);
         return;
       }
+      useToastStore.getState().showToast('Survey saved');
       surveyCloseForm();
     } catch (err: any) {
+      console.error('Failed to save survey', err);
       setSurveyError(err.message || 'Network error');
     } finally { setSurveySaving(false); }
   }
@@ -222,7 +227,7 @@ export default function SurveysPage({ onSwitchToPromotions: _onSwitchToPromotion
       }
       setSurveyConfirmDelete(null);
       fetchSurveyList(surveyPage);
-    } catch { setSurveyError('Network error'); }
+    } catch { console.error('Failed to delete survey'); setSurveyError('Network error'); }
   }
 
   const surveyRewardVoucherName = (id: number | null) => {

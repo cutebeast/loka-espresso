@@ -1,7 +1,7 @@
 import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -52,12 +52,12 @@ async def update_me(req: UserUpdate, user=Depends(get_current_user), db: AsyncSe
     if req.phone is not None and hasattr(user, 'phone'):
         user.phone = req.phone
     if req.email is not None and hasattr(user, 'email'):
-        # Check uniqueness within the same table
+        email = req.email.strip().lower()
         model = type(user)
-        existing = await db.execute(select(model).where(model.email == req.email, model.id != user.id))
+        existing = await db.execute(select(model).where(func.lower(model.email) == email, model.id != user.id))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email already in use")
-        user.email = req.email
+        user.email = email
     if req.date_of_birth is not None and hasattr(user, 'date_of_birth'):
         user.date_of_birth = req.date_of_birth
     # Allow staff to update their own PIN

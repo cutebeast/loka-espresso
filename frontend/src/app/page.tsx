@@ -6,6 +6,7 @@ import type { PageId } from '@/lib/merchant-types';
 import Sidebar from '@/components/Sidebar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import AdminModals from '@/components/AdminModals';
+import ToastContainer from '@/components/ui/Toast';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobilePageGuard from '@/components/MobilePageGuard';
 import AuthGuard from '@/components/AuthGuard';
@@ -326,6 +327,7 @@ export default function MerchantDashboard() {
         <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
       )}
 
+      <ToastContainer />
       <AdminModals />
     </div>
 

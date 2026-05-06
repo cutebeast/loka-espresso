@@ -44,7 +44,31 @@
     "popular": "Popular",
     "refresh": "Refresh",
     "rotateToPortrait": "Please rotate your device to portrait",
-    "selectCountry": "Select country"
+    "selectCountry": "Select country",
+    "backOnline": "Back online",
+    "day": "Day",
+    "month": "Month",
+    "view": "View",
+    "year": "Year",
+    "previous": "Previous",
+    "next": "Next",
+    "closeLightbox": "Close lightbox",
+    "copied": "Copied!",
+    "copy": "Copy code",
+    "appName": "Loka",
+    "appNameFull": "Loka Espresso",
+    "retryingIn": "Retrying in {seconds}s",
+    "finish": "Finish",
+    "notAvailable": "—",
+    "submitting": "Submitting...",
+    "currencySymbol": "RM",
+    "pointsAbbr": "pts",
+    "stepCount": "Step {current} of {total}",
+    "processing": "Processing...",
+    "promotion": "Promotion",
+    "each": "each",
+    "yourCode": "Your code",
+    "payOnline": "Pay Online"
   },
   "nav": {
     "home": "Home",
@@ -157,6 +181,7 @@
     "orderNotes": "Order Notes",
     "noNotes": "No special requests. Add notes from your cart.",
     "paymentMethod": "Payment Method",
+    "payOnline": "Pay Online",
     "walletBalance": "Wallet Balance",
     "payAtStore": "Pay at Store",
     "payAtCounter": "Pay at Counter",
@@ -285,7 +310,8 @@
     "shareItemLine": "  {name} x{quantity}  {price}",
     "shareSubtotal": "Subtotal: {amount}",
     "shareDelivery": "Delivery: {amount}",
-    "shareTotal": "Total: {amount}"
+    "shareTotal": "Total: {amount}",
+    "payment": "Payment"
   },
   "wallet": {
     "topUpTitle": "Top Up",
@@ -357,17 +383,26 @@
     "noPhone": "No phone",
     "orderNumber": "Order #{id}",
     "tierMember": "{tier} Member",
-    "viewAll": "View all →"
+    "viewAll": "View all →",
+    "pts": "{points} pts"
   },
   "settings": {
     "title": "Settings",
     "language": "Language",
+    "languages": {
+      "en": "English",
+      "ms": "Bahasa Melayu",
+      "zh": "中文",
+      "ta": "தமிழ்",
+      "tr": "Türkçe"
+    },
     "privacyLegal": "Privacy & Legal",
     "about": "About",
     "version": "Version",
     "attribution": "Made with care by Loka Espresso",
     "privacyPolicy": "Privacy Policy",
-    "termsOfService": "Terms Of Service"
+    "termsOfService": "Terms Of Service",
+    "aboutFallback": "Born from a passion for authentic Turkish coffee culture, Loka Espresso brings the warmth of centuries-old coffee traditions to every cup. Our beans are sourced from the finest regions — roasted in small batches to honour the craft."
   },
   "toast": {
     "loginFailed": "Failed to log in. Please try again.",
@@ -479,34 +514,34 @@
   },
   "home": {
     "add": "Add",
-    "badgeExperience": "Badge Experience",
-    "badgeProduct": "Badge Product",
+    "badgeExperience": "Experience",
+    "badgeProduct": "Product",
     "discoverTitle": "Discover",
-    "goToSlide": "Go To Slide",
-    "greetingAfternoon": "Greeting Afternoon",
-    "greetingEvening": "Greeting Evening",
-    "greetingMorning": "Greeting Morning",
-    "guestName": "Guest Name",
+    "goToSlide": "Go to slide {n}",
+    "greetingAfternoon": "Good afternoon",
+    "greetingEvening": "Good evening",
+    "greetingMorning": "Good morning",
+    "guestName": "Guest",
     "learnMore": "Learn More",
-    "noItemsAvailable": "No Items Available",
+    "noItemsAvailable": "No items available",
     "notifications": "Notifications",
     "promotionsTitle": "Promotions",
-    "scanQR": "Scan Q R",
+    "scanQR": "Scan QR",
     "seeAll": "See All",
     "takeSurvey": "Take Survey",
-    "todaysPicks": "Todays Picks",
+    "todaysPicks": "Today's Picks",
     "view": "View",
     "viewAll": "View All",
     "wallet": {
-      "lokaBalance": "Wallet.loka Balance",
-      "lokaWallet": "Wallet.loka Wallet",
-      "pts": "Wallet.pts",
-      "rewards": "Wallet.rewards",
-      "signIn": "Wallet.sign In",
-      "signInPrompt": "Wallet.sign In Prompt",
-      "tierMember": "Wallet.tier Member",
-      "topUp": "Wallet.top Up",
-      "vouchers": "Wallet.vouchers"
+      "lokaBalance": "Loka Balance",
+      "lokaWallet": "Loka Wallet",
+      "pts": "pts",
+      "rewards": "Rewards",
+      "signIn": "Sign In",
+      "signInPrompt": "Sign in to view your Loka wallet",
+      "tierMember": "{tier} Member",
+      "topUp": "Top Up",
+      "vouchers": "Vouchers"
     }
   },
   "menu": {
@@ -531,16 +566,16 @@
     "viewCart": "View Cart"
   },
   "notifications": {
-    "markAllAsRead": "Mark All As Read",
+    "markAllAsRead": "Mark All as Read",
     "markingAll": "Marking All",
     "noNotifications": "No Notifications",
-    "noNotificationsDesc": "No Notifications",
-    "retentionNote": "Retention Note",
+    "noNotificationsDesc": "You're all caught up!",
+    "retentionNote": "Notifications are automatically cleared after 30 days",
     "timeAgo": {
-      "days": "Time Ago.days",
-      "hours": "Time Ago.hours",
-      "justNow": "Time Ago.just Now",
-      "minutes": "Time Ago.minutes"
+      "days": "{days}d ago",
+      "hours": "{hours}h ago",
+      "justNow": "Just now",
+      "minutes": "{minutes}m ago"
     },
     "title": "Title"
   },
@@ -566,14 +601,6 @@
     "bronzeTier": "Bronze Tier",
     "copied": "Copied",
     "copyLink": "Copy Link",
-    "countReferrals": {
-      "_one": "Count Referrals (1)",
-      "_other": "Count Referrals ({count})"
-    },
-    "invitedUsers": {
-      "_one": "Invited Users (1)",
-      "_other": "Invited Users ({count})"
-    },
     "joined": "Joined",
     "loadError": "Load Error",
     "member": "Member",
@@ -588,12 +615,14 @@
     "shareTitle": "Share",
     "silverTier": "Silver Tier",
     "title": "Title",
-    "toNextTier": {
-      "_one": "To Next Tier (1)",
-      "_other": "To Next Tier ({count})"
-    },
     "unknown": "Unknown",
-    "yourCode": "Your Code"
+    "yourCode": "Your Code",
+    "countReferrals_one": "{count} referral",
+    "countReferrals_other": "{count} referrals",
+    "invitedUsers_one": "{count} invited",
+    "invitedUsers_other": "{count} invited",
+    "toNextTier_one": "{count} more to next tier",
+    "toNextTier_other": "{count} more to next tier"
   },
   "savedAddresses": {
     "addNewAddress": "Add New Address",
@@ -640,6 +669,8 @@
   },
   "myRewards": {
     "title": "My Rewards & Vouchers",
+    "tabRewards": "My Rewards",
+    "tabVouchers": "My Vouchers",
     "usedThisMonth": "Rewards & vouchers used this month",
     "myRewards": "My Rewards",
     "myVouchers": "My Vouchers",
@@ -651,6 +682,9 @@
     "expiresToday": "Expires today",
     "expiresIn_one": "Expires in {days} day",
     "expiresIn_other": "Expires in {days} days",
+    "expires": "Expires {date}",
+    "percentOff": "{value}% OFF",
+    "amountOff": "RM {amount} OFF",
     "promoVoucher": "Promo Voucher",
     "freeItem": "Free Item",
     "showToCashier": "Show this to the cashier at checkout",
@@ -671,6 +705,101 @@
     "signInToSurvey": "Sign in to submit surveys",
     "answerRequired": "Please answer all required questions",
     "alreadySubmitted": "Already submitted",
-    "failedToSubmit": "Failed to submit survey"
+    "failedToSubmit": "Failed to submit survey",
+    "noDescription": "No description available.",
+    "offer": "Offer",
+    "selectOption": "Select an option",
+    "signInToParticipate": "Sign in to participate",
+    "signInToParticipateDesc": "Create an account to complete surveys and earn rewards.",
+    "surveyCompleted": "Survey completed!",
+    "typeAnswer": "Type your answer...",
+    "tagSurvey": "Survey",
+    "tagOffer": "Offer",
+    "tagPromo": "Promo",
+    "claimOffer": "Claim Offer",
+    "alreadyUsed": "Already used",
+    "viewInWallet": "View in wallet →",
+    "alreadyCompleted": "Already completed",
+    "vouchersLeft": "{count} voucher left",
+    "vouchersLeft_other": "{count} vouchers left",
+    "limitedSupply": "Limited vouchers available",
+    "surveyDuration": "{minutes} min survey",
+    "surveyReward": "RM{amount} voucher",
+    "limitedVouchers": "Limited vouchers",
+    "submitSurvey": "Submit & get voucher",
+    "surveyThankYou": "Thank you for your feedback. Your reward has been added to your wallet.",
+    "howToRedeem": "How to redeem",
+    "terms": "Terms",
+    "signInToClaimDesc": "Create an account to claim this offer and earn loyalty rewards.",
+    "voucherUnlocked": "Voucher Unlocked!",
+    "ongoing": "Ongoing",
+    "ended": "Ended",
+    "dayLeft": "1 day left",
+    "daysLeft": "{count} days left"
+  },
+  "errorBoundary": {
+    "message": "An unexpected error occurred. Please try again.",
+    "reload": "Reload Page"
+  },
+  "information": {
+    "checkBackSoon": "Check back soon for updates",
+    "tabExperiences": "Experiences",
+    "tabProducts": "Products",
+    "readTimeMin": "1 min read",
+    "readTimeMins": "{mins} min read",
+    "tagArticle": "Article",
+    "tagProduct": "Product",
+    "tagExperience": "Experience",
+    "noContent": "No content available.",
+    "noProducts": "No products available",
+    "noArticles": "No articles available",
+    "imageNumber": "Image {n}",
+    "imageOf": "{title} — image {n}",
+    "fullView": "{title} — full view",
+    "fullViewFallback": "Full view"
+  },
+  "legal": {
+    "tableOfContents": "Table of Contents"
+  },
+  "myCard": {
+    "brand": "Loka Espresso",
+    "member": "Member",
+    "title": "My Card",
+    "totalPoints": "Total Points",
+    "shareTitle": "My Loka Espresso Card",
+    "shareText": "Join Loka Espresso! My referral code: {code}",
+    "shareButton": "Share my card",
+    "qrAlt": "Member QR",
+    "memberIdPrefix": "LOKA-",
+    "memberSince": "Since {date}",
+    "recently": "Recently"
+  },
+  "qr": {
+    "pointCamera": "Point camera at QR code",
+    "startingCamera": "Starting camera…",
+    "title": "Scan QR Code",
+    "toggleFlash": "Toggle flash",
+    "browserUnsupported": "Browser Not Supported",
+    "browserUnsupportedDesc": "Your browser does not support camera access. Please use a QR code link or ask staff for assistance.",
+    "cameraPermissionNeeded": "Camera Access Needed",
+    "cameraPermissionDesc": "Allow camera access to scan QR codes for loyalty points, rewards, and in-store ordering.",
+    "allowCamera": "Allow Camera",
+    "alignCode": "Align the code within the frame to scan automatically"
+  },
+  "storePicker": {
+    "nearestToYou": "Nearest to you",
+    "noMatch": "No stores match \"{search}\"",
+    "noStores": "No stores available",
+    "openNow": "Open now",
+    "pickupLocation": "Pickup location",
+    "readyIn": "Ready in ~{minutes} min",
+    "results_one": "{count} result",
+    "results_other": "{count} results",
+    "searchPlaceholder": "Search by name or area",
+    "title": "Select your Loka",
+    "distanceAway": "away"
+  },
+  "voucher": {
+    "showToBarista": "Show this code to the barista"
   }
 }

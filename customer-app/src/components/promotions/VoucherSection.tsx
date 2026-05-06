@@ -70,23 +70,23 @@ export default function VoucherSection({
 }: VoucherSectionProps) {
   const { t } = useTranslation();
   const img = resolveAssetUrl(selectedPromo.image_url);
-  const tagText = selectedPromo.action_type === 'survey' ? 'Survey' : selectedPromo.action_type === 'detail' ? 'Offer' : 'Promo';
+  const tagText = selectedPromo.action_type === 'survey' ? t('promotions.tagSurvey') : selectedPromo.action_type === 'detail' ? t('promotions.tagOffer') : t('promotions.tagPromo');
   const isSurvey = selectedPromo.action_type === 'survey';
   const surveyAlreadyDone = status?.survey_completed || surveyCompleted;
 
   const getCTA = () => {
-    if (!status) return { text: 'Claim Offer', action: () => onClaim(selectedPromo), disabled: false };
-    if (status.voucher_used) return { text: 'Already used', action: undefined, disabled: true };
-    if (status.voucher_claimed) return { text: 'View in wallet →', action: onGoToWallet, disabled: false };
-    if (status.action_type === 'survey' && status.survey_completed) return { text: 'Already completed', action: undefined, disabled: true };
-    return { text: 'Claim Offer', action: () => onClaim(selectedPromo), disabled: false };
+    if (!status) return { text: t('promotions.claimOffer'), action: () => onClaim(selectedPromo), disabled: false };
+    if (status.voucher_used) return { text: t('promotions.alreadyUsed'), action: undefined, disabled: true };
+    if (status.voucher_claimed) return { text: t('promotions.viewInWallet'), action: onGoToWallet, disabled: false };
+    if (status.action_type === 'survey' && status.survey_completed) return { text: t('promotions.alreadyCompleted'), action: undefined, disabled: true };
+    return { text: t('promotions.claimOffer'), action: () => onClaim(selectedPromo), disabled: false };
   };
 
   const cta = getCTA();
 
   const remainingText = remainingVouchers != null && remainingVouchers > 0
-    ? `Only ${remainingVouchers} voucher${remainingVouchers !== 1 ? 's' : ''} left`
-    : 'Limited vouchers available';
+    ? t('promotions.vouchersLeft', { count: remainingVouchers })
+    : t('promotions.limitedSupply');
 
   const handleShare = async () => {
     const shareData: ShareData = {
@@ -99,7 +99,7 @@ export default function VoucherSection({
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(shareData.url || '');
-        useUIStore.getState().showToast('Link copied!', 'success');
+        useUIStore.getState().showToast(t('toast.linkCopied'), 'success');
       }
     } catch { /* user cancelled or not supported */ }
   };
@@ -116,7 +116,7 @@ export default function VoucherSection({
         <button
           className="rd-back-btn"
           onClick={onBack}
-          aria-label="Back"
+          aria-label={t('common.back')}
         >
           <ArrowLeft size={20} />
         </button>
@@ -132,10 +132,10 @@ export default function VoucherSection({
         <div className="rd-meta">
           <span className="promo-meta-item">
             {isSurvey ? <Clock size={16} /> : <Calendar size={16} />}
-            {isSurvey ? '2 min survey' : `${formatDate(selectedPromo.start_date)} – ${formatDate(selectedPromo.end_date)}`}
+            {isSurvey ? t('promotions.surveyDuration', { minutes: 2 }) : `${formatDate(selectedPromo.start_date)} – ${formatDate(selectedPromo.end_date)}`}
           </span>
           <span className={`rd-meta-pill ${isSurvey ? 'rd-pill-green' : 'rd-pill-brown'}`}>
-            {isSurvey ? 'RM5 voucher' : 'Limited vouchers'}
+            {isSurvey ? t('promotions.surveyReward', { amount: 5 }) : t('promotions.limitedVouchers')}
           </span>
         </div>
 
@@ -217,7 +217,7 @@ export default function VoucherSection({
               onClick={onSubmitSurvey}
               disabled={submittingSurvey}
             >
-              {submittingSurvey ? 'Submitting...' : 'Submit & get voucher'}
+              {submittingSurvey ? t('common.submitting') : t('promotions.submitSurvey')}
               <Gift size={16} />
             </button>
           </div>
@@ -227,7 +227,7 @@ export default function VoucherSection({
           <div className="rd-success-state">
             <CheckCircle size={48} className="promo-success-icon" />
             <p>{t('promotions.surveyCompleted')}</p>
-            <p className="rd-success-sub">Thank you for your feedback. Your reward has been added to your wallet.</p>
+            <p className="rd-success-sub">{t('promotions.surveyThankYou')}</p>
           </div>
         )}
 
@@ -235,7 +235,7 @@ export default function VoucherSection({
         {!isSurvey && selectedPromo.how_to_redeem && (
           <>
             <div className="rd-section-title">
-              <Star size={16} /> How to redeem
+              <Star size={16} /> {t('promotions.howToRedeem')}
             </div>
             <p className="rd-desc promo-redeem-box">
               {selectedPromo.how_to_redeem}
@@ -250,7 +250,7 @@ export default function VoucherSection({
         {!isSurvey && selectedPromo.terms && selectedPromo.terms.length > 0 && (
           <>
             <div className="rd-section-title">
-              <List size={16} /> Terms
+              <List size={16} /> {t('promotions.terms')}
             </div>
             <ul className="rd-terms-list">
               {selectedPromo.terms.map((t, i) => (
@@ -265,9 +265,9 @@ export default function VoucherSection({
         {!isSurvey && isGuest && (
           <div className="guest-locked">
             <div className="guest-locked-icon" onClick={() => useUIStore.getState().triggerSignIn()} role="button" tabIndex={0}><Gift size={28} /></div>
-            <div className="guest-locked-title">Sign in to claim</div>
-            <div className="guest-locked-desc">Create an account to claim this offer and earn loyalty rewards.</div>
-            <button className="guest-locked-btn btn btn-primary" onClick={() => useUIStore.getState().triggerSignIn()}>Sign In</button>
+            <div className="guest-locked-title">{t('promotions.signInToClaim')}</div>
+            <div className="guest-locked-desc">{t('promotions.signInToClaimDesc')}</div>
+            <button className="guest-locked-btn btn btn-primary" onClick={() => useUIStore.getState().triggerSignIn()}>{t('auth.signIn')}</button>
           </div>
         )}
 
@@ -278,14 +278,14 @@ export default function VoucherSection({
               onClick={cta.action}
               disabled={claiming === selectedPromo.id}
             >
-              <span>{claiming === selectedPromo.id ? 'Processing...' : cta.text}</span>
+              <span>{claiming === selectedPromo.id ? t('common.processing') : cta.text}</span>
               <ArrowRight size={20} />
             </button>
             <button
               className="rd-action-btn-outline"
               onClick={handleShare}
             >
-              <span>Share</span>
+              <span>{t('common.share')}</span>
               <Share2 size={18} />
             </button>
           </>
@@ -301,7 +301,7 @@ export default function VoucherSection({
       <RedemptionCodeModal
         isOpen={!!showVoucher}
         code={showVoucher || ''}
-        title="Voucher Unlocked!"
+        title={t('promotions.voucherUnlocked')}
         onClose={onCloseVoucher}
         onCopy={(_code) => onCopyVoucher()}
       />

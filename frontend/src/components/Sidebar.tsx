@@ -35,15 +35,15 @@ const navGroups = [
     { id: 'posterminal' as PageId, icon: 'fa-cash-register', label: 'POS Terminal' },
     { id: 'walletTopup' as PageId, icon: 'fa-wallet', label: 'Wallet Top-Up' },
   ]},
-  { label: 'Menu & Products', icon: 'fa-mug-hot', items: [
-    { id: 'menu' as PageId, icon: 'fa-utensils', label: 'Menu Management' },
-  ]},
   { label: 'Store Operations', icon: 'fa-store', items: [
     { id: 'dashboard' as PageId, icon: 'fa-chart-pie', label: 'Dashboard' },
     { id: 'orders' as PageId, icon: 'fa-clipboard-list', label: 'Orders' },
     { id: 'inventory' as PageId, icon: 'fa-boxes-stacked', label: 'Inventory' },
     { id: 'staff' as PageId, icon: 'fa-user-tie', label: 'Staff' },
     { id: 'shifts' as PageId, icon: 'fa-clock', label: 'Shifts' },
+  ]},
+  { label: 'Menu Management', icon: 'fa-utensils', items: [
+    { id: 'menu' as PageId, icon: 'fa-mug-hot', label: 'Menu' },
   ]},
   { label: 'CRM & Marketing', icon: 'fa-bullhorn', items: [
     { id: 'customers' as PageId, icon: 'fa-users', label: 'Customers' },

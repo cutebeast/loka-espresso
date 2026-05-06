@@ -9,6 +9,7 @@ import type { MerchantInventoryItem, MerchantInventoryCategory } from '@/lib/mer
 import InventoryLedgerPage from '@/components/pages/store-ops/InventoryLedgerPage';
 
 import { useAuthStore, useMerchantDataStore } from '@/stores';
+import { useToastStore } from '@/stores/toastStore';
 
 const UNITS = ['kg', 'litre', 'pcs', 'g', 'ml'];
 const MOVEMENT_TYPES = [
@@ -79,7 +80,7 @@ export default function InventoryPage() {
         const cats = Array.isArray(data) ? data : (data.items || []);
         setCategories(cats);
       })
-      .catch(() => {});
+      .catch(() => { console.error('Failed to fetch inventory categories'); });
   }, [activeStoreId, selectedStore, inventory]);
 
   // Fetch low-stock count
@@ -88,7 +89,7 @@ export default function InventoryPage() {
     apiFetch(`/admin/stores/${activeStoreId}/inventory/low-stock`)
       .then(r => r.ok ? r.json() : null)
       .then(data => setLowStockCount(Array.isArray(data) ? data.length : (data?.items?.length || 0)))
-      .catch(() => {});
+      .catch(() => { console.error('Failed to fetch low-stock count'); });
   }, [activeStoreId, inventory]);
 
   const filteredItems = selectedCat ? inventory.filter(i => i.category_id === selectedCat) : inventory;
@@ -115,9 +116,10 @@ export default function InventoryPage() {
         ? await apiFetch(`/admin/stores/${activeStoreId}/inventory-categories/${editingCat.id}`, undefined, { method: 'PUT', body: JSON.stringify({ name: catName, slug, display_order: editingCat.display_order }) })
         : await apiFetch(`/admin/stores/${activeStoreId}/inventory-categories`, undefined, { method: 'POST', body: JSON.stringify({ name: catName, slug, display_order: 0 }) });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setCatError(d.detail || 'Failed'); return; }
+      useToastStore.getState().showToast('Category saved');
       closeCatModal();
       fetchInventory();
-    } catch { setCatError('Network error'); } finally { setCatSaving(false); }
+    } catch { console.error('Failed to save category'); setCatError('Network error'); } finally { setCatSaving(false); }
   }
 
   // --- Item CRUD ---
@@ -136,8 +138,9 @@ export default function InventoryPage() {
         ? await apiFetch(`/admin/stores/${activeStoreId}/inventory/${editingItem.id}`, undefined, { method: 'PUT', body })
         : await apiFetch(`/admin/stores/${activeStoreId}/inventory`, undefined, { method: 'POST', body });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || `Failed (${res.status})`); return; }
+      useToastStore.getState().showToast('Item saved');
       closeItemModal(); fetchInventory();
-    } catch (err: any) { setError(err.message || 'Network error'); } finally { setSaving(false); }
+    } catch (err: any) { console.error('Failed to save item', err); setError(err.message || 'Network error'); } finally { setSaving(false); }
   }
 
   async function handleToggle(item: MerchantInventoryItem) {
@@ -178,8 +181,9 @@ export default function InventoryPage() {
         body: JSON.stringify({ movement_type: adjType, quantity: adjQuantity, note: adjNote, attachment_path: attachmentPath }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.detail || `Failed (${res.status})`); return; }
+      useToastStore.getState().showToast('Inventory adjusted');
       closeAdjust(); fetchInventory();
-    } catch (err: any) { setError(err.message || 'Network error'); } finally { setSavingAdj(false); }
+    } catch (err: any) { console.error('Failed to adjust inventory', err); setError(err.message || 'Network error'); } finally { setSavingAdj(false); }
   }
 
   const physicalStores = stores.filter((s: any) => String(s.id) !== '0');

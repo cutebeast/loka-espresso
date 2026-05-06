@@ -6,6 +6,7 @@ import { FilterSelect, DateFilter, Pagination, Drawer } from '@/components/ui';
 import { type DatePreset } from '@/components/ui/DateFilter';
 import type { MerchantBroadcast } from '@/lib/merchant-types';
 import NotificationTemplateManager from './NotificationTemplateManager';
+import { useToastStore } from '@/stores/toastStore';
 
 interface NotificationsPageProps {
   refreshKey: number;
@@ -83,6 +84,7 @@ function EditForm({ bc, onSave, onCancel }: EditFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      useToastStore.getState().showToast('Notification saved');
       onSave();
     } catch { console.error('Failed to save broadcast'); } finally { setSaving(false); }
   }

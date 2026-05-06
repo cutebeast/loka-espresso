@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Share2, Copy, Users, Check, Lock, Gift } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useConfigStore } from '@/stores/configStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
-import { LOKA } from '@/lib/tokens';
+import { LOKA, resolveAppUrl } from '@/lib/tokens';
 
 interface ReferralStats {
   code: string;
@@ -23,20 +24,36 @@ interface ReferralStats {
   }>;
 }
 
-const MILESTONES = [
-  { count: 5, key: 'bronze', bonus: 500, icon: '🔓' },
-  { count: 10, key: 'silver', bonus: 1200, icon: '🔓' },
-  { count: 15, key: 'gold', bonus: 2000, icon: '🔒' },
-  { count: 25, key: 'platinum', bonus: 5000, icon: '🔒' },
+interface Milestone {
+  count: number;
+  key: string;
+  bonus: number;
+}
+
+const MILESTONE_TEMPLATES: Array<{ count: number; key: string; multiplier: number }> = [
+  { count: 5, key: 'bronze', multiplier: 10 },
+  { count: 10, key: 'silver', multiplier: 24 },
+  { count: 15, key: 'gold', multiplier: 40 },
+  { count: 25, key: 'platinum', multiplier: 100 },
 ];
 
 export default function ReferralPage() {
   const { setPage, showToast } = useUIStore();
   const { user } = useAuthStore();
+  const config = useConfigStore((s) => s.config);
   const { t } = useTranslation();
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+
+  const milestones = useMemo<Milestone[]>(() => {
+    const baseReward = config.referral_reward_points || 50;
+    return MILESTONE_TEMPLATES.map(m => ({
+      count: m.count,
+      key: m.key,
+      bonus: m.multiplier * baseReward,
+    }));
+  }, [config.referral_reward_points]);
 
   useEffect(() => {
     (async () => {
@@ -52,8 +69,12 @@ export default function ReferralPage() {
   }, []);
 
   const referralLink = stats?.code
-    ? `https://app.loyaltysystem.uk?ref=${stats.code}`
+    ? `${resolveAppUrl('/')}?ref=${stats.code}`
     : '';
+
+  const partnerYear = user?.created_at
+    ? new Date(user.created_at).getFullYear()
+    : undefined;
 
   const copyLink = async () => {
     try {
@@ -98,7 +119,9 @@ export default function ReferralPage() {
                 <div className="referral-stats-avatar">{initials}</div>
                 <div>
                   <div className="referral-stats-name">{user?.name || t('referral.member')}</div>
-                  <div className="referral-stats-sub">{t('referral.partnerSince', { year: 2024 })}</div>
+                  <div className="referral-stats-sub">
+                    {partnerYear ? t('referral.partnerSince', { year: partnerYear }) : t('referral.unknown')}
+                  </div>
                 </div>
               </div>
               <div className="referral-big-numbers">
@@ -148,7 +171,7 @@ export default function ReferralPage() {
 
             {/* Milestones */}
             <div className="referral-milestones-title">{t('referral.milestonesTitle')}</div>
-            {MILESTONES.map((m) => {
+            {milestones.map((m) => {
               const achieved = stats.referrals >= m.count;
               return (
                 <div key={m.count} className={`referral-milestone-row ${achieved ? 'achieved' : ''}`}>
@@ -165,35 +188,32 @@ export default function ReferralPage() {
             })}
 
             {/* Invited users */}
-            {stats.invited_users.length > 0 && (
+            {stats.invited_users?.length > 0 && (
               <>
-                <div className="referral-invited-title">
-                  {t('referral.invitedUsers', { count: stats.total_invited })}
-                </div>
-                {stats.invited_users.map((u, i) => (
-                  <div key={i} className="referral-invited-item">
-                    <div className="referral-invited-avatar">
-                      {u.name?.charAt(0)?.toUpperCase() || '?'}
-                    </div>
-                    <div className="referral-invited-details">
-                      <div className="referral-invited-name">{u.name || t('referral.unknown')}</div>
-                      <div className="referral-invited-meta">
-                        {t('referral.joined', { date: u.joined_at ? new Date(u.joined_at).toLocaleDateString('en-MY', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' })}
+                <div className="referral-section-title">{t('referral.invitedUsers', { count: stats.invited_users.length })}</div>
+                {stats.invited_users.map((inv, i) => (
+                  <div key={i} className="referral-invitee-row">
+                    <div className="referral-invitee-avatar">{inv.name?.charAt(0)?.toUpperCase() || '?'}</div>
+                    <div className="referral-invitee-info">
+                      <div className="referral-invitee-name">{inv.name || t('referral.unknown')}</div>
+                      <div className="referral-invitee-meta">
+                        {t('referral.joined')} · {inv.order_count} {t('orders.title')}
                       </div>
                     </div>
-                    <div className="referral-invited-right">
-                      <span className={`referral-status-badge ${u.reward_paid ? 'rewarded' : 'pending'}`}>
-                        {u.reward_paid ? t('referral.rewarded') : t('referral.pending')}
-                      </span>
-                    </div>
+                    {inv.reward_paid ? (
+                      <span className="referral-invitee-badge">{t('referral.rewarded')}</span>
+                    ) : (
+                      <span className="referral-invitee-badge pending">{t('referral.pending')}</span>
+                    )}
                   </div>
                 ))}
               </>
             )}
           </>
         ) : (
-          <div style={{ padding: 40, textAlign: 'center', color: LOKA.textMuted }}>
-            {t('referral.loadError')}
+          <div className="referral-empty">
+            <Gift size={48} color={LOKA.border} />
+            <p>{t('common.error')}</p>
           </div>
         )}
       </div>

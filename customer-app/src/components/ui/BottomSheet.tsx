@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useEscClose } from '@/hooks/useEscClose';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ interface BottomSheetProps {
 
 export function BottomSheet({ isOpen, onClose, title, children, footer }: BottomSheetProps) {
   const sheetRef = useFocusTrap<HTMLDivElement>(isOpen);
+  const { t } = useTranslation();
   useEscClose(isOpen, onClose);
   return (
     <AnimatePresence>
@@ -56,7 +58,7 @@ export function BottomSheet({ isOpen, onClose, title, children, footer }: Bottom
             {title && (
               <div className="sheet-header">
                 <h3>{title}</h3>
-                <button onClick={onClose} aria-label="Close" className="sheet-close">
+                <button onClick={onClose} aria-label={t('common.close')} className="sheet-close">
                   <X size={16} />
                 </button>
               </div>

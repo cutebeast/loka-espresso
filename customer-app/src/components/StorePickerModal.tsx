@@ -133,7 +133,7 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
                   {store.distance && (
                     <div className="store-picker-distance">
                       <Navigation size={12} />
-                      {store.distance} away
+                      {store.distance} {t('storePicker.distanceAway')}
                     </div>
                   )}
                 </div>

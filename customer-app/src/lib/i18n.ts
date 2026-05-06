@@ -6,37 +6,33 @@
  * - Interpolation:    t('hello_name', { name: 'Ali' })
  * - Pluralization:    t('item_count', { count: 3 }) → looks up item_count_one / item_count_other
  * - Fallback chain:   if key missing in active locale, falls back to English
- * - Code-splitting:   locale JSONs loaded via dynamic import()
  */
 
-import { localeStore } from '@/stores/localeStore';
+import { getLocale } from '@/stores/localeStore';
+import enDict from '@/locales/en.json';
+import msDict from '@/locales/ms.json';
+import zhDict from '@/locales/zh.json';
+import taDict from '@/locales/ta.json';
+import trDict from '@/locales/tr.json';
+import type { Locale } from '@/lib/i18n-types';
+import { AVAILABLE_LOCALES, DEFAULT_LOCALE, isValidLocale, getDefaultLocale, getSupportedLocales } from '@/lib/i18n-types';
 
-type Locale = 'en' | 'ms' | 'zh' | 'ta' | 'tr';
+// Re-export for backward compatibility with existing imports
+export type { Locale };
+export { AVAILABLE_LOCALES, DEFAULT_LOCALE, isValidLocale, getDefaultLocale, getSupportedLocales };
 
-export const AVAILABLE_LOCALES: Locale[] = ['en', 'ms', 'zh', 'ta', 'tr'];
-export const DEFAULT_LOCALE: Locale = 'en';
+// Statically import all dictionaries — available immediately, no async loading
+const dictionaries: Record<Locale, Record<string, unknown>> = {
+  en: enDict as Record<string, unknown>,
+  ms: msDict as Record<string, unknown>,
+  zh: zhDict as Record<string, unknown>,
+  ta: taDict as Record<string, unknown>,
+  tr: trDict as Record<string, unknown>,
+};
 
-// In-memory cache for loaded locale dictionaries
-const dictionaries: Record<string, Record<string, unknown>> = {};
-
-/**
- * Load a locale dictionary dynamically.
- * Only the active locale is kept in memory; others are dropped on switch.
- */
-export async function loadLocale(locale: Locale): Promise<void> {
-  if (!AVAILABLE_LOCALES.includes(locale)) {
-    console.warn(`[i18n] Unsupported locale "${locale}", falling back to ${DEFAULT_LOCALE}`);
-    return;
-  }
-  if (dictionaries[locale]) return; // already loaded
-
-  try {
-    const module = await import(`@/locales/${locale}.json`);
-    dictionaries[locale] = module.default ?? module;
-  } catch (err) {
-    console.error(`[i18n] Failed to load locale "${locale}":`, err);
-    dictionaries[locale] = {};
-  }
+// No-op for backwards compatibility with code that calls loadLocale
+export async function loadLocale(_locale: Locale): Promise<void> {
+  // Dictionaries are already loaded statically
 }
 
 /** Get a nested value from a dictionary by dot-notation key. */
@@ -76,7 +72,7 @@ function interpolate(template: string, vars: Record<string, string | number>): s
  * @returns         Translated string (falls back to English, then to the raw key)
  */
 export function t(key: string, options?: Record<string, string | number>): string {
-  const activeLocale = localeStore.getState().locale;
+  const activeLocale = getLocale() as Locale;
   const dict = dictionaries[activeLocale];
   const fallbackDict = dictionaries[DEFAULT_LOCALE];
 
@@ -99,20 +95,3 @@ export function t(key: string, options?: Record<string, string | number>): strin
   }
   return key;
 }
-
-/** Check if a locale is supported. */
-export function isValidLocale(locale: string): locale is Locale {
-  return AVAILABLE_LOCALES.includes(locale as Locale);
-}
-
-/** Get list of supported locales. */
-export function getSupportedLocales(): readonly Locale[] {
-  return AVAILABLE_LOCALES;
-}
-
-/** Get default locale. */
-export function getDefaultLocale(): Locale {
-  return DEFAULT_LOCALE;
-}
-
-export type { Locale };

@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 
 import TypePill from './TypePill';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface HeroBannerProps {
   imageUrl?: string | null;
@@ -14,6 +15,7 @@ interface HeroBannerProps {
 }
 
 export default function HeroBanner({ imageUrl, tag, onBack, aspectRatio = 16 / 9 }: HeroBannerProps) {
+  const { t } = useTranslation();
   return (
     <div className="hb-slide" style={{ aspectRatio: String(aspectRatio) }}>
       <div
@@ -29,7 +31,7 @@ export default function HeroBanner({ imageUrl, tag, onBack, aspectRatio = 16 / 9
           whileTap={{ scale: 0.9 }}
           onClick={onBack}
           className="hb-back-btn"
-          aria-label="Go back"
+          aria-label={t('common.back')}
         >
           <ArrowLeft size={22} color={LOKA.primary} />
         </motion.button>

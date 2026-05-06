@@ -26,7 +26,7 @@ export interface CheckoutDraft {
   selectedStore?: Store | null;
   deliveryAddress?: { address: string; lat?: number; lng?: number } | null;
   pickupTime?: string | null;
-  paymentMethod?: 'wallet' | 'pay_at_store' | 'cod' | 'cash';
+  paymentMethod?: 'wallet' | 'pay_at_store' | 'cod' | 'cash' | 'gateway';
   notes?: string;
   voucherCode?: string;
   rewardCode?: string;

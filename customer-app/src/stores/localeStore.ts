@@ -1,71 +1,53 @@
 /**
- * Locale store — manages active language for the i18n system.
- *
- * Features:
- * - Persisted to localStorage (survives reloads)
- * - Syncs with <html lang="..."> attribute
- * - Loads locale dictionary on change
- * - Exposed outside React for API interceptors
+ * Module-level locale state — readable by non-React code like i18n.ts t().
  */
 
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { loadLocale, isValidLocale, getDefaultLocale, type Locale } from '@/lib/i18n';
+import { isValidLocale } from '@/lib/i18n-types';
 
-interface LocaleState {
-  locale: Locale;
-  dir: 'ltr';
-  setLocale: (locale: Locale) => void;
+const STORAGE_KEY = 'loka-locale';
+
+let _currentLocale = 'en';
+
+export function getLocale(): string {
+  return _currentLocale;
 }
 
-function detectBrowserLocale(): Locale {
-  if (typeof window === 'undefined') return getDefaultLocale();
-  const browserLang = navigator.language?.toLowerCase() ?? '';
-  if (browserLang.startsWith('ms') || browserLang.startsWith('id')) return 'ms';
-  if (browserLang.startsWith('zh')) return 'zh';
-  if (browserLang.startsWith('ta')) return 'ta';
-  if (browserLang.startsWith('tr')) return 'tr';
-  return getDefaultLocale();
+export function readStoredLocale(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const v = parsed?.state?.locale ?? parsed?.locale ?? null;
+    return typeof v === 'string' && isValidLocale(v) ? v : null;
+  } catch { return null; }
 }
 
-function applyLocaleToDOM(locale: Locale) {
+export function writeStoredLocale(locale: string) {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ state: { locale } })); } catch {}
+}
+
+export function detectBrowserLocale(): string {
+  if (typeof window === 'undefined') return 'en';
+  try {
+    const lang = navigator.language?.toLowerCase() ?? '';
+    if (lang.startsWith('ms') || lang.startsWith('id')) return 'ms';
+    if (lang.startsWith('zh')) return 'zh';
+    if (lang.startsWith('ta')) return 'ta';
+    if (lang.startsWith('tr')) return 'tr';
+  } catch {}
+  return 'en';
+}
+
+export function applyLocaleToDOM(locale: string) {
   if (typeof document === 'undefined') return;
-  document.documentElement.lang = locale;
-  // All supported locales are LTR (en, ms, zh, ta, tr)
-  document.documentElement.dir = 'ltr';
+  try { document.documentElement.lang = locale; } catch {}
 }
 
-export const localeStore = create<LocaleState>()(
-  persist(
-    (set) => ({
-      locale: getDefaultLocale(),
-      dir: 'ltr',
-      setLocale: (locale: Locale) => {
-        set({ locale });
-        applyLocaleToDOM(locale);
-        loadLocale(locale).catch(() => {});
-      },
-    }),
-    {
-      name: 'loka-locale',
-      storage: createJSONStorage(() => localStorage),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          const valid = isValidLocale(state.locale) ? state.locale : getDefaultLocale();
-          state.locale = valid;
-          applyLocaleToDOM(valid);
-          loadLocale(valid).catch(() => {});
-        }
-      },
-    }
-  )
-);
-
-// On module init (client-side), detect browser language if no persisted preference exists
-if (typeof window !== 'undefined') {
-  const persisted = localStorage.getItem('loka-locale');
-  if (!persisted) {
-    const detected = detectBrowserLocale();
-    localeStore.getState().setLocale(detected);
-  }
+/** Called by the React provider to sync the module-level variable. */
+export function setGlobalLocale(locale: string) {
+  _currentLocale = locale;
+  applyLocaleToDOM(locale);
+  writeStoredLocale(locale);
 }

@@ -39,6 +39,8 @@ class PromoBannerPwaOut(BaseModel):
     end_date: Optional[datetime] = None
     survey_id: Optional[int] = None
     voucher_id: Optional[int] = None
+    voucher_discount_type: Optional[str] = None
+    voucher_discount_value: Optional[float] = None
 
     class Config:
         from_attributes = True
@@ -177,13 +179,26 @@ async def list_active_banners(
         ).order_by(PromoBanner.position, PromoBanner.created_at.desc())
     )
     banners = result.scalars().all()
-    # Filter by date in Python (handle null dates)
+    # Collect voucher IDs for batch fetch
+    voucher_ids = [b.voucher_id for b in banners if b.voucher_id]
+    voucher_map: dict[int, Voucher] = {}
+    if voucher_ids:
+        v_result = await db.execute(
+            select(Voucher).where(Voucher.id.in_(voucher_ids))
+        )
+        for v in v_result.scalars().all():
+            voucher_map[v.id] = v
+    # Filter by date and attach voucher discount info
     out = []
     for b in banners:
         if b.start_date and ensure_utc(b.start_date) > now:
             continue
         if b.end_date and ensure_utc(b.end_date) < now:
             continue
+        if b.voucher_id and b.voucher_id in voucher_map:
+            v = voucher_map[b.voucher_id]
+            b.voucher_discount_type = v.discount_type.value if hasattr(v.discount_type, 'value') else str(v.discount_type) if v.discount_type else None
+            b.voucher_discount_value = float(v.discount_value) if v.discount_value else None
         out.append(b)
     return out
 

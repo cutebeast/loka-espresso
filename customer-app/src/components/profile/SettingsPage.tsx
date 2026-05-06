@@ -3,27 +3,24 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, FileText, Shield, ChevronRight, Coffee, Globe } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
-import { localeStore } from '@/stores/localeStore';
-import { getSupportedLocales } from '@/lib/i18n';
 import { useTranslation } from '@/hooks/useTranslation';
+import { LanguageSelectorModal } from '@/components/shared/LanguageSelectorModal';
 import api from '@/lib/api';
-
-const FALLBACK_ABOUT = "Born from a passion for authentic Turkish coffee culture, Loka Espresso brings the warmth of centuries-old coffee traditions to every cup. Our beans are sourced from the finest regions — roasted in small batches to honour the craft.";
 
 export default function SettingsPage() {
   const { setPage } = useUIStore();
-  const { t } = useTranslation();
-  const locale = localeStore((s) => s.locale);
-  const setLocale = localeStore((s) => s.setLocale);
-  const [aboutText, setAboutText] = useState(FALLBACK_ABOUT);
+  const { t, locale } = useTranslation();
+  const [showLangSheet, setShowLangSheet] = useState(false);
+  const [aboutText, setAboutText] = useState('');
 
   useEffect(() => {
     api.get('/content/legal/about')
       .then((res) => {
         const desc = res.data?.long_description;
         if (desc) setAboutText(desc);
+        else setAboutText(t('settings.aboutFallback'));
       })
-      .catch(() => {}); // Use fallback if card doesn't exist yet
+      .catch(() => { setAboutText(t('settings.aboutFallback')); });
   }, []);
 
   return (
@@ -42,23 +39,18 @@ export default function SettingsPage() {
         {/* Language */}
         <div className="settings-section-title">{t('settings.language')}</div>
         <div className="settings-menu-card">
-          {getSupportedLocales().map((code) => (
-            <button
-              key={code}
-              className="settings-menu-item"
-              onClick={() => setLocale(code)}
-            >
-              <div className="settings-menu-icon settings-icon-language">
-                <Globe size={18} />
-              </div>
-              <span className="settings-menu-label">
-                {t(`settings.languages.${code}`)}
-              </span>
-              {locale === code && (
-                <span className="settings-menu-check">✓</span>
-              )}
-            </button>
-          ))}
+          <button
+            className="settings-menu-item"
+            onClick={() => setShowLangSheet(true)}
+          >
+            <div className="settings-menu-icon settings-icon-language">
+              <Globe size={18} />
+            </div>
+            <span className="settings-menu-label">
+              {t(`settings.languages.${locale}`)}
+            </span>
+            <ChevronRight size={16} className="settings-menu-arrow" />
+          </button>
         </div>
 
         {/* Privacy & Legal */}
@@ -98,6 +90,11 @@ export default function SettingsPage() {
           <div className="settings-attribution">{t('settings.attribution')}</div>
         </div>
       </div>
+
+      <LanguageSelectorModal
+        isOpen={showLangSheet}
+        onClose={() => setShowLangSheet(false)}
+      />
     </div>
   );
 }

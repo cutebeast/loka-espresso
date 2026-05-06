@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { LOKA } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface PageHeaderProps {
   title: string;
@@ -10,6 +11,7 @@ interface PageHeaderProps {
 }
 
 export default function PageHeader({ title, onBack }: PageHeaderProps) {
+  const { t } = useTranslation();
   return (
     <div className="loka-page-header">
       {onBack && (
@@ -17,7 +19,7 @@ export default function PageHeader({ title, onBack }: PageHeaderProps) {
           whileTap={{ scale: 0.9 }}
           onClick={onBack}
           className="loka-back-btn"
-          aria-label="Go back"
+          aria-label={t('common.back')}
         >
           <ArrowLeft size={20} color={LOKA.primary} />
         </motion.button>

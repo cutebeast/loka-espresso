@@ -54,7 +54,7 @@ export default function CheckoutPage() {
   const [discountType, setDiscountType] = useState<'voucher' | 'reward' | null>(null);
   const [discountCode, setDiscountCode] = useState('');
   const [discountValue, setDiscountValue] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash'>(
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash' | 'gateway'>(
     checkoutDraft.paymentMethod || (orderMode === 'dine_in' ? 'pay_at_store' : 'wallet')
   );
   const [notes, setNotes] = useState(checkoutDraft.notes || orderNote || '');
@@ -68,7 +68,7 @@ export default function CheckoutPage() {
   useEffect(() => { if (user && !checkoutDraft.recipientName && !recipientName) { setRecipientName(user.name || ''); setRecipientPhone(user.phone || ''); } }, [user]);
 
   const subtotal = getTotal();
-  const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
+  const deliveryFee = orderMode === 'delivery' ? (selectedStore?.delivery_fee ?? config.delivery_fee) : 0;
   const discount = discountValue;
   const total = Math.max(0, subtotal + deliveryFee - discount);
   const itemCount = getItemCount();
@@ -180,7 +180,7 @@ export default function CheckoutPage() {
         {orderMode !== 'dine_in' && (
           <div className={`checkout-section${fieldErrors.has('time') ? ' error' : ''}`}>
             <div className="co-section-title">{orderMode === 'pickup' ? t('checkout.pickupTime') : t('checkout.deliveryTime')}</div>
-            <TimeSlotPicker onChange={(t) => { setPickupTime(t); saveDraft(); }} value={pickupTime} mode={orderMode === 'delivery' ? 'delivery' : 'pickup'} leadMinutes={selectedStore?.pickup_lead_minutes ?? 15} />
+            <TimeSlotPicker onChange={(t) => { setPickupTime(t); saveDraft(); }} value={pickupTime} mode={orderMode === 'delivery' ? 'delivery' : 'pickup'} leadMinutes={selectedStore?.pickup_lead_minutes ?? config.pickup_lead_minutes} />
           </div>
         )}
         <div className="checkout-section">
@@ -212,8 +212,13 @@ export default function CheckoutPage() {
             <div className="co-payment-info"><div className="co-payment-label">{t('checkout.cashOnDelivery')}</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div>
           </div>}
-          {/* Additional payment methods hidden until gateway integration */}
-          {/* <div className="co-voucher-hint">More payment options (Visa, DuitNow, TnG) coming soon</div> */}
+          {config.payment_gateway_provider && (
+            <div className="co-payment-card" onClick={() => setPaymentMethod('gateway')}>
+              <div className="co-payment-icon co-payment-icon-gateway"><Banknote size={14} color="#fff" /></div>
+              <div className="co-payment-info"><div className="co-payment-label">{t('checkout.payOnline')}</div></div>
+              <div className="co-payment-check"><CheckCircle2 size={12} /></div>
+            </div>
+          )}
         </div>
         <div className="co-summary-card">
           <div className="co-section-title">{t('checkout.orderSummary')}</div>
@@ -229,7 +234,7 @@ export default function CheckoutPage() {
                     {tags.length > 0 && <div className="co-order-item-tags">{tags.map((t: string, j: number) => <span key={j} className="co-order-item-tag">{t}</span>)}</div>}
                     {item.quantity > 1 && <div className="co-order-item-unit">{formatPrice(item.price)} × {item.quantity}</div>}
                   </div>
-                  <div className="co-order-item-price"><div className="co-order-item-total">{formatPrice(item.price * item.quantity)}</div>{item.quantity > 1 && <div className="co-order-item-each">{formatPrice(item.price)} each</div>}</div>
+                  <div className="co-order-item-price"><div className="co-order-item-total">{formatPrice(item.price * item.quantity)}</div>          {item.quantity > 1 && <div className="co-order-item-each">{formatPrice(item.price)} {t('common.each')}</div>}</div>
                 </div>
               );
             })}

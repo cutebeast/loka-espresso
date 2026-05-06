@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AuthStepIndicator } from './AuthStepIndicator';
+import { AuthLangButton } from './AuthLangButton';
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface ProfileSetupProps {
@@ -36,6 +37,7 @@ export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
 
   return (
     <div className="auth-page">
+      <AuthLangButton />
       <AuthStepIndicator currentStep={3} />
 
       <h2 className="auth-heading">{t('auth.profileTitle')}</h2>

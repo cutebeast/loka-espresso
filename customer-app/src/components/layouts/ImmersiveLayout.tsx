@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, X } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ImmersiveLayoutProps {
   children: ReactNode;
@@ -21,6 +22,7 @@ export function ImmersiveLayout({
   closeIcon = 'back',
   className = '',
 }: ImmersiveLayoutProps) {
+  const { t } = useTranslation();
   const CloseIcon = closeIcon === 'close' ? X : ArrowLeft;
   const positionClass = closeButtonPosition === 'top-left' ? 'left-4' : 'right-4';
 
@@ -33,7 +35,7 @@ export function ImmersiveLayout({
           whileTap={{ scale: 0.9 }}
           onClick={onClose}
           className={`absolute top-4 ${positionClass} z-50 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-md`}
-          aria-label={closeIcon === 'close' ? 'Close' : 'Go back'}
+          aria-label={closeIcon === 'close' ? t('common.close') : t('common.back')}
         >
           <CloseIcon size={20} className="text-primary" />
         </motion.button>

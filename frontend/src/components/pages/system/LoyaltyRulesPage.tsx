@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import type { MerchantLoyaltyTier } from '@/lib/merchant-types';
 import { DataTable, Drawer, Input } from '@/components/ui';
+import { useToastStore } from '@/stores/toastStore';
 
 interface LoyaltyRulesPageProps {
   tiers: MerchantLoyaltyTier[];
@@ -153,8 +154,9 @@ function TierForm({ onClose, existingTier }: TierFormProps) {
         setError(data.detail || `Failed (${res.status})`);
         return;
       }
+      useToastStore.getState().showToast('Tier saved');
       onClose();
-    } catch (err: any) { setError(err.message || 'Network error'); }
+    } catch (err: any) { console.error('Failed to save tier', err); setError(err.message || 'Network error'); }
     finally { setSaving(false); }
   }
 

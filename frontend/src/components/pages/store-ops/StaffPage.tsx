@@ -6,6 +6,7 @@ import { StoreSelector, Select, DataTable, Pagination, Drawer } from '@/componen
 import { THEME } from '@/lib/theme';
 import type { MerchantStaffMember } from '@/lib/merchant-types';
 import { useMerchantDataStore } from '@/stores';
+import { useToastStore } from '@/stores/toastStore';
 
 // ACL Lookup: user_type_id → label
 const USER_TYPES = [
@@ -108,6 +109,7 @@ export default function StaffPage() {
         setPage(p);
       }
     } catch {
+      console.error('Failed to fetch staff');
       setStaffList([]);
     } finally { setLoading(false); }
   }, [isHQ, activeStoreId]);
@@ -193,6 +195,7 @@ export default function StaffPage() {
 
   async function handleSubmit() {
     setSaving(true); setError('');
+    const showToast = useToastStore.getState().showToast;
 
     const payload: any = {
       name,
@@ -211,21 +214,24 @@ export default function StaffPage() {
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
         const data = await res.json();
         if (data.temp_password && email) setTempPassword({ name, email, password: data.temp_password });
+        showToast('HQ staff created');
         closeForm();
       } else if (editingStaff) {
         const staffId = editingStaff.id || editingStaff.user_id;
         if (!staffId) { setError('Staff record has no ID — create a new one instead'); return; }
         const res = await apiFetch(`/admin/staff/${staffId}`, undefined, { method: 'PUT', body: JSON.stringify(payload) });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
+        showToast('Staff updated');
         closeForm();
       } else {
         const res = await apiFetch(`/admin/stores/${selectedStore}/staff`, undefined, { method: 'POST', body: JSON.stringify(payload) });
         if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || `Failed (${res.status})`); return; }
         const data = await res.json();
         if (data.temp_password && email) setTempPassword({ name, email, password: data.temp_password });
+        showToast('Staff created');
         closeForm();
       }
-    } catch (err: any) { setError(err.message || 'Network error'); } finally { setSaving(false); }
+    } catch (err: any) { console.error('Failed to save staff'); setError(err.message || 'Network error'); } finally { setSaving(false); }
   }
 
   async function toggleActive(s: MerchantStaffMember) {
@@ -235,8 +241,9 @@ export default function StaffPage() {
     try {
       const res = await apiFetch(`/admin/staff/${staffId}`, undefined, { method: 'PUT', body: JSON.stringify({ is_active: !s.is_active }) });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Failed to toggle'); return; }
+      useToastStore.getState().showToast(s.is_active ? 'Staff deactivated' : 'Staff activated');
       fetchStaff(page);
-    } catch (err: any) { setError(err.message || 'Network error'); }
+    } catch (err: any) { console.error('Failed to toggle staff active'); setError(err.message || 'Network error'); }
   }
 
   async function handleDelete(id: number) {
@@ -245,9 +252,10 @@ export default function StaffPage() {
     try {
       const res = await apiFetch(`/admin/staff/${deleteId}`, undefined, { method: 'DELETE' });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Delete failed'); return; }
+      useToastStore.getState().showToast('Staff deleted');
       setConfirmDelete(null);
       fetchStaff(page);
-    } catch { setError('Network error'); }
+    } catch { console.error('Failed to delete staff'); setError('Network error'); }
   }
 
   async function handleResetPassword(s: MerchantStaffMember) {
@@ -258,8 +266,9 @@ export default function StaffPage() {
       const res = await apiFetch(`/admin/staff/${staffId}/reset-password`, undefined, { method: 'POST' });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError(data.detail || 'Reset failed'); return; }
       const data = await res.json();
+      useToastStore.getState().showToast('Password reset — copy credentials below');
       setResetPasswordResult({ name: data.name || s.name, email: data.email, password: data.temp_password || data.password });
-    } catch (err: any) { setError(err.message || 'Network error'); }
+    } catch (err: any) { console.error('Failed to reset password'); setError(err.message || 'Network error'); }
   }
 
   function renderUserTypeBadge(s: MerchantStaffMember) {

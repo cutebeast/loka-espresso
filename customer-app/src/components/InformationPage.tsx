@@ -115,7 +115,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
           await navigator.share(shareData);
         } else {
           await navigator.clipboard.writeText(shareData.url || '');
-          showToast('Link copied!', 'success');
+          showToast(t('toast.linkCopied'), 'success');
         }
       } catch { /* user cancelled or not supported */ }
     };

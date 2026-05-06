@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { Select, Drawer, DataTable, type ColumnDef } from '@/components/ui';
+import { useToastStore } from '@/stores/toastStore';
 
 interface RewardItem {
   id: number;
@@ -51,7 +52,7 @@ export default function RewardsPage() {
         setTotalPages(data.total_pages || 1);
         setPage(p);
       }
-    } catch { setError('Failed to load rewards'); setRewards([]); setTotal(0); setTotalPages(1); } finally { setLoading(false); }
+    } catch { console.error('Failed to load rewards'); setError('Failed to load rewards'); setRewards([]); setTotal(0); setTotalPages(1); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchRewards(1); }, [fetchRewards]);
@@ -82,7 +83,7 @@ export default function RewardsPage() {
         body: JSON.stringify({ is_active: !reward.is_active }),
       });
       fetchRewards(page);
-    } catch { setError('Failed to toggle reward status'); }
+    } catch { console.error('Failed to toggle reward status'); setError('Failed to toggle reward status'); }
   }
 
   async function handleDelete(id: number) {
@@ -90,7 +91,7 @@ export default function RewardsPage() {
       await apiFetch(`/admin/rewards/${id}`, undefined, { method: 'DELETE' });
       setConfirmDelete(null);
       fetchRewards(page);
-    } catch { setError('Failed to delete reward'); setConfirmDelete(null); }
+    } catch { console.error('Failed to delete reward'); setError('Failed to delete reward'); setConfirmDelete(null); }
   }
 
   const columns: ColumnDef<RewardItem>[] = [
@@ -235,7 +236,7 @@ function RewardFormPage({ existingReward, onBack }: { existingReward: RewardItem
         const data = await res.json();
         setImageUrl(data.url);
       }
-    } catch { setError('Image upload failed'); } finally { setUploading(false); }
+    } catch { console.error('Image upload failed'); setError('Image upload failed'); } finally { setUploading(false); }
   }
 
   async function handleSubmit() {
@@ -267,8 +268,10 @@ function RewardFormPage({ existingReward, onBack }: { existingReward: RewardItem
         setError(data.detail || `Failed (${res.status})`);
         return;
       }
+      useToastStore.getState().showToast('Reward saved');
       onBack();
     } catch (err: unknown) {
+      console.error('Failed to save reward', err);
       setError(err instanceof Error ? err.message : 'Network error');
     } finally { setSaving(false); }
   }

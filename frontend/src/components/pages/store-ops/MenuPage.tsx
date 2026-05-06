@@ -6,6 +6,7 @@ import type { MerchantCategory, MerchantMenuItem } from '@/lib/merchant-types';
 import { Select, Modal, Drawer, DataTable, type ColumnDef } from '@/components/ui';
 import { THEME } from '@/lib/theme';
 import { useAuthStore, useMerchantDataStore, useUIStore } from '@/stores';
+import { useToastStore } from '@/stores/toastStore';
 
 export default function MenuPage() {
   const categories = useMerchantDataStore((s) => s.categories);
@@ -60,7 +61,7 @@ export default function MenuPage() {
         : await apiFetch(`/admin/categories`, undefined, { method: 'POST', body: JSON.stringify({ name: catName, slug, display_order: 0 }) });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setCatError(d.detail || 'Failed'); return; }
       closeCatModal(); fetchMenu();
-    } catch { setCatError('Network error'); } finally { setSavingCat(false); }
+    } catch { console.error('Failed to save category'); setCatError('Network error'); } finally { setSavingCat(false); }
   }
 
   async function toggleCatActive(c: MerchantCategory) {
@@ -102,8 +103,9 @@ export default function MenuPage() {
         ? await apiFetch(`/admin/items/${editingItem.id}`, undefined, { method: 'PUT', body })
         : await apiFetch(`/admin/items`, undefined, { method: 'POST', body });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setItemCatError(d.detail || `Failed (${res.status})`); return; }
+      useToastStore.getState().showToast('Menu item saved');
       closeItemModal(); fetchMenu();
-    } catch (err: any) { setItemCatError(err.message || 'Network error'); } finally { setSavingItem(false); }
+    } catch (err: any) { console.error('Failed to save menu item', err); setItemCatError(err.message || 'Network error'); } finally { setSavingItem(false); }
   }
 
   async function deleteItem(id: number) {

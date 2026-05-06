@@ -18,18 +18,15 @@ import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
 import { formatPrice, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useConfigStore } from '@/stores/configStore';
 
-const TOPUP_AMOUNTS = [
-  { amount: 20, labelKey: 'wallet.labelStarter' },
-  { amount: 50, labelKey: 'wallet.labelPopular' },
-  { amount: 100, labelKey: 'wallet.labelValue' },
-  { amount: 200, labelKey: 'wallet.labelPremium' },
-];
+const TOPUP_LABELS = ['wallet.labelStarter', 'wallet.labelPopular', 'wallet.labelValue', 'wallet.labelPremium'];
 
 export default function WalletPage() {
   const { t } = useTranslation();
   const { balance, setBalance, transactions, setTransactions } = useWalletStore();
   const { setPage, showToast } = useUIStore();
+  const config = useConfigStore((s) => s.config);
 
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
@@ -77,7 +74,7 @@ export default function WalletPage() {
   const getTopUpAmount = (): number | null => {
     if (selectedAmount) return selectedAmount;
     const custom = parseInt(customAmount, 10);
-    if (!isNaN(custom) && custom >= 5) return custom;
+    if (!isNaN(custom) && custom >= config.topup_min_amount) return custom;
     return null;
   };
 
@@ -135,26 +132,26 @@ export default function WalletPage() {
         <div>
           <div className="topup-section-title">{t('wallet.quickTopUp')}</div>
           <div className="topup-amount-grid topup-amount-grid-4col">
-            {TOPUP_AMOUNTS.map(({ amount, labelKey }) => (
+            {config.topup_presets.map((amount, i) => (
               <button
                 key={amount}
                 className={`topup-amount-btn ${selectedAmount === amount ? 'selected' : ''}`}
                 onClick={() => handleSelectAmount(amount)}
               >
-                <span className="topup-preset-amount">RM {amount}</span>
-                <span className="topup-preset-label">{t(labelKey)}</span>
+                <span className="topup-preset-amount">{config.currency_symbol} {amount}</span>
+                <span className="topup-preset-label">{t(TOPUP_LABELS[i] || 'wallet.labelValue')}</span>
               </button>
             ))}
           </div>
           <div className="topup-custom-amount">
-            <span>RM</span>
+            <span>{config.currency_symbol}</span>
             <input
               type="number"
               className="topup-custom-input"
               placeholder={t('wallet.otherAmount')}
-              min={5}
               value={customAmount}
               onChange={(e) => handleCustomChange(e.target.value)}
+              min={config.topup_min_amount}
             />
           </div>
           <button

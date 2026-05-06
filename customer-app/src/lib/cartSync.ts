@@ -104,7 +104,7 @@ export async function placeOrder(params: {
   notes?: string;
   voucherCode?: string;
   rewardRedemptionCode?: string;
-  paymentMethod: 'wallet' | 'cash' | 'pay_at_store' | 'cod';
+  paymentMethod: 'wallet' | 'cash' | 'pay_at_store' | 'cod' | 'gateway';
   recipientName?: string;
   recipientPhone?: string;
   deliveryInstructions?: string;

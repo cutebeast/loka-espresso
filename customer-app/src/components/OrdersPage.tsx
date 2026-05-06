@@ -11,6 +11,8 @@ import type { Order, CartItem } from '@/lib/api';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import { t } from '@/lib/i18n';
+import { getLocale } from '@/stores/localeStore';
+import { useConfigStore } from '@/stores/configStore';
 
 function getStatusBadge(status: string): { label: string; cls: string } {
   const s = status?.toLowerCase();
@@ -24,8 +26,8 @@ function getStatusBadge(status: string): { label: string; cls: string } {
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   const now = new Date();
-  if (d.toDateString() === now.toDateString()) return `${t('common.today')}, ${d.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}`;
-  return d.toLocaleDateString('en-MY', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return `${t('common.today')}, ${d.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' })}`;
+  return d.toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 const ACTIVE = ['pending', 'confirmed', 'preparing', 'in_progress', 'ready', 'out_for_delivery', 'driver_assigned'];
@@ -45,6 +47,7 @@ export default function OrdersPage() {
   const { t } = useTranslation();
   const { orders, setOrders, setCurrentOrder, isLoading, setIsLoading } = useOrderStore();
   const { setPage, showToast } = useUIStore();
+  const config = useConfigStore((s) => s.config);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchOrders = useCallback(async () => {
@@ -66,7 +69,7 @@ export default function OrdersPage() {
     if (pollingRef.current) clearInterval(pollingRef.current);
     if (hasActive) pollingRef.current = setInterval(() => {
       if (document.visibilityState === 'visible') { fetchOrders(); setLastUpdated(new Date()); }
-    }, 30000);
+    }, config.order_polling_interval_seconds * 1000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [hasActive, fetchOrders]);
 
@@ -183,7 +186,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="orders-eta-row">
                     <div className="orders-eta-icon"><Clock size={14} color="#fff" /></div>
-                    {t('orders.eta', { minutes: 5 + (4 - step) * 5 })}
+                    {t('orders.eta', { minutes: Math.round(config.pickup_lead_minutes * ((4 - step) / 4) + 5) })}
                   </div>
                   <div className="orders-active-items">{itemList}</div>
                   <div className="orders-active-footer">

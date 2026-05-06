@@ -6,19 +6,22 @@
  *   DEEPL_API_KEY=xxx DEEPSEEK_API_KEY=yyy npm run translate
  *
  * Priority:
- * 1. DeepL API direct — primary (best quality for short UI phrases)
- * 2. DeepSeek API (deepseek-chat model — fast / cheap) — fallback
- * 3. English copy — last resort
+ * 1. TRANSLATE_PROVIDER env var — explicit choice (deepl | deepseek)
+ * 2. DeepL API direct — primary default (best quality for short UI phrases)
+ * 3. DeepSeek API (deepseek-v4-flash — fast / cheap) — fallback
+ * 4. English copy — last resort
  *
  * Environment variables:
  *   DEEPL_API_KEY           DeepL API key (primary)
  *   DEEPL_API_URL           "https://api-free.deepl.com/v2/translate" (default)
- *   DEEPSEEK_API_KEY        DeepSeek API key (fallback)
+ *   DEEPSEEK_API_KEY        DeepSeek API key (fallback / primary if TRANSLATE_PROVIDER=deepseek)
  *   DEEPSEEK_API_URL        "https://api.deepseek.com/v1/chat/completions" (default)
- *   DEEPSEEK_MODEL          "deepseek-chat" (default — the fast V3 model)
+ *   DEEPSEEK_MODEL          "deepseek-v4-flash" (default — fast, non-thinking mode)
  *   TRANSLATE_API_ENDPOINT  Your own backend endpoint (overrides everything if set)
+ *   TRANSLATE_PROVIDER      "deepl" or "deepseek" — forces one provider
  */
 
+import 'dotenv/config';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -29,9 +32,10 @@ const SOURCE_LANG = 'en';
 const TARGET_LANGS = ['ms', 'zh', 'ta', 'tr'];
 
 const API_ENDPOINT = process.env.TRANSLATE_API_ENDPOINT;
+const TRANSLATE_PROVIDER = process.env.TRANSLATE_PROVIDER; // 'deepl' | 'deepseek'
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1/chat/completions';
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
 const DEEPL_KEY = process.env.DEEPL_API_KEY;
 const DEEPL_URL = process.env.DEEPL_API_URL || 'https://api-free.deepl.com/v2/translate';
 
@@ -88,7 +92,7 @@ async function translateViaApi(texts, targetLang) {
   return results;
 }
 
-/** Call DeepSeek API (deepseek-chat model) for bulk translation. */
+/** Call DeepSeek API (deepseek-v4-flash model) for bulk translation. */
 async function translateViaDeepSeek(texts, targetLang) {
   const langName = LOCALE_NAMES[targetLang] || targetLang;
   const prompt = `Translate the following UI strings from English to ${langName}.
@@ -166,6 +170,18 @@ async function translateViaDeepL(texts, targetLang) {
 async function translateBatch(texts, targetLang) {
   if (texts.length === 0) return [];
   if (API_ENDPOINT) return translateViaApi(texts, targetLang);
+
+  // Explicit provider choice via TRANSLATE_PROVIDER env var
+  if (TRANSLATE_PROVIDER === 'deepseek') {
+    if (DEEPSEEK_KEY) return translateViaDeepSeek(texts, targetLang);
+    throw new Error('TRANSLATE_PROVIDER=deepseek but DEEPSEEK_API_KEY is not set');
+  }
+  if (TRANSLATE_PROVIDER === 'deepl') {
+    if (DEEPL_KEY) return translateViaDeepL(texts, targetLang);
+    throw new Error('TRANSLATE_PROVIDER=deepl but DEEPL_API_KEY is not set');
+  }
+
+  // Default priority: DeepL primary, DeepSeek fallback
   if (DEEPL_KEY) return translateViaDeepL(texts, targetLang);
   if (DEEPSEEK_KEY) return translateViaDeepSeek(texts, targetLang);
   return [...texts];
@@ -177,6 +193,8 @@ async function main() {
   console.log(`[translate] Targets: ${TARGET_LANGS.join(', ')}`);
 
   if (API_ENDPOINT) console.log(`[translate] Using internal API: ${API_ENDPOINT}`);
+  else if (TRANSLATE_PROVIDER === 'deepseek') console.log(`[translate] Using DeepSeek (${DEEPSEEK_MODEL}) — forced by TRANSLATE_PROVIDER`);
+  else if (TRANSLATE_PROVIDER === 'deepl') console.log(`[translate] Using DeepL — forced by TRANSLATE_PROVIDER`);
   else if (DEEPL_KEY) console.log(`[translate] Using DeepL (primary)`);
   else if (DEEPSEEK_KEY) console.log(`[translate] Using DeepSeek (${DEEPSEEK_MODEL}) fallback`);
   else console.log(`[translate] No API configured — copying English fallbacks`);
@@ -197,7 +215,7 @@ async function main() {
       // Start fresh
     }
 
-    const missingKeys = sourceKeys.filter((k) => !(k in targetFlat));
+    const missingKeys = sourceKeys.filter((k) => !(k in targetFlat) || targetFlat[k] === sourceFlat[k]);
     if (missingKeys.length === 0) {
       console.log(`[translate] ${targetLang}: all keys present ✓`);
       continue;
@@ -206,7 +224,7 @@ async function main() {
     console.log(`[translate] ${targetLang}: ${missingKeys.length} missing keys`);
 
     // DeepL supports up to 50 texts per request; DeepSeek can handle larger batches
-    const CHUNK_SIZE = DEEPL_KEY ? 50 : 60;
+    const CHUNK_SIZE = (DEEPL_KEY && TRANSLATE_PROVIDER !== 'deepseek') ? 50 : 60;
     for (let i = 0; i < missingKeys.length; i += CHUNK_SIZE) {
       const chunkKeys = missingKeys.slice(i, i + CHUNK_SIZE);
       const chunkTexts = chunkKeys.map((k) => sourceFlat[k]);

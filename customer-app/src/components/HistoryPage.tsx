@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
 import { useTranslation } from '@/hooks/useTranslation';
 import { t } from '@/lib/i18n';
+import { getLocale } from '@/stores/localeStore';
 import type { LoyaltyHistoryEntry, Transaction } from '@/lib/api';
 
 type Tab = 'loyalty' | 'wallet';
@@ -95,7 +96,7 @@ export default function HistoryPage() {
   const loyaltyRedeemed = loyaltyHistory.filter(t => (t.points || 0) < 0).reduce((s, t) => s + Math.abs(t.points || 0), 0);
   const walletIn = walletHistory.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
   const walletOut = walletHistory.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
-  const nowMonth = new Date().toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
+  const nowMonth = new Date().toLocaleDateString(getLocale(), { month: 'long', year: 'numeric' });
 
   return (
     <div className="history-screen">
@@ -192,7 +193,7 @@ export default function HistoryPage() {
                           {catLabel && <span className="history-tx-cat">{catLabel}</span>}
                         </div>
                         <div className="history-tx-date">
-                          {new Date(item.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          {new Date(item.created_at).toLocaleDateString(getLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
                       <div className="history-tx-right">

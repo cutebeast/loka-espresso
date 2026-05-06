@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface DetailLayoutProps {
   children: ReactNode;
@@ -21,6 +22,7 @@ export function DetailLayout({
   showHeader = true,
   className = '',
 }: DetailLayoutProps) {
+  const { t } = useTranslation();
   return (
     <div className={`flex flex-col h-full bg-bg ${className}`}>
       {showHeader && (
@@ -31,7 +33,7 @@ export function DetailLayout({
                 whileTap={{ scale: 0.9 }}
                 onClick={onBack}
                 className="loka-back-btn"
-                aria-label="Go back"
+                aria-label={t('common.back')}
               >
                 <ArrowLeft size={20} className="text-primary" />
               </motion.button>

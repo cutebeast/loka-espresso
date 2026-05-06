@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { DateFilter, type DatePreset, calcDateRange } from '@/components/ui/DateFilter';
 import { BarChart, Modal, TextArea } from '@/components/ui';
+import { useToastStore } from '@/stores/toastStore';
 
 interface FeedbackPageProps {
   selectedStore: string;
@@ -104,6 +105,7 @@ export default function FeedbackPage({ selectedStore }: FeedbackPageProps) {
         method,
         body: JSON.stringify({ admin_reply: replyText.trim() }),
       });
+      useToastStore.getState().showToast('Reply sent');
       setShowModal(false);
       setReplyText('');
       setModalFeedback(null);

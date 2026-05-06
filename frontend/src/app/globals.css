@@ -42,3 +42,6 @@
 @import "../styles/information.css";
 @import "../styles/mobile-guard.css";
 @import "../styles/customer-search.css";
+
+/* 8. Toast notifications */
+@import "../styles/toast.css";

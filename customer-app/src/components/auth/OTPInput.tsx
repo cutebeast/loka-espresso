@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { AuthStepIndicator } from './AuthStepIndicator';
+import { AuthLangButton } from './AuthLangButton';
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface OTPInputProps {
@@ -112,6 +113,7 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
 
   return (
     <div className="auth-page">
+      <AuthLangButton />
       <AuthStepIndicator currentStep={2} />
 
       <button onClick={onBack} className="auth-back-btn">

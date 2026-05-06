@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { DataTable, Drawer, type ColumnDef } from '@/components/ui';
 import { APP_DOMAIN } from '@/lib/config';
+import { useToastStore } from '@/stores/toastStore';
 
 interface InfoCard {
   id: number;
@@ -221,8 +222,10 @@ export default function InformationPage() {
         setError(data.detail || `Failed (${res.status})`);
         return;
       }
+      useToastStore.getState().showToast('Content card saved');
       closeForm();
     } catch (err: any) {
+      console.error('Failed to save card', err);
       setError(err.message || 'Failed to save card');
     } finally { setSaving(false); }
   };
@@ -400,6 +403,43 @@ export default function InformationPage() {
               </div>
             </div>
 
+            <div className="inf-13">
+              <label className="iform-label">Content Type</label>
+              <select value={form.content_type} onChange={(e) => setField('content_type', e.target.value)} className="inf-14">
+                {contentTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+
+            {form.content_type === 'popup_banner' && (
+              <div className="inf-15">
+                <label className="inf-16">Promotion CTA (optional)</label>
+                <div className="inf-17">
+                  <div>
+                    <label className="inf-18">Action URL</label>
+                    <input type="text" value={form.action_url} onChange={(e) => setField('action_url', e.target.value)} placeholder="https://..." />
+                  </div>
+                  <div>
+                    <label className="inf-19">Button Label</label>
+                    <input type="text" value={form.action_label} onChange={(e) => setField('action_label', e.target.value)} placeholder="Learn More" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="inf-11">
+              <ImageUploadField
+                label="Cover — Image or Video"
+                imageUrl={form.image_url}
+                onSet={(url) => setField('image_url', url)}
+                hint={form.content_type === 'popup_banner'
+                  ? 'JPEG, PNG, MP4, WebM — Max 50MB. Portrait/vertical (9:16) for fullscreen mobile overlay.'
+                  : 'JPEG, PNG, MP4, WebM — Max 25MB. Landscape/horizontal (16:9) for in-article display.'}
+                folder={form.content_type}
+                allowVideo={true}
+                portrait={form.content_type === 'popup_banner'}
+              />
+            </div>
+
             {form.content_type !== 'popup_banner' && (<>
             <div className="inf-3">
               <label className="iform-label">
@@ -422,10 +462,10 @@ export default function InformationPage() {
               <label className="iform-label">Short Description <span className="inf-7">(card preview)</span></label>
               <input type="text" value={form.short_description} onChange={(e) => setField('short_description', e.target.value)} placeholder="Brief text shown on PWA card" />
             </div>
+            </>)}
 
-            {form.content_type !== 'popup_banner' ? (
             <div className="inf-48">
-              <label className="iform-label">Sections <span className="inf-50">(structured content)</span></label>
+              <label className="iform-label">{form.content_type === 'popup_banner' ? 'Popup Overlay Text' : 'Sections'} <span className="inf-50">(structured content)</span></label>
               {form.sections.map((section, si) => (
                 <div key={si} className="inf-51">
                   <div className="inf-52">
@@ -488,32 +528,6 @@ export default function InformationPage() {
                 </button>
               </div>
             </div>
-            ) : (
-            <div className="inf-8">
-              <label className="iform-label">Description <span className="inf-9">(popup overlay text)</span></label>
-              <textarea
-                value={form.long_description}
-                onChange={(e) => setField('long_description', e.target.value)}
-                placeholder="Text displayed as overlay on the popup banner..."
-                rows={3}
-                className="inf-10"
-              />
-            </div>
-            )}
-
-            <div className="inf-11">
-              <ImageUploadField
-                label="Cover — Image or Video"
-                imageUrl={form.image_url}
-                onSet={(url) => setField('image_url', url)}
-                hint={form.content_type === 'popup_banner'
-                  ? 'JPEG, PNG, MP4, WebM — Max 50MB. Portrait/vertical (9:16) for fullscreen mobile overlay.'
-                  : 'JPEG, PNG, MP4, WebM — Max 25MB. Landscape/horizontal (16:9) for in-article display.'}
-                folder={form.content_type}
-                allowVideo={true}
-                portrait={form.content_type === 'popup_banner'}
-              />
-            </div>
 
             {form.content_type !== 'popup_banner' && (
             <div className="inf-12">
@@ -527,29 +541,6 @@ export default function InformationPage() {
             </div>
             )}
 
-            <div className="inf-13">
-              <label className="iform-label">Content Type</label>
-              <select value={form.content_type} onChange={(e) => setField('content_type', e.target.value)} className="inf-14">
-                {contentTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-
-            {form.content_type === 'popup_banner' && (
-              <div className="inf-15">
-                <label className="inf-16">Promotion CTA (optional)</label>
-                <div className="inf-17">
-                  <div>
-                    <label className="inf-18">Action URL</label>
-                    <input type="text" value={form.action_url} onChange={(e) => setField('action_url', e.target.value)} placeholder="https://..." />
-                  </div>
-                  <div>
-                    <label className="inf-19">Button Label</label>
-                    <input type="text" value={form.action_label} onChange={(e) => setField('action_label', e.target.value)} placeholder="Learn More" />
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div className="inf-20">
               <div>
                 <label className="iform-label">Start Date <span className="inf-21">(blank = always)</span></label>
@@ -560,7 +551,6 @@ export default function InformationPage() {
                 <input type="datetime-local" value={form.end_date} onChange={(e) => setField('end_date', e.target.value)} />
               </div>
             </div>
-            </>)}
 
             <div className="df-actions">
               <label className="inf-25" style={{ marginRight: 'auto' }}>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { StoreSelector } from '@/components/ui';
 import { useQrExpiry, useQrImages, TableCard } from './tables';
+import { useToastStore } from '@/stores/toastStore';
 
 import type { MerchantTableItem, MerchantStore } from '@/lib/merchant-types';
 
@@ -72,9 +73,11 @@ export default function TablesPage({ tables, selectedStore, storeObj, onRefresh,
         setError(d.detail || `Failed (${res.status})`);
         return;
       }
+      useToastStore.getState().showToast('Table saved');
       closeForm();
       onRefresh();
     } catch (err: any) {
+      console.error('Failed to save table', err);
       setError(err.message || 'Network error');
     } finally {
       setSaving(false);
@@ -95,6 +98,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, onRefresh,
       }
       onRefresh();
     } catch (err: any) {
+      console.error('Failed to toggle table', err);
       setError(err.message || 'Network error');
     }
   }
@@ -110,6 +114,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, onRefresh,
       setConfirmDelete(null);
       onRefresh();
     } catch {
+      console.error('Failed to delete table');
       setError('Network error');
     }
   }
@@ -126,6 +131,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, onRefresh,
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
+      console.error('Failed to download QR code');
       setError('Failed to download QR code');
     }
   }
@@ -140,6 +146,7 @@ export default function TablesPage({ tables, selectedStore, storeObj, onRefresh,
       }
       onRefresh();
     } catch {
+      console.error('Failed to generate QR code');
       setError('Failed to generate QR code');
     }
   }

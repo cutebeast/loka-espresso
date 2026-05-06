@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { localeStore } from '@/stores/localeStore';
+import { getLocale } from '@/stores/localeStore';
 
 export const API_BASE = '/api/v1';
 
@@ -12,7 +12,7 @@ const api = axios.create({
 
 // Inject user's preferred locale into every request
 api.interceptors.request.use((config) => {
-  const locale = localeStore.getState().locale;
+  const locale = getLocale();
   if (locale) {
     config.headers['Accept-Language'] = locale;
   }
@@ -76,6 +76,8 @@ export interface Store {
   lng?: number;
   pickup_lead_minutes?: number;
   delivery_radius_km?: number;
+  delivery_fee?: number;
+  min_order?: number;
   pos_integration_enabled?: boolean;
   delivery_integration_enabled?: boolean;
 }

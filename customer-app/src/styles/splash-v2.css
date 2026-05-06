@@ -154,3 +154,54 @@
     width: 100%;
   }
 }
+
+/* ── Language selector button on splash ── */
+.splash-lang-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--loka-border-light, #e0dcd0);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--loka-text-primary, #1E1B18);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.splash-lang-btn:active {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* ── Language button on auth flow (phone/OTP/profile) ── */
+.auth-lang-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 8px;
+  background: transparent;
+}
+
+.auth-lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  background: var(--loka-bg, #F2EEE6);
+  border: 1px solid var(--loka-border-light, #e0dcd0);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--loka-text-primary, #1E1B18);
+  cursor: pointer;
+}
+
+.auth-lang-btn:active {
+  background: var(--loka-border-light, #e0dcd0);
+}

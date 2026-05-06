@@ -159,11 +159,17 @@ async def list_hq_staff(
     names = await _resolve_role_names(db, user_ids)
     store_access = await _get_store_access_for_users(db, user_ids)
 
+    staff_result = await db.execute(select(Staff).where(Staff.user_id.in_(user_ids)))
+    staff_by_user_id = {s.user_id: s for s in staff_result.scalars().all()}
+
     out = []
     for u in hq_users:
         n = names.get(u.id, {})
+        staff = staff_by_user_id.get(u.id)
         out.append({
-            "id": None, "store_id": None, "user_id": u.id,
+            "id": staff.id if staff else None,
+            "store_id": staff.store_id if staff else None,
+            "user_id": u.id,
             "name": u.name or "", "email": u.email, "phone": u.phone,
             "role": n.get("role"), "user_type": n.get("user_type"),
             "user_type_id": u.user_type_id, "role_id": u.role_id,
@@ -246,13 +252,14 @@ async def create_hq_staff(
     r_id = data.role_id or RoleIDs.HQ_STAFF
 
     if data.email:
-        existing = await db.execute(select(AdminUser).where(AdminUser.email == data.email))
+        email = data.email.strip().lower()
+        existing = await db.execute(select(AdminUser).where(func.lower(AdminUser.email) == email))
         if existing.scalar_one_or_none():
             raise HTTPException(400, detail=f"User with email '{data.email}' already exists")
         temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
         phone_val = (data.phone or "").strip() or None
         new_user = AdminUser(
-            email=data.email, name=data.name, phone=phone_val,
+            email=email, name=data.name, phone=phone_val,
             password_hash=hash_password(temp_password),
             user_type_id=ut_id, role_id=r_id, is_active=True,
         )
@@ -298,12 +305,13 @@ async def create_staff(
     r_id = data.role_id or RoleIDs.STAFF
 
     if data.email:
-        existing = await db.execute(select(AdminUser).where(AdminUser.email == data.email))
+        email = data.email.strip().lower()
+        existing = await db.execute(select(AdminUser).where(func.lower(AdminUser.email) == email))
         if existing.scalar_one_or_none():
             raise HTTPException(400, detail=f"User with email '{data.email}' already exists")
         temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
         new_user = AdminUser(
-            email=data.email, name=data.name, phone=data.phone,
+            email=email, name=data.name, phone=data.phone,
             password_hash=hash_password(temp_password),
             user_type_id=ut_id, role_id=r_id, is_active=True,
         )
@@ -352,17 +360,27 @@ async def update_staff(
     result = await db.execute(select(Staff).where(Staff.id == staff_id))
     obj = result.scalar_one_or_none()
     if not obj:
-        # Fallback: try AdminUser directly (HQ staff without a Store staff record)
+        result = await db.execute(select(Staff).where(Staff.user_id == staff_id))
+        obj = result.scalar_one_or_none()
+    if not obj:
+        # Fallback: update AdminUser directly (HQ staff without a Store staff record)
         aresult = await db.execute(select(AdminUser).where(AdminUser.id == staff_id))
         admin_user = aresult.scalar_one_or_none()
         if not admin_user:
             raise HTTPException(404)
         if data.is_active is not None:
             admin_user.is_active = data.is_active
+        if data.name is not None:
+            admin_user.name = data.name
+        if data.email is not None:
+            admin_user.email = data.email.strip().lower()
+        if data.phone is not None:
+            admin_user.phone = data.phone.strip()
         await db.flush()
-        return {"id": staff_id, "user_id": staff_id, "is_active": admin_user.is_active}
-    if not obj:
-        raise HTTPException(404)
+        return {
+            "id": staff_id, "user_id": staff_id, "is_active": admin_user.is_active,
+            "name": admin_user.name, "email": admin_user.email, "phone": admin_user.phone,
+        }
 
     # Get linked user
     target_user = None
@@ -379,6 +397,26 @@ async def update_staff(
     changes = data.model_dump(exclude_unset=True)
     for skip in ('user_type_id', 'role_id', 'store_ids'):
         changes.pop(skip, None)
+
+    if 'email' in changes and changes['email'] is not None:
+        changes['email'] = changes['email'].strip().lower()
+        if target_user and changes['email'] != (target_user.email or ''):
+            existing = await db.execute(
+                select(AdminUser).where(
+                    func.lower(AdminUser.email) == changes['email'],
+                    AdminUser.id != target_user.id,
+                )
+            )
+            if existing.scalar_one_or_none():
+                raise HTTPException(400, detail=f"User with email '{changes['email']}' already exists")
+            target_user.email = changes['email']
+        elif not target_user and changes['email']:
+            existing = await db.execute(
+                select(AdminUser).where(func.lower(AdminUser.email) == changes['email'])
+            )
+            if existing.scalar_one_or_none():
+                raise HTTPException(400, detail=f"User with email '{changes['email']}' already exists")
+
     if 'pin_code' in changes and changes['pin_code']:
         changes['pin_code'] = hash_password(changes['pin_code'])
     for key, value in changes.items():
@@ -528,7 +566,7 @@ async def reset_staff_password(
         raise HTTPException(400, "Staff has no email — add an email first")
 
     if not staff.user_id:
-        existing = await db.execute(select(AdminUser).where(AdminUser.email == staff.email))
+        existing = await db.execute(select(AdminUser).where(func.lower(AdminUser.email) == staff.email.strip().lower()))
         if existing.scalar_one_or_none():
             raise HTTPException(400, f"User with email '{staff.email}' exists but not linked")
         temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch, apiUpload, cacheBust } from '@/lib/merchant-api';
 import { Select, DataTable, Drawer, type ColumnDef } from '@/components/ui';
+import { useToastStore } from '@/stores/toastStore';
 
 export interface BannerForm {
   title: string;
@@ -153,8 +154,10 @@ export default function BannerManager() {
         setError(data.detail || `Failed (${res.status})`);
         return;
       }
+      useToastStore.getState().showToast(editingId ? 'Banner updated' : 'Banner created');
       closeForm();
     } catch (err: any) {
+      console.error('Failed to save banner', err);
       setError(err.message || 'Failed to save banner');
     } finally { setSaving(false); }
   };

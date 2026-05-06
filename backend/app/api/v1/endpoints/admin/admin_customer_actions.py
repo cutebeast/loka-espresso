@@ -138,13 +138,18 @@ async def update_customer(
     if not changes:
         raise HTTPException(status_code=400, detail="No changes provided")
 
+    if "phone" in changes and changes["phone"] is not None:
+        changes["phone"] = changes["phone"].strip()
+    if "email" in changes and changes["email"] is not None:
+        changes["email"] = changes["email"].strip().lower()
+
     if "phone" in changes and changes["phone"] != target.phone:
         existing = await db.execute(select(Customer).where(Customer.phone == changes["phone"]))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=409, detail="Phone number already in use by another account")
 
-    if "email" in changes and changes["email"] and changes["email"] != target.email:
-        existing = await db.execute(select(Customer).where(Customer.email == changes["email"]))
+    if "email" in changes and changes["email"] and func.lower(changes["email"]) != func.lower(target.email or ""):
+        existing = await db.execute(select(Customer).where(func.lower(Customer.email) == changes["email"]))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=409, detail="Email already in use by another account")
 

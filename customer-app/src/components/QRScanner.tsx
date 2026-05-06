@@ -101,15 +101,15 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
             <div className="qr-permission-icon">
               {notSupported ? <AlertTriangle size={28} color="#C9A84C" /> : <CameraOff size={28} color="#4A2210" />}
             </div>
-            <h2 className="qr-permission-title">{notSupported ? 'Browser Not Supported' : 'Camera Access Needed'}</h2>
+            <h2 className="qr-permission-title">{notSupported ? t('qr.browserUnsupported') : t('qr.cameraPermissionNeeded')}</h2>
             <p className="qr-permission-text">
               {notSupported
-                ? 'Your browser does not support camera access. Please use a QR code link or ask staff for assistance.'
-                : 'Allow camera access to scan QR codes for loyalty points, rewards, and in-store ordering.'}
+                ? t('qr.browserUnsupportedDesc')
+                : t('qr.cameraPermissionDesc')}
             </p>
             {!notSupported && (
               <button className="qr-permission-btn" onClick={startScanner}>
-                <Camera size={16} /> Allow Camera
+                <Camera size={16} /> {t('qr.allowCamera')}
               </button>
             )}
           </div>
@@ -140,7 +140,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
         <div className="qr-prompt">
           <div className="qr-prompt-title">{t('qr.pointCamera')}</div>
           <div className="qr-prompt-sub">
-            Align the code within the frame to scan automatically
+            {t('qr.alignCode')}
           </div>
         </div>
       )}

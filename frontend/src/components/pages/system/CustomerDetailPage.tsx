@@ -5,6 +5,7 @@ import { apiFetch, formatRM } from '@/lib/merchant-api';
 import type { CustomerDetail, CustomerWalletTransaction, CustomerLoyaltyTransaction, MerchantOrder } from '@/lib/merchant-types';
 import { CustomerInfo, OrderHistory, LoyaltyPanel, WalletTransactions, WalletRewards } from './customer-detail';
 import { useAuthStore } from '@/stores';
+import { useToastStore } from '@/stores/toastStore';
 
 interface PaginatedResponse<T> {
   total: number;
@@ -71,7 +72,7 @@ function WalletAdjustDialog({ customerId, currentBalance, onDone }: { customerId
       setResult(`Done! New balance: ${formatRM(d.new_balance)}`);
       setAmount(''); setReason('');
       onDone();
-    } catch { setError('Network error'); } finally { setSaving(false); }
+    } catch { console.error('Failed to adjust wallet'); setError('Network error'); } finally { setSaving(false); }
   }
 
   return (
@@ -128,7 +129,7 @@ function AwardPointsDialog({ customerId, onDone }: { customerId: number; onDone:
       setResult(`Done! New balance: ${d.new_balance} pts`);
       setPoints(''); setReason('');
       onDone();
-    } catch { setError('Network error'); } finally { setSaving(false); }
+    } catch { console.error('Failed to adjust points'); setError('Network error'); } finally { setSaving(false); }
   }
 
   return (
@@ -189,7 +190,7 @@ function AwardVoucherDialog({ customerId, onDone }: { customerId: number; onDone
       setResult(`Awarded "${d.voucher_title}" (${d.voucher_code})`);
       setSelectedVoucher(''); setReason('');
       onDone();
-    } catch { setError('Network error'); } finally { setSaving(false); }
+    } catch { console.error('Failed to award voucher'); setError('Network error'); } finally { setSaving(false); }
   }
 
   return (
@@ -241,7 +242,7 @@ function SetTierDialog({ customerId, currentTier, onDone }: { customerId: number
       setResult(`Tier set to ${tier}`);
       setReason('');
       onDone();
-    } catch { setError('Network error'); } finally { setSaving(false); }
+    } catch { console.error('Failed to set tier'); setError('Network error'); } finally { setSaving(false); }
   }
 
   const tiers = ['bronze', 'silver', 'gold', 'platinum'];
@@ -281,7 +282,7 @@ function ApproveProfileButton({ customerId, onDone }: { customerId: number; onDo
       const data = await res.json().catch(() => ({}));
       setResult(data.note || 'Customer approved and activated');
       onDone();
-    } catch { setError('Network error'); } finally { setSaving(false); }
+    } catch { console.error('Failed to approve profile'); setError('Network error'); } finally { setSaving(false); }
   }
 
   return (
@@ -402,9 +403,10 @@ export default function CustomerDetailPage({ customerId, onBack }: CustomerDetai
         body: JSON.stringify({ name: editName, phone: editPhone, email: editEmail, date_of_birth: editDob || null }),
       });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setEditError(data.detail || `Failed (${res.status})`); return; }
+      useToastStore.getState().showToast('Customer updated');
       setEditingCustomer(false);
       await fetchDetail();
-    } catch { setEditError('Network error'); } finally { setEditSaving(false); }
+    } catch { console.error('Failed to update customer'); setEditError('Network error'); } finally { setEditSaving(false); }
   }
 
   const tabs: { id: TabId; label: string; icon: string }[] = [

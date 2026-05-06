@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import { BottomSheet } from '@/components/ui';
 import { useUIStore } from '@/stores/uiStore';
 import { AuthStepIndicator } from './AuthStepIndicator';
+import { AuthLangButton } from './AuthLangButton';
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface PhoneInputProps {
@@ -128,6 +129,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
   return (
     <>
       <div className="auth-page">
+        <AuthLangButton />
         <AuthStepIndicator currentStep={1} />
 
         <h2 className="auth-heading">{t('auth.phoneTitle')}</h2>

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import VoucherRevealBlock from './VoucherRevealBlock';
 import { LOKA } from '@/lib/tokens';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface RedemptionCodeModalProps {
   code: string;
@@ -20,6 +21,7 @@ export default function RedemptionCodeModal({
   onClose,
   onCopy,
 }: RedemptionCodeModalProps) {
+  const { t } = useTranslation();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -41,7 +43,7 @@ export default function RedemptionCodeModal({
             <button
               onClick={onClose}
               className="rcm-close"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X size={16} color={LOKA.textPrimary} />
             </button>

@@ -6,6 +6,7 @@ import { LOKA } from '@/lib/tokens';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { t } from '@/lib/i18n';
+import { getLocale } from '@/stores/localeStore';
 
 interface TimeSlotPickerProps {
   value: string | null;
@@ -70,7 +71,8 @@ function isSameDay(a: Date, b: Date): boolean {
 
 function formatTime(isoString: string): string {
   const date = new Date(isoString);
-  return date.toLocaleTimeString('en-MY', {
+  const locale = getLocale();
+  return date.toLocaleTimeString(locale, {
     hour: '2-digit', minute: '2-digit', hour12: true,
     timeZone: 'Asia/Kuala_Lumpur',
   });
@@ -83,7 +85,7 @@ function formatDateLabel(date: Date): string {
 
   if (isSameDay(date, today)) return t('common.today');
   if (isSameDay(date, tomorrow)) return t('common.tomorrow');
-  return date.toLocaleDateString('en-MY', { weekday: 'short', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 export default function TimeSlotPicker({ value, onChange, leadMinutes = 15, mode = 'pickup' }: TimeSlotPickerProps) {

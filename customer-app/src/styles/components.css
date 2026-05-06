@@ -638,3 +638,63 @@
 .guest-locked-btn {
   margin-top: 8px;
 }
+
+/* ── Language Selector Sheet ──────────────────────────── */
+.language-sheet-list {
+  padding: 4px 0 8px;
+}
+
+.language-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 20px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--loka-text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.language-sheet-item:active {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.language-sheet-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--loka-bg);
+  color: var(--loka-primary);
+  border: 1px solid var(--loka-border-light);
+  flex-shrink: 0;
+}
+
+.language-sheet-label {
+  flex: 1;
+  text-align: left;
+}
+
+.language-sheet-check {
+  color: var(--loka-primary);
+  font-size: 16px;
+  font-weight: 700;
+  width: 24px;
+  text-align: center;
+}
+
+.language-sheet-item.selected {
+  background: rgba(59, 74, 26, 0.05);
+}
+
+.language-sheet-item.selected .language-sheet-icon {
+  background: var(--loka-primary);
+  color: #fff;
+  border-color: var(--loka-primary);
+}

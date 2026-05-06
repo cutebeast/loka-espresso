@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface VoucherRevealBlockProps {
   code: string;
@@ -10,6 +11,7 @@ interface VoucherRevealBlockProps {
 }
 
 export default function VoucherRevealBlock({ code, onCopy }: VoucherRevealBlockProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -27,7 +29,7 @@ export default function VoucherRevealBlock({ code, onCopy }: VoucherRevealBlockP
       className="vrb-card"
     >
       <p className="vrb-label">
-        Your code
+        {t('common.yourCode')}
       </p>
       <p className="vrb-code">
         {code}
@@ -37,10 +39,10 @@ export default function VoucherRevealBlock({ code, onCopy }: VoucherRevealBlockP
         className="vrb-copy-btn"
       >
         {copied ? <Check size={15} /> : <Copy size={15} />}
-        {copied ? 'Copied!' : 'Copy code'}
+        {copied ? t('common.copied') : t('common.copy')}
       </button>
       <p className="vrb-hint">
-        Show this code to the barista
+        {t('voucher.showToBarista')}
       </p>
     </motion.div>
   );
