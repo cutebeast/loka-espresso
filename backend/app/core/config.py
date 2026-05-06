@@ -30,10 +30,6 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     ALLOW_CUSTOMER_RESET: bool = False  # Dangerous: wipes all customer data
 
-    # OTP bypass (development only — never enable in production)
-    OTP_BYPASS_ALLOWED: bool = False
-    OTP_BYPASS_CODE: str = "000000"
-
     # Twilio SMS
     TWILIO_ACCOUNT_SID: str = ""
     TWILIO_AUTH_TOKEN: str = ""

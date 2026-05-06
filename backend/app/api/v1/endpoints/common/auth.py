@@ -242,19 +242,18 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
 async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
     req.phone = _normalize_phone(req.phone)
     _validate_phone(req.phone)
-    # ---- OTP bypass (env vars override, DB config as fallback) -------------
-    bypass_allowed = settings.OTP_BYPASS_ALLOWED
-    bypass_code = settings.OTP_BYPASS_CODE
-    if not bypass_allowed:
-        from app.models.splash import AppConfig
-        db_bypass = await db.execute(select(AppConfig).where(AppConfig.key == "otp_bypass_allowed"))
-        db_allowed_row = db_bypass.scalar_one_or_none()
-        if db_allowed_row and db_allowed_row.value and db_allowed_row.value.lower() in ("true", "1", "yes"):
-            bypass_allowed = True
-            db_code = await db.execute(select(AppConfig).where(AppConfig.key == "otp_bypass_code"))
-            code_row = db_code.scalar_one_or_none()
-            if code_row and code_row.value:
-                bypass_code = code_row.value
+    # ---- OTP bypass (DB config) -------------
+    bypass_allowed = False
+    bypass_code = ""
+    from app.models.splash import AppConfig
+    db_bypass = await db.execute(select(AppConfig).where(AppConfig.key == "otp_bypass_allowed"))
+    db_allowed_row = db_bypass.scalar_one_or_none()
+    if db_allowed_row and db_allowed_row.value and db_allowed_row.value.lower() in ("true", "1", "yes"):
+        bypass_allowed = True
+        db_code = await db.execute(select(AppConfig).where(AppConfig.key == "otp_bypass_code"))
+        code_row = db_code.scalar_one_or_none()
+        if code_row and code_row.value:
+            bypass_code = code_row.value
     if bypass_allowed and req.code == bypass_code:
         logger.warning(
             f"OTP bypass used (DEV) for {req.phone[:4]}****"
