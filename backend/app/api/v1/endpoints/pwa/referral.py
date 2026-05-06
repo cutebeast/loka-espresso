@@ -1,6 +1,6 @@
 import secrets
 from datetime import timezone, datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.sql import text
@@ -50,7 +50,7 @@ async def get_referral_code(user: Customer = Depends(get_current_user), db: Asyn
 
 @router.post("/apply")
 @limiter.limit("5/minute")
-async def apply_referral(code: str, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def apply_referral(code: str, request: Request, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     existing = await db.execute(
         select(Referral).where(Referral.invitee_id == user.id)
     )

@@ -14,7 +14,7 @@ This separates discount validation from order creation.
 """
 import uuid
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from pydantic import BaseModel
@@ -63,6 +63,7 @@ class CheckoutResponse(BaseModel):
 @router.post("", response_model=CheckoutResponse)
 @limiter.limit("10/minute")
 async def checkout(
+    request: Request,
     req: CheckoutRequest,
     user: Customer = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

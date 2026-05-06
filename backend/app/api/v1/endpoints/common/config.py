@@ -27,6 +27,7 @@ ALLOWED_CONFIG_KEYS = {
     "notification_retention_days",
     "pos_api_url",
     "otp_rate_limit",
+    "otp_bypass_code", "otp_bypass_allowed",
     "topup_presets", "topup_min_amount",
     "order_polling_interval_seconds",
 }
@@ -34,8 +35,7 @@ ALLOWED_CONFIG_KEYS = {
 SENSITIVE_KEY_PATTERNS = {"secret", "password", "token", "api_key", "private", "jwt", "credential", "bypass_code"}
 
 # Whitelist of keys safe to expose via the public /config endpoint.
-# NEVER add `otp_bypass_*`, secrets, API keys, or feature flags that would
-# leak attack-surface information.
+# OTP bypass keys are admin-only (not exposed to public /config).
 PUBLIC_CONFIG_KEYS = {
     "delivery_fee",
     "earn_rate",
