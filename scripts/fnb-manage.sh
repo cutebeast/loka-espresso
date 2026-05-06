@@ -515,8 +515,8 @@ verify() {
     health
 
     # 2. Auth check
-    local admin_email="${VERIFY_ADMIN_EMAIL:-admin@loyaltysystem.uk}"
-    local admin_pass="${VERIFY_ADMIN_PASSWORD:-admin123}"
+    local admin_email="${VERIFY_ADMIN_EMAIL:?VERIFY_ADMIN_EMAIL must be set}"
+    local admin_pass="${VERIFY_ADMIN_PASSWORD:?VERIFY_ADMIN_PASSWORD must be set}"
     local token=$(curl -s -X POST "http://localhost:$BACKEND_PORT/api/v1/auth/login-password" \
         -H "Content-Type: application/json" \
         -d "{\"email\":\"$admin_email\",\"password\":\"$admin_pass\"}" \

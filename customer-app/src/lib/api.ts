@@ -52,8 +52,10 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // Token refresh failed irrecoverably — reject silently
-      // The next API call will trigger a fresh /auth/session check via useAuthFlow
+      // Token refresh failed irrecoverably — dispatch auth expiry event
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:expired'));
+      }
       console.error('Token refresh failed — session may need re-authentication');
     }
 

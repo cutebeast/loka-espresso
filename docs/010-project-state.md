@@ -1,6 +1,6 @@
-# Loka Espresso — Project State (2026-05-04)
+# Loka Espresso — Project State (2026-05-07)
 
-> Phase 3 Complete. All 26 PWA pages v2 self-contained. Premium Turkish coffee brand aesthetic. Full API endpoint audit: 175 endpoints, zero regressions. Redis rate limiting active. Dine-in flow fully implemented. Pull-to-refresh fixed. Security audited (3 rounds). ESLint 0 errors / 0 warnings. Admin frontend role-based access with notification template management.
+> Phase 3 Complete. Security hardening + N+1 performance + code quality pass applied. 37 files changed across backend, frontend, and PWA. OTP bypass is DB-managed only (no env vars). Email validation active. Rate limiting on all auth endpoints + checkout + referral. Upload image processing fixed.
 
 ---
 
@@ -179,3 +179,80 @@ Auth (22): `/users/*`, `/wallet/*`, `/loyalty/*`, `/orders`, `/notifications/*`,
 4. **`user_id` + `customer_id`**: Dual FK legacy from user table split. Set to same value.
 5. **Store persistence**: `uiStore` uses IndexedDB (`idbStorage`), partializes selected store, order mode, checkout draft.
 6. **Auto-migration**: `docker-entrypoint.sh` runs `alembic upgrade head` on deploy.
+
+---
+
+## 14. Recent Security & Performance Changes (2026-05-07)
+
+### Critical Fixes
+- **Image upload processing fixed**: Added missing `MAX_IMAGE_WIDTH` (1200), `MAX_IMAGE_HEIGHT` (1200), `JPEG_QUALITY` (85) constants. All image uploads were silently failing.
+- **Staff PIN update fixed**: `Staff.admin_user_id` → `Staff.user_id` in `users.py:69`. Staff PIN updates were crashing.
+- **Admin dashboard images restored**: Re-added `StaticFiles` mount for `/uploads/`. The previous security fix removed it but broke all admin image display.
+- **email-validator dependency added**: Required for `EmailStr` Pydantic validation. Missing dependency caused backend crash on startup.
+
+### Security
+- **Rate limiting**: Added `@limiter.limit` to: `POST /register` (10/min), `POST /change-password` (5/min), `POST /checkout` (10/min), `POST /referral/apply` (5/min)
+- **Email validation**: `LoginPasswordRequest.email` and `RegisterRequest.email` now use `EmailStr` for format validation
+- **JWT secret**: Enforces minimum 32-byte length via `@field_validator`
+- **Token revocation on password change**: Access token blacklisted after `POST /change-password`
+- **Legacy user_type heuristic**: Replaced `hasattr(user, 'password_hash')` with `isinstance(user, AdminUser)` for accurate user type detection
+- **SSRF protection**: POS integration endpoint validates URL scheme and blocks internal IPs
+- **Bounded query limits**: Public endpoints capped at 100; hardcoded `limit=` replaced with `Query(ge=1, le=500)`
+- **Sanitized error messages**: Upload endpoints no longer leak internal stack traces
+
+### Performance — N+1 Query Batching
+- **Survey list**: Question + response counts batched via `GROUP BY` (was 2N queries → 2 queries)
+- **Survey responses/export**: Answers + user names batched via `WHERE id IN (...)` (was 2 queries per response → 2 queries total)
+- **Voucher usages**: Customer names batched (was 1 query per usage → 1 query total)
+- **Reward redemptions**: Customer names batched (was 1 query per redemption → 1 query total)
+- **Inventory item ledger**: AdminUser + InventoryItem names batched (was 2 queries per movement → 2 queries total)
+
+### Code Quality
+- **Sync urllib → async httpx**: Geo-location IP lookup no longer blocks event loop
+- **MP4 magic bytes**: Position-specific check (`content[4:8] == b"ftyp"`) instead of `find()`
+- **Service worker**: `break` → `continue` on failed order replay (one bad order no longer blocks all pending)
+- **Cart sync on connectivity restore**: Window `online` event listener triggers cart sync
+- **Token refresh failure**: Dispatches `auth:expired` custom event for PWA re-auth flow
+- **Deprecated APIs**: `regex=` → `pattern=` in FastAPI Query (2 instances)
+- **Safari compatibility**: `<14` MediaQueryList fallback; `-webkit-appearance` prefix for select
+- **Dead code removed**: `CartItemUpdate.customizations` field (was Pydantic class attribute, never used)
+- **Empty catches**: Replaced `.catch(() => {})` with `console.error(...)` in PromoBannerEditor + SurveysPage
+- **Sidebar accessibility**: Added `role="button"`, `tabIndex={0}`, `onKeyDown` to 4 clickable sidebar elements
+- **Upload size limits aligned**: Caddy (10MB) = Backend middleware (10MB) = Upload.py (10MB)
+- **Router event listener**: Guarded against duplicate listener registration on HMR
+- **Retry fetch**: Added `AbortController` + 30s timeout on 401-refresh retry
+- **.gitignore**: Added `.vscode/`, `.idea/`, `*.swp`, `.pytest_cache/`
+- **.env.example**: Added `REDIS_URL`, `REDIS_PASSWORD`, `MAXMIND_ACCOUNT_ID`, `MAXMIND_LICENSE_KEY`
+- **NotificationTemplate**: Exported from `models/__init__.py`
+- **Geo-location logging**: `except: pass` replaced with `logger.warning(...)` for debugging
+- **fnb-manage.sh**: Removed hardcoded `admin123` fallback; now requires `VERIFY_ADMIN_EMAIL` + `VERIFY_ADMIN_PASSWORD`
+
+### OTP Bypass System
+**Important**: OTP bypass is managed **exclusively through the database** (`app_config` table), not environment variables.
+
+| Key | Purpose | Access |
+|-----|---------|--------|
+| `otp_bypass_enabled` | Master toggle (`true`/`false`) | Admin panel (GET + PUT) |
+| `otp_bypass_code` | Bypass code (e.g. `000000`) | Admin panel (GET + PUT) |
+
+- Admin panel reads/writes these via `GET/PUT /api/v1/admin/config`
+- `verify_otp` endpoint checks DB config on every request
+- Keys are **not** exposed to public `/config` or `/config/bootstrap` endpoints
+- No environment variables control bypass — purely DB-driven
+- Default values: `otp_bypass_enabled=false`, `otp_bypass_code=000000`
+
+---
+
+## 15. Known Remaining Items
+
+| Priority | Item |
+|----------|------|
+| HIGH | Partial DB customer reset uses per-table savepoints — orphaned data risk |
+| MEDIUM | In-process OTP rate limiter not shared across replicas |
+| MEDIUM | `PageRenderer` re-renders all page components on any state change |
+| LOW | 46 Pydantic v1 `class Config` blocks → `ConfigDict` migration |
+| LOW | 42 `!important` CSS declarations |
+| LOW | WCAG copper accent contrast 2.36:1 |
+| LOW | Zero automated tests across all 3 apps |
+| LOW | `bleach` has 1 import (`sanitization.py`) but is unused; kept for future safety
+| LOW | `MarketingCampaign` read-only (no create/update/delete endpoints)

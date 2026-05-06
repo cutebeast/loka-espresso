@@ -230,3 +230,17 @@ export async function placeOrder(params: {
   clearCart();
   return newOrder;
 }
+
+if (typeof window !== 'undefined') {
+  let _wasOffline = !navigator.onLine;
+  window.addEventListener('online', () => {
+    if (_wasOffline) {
+      _wasOffline = false;
+      const items = useCartStore.getState().items;
+      if (items.length > 0) {
+        syncCartToServer(items).catch(() => {});
+      }
+    }
+  });
+  window.addEventListener('offline', () => { _wasOffline = true; });
+}
