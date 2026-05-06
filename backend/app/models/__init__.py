@@ -19,7 +19,6 @@ from app.models.audit import AuditLog
 from app.models.marketing import CustomizationOption, MarketingCampaign, TableOccupancySnapshot
 from app.models.survey import Survey, SurveyQuestion, SurveyResponse, SurveyAnswer
 from app.models.acl import UserType as ACLUserType, Role, RoleUserType, UserStoreAccess, Permission, RolePermission
-from app.models.compliance import Allergen, MenuItemAllergen, DeliveryZone, TaxRate, ModifierGroup, ModifierOption, TaxCategory, RecipeItem, Reservation
 
 __all__ = [
     "User", "OTPSession", "DeviceToken", "TokenBlacklist", "UserTypeIDs", "RoleIDs",
@@ -43,6 +42,4 @@ __all__ = [
     "CustomizationOption", "MarketingCampaign", "TableOccupancySnapshot",
     "Survey", "SurveyQuestion", "SurveyResponse", "SurveyAnswer",
     "ACLUserType", "Role", "RoleUserType", "UserStoreAccess", "Permission", "RolePermission",
-    "Allergen", "MenuItemAllergen", "DeliveryZone", "TaxRate", "ModifierGroup", "ModifierOption",
-    "TaxCategory", "RecipeItem", "Reservation",
 ]

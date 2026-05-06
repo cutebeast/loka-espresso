@@ -72,9 +72,6 @@ class MenuItem(Base):
     )
 
     category: Mapped["MenuCategory"] = relationship("MenuCategory", back_populates="items")
-    allergens: Mapped[List["Allergen"]] = relationship("Allergen", secondary="menu_item_allergens", back_populates="menu_items")
-    menu_item_allergen_associations: Mapped[List["MenuItemAllergen"]] = relationship("MenuItemAllergen", back_populates="menu_item", cascade="all, delete-orphan")
-    modifier_groups: Mapped[List["ModifierGroup"]] = relationship("ModifierGroup", back_populates="menu_item", cascade="all, delete-orphan")
 
 
 class InventoryItem(Base):
