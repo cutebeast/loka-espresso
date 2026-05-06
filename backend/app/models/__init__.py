@@ -7,7 +7,7 @@ from app.models.order import CartItem, Order, OrderItem, OrderStatusHistory, Pay
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction, LoyaltyTier
 from app.models.reward import Reward, UserReward, RewardType
 from app.models.voucher import Voucher, UserVoucher, DiscountType
-from app.models.notification import Notification, NotificationBroadcast
+from app.models.notification import Notification, NotificationBroadcast, NotificationTemplate
 from app.models.wallet import Wallet, WalletTransaction, PaymentMethod, WalletTxType
 from app.models.social import Referral, Favorite
 from app.models.splash import AppConfig, SplashContent
@@ -31,7 +31,7 @@ __all__ = [
     "LoyaltyAccount", "LoyaltyTransaction", "LoyaltyTier",
     "Reward", "UserReward", "RewardType",
     "Voucher", "UserVoucher", "DiscountType",
-    "Notification", "NotificationBroadcast",
+    "Notification", "NotificationBroadcast", "NotificationTemplate",
     "Wallet", "WalletTransaction", "PaymentMethod", "WalletTxType",
     "Referral", "Favorite",
     "AppConfig", "SplashContent",

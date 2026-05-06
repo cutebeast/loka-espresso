@@ -12,6 +12,10 @@ build/
 *.log
 seed_state*.json
 *.state.json
+.vscode/
+.idea/
+*.swp
+.pytest_cache/
 
 # Seed state with live JWT tokens
 scripts/seed/seed_state.json

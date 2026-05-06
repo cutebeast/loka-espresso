@@ -35,6 +35,8 @@ JPEG_QUALITY = 85
 
 
 def _validate_magic_bytes(content: bytes, expected_mime: str) -> bool:
+    if expected_mime == "video/mp4":
+        return len(content) > 12 and content[4:8] == b"ftyp"
     signatures = MAGIC_BYTES.get(expected_mime, [])
     for sig_tuple in signatures:
         if all(content.find(sig) != -1 for sig in sig_tuple):

@@ -3,8 +3,18 @@ import { useSyncExternalStore } from 'react';
 
 function subscribe(query: string, callback: () => void) {
   const media = window.matchMedia(query);
-  media.addEventListener('change', callback);
-  return () => media.removeEventListener('change', callback);
+  if (media.addEventListener) {
+    media.addEventListener('change', callback);
+  } else {
+    media.addListener(callback);
+  }
+  return () => {
+    if (media.removeEventListener) {
+      media.removeEventListener('change', callback);
+    } else {
+      media.removeListener(callback);
+    }
+  };
 }
 
 function getSnapshot(query: string): boolean {

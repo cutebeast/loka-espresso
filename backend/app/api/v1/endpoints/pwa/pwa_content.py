@@ -311,7 +311,8 @@ async def get_location(request: Request):
             data = resp.json()
             if data.get('status') == 'success':
                 return {"lat": data['lat'], "lng": data['lon'], "source": "ip-api"}
-    except Exception:
+    except Exception as e:
+        logger.warning(f"[location] ip-api fallback failed: {e}")
         pass
 
     return {"lat": 3.139, "lng": 101.687, "source": "default"}
