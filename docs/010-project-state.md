@@ -1,6 +1,6 @@
 # Loka Espresso — Project State (2026-05-07)
 
-> Phase 3 Complete. Security hardening + N+1 performance + code quality pass applied. 37 files changed across backend, frontend, and PWA. OTP bypass is DB-managed only (no env vars). Email validation active. Rate limiting on all auth endpoints + checkout + referral. Upload image processing fixed.
+> 6 commits of security hardening + N+1 performance + code quality. 24 dead endpoints archived, 9 orphaned models deleted. 35 endpoints tested — all 200/401 as expected. OTP bypass DB-only. Export buttons wired for surveys + sales reports.
 
 ---
 
