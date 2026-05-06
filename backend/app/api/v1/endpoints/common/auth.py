@@ -164,17 +164,33 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
         except (ValueError, TypeError):
             limit_val = 5
         client_ip = request.client.host if request.client else "unknown"
-        if not hasattr(send_otp, "_rate_cache"):
-            send_otp._rate_cache = {}
-        if client_ip not in send_otp._rate_cache:
-            send_otp._rate_cache[client_ip] = []
-        send_otp._rate_cache[client_ip] = [
-            t for t in send_otp._rate_cache[client_ip]
-            if (now - t).total_seconds() < 60
-        ]
-        if len(send_otp._rate_cache[client_ip]) >= limit_val:
-            raise HTTPException(status_code=429, detail="Too many OTP requests. Please try again later.")
-        send_otp._rate_cache[client_ip].append(now)
+        from app.core.middleware import _get_redis_client
+        redis_client = _get_redis_client()
+        if redis_client:
+            limit_key = f"otp_rate:{client_ip}"
+            now_ts = now.timestamp()
+            try:
+                redis_client.zremrangebyscore(limit_key, 0, now_ts - 60)
+                current = redis_client.zcard(limit_key)
+                if current >= limit_val:
+                    raise HTTPException(status_code=429, detail="Too many OTP requests. Please try again later.")
+                redis_client.zadd(limit_key, {str(uuid.uuid4()): now_ts})
+                redis_client.expire(limit_key, 60)
+            except Exception:
+                logger.warning("Redis OTP rate limit failed, falling back to in-process")
+                redis_client = None
+        if not redis_client:
+            if not hasattr(send_otp, "_rate_cache"):
+                send_otp._rate_cache = {}
+            if client_ip not in send_otp._rate_cache:
+                send_otp._rate_cache[client_ip] = []
+            send_otp._rate_cache[client_ip] = [
+                t for t in send_otp._rate_cache[client_ip]
+                if (now - t).total_seconds() < 60
+            ]
+            if len(send_otp._rate_cache[client_ip]) >= limit_val:
+                raise HTTPException(status_code=429, detail="Too many OTP requests. Please try again later.")
+            send_otp._rate_cache[client_ip].append(now)
 
     recent_window = now - timedelta(minutes=OTP_WINDOW_MINUTES)
     recent_count_result = await db.execute(
