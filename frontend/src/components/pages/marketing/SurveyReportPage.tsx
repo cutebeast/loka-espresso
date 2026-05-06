@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/merchant-api';
 import { Select, Pagination, DataTableExpandableRow, ColumnDef } from '@/components/ui';
 
+let _surveyExportAbort: AbortController | null = null;
+
 interface SurveyListItem {
   id: number;
   title: string;
@@ -38,6 +40,7 @@ export default function SurveyReportPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalResponses, setTotalResponses] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const fetchSurveys = useCallback(async () => {
     try {
@@ -156,6 +159,48 @@ export default function SurveyReportPage() {
       <h3 className="srpt-title">
         <span className="srpt-title-icon"><i className="fas fa-chart-bar"></i></span>
         Survey Responses
+        {selectedSurvey && (
+          <button
+            className="btn btn-sm"
+            style={{ marginLeft: 12 }}
+            disabled={exporting}
+            onClick={async () => {
+              setExporting(true);
+              try {
+                if (_surveyExportAbort) _surveyExportAbort.abort();
+                _surveyExportAbort = new AbortController();
+                const res = await fetch(`/api/v1/admin/surveys/${selectedSurvey}/responses/export`, {
+                  credentials: 'include',
+                  signal: _surveyExportAbort.signal,
+                });
+                if (res.ok) {
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `survey-${selectedSurvey}-responses.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } else {
+                  const data = await res.json();
+                  // Fallback: download as JSON
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `survey-${selectedSurvey}-responses.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }
+              } catch (err: any) {
+                if (err.name !== 'AbortError') console.error('Export failed', err);
+              } finally { setExporting(false); }
+            }}
+          >
+            <i className={`fas ${exporting ? 'fa-spinner fa-spin' : 'fa-download'}`}></i>
+            {' '}{exporting ? 'Exporting...' : 'Export JSON'}
+          </button>
+        )}
       </h3>
 
       {/* Survey Selector using standardized Select component */}

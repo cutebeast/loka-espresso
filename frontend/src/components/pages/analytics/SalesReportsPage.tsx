@@ -40,6 +40,7 @@ export default function SalesReportsPage({ stores }: SalesReportsPageProps) {
   const [orderCount, setOrderCount] = useState<number>(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [exportingCSV, setExportingCSV] = useState(false)
 
   const isAllStores = localStore === 'all'
   const effectiveRange = fromDate && toDate ? { from: fromDate, to: toDate } : calcDateRange(preset)
@@ -153,6 +154,32 @@ export default function SalesReportsPage({ stores }: SalesReportsPageProps) {
         </div>
         <div className="srp-12">
           Revenue Report
+          <button
+            className="btn btn-sm"
+            style={{ marginLeft: 10 }}
+            disabled={exportingCSV}
+            onClick={async () => {
+              setExportingCSV(true);
+              try {
+                let url = `/admin/reports/csv?from_date=${effectiveRange.from}T00:00:00&to_date=${effectiveRange.to}T23:59:59`;
+                if (!isAllStores) url += `&store_id=${localStore}`;
+                const res = await fetch(`/api/v1${url}`, { credentials: 'include' });
+                if (!res.ok) throw new Error('Export failed');
+                const blob = await res.blob();
+                const objUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objUrl;
+                a.download = `sales-report-${effectiveRange.from}-${effectiveRange.to}.csv`;
+                a.click();
+                URL.revokeObjectURL(objUrl);
+              } catch (err) {
+                console.error('CSV export failed', err);
+              } finally { setExportingCSV(false); }
+            }}
+          >
+            <i className={`fas ${exportingCSV ? 'fa-spinner fa-spin' : 'fa-file-csv'}`}></i>
+            {' '}{exportingCSV ? 'Exporting...' : 'Export CSV'}
+          </button>
         </div>
       </div>
 
