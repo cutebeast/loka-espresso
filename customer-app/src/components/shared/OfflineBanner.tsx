@@ -87,7 +87,7 @@ export default function OfflineBanner() {
           {countdown > 0 && (
             <span className="flex items-center gap-1 text-xs opacity-85">
               <RefreshCw size={12} />
-              Retrying in {countdown}s
+              {t('common.retryingIn', { seconds: countdown })}
             </span>
           )}
         </>

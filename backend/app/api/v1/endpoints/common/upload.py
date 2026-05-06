@@ -1,6 +1,7 @@
 import os
 import uuid
 import mimetypes
+import logging
 from io import BytesIO
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
@@ -11,8 +12,9 @@ from app.models.customer import Customer
 from app.models.user import RoleIDs
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
+logger = logging.getLogger(__name__)
 
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB — covers images + videos across all content types
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB — aligned with RequestSizeLimitMiddleware in main.py
 MAX_DOC_SIZE = 10 * 1024 * 1024  # 10MB
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "video/mp4", "video/webm"}
 ALLOWED_DOC_TYPES = {"image/jpeg", "image/png", "application/pdf",
@@ -26,6 +28,10 @@ MAGIC_BYTES = {
     "video/webm": [(b"\x1a\x45\xdf\xa3",)],  # WebM/Matroska magic
     "application/pdf": [(b"%PDF",)],
 }
+
+MAX_IMAGE_WIDTH = 1200
+MAX_IMAGE_HEIGHT = 1200
+JPEG_QUALITY = 85
 
 
 def _validate_magic_bytes(content: bytes, expected_mime: str) -> bool:
@@ -92,7 +98,8 @@ async def _upload_validated(file: UploadFile, folder: str) -> dict:
     try:
         content = await _process_image(content, file.filename or "image.jpg")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Image processing failed: {str(e)}")
+        logger.error(f"Image processing failed: {e}")
+        raise HTTPException(status_code=400, detail="Image processing failed. Please check the file and try again.")
 
     return _save_upload(content, file.filename, folder, settings)
 

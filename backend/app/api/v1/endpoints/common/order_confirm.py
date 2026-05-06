@@ -42,6 +42,17 @@ async def _send_order_to_pos(order: Order, db: AsyncSession):
         logger.info(f"POS_API_URL not configured — order {order.order_number} will be handled manually")
         return
 
+    # SSRF protection: validate URL scheme and block private/internal addresses
+    from urllib.parse import urlparse
+    parsed = urlparse(pos_url)
+    if parsed.scheme not in ("http", "https"):
+        logger.warning(f"Invalid POS_API_URL scheme for order {order.order_number}: {parsed.scheme}")
+        return
+    hostname = parsed.hostname or ""
+    if hostname in ("localhost", "127.0.0.1", "0.0.0.0", "::1") or hostname.startswith(("10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168.", "169.254.")):
+        logger.warning(f"Blocked POS_API_URL pointing to internal address for order {order.order_number}: {hostname}")
+        return
+
     try:
         import httpx
         payload = {

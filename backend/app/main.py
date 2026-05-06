@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
@@ -14,7 +13,7 @@ import mimetypes
 mimetypes.add_type("image/webp", ".webp")
 mimetypes.add_type("image/avif", ".avif")
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -127,8 +126,8 @@ app = FastAPI(
     title="FNB Super-App API",
     description="Backend API for FNB Super-App — Customer PWA + Merchant Dashboard",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
+    redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
     lifespan=lifespan,
 )
 
@@ -181,7 +180,12 @@ os.makedirs(os.path.join(upload_dir, "menu"), exist_ok=True)
 os.makedirs(os.path.join(upload_dir, "marketing"), exist_ok=True)
 os.makedirs(os.path.join(upload_dir, "inventory"), exist_ok=True)
 os.makedirs(os.path.join(upload_dir, "avatars"), exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
+# Mount uploads as public static files for admin dashboard image display
+# (reward photos, banner images, info card images, product photos, menu images).
+# The authenticated /api/v1/upload/files/{path:path} endpoint is still available
+# for access-controlled file serving.
+from fastapi.staticfiles import StaticFiles
+app.mount("/uploads", StaticFiles(directory=upload_dir, html=True), name="uploads")
 
 
 @app.get("/health", tags=["System"])
@@ -190,7 +194,7 @@ async def health():
     from app.core.database import engine
     health_status = {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0",
         "checks": {}
     }

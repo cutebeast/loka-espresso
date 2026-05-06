@@ -1,4 +1,4 @@
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 from typing import Optional
 
 
@@ -33,11 +33,11 @@ class TokenResponse(BaseModel):
 
 class RegisterRequest(BaseModel):
     name: str
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
 
 
 class LoginPasswordRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 

@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.commerce import credit_referral_points
 from app.core.utils import to_float
+from app.api.v1.endpoints.common.auth import limiter
 from app.models.customer import Customer
 from app.models.social import Referral
 from app.models.notification import Notification
@@ -48,6 +49,7 @@ async def get_referral_code(user: Customer = Depends(get_current_user), db: Asyn
 
 
 @router.post("/apply")
+@limiter.limit("5/minute")
 async def apply_referral(code: str, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     existing = await db.execute(
         select(Referral).where(Referral.invitee_id == user.id)

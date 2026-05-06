@@ -31,15 +31,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Copy entrypoint before user switch so chmod runs as root
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000
 
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+# Run entrypoint as root so it can fix upload volume permissions,
+# then the entrypoint drops privileges to appuser before starting uvicorn.
 USER root
-RUN chmod +x /app/docker-entrypoint.sh
-USER appuser
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

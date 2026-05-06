@@ -23,6 +23,7 @@ from typing import Optional
 from app.core.database import get_db
 from app.core.security import get_current_user, now_utc, ensure_utc
 from app.core.utils import to_float
+from app.api.v1.endpoints.common.auth import limiter
 from app.models.customer import Customer
 from app.models.order import CartItem
 from app.models.menu import MenuItem
@@ -60,6 +61,7 @@ class CheckoutResponse(BaseModel):
 
 
 @router.post("", response_model=CheckoutResponse)
+@limiter.limit("10/minute")
 async def checkout(
     req: CheckoutRequest,
     user: Customer = Depends(get_current_user),

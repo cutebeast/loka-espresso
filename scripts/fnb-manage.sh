@@ -515,9 +515,11 @@ verify() {
     health
 
     # 2. Auth check
+    local admin_email="${VERIFY_ADMIN_EMAIL:-admin@loyaltysystem.uk}"
+    local admin_pass="${VERIFY_ADMIN_PASSWORD:-admin123}"
     local token=$(curl -s -X POST "http://localhost:$BACKEND_PORT/api/v1/auth/login-password" \
         -H "Content-Type: application/json" \
-        -d '{"email":"admin@loyaltysystem.uk","password":"admin123"}' \
+        -d "{\"email\":\"$admin_email\",\"password\":\"$admin_pass\"}" \
         | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
 
     if [ -z "$token" ]; then

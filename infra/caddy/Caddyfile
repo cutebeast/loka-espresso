@@ -56,12 +56,12 @@
 
 	# Upload size limit
 	request_body {
-		max_size 20MB
+		max_size 10MB
 	}
 }
 
 # Static uploads served directly by Caddy
 {$UPLOADS_DOMAIN:uploads.localhost} {
 	root * /app/uploads
-	file_server browse
+	file_server
 }

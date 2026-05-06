@@ -357,9 +357,29 @@ async def item_ledger(
         .order_by(desc(InventoryMovement.created_at)).limit(limit)
     )
     movements = result.scalars().all()
+    user_ids = list({m.created_by for m in movements if m.created_by})
+    item_ids = list({m.inventory_item_id for m in movements if m.inventory_item_id})
+    user_map: dict[int, str] = {}
+    item_name_map: dict[int, str] = {}
+    if user_ids:
+        ur = await db.execute(select(AdminUser.id, AdminUser.name).where(AdminUser.id.in_(user_ids)))
+        for row in ur.all():
+            user_map[row[0]] = row[1] or ""
+    if item_ids:
+        ir = await db.execute(select(InventoryItem.id, InventoryItem.name).where(InventoryItem.id.in_(item_ids)))
+        for row in ir.all():
+            item_name_map[row[0]] = row[1] or ""
     out = []
     for m in movements:
-        out.append(await _build_movement_out(m, store_id, db))
+        out.append(InventoryMovementOut(
+            id=m.id, store_id=store_id, inventory_item_id=m.inventory_item_id,
+            inventory_item_name=item_name_map.get(m.inventory_item_id),
+            movement_type=m.movement_type.value,
+            quantity=to_float(m.quantity), balance_after=to_float(m.balance_after),
+            note=m.note, attachment_path=m.attachment_path,
+            created_by=m.created_by, created_by_name=user_map.get(m.created_by),
+            created_at=m.created_at.isoformat() if m.created_at else None,
+        ))
     return out
 
 

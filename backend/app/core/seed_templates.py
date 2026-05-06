@@ -1,6 +1,9 @@
 """Seed default notification templates and config for Loka Espresso."""
+import logging
 from sqlalchemy import text
 
+
+logger = logging.getLogger(__name__)
 
 async def seed_templates(db):
     """Insert default notification templates and system content if missing."""
@@ -61,7 +64,7 @@ async def seed_templates(db):
     # Seed config defaults
     await _seed_config_defaults(db)
 
-    print(f"Seeded {len(templates)} notification templates")
+    logger.info(f"Seeded {len(templates)} notification templates")
 
 
 async def _seed_system_content(db):

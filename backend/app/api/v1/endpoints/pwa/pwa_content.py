@@ -1,3 +1,5 @@
+import logging
+
 """PWA-facing endpoints for Information Cards and Version Management.
 
 - GET /content/information — list active cards for PWA home
@@ -6,11 +8,13 @@
 import json
 import os
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func, or_
 from typing import Optional, List
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.security import now_utc, ensure_utc
@@ -45,7 +49,7 @@ class InformationCardOut(BaseModel):
 async def list_active_cards(
     content_type: Optional[str] = None,
     include_system: bool = False,
-    limit: int = 10,
+    limit: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     """List all active information cards for PWA (public, no auth required).
@@ -296,16 +300,15 @@ async def get_location(request: Request):
             if lat and lng:
                 return {"lat": float(lat), "lng": float(lng), "source": "maxmind"}
     except Exception as e:
-        print(f"[location] MaxMind failed: {e}")
+        logger.warning(f"[location] MaxMind failed: {e}")
 
     try:
-        import urllib.request
-        import json as json_mod
+        import httpx
         ip = request.client.host if request.client else ''
         url = f'https://ip-api.com/json/{ip}?fields=status,lat,lon' if ip else 'https://ip-api.com/json/?fields=status,lat,lon'
-        req = urllib.request.Request(url, headers={'User-Agent': 'LokaPWA/1.0'})
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json_mod.loads(resp.read())
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(url, headers={'User-Agent': 'LokaPWA/1.0'})
+            data = resp.json()
             if data.get('status') == 'success':
                 return {"lat": data['lat'], "lng": data['lon'], "source": "ip-api"}
     except Exception:

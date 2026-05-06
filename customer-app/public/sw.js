@@ -334,7 +334,7 @@ async function replayOrders() {
       }
     } catch (err) {
       console.error('[SW] Replay failed for order', record.id, err);
-      break;
+      continue;
     }
   }
 }

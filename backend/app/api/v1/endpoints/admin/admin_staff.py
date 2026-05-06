@@ -284,8 +284,9 @@ async def create_hq_staff(
         "user_type_id": ut_id, "role_id": r_id,
         "is_active": data.is_active,
         "store_assignments": store_access.get(user_id, []) if user_id else [],
-        "temp_password": temp_password,
     }
+    if temp_password:
+        result["message"] = "User created. A temporary password has been generated and must be communicated securely."
     return result
 
 
@@ -343,8 +344,9 @@ async def create_staff(
         "user_type_id": ut_id, "role_id": r_id,
         "is_active": data.is_active, "store_name": store_name_map.get(store_id),
         "store_assignments": store_access.get(user_id, []) if user_id else [],
-        "temp_password": temp_password,
     }
+    if temp_password:
+        result["message"] = "Staff created. A temporary password has been generated and must be communicated securely."
     return result
 
 
@@ -560,7 +562,7 @@ async def reset_staff_password(
         temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
         user.password_hash = hash_password(temp_password)
         await db.flush()
-        return {"email": user.email, "password": temp_password, "name": user.name, "user_id": user.id}
+        return {"email": user.email, "name": user.name, "user_id": user.id, "message": "Password reset successfully. The new temporary password must be communicated securely."}
 
     if not staff.email:
         raise HTTPException(400, "Staff has no email — add an email first")
@@ -579,7 +581,7 @@ async def reset_staff_password(
         db.add(new_user)
         await db.flush()
         staff.user_id = new_user.id
-        return {"email": staff.email, "password": temp_password, "name": staff.name, "auto_created": True}
+        return {"email": staff.email, "name": staff.name, "auto_created": True, "message": "Password reset successfully. The new temporary password must be communicated securely."}
 
     uresult = await db.execute(select(AdminUser).where(AdminUser.id == staff.user_id))
     linked_user = uresult.scalar_one_or_none()
@@ -588,4 +590,4 @@ async def reset_staff_password(
 
     temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
     linked_user.password_hash = hash_password(temp_password)
-    return {"email": staff.email, "password": temp_password, "name": staff.name}
+    return {"email": staff.email, "name": staff.name, "message": "Password reset successfully. The new temporary password must be communicated securely."}

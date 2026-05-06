@@ -99,8 +99,7 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
     if (otp.every((d) => d) && !isLoading) {
       handleVerify();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otp.join('')]);
+  }, [otp.join(''), handleVerify, isLoading]);
 
   const displayPhone = (() => {
     const d = phone.replace(/\D/g, '');

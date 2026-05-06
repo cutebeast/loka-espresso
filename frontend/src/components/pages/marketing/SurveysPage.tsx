@@ -88,7 +88,7 @@ export default function SurveysPage({ onSwitchToPromotions: _onSwitchToPromotion
       apiFetch('/admin/vouchers')
         .then(r => r.ok ? r.json() : { items: [] })
         .then(d => setSurveyVouchers(Array.isArray(d) ? d : (d.items ?? [])))
-        .catch(() => {});
+        .catch((err) => { console.error('Failed to load vouchers for survey form', err); });
     }
   }, [viewMode]);
 

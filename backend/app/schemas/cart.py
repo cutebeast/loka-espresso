@@ -31,7 +31,6 @@ class CartItemUpdate(BaseModel):
         if v is not None and v > 99:
             raise ValueError('quantity must be <= 99')
         return v
-    customizations: Optional[dict] = None
 
 
 class CartItemOut(BaseModel):

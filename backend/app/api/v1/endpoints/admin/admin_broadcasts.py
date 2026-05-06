@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
@@ -19,6 +19,7 @@ from app.schemas.admin_extras import (
 )
 
 router = APIRouter(prefix="/admin", tags=["Admin Broadcasts"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/broadcasts")
@@ -227,7 +228,8 @@ async def send_broadcast(
             )
             db.add(notif)
             sent_count += 1
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to create notification for device token {dt.id}: {e}")
             continue
 
     await db.flush()

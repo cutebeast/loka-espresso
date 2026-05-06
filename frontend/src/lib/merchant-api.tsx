@@ -50,13 +50,12 @@ export async function apiFetch(path: string, _unused?: string, options?: Request
   if (response.status === 401) {
     const refreshed = await refreshMerchantAccessToken();
     if (refreshed) {
+      const retryController = new AbortController();
+      setTimeout(() => retryController.abort(), 30000);
       return fetch(`${API}${path}`, {
         ...options,
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
+        headers: { ...options?.headers, 'Authorization': '' },
+        signal: retryController.signal,
       });
     }
     notifyMerchantAuthExpired();
@@ -93,10 +92,12 @@ export async function apiUpload(path: string, formData: FormData): Promise<Respo
       return fetch(`${API}${path}`, {
         method: 'POST',
         credentials: 'include',
+        signal: AbortSignal.timeout(30000),
         headers: {},
         body: formData,
       });
     }
+    notifyMerchantAuthExpired();
   }
   return response;
 }

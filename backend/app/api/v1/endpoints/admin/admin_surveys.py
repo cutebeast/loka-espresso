@@ -29,14 +29,28 @@ async def list_surveys(
         .offset((page - 1) * page_size).limit(page_size)
     )
     surveys = result.scalars().all()
+    survey_ids = [s.id for s in surveys]
+    if survey_ids:
+        q_counts = {s_id: c for s_id, c in (
+            await db.execute(
+                select(SurveyQuestion.survey_id, func.count(SurveyQuestion.id))
+                .where(SurveyQuestion.survey_id.in_(survey_ids)).group_by(SurveyQuestion.survey_id)
+            )
+        ).all()}
+        r_counts = {s_id: c for s_id, c in (
+            await db.execute(
+                select(SurveyResponse.survey_id, func.count(SurveyResponse.id))
+                .where(SurveyResponse.survey_id.in_(survey_ids)).group_by(SurveyResponse.survey_id)
+            )
+        ).all()}
+    else:
+        q_counts, r_counts = {}, {}
     items = []
     for s in surveys:
-        q_count = await db.execute(select(func.count()).select_from(SurveyQuestion).where(SurveyQuestion.survey_id == s.id))
-        r_count = await db.execute(select(func.count()).select_from(SurveyResponse).where(SurveyResponse.survey_id == s.id))
         items.append(SurveyListItem(
             id=s.id, title=s.title, is_active=s.is_active,
-            question_count=q_count.scalar() or 0,
-            response_count=r_count.scalar() or 0,
+            question_count=q_counts.get(s.id, 0),
+            response_count=r_counts.get(s.id, 0),
             reward_voucher_id=s.reward_voucher_id,
             created_at=s.created_at,
         ))
@@ -225,42 +239,42 @@ async def list_survey_responses(
     )
     responses = result.scalars().all()
 
-    # Build response items with answers and user info
-    items = []
-    for r in responses:
-        # Get answers for this response
+    response_ids = [r.id for r in responses]
+    user_ids = [r.user_id for r in responses if r.user_id]
+
+    answers_map: dict[int, list[dict]] = {r_id: [] for r_id in response_ids}
+    if response_ids:
         answers_result = await db.execute(
-            select(SurveyAnswer, SurveyQuestion)
+            select(SurveyAnswer.response_id, SurveyAnswer.question_id, SurveyAnswer.answer_text,
+                   SurveyQuestion.question_text, SurveyQuestion.question_type)
             .join(SurveyQuestion, SurveyAnswer.question_id == SurveyQuestion.id)
-            .where(SurveyAnswer.response_id == r.id)
+            .where(SurveyAnswer.response_id.in_(response_ids))
             .order_by(SurveyQuestion.sort_order)
         )
-        answers = []
-        for answer, question in answers_result.all():
-            answers.append({
-                "question_id": question.id,
-                "question_text": question.question_text,
-                "question_type": question.question_type,
-                "answer": answer.answer_text,
+        for row in answers_result.all():
+            answers_map.setdefault(row[0], []).append({
+                "question_id": row[1],
+                "question_text": row[3],
+                "question_type": row[4],
+                "answer": row[2],
             })
 
-        # Get user info
-        user_name = "Anonymous"
-        user_email = None
-        if r.user_id:
-            user_result = await db.execute(select(Customer).where(Customer.id == r.user_id))
-            u = user_result.scalar_one_or_none()
-            if u:
-                user_name = u.name or "Anonymous"
-                user_email = u.email
+    customer_map: dict[int, tuple[str, Optional[str]]] = {}
+    if user_ids:
+        cu_result = await db.execute(select(Customer.id, Customer.name, Customer.email).where(Customer.id.in_(user_ids)))
+        for row in cu_result.all():
+            customer_map[row[0]] = (row[1] or "Anonymous", row[2])
 
+    items = []
+    for r in responses:
+        name, email = customer_map.get(r.user_id, ("Anonymous", None))
         items.append({
             "id": r.id,
-            "user_name": user_name,
-            "user_email": user_email,
+            "user_name": name,
+            "user_email": email,
             "rewarded": r.rewarded,
             "created_at": r.created_at.isoformat() if r.created_at else None,
-            "answers": answers,
+            "answers": answers_map.get(r.id, []),
         })
 
     return {
@@ -293,34 +307,38 @@ async def export_survey_responses(
     )
     responses = result.scalars().all()
 
-    items = []
-    for r in responses:
+    response_ids = [r.id for r in responses]
+    user_ids = [r.user_id for r in responses if r.user_id]
+
+    answers_map = {}
+    if response_ids:
         answers_result = await db.execute(
-            select(SurveyAnswer, SurveyQuestion)
+            select(SurveyAnswer.response_id, SurveyAnswer.answer_text,
+                   SurveyQuestion.question_text, SurveyQuestion.question_type)
             .join(SurveyQuestion, SurveyAnswer.question_id == SurveyQuestion.id)
-            .where(SurveyAnswer.response_id == r.id)
+            .where(SurveyAnswer.response_id.in_(response_ids))
             .order_by(SurveyQuestion.sort_order)
         )
-        answers = []
-        for answer, question in answers_result.all():
-            answers.append({
-                "question_text": question.question_text,
-                "question_type": question.question_type,
-                "answer": answer.answer_text,
+        for row in answers_result.all():
+            answers_map.setdefault(row[0], []).append({
+                "question_text": row[2],
+                "question_type": row[3],
+                "answer": row[1],
             })
 
-        user_name = "Anonymous"
-        if r.user_id:
-            user_result = await db.execute(select(Customer).where(Customer.id == r.user_id))
-            u = user_result.scalar_one_or_none()
-            if u:
-                user_name = u.name or "Anonymous"
+    customer_map: dict[int, str] = {}
+    if user_ids:
+        cu_result = await db.execute(select(Customer.id, Customer.name).where(Customer.id.in_(user_ids)))
+        for row in cu_result.all():
+            customer_map[row[0]] = row[1] or "Anonymous"
 
+    items = []
+    for r in responses:
         items.append({
-            "user_name": user_name,
+            "user_name": customer_map.get(r.user_id, "Anonymous"),
             "rewarded": r.rewarded,
             "submitted_at": r.created_at.isoformat() if r.created_at else None,
-            "answers": answers,
+            "answers": answers_map.get(r.id, []),
         })
 
     return {

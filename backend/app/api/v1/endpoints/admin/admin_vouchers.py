@@ -104,11 +104,15 @@ async def voucher_usage(
         .order_by(desc(UserVoucher.applied_at)).offset((page - 1) * page_size).limit(page_size)
     )
     usages = result.scalars().all()
+    user_ids = list({uv.user_id for uv in usages if uv.user_id})
+    customer_map: dict[int, str] = {}
+    if user_ids:
+        cu_result = await db.execute(select(Customer.id, Customer.name).where(Customer.id.in_(user_ids)))
+        for row in cu_result.all():
+            customer_map[row[0]] = row[1] or "Unknown"
     out = []
     for uv in usages:
-        user_result = await db.execute(select(Customer).where(Customer.id == uv.user_id))
-        u = user_result.scalar_one_or_none()
-        out.append({"user_id": uv.user_id, "user_name": u.name if u else "Unknown", "applied_at": uv.applied_at.isoformat() if uv.applied_at else None, "order_id": uv.order_id, "store_id": uv.store_id})
+        out.append({"user_id": uv.user_id, "user_name": customer_map.get(uv.user_id, "Unknown"), "applied_at": uv.applied_at.isoformat() if uv.applied_at else None, "order_id": uv.order_id, "store_id": uv.store_id})
     return {
         "items": out,
         "total": total,

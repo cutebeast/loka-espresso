@@ -1,4 +1,5 @@
 from pathlib import Path
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -9,6 +10,13 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     JWT_SECRET_PREVIOUS: str = ""  # Previous secret for key rotation grace period
     JWT_ALGORITHM: str = "HS256"
+
+    @field_validator("JWT_SECRET")
+    @classmethod
+    def _validate_jwt_secret(cls, v: str) -> str:
+        if len(v.encode("utf-8")) < 32:
+            raise ValueError("JWT_SECRET must be at least 32 bytes")
+        return v
     JWT_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_EXPIRE_DAYS: int = 7
     JWT_ISSUER: str = "fnb-api"
@@ -21,6 +29,10 @@ class Settings(BaseSettings):
     POS_API_URL: str = ""  # External POS integration endpoint (e.g. https://pos-provider.com/api/orders). Leave empty for manual mode.
     ENVIRONMENT: str = "development"
     ALLOW_CUSTOMER_RESET: bool = False  # Dangerous: wipes all customer data
+
+    # OTP bypass (development only — never enable in production)
+    OTP_BYPASS_ALLOWED: bool = False
+    OTP_BYPASS_CODE: str = "000000"
 
     # Twilio SMS
     TWILIO_ACCOUNT_SID: str = ""

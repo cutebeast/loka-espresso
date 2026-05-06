@@ -99,11 +99,15 @@ async def reward_redemptions(
         .order_by(desc(UserReward.redeemed_at)).offset((page - 1) * page_size).limit(page_size)
     )
     redemptions = result.scalars().all()
+    user_ids = list({r.user_id for r in redemptions if r.user_id})
+    customer_map: dict[int, str] = {}
+    if user_ids:
+        cu_result = await db.execute(select(Customer.id, Customer.name).where(Customer.id.in_(user_ids)))
+        for row in cu_result.all():
+            customer_map[row[0]] = row[1] or "Unknown"
     out = []
     for r in redemptions:
-        user_result = await db.execute(select(Customer).where(Customer.id == r.user_id))
-        u = user_result.scalar_one_or_none()
-        out.append({"user_id": r.user_id, "user_name": u.name if u else "Unknown", "redeemed_at": r.redeemed_at.isoformat() if r.redeemed_at else None, "store_id": r.store_id, "is_used": r.is_used})
+        out.append({"user_id": r.user_id, "user_name": customer_map.get(r.user_id, "Unknown"), "redeemed_at": r.redeemed_at.isoformat() if r.redeemed_at else None, "store_id": r.store_id, "is_used": r.is_used})
     return {
         "items": out,
         "total": total,

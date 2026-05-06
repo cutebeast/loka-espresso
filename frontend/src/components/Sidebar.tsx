@@ -107,7 +107,7 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
       {/* Brand Header */}
       <div className={`sb-brand ${collapsed ? 'sb-justify-center' : 'sb-justify-start'}`}>
         {collapsed ? (
-          <div className="s-0" onClick={onToggleCollapse} style={{ cursor: 'pointer' }}>
+          <div className="s-0" onClick={() => onToggleCollapse?.()} onKeyDown={(e) => e.key === 'Enter' && onToggleCollapse?.()} role="button" tabIndex={0} style={{ cursor: 'pointer' }}>
             <Image
               src={LOGO_URL}
               alt={APP_NAME}
@@ -117,7 +117,7 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
           </div>
         ) : (
           <div className="s-2">
-            <div className="sb-hamburger-toggle" onClick={onToggleCollapse} title="Toggle sidebar">
+            <div className="sb-hamburger-toggle" onClick={() => onToggleCollapse?.()} onKeyDown={(e) => e.key === 'Enter' && onToggleCollapse?.()} role="button" tabIndex={0} title="Toggle sidebar">
               <i className="fas fa-bars"></i>
             </div>
             <span className="sb-brand-name">{APP_NAME}</span>
@@ -136,6 +136,9 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
               {/* Section Label */}
               <div
                 onClick={() => !collapsed && toggleGroup(group.label)}
+                onKeyDown={(e) => e.key === 'Enter' && !collapsed && toggleGroup(group.label)}
+                role="button"
+                tabIndex={0}
                 className={`sb-section-label ${collapsed ? 'sb-justify-center sb-pad-collapsed cursor-default' : 'sb-justify-space-between sb-pad-open cursor-pointer'}`}
               >
                 <span className={`sb-section-inner ${collapsed ? 'gap-0' : 'gap-8'}`}>
@@ -152,6 +155,9 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
                 <div
                   key={n.id}
                   onClick={() => setPage(n.id)}
+                  onKeyDown={(e) => e.key === 'Enter' && setPage(n.id)}
+                  role="button"
+                  tabIndex={0}
                   className={`sb-nav-item ${page === n.id ? 'sb-nav-item-active' : 'sb-nav-item-inactive'}`}
                 >
                   {page === n.id && (
@@ -167,6 +173,9 @@ export default function Sidebar({ page, setPage, collapsedGroups, setCollapsedGr
                 <div
                   key={n.id}
                   onClick={() => setPage(n.id)}
+                  onKeyDown={(e) => e.key === 'Enter' && setPage(n.id)}
+                  role="button"
+                  tabIndex={0}
                   className={`sidebar-tooltip ${page === n.id ? 'sb-collapsed-active' : 'sb-collapsed-inactive'} sb-collapsed-item`}
                   data-tooltip={n.label}
                 >

@@ -149,6 +149,7 @@ async def check_session(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/send-otp", response_model=SendOTPResponse)
+@limiter.limit("5/minute")
 async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Depends(get_db)):
     req.phone = _normalize_phone(req.phone)
     _validate_phone(req.phone)
@@ -237,30 +238,12 @@ async def send_otp(request: Request, req: SendOTPRequest, db: AsyncSession = Dep
 
 
 @router.post("/verify-otp", response_model=TokenResponse)
-async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
     req.phone = _normalize_phone(req.phone)
     _validate_phone(req.phone)
-    # ---- OTP bypass (controlled by admin DB toggle) -----------------------
-    bypass_enabled = False
-    bypass_code = None
-    try:
-        from app.models.splash import AppConfig
-        cfg_result = await db.execute(
-            select(AppConfig).where(AppConfig.key == "otp_bypass_enabled")
-        )
-        cfg = cfg_result.scalar_one_or_none()
-        if cfg and cfg.value and cfg.value.strip().lower() == 'true':
-            bypass_enabled = True
-        cfg_result = await db.execute(
-            select(AppConfig).where(AppConfig.key == "otp_bypass_code")
-        )
-        cfg = cfg_result.scalar_one_or_none()
-        if cfg and cfg.value:
-            bypass_code = cfg.value.strip()
-    except Exception:
-        pass
-
-    if bypass_enabled and bypass_code and req.code == bypass_code:
+    # ---- OTP bypass (controlled by environment variable only) -------------
+    if settings.OTP_BYPASS_ALLOWED and req.code == settings.OTP_BYPASS_CODE:
         logger.warning(
             f"OTP bypass used (DEV) for {req.phone[:4]}****"
         )
@@ -319,6 +302,7 @@ async def verify_otp(req: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/register", response_model=UserOut)
+@limiter.limit("10/minute")
 async def register(request: Request, req: RegisterRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if req.name:
         user.name = req.name
@@ -410,7 +394,7 @@ async def refresh_token(request: Request, req: RefreshRequest | None = None, db:
         if not user:
             user_result = await db.execute(select(Customer).where(Customer.id == int(user_id)))
             user = user_result.scalar_one_or_none()
-        user_type = "admin" if hasattr(user, 'password_hash') and user.password_hash else "customer"
+        user_type = "admin" if isinstance(user, AdminUser) else "customer"
 
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
@@ -477,6 +461,7 @@ class ChangePasswordRequest(BaseModel):
 
 
 @router.post("/change-password")
+@limiter.limit("5/minute")
 async def change_password(
     request: Request,
     body: ChangePasswordRequest,
@@ -492,5 +477,8 @@ async def change_password(
     user.password_hash = hash_password(body.new_password)
     ip = get_client_ip(request)
     await log_action(db, action="CHANGE_PASSWORD", user_id=user.id, entity_type="user", entity_id=user.id, details={"ip": ip}, ip_address=ip)
+    token = request.cookies.get("access_token")
+    if token:
+        await _blacklist_token(token, user.id, db)
     await db.flush()
     return {"message": "Password changed successfully"}

@@ -66,7 +66,7 @@ async def update_me(req: UserUpdate, user=Depends(get_current_user), db: AsyncSe
             raise HTTPException(status_code=400, detail="PIN must be at least 4 digits")
         from app.models.staff import Staff
         from app.core.security import hash_password
-        staff_result = await db.execute(select(Staff).where(Staff.admin_user_id == user.id))
+        staff_result = await db.execute(select(Staff).where(Staff.user_id == user.id))
         staff = staff_result.scalar_one_or_none()
         if not staff:
             raise HTTPException(status_code=400, detail="No staff record found for your account")

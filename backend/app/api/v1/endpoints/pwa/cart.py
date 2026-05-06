@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -13,6 +14,7 @@ from app.models.marketing import CustomizationOption
 from app.schemas.cart import CartItemCreate, CartItemUpdate, CartItemOut, CartOut
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
+logger = logging.getLogger(__name__)
 
 
 def _hash_option_ids(option_ids: list[int] | None) -> str:
@@ -106,7 +108,7 @@ async def get_cart(user: Customer = Depends(get_current_user), db: AsyncSession 
 
 @router.post("/items", response_model=CartItemOut, status_code=201)
 async def add_to_cart(req: CartItemCreate, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    print(f"[cart] add_to_cart: user_id={user.id}, item_id={req.item_id}, qty={req.quantity}, store_id={req.store_id}, options={req.customization_option_ids}")
+    logger.debug(f"[cart] add_to_cart: user_id={user.id}, item_id={req.item_id}, qty={req.quantity}, store_id={req.store_id}, options={req.customization_option_ids}")
     item_result = await db.execute(select(MenuItem).where(MenuItem.id == req.item_id))
     menu_item = item_result.scalar_one_or_none()
     if not menu_item:

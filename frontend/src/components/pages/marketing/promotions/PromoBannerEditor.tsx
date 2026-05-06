@@ -75,11 +75,11 @@ export default function BannerManager() {
       apiFetch('/admin/surveys')
         .then(r => r.ok ? r.json() : { items: [] })
         .then(d => setSurveys(Array.isArray(d) ? d : (d.items ?? [])))
-        .catch(() => {});
+        .catch((err) => { console.error('Failed to load surveys for banner', err); });
       apiFetch('/admin/vouchers')
         .then(r => r.ok ? r.json() : { items: [] })
         .then(d => setVouchers(Array.isArray(d) ? d : (d.items ?? [])))
-        .catch(() => {});
+        .catch((err) => { console.error('Failed to load vouchers for banner', err); });
     }
   }, [drawerOpen]);
 

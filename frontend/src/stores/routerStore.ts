@@ -52,27 +52,33 @@ export const useRouterStore = create<RouterState>()((set) => ({
 
 // Sync store with browser back/forward and hash changes (outside React lifecycle)
 if (typeof window !== 'undefined') {
-  const syncPage = () => {
-    const stateDetailId = (window.history.state as { customerDetailId?: number } | null)?.customerDetailId;
-    if (stateDetailId != null) {
-      useRouterStore.setState({ customerDetailId: stateDetailId, page: 'customers' });
-      return;
-    }
-    const hash = window.location.hash.replace('#', '');
-    if (VALID_PAGES.includes(hash as PageId)) {
-      useRouterStore.setState({ customerDetailId: null, page: hash as PageId });
-      return;
-    }
-    const qp = new URLSearchParams(window.location.search).get('page');
-    if (qp && VALID_PAGES.includes(qp as PageId)) {
-      useRouterStore.setState({ page: qp as PageId });
-      return;
-    }
-    if (!hash && !qp) {
-      useRouterStore.setState({ customerDetailId: null, page: 'dashboard' });
-    }
-  };
+  const _ROUTER_SYNC_KEY = '__fnb_router_sync';
 
-  window.addEventListener('hashchange', syncPage);
-  window.addEventListener('popstate', syncPage);
+  if (!(_ROUTER_SYNC_KEY in window)) {
+    (window as any)[_ROUTER_SYNC_KEY] = true;
+
+    const syncPage = () => {
+      const stateDetailId = (window.history.state as { customerDetailId?: number } | null)?.customerDetailId;
+      if (stateDetailId != null) {
+        useRouterStore.setState({ customerDetailId: stateDetailId, page: 'customers' });
+        return;
+      }
+      const hash = window.location.hash.replace('#', '');
+      if (VALID_PAGES.includes(hash as PageId)) {
+        useRouterStore.setState({ customerDetailId: null, page: hash as PageId });
+        return;
+      }
+      const qp = new URLSearchParams(window.location.search).get('page');
+      if (qp && VALID_PAGES.includes(qp as PageId)) {
+        useRouterStore.setState({ page: qp as PageId });
+        return;
+      }
+      if (!hash && !qp) {
+        useRouterStore.setState({ customerDetailId: null, page: 'dashboard' });
+      }
+    };
+
+    window.addEventListener('hashchange', syncPage);
+    window.addEventListener('popstate', syncPage);
+  }
 }
