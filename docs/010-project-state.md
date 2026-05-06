@@ -240,6 +240,9 @@ Auth (22): `/users/*`, `/wallet/*`, `/loyalty/*`, `/orders`, `/notifications/*`,
 - Keys are **not** exposed to public `/config` or `/config/bootstrap` endpoints
 - No environment variables control bypass — purely DB-driven
 - Default values: `otp_bypass_enabled=false`, `otp_bypass_code=000000`
+- **Limitation**: The in-process rate limiter (function attribute cache) is per-worker. In a multi-replica deployment, each replica maintains its own counter, so an attacker could bypass the limit by hitting different replicas. Acceptable for current single-server deployment.
+
+### Rate Limiting
 
 ---
 
