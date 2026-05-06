@@ -27,7 +27,7 @@ ALLOWED_CONFIG_KEYS = {
     "notification_retention_days",
     "pos_api_url",
     "otp_rate_limit",
-    "otp_bypass_code", "otp_bypass_allowed",
+    "otp_bypass_code", "otp_bypass_enabled",
     "topup_presets", "topup_min_amount",
     "order_polling_interval_seconds",
 }

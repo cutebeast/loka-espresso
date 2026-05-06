@@ -246,7 +246,7 @@ async def verify_otp(request: Request, req: VerifyOTPRequest, db: AsyncSession =
     bypass_allowed = False
     bypass_code = ""
     from app.models.splash import AppConfig
-    db_bypass = await db.execute(select(AppConfig).where(AppConfig.key == "otp_bypass_allowed"))
+    db_bypass = await db.execute(select(AppConfig).where(AppConfig.key == "otp_bypass_enabled"))
     db_allowed_row = db_bypass.scalar_one_or_none()
     if db_allowed_row and db_allowed_row.value and db_allowed_row.value.lower() in ("true", "1", "yes"):
         bypass_allowed = True
