@@ -133,26 +133,27 @@ async def get_feedback(
     }
 
 
-@router.post("/feedback/{feedback_id}/reply")
-async def reply_to_feedback(
-    feedback_id: int,
-    request: Request,
-    data: FeedbackReply,
-    db: AsyncSession = Depends(get_db),
-    user: AdminUser = Depends(require_hq_access()),
-):
-    result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
-    feedback = result.scalar_one_or_none()
-    if not feedback:
-        raise HTTPException(status_code=404, detail="Feedback not found")
-    # Sanitize admin reply to prevent XSS
-    feedback.admin_reply = sanitize_text_field(data.admin_reply, max_length=2000)
-    feedback.is_resolved = True
-    ip = get_client_ip(request)
-    await log_action(db, action="REPLY_FEEDBACK", user_id=user.id, store_id=feedback.store_id, entity_type="feedback", entity_id=feedback_id, ip_address=ip)
-    await db.flush()
-    await db.refresh(feedback)
-    return {"message": "Reply saved", "id": feedback.id}
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.post("/feedback/{feedback_id}/reply")
+# async def reply_to_feedback(
+#     feedback_id: int,
+#     request: Request,
+#     data: FeedbackReply,
+#     db: AsyncSession = Depends(get_db),
+#     user: AdminUser = Depends(require_hq_access()),
+# ):
+#     result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
+#     feedback = result.scalar_one_or_none()
+#     if not feedback:
+#         raise HTTPException(status_code=404, detail="Feedback not found")
+#     # Sanitize admin reply to prevent XSS
+#     feedback.admin_reply = sanitize_text_field(data.admin_reply, max_length=2000)
+#     feedback.is_resolved = True
+#     ip = get_client_ip(request)
+#     await log_action(db, action="REPLY_FEEDBACK", user_id=user.id, store_id=feedback.store_id, entity_type="feedback", entity_id=feedback_id, ip_address=ip)
+#     await db.flush()
+#     await db.refresh(feedback)
+#     return {"message": "Reply saved", "id": feedback.id}
 
 
 @router.put("/feedback/{feedback_id}/reply")
@@ -180,59 +181,62 @@ async def update_feedback_reply(
     return {"message": "Reply updated", "id": feedback.id}
 
 
-@router.post("/feedback", response_model=FeedbackOut)
-async def create_feedback(
-    data: FeedbackCreate,
-    db: AsyncSession = Depends(get_db),
-    user: AdminUser = Depends(get_current_user),
-):
-    # Sanitize user input to prevent XSS
-    sanitized_data = data.model_dump()
-    sanitized_data["comment"] = sanitize_text_field(sanitized_data.get("comment"), max_length=2000)
-    
-    obj = Feedback(user_id=user.id, customer_id=user.id, **sanitized_data)
-    db.add(obj)
-    await db.flush()
-    await db.refresh(obj)
-    return obj
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.post("/feedback", response_model=FeedbackOut)
+# async def create_feedback(
+#     data: FeedbackCreate,
+#     db: AsyncSession = Depends(get_db),
+#     user: AdminUser = Depends(get_current_user),
+# ):
+#     # Sanitize user input to prevent XSS
+#     sanitized_data = data.model_dump()
+#     sanitized_data["comment"] = sanitize_text_field(sanitized_data.get("comment"), max_length=2000)
+#     
+#     obj = Feedback(user_id=user.id, customer_id=user.id, **sanitized_data)
+#     db.add(obj)
+#     await db.flush()
+#     await db.refresh(obj)
+#     return obj
 
 
-@router.put("/feedback/{feedback_id}")
-async def update_feedback(
-    feedback_id: int,
-    request: Request,
-    data: FeedbackCreate,
-    db: AsyncSession = Depends(get_db),
-    user: AdminUser = Depends(get_current_user),
-):
-    """Customer edits own feedback."""
-    result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
-    feedback = result.scalar_one_or_none()
-    if not feedback:
-        raise HTTPException(status_code=404, detail="Feedback not found")
-    if feedback.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Cannot edit another user's feedback")
-    feedback.rating = data.rating
-    if data.comment is not None:
-        feedback.comment = sanitize_text_field(data.comment, max_length=2000)
-    await db.flush()
-    return {"message": "Feedback updated", "id": feedback.id}
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.put("/feedback/{feedback_id}")
+# async def update_feedback(
+#     feedback_id: int,
+#     request: Request,
+#     data: FeedbackCreate,
+#     db: AsyncSession = Depends(get_db),
+#     user: AdminUser = Depends(get_current_user),
+# ):
+#     """Customer edits own feedback."""
+#     result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
+#     feedback = result.scalar_one_or_none()
+#     if not feedback:
+#         raise HTTPException(status_code=404, detail="Feedback not found")
+#     if feedback.user_id != user.id:
+#         raise HTTPException(status_code=403, detail="Cannot edit another user's feedback")
+#     feedback.rating = data.rating
+#     if data.comment is not None:
+#         feedback.comment = sanitize_text_field(data.comment, max_length=2000)
+#     await db.flush()
+#     return {"message": "Feedback updated", "id": feedback.id}
 
 
-@router.delete("/feedback/{feedback_id}")
-async def delete_feedback(
-    feedback_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    user: AdminUser = Depends(get_current_user),
-):
-    """Customer deletes own feedback."""
-    result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
-    feedback = result.scalar_one_or_none()
-    if not feedback:
-        raise HTTPException(status_code=404, detail="Feedback not found")
-    if feedback.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Cannot delete another user's feedback")
-    await db.delete(feedback)
-    await db.flush()
-    return {"message": "Feedback deleted", "id": feedback_id}
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.delete("/feedback/{feedback_id}")
+# async def delete_feedback(
+#     feedback_id: int,
+#     request: Request,
+#     db: AsyncSession = Depends(get_db),
+#     user: AdminUser = Depends(get_current_user),
+# ):
+#     """Customer deletes own feedback."""
+#     result = await db.execute(select(Feedback).where(Feedback.id == feedback_id))
+#     feedback = result.scalar_one_or_none()
+#     if not feedback:
+#         raise HTTPException(status_code=404, detail="Feedback not found")
+#     if feedback.user_id != user.id:
+#         raise HTTPException(status_code=403, detail="Cannot delete another user's feedback")
+#     await db.delete(feedback)
+#     await db.flush()
+#     return {"message": "Feedback deleted", "id": feedback_id}

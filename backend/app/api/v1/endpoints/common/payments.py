@@ -115,18 +115,19 @@ async def list_payment_methods(user: Customer = Depends(get_current_user), db: A
     return result.scalars().all()
 
 
-@router.post("/methods", response_model=PaymentMethodOut, status_code=201)
-async def add_payment_method(req: PaymentMethodCreate, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if req.is_default:
-        await db.execute(
-            update(PaymentMethod)
-            .where(PaymentMethod.user_id == user.id)
-            .values(is_default=False)
-        )
-    pm = PaymentMethod(user_id=user.id, customer_id=user.id, type=req.type, provider=req.provider, last4=req.last4, is_default=1 if req.is_default else 0)
-    db.add(pm)
-    await db.flush()
-    return pm
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.post("/methods", response_model=PaymentMethodOut, status_code=201)
+# async def add_payment_method(req: PaymentMethodCreate, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+#     if req.is_default:
+#         await db.execute(
+#             update(PaymentMethod)
+#             .where(PaymentMethod.user_id == user.id)
+#             .values(is_default=False)
+#         )
+#     pm = PaymentMethod(user_id=user.id, customer_id=user.id, type=req.type, provider=req.provider, last4=req.last4, is_default=1 if req.is_default else 0)
+#     db.add(pm)
+#     await db.flush()
+#     return pm
 
 
 @router.delete("/methods/{method_id}")

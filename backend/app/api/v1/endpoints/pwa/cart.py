@@ -200,10 +200,11 @@ async def remove_cart_item(item_id: int, user: Customer = Depends(get_current_us
     return {"message": "Item removed"}
 
 
-@router.delete("")
-async def clear_cart(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(CartItem).where(CartItem.user_id == user.id))
-    for ci in result.scalars().all():
-        await db.delete(ci)
-    await db.flush()
-    return {"message": "Cart cleared"}
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.delete("")
+# async def clear_cart(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+#     result = await db.execute(select(CartItem).where(CartItem.user_id == user.id))
+#     for ci in result.scalars().all():
+#         await db.delete(ci)
+#     await db.flush()
+#     return {"message": "Cart cleared"}

@@ -52,26 +52,27 @@ async def popular_report(
     return {"items": [{"item_name": name, "order_count": count} for name, count in sorted_items]}
 
 
-@router.get("/export")
-async def export_data(
-    from_date: datetime = Query(...), to_date: datetime = Query(...),
-    type: str = Query("orders"), store_id: int = Query(None),
-    user: AdminUser = Depends(require_hq_access()),
-    db: AsyncSession = Depends(get_db),
-):
-    q = select(Order).where(Order.created_at >= from_date, Order.created_at <= to_date)
-    if store_id:
-        q = q.where(Order.store_id == store_id)
-    result = await db.execute(q)
-    orders = result.scalars().all()
-    rows = []
-    for o in orders:
-        rows.append({
-            "order_number": o.order_number, "order_type": o.order_type,
-            "total": to_float(o.total), "status": o.status,
-            "created_at": o.created_at.isoformat() if o.created_at else "",
-        })
-    return {"items": rows, "count": len(rows)}
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.get("/export")
+# async def export_data(
+#     from_date: datetime = Query(...), to_date: datetime = Query(...),
+#     type: str = Query("orders"), store_id: int = Query(None),
+#     user: AdminUser = Depends(require_hq_access()),
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     q = select(Order).where(Order.created_at >= from_date, Order.created_at <= to_date)
+#     if store_id:
+#         q = q.where(Order.store_id == store_id)
+#     result = await db.execute(q)
+#     orders = result.scalars().all()
+#     rows = []
+#     for o in orders:
+#         rows.append({
+#             "order_number": o.order_number, "order_type": o.order_type,
+#             "total": to_float(o.total), "status": o.status,
+#             "created_at": o.created_at.isoformat() if o.created_at else "",
+#         })
+#     return {"items": rows, "count": len(rows)}
 
 
 @router.patch("/stores/{store_id}/tables/{table_id}/occupancy")

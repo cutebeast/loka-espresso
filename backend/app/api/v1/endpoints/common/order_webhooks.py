@@ -254,84 +254,86 @@ async def external_pos_webhook(
     }
 
 
-@router.post("/{order_id}/pos-synced")
-async def mark_order_pos_synced(
-    order_id: int,
-    req: StaffNotesRequest | None = None,
-    user: Customer = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Mark an order as manually synced to the POS system.
-    Used in manual mode when staff have re-keyed the order into the POS terminal.
-    """
-    result = await db.execute(select(Order).where(Order.id == order_id))
-    order = result.scalar_one_or_none()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.post("/{order_id}/pos-synced")
+# async def mark_order_pos_synced(
+#     order_id: int,
+#     req: StaffNotesRequest | None = None,
+#     user: Customer = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     """
+#     Mark an order as manually synced to the POS system.
+#     Used in manual mode when staff have re-keyed the order into the POS terminal.
+#     """
+#     result = await db.execute(select(Order).where(Order.id == order_id))
+#     order = result.scalar_one_or_none()
+#     if not order:
+#         raise HTTPException(status_code=404, detail="Order not found")
+# 
+#     if not await can_access_store(user, order.store_id, db):
+#         raise HTTPException(status_code=403, detail="Cannot modify this order")
+# 
+#     if order.pos_synced_at is not None:
+#         raise HTTPException(status_code=400, detail="Order already marked as POS synced")
+# 
+#     order.pos_synced_at = datetime.now(timezone.utc)
+#     order.pos_synced_by = user.id
+# 
+#     note_text = req.staff_notes if req else None
+#     if note_text:
+#         order.staff_notes = note_text
+# 
+#     history = OrderStatusHistory(
+#         order_id=order.id,
+#         status=order.status,
+#         note="Order manually synced to POS" + (f" — {note_text}" if note_text else "")
+#     )
+#     db.add(history)
+#     await db.flush()
+# 
+#     return _order_out(order)
 
-    if not await can_access_store(user, order.store_id, db):
-        raise HTTPException(status_code=403, detail="Cannot modify this order")
 
-    if order.pos_synced_at is not None:
-        raise HTTPException(status_code=400, detail="Order already marked as POS synced")
-
-    order.pos_synced_at = datetime.now(timezone.utc)
-    order.pos_synced_by = user.id
-
-    note_text = req.staff_notes if req else None
-    if note_text:
-        order.staff_notes = note_text
-
-    history = OrderStatusHistory(
-        order_id=order.id,
-        status=order.status,
-        note="Order manually synced to POS" + (f" — {note_text}" if note_text else "")
-    )
-    db.add(history)
-    await db.flush()
-
-    return _order_out(order)
-
-
-@router.post("/{order_id}/delivery-dispatched")
-async def mark_order_delivery_dispatched(
-    order_id: int,
-    req: StaffNotesRequest | None = None,
-    user: Customer = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Mark a delivery order as manually dispatched.
-    Used in manual mode when staff have booked a driver via external app.
-    """
-    result = await db.execute(select(Order).where(Order.id == order_id))
-    order = result.scalar_one_or_none()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-
-    if not await can_access_store(user, order.store_id, db):
-        raise HTTPException(status_code=403, detail="Cannot modify this order")
-
-    if order.order_type != OrderType.delivery:
-        raise HTTPException(status_code=400, detail="Only delivery orders can be marked as dispatched")
-
-    if order.delivery_dispatched_at is not None:
-        raise HTTPException(status_code=400, detail="Order already marked as dispatched")
-
-    order.delivery_dispatched_at = datetime.now(timezone.utc)
-    order.delivery_dispatched_by = user.id
-
-    note_text = req.staff_notes if req else None
-    if note_text:
-        order.staff_notes = note_text
-
-    history = OrderStatusHistory(
-        order_id=order.id,
-        status=order.status,
-        note="Delivery manually dispatched" + (f" — {note_text}" if note_text else "")
-    )
-    db.add(history)
-    await db.flush()
-
-    return _order_out(order)
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.post("/{order_id}/delivery-dispatched")
+# async def mark_order_delivery_dispatched(
+#     order_id: int,
+#     req: StaffNotesRequest | None = None,
+#     user: Customer = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     """
+#     Mark a delivery order as manually dispatched.
+#     Used in manual mode when staff have booked a driver via external app.
+#     """
+#     result = await db.execute(select(Order).where(Order.id == order_id))
+#     order = result.scalar_one_or_none()
+#     if not order:
+#         raise HTTPException(status_code=404, detail="Order not found")
+# 
+#     if not await can_access_store(user, order.store_id, db):
+#         raise HTTPException(status_code=403, detail="Cannot modify this order")
+# 
+#     if order.order_type != OrderType.delivery:
+#         raise HTTPException(status_code=400, detail="Only delivery orders can be marked as dispatched")
+# 
+#     if order.delivery_dispatched_at is not None:
+#         raise HTTPException(status_code=400, detail="Order already marked as dispatched")
+# 
+#     order.delivery_dispatched_at = datetime.now(timezone.utc)
+#     order.delivery_dispatched_by = user.id
+# 
+#     note_text = req.staff_notes if req else None
+#     if note_text:
+#         order.staff_notes = note_text
+# 
+#     history = OrderStatusHistory(
+#         order_id=order.id,
+#         status=order.status,
+#         note="Delivery manually dispatched" + (f" — {note_text}" if note_text else "")
+#     )
+#     db.add(history)
+#     await db.flush()
+# 
+#     return _order_out(order)

@@ -43,12 +43,13 @@ async def mark_read(notification_id: int, user: Customer = Depends(get_current_u
     return {"message": "Marked as read"}
 
 
-@router.put("/read-all")
-async def mark_all_read(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Notification).where(Notification.user_id == user.id, Notification.is_read == False)
-    )
-    for n in result.scalars().all():
-        n.is_read = True
-    await db.flush()
-    return {"message": "All marked as read"}
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.put("/read-all")
+# async def mark_all_read(user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+#     result = await db.execute(
+#         select(Notification).where(Notification.user_id == user.id, Notification.is_read == False)
+#     )
+#     for n in result.scalars().all():
+#         n.is_read = True
+#     await db.flush()
+#     return {"message": "All marked as read"}

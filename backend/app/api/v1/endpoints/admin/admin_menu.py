@@ -70,21 +70,22 @@ async def update_category(
     return {"id": cat.id, "name": cat.name}
 
 
-@router.delete("/categories/{cat_id}")
-async def delete_category(
-    cat_id: int,
-    request: Request,
-    user: AdminUser = Depends(require_hq_access()),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(MenuCategory).where(MenuCategory.id == cat_id))
-    cat = result.scalar_one_or_none()
-    if not cat:
-        raise HTTPException(404, "Category not found")
-    cat.is_active = False
-    ip = get_client_ip(request)
-    await log_action(db, action="DELETE_CATEGORY", user_id=user.id, entity_type="menu_category", entity_id=cat_id, details={"name": cat.name}, ip_address=ip)
-    return {"message": "Category deleted", "id": cat_id}
+# ARCHIVED: no frontend/PWA caller — safe to restore if needed
+# @router.delete("/categories/{cat_id}")
+# async def delete_category(
+#     cat_id: int,
+#     request: Request,
+#     user: AdminUser = Depends(require_hq_access()),
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     result = await db.execute(select(MenuCategory).where(MenuCategory.id == cat_id))
+#     cat = result.scalar_one_or_none()
+#     if not cat:
+#         raise HTTPException(404, "Category not found")
+#     cat.is_active = False
+#     ip = get_client_ip(request)
+#     await log_action(db, action="DELETE_CATEGORY", user_id=user.id, entity_type="menu_category", entity_id=cat_id, details={"name": cat.name}, ip_address=ip)
+#     return {"message": "Category deleted", "id": cat_id}
 
 
 @router.post("/items", status_code=201)
