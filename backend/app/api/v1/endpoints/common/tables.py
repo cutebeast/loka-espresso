@@ -60,25 +60,24 @@ async def scan_qr(
     }
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.get("/{table_id}")
-# async def get_table(table_id: int, db: AsyncSession = Depends(get_db)):
-#     """Public table info — intentionally excludes qr_code_url and qr_token."""
-#     result = await db.execute(select(StoreTable).where(StoreTable.id == table_id))
-#     table = result.scalar_one_or_none()
-#     if not table:
-#         raise HTTPException(status_code=404, detail="Table not found")
-#     store_result = await db.execute(select(Store).where(Store.id == table.store_id))
-#     store = store_result.scalar_one_or_none()
-#     return {
-#         "id": table.id,
-#         "store_id": table.store_id,
-#         "store_name": store.name if store else None,
-#         "table_number": table.table_number,
-#         "capacity": table.capacity,
-#         "is_active": table.is_active,
-#         "is_occupied": table.is_occupied,
-#     }
+@router.get("/{table_id}")
+async def get_table(table_id: int, db: AsyncSession = Depends(get_db)):
+    """Public table info — intentionally excludes qr_code_url and qr_token."""
+    result = await db.execute(select(StoreTable).where(StoreTable.id == table_id))
+    table = result.scalar_one_or_none()
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    store_result = await db.execute(select(Store).where(Store.id == table.store_id))
+    store = store_result.scalar_one_or_none()
+    return {
+        "id": table.id,
+        "store_id": table.store_id,
+        "store_name": store.name if store else None,
+        "table_number": table.table_number,
+        "capacity": table.capacity,
+        "is_active": table.is_active,
+        "is_occupied": table.is_occupied,
+    }
 
 
 @router.post("/{table_id}/release")

@@ -124,31 +124,30 @@ async def pwa_clear_cache(
     }
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.get("/pwa/version")
-# async def pwa_get_version(
-#     user: AdminUser = Depends(require_hq_access()),
-# ):
-#     from app.core.config import get_settings
-#     settings = get_settings()
-#     manifest_path = os.path.join(settings.CUSTOMER_APP_DIR, "public", "manifest.json")
-# 
-#     try:
-#         with open(manifest_path, 'r') as f:
-#             manifest = json.load(f)
-#         return {
-#             "version": manifest.get('version', '1.0.0'),
-#             "build_date": manifest.get('build_date', datetime.now(timezone.utc).isoformat()),
-#             "name": manifest.get('name', 'Loka Espresso'),
-#             "cache_name": f"loka-pwa-v{manifest.get('version', '1.0.0')}",
-#         }
-#     except FileNotFoundError:
-#         return {
-#             "version": "0.0.0",
-#             "build_date": datetime.now(timezone.utc).isoformat(),
-#             "name": "Loka Espresso",
-#             "cache_name": "loka-pwa-v0.0.0",
-#             "warning": "PWA manifest not found — build may not have been deployed yet",
-#         }
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Failed to read manifest: {str(e)}")
+@router.get("/pwa/version")
+async def pwa_get_version(
+    user: AdminUser = Depends(require_hq_access()),
+):
+    from app.core.config import get_settings
+    settings = get_settings()
+    manifest_path = os.path.join(settings.CUSTOMER_APP_DIR, "public", "manifest.json")
+
+    try:
+        with open(manifest_path, 'r') as f:
+            manifest = json.load(f)
+        return {
+            "version": manifest.get('version', '1.0.0'),
+            "build_date": manifest.get('build_date', datetime.now(timezone.utc).isoformat()),
+            "name": manifest.get('name', 'Loka Espresso'),
+            "cache_name": f"loka-pwa-v{manifest.get('version', '1.0.0')}",
+        }
+    except FileNotFoundError:
+        return {
+            "version": "0.0.0",
+            "build_date": datetime.now(timezone.utc).isoformat(),
+            "name": "Loka Espresso",
+            "cache_name": "loka-pwa-v0.0.0",
+            "warning": "PWA manifest not found — build may not have been deployed yet",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read manifest: {str(e)}")

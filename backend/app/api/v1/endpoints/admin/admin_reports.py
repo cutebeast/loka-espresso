@@ -232,153 +232,152 @@ async def marketing_report(
     }
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.get("/reports/marketing/paginated")
-# async def marketing_report_paginated(
-#     from_date: datetime = Query(...),
-#     to_date: datetime = Query(...),
-#     store_id: int = Query(None),
-#     page: int = Query(1, ge=1),
-#     page_size: int = Query(20, ge=1, le=100),
-#     user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
-#     db: AsyncSession = Depends(get_db),
-# ):
-#     # --- Rewards ---
-#     reward_result = await db.execute(select(Reward).where(Reward.is_active == True))
-#     all_rewards = reward_result.scalars().all()
-#     total_rewards = len(all_rewards)
-# 
-#     total_reward_result = await db.execute(select(Reward))
-#     active_rewards = len([r for r in total_reward_result.scalars().all() if r.is_active])
-# 
-#     redemptions_q = select(UserReward).where(UserReward.redeemed_at >= from_date, UserReward.redeemed_at <= to_date)
-#     if store_id:
-#         redemptions_q = redemptions_q.outerjoin(Order, UserReward.order_id == Order.id)
-#         redemptions_q = redemptions_q.where(or_(UserReward.store_id == store_id, Order.store_id == store_id))
-#     redemptions_result = await db.execute(redemptions_q)
-#     redemptions = redemptions_result.scalars().all()
-#     total_redemptions = len(redemptions)
-# 
-#     redemptions_by_reward = {r.name: 0 for r in all_rewards}
-#     for ur in redemptions:
-#         r = next((r for r in all_rewards if r.id == ur.reward_id), None)
-#         name = r.name if r else f"Reward {ur.reward_id}"
-#         redemptions_by_reward[name] = redemptions_by_reward.get(name, 0) + 1
-# 
-#     # --- Vouchers ---
-#     voucher_result = await db.execute(select(Voucher).where(Voucher.is_active == True))
-#     all_vouchers = voucher_result.scalars().all()
-#     total_vouchers = len(all_vouchers)
-# 
-#     total_voucher_result = await db.execute(select(Voucher))
-#     active_vouchers = len([v for v in total_voucher_result.scalars().all() if v.is_active])
-# 
-#     usage_q = select(UserVoucher).where(UserVoucher.applied_at >= from_date, UserVoucher.applied_at <= to_date)
-#     if store_id:
-#         usage_q = usage_q.outerjoin(Order, UserVoucher.order_id == Order.id)
-#         usage_q = usage_q.where(or_(UserVoucher.store_id == store_id, Order.store_id == store_id))
-#     usage_result = await db.execute(usage_q)
-#     usages = usage_result.scalars().all()
-#     total_voucher_usages = len(usages)
-# 
-#     usage_by_voucher = {v.code: 0 for v in all_vouchers}
-#     for uv in usages:
-#         v = next((v for v in all_vouchers if v.id == uv.voucher_id), None)
-#         name = v.code if v else f"Voucher {uv.voucher_id}"
-#         usage_by_voucher[name] = usage_by_voucher.get(name, 0) + 1
-# 
-#     # --- Feedback (paginated) ---
-#     fb_query = select(Feedback).where(Feedback.created_at >= from_date, Feedback.created_at <= to_date)
-#     if store_id:
-#         fb_query = fb_query.where(Feedback.store_id == store_id)
-#     fb_count_result = await db.execute(select(func.count()).select_from(fb_query.subquery()))
-#     total_feedback = fb_count_result.scalar() or 0
-# 
-#     fb_paginated = fb_query.order_by(Feedback.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
-#     fb_result = await db.execute(fb_paginated)
-#     all_feedback = fb_result.scalars().all()
-# 
-#     avg_rating = sum(f.rating for f in all_feedback) / len(all_feedback) if all_feedback else 0
-#     resolved = len([f for f in all_feedback if f.is_resolved])
-#     unreplied = len([f for f in all_feedback if not f.admin_reply])
-#     rating_dist = {}
-#     for f in all_feedback:
-#         key = str(f.rating)
-#         rating_dist[key] = rating_dist.get(key, 0) + 1
-# 
-#     # Feedback by store
-#     fb_by_store = {}
-#     store_ids = {f.store_id for f in all_feedback if f.store_id}
-#     if store_ids:
-#         s_result = await db.execute(select(Store).where(Store.id.in_(store_ids)))
-#         store_map = {s.id: s.name for s in s_result.scalars().all()}
-#         for f in all_feedback:
-#             sname = store_map.get(f.store_id, f"Store {f.store_id}")
-#             if sname not in fb_by_store:
-#                 fb_by_store[sname] = {"count": 0, "total_rating": 0}
-#             fb_by_store[sname]["count"] += 1
-#             fb_by_store[sname]["total_rating"] += f.rating
-#     fb_by_store_avg = {k: {"count": v["count"], "avg_rating": round(v["total_rating"] / v["count"], 1)} for k, v in fb_by_store.items()}
-# 
-#     # --- Loyalty ---
-#     loyalty_result = await db.execute(
-#         select(Customer, LoyaltyAccount)
-#         .join(LoyaltyAccount, LoyaltyAccount.user_id == Customer.id, isouter=True)
-#         .where(Customer.is_active == True)
-#     )
-#     loyalty_rows = loyalty_result.all()
-#     total_members = 0
-#     tier_dist = {}
-#     for customer, account in loyalty_rows:
-#         profile_complete = bool(customer.phone_verified and (customer.name or "").strip() and (customer.email or "").strip())
-#         if not profile_complete:
-#             continue
-#         total_members += 1
-#         tier_name = (account.tier if account and account.tier else "bronze").strip().lower()
-#         tier_dist[tier_name] = tier_dist.get(tier_name, 0) + 1
-# 
-#     tx_query = select(LoyaltyTransaction).where(LoyaltyTransaction.created_at >= from_date, LoyaltyTransaction.created_at <= to_date)
-#     tx_result = await db.execute(tx_query)
-#     txns = tx_result.scalars().all()
-#     points_issued = sum(t.points for t in txns if t.type == "earn")
-#     points_redeemed = sum(-t.points for t in txns if t.type == "redeem")
-# 
-#     total_feedback_pages = (total_feedback + page_size - 1) // page_size
-# 
-#     return {
-#         "period": {"from": from_date.isoformat(), "to": to_date.isoformat()},
-#         "page": page,
-#         "page_size": page_size,
-#         "total_pages": total_feedback_pages,
-#         "total_counts": {
-#             "rewards": total_rewards,
-#             "active_rewards": active_rewards,
-#             "total_redemptions": total_redemptions,
-#             "vouchers": total_vouchers,
-#             "active_vouchers": active_vouchers,
-#             "total_voucher_usages": total_voucher_usages,
-#             "total_feedback": total_feedback,
-#             "total_members": total_members,
-#         },
-#         "rewards": {
-#             "top_redeemed": dict(sorted(redemptions_by_reward.items(), key=lambda x: -x[1])),
-#         },
-#         "vouchers": {
-#             "top_used": dict(sorted(usage_by_voucher.items(), key=lambda x: -x[1])),
-#         },
-#         "feedback": {
-#             "average_rating": round(avg_rating, 1),
-#             "resolved": resolved,
-#             "unreplied": unreplied,
-#             "rating_distribution": rating_dist,
-#             "by_store": fb_by_store_avg,
-#         },
-#         "loyalty": {
-#             "tier_distribution": tier_dist,
-#             "points_issued": points_issued,
-#             "points_redeemed": points_redeemed,
-#         },
-#     }
+@router.get("/reports/marketing/paginated")
+async def marketing_report_paginated(
+    from_date: datetime = Query(...),
+    to_date: datetime = Query(...),
+    store_id: int = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    # --- Rewards ---
+    reward_result = await db.execute(select(Reward).where(Reward.is_active == True))
+    all_rewards = reward_result.scalars().all()
+    total_rewards = len(all_rewards)
+
+    total_reward_result = await db.execute(select(Reward))
+    active_rewards = len([r for r in total_reward_result.scalars().all() if r.is_active])
+
+    redemptions_q = select(UserReward).where(UserReward.redeemed_at >= from_date, UserReward.redeemed_at <= to_date)
+    if store_id:
+        redemptions_q = redemptions_q.outerjoin(Order, UserReward.order_id == Order.id)
+        redemptions_q = redemptions_q.where(or_(UserReward.store_id == store_id, Order.store_id == store_id))
+    redemptions_result = await db.execute(redemptions_q)
+    redemptions = redemptions_result.scalars().all()
+    total_redemptions = len(redemptions)
+
+    redemptions_by_reward = {r.name: 0 for r in all_rewards}
+    for ur in redemptions:
+        r = next((r for r in all_rewards if r.id == ur.reward_id), None)
+        name = r.name if r else f"Reward {ur.reward_id}"
+        redemptions_by_reward[name] = redemptions_by_reward.get(name, 0) + 1
+
+    # --- Vouchers ---
+    voucher_result = await db.execute(select(Voucher).where(Voucher.is_active == True))
+    all_vouchers = voucher_result.scalars().all()
+    total_vouchers = len(all_vouchers)
+
+    total_voucher_result = await db.execute(select(Voucher))
+    active_vouchers = len([v for v in total_voucher_result.scalars().all() if v.is_active])
+
+    usage_q = select(UserVoucher).where(UserVoucher.applied_at >= from_date, UserVoucher.applied_at <= to_date)
+    if store_id:
+        usage_q = usage_q.outerjoin(Order, UserVoucher.order_id == Order.id)
+        usage_q = usage_q.where(or_(UserVoucher.store_id == store_id, Order.store_id == store_id))
+    usage_result = await db.execute(usage_q)
+    usages = usage_result.scalars().all()
+    total_voucher_usages = len(usages)
+
+    usage_by_voucher = {v.code: 0 for v in all_vouchers}
+    for uv in usages:
+        v = next((v for v in all_vouchers if v.id == uv.voucher_id), None)
+        name = v.code if v else f"Voucher {uv.voucher_id}"
+        usage_by_voucher[name] = usage_by_voucher.get(name, 0) + 1
+
+    # --- Feedback (paginated) ---
+    fb_query = select(Feedback).where(Feedback.created_at >= from_date, Feedback.created_at <= to_date)
+    if store_id:
+        fb_query = fb_query.where(Feedback.store_id == store_id)
+    fb_count_result = await db.execute(select(func.count()).select_from(fb_query.subquery()))
+    total_feedback = fb_count_result.scalar() or 0
+
+    fb_paginated = fb_query.order_by(Feedback.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    fb_result = await db.execute(fb_paginated)
+    all_feedback = fb_result.scalars().all()
+
+    avg_rating = sum(f.rating for f in all_feedback) / len(all_feedback) if all_feedback else 0
+    resolved = len([f for f in all_feedback if f.is_resolved])
+    unreplied = len([f for f in all_feedback if not f.admin_reply])
+    rating_dist = {}
+    for f in all_feedback:
+        key = str(f.rating)
+        rating_dist[key] = rating_dist.get(key, 0) + 1
+
+    # Feedback by store
+    fb_by_store = {}
+    store_ids = {f.store_id for f in all_feedback if f.store_id}
+    if store_ids:
+        s_result = await db.execute(select(Store).where(Store.id.in_(store_ids)))
+        store_map = {s.id: s.name for s in s_result.scalars().all()}
+        for f in all_feedback:
+            sname = store_map.get(f.store_id, f"Store {f.store_id}")
+            if sname not in fb_by_store:
+                fb_by_store[sname] = {"count": 0, "total_rating": 0}
+            fb_by_store[sname]["count"] += 1
+            fb_by_store[sname]["total_rating"] += f.rating
+    fb_by_store_avg = {k: {"count": v["count"], "avg_rating": round(v["total_rating"] / v["count"], 1)} for k, v in fb_by_store.items()}
+
+    # --- Loyalty ---
+    loyalty_result = await db.execute(
+        select(Customer, LoyaltyAccount)
+        .join(LoyaltyAccount, LoyaltyAccount.user_id == Customer.id, isouter=True)
+        .where(Customer.is_active == True)
+    )
+    loyalty_rows = loyalty_result.all()
+    total_members = 0
+    tier_dist = {}
+    for customer, account in loyalty_rows:
+        profile_complete = bool(customer.phone_verified and (customer.name or "").strip() and (customer.email or "").strip())
+        if not profile_complete:
+            continue
+        total_members += 1
+        tier_name = (account.tier if account and account.tier else "bronze").strip().lower()
+        tier_dist[tier_name] = tier_dist.get(tier_name, 0) + 1
+
+    tx_query = select(LoyaltyTransaction).where(LoyaltyTransaction.created_at >= from_date, LoyaltyTransaction.created_at <= to_date)
+    tx_result = await db.execute(tx_query)
+    txns = tx_result.scalars().all()
+    points_issued = sum(t.points for t in txns if t.type == "earn")
+    points_redeemed = sum(-t.points for t in txns if t.type == "redeem")
+
+    total_feedback_pages = (total_feedback + page_size - 1) // page_size
+
+    return {
+        "period": {"from": from_date.isoformat(), "to": to_date.isoformat()},
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_feedback_pages,
+        "total_counts": {
+            "rewards": total_rewards,
+            "active_rewards": active_rewards,
+            "total_redemptions": total_redemptions,
+            "vouchers": total_vouchers,
+            "active_vouchers": active_vouchers,
+            "total_voucher_usages": total_voucher_usages,
+            "total_feedback": total_feedback,
+            "total_members": total_members,
+        },
+        "rewards": {
+            "top_redeemed": dict(sorted(redemptions_by_reward.items(), key=lambda x: -x[1])),
+        },
+        "vouchers": {
+            "top_used": dict(sorted(usage_by_voucher.items(), key=lambda x: -x[1])),
+        },
+        "feedback": {
+            "average_rating": round(avg_rating, 1),
+            "resolved": resolved,
+            "unreplied": unreplied,
+            "rating_distribution": rating_dist,
+            "by_store": fb_by_store_avg,
+        },
+        "loyalty": {
+            "tier_distribution": tier_dist,
+            "points_issued": points_issued,
+            "points_redeemed": points_redeemed,
+        },
+    }
 
 
 @router.get("/reports/csv")

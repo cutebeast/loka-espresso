@@ -121,178 +121,176 @@ async def approve_customer_profile(
     }
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.put("/customers/{user_id}")
-# async def update_customer(
-#     user_id: int,
-#     request: Request,
-#     data: CustomerUpdateRequest,
-#     db: AsyncSession = Depends(get_db),
-#     user: AdminUser = Depends(require_hq_access()),
-# ):
-#     result = await db.execute(select(Customer).where(Customer.id == user_id))
-#     target = result.scalar_one_or_none()
-#     if not target:
-#         raise HTTPException(status_code=404, detail="Customer not found")
-# 
-#     changes = data.model_dump(exclude_unset=True)
-#     if not changes:
-#         raise HTTPException(status_code=400, detail="No changes provided")
-# 
-#     if "phone" in changes and changes["phone"] is not None:
-#         changes["phone"] = changes["phone"].strip()
-#     if "email" in changes and changes["email"] is not None:
-#         changes["email"] = changes["email"].strip().lower()
-# 
-#     if "phone" in changes and changes["phone"] != target.phone:
-#         existing = await db.execute(select(Customer).where(Customer.phone == changes["phone"]))
-#         if existing.scalar_one_or_none():
-#             raise HTTPException(status_code=409, detail="Phone number already in use by another account")
-# 
-#     if "email" in changes and changes["email"] and func.lower(changes["email"]) != func.lower(target.email or ""):
-#         existing = await db.execute(select(Customer).where(func.lower(Customer.email) == changes["email"]))
-#         if existing.scalar_one_or_none():
-#             raise HTTPException(status_code=409, detail="Email already in use by another account")
-# 
-#     for key, value in changes.items():
-#         setattr(target, key, value)
-# 
-#     ip = get_client_ip(request)
-#     await log_action(db, action="UPDATE_CUSTOMER", user_id=user.id, entity_type="customer", entity_id=user_id, details={"changes": changes}, ip_address=ip)
-#     await db.flush()
-#     await db.refresh(target)
-#     return {
-#         "id": target.id,
-#         "name": target.name,
-#         "email": target.email,
-#         "phone": target.phone,
-#     }
+@router.put("/customers/{user_id}")
+async def update_customer(
+    user_id: int,
+    request: Request,
+    data: CustomerUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(require_hq_access()),
+):
+    result = await db.execute(select(Customer).where(Customer.id == user_id))
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    changes = data.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail="No changes provided")
+
+    if "phone" in changes and changes["phone"] is not None:
+        changes["phone"] = changes["phone"].strip()
+    if "email" in changes and changes["email"] is not None:
+        changes["email"] = changes["email"].strip().lower()
+
+    if "phone" in changes and changes["phone"] != target.phone:
+        existing = await db.execute(select(Customer).where(Customer.phone == changes["phone"]))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="Phone number already in use by another account")
+
+    if "email" in changes and changes["email"] and func.lower(changes["email"]) != func.lower(target.email or ""):
+        existing = await db.execute(select(Customer).where(func.lower(Customer.email) == changes["email"]))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="Email already in use by another account")
+
+    for key, value in changes.items():
+        setattr(target, key, value)
+
+    ip = get_client_ip(request)
+    await log_action(db, action="UPDATE_CUSTOMER", user_id=user.id, entity_type="customer", entity_id=user_id, details={"changes": changes}, ip_address=ip)
+    await db.flush()
+    await db.refresh(target)
+    return {
+        "id": target.id,
+        "name": target.name,
+        "email": target.email,
+        "phone": target.phone,
+    }
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.delete("/customers/reset")
-# async def reset_all_customers(
-#     request: Request,
-#     confirm: bool = Query(False, description="Must pass confirm=true to execute this destructive operation"),
-#     db: AsyncSession = Depends(get_db),
-#     user: AdminUser = Depends(require_hq_access()),
-# ):
-#     """Delete ALL customers and all their associated data via API.
-# 
-#     Clears: users (role=customer), orders, wallets, loyalty accounts,
-#     vouchers, rewards, transactions, addresses, notifications, etc.
-#     Preserves: admin/staff accounts, stores, menu items, rewards catalog,
-#     voucher catalog, system config.
-# 
-#     Requires HQ access + ALLOW_CUSTOMER_RESET env flag + explicit confirm=true.
-#     Use with caution — this is irreversible.
-#     """
-#     settings = get_settings()
-#     if not settings.ALLOW_CUSTOMER_RESET:
-#         raise HTTPException(
-#             status_code=403,
-#             detail="Customer reset is disabled. Set ALLOW_CUSTOMER_RESET=true to enable."
-#         )
-#     if not confirm:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="This is a destructive operation. Pass confirm=true to proceed."
-#         )
-# 
-#     deleted_counts = {}
-# 
-#     for table_name in _CUSTOMER_RESET_TABLES:
-#         if table_name not in _ALLOWED_CUSTOMER_RESET_TABLES:
-#             raise HTTPException(status_code=400, detail=f"Invalid table name: {table_name}")
-#         savepoint_name = f"sp_{table_name}"
-#         try:
-#             await db.execute(text(f"SAVEPOINT {savepoint_name}"))
-# 
-#             if table_name == "customers":
-#                 await db.execute(text("DELETE FROM customers"))
-#             elif table_name == "referrals":
-#                 await db.execute(
-#                     text(f"""
-#                         DELETE FROM {table_name}
-#                         WHERE referrer_id IN (SELECT id FROM customers)
-#                            OR invitee_id IN (SELECT id FROM customers)
-#                     """))
-#             elif table_name == "order_items":
-#                 await db.execute(
-#                     text("""
-#                         DELETE FROM order_items
-#                         WHERE order_id IN (
-#                             SELECT id FROM orders
-#                             WHERE user_id IN (SELECT id FROM customers)
-#                         )
-#                     """                )
-#                 )
-#             elif table_name in ("order_status_history", "payments"):
-#                 await db.execute(
-#                     text(f"""
-#                         DELETE FROM {table_name}
-#                         WHERE order_id IN (
-#                             SELECT id FROM orders
-#                             WHERE user_id IN (SELECT id FROM customers)
-#                         )
-#                     """                    )
-#                 )
-#             elif table_name == "feedback":
-#                 await db.execute(
-#                     text("""
-#                         DELETE FROM feedback
-#                         WHERE order_id IN (
-#                             SELECT id FROM orders
-#                             WHERE user_id IN (SELECT id FROM customers)
-#                         )
-#                     """                    )
-#                 )
-#             elif table_name == "audit_log":
-#                 await db.execute(
-#                     text("""
-#                         DELETE FROM audit_log
-#                         WHERE user_id IN (SELECT id FROM customers)
-#                     """                    )
-#                 )
-#             else:
-#                 await db.execute(
-#                     text(f"""
-#                         DELETE FROM {table_name}
-#                         WHERE user_id IN (SELECT id FROM customers)
-#                     """                    )
-#                 )
-#             deleted_counts[table_name] = "ok"
-#         except Exception as e:
-#             await db.execute(text(f"ROLLBACK TO SAVEPOINT {savepoint_name}"))
-#             deleted_counts[table_name] = f"ERROR: {str(e)[:80]}"
-# 
-#     try:
-#         await db.execute(text("DELETE FROM wallet_transactions"))
-#         deleted_counts["wallet_transactions"] = "ok_all"
-#     except Exception as e:
-#         deleted_counts["wallet_transactions"] = f"ERROR: {str(e)[:80]}"
-# 
-#     try:
-#         await db.execute(text("DELETE FROM wallets"))
-#         deleted_counts["wallets"] = "ok_all"
-#     except Exception as e:
-#         deleted_counts["wallets"] = f"ERROR: {str(e)[:80]}"
-# 
-#     ip = get_client_ip(request)
-#     await log_action(
-#         db,
-#         action="RESET_ALL_CUSTOMERS",
-#         user_id=user.id,
-#         entity_type="system",
-#         entity_id=None,
-#         details={"deleted_tables": deleted_counts},
-#         ip_address=ip,
-#     )
-# 
-#     return {
-#         "message": "All customer data deleted successfully",
-#         "deleted_counts": deleted_counts,
-#     }
+@router.delete("/customers/reset")
+async def reset_all_customers(
+    request: Request,
+    confirm: bool = Query(False, description="Must pass confirm=true to execute this destructive operation"),
+    db: AsyncSession = Depends(get_db),
+    user: AdminUser = Depends(require_hq_access()),
+):
+    """Delete ALL customers and all their associated data via API.
+
+    Clears: users (role=customer), orders, wallets, loyalty accounts,
+    vouchers, rewards, transactions, addresses, notifications, etc.
+    Preserves: admin/staff accounts, stores, menu items, rewards catalog,
+    voucher catalog, system config.
+
+    Requires HQ access + ALLOW_CUSTOMER_RESET env flag + explicit confirm=true.
+    Use with caution — this is irreversible.
+    """
+    settings = get_settings()
+    if not settings.ALLOW_CUSTOMER_RESET:
+        raise HTTPException(
+            status_code=403,
+            detail="Customer reset is disabled. Set ALLOW_CUSTOMER_RESET=true to enable."
+        )
+    if not confirm:
+        raise HTTPException(
+            status_code=400,
+            detail="This is a destructive operation. Pass confirm=true to proceed."
+        )
+
+    deleted_counts = {}
+
+    for table_name in _CUSTOMER_RESET_TABLES:
+        if table_name not in _ALLOWED_CUSTOMER_RESET_TABLES:
+            raise HTTPException(status_code=400, detail=f"Invalid table name: {table_name}")
+        savepoint_name = f"sp_{table_name}"
+        try:
+            await db.execute(text(f"SAVEPOINT {savepoint_name}"))
+
+            if table_name == "customers":
+                await db.execute(text("DELETE FROM customers"))
+            elif table_name == "referrals":
+                await db.execute(
+                    text(f"""
+                        DELETE FROM {table_name}
+                        WHERE referrer_id IN (SELECT id FROM customers)
+                           OR invitee_id IN (SELECT id FROM customers)
+                    """))
+            elif table_name == "order_items":
+                await db.execute(
+                    text("""
+                        DELETE FROM order_items
+                        WHERE order_id IN (
+                            SELECT id FROM orders
+                            WHERE user_id IN (SELECT id FROM customers)
+                        )
+                    """                )
+                )
+            elif table_name in ("order_status_history", "payments"):
+                await db.execute(
+                    text(f"""
+                        DELETE FROM {table_name}
+                        WHERE order_id IN (
+                            SELECT id FROM orders
+                            WHERE user_id IN (SELECT id FROM customers)
+                        )
+                    """                    )
+                )
+            elif table_name == "feedback":
+                await db.execute(
+                    text("""
+                        DELETE FROM feedback
+                        WHERE order_id IN (
+                            SELECT id FROM orders
+                            WHERE user_id IN (SELECT id FROM customers)
+                        )
+                    """                    )
+                )
+            elif table_name == "audit_log":
+                await db.execute(
+                    text("""
+                        DELETE FROM audit_log
+                        WHERE user_id IN (SELECT id FROM customers)
+                    """                    )
+                )
+            else:
+                await db.execute(
+                    text(f"""
+                        DELETE FROM {table_name}
+                        WHERE user_id IN (SELECT id FROM customers)
+                    """                    )
+                )
+            deleted_counts[table_name] = "ok"
+        except Exception as e:
+            await db.execute(text(f"ROLLBACK TO SAVEPOINT {savepoint_name}"))
+            deleted_counts[table_name] = f"ERROR: {str(e)[:80]}"
+
+    try:
+        await db.execute(text("DELETE FROM wallet_transactions"))
+        deleted_counts["wallet_transactions"] = "ok_all"
+    except Exception as e:
+        deleted_counts["wallet_transactions"] = f"ERROR: {str(e)[:80]}"
+
+    try:
+        await db.execute(text("DELETE FROM wallets"))
+        deleted_counts["wallets"] = "ok_all"
+    except Exception as e:
+        deleted_counts["wallets"] = f"ERROR: {str(e)[:80]}"
+
+    ip = get_client_ip(request)
+    await log_action(
+        db,
+        action="RESET_ALL_CUSTOMERS",
+        user_id=user.id,
+        entity_type="system",
+        entity_id=None,
+        details={"deleted_tables": deleted_counts},
+        ip_address=ip,
+    )
+
+    return {
+        "message": "All customer data deleted successfully",
+        "deleted_counts": deleted_counts,
+    }
 
 
 @router.post("/wallet/topup")

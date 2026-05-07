@@ -86,25 +86,24 @@ async def admin_update_store(
     return {"id": store.id, "name": store.name, "slug": store.slug}
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.delete("/stores/{store_id}")
-# async def delete_store(
-#     store_id: int,
-#     request: Request,
-#     user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
-#     db: AsyncSession = Depends(get_db),
-# ):
-#     """Soft-delete a store (sets is_active=false)."""
-#     if store_id == 0:
-#         raise HTTPException(status_code=400, detail="HQ store cannot be deactivated")
-#     result = await db.execute(select(Store).where(Store.id == store_id))
-#     store = result.scalar_one_or_none()
-#     if not store:
-#         raise HTTPException(404, "Store not found")
-#     store.is_active = False
-#     ip = get_client_ip(request)
-#     await log_action(db, action="DELETE_STORE", user_id=user.id, entity_type="store", entity_id=store_id, details={"name": store.name}, ip_address=ip)
-#     return {"message": "Store deactivated", "id": store_id}
+@router.delete("/stores/{store_id}")
+async def delete_store(
+    store_id: int,
+    request: Request,
+    user: AdminUser = Depends(require_role(RoleIDs.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft-delete a store (sets is_active=false)."""
+    if store_id == 0:
+        raise HTTPException(status_code=400, detail="HQ store cannot be deactivated")
+    result = await db.execute(select(Store).where(Store.id == store_id))
+    store = result.scalar_one_or_none()
+    if not store:
+        raise HTTPException(404, "Store not found")
+    store.is_active = False
+    ip = get_client_ip(request)
+    await log_action(db, action="DELETE_STORE", user_id=user.id, entity_type="store", entity_id=store_id, details={"name": store.name}, ip_address=ip)
+    return {"message": "Store deactivated", "id": store_id}
 
 
 @router.patch("/stores/{store_id}/toggle")

@@ -467,17 +467,16 @@ async def register_device_token(req: DeviceTokenRequest, user: Customer = Depend
     return {"message": "Device token registered"}
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.delete("/device-token")
-# async def unregister_device_token(token: str, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-#     result = await db.execute(
-#         select(CustomerDeviceToken).where(CustomerDeviceToken.customer_id == user.id, CustomerDeviceToken.token == token)
-#     )
-#     dt = result.scalar_one_or_none()
-#     if dt:
-#         await db.delete(dt)
-#         await db.flush()
-#     return {"message": "Device token removed"}
+@router.delete("/device-token")
+async def unregister_device_token(token: str, user: Customer = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(CustomerDeviceToken).where(CustomerDeviceToken.customer_id == user.id, CustomerDeviceToken.token == token)
+    )
+    dt = result.scalar_one_or_none()
+    if dt:
+        await db.delete(dt)
+        await db.flush()
+    return {"message": "Device token removed"}
 
 
 from pydantic import BaseModel

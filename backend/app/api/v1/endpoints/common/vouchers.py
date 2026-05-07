@@ -358,86 +358,84 @@ async def apply_voucher(
     )
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.post("/use/{code}", response_model=UseResult)
-# async def use_voucher(
-#     code: str,
-#     req: UseRequest,
-#     user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN, RoleIDs.BRAND_OWNER)),
-#     db: AsyncSession = Depends(get_db),
-# ):
-#     """
-#     Use/consume a voucher instance at checkout.
-#     
-#     Barista/cashier scans the per-instance code (e.g. WELCOME10-A3F2B1).
-#     Sets status='used', used_at=now, links order_id if provided.
-#     Also increments voucher catalog used_count.
-#     """
-#     now = now_utc()
-# 
-#     # Find instance by code (with row lock to prevent race conditions)
-#     uv_result = await db.execute(
-#         select(UserVoucher).where(UserVoucher.code == code).with_for_update()
-#     )
-#     uv = uv_result.scalar_one_or_none()
-#     if not uv:
-#         raise HTTPException(404, "Voucher code not found")
-# 
-#     if uv.status != "available":
-#         raise HTTPException(400, f"Voucher is already {uv.status}")
-# 
-#     if uv.expires_at and ensure_utc(uv.expires_at) < now:
-#         raise HTTPException(400, "Voucher has expired")
-# 
-#     # Mark used
-#     uv.status = "used"
-#     uv.used_at = now
-#     if req.order_id:
-#         uv.order_id = req.order_id
-#     if req.store_id:
-#         uv.store_id = req.store_id
-# 
-#     # Increment catalog used_count (atomic update)
-#     await db.execute(
-#         update(Voucher).where(Voucher.id == uv.voucher_id).values(used_count=Voucher.used_count + 1)
-#     )
-# 
-#     # Fetch voucher for response data
-#     v_result = await db.execute(select(Voucher).where(Voucher.id == uv.voucher_id))
-#     voucher = v_result.scalar_one_or_none()
-# 
-#     # Compute discount for response
-#     discount_type = uv.discount_type or (voucher.discount_type.value if voucher and hasattr(voucher.discount_type, 'value') else None)
-#     discount_value = to_float(uv.discount_value) if uv.discount_value else (to_float(voucher.discount_value) if voucher else 0)
-# 
-# 
-#     return UseResult(
-#         success=True,
-#         message="Voucher applied successfully",
-#         discount_type=discount_type,
-#         discount_value=discount_value,
-#     )
+@router.post("/use/{code}", response_model=UseResult)
+async def use_voucher(
+    code: str,
+    req: UseRequest,
+    user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN, RoleIDs.BRAND_OWNER)),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Use/consume a voucher instance at checkout.
+    
+    Barista/cashier scans the per-instance code (e.g. WELCOME10-A3F2B1).
+    Sets status='used', used_at=now, links order_id if provided.
+    Also increments voucher catalog used_count.
+    """
+    now = now_utc()
+
+    # Find instance by code (with row lock to prevent race conditions)
+    uv_result = await db.execute(
+        select(UserVoucher).where(UserVoucher.code == code).with_for_update()
+    )
+    uv = uv_result.scalar_one_or_none()
+    if not uv:
+        raise HTTPException(404, "Voucher code not found")
+
+    if uv.status != "available":
+        raise HTTPException(400, f"Voucher is already {uv.status}")
+
+    if uv.expires_at and ensure_utc(uv.expires_at) < now:
+        raise HTTPException(400, "Voucher has expired")
+
+    # Mark used
+    uv.status = "used"
+    uv.used_at = now
+    if req.order_id:
+        uv.order_id = req.order_id
+    if req.store_id:
+        uv.store_id = req.store_id
+
+    # Increment catalog used_count (atomic update)
+    await db.execute(
+        update(Voucher).where(Voucher.id == uv.voucher_id).values(used_count=Voucher.used_count + 1)
+    )
+
+    # Fetch voucher for response data
+    v_result = await db.execute(select(Voucher).where(Voucher.id == uv.voucher_id))
+    voucher = v_result.scalar_one_or_none()
+
+    # Compute discount for response
+    discount_type = uv.discount_type or (voucher.discount_type.value if voucher and hasattr(voucher.discount_type, 'value') else None)
+    discount_value = to_float(uv.discount_value) if uv.discount_value else (to_float(voucher.discount_value) if voucher else 0)
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.delete("/me/{voucher_instance_id}")
-# async def discard_voucher(
-#     voucher_instance_id: int,
-#     user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
-#     db: AsyncSession = Depends(get_db),
-# ):
-#     """Discard an unwanted voucher from the customer's wallet."""
-#     result = await db.execute(
-#         select(UserVoucher).where(
-#             UserVoucher.id == voucher_instance_id,
-#             UserVoucher.user_id == user.id,
-#         )
-#     )
-#     uv = result.scalar_one_or_none()
-#     if not uv:
-#         raise HTTPException(status_code=404, detail="Voucher not found in your wallet")
-#     if uv.status == "used":
-#         raise HTTPException(status_code=400, detail="Cannot discard a used voucher")
-#     uv.status = "discarded"
-#     await db.flush()
-#     return {"message": "Voucher discarded", "id": voucher_instance_id}
+    return UseResult(
+        success=True,
+        message="Voucher applied successfully",
+        discount_type=discount_type,
+        discount_value=discount_value,
+    )
+
+
+@router.delete("/me/{voucher_instance_id}")
+async def discard_voucher(
+    voucher_instance_id: int,
+    user: Customer = Depends(require_role(RoleIDs.CUSTOMER, RoleIDs.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Discard an unwanted voucher from the customer's wallet."""
+    result = await db.execute(
+        select(UserVoucher).where(
+            UserVoucher.id == voucher_instance_id,
+            UserVoucher.user_id == user.id,
+        )
+    )
+    uv = result.scalar_one_or_none()
+    if not uv:
+        raise HTTPException(status_code=404, detail="Voucher not found in your wallet")
+    if uv.status == "used":
+        raise HTTPException(status_code=400, detail="Cannot discard a used voucher")
+    uv.status = "discarded"
+    await db.flush()
+    return {"message": "Voucher discarded", "id": voucher_instance_id}

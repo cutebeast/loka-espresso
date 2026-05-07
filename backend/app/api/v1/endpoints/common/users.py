@@ -155,10 +155,9 @@ async def delete_address(address_id: int, user=Depends(get_current_user), db: As
     return {"message": "Address deleted"}
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.delete("/me")
-# async def delete_me(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-#     """Self-account deletion. Deactivates the account (soft-delete)."""
-#     user.is_active = False
-#     await db.flush()
-#     return {"message": "Account deactivated"}
+@router.delete("/me")
+async def delete_me(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Self-account deletion. Deactivates the account (soft-delete)."""
+    user.is_active = False
+    await db.flush()
+    return {"message": "Account deactivated"}
