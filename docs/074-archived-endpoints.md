@@ -1,115 +1,31 @@
-# Archived Endpoints — FNB Super App
+# Endpoint Cleanup — FNB Super App
 
-> Created: 2026-05-07 | 24 endpoints archived, 8 models deleted
-
-All endpoints below are archived (commented out) with `# ARCHIVED:` markers.
-To restore, remove the `# ` prefix from each line.
+> Updated: 2026-05-07 | Verified against `050-api-reference.md`
 
 ---
 
-## Archived Endpoints (24)
+## Removed Endpoints (2)
 
-### Auth
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| DELETE | `/api/v1/auth/device-token` | `common/auth.py` | No unregister UI in PWA |
+These were removed after confirming zero callers anywhere in the codebase or documentation:
 
-### Users
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| DELETE | `/api/v1/users/me` | `common/users.py` | No account deletion UI |
-
-### Cart
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| DELETE | `/api/v1/cart` | `pwa/cart.py` | Items deleted individually, never full clear |
-
-### Vouchers
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| POST | `/api/v1/vouchers/use/{code}` | `common/vouchers.py` | Validate + apply flow used instead |
-| DELETE | `/api/v1/vouchers/me/{id}` | `common/vouchers.py` | No delete voucher UI |
-
-### Notifications
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| PUT | `/api/v1/notifications/read-all` | `common/notifications.py` | Individual mark-read used |
-
-### Tables
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| GET | `/api/v1/tables/{table_id}` | `common/tables.py` | Table lookup via scan only |
-| POST | `/api/v1/tables/{table_id}/release` | `common/tables.py` | No dine-in release UI |
-
-### Upload
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| GET | `/api/v1/upload/files/{path}` | `common/upload.py` | StaticFiles mount serves `/uploads/` directly |
-
-### Orders
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| POST | `/api/v1/orders/{id}/pos-synced` | `common/order_webhooks.py` | POS not yet integrated |
-| POST | `/api/v1/orders/{id}/delivery-dispatched` | `common/order_webhooks.py` | Delivery not yet integrated |
-
-### Payments
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| POST | `/api/v1/payments/methods` | `common/payments.py` | No add payment method UI |
-
-### Admin — Menu
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| DELETE | `/api/v1/admin/categories/{id}` | `admin/admin_menu.py` | Soft-delete via toggle |
-
-### Admin — Stores
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| DELETE | `/api/v1/admin/stores/{id}` | `admin/admin_stores.py` | No store delete UI |
-
-### Admin — PWA Management
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| GET | `/api/v1/admin/pwa/version` | `admin/admin_pwa_mgmt.py` | Not wired to UI |
-
-### Admin — Customers
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| PUT | `/api/v1/admin/customers/{id}` | `admin/admin_customer_actions.py` | No edit customer UI |
-| DELETE | `/api/v1/admin/customers/reset` | `admin/admin_customer_actions.py` | No caller, dangerous operation |
-
-### Admin — Feedback
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| POST | `/api/v1/admin/feedback/{id}/reply` | `admin/admin_feedback.py` | PUT variant is used |
-| POST | `/api/v1/admin/feedback` | `admin/admin_feedback.py` | Feedback via PWA only |
-| PUT | `/api/v1/admin/feedback/{id}` | `admin/admin_feedback.py` | Not in UI |
-| DELETE | `/api/v1/admin/feedback/{id}` | `admin/admin_feedback.py` | Not in UI |
-
-### Admin — Reports
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| GET | `/api/v1/admin/export` | `admin/admin_reports_store.py` | Not wired to UI |
-| GET | `/api/v1/admin/reports/marketing/paginated` | `admin/admin_reports.py` | Un-paginated `/reports/marketing` used |
-
-### Admin — Orders
-| Method | Path | File | Reason |
-|--------|------|------|--------|
-| PATCH | `/api/v1/admin/orders/{id}/delivery-tracking` | `admin/admin_dashboard.py` | Not in UI |
+| Method | Path | File | Verification |
+|--------|------|------|-------------|
+| POST | `/api/v1/admin/feedback` | `admin/admin_feedback.py` | Not in `050-api-reference.md`. PWA creates feedback (`POST /feedback`), admin never creates feedback. Confirmed zero frontend/PWA calls. |
+| GET | `/api/v1/admin/export` | `admin/admin_reports_store.py` | Not in `050-api-reference.md`. CSV export via `GET /admin/reports/csv` was wired to SalesReportsPage (commit `2bfb689`). Confirmed zero callers. |
 
 ---
 
-## Deleted Models (8)
+## Deleted Models (9 from compliance.py)
 
-Removed from `models/compliance.py` entirely:
+All removed in commit `9c95dae`. Per `050-api-reference.md:416-427`, these were "Phase 2" planned models that were scaffolded early but never wired to endpoints or UI. DB tables still exist (migrations not reverted).
 
-| Model | DB Table | Replaced By |
-|-------|----------|-------------|
-| Allergen | `allergens` | `MenuItem.dietary_tags` (JSON) |
-| MenuItemAllergen | `menu_item_allergens` | Same as above |
-| ModifierGroup | `modifier_groups` | `CustomizationOption` (marketing.py) |
-| ModifierOption | `modifier_options` | `CustomizationOption` (marketing.py) |
-| DeliveryZone | `delivery_zones` | `Store.delivery_radius_km` |
+| Model | DB Table | Status |
+|-------|----------|--------|
+| Allergen | `allergens` | `MenuItem.dietary_tags` (JSON) is the active dietary label feature |
+| MenuItemAllergen | `menu_item_allergens` | Junction for Allergen — same as above |
+| ModifierGroup | `modifier_groups` | `CustomizationOption` (marketing.py) is the active customization feature |
+| ModifierOption | `modifier_options` | Same — part of ModifierGroup system |
+| DeliveryZone | `delivery_zones` | Delivery radius uses `Store.delivery_radius_km` (commerce.py:100-115) |
 | TaxRate | `tax_rates` | Not yet implemented |
 | TaxCategory | `tax_categories` | Not yet implemented |
 | RecipeItem | `recipe_items` | Not yet implemented |
@@ -117,11 +33,33 @@ Removed from `models/compliance.py` entirely:
 
 ---
 
+## Fixes Applied (This Session)
+
+| Commit | Description |
+|--------|-------------|
+| `fbaa3f2` | Batch 1-3: security hardening, N+1 perf, code quality |
+| `bdde919` | email-validator dependency, rate limit Request params |
+| `72693dc` | OTP bypass DB-only (removed from env vars) |
+| `6e98f89` | Fix query key: `otp_bypass_enabled` (not `_allowed`) |
+| `1632edd` | Batch 4: code cleanup, MP4 magic bytes, gitignore, Safari compat |
+| `aba2a5e` | Batch 5: cart sync on reconnect, auth:expired event, fnb-manage cleanup |
+| `9c95dae` | Remove 9 orphaned compliance.py models |
+| `25712b4` | WCAG copper contrast, sidebar CSS improvements, OTP limiter docs |
+| `2bfb689` | Wire survey export + sales CSV export buttons |
+| `a1c2e38` | Archive 24 endpoints (MOSTLY WRONG — restored later) |
+| `d538441` | Docs update |
+| `5ee0e71` | Replace in-process OTP rate limiter with Redis |
+| `2654261` | Reward checkout fix + restore tables/release |
+| `4c4c58c` | Restore 19 wrongly archived endpoints |
+| `71e4394` | Restore upload/files, remove 2 dead endpoints |
+
+---
+
 ## Endpoint Stats
 
-| Category | Before | After | Removed |
-|----------|:------:|:-----:|:-------:|
-| Total endpoints | 244 | 220 | 24 |
-| Orphaned models deleted | 9 | 0 | 9 |
-| Dead endpoints archived | 24 | 0 | 24 |
-| Truly active | ~190 | ~190 | — |
+| Category | Count |
+|----------|:-----:|
+| Total registered endpoints | 244 |
+| Truly removed (dead, unarchived) | 2 |
+| Orphaned models deleted | 9 |
+| All documented endpoints active | 242 |

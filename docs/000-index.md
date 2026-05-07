@@ -58,8 +58,7 @@
 | 070 | [070-design-system.md](070-design-system.md) — Brand colors, typography, CSS |
 | 071 | [071-pwa-guide.md](071-pwa-guide.md) — PWA architecture, pages, patterns |
 | 072 | [072-admin-guide.md](072-admin-guide.md) — Admin frontend, roles, pages |
-| 073 | [073-endpoint-audit.md](073-endpoint-audit.md) — Full API endpoint audit |
-| 074 | [074-archived-endpoints.md](074-archived-endpoints.md) — Archived + deleted endpoints/models |
+| 074 | [074-archived-endpoints.md](074-archived-endpoints.md) — Removed endpoints + deleted models |
 
 ## Archive
 

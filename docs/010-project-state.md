@@ -1,6 +1,6 @@
 # Loka Espresso — Project State (2026-05-07)
 
-> 6 commits of security hardening + N+1 performance + code quality. 24 dead endpoints archived, 9 orphaned models deleted. 35 endpoints tested — all 200/401 as expected. OTP bypass DB-only. Export buttons wired for surveys + sales reports.
+> Security hardening + N+1 performance + code quality. 2 dead endpoints removed, 9 orphaned models deleted. OTP bypass DB-only. Redis-based OTP rate limiter. Reward checkout fix applied. Survey + sales CSV export buttons wired.
 
 ---
 
@@ -250,12 +250,10 @@ Auth (22): `/users/*`, `/wallet/*`, `/loyalty/*`, `/orders`, `/notifications/*`,
 
 | Priority | Item |
 |----------|------|
-| HIGH | Partial DB customer reset uses per-table savepoints — orphaned data risk |
-| MEDIUM | In-process OTP rate limiter not shared across replicas |
+| HIGH | Partial DB customer reset uses per-table savepoints — orphaned data risk on partial failure |
 | MEDIUM | `PageRenderer` re-renders all page components on any state change |
 | LOW | 46 Pydantic v1 `class Config` blocks → `ConfigDict` migration |
 | LOW | 42 `!important` CSS declarations |
-| LOW | WCAG copper accent contrast 2.36:1 |
 | LOW | Zero automated tests across all 3 apps |
-| LOW | `bleach` has 1 import (`sanitization.py`) but is unused; kept for future safety
-| LOW | `MarketingCampaign` read-only (no create/update/delete endpoints)
+| NOTE | `python-jose[cryptography]` in requirements.txt — code uses `import jwt` (PyJWT from twilio dep), not `import jose`. Can replace with explicit `pyjwt` dependency. |
+| NOTE | `zod` in customer-app `package.json` — zero imports. Can remove.
