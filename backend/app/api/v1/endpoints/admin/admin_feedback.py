@@ -180,24 +180,6 @@ async def update_feedback_reply(
     return {"message": "Reply updated", "id": feedback.id}
 
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.post("/feedback", response_model=FeedbackOut)
-# async def create_feedback(
-#     data: FeedbackCreate,
-#     db: AsyncSession = Depends(get_db),
-#     user: AdminUser = Depends(get_current_user),
-# ):
-#     # Sanitize user input to prevent XSS
-#     sanitized_data = data.model_dump()
-#     sanitized_data["comment"] = sanitize_text_field(sanitized_data.get("comment"), max_length=2000)
-#     
-#     obj = Feedback(user_id=user.id, customer_id=user.id, **sanitized_data)
-#     db.add(obj)
-#     await db.flush()
-#     await db.refresh(obj)
-#     return obj
-
-
 @router.put("/feedback/{feedback_id}")
 async def update_feedback(
     feedback_id: int,

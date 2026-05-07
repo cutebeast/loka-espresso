@@ -198,35 +198,34 @@ async def upload_document(
 # Authenticated file serving endpoint (replaces public StaticFiles)
 # ---------------------------------------------------------------------------
 
-# ARCHIVED: no frontend/PWA caller — safe to restore if needed
-# @router.get("/files/{path:path}")
-# async def serve_upload(
-#     path: str,
-#     user: AdminUser | Customer = Depends(get_current_user),
-# ):
-#     """
-#     Serve uploaded files with authentication.
-#     Replaces the public `/uploads` StaticFiles mount.
-#     Any authenticated user (admin or customer) can access files.
-#     """
-#     settings = get_settings()
-#     base_dir = os.path.abspath(settings.UPLOAD_DIR)
-# 
-#     # Prevent path traversal attacks
-#     requested_path = os.path.abspath(os.path.join(base_dir, path))
-#     if not requested_path.startswith(base_dir):
-#         raise HTTPException(status_code=403, detail="Access denied")
-# 
-#     if not os.path.exists(requested_path) or not os.path.isfile(requested_path):
-#         raise HTTPException(status_code=404, detail="File not found")
-# 
-#     # Guess MIME type from file extension
-#     mime_type, _ = mimetypes.guess_type(requested_path)
-#     if not mime_type:
-#         mime_type = "application/octet-stream"
-# 
-#     return FileResponse(
-#         path=requested_path,
-#         media_type=mime_type,
-#         filename=os.path.basename(requested_path),
-#     )
+@router.get("/files/{path:path}")
+async def serve_upload(
+    path: str,
+    user: AdminUser | Customer = Depends(get_current_user),
+):
+    """
+    Serve uploaded files with authentication.
+    Replaces the public `/uploads` StaticFiles mount.
+    Any authenticated user (admin or customer) can access files.
+    """
+    settings = get_settings()
+    base_dir = os.path.abspath(settings.UPLOAD_DIR)
+
+    # Prevent path traversal attacks
+    requested_path = os.path.abspath(os.path.join(base_dir, path))
+    if not requested_path.startswith(base_dir):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not os.path.exists(requested_path) or not os.path.isfile(requested_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Guess MIME type from file extension
+    mime_type, _ = mimetypes.guess_type(requested_path)
+    if not mime_type:
+        mime_type = "application/octet-stream"
+
+    return FileResponse(
+        path=requested_path,
+        media_type=mime_type,
+        filename=os.path.basename(requested_path),
+    )
