@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -14,8 +14,7 @@ class CustomerOut(BaseModel):
     total_spent: float = 0
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CustomerDetailOut(BaseModel):
@@ -33,8 +32,7 @@ class CustomerDetailOut(BaseModel):
     created_at: Optional[datetime] = None
     recent_orders: list = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AdjustPointsRequest(BaseModel):

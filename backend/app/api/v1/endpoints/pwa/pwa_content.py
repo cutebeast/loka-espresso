@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func, or_
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,7 @@ class InformationCardOut(BaseModel):
     action_type: Optional[str] = None
     action_label: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 @router.get("/information", response_model=List[InformationCardOut])
@@ -121,8 +120,7 @@ class SystemContentOut(BaseModel):
     content_type: str = "system"
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 @router.get("/legal/{content_key}", response_model=SystemContentOut)

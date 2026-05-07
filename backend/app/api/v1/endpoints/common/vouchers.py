@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 
 from app.core.database import get_db
@@ -39,8 +39,7 @@ class VoucherWalletOut(BaseModel):
     voucher_title: Optional[str] = None
     voucher_image_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ValidateResult(BaseModel):

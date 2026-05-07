@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 
 from app.core.database import get_db
@@ -39,8 +39,7 @@ class WalletRewardOut(BaseModel):
     used_at: Optional[datetime] = None
     reward_snapshot: Optional[dict] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WalletVoucherOut(BaseModel):
@@ -59,8 +58,7 @@ class WalletVoucherOut(BaseModel):
     expires_at: Optional[datetime] = None
     used_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WalletCashOut(BaseModel):

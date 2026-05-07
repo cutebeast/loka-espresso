@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -21,8 +21,7 @@ class StoreOut(BaseModel):
     delivery_integration_enabled: bool = False
     is_active: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StoreUpdate(BaseModel):
@@ -65,8 +64,7 @@ class StoreTableOut(BaseModel):
     is_active: bool = True
     is_occupied: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TableCreate(BaseModel):

@@ -1,5 +1,5 @@
 from pathlib import Path
-from pydantic import field_validator
+from pydantic import field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 

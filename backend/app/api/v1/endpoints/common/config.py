@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 
 from app.core.database import get_db
@@ -108,8 +108,7 @@ class TierBootstrapOut(BaseModel):
     benefits: Optional[dict] = None
     sort_order: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BootstrapOut(BaseModel):

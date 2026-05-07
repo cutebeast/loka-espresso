@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 
 from app.core.database import get_db
@@ -42,8 +42,7 @@ class PromoBannerPwaOut(BaseModel):
     voucher_discount_type: Optional[str] = None
     voucher_discount_value: Optional[float] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ClaimResult(BaseModel):

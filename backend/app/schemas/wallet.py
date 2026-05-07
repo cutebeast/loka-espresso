@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -9,8 +9,7 @@ class WalletOut(BaseModel):
     balance: float
     currency: str = "MYR"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WalletTopup(BaseModel):
@@ -51,8 +50,7 @@ class WalletTransactionOut(BaseModel):
     user_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AdminWalletTopupRequest(BaseModel):

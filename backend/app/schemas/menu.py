@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -10,8 +10,7 @@ class MenuCategoryOut(BaseModel):
     display_order: int = 0
     is_active: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CategoryCreate(BaseModel):
@@ -34,8 +33,7 @@ class MenuItemOut(BaseModel):
     dietary_tags: Optional[list] = None
     customization_count: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MenuItemCreate(BaseModel):
@@ -70,8 +68,7 @@ class InventoryCategoryOut(BaseModel):
     display_order: int = 0
     is_active: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InventoryCategoryCreate(BaseModel):
@@ -92,8 +89,7 @@ class InventoryItemOut(BaseModel):
     category_id: Optional[int] = None
     category_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InventoryItemCreate(BaseModel):
@@ -134,8 +130,7 @@ class InventoryMovementOut(BaseModel):
     created_by_name: Optional[str] = None
     created_at: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CustomizationCreate(BaseModel):

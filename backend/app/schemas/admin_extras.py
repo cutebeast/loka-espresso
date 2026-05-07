@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
@@ -42,8 +42,7 @@ class StaffOut(BaseModel):
     is_active: bool
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StaffShiftOut(BaseModel):
@@ -54,8 +53,7 @@ class StaffShiftOut(BaseModel):
     clock_out: Optional[datetime] = None
     notes: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ClockInRequest(BaseModel):
@@ -84,8 +82,7 @@ class FeedbackOut(BaseModel):
     user_name: Optional[str] = None
     store_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FeedbackReply(BaseModel):
@@ -111,8 +108,7 @@ class AuditLogOut(BaseModel):
     user_email: Optional[str] = None
     store_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BroadcastCreate(BaseModel):
@@ -152,8 +148,7 @@ class BroadcastOut(BaseModel):
     status: str = "draft"
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TemplateCreate(BaseModel):
@@ -176,8 +171,7 @@ class TemplateOut(BaseModel):
     is_active: bool = True
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PromoBannerCreate(BaseModel):
@@ -231,8 +225,7 @@ class PromoBannerOut(BaseModel):
     how_to_redeem: Optional[str] = None
     long_description: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LoyaltyTierOut(BaseModel):
@@ -243,8 +236,7 @@ class LoyaltyTierOut(BaseModel):
     benefits: Optional[dict] = None
     sort_order: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LoyaltyTierUpdate(BaseModel):

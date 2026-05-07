@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Optional
 from datetime import datetime
 from app.models.order import OrderType, OrderStatus
@@ -51,8 +51,7 @@ class OrderItemOut(BaseModel):
     customizations: Optional[dict] = None
     line_total: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderOut(BaseModel):
@@ -101,8 +100,7 @@ class OrderOut(BaseModel):
     updated_at: Optional[datetime] = None
     status_timeline: Optional[list[dict]] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderListOut(BaseModel):

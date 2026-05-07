@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
@@ -23,8 +23,7 @@ class RewardOut(BaseModel):
     long_description: Optional[str] = None
     validity_days: Optional[int] = 30
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RewardCreate(BaseModel):

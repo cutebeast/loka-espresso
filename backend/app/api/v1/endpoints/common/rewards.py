@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 
 from app.core.database import get_db
@@ -39,8 +39,7 @@ class RewardCatalogOut(BaseModel):
     terms: Optional[List[str]] = None
     how_to_redeem: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RewardDetailOut(BaseModel):
@@ -59,8 +58,7 @@ class RewardDetailOut(BaseModel):
     stock_limit: Optional[int] = None
     total_redeemed: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RedeemResult(BaseModel):

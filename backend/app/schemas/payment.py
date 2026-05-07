@@ -1,4 +1,4 @@
-from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator, ConfigDict
 from typing import Optional
 
 
@@ -22,8 +22,7 @@ class PaymentMethodOut(BaseModel):
     last4: Optional[str] = None
     is_default: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaymentMethodCreate(BaseModel):

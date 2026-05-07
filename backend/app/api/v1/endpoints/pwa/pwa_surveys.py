@@ -6,7 +6,7 @@ GET /surveys/{id} — get survey detail + questions for PWA
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 
 from app.core.database import get_db
@@ -32,8 +32,7 @@ class SurveyQuestionPwaOut(BaseModel):
     is_required: bool = True
     sort_order: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SurveyPwaOut(BaseModel):
@@ -44,8 +43,7 @@ class SurveyPwaOut(BaseModel):
     has_reward: bool
     questions: List[SurveyQuestionPwaOut]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AnswerIn(BaseModel):

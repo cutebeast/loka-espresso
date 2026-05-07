@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime, date
 
@@ -45,8 +45,7 @@ class AddressOut(BaseModel):
     lng: Optional[float] = None
     is_default: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserOut(BaseModel):
@@ -63,8 +62,7 @@ class UserOut(BaseModel):
     date_of_birth: Optional[date] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserUpdate(BaseModel):
