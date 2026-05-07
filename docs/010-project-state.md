@@ -248,12 +248,12 @@ Auth (22): `/users/*`, `/wallet/*`, `/loyalty/*`, `/orders`, `/notifications/*`,
 
 ## 15. Known Remaining Items
 
-| Priority | Item |
-|----------|------|
-| HIGH | Partial DB customer reset uses per-table savepoints — orphaned data risk on partial failure |
-| MEDIUM | `PageRenderer` re-renders all page components on any state change |
-| LOW | 46 Pydantic v1 `class Config` blocks → `ConfigDict` migration |
-| LOW | 42 `!important` CSS declarations |
-| LOW | Zero automated tests across all 3 apps |
-| NOTE | `python-jose[cryptography]` in requirements.txt — code uses `import jwt` (PyJWT from twilio dep), not `import jose`. Can replace with explicit `pyjwt` dependency. |
-| NOTE | `zod` in customer-app `package.json` — zero imports. Can remove.
+| Priority | Item | Notes |
+|----------|------|-------|
+| HIGH | DB customer reset uses per-table savepoints | Orphaned data risk on partial failure. Requires transaction refactor. |
+| MEDIUM | `PageRenderer` re-renders all page components on any state change | `page.tsx:69` — 30+ props. Requires per-component store subscriptions. |
+| LOW | 42 `!important` CSS declarations | Legitimate responsive overrides in `@media` blocks. Low risk. |
+| LOW | Zero automated tests | 31 seed scripts exist in `scripts/seed/`. Need API updates to match current endpoints. Framework is functional. |
+| NOTE | `python-jose` removed, `pyjwt` added explicitly | Done in `5de872b`. |
+| NOTE | `zod` removed from PWA package.json | Done in `5de872b`. |
+| NOTE | Admin credentials documented | `.env` + `.env.example` have `ADMIN_EMAIL`/`ADMIN_PASS` for seed scripts. |
