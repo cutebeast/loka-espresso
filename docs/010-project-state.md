@@ -251,9 +251,44 @@ Auth (22): `/users/*`, `/wallet/*`, `/loyalty/*`, `/orders`, `/notifications/*`,
 | Priority | Item | Notes |
 |----------|------|-------|
 | HIGH | DB customer reset uses per-table savepoints | Orphaned data risk on partial failure. Requires transaction refactor. |
-| MEDIUM | `PageRenderer` re-renders all page components on any state change | `page.tsx:69` — 30+ props. Requires per-component store subscriptions. |
-| LOW | 42 `!important` CSS declarations | Legitimate responsive overrides in `@media` blocks. Low risk. |
-| LOW | Zero automated tests | 31 seed scripts exist in `scripts/seed/`. Need API updates to match current endpoints. Framework is functional. |
-| NOTE | `python-jose` removed, `pyjwt` added explicitly | Done in `5de872b`. |
-| NOTE | `zod` removed from PWA package.json | Done in `5de872b`. |
-| NOTE | Admin credentials documented | `.env` + `.env.example` have `ADMIN_EMAIL`/`ADMIN_PASS` for seed scripts. |
+| MEDIUM | `PageRenderer` re-renders all page components | `page.tsx:69` — 30+ props. Requires per-component store subscriptions. |
+| LOW | 42 `!important` CSS declarations | Legitimate responsive overrides in `@media` blocks. |
+| LOW | Seed test scripts need API updates | 9 base scripts pass. 5 customer-flow scripts need cookie-based auth updates. `shared_config.py` now has `customer_token()` helper. |
+
+## 16. Planned Integrations (Not Yet Implemented)
+
+Per `050-api-reference.md:466-470`, these are internal contracts ready for real provider integration:
+
+| Integration | Status | Endpoints |
+|-------------|--------|-----------|
+| Payment Gateway | Mock servers exist (`mock_pg_server.py`). PWA checkout uses wallet. | `POST /payments/create-intent`, `POST /payments/confirm`, `POST /wallet/webhook/pg-payment` |
+| Delivery (3PL) | Mock servers exist (`mock_delivery_server.py`). Delivery order flow works without external provider. | `POST /orders/{id}/delivery-webhook` |
+| POS Integration | Mock servers exist (`mock_pos_server.py`). Manual mode active. | `POST /orders/{id}/pos-webhook` |
+
+## 17. Known Orphaned DB Columns (35 — documented, not removed)
+
+These columns are defined in models and migrations but have zero read access in any endpoint. Write-only or never accessed. Documented for reference when cleaning up DB schema.
+
+| Model | Column | Status |
+|-------|--------|--------|
+| SplashContent | ALL 13 columns | Entire model orphaned — no endpoint |
+| MenuItem | popularity | Never populated or read |
+| OrderItem | customizations | CartItem.customization_option_ids used instead |
+| Notification | data, image_url | Not in NotificationOut schema |
+| LoyaltyTier | benefits | Never serialized |
+| MarketingCampaign | provider_campaign_id, created_by | Write-only |
+| NotificationTemplate | created_by | Write-only |
+| Payment | idempotency_key | Write-only |
+| UserVoucher | source_id, reserved_at | Write-only |
+| Order | delivery_quote_id, delivery_last_event_at | Write-only |
+| StaffShift | notes | Write-only |
+| UserType | description | Never read |
+| Role | typical_user_type_id | Never joined |
+| Permission | resource, action | Never read |
+| UserStoreAccess | assigned_by, is_primary | Write-only |
+| OTPSession | send_count, provider | Write-only |
+| DeviceToken, CustomerDeviceToken | platform | Write-only |
+| AdminUser | user_type_rel, role_rel | Relationships never traversed |
+| Referral | referrer, invitee | Relationships never traversed |
+| LoyaltyTransaction | created_by_user | Relationship never traversed |
+| RoleUserType | ALL columns | Dead join table |

@@ -55,6 +55,7 @@ STORE_IDS = [1, 2, 3, 4, 5]
 # ── Date Generation Helpers ───────────────────────────────────────
 # For spreading orders over a date range (e.g., 60 days)
 import random
+import uuid
 from datetime import datetime, timezone, timedelta
 
 def rand_date_within_days(days_back=60, hours_forward=4):
@@ -383,6 +384,63 @@ def get_available_tables(store_id: int):
     """Get available (non-occupied) tables for a store."""
     tables = get_store_tables(store_id)
     return [t for t in tables if t.get("is_active") and not t.get("is_occupied")]
+
+
+# ── New Customer Registration (cookie-based auth) ───────────────────
+# verify-otp now sets access_token via httpOnly cookies, not in response body.
+# This helper extracts the token from Set-Cookie header.
+
+def customer_token():
+    """Register a new customer via OTP flow. Returns (token, user_data) or None."""
+    import time, requests
+    
+    phone = rand_phone()
+    name = rand_name()
+    email = f"{name.lower().replace(' ','.')}.{uuid.uuid4().hex[:6]}@test.my"
+    
+    # Step 1: send-otp
+    resp = requests.post(f"{API_BASE}/auth/send-otp", json={"phone": phone}, timeout=10)
+    if resp.status_code != 200:
+        return None
+    session_id = resp.json().get("session_id")
+    
+    # Step 2: get OTP code via admin API
+    time.sleep(0.3)
+    tok = admin_token()
+    otp_code = None
+    try:
+        resp = requests.get(f"{API_BASE}/admin/otps", params={"phone": phone},
+                           headers={"Authorization": f"Bearer {tok}"}, timeout=10)
+        if resp.status_code == 200:
+            entries = resp.json().get("entries") or []
+            otp_code = entries[0].get("code") if entries else None
+    except Exception:
+        pass
+    if not otp_code:
+        return None
+    
+    # Step 3: verify-otp — access_token in Set-Cookie, not body
+    resp = requests.post(f"{API_BASE}/auth/verify-otp",
+                         json={"phone": phone, "code": otp_code, "session_id": session_id},
+                         timeout=10)
+    if resp.status_code != 200:
+        return None
+    token = None
+    for h in resp.headers.get("Set-Cookie", "").split(";"):
+        h = h.strip()
+        if h.startswith("access_token="):
+            token = h.split("=", 1)[1].split(";")[0]
+            break
+    if not token:
+        return None
+    
+    # Step 4: register
+    reg = api_post("/auth/register", token=token, json={"name": name, "email": email})
+    if reg.status_code not in (200, 201):
+        return None
+    
+    user = reg.json()
+    return token, {"phone": phone, "name": name, "email": email, "id": user.get("id"), "token": token}
 
 
 # ── Customer Token Resolution ───────────────────────────────────────

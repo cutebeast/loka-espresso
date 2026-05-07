@@ -17,12 +17,10 @@ router = APIRouter(tags=["Config"])
 
 # Known safe business config keys. Reject anything that looks like a secret or infra key.
 ALLOWED_CONFIG_KEYS = {
-    "delivery_fee", "min_order_delivery", "min_order", "min_order_amount",
-    "currency", "currency_symbol", "earn_rate", "pickup_lead_minutes",
-    "loyalty_enabled", "loyalty_points_per_rmse", "max_vouchers_per_user",
-    "voucher_expiry_days", "points_redemption_rate",
+    "delivery_fee", "min_order_delivery",
+    "currency_symbol",
+    "loyalty_points_per_rmse",
     "referral_reward_points", "referral_min_orders",
-    "pos_integration_enabled", "delivery_integration_enabled",
     "payment_gateway_provider",
     "notification_retention_days",
     "pos_api_url",
@@ -38,18 +36,9 @@ SENSITIVE_KEY_PATTERNS = {"secret", "password", "token", "api_key", "private", "
 # OTP bypass keys are admin-only (not exposed to public /config).
 PUBLIC_CONFIG_KEYS = {
     "delivery_fee",
-    "earn_rate",
-    "min_order",
-    "min_order_amount",
     "min_order_delivery",
-    "pickup_lead_minutes",
-    "currency",
     "currency_symbol",
-    "loyalty_enabled",
     "loyalty_points_per_rmse",
-    "max_vouchers_per_user",
-    "voucher_expiry_days",
-    "points_redemption_rate",
     "referral_reward_points",
     "referral_min_orders",
     "notification_retention_days",
@@ -77,11 +66,7 @@ async def get_config(db: AsyncSession = Depends(get_db)):
         configs[row.key] = val
     defaults = {
         "delivery_fee": 3.0,
-        "earn_rate": 1,
-        "min_order": 0,
         "min_order_delivery": 0,
-        "pickup_lead_minutes": 15,
-        "currency": "MYR",
         "currency_symbol": "RM",
         "topup_presets": "10,20,50,100,200",
         "topup_min_amount": 5,

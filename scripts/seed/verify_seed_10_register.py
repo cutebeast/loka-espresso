@@ -61,7 +61,9 @@ def get_otp_from_admin_api(phone):
             timeout=10
         )
         if resp.status_code == 200:
-            return resp.json().get("code")
+            data = resp.json()
+            entries = data.get("entries") or []
+            return entries[0].get("code") if entries else None
     except Exception:
         pass
     return None
@@ -98,7 +100,13 @@ def register_one_customer():
         print(f"    [FAIL] verify-otp: {resp.status_code} - {resp.text[:80]}")
         return None
     data = resp.json()
-    token = data.get("access_token")
+    token = data.get("access_token") or data.get("token")
+    if not token:
+        for h in resp.headers.get("Set-Cookie", "").split(";"):
+            h = h.strip()
+            if h.startswith("access_token="):
+                token = h.split("=", 1)[1].split(";")[0]
+                break
     if not token:
         print(f"    [FAIL] No access_token in verify-otp response")
         return None
