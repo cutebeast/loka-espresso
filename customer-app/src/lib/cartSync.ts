@@ -126,7 +126,7 @@ export async function placeOrder(params: {
       }
       if (params.rewardRedemptionCode) {
         const rewardId = parseInt(params.rewardRedemptionCode, 10);
-        if (!isNaN(rewardId)) {
+        if (!isNaN(rewardId) && rewardId > 0) {
           checkoutPayload.reward_id = rewardId;
         }
       }

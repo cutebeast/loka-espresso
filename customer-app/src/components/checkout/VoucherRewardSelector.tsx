@@ -59,11 +59,11 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
     }
   };
 
-  const handleSelectReward = (code: string, discountValue: number) => {
-    if (selectedType === 'reward' && selectedCode === code) {
+  const handleSelectReward = (id: number, discountValue: number) => {
+    if (selectedType === 'reward' && String(selectedCode) === String(id)) {
       onChange('none');
     } else {
-      onChange('reward', code, discountValue);
+      onChange('reward', String(id), discountValue);
     }
   };
 
@@ -178,7 +178,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                   onClick={() => {
                     const snap = parseRewardSnapshot(r.reward_snapshot);
                     const discountValue = snap.discount_value || 0;
-                    handleSelectReward(r.redemption_code, discountValue);
+                    handleSelectReward(r.id, discountValue);
                   }}
                   className={`flex items-center gap-2.5 py-2.5 px-3 rounded-xl cursor-pointer text-left ${isSelected ? 'vrs-voucher-btn-selected' : 'vrs-voucher-btn'}`}
                 >
