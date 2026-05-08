@@ -1,0 +1,36 @@
+/* ============================================
+   auth-step-v2 — ✅ Phase 1 Complete
+   Self-contained. No old CSS references.
+   ============================================ */
+
+.auth-step-indicator {
+  margin-bottom: 20px;
+}
+
+.auth-step-dots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.auth-step-dot {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--loka-border-light);
+  transition: background 0.3s ease;
+}
+
+.auth-step-dot.active {
+  background: var(--loka-accent-copper);
+}
+
+.auth-step-dot.done {
+  background: var(--loka-success);
+}
+
+.auth-step-label {
+  font-size: 11px;
+  color: var(--loka-text-muted);
+  font-weight: 500;
+}

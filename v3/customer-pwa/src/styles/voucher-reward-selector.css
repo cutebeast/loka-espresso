@@ -1,0 +1,45 @@
+/* ── VoucherRewardSelector (.vrs-) ── */
+.vrs-title {
+  font-size: 13px;
+}
+.vrs-reward-banner {
+  font-size: 13px;
+}
+.vrs-input {
+  border: 1px solid var(--color-border-subtle);
+  font-family: inherit;
+}
+.vrs-input-error {
+  border-color: var(--color-danger);
+}
+.vrs-apply-btn {
+  font-size: 13px;
+}
+.vrs-apply-btn-active {
+  background: var(--color-success);
+}
+.vrs-apply-btn-inactive {
+  background: var(--color-primary);
+}
+.vrs-apply-btn-loading {
+  opacity: 0.7;
+}
+.vrs-voucher-btn {
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-white);
+}
+.vrs-voucher-btn-selected {
+  border: 2px solid var(--color-success);
+  background: #F0F7EF;
+}
+.vrs-check {
+  border: 2px solid var(--color-border-subtle);
+  background: transparent;
+}
+.vrs-check-selected {
+  border: none;
+  background: var(--color-success);
+}
+.vrs-code {
+  font-size: 13px;
+}

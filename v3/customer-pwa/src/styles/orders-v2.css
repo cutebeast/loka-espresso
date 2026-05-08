@@ -1,0 +1,7 @@
+
+/* Inline-style cleanup additions */
+.orders-total-count { font-size: 12px; color: var(--loka-text-muted); }
+
+.orders-last-updated { font-size: 10px; color: var(--loka-text-muted); }
+.orders-load-more-btn { width: 100%; padding: 12px; margin-top: 4px; background: var(--loka-bg); border: none; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--loka-primary); cursor: pointer; font-family: var(--font-sans); }
+.orders-load-more-btn:disabled { opacity: 0.5; cursor: not-allowed; }

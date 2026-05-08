@@ -1,0 +1,41 @@
+/* ── RedemptionCodeModal (.rcm-) ── */
+.rcm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15,19,23,0.6);
+  backdrop-filter: blur(4px);
+}
+.rcm-sheet {
+  width: 100%;
+  max-width: 380px;
+  background: var(--color-white);
+  border-radius: 28px;
+  padding: 24px;
+  position: relative;
+}
+.rcm-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--color-border-subtle);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.rcm-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin-bottom: 20px;
+  padding-right: 32px;
+}
