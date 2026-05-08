@@ -1,0 +1,18 @@
+/* Brand variables — Loka Espresso */
+:root {
+  --brand-primary: #3B4A1A;
+  --brand-primary-dark: #263210;
+  --brand-primary-deep: #1A2309;
+  --brand-primary-light: #4E6E20;
+  --brand-gold: #C9A84C;
+  --brand-cream: #F5F0E6;
+  --brand-bg: #F2EEE6;
+  --brand-bg-card: #FFFDF8;
+  --brand-text: #1E1B18;
+  --brand-text-secondary: #4A4038;
+  --brand-text-muted: #8A8078;
+  --brand-border: #D5CCBE;
+  --brand-sidebar: #1E1B18;
+  --brand-sidebar-hover: #2A2520;
+  --brand-sidebar-active: #3B4A1A;
+}

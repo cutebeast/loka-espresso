@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en" className="h-full">
-      <body className="h-full bg-gray-50 text-gray-900">
+      <body className="h-full bg-brand-bg text-brand-text">
         {isLoginPage ? (
           <div className="h-full">{children}</div>
         ) : (
@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <main className="flex-1 overflow-auto">
                 {checked ? children : (
                   <div className="flex items-center justify-center h-full">
-                    <div className="text-gray-500">Loading...</div>
+                    <div className="text-brand-text-muted">Loading...</div>
                   </div>
                 )}
               </main>

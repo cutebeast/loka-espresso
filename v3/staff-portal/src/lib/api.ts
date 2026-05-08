@@ -20,7 +20,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   const contentType = res.headers.get("content-type");
   if (contentType && contentType.includes("application/json")) {
-    return (await res.json()) as T;
+    const json = await res.json();
+    if (json && typeof json === "object" && "data" in json) {
+      return json.data as T;
+    }
+    return json as T;
   }
   return undefined as unknown as T;
 }
