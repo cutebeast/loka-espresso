@@ -1,5 +1,5 @@
 {
-  "name": "Loka Espresso",
+  "name": "LOKA Espresso",
   "short_name": "Loka",
   "description": "Artisan Coffee \u00b7 Community \u00b7 Culture",
   "start_url": "/",
@@ -88,7 +88,7 @@
       "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Loka Espresso — Order, earn rewards, track delivery"
+      "label": "LOKA Espresso — Order, earn rewards, track delivery"
     }
   ]
 }

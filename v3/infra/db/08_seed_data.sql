@@ -80,7 +80,7 @@ INSERT INTO stores (
     pos_integration_type, delivery_integration_type,
     is_active, is_accepting_orders
 ) VALUES (
-    'HQ-001', 'Brand Headquarters', 'hq', 'Loka Espresso',
+    'HQ-001', 'Brand Headquarters', 'hq', 'LOKA Espresso',
     '123 Admin Street', 'Kuala Lumpur', 'Wilayah Persekutuan', '50000', 'MY',
     3.1390, 101.6869, '+60123456789', 'hq@lokaespresso.my',
     'Asia/Kuala_Lumpur', 'MYR',
@@ -98,7 +98,7 @@ INSERT INTO stores (
     pos_integration_type, delivery_integration_type,
     is_active, is_accepting_orders
 ) VALUES (
-    'KLCC-01', 'Loka Espresso KLCC', 'klcc', 'Loka Espresso',
+    'KLCC-01', 'LOKA Espresso KLCC', 'klcc', 'LOKA Espresso',
     'Suria KLCC, Lot G-12', 'Kuala Lumpur', 'Wilayah Persekutuan', '50088', 'MY',
     3.1588, 101.7116, '+60321631234', 'klcc@lokaespresso.my',
     'Asia/Kuala_Lumpur', 'MYR',
@@ -164,7 +164,7 @@ INSERT INTO loyalty_tiers (tier_key, display_name, min_lifetime_points, points_m
 -- They are managed via the admin API, NOT environment variables.
 -- This ensures auditability and avoids false-negative security audits.
 INSERT INTO platform_config (config_key, config_value, value_type, environment, is_sensitive, is_editable) VALUES
-('app.name', '"Loka Espresso"', 'string', 'all', false, false),
+('app.name', '"LOKA Espresso"', 'string', 'all', false, false),
 ('app.currency', '"MYR"', 'string', 'all', false, false),
 ('app.support_phone', '"+60123456789"', 'string', 'all', false, true),
 ('app.support_email', '"support@lokaespresso.my"', 'string', 'all', false, true),

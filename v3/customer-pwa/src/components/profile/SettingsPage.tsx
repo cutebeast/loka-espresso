@@ -79,7 +79,7 @@ export default function SettingsPage() {
             <div className="settings-about-dot">
               <Coffee size={12} color="#fff" />
             </div>
-            <h3 className="settings-about-title">Loka Espresso</h3>
+            <h3 className="settings-about-title">LOKA Espresso</h3>
           </div>
           <p className="settings-about-desc">{aboutText}</p>
         </div>

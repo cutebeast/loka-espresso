@@ -253,7 +253,7 @@ export default function AppShell() {
                       className="a2hs-app-icon"
                     />
                     <div>
-                      <p className="a2hs-app-name">Loka Espresso</p>
+                      <p className="a2hs-app-name">LOKA Espresso</p>
                       <p className="a2hs-app-url">app.loyaltysystem.uk</p>
                     </div>
                   </div>

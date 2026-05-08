@@ -14,7 +14,7 @@ export interface Country {
 /** All countries from restcountries.com */
 export const COUNTRIES: Country[] = countriesJson as Country[];
 
-/** Default country (Malaysia — home of Loka Espresso) */
+/** Default country (Malaysia — home of LOKA Espresso) */
 export const DEFAULT_COUNTRY: Country =
   COUNTRIES.find((c) => c.code === 'MY') || COUNTRIES[0];
 

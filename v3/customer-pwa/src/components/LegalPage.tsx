@@ -182,7 +182,7 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
             })}
 
             <div className="legal-footer">
-              Made with care by Loka Espresso
+              Made with care by LOKA Espresso
             </div>
           </>
         )}

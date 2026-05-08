@@ -120,7 +120,7 @@ CAMPAIGNS = [
 ]
 
 CONTENT_BLOCKS = [
-    {"key": "hero_banner", "name": "Homepage Hero", "type": "hero_banner", "title": "Welcome to Loka Espresso", "body": "Premium coffee, freshly brewed daily", "order": 1, "active": True},
+    {"key": "hero_banner", "name": "Homepage Hero", "type": "hero_banner", "title": "Welcome to LOKA Espresso", "body": "Premium coffee, freshly brewed daily", "order": 1, "active": True},
     {"key": "new_arrival", "name": "New Arrival Promo", "type": "promo_card", "title": "New: Gula Melaka Latte", "body": "Try our signature Malaysian twist", "order": 2, "active": True},
     {"key": "loyalty_cta", "name": "Loyalty CTA", "type": "info_card", "title": "Join Our Loyalty Program", "body": "Earn points with every purchase", "order": 3, "active": True},
 ]

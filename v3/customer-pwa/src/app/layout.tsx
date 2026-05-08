@@ -6,13 +6,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://app.loyaltysystem.uk"),
-  title: "Loka Espresso",
+  title: "LOKA Espresso",
   description: "Artisan Coffee · Community · Culture",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Loka Espresso",
+    title: "LOKA Espresso",
   },
   icons: {
     icon: [
@@ -23,19 +23,19 @@ export const metadata: Metadata = {
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
   },
-  applicationName: "Loka Espresso",
-  authors: [{ name: "Loka Espresso" }],
+  applicationName: "LOKA Espresso",
+  authors: [{ name: "LOKA Espresso" }],
   keywords: ["coffee", "cafe", "loyalty", "rewards", "malaysia"],
   openGraph: {
-    title: "Loka Espresso",
+    title: "LOKA Espresso",
     description: "Artisan Coffee · Community · Culture",
-    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "Loka Espresso" }],
+    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "LOKA Espresso" }],
     type: "website",
     locale: "en_MY",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Loka Espresso",
+    title: "LOKA Espresso",
     description: "Artisan Coffee · Community · Culture",
     images: ["/icon-512.png"],
   },
@@ -65,7 +65,7 @@ export default function RootLayout({
         {/* iOS PWA Splash Screens */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Loka Espresso" />
+        <meta name="apple-mobile-web-app-title" content="LOKA Espresso" />
         <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="/icon-512.png" />
         
         {/* MS Tile Color */}

@@ -33,7 +33,7 @@ export default function LoginPage() {
           <div className="w-14 h-14 rounded-xl bg-brand flex items-center justify-center mx-auto mb-4">
             <Store size={28} className="text-white" />
           </div>
-          <h1 className="text-xl font-bold text-brand-text">Loka Espresso</h1>
+          <h1 className="text-xl font-bold text-brand-text">LOKA Espresso</h1>
           <p className="text-sm text-brand-text-muted mt-1">Staff Portal — KDS Access</p>
         </div>
 

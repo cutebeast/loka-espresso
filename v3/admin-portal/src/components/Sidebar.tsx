@@ -122,7 +122,7 @@ export default function Sidebar() {
               <Store size={18} className="text-white" />
             </div>
             <div>
-              <div className="text-base font-bold leading-tight">Loka Espresso</div>
+              <div className="text-base font-bold leading-tight">LOKA Espresso</div>
               <div className="text-xs text-white/50">Admin Portal</div>
             </div>
           </div>
