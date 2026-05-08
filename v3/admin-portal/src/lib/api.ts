@@ -23,7 +23,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     const json = await res.json();
     // Unwrap API envelope { success, data, message }
     if (json && typeof json === "object" && "data" in json) {
-      return json.data as T;
+      const data = json.data;
+      // Auto-extract items from paginated list responses
+      if (data && typeof data === "object" && Array.isArray(data.items)) {
+        return data.items as T;
+      }
+      return data as T;
     }
     return json as T;
   }

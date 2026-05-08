@@ -22,7 +22,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (contentType && contentType.includes("application/json")) {
     const json = await res.json();
     if (json && typeof json === "object" && "data" in json) {
-      return json.data as T;
+      const data = json.data;
+      if (data && typeof data === "object" && Array.isArray(data.items)) {
+        return data.items as T;
+      }
+      return data as T;
     }
     return json as T;
   }
