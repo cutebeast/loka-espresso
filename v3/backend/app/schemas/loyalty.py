@@ -26,8 +26,11 @@ class LoyaltyTierOut(LoyaltyTierBase, TimestampedSchema):
 class LoyaltyAccountOut(BaseSchema):
     id: int
     customer_id: int
+    customer_name: str | None = None
     tier_id: int
     tier_name: str
+    tier_key: str | None = None
+    color_hex: str | None = None
     current_points: int
     lifetime_points: int
     points_to_next_tier: int | None
@@ -42,6 +45,7 @@ class LoyaltyPointsLedgerOut(BaseSchema):
     id: int
     loyalty_account_id: int
     customer_id: int
+    customer_name: str | None = None
     event_type: Literal[
         "order_earned",
         "referral_bonus",
@@ -72,6 +76,7 @@ class RewardCatalogBase(BaseSchema):
     reward_key: str = Field(..., min_length=1, max_length=50)
     description: str | None = Field(None, max_length=500)
     short_description: str | None = Field(None, max_length=255)
+    long_description: str | None = None
     reward_type: Literal["free_item", "percentage_discount", "fixed_discount", "free_delivery", "points_multiplier", "bundle_deal", "buy_x_get_y"]
     points_cost: int = Field(..., gt=0)
     menu_item_id: int | None = None
@@ -84,18 +89,23 @@ class RewardCatalogBase(BaseSchema):
     is_exclusive: bool = False
     minimum_tier_id: int | None = None
     terms_and_conditions: str | None = None
+    how_to_redeem: str | None = None
+    position: int = Field(default=0, ge=0)
+    customer_segments: dict | None = None
+    image_gallery_urls: list | None = None
+    gallery_video_url: str | None = Field(None, max_length=500)
     is_active: bool = True
 
 
 class RewardCatalogCreate(RewardCatalogBase):
-    store_id: int | None = None
-
+    pass
 
 class RewardCatalogUpdate(BaseSchema):
     reward_name: str | None = Field(None, min_length=1, max_length=100)
     reward_key: str | None = Field(None, min_length=1, max_length=50)
     description: str | None = Field(None, max_length=500)
     short_description: str | None = Field(None, max_length=255)
+    long_description: str | None = None
     reward_type: Literal["free_item", "percentage_discount", "fixed_discount", "free_delivery", "points_multiplier", "bundle_deal", "buy_x_get_y"] | None = None
     points_cost: int | None = Field(None, gt=0)
     menu_item_id: int | None = None
@@ -108,13 +118,16 @@ class RewardCatalogUpdate(BaseSchema):
     is_exclusive: bool | None = None
     minimum_tier_id: int | None = None
     terms_and_conditions: str | None = None
+    how_to_redeem: str | None = None
+    position: int | None = Field(None, ge=0)
+    customer_segments: dict | None = None
+    image_gallery_urls: list | None = None
+    gallery_video_url: str | None = Field(None, max_length=500)
     is_active: bool | None = None
-    store_id: int | None = None
 
 
 class RewardCatalogOut(RewardCatalogBase, TimestampedSchema):
     id: int
-    store_id: int | None
     total_redemptions: int
 
 
@@ -122,7 +135,6 @@ class CustomerRewardOut(BaseSchema):
     id: int
     customer_id: int
     reward_catalog_id: int
-    store_id: int | None = None
     redemption_code: str
     reward_name: str | None = None
     status: Literal["active", "reserved", "used", "expired", "cancelled"]

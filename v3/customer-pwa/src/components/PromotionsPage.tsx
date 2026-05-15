@@ -101,8 +101,9 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
     setClaiming(promo.id);
     try {
       const res = await api.post(`/promos/banners/${promo.id}/claim`);
-      const code = res.data?.voucher_code || res.data?.redemption_code || '';
-      if (code) { setShowVoucher(code); await loadPromotions(); }
+      // v3 /vouchers/apply returns voucher with code field (mapped from voucher_code)
+      const voucherCode = res.data?.voucher_code || res.data?.redemption_code || res.data?.code || '';
+      if (voucherCode) { setShowVoucher(voucherCode); await loadPromotions(); }
       else showToast(t('promotions.offerClaimed'), 'success');
     } catch (err) { console.error('[PromotionsPage] Claim failed:', err); showToast(t('promotions.failedToClaim'), 'error'); }
     finally { setClaiming(null); }

@@ -15,6 +15,7 @@ from app.schemas.voucher import (
     VoucherDefinitionOut,
     VoucherDefinitionUpdate,
 )
+from app.services.translation import auto_translate_record, delete_translations
 
 admin_router = APIRouter(prefix="/admin/vouchers", tags=["admin — vouchers"])
 public_router = APIRouter(prefix="/vouchers", tags=["vouchers"])
@@ -86,6 +87,12 @@ async def create_voucher(
     db.add(voucher)
     await db.commit()
     await db.refresh(voucher)
+    await auto_translate_record(db, "voucher_definitions", voucher.id, {
+        "display_title": voucher.display_title,
+        "description": voucher.description or "",
+        "short_description": voucher.short_description or "",
+        "long_description": voucher.long_description or "",
+    })
     return APIResponse(data=VoucherDefinitionOut.model_validate(voucher))
 
 
@@ -117,6 +124,12 @@ async def update_voucher(
     voucher.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(voucher)
+    await auto_translate_record(db, "voucher_definitions", voucher.id, {
+        "display_title": voucher.display_title,
+        "description": voucher.description or "",
+        "short_description": voucher.short_description or "",
+        "long_description": voucher.long_description or "",
+    })
     return APIResponse(data=VoucherDefinitionOut.model_validate(voucher))
 
 
@@ -132,6 +145,7 @@ async def delete_voucher(
     voucher.deleted_at = datetime.now(timezone.utc)
     voucher.is_active = False
     await db.commit()
+    await delete_translations(db, "voucher_definitions", voucher.id)
     return APIResponse(data={"id": voucher.id, "deleted": True})
 
 

@@ -1,189 +1,86 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, getRewards, createReward, type Reward } from "@/lib/api";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+
+interface Reward {
+  id: number; reward_name: string; reward_key: string; reward_type: string;
+  short_description?: string; image_url?: string; points_cost: number;
+  minimum_order_value?: number; is_active: boolean;
+}
+
+const PAGE_SIZE = 20;
 
 export default function RewardsPage() {
+  const router = useRouter();
   const [items, setItems] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Reward | null>(null);
-  const [form, setForm] = useState({
-    name: "",
-    image_url: "",
-    points_cost: 0,
-    type: "product",
-    description: "",
-  });
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchData = () => {
+  const fetchData = useCallback(async (p: number = 1) => {
     setLoading(true);
-    getRewards()
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchData();
+    try {
+      const d = await api.getRaw<{ items: Reward[]; total: number; total_pages: number }>(
+        `/admin/rewards?page=${p}&per_page=${PAGE_SIZE}`
+      );
+      setItems(d.items || []);
+      setTotalPages(d.total_pages || 1);
+      setPage(p);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
   }, []);
 
-  const resetForm = () => {
-    setForm({ name: "", image_url: "", points_cost: 0, type: "product", description: "" });
-    setEditing(null);
-    setShowForm(false);
-  };
-
-  const openEdit = (item: Reward) => {
-    setEditing(item);
-    setForm({
-      name: item.name,
-      image_url: item.image_url || "",
-      points_cost: item.points_cost,
-      type: item.type,
-      description: item.description || "",
-    });
-    setShowForm(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editing) {
-        await api.patch(`/admin/rewards/${editing.id}`, form);
-      } else {
-        await createReward(form);
-      }
-      resetForm();
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
+  useEffect(() => { fetchData(1); }, [fetchData]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure?")) return;
-    try {
-      await api.del(`/admin/rewards/${id}`);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
+    if (!confirm("Delete this reward?")) return;
+    try { await api.del(`/admin/rewards/${id}`); fetchData(page); } catch { /* ignore */ }
+  };
+
+  const typeLabel = (t: string) => {
+    const map: Record<string, string> = { free_item: "Free Item", percentage_discount: "% Discount", fixed_discount: "Fixed Discount", free_delivery: "Free Delivery" };
+    return <span className="badge badge-sm badge-blue">{map[t] || t}</span>;
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Rewards</h1>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowForm(true);
-          }}
-          className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition"
-        >
-          Add Reward
-        </button>
+    <div style={{ padding: 32 }}>
+      <div className="page-header">
+        <div><h1 className="page-title">Rewards</h1><p className="page-subtitle">Loyalty point redemption catalog</p></div>
+        <button onClick={() => router.push("/rewards/new")} className="btn btn-primary btn-sm"><Plus size={16} /> Add Reward</button>
       </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      {showForm && (
-        <div className="mb-6 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">{editing ? "Edit Reward" : "Add Reward"}</h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <input
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Image URL</label>
-              <input
-                value={form.image_url}
-                onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Points Cost</label>
-              <input
-                type="number"
-                required
-                value={form.points_cost}
-                onChange={(e) => setForm({ ...form, points_cost: Number(e.target.value) })}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
-              <input
-                required
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Description</label>
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2 md:col-span-2">
-              <button
-                type="submit"
-                className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-      {loading ? (
-        <div className="text-center text-gray-500 py-8">Loading...</div>
-      ) : items.length === 0 ? (
-        <div className="text-center text-gray-500 py-8">No rewards found.</div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((item) => (
-            <div key={item.id} className="bg-white rounded-lg shadow overflow-hidden">
-              {item.image_url ? (
-                <img src={item.image_url} alt={item.name} className="w-full h-40 object-cover" />
-              ) : (
-                <div className="w-full h-40 bg-gray-200 flex items-center justify-center text-gray-400">
-                  No Image
-                </div>
-              )}
-              <div className="p-4">
-                <h3 className="text-lg font-semibold mb-1">{item.name}</h3>
-                <p className="text-sm text-gray-600 mb-2">{item.type}</p>
-                <p className="text-sm font-medium text-slate-800 mb-3">{item.points_cost} points</p>
-                <div className="flex gap-3">
-                  <button onClick={() => openEdit(item)} className="text-blue-600 hover:underline text-sm">
-                    Edit
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:underline text-sm">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+      {error && <div className="alert alert-error">{error}</div>}
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} rewards</span></div>
+      <div className="table-container"><table className="data-table">
+        <thead><tr><th style={{ width: 44 }}></th><th>Name</th><th>Type</th><th>Points</th><th>Min Order</th><th style={{ width: 80 }}>Status</th><th style={{ width: 80 }}>Actions</th></tr></thead>
+        <tbody>
+          {loading ? <tr><td colSpan={7} className="data-table-empty">Loading...</td></tr>
+            : items.map(item => (
+              <tr key={item.id} className="clickable" onClick={() => router.push(`/rewards/${item.id}`)} style={{ cursor: "pointer" }}>
+                <td>{item.image_url ? <img src={item.image_url} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover" }} /> : <span style={{ fontSize: 16 }}>🎁</span>}</td>
+                <td style={{ fontWeight: 600 }}>{item.reward_name}</td>
+                <td>{typeLabel(item.reward_type)}</td>
+                <td style={{ fontWeight: 600 }}>{item.points_cost.toLocaleString()} pts</td>
+                <td>{item.minimum_order_value != null ? `RM ${item.minimum_order_value}` : "—"}</td>
+                <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+                <td onClick={e => e.stopPropagation()}>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <button onClick={() => router.push(`/rewards/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><Edit2 size={14} /></button>
+                    <button onClick={() => handleDelete(item.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table></div>
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "center", marginTop: 16 }}>
+          <button className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={() => fetchData(page - 1)}><ChevronLeft size={14} /> Prev</button>
+          <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Page {page} of {totalPages}</span>
+          <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={() => fetchData(page + 1)}>Next <ChevronRight size={14} /></button>
         </div>
       )}
     </div>

@@ -1,16 +1,22 @@
 """Translation domain schemas."""
 
+from datetime import datetime
 from pydantic import Field
 
 from app.schemas.base import BaseSchema, TimestampedSchema
 
 
 class TranslationBase(BaseSchema):
-    table_name: str = Field(..., max_length=50)
-    record_id: int
-    column_name: str = Field(..., max_length=50)
+    translation_key: str = Field(..., max_length=200)
     locale: str = Field(..., max_length=5)
     translated_text: str
+    source_text: str | None = None
+    namespace: str = Field(default="admin", max_length=50)
+    is_auto_translated: bool = False
+    # Legacy per-row fields (optional)
+    table_name: str = Field(default="", max_length=50)
+    record_id: int = 0
+    column_name: str = Field(default="", max_length=50)
 
 
 class TranslationCreate(TranslationBase):
@@ -19,6 +25,10 @@ class TranslationCreate(TranslationBase):
 
 class TranslationUpdate(BaseSchema):
     translated_text: str | None = None
+    source_text: str | None = None
+    translation_key: str | None = Field(None, max_length=200)
+    locale: str | None = Field(None, max_length=5)
+    namespace: str | None = Field(None, max_length=50)
 
 
 class TranslationOut(TranslationBase, TimestampedSchema):
@@ -29,9 +39,6 @@ class TranslateRequest(BaseSchema):
     text: str
     source_locale: str = Field(..., max_length=5)
     target_locale: str = Field(..., max_length=5)
-    table_name: str | None = Field(None, max_length=50)
-    record_id: int | None = None
-    column_name: str | None = Field(None, max_length=50)
 
 
 class TranslateResponse(BaseSchema):

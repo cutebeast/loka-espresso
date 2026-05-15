@@ -18,6 +18,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        env_prefix="",  # No prefix - read directly
     )
 
     # App
@@ -25,8 +26,18 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = False
 
+    @field_validator("debug", mode="before")
+    @classmethod
+    def _coerce_debug(cls, v: object) -> bool:
+        """Coerce various debug values to bool; ignore pre-existing env DEBUG var."""
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.lower() in ("true", "1", "yes", "on")
+        return False
+
     # Database
-    database_url: str
+    database_url: str = "postgresql+asyncpg://fnb_user:fnb_pass@localhost:13334/fnb_enterprise_v3"
     database_url_sync: str | None = None
 
     # Redis
@@ -34,7 +45,7 @@ class Settings(BaseSettings):
     redis_password: str | None = None
 
     # JWT
-    jwt_secret: str
+    jwt_secret: str = "super-secret-jwt-key-for-development-only-12345"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 30
     jwt_refresh_expire_days: int = 7
@@ -70,11 +81,6 @@ class Settings(BaseSettings):
     # Webhooks
     webhook_api_key: str = ""
     webhook_signing_secret: str = ""
-
-    # Twilio
-    twilio_account_sid: str | None = None
-    twilio_auth_token: str | None = None
-    twilio_from_number: str | None = None
 
     # MaxMind
     maxmind_account_id: str | None = None

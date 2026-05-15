@@ -57,9 +57,10 @@ InventoryMovementType = Enum(
 )
 
 LoyaltyEventType = Enum(
-    "earn_purchase", "earn_bonus", "earn_referral", "redeem_reward",
-    "redeem_discount", "adjust_manual", "expire_points", "tier_upgrade",
-    "tier_downgrade", "welcome_bonus",
+    "order_earned", "referral_bonus", "birthday_bonus", "welcome_bonus",
+    "tier_bonus", "promo_bonus", "social_share", "review_submitted",
+    "manual_adjustment", "reward_redemption", "voucher_conversion",
+    "points_expired", "return_deduction", "account_merge",
     name="loyalty_event_type",
     native_enum=True,
     create_type=False,

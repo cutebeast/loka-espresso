@@ -22,47 +22,76 @@ export default function LoyaltyAccountsPage() {
     fetchData();
   }, []);
 
+  const tierBadge = (tierName: string | null, colorHex?: string) => {
+    if (!tierName) return <span className="badge badge-sm badge-gray">None</span>;
+    return (
+      <span
+        className="badge badge-sm"
+        style={{
+          background: colorHex || "var(--color-bg-muted)",
+          color: colorHex ? "#fff" : "var(--color-text)",
+        }}
+      >
+        {tierName}
+      </span>
+    );
+  };
+
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Loyalty Accounts</h1>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
+    <div style={{ padding: 32 }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Loyalty Accounts</h1>
+          <p className="page-subtitle">
+            Customer loyalty accounts — points balance and tier assignments
+          </p>
+        </div>
+      </div>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div className="table-header-bar">
+        <span className="text-sm font-semibold">{items.length} accounts</span>
+      </div>
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
             <tr>
-              <th className="text-left px-4 py-3 font-semibold">Customer</th>
-              <th className="text-left px-4 py-3 font-semibold">Tier</th>
-              <th className="text-left px-4 py-3 font-semibold">Points Balance</th>
-              <th className="text-left px-4 py-3 font-semibold">Lifetime Points</th>
-              <th className="text-left px-4 py-3 font-semibold">Last Activity</th>
+              <th>Customer</th>
+              <th>Tier</th>
+              <th>Points Balance</th>
+              <th>Lifetime Earned</th>
+              <th>Lifetime Redeemed</th>
+              <th>Last Activity</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                  Loading...
-                </td>
+                <td colSpan={6} className="data-table-empty">Loading...</td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                  No accounts found.
-                </td>
+                <td colSpan={6} className="data-table-empty">No accounts found.</td>
               </tr>
             ) : (
               items.map((item) => (
                 <tr
                   key={item.id}
-                  className="border-t cursor-pointer hover:bg-gray-50"
+                  className="clickable"
                   onClick={() => router.push(`/loyalty/ledger?account_id=${item.id}`)}
+                  style={{ cursor: "pointer" }}
                 >
-                  <td className="px-4 py-3">{item.customer_name}</td>
-                  <td className="px-4 py-3">{item.tier}</td>
-                  <td className="px-4 py-3">{item.points_balance}</td>
-                  <td className="px-4 py-3">{item.lifetime_points}</td>
-                  <td className="px-4 py-3">
-                    {item.last_activity ? new Date(item.last_activity).toLocaleString() : "-"}
+                  <td style={{ fontWeight: 600 }}>{item.customer_name || `Customer #${item.customer_id}`}</td>
+                  <td>{tierBadge((item as any).tier_name || item.tier_name, (item as any).color_hex)}</td>
+                  <td style={{ fontWeight: 600 }}>{item.points_balance ?? item.current_points ?? 0}</td>
+                  <td>{(item as any).lifetime_points_earned ?? item.lifetime_points ?? 0}</td>
+                  <td>{(item as any).lifetime_points_redeemed ?? 0}</td>
+                  <td style={{ fontSize: 12 }}>
+                    {(item as any).last_activity_at
+                      ? new Date((item as any).last_activity_at).toLocaleString()
+                      : item.last_activity
+                        ? new Date(item.last_activity).toLocaleString()
+                        : "—"}
                   </td>
                 </tr>
               ))

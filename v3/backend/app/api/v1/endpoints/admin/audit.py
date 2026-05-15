@@ -58,7 +58,11 @@ async def list_audit_logs(
 
     stmt = base_stmt.order_by(AuditLog.id.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
-    items = [AuditLogOut.model_validate(r) for r in result.scalars().all()]
+    items = []
+    for r in result.scalars().all():
+        d = {c: getattr(r, c) for c in r.__table__.columns.keys()}
+        d["ip_address"] = str(d["ip_address"]) if d.get("ip_address") else None
+        items.append(AuditLogOut.model_validate(d))
 
     return APIResponse(
         data=PaginatedResponse(

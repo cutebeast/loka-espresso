@@ -144,7 +144,7 @@ class PaymentMethod(Base, TimestampMixin, SoftDeleteMixin):
             name="ck_payment_methods_method_type",
         ),
         CheckConstraint(
-            "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet')",
+            "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet','grabpay','gcash','alipay','wechat_pay')",
             name="ck_payment_methods_provider",
         ),
         CheckConstraint("card_last_four ~ '^[0-9]{4}$'", name="ck_payment_methods_card_last_four"),

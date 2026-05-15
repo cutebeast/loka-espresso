@@ -1,190 +1,103 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getNotifications, sendNotification, type Notification } from "@/lib/api";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { Plus, Edit2, Trash2, Send, Archive, Undo, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { useAudienceSegments } from "@/lib/useAudienceSegments";
+
+const PAGE_SIZE = 20;
+const TYPE_LABELS: Record<string, string> = { general: "General", order: "Order", reward: "Reward", wallet: "Wallet", loyalty: "Loyalty", promo: "Promo", info: "Info", event: "Event" };
+
+interface Notif { id: number; title: string; body?: string; notification_type: string; audience_segment: string; status: string; scheduled_at?: string; sent_at?: string; is_archived: boolean; created_at: string; }
 
 export default function NotificationsPage() {
-  const [items, setItems] = useState<Notification[]>([]);
+  const router = useRouter();
+  const { allSegments } = useAudienceSegments();
+  const AUD_LABELS = Object.fromEntries(allSegments.map(s => [s.value, s.label]));
+  const [items, setItems] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
-    customer_id: "",
-    type: "general",
-    priority: "normal",
-    title: "",
-    message: "",
-  });
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [tab, setTab] = useState<"active" | "archived">("active");
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
-  const fetchData = () => {
+  const fetchData = useCallback(async (p: number = 1) => {
     setLoading(true);
-    getNotifications()
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const resetForm = () => {
-    setForm({ customer_id: "", type: "general", priority: "normal", title: "", message: "" });
-    setShowForm(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
     try {
-      await sendNotification({
-        customer_id: form.customer_id ? Number(form.customer_id) : undefined,
-        type: form.type,
-        priority: form.priority,
-        title: form.title,
-        message: form.message,
-      });
-      resetForm();
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
+      const params = new URLSearchParams({ page: String(p), per_page: String(PAGE_SIZE), is_archived: String(tab === "archived") });
+      const d = await api.getRaw<{ items: Notif[]; total: number; total_pages: number }>(`/admin/notifications?${params}`);
+      setItems(d.items || []); setTotal(d.total || 0); setTotalPages(d.total_pages || 1); setPage(p);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [tab]);
+
+  useEffect(() => { fetchData(1); }, [fetchData]);
+
+  const sendNow = async (id: number) => { if (!confirm("Send now?")) return; try { await api.post(`/admin/notifications/${id}/send`, {}); fetchData(page); } catch (e: any) { setError(e.message); } };
+  const toggleArchive = async (id: number) => { try { await api.patch(`/admin/notifications/${id}/archive`, {}); fetchData(page); } catch {}; };
+  const handleDelete = async (id: number) => { try { await api.del(`/admin/notifications/${id}`); setConfirmDelete(null); fetchData(page); } catch {}; };
+
+  const statusBadge = (s: string, scheduled?: string) => {
+    if (scheduled && s === "draft") return <span className="badge badge-sm badge-yellow"><Clock size={10} /> Scheduled</span>;
+    const m: Record<string, { l: string; c: string }> = { draft: { l: "Draft", c: "badge-gray" }, scheduled: { l: "Scheduled", c: "badge-yellow" }, sent: { l: "Sent", c: "badge-green" }, failed: { l: "Failed", c: "badge-red" } };
+    const i = m[s] || { l: s, c: "badge-gray" };
+    return <span className={`badge badge-sm ${i.c}`}>{i.l}</span>;
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Notifications</h1>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowForm(true);
-          }}
-          className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition"
-        >
-          Send Notification
-        </button>
+    <div style={{ padding: 32 }}>
+      <div className="page-header">
+        <div><h1 className="page-title">Notifications</h1><p className="page-subtitle">Push notifications sent to PWA users · {total} total</p></div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => router.push("/notifications/templates")} className="btn btn-sm btn-outline">📋 Templates</button>
+          <button onClick={() => router.push("/notifications/report")} className="btn btn-sm btn-outline">📊 Report</button>
+          <button onClick={() => router.push("/notifications/new")} className="btn btn-primary btn-sm"><Plus size={16} /> New Notification</button>
+        </div>
       </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      {showForm && (
-        <div className="mb-6 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Send Notification</h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Customer ID (optional)</label>
-              <input
-                value={form.customer_id}
-                onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-                placeholder="Leave blank to broadcast"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
-              <input
-                required
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Priority</label>
-              <select
-                value={form.priority}
-                onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              >
-                <option value="low">Low</option>
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Title</label>
-              <input
-                required
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Message</label>
-              <textarea
-                value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2 md:col-span-2">
-              <button
-                type="submit"
-                className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition"
-              >
-                Send
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <select value={tab} onChange={e => { setTab(e.target.value as any); setPage(1); }} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+          <option value="active">Active</option><option value="archived">Archived</option>
+        </select>
+      </div>
+
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} of {total} notifications</span></div>
+      <div className="table-container"><table className="data-table">
+        <thead><tr><th>Title</th><th>Type</th><th>Audience</th><th>Status</th><th>Date</th><th style={{ width: 120 }}>Actions</th></tr></thead>
+        <tbody>
+          {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
+          : items.length === 0 ? <tr><td colSpan={6} className="data-table-empty">No notifications.</td></tr>
+          : items.map(n => (
+            <tr key={n.id} className="clickable" onClick={() => router.push(`/notifications/${n.id}`)} style={{ cursor: "pointer" }}>
+              <td><div style={{ fontWeight: 600 }}>{n.title}</div>{n.body && <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{n.body.slice(0, 60)}</div>}</td>
+              <td><span className="badge badge-sm badge-outline">{TYPE_LABELS[n.notification_type] || n.notification_type}</span></td>
+              <td>{AUD_LABELS[n.audience_segment] || n.audience_segment}</td>
+              <td>{statusBadge(n.status, n.scheduled_at)}</td>
+              <td style={{ fontSize: 12 }}>{n.sent_at ? `Sent ${new Date(n.sent_at).toLocaleDateString()}` : n.scheduled_at ? `Scheduled ${new Date(n.scheduled_at).toLocaleDateString()}` : new Date(n.created_at).toLocaleDateString()}</td>
+              <td onClick={e => e.stopPropagation()}>
+                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  {n.status === "draft" && <><button onClick={() => sendNow(n.id)} className="btn btn-ghost btn-sm" title="Send now" style={{ color: "#16A34A" }}><Send size={14} /></button><button onClick={() => router.push(`/notifications/${n.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><Edit2 size={14} /></button>
+                    {confirmDelete === n.id ? <><button onClick={() => handleDelete(n.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)", fontWeight: 600 }}>✓</button><button onClick={() => setConfirmDelete(null)} className="btn btn-ghost btn-sm">✕</button></> : <button onClick={() => setConfirmDelete(n.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>}
+                  </>}
+                  <button onClick={() => toggleArchive(n.id)} className="btn btn-ghost btn-sm" title={n.is_archived ? "Unarchive" : "Archive"}>{n.is_archived ? <Undo size={14} /> : <Archive size={14} />}</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "center", marginTop: 16 }}>
+          <button className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={() => fetchData(page - 1)}><ChevronLeft size={14} /> Prev</button>
+          <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Page {page} of {totalPages}</span>
+          <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={() => fetchData(page + 1)}>Next <ChevronRight size={14} /></button>
         </div>
       )}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">Customer</th>
-              <th className="text-left px-4 py-3 font-semibold">Type</th>
-              <th className="text-left px-4 py-3 font-semibold">Priority</th>
-              <th className="text-left px-4 py-3 font-semibold">Title</th>
-              <th className="text-left px-4 py-3 font-semibold">Status</th>
-              <th className="text-left px-4 py-3 font-semibold">Sent At</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  Loading...
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  No notifications found.
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3">{item.customer_name}</td>
-                  <td className="px-4 py-3">{item.type}</td>
-                  <td className="px-4 py-3">{item.priority}</td>
-                  <td className="px-4 py-3">{item.title}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                        item.status === "read"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{new Date(item.sent_at).toLocaleString()}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }

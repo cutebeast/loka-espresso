@@ -24,6 +24,7 @@ class SurveyQuestionBase(BaseSchema):
 
 
 class SurveyQuestionCreate(SurveyQuestionBase):
+    options: list[str] | None = None
     pass
 
 
@@ -54,15 +55,21 @@ class SurveyDefinitionBase(BaseSchema):
     description: str | None = None
     welcome_message: str | None = None
     thank_you_message: str | None = None
-    reward_voucher_id: int | None = None
-    reward_points: int = Field(default=0, ge=0)
     completion_target: int | None = None
     is_anonymous: bool = False
     allow_multiple_responses: bool = False
     is_active: bool = True
 
 
+MAX_QUESTIONS_PER_SURVEY = 5
+
+
 class SurveyDefinitionCreate(SurveyDefinitionBase):
+    questions: list[SurveyQuestionCreate] = []
+
+
+class SurveyDefinitionCreateWithQuestions(SurveyDefinitionCreate):
+    """Alias — create payload may include questions inline."""
     pass
 
 
@@ -72,18 +79,19 @@ class SurveyDefinitionUpdate(BaseSchema):
     description: str | None = None
     welcome_message: str | None = None
     thank_you_message: str | None = None
-    reward_voucher_id: int | None = None
-    reward_points: int | None = Field(None, ge=0)
     completion_target: int | None = None
     is_anonymous: bool | None = None
     allow_multiple_responses: bool | None = None
     is_active: bool | None = None
+    questions: list[SurveyQuestionCreate] | None = None
 
 
 class SurveyDefinitionOut(SurveyDefinitionBase, TimestampedSchema):
     id: int
     created_by: int | None = None
     deleted_at: datetime | None = None
+    question_count: int = 0
+    response_count: int = 0
 
 
 class SurveyDefinitionDetailOut(SurveyDefinitionOut):
@@ -102,6 +110,8 @@ class SurveyAnswerOut(BaseSchema):
     question_id: int
     answer_value: str | None = None
     answer_detail: dict | None = None
+    question_text: str | None = None
+    question_type: str | None = None
     created_at: datetime
 
 

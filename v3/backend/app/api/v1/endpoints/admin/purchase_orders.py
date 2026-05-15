@@ -311,6 +311,13 @@ async def receive_purchase_order(
     )
     lines = {line.id: line for line in lines_result.scalars().all()}
 
+    # When no lines specified, auto-receive all lines at full quantity
+    if not data.lines:
+        data.lines = [
+            ReceiveLine(line_id=line_id, quantity_received=line.quantity_ordered)
+            for line_id, line in lines.items()
+        ]
+
     total_received = 0.0
     all_fully_received = True
 

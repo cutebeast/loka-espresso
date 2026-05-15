@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
-from app.models.store import Store
+from app.models.staff import TipAllocation
+from app.models.store import Store, StoreConfiguration
 from app.schemas.order import OrderCreate
 
 
@@ -57,6 +58,19 @@ async def create_order_from_cart(
     )
     cart_items = items_result.scalars().all()
     
+    # Fetch store config for fees
+    config_result = await db.execute(
+        select(StoreConfiguration).where(
+            StoreConfiguration.store_id == cart.store_id,
+            StoreConfiguration.config_key.in_(["order.delivery_fee", "order.service_charge", "order.tax_rate"]),
+        )
+    )
+    config_map = {c.config_key: c.config_value for c in config_result.scalars().all()}
+    delivery_fee = float(config_map.get("order.delivery_fee", 0) or 0)
+    service_charge = float(config_map.get("order.service_charge", 0) or 0)
+    tax_rate = float(config_map.get("order.tax_rate", 0) or 0)
+    tax_amount = round(cart.subtotal * tax_rate, 2)
+
     # Create order
     order = Order(
         customer_id=customer_id,
@@ -71,14 +85,14 @@ async def create_order_from_cart(
         item_count=cart.item_count,
         items_subtotal=cart.subtotal,
         modifier_subtotal=sum(float(i.modifier_total) * i.quantity for i in cart_items),
-        delivery_fee=store.base_delivery_fee if data.fulfillment_type == "delivery" else 0,
-        service_charge=0,  # TODO: calculate from store config
-        tax_amount=0,  # TODO: calculate from store config
+        delivery_fee=delivery_fee if data.fulfillment_type == "delivery" else 0,
+        service_charge=service_charge,
+        tax_amount=tax_amount,
         discount_amount=0,
         voucher_discount=0,
         reward_discount=0,
         tip_amount=data.tip_amount or 0,
-        total_amount=cart.subtotal + (store.base_delivery_fee if data.fulfillment_type == "delivery" else 0) + (data.tip_amount or 0),
+        total_amount=cart.subtotal + (delivery_fee if data.fulfillment_type == "delivery" else 0) + service_charge + tax_amount + (data.tip_amount or 0),
         total_amount_currency=store.currency_code,
         loyalty_points_earned=0,
         loyalty_points_redeemed=0,
@@ -122,6 +136,16 @@ async def create_order_from_cart(
         )
         db.add(fulfillment)
     
+    # Auto-create tip allocation if customer tipped
+    if data.tip_amount and data.tip_amount > 0:
+        tip = TipAllocation(
+            order_id=order.id,
+            staff_id=0,  # pooled tip, unassigned until distributed
+            tip_amount=float(data.tip_amount),
+            allocation_type="fixed",
+        )
+        db.add(tip)
+
     # Clear the cart
     for ci in cart_items:
         await db.delete(ci)

@@ -16,7 +16,17 @@ export default function SettingsPage() {
   useEffect(() => {
     api.get('/content/legal/about')
       .then((res) => {
-        const desc = res.data?.long_description;
+        // v3 returns array of content blocks; find the "about" or "system" type
+        const data = res.data;
+        let desc = null;
+        if (Array.isArray(data)) {
+          const aboutBlock = data.find((b: any) => 
+            b.content_type === 'system' || b.block_key === 'about' || b.block_name?.toLowerCase().includes('about')
+          );
+          desc = aboutBlock?.long_description || aboutBlock?.body_text || aboutBlock?.short_description;
+        } else if (data && typeof data === 'object') {
+          desc = data.long_description || data.body_text;
+        }
         if (desc) setAboutText(desc);
         else setAboutText(t('settings.aboutFallback'));
       })

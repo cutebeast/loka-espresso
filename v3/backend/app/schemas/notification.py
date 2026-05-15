@@ -63,14 +63,78 @@ class NotificationPreferenceUpdate(BaseSchema):
     timezone: str | None = Field(None, max_length=50)
 
 
-class AdminNotificationCreate(BaseSchema):
-    customer_ids: list[int] | None = None
-    message_type: Literal["order_update", "promotion", "system", "payment", "loyalty", "reminder", "security"] = "system"
-    priority: Literal["low", "normal", "high", "urgent"] = "normal"
-    title: str = Field(..., max_length=100)
+# ---------------------------------------------------------------------------
+# Admin Push Notification schemas (audience-targeted)
+# ---------------------------------------------------------------------------
+
+ADMIN_NOTIFICATION_TYPES = Literal[
+    "general", "order", "reward", "wallet", "loyalty", "promo", "info", "event"
+]
+AUDIENCE_SEGMENTS = Literal[
+    "all_users", "new_users", "loyal_customers", "inactive_users", "platinum_members"
+]
+NOTIFICATION_STATUS = Literal["draft", "scheduled", "sent", "failed"]
+
+
+class AdminNotificationBase(BaseSchema):
+    title: str = Field(..., max_length=200)
     body: str | None = None
+    notification_type: ADMIN_NOTIFICATION_TYPES = "general"
+    audience_segment: AUDIENCE_SEGMENTS = "all_users"
     image_url: str | None = Field(None, max_length=500)
     action_url: str | None = Field(None, max_length=500)
-    action_type: str | None = Field(None, max_length=50)
-    action_payload: dict | None = None
-    expires_at: datetime | None = None
+    scheduled_at: datetime | None = None
+    status: NOTIFICATION_STATUS = "draft"
+
+
+class AdminNotificationCreate(AdminNotificationBase):
+    pass
+
+
+class AdminNotificationUpdate(BaseSchema):
+    title: str | None = Field(None, max_length=200)
+    body: str | None = None
+    notification_type: ADMIN_NOTIFICATION_TYPES | None = None
+    audience_segment: AUDIENCE_SEGMENTS | None = None
+    image_url: str | None = Field(None, max_length=500)
+    action_url: str | None = Field(None, max_length=500)
+    scheduled_at: datetime | None = None
+    status: NOTIFICATION_STATUS | None = None
+    is_archived: bool | None = None
+
+
+class AdminNotificationOut(AdminNotificationBase, TimestampedSchema):
+    id: int
+    sent_at: datetime | None = None
+    is_archived: bool = False
+    created_by: int | None = None
+
+
+# ---------------------------------------------------------------------------
+# Notification Template schemas
+# ---------------------------------------------------------------------------
+
+class NotificationTemplateBase(BaseSchema):
+    name: str = Field(..., max_length=100)
+    title: str = Field(..., max_length=200)
+    body: str | None = None
+    notification_type: ADMIN_NOTIFICATION_TYPES = "general"
+    audience_segment: AUDIENCE_SEGMENTS = "all_users"
+    image_url: str | None = Field(None, max_length=500)
+
+
+class NotificationTemplateCreate(NotificationTemplateBase):
+    pass
+
+
+class NotificationTemplateUpdate(BaseSchema):
+    name: str | None = Field(None, max_length=100)
+    title: str | None = Field(None, max_length=200)
+    body: str | None = None
+    notification_type: ADMIN_NOTIFICATION_TYPES | None = None
+    audience_segment: AUDIENCE_SEGMENTS | None = None
+    image_url: str | None = Field(None, max_length=500)
+
+
+class NotificationTemplateOut(NotificationTemplateBase, TimestampedSchema):
+    id: int

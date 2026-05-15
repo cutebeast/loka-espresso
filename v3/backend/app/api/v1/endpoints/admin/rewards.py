@@ -17,6 +17,7 @@ from app.schemas.loyalty import (
     RewardCatalogOut,
     RewardCatalogUpdate,
 )
+from app.services.translation import auto_translate_record, delete_translations
 
 admin_router = APIRouter(prefix="/admin/rewards", tags=["admin — rewards"])
 public_router = APIRouter(prefix="/rewards", tags=["rewards"])
@@ -43,7 +44,6 @@ async def _get_reward_or_404(db, reward_id: int) -> RewardCatalog:
 async def list_rewards(
     db: DBDependency,
     admin: CurrentAdmin,
-    store_id: int | None = Query(None),
     is_active: bool | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -52,9 +52,6 @@ async def list_rewards(
     base_stmt = select(RewardCatalog).where(RewardCatalog.deleted_at.is_(None))
     count_stmt = select(func.count(RewardCatalog.id)).where(RewardCatalog.deleted_at.is_(None))
 
-    if store_id is not None:
-        base_stmt = base_stmt.where(RewardCatalog.store_id == store_id)
-        count_stmt = count_stmt.where(RewardCatalog.store_id == store_id)
     if is_active is not None:
         base_stmt = base_stmt.where(RewardCatalog.is_active.is_(is_active))
         count_stmt = count_stmt.where(RewardCatalog.is_active.is_(is_active))
@@ -88,6 +85,13 @@ async def create_reward(
     db.add(reward)
     await db.commit()
     await db.refresh(reward)
+    await auto_translate_record(db, "reward_catalog", reward.id, {
+        "reward_name": reward.reward_name or "",
+        "short_description": reward.short_description or "",
+        "long_description": reward.long_description or "",
+        "how_to_redeem": reward.how_to_redeem or "",
+        "terms_and_conditions": reward.terms_and_conditions or "",
+    })
     return APIResponse(data=RewardCatalogOut.model_validate(reward))
 
 
@@ -119,6 +123,13 @@ async def update_reward(
     reward.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(reward)
+    await auto_translate_record(db, "reward_catalog", reward.id, {
+        "reward_name": reward.reward_name or "",
+        "short_description": reward.short_description or "",
+        "long_description": reward.long_description or "",
+        "how_to_redeem": reward.how_to_redeem or "",
+        "terms_and_conditions": reward.terms_and_conditions or "",
+    })
     return APIResponse(data=RewardCatalogOut.model_validate(reward))
 
 
@@ -134,6 +145,7 @@ async def delete_reward(
     reward.deleted_at = datetime.now(timezone.utc)
     reward.is_active = False
     await db.commit()
+    await delete_translations(db, "reward_catalog", reward.id)
     return APIResponse(data={"id": reward.id, "deleted": True})
 
 
@@ -281,7 +293,7 @@ async def redeem_reward(
     customer_reward = CustomerReward(
         customer_id=customer.id,
         reward_catalog_id=reward.id,
-        store_id=reward.store_id,
+        store_id=1,  # Default store (rewards are global, but redemption must record a store)
         redemption_code=uuid4().hex[:12].upper(),
         status="active",
         points_spent=reward.points_cost,

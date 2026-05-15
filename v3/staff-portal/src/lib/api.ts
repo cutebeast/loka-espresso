@@ -14,6 +14,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     headers: getAuthHeaders(),
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
+  if (res.status === 401) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("staffEmail");
+    localStorage.removeItem("staffName");
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    throw new Error("Session expired. Please log in again.");
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Request failed: ${res.status}`);

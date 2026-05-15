@@ -799,6 +799,33 @@
     "title": "Select your Loka",
     "distanceAway": "away"
   },
+  "reservations": {
+    "bookNow": "Book Now",
+    "confirm": "Confirm Booking",
+    "date": "Date",
+    "emptySubtitle": "Book a table at your favourite store",
+    "emptyTitle": "No reservations yet",
+    "fillRequired": "Please fill all required fields",
+    "newReservation": "New Reservation",
+    "notes": "Notes",
+    "notesPlaceholder": "Any special requests...",
+    "partySize": "Party Size",
+    "store": "Store",
+    "submitFailed": "Failed to create reservation",
+    "time": "Time",
+    "title": "Reservations"
+  },
+  "surveys": {
+    "title": "Surveys",
+    "emptyTitle": "No surveys available",
+    "emptySubtitle": "Check back later for new surveys",
+    "tapToParticipate": "Tap to participate",
+    "typeAnswer": "Type your answer...",
+    "submit": "Submit",
+    "thankYou": "Thank You!",
+    "responseSubmitted": "Your response has been submitted.",
+    "backToSurveys": "Back to Surveys"
+  },
   "voucher": {
     "showToBarista": "Show this code to the barista"
   }

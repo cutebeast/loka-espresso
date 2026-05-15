@@ -1,0 +1,137 @@
+/* ============================================
+   Tables Admin — CSS
+   Mobile-first; desktop overrides in @media
+   ============================================ */
+
+/* ── Top bar ── */
+.tp-0 { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; }
+
+/* ── No-store selected ── */
+.tp-3 { display: flex; align-items: center; justify-content: center; padding: 4rem 1rem; }
+.tp-4 { text-align: center; color: var(--brand-text-muted); }
+.tp-5 { font-size: 1.125rem; margin-top: 0.75rem; }
+
+/* ── Error ── */
+.tp-6 { margin-bottom: 1rem; padding: 0.75rem; border-radius: 0.5rem; background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; font-size: 0.875rem; }
+.tp-6a { margin-bottom: 1rem; padding: 0.75rem; border-radius: 0.5rem; background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; font-size: 0.875rem; }
+
+/* ── Collapsible guide ── */
+.tp-guide-card { background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 0.75rem; margin-bottom: 1.5rem; overflow: hidden; }
+.tp-guide-header { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; cursor: pointer; user-select: none; font-size: 0.875rem; font-weight: 600; color: #166534; }
+.tp-guide-header:hover { background: #DCFCE7; }
+.tp-guide-icon { flex-shrink: 0; color: #22C55E; }
+.tp-guide-chevron { margin-left: auto; transition: transform 0.2s; }
+.tp-guide-chevron.open { transform: rotate(180deg); }
+.tp-guide-content { padding: 0 1.25rem 1rem 1.25rem; }
+.tp-guide-steps { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+.tp-guide-step { display: flex; align-items: center; gap: 0.75rem; font-size: 0.8125rem; color: #166534; }
+.tp-guide-step-num { width: 1.5rem; height: 1.5rem; border-radius: 999px; background: #DCFCE7; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; flex-shrink: 0; color: #15803D; }
+
+/* ── Form ── */
+.tp-23 { background: #FFFDF8; border-radius: 0.75rem; border: 1px solid #D5CCBE; padding: 1.5rem; margin-bottom: 1.5rem; }
+.tp-24 { font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; color: var(--brand-text); }
+.tp-25 { color: #991B1B; font-size: 0.8125rem; margin-bottom: 0.75rem; }
+.tp-26 { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+.tp-field { display: flex; flex-direction: column; }
+.tp-field label { font-size: 0.8125rem; font-weight: 500; margin-bottom: 0.25rem; color: var(--brand-text-secondary); }
+.tp-field input { border: 1px solid #D5CCBE; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; }
+.tp-field input:focus { outline: none; border-color: var(--brand-primary); box-shadow: 0 0 0 3px rgba(59, 74, 26, 0.15); }
+.tp-28 { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+.tp-btn-primary { background: #1E1B18; color: #fff; padding: 0.5rem 1.25rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 500; border: none; cursor: pointer; transition: background 0.15s; }
+.tp-btn-primary:hover { background: #3B4A1A; }
+.tp-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.tp-btn-secondary { background: #E5E0D8; color: #1E1B18; padding: 0.5rem 1.25rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 500; border: none; cursor: pointer; transition: background 0.15s; }
+.tp-btn-secondary:hover { background: #D5CCBE; }
+
+/* ── Empty state ── */
+.tp-29 { text-align: center; padding: 3rem 1rem; color: var(--brand-text-muted); }
+.tp-30 { font-size: 1.125rem; margin-top: 0.75rem; }
+.tp-31 { background: #1E1B18; color: #fff; padding: 0.5rem 1.25rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 500; border: none; cursor: pointer; margin-top: 0.75rem; }
+.tp-31:hover { background: #3B4A1A; }
+
+/* ── Table grid ── */
+.tp-32 { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+
+/* ── Table card ── */
+.tp-table-card { background: #FFFDF8; border-radius: 0.75rem; border: 1px solid #D5CCBE; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.tp-table-active { opacity: 1; }
+.tp-table-inactive { opacity: 0.55; border-color: #E5E0D8; }
+
+/* Card header */
+.tp-33 { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.tp-34 { font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--brand-text); }
+.tp-display-name { font-size: 0.75rem; color: var(--brand-text-muted); }
+.tp-occupancy { display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--brand-text-muted); margin-left: auto; }
+.tp-occupied-indicator { display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: #DC2626; font-weight: 600; }
+
+/* Status badge */
+.tp-35 { margin-bottom: 0.25rem; }
+.tp-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+.tp-badge-green { background: #DCFCE7; color: #166534; }
+.tp-badge-yellow { background: #FEF3C7; color: #92400E; }
+.tp-badge-red { background: #FEE2E2; color: #991B1B; }
+.tp-badge-blue { background: #DBEAFE; color: #1E40AF; }
+.tp-badge-gray { background: #F3F4F6; color: #6B7280; }
+
+/* ── Active order indicator ── */
+.tp-order-indicator { border-radius: 0.5rem; padding: 0.5rem 0.625rem; cursor: pointer; transition: box-shadow 0.15s; display: flex; flex-direction: column; gap: 0.25rem; }
+.tp-order-indicator:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+.tp-order-paid { background: #FEF3C7; border: 1px solid #F59E0B; }
+.tp-order-unpaid { background: #FEE2E2; border: 1px solid #F87171; }
+.tp-order-row { display: flex; align-items: center; gap: 0.375rem; font-size: 0.75rem; }
+.tp-order-number { font-weight: 600; font-family: monospace; color: var(--brand-text); }
+.tp-order-status-badge { display: inline-block; padding: 0.1rem 0.375rem; border-radius: 999px; font-size: 0.625rem; font-weight: 600; }
+.tp-order-total { font-weight: 700; font-size: 0.8125rem; color: var(--brand-text); }
+.tp-order-unpaid-warn { display: flex; align-items: center; gap: 0.25rem; font-size: 0.6875rem; color: #DC2626; font-weight: 600; }
+
+/* ── QR code area ── */
+.tp-46 { display: flex; align-items: center; justify-content: center; min-height: 120px; }
+.tp-44 { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.tp-45 { width: 140px; height: 140px; border-radius: 0.5rem; }
+.tp-47 { display: flex; align-items: center; justify-content: center; min-height: 120px; }
+.tp-48 { animation: tpSpin 1s linear infinite; color: var(--brand-text-muted); }
+.tp-48 svg { width: 32px; height: 32px; }
+@keyframes tpSpin { to { transform: rotate(360deg); } }
+
+.tp-timer { display: flex; align-items: center; gap: 0.25rem; font-size: 0.6875rem; font-weight: 600; }
+.tp-timer-urgent { color: #DC2626; }
+.tp-timer-warn { color: #D97706; }
+
+.tp-qr-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed #D5CCBE; border-radius: 0.75rem; padding: 1.5rem; min-width: 120px; min-height: 120px; }
+.tp-qr-placeholder-icon { color: var(--brand-text-muted); opacity: 0.5; margin-bottom: 0.25rem; }
+.tp-qr-placeholder-text { font-size: 0.75rem; color: var(--brand-text-muted); }
+
+/* ── Actions ── */
+.tp-49 { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; justify-content: flex-end; }
+.tp-btn-qr { display: flex; align-items: center; gap: 0.375rem; background: #FEF3C7; color: #92400E; border: 1px solid #F59E0B; border-radius: 0.375rem; padding: 0.25rem 0.625rem; font-size: 0.6875rem; font-weight: 600; cursor: pointer; }
+.tp-btn-qr:hover { background: #FDE68A; }
+.tp-btn-download { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #D5CCBE; border-radius: 0.375rem; background: #FFFDF8; cursor: pointer; color: var(--brand-text-secondary); }
+.tp-btn-download:hover { background: #F2EEE6; }
+.tp-btn-regen { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #D5CCBE; border-radius: 0.375rem; background: #FFFDF8; cursor: pointer; color: var(--brand-text-secondary); }
+.tp-btn-regen:hover { background: #F2EEE6; }
+.tp-btn-toggle { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; background: transparent; cursor: pointer; }
+.tp-btn-edit { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #D5CCBE; border-radius: 0.375rem; background: #FFFDF8; cursor: pointer; color: #2563EB; }
+.tp-btn-edit:hover { background: #DBEAFE; }
+.tp-btn-delete { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #D5CCBE; border-radius: 0.375rem; background: #FFFDF8; cursor: pointer; color: #DC2626; }
+.tp-btn-delete:hover { background: #FEE2E2; }
+.tp-btn-delete-confirm { background: #DC2626; color: #fff; border: none; border-radius: 0.375rem; padding: 0.25rem 0.5rem; font-size: 0.6875rem; font-weight: 600; cursor: pointer; }
+.tp-btn-delete-confirm:hover { background: #B91C1C; }
+.tp-btn-delete-cancel { background: #E5E0D8; color: #1E1B18; border: none; border-radius: 0.375rem; padding: 0.25rem 0.5rem; font-size: 0.6875rem; font-weight: 600; cursor: pointer; }
+.tp-btn-delete-cancel:hover { background: #D5CCBE; }
+
+/* ── Loading ── */
+.tp-loading { text-align: center; padding: 3rem 1rem; color: var(--brand-text-muted); }
+.tp-spinner { animation: tpSpin 0.8s linear infinite; }
+
+/* ── Desktop overrides ── */
+@media (min-width: 768px) {
+  .tp-0 { flex-direction: row; justify-content: space-between; align-items: center; }
+  .tp-26 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .tp-29 { padding: 4rem 1rem; }
+  .tp-32 { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  .tp-table-card { width: 100%; max-width: 360px; }
+  .tp-45 { width: 140px; height: 140px; }
+  .tp-qr-placeholder { padding: 2rem; }
+  .tp-timer { font-size: 0.75rem; }
+  .tp-49 { justify-content: flex-end; }
+}

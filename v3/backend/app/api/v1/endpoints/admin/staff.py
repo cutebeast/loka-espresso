@@ -162,7 +162,7 @@ async def delete_staff(
 
     profile.deleted_at = datetime.now(timezone.utc)
     await db.commit()
-    return None
+    return APIResponse(data={"id": staff_id, "deleted": True})
 
 
 @router.get("/{staff_id}/shifts", response_model=APIResponse[PaginatedResponse[StaffShiftOut]])

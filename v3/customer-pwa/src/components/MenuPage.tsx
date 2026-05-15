@@ -45,12 +45,22 @@ export default function MenuPage() {
     setLoading(true);
     setLoadError(false);
     try {
-      const [catRes, itemsRes] = await Promise.all([
-        api.get(`/menu/categories`),
-        api.get(`/menu/items`, { params: { available_only: true } }),
-      ]);
-      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
-      setMenuItems(Array.isArray(itemsRes.data) ? itemsRes.data : []);
+      // v3: /menu/categories and /menu/items both map to /menu/stores/{store_id}
+      // which returns { items: [...], categories: [...] }
+      const res = await api.get(`/menu/categories`);
+      const data = res.data;
+      if (data && typeof data === 'object' && data.categories) {
+        // Response already mapped to { items, categories } by api.ts
+        setCategories(Array.isArray(data.categories) ? data.categories : []);
+        setMenuItems(Array.isArray(data.items) ? data.items : []);
+      } else if (Array.isArray(data)) {
+        // Fallback: flat array (legacy)
+        setCategories([]);
+        setMenuItems(data);
+      } else {
+        setCategories([]);
+        setMenuItems([]);
+      }
     } catch {
       setCategories([]);
       setMenuItems([]);

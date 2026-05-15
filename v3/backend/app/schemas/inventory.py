@@ -9,8 +9,10 @@ class InventoryCategoryBase(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     store_id: int
-    name: str = Field(alias="category_name")
+    category_name: str
+    slug: str = ""
     description: str | None = None
+    is_active: bool = True
     parent_category_id: int | None = None
     display_order: int = 0
 
@@ -22,8 +24,10 @@ class InventoryCategoryCreate(InventoryCategoryBase):
 class InventoryCategoryUpdate(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    name: str | None = Field(default=None, alias="category_name")
+    category_name: str | None = None
+    slug: str | None = None
     description: str | None = None
+    is_active: bool | None = None
     parent_category_id: int | None = None
     display_order: int | None = None
 

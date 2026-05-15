@@ -4,6 +4,7 @@ from datetime import date, datetime, time, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
@@ -16,6 +17,7 @@ from app.models.store import (
     StoreSpecialHours,
 )
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.services.translation import auto_translate_record, delete_translations
 from app.schemas.store import (
     DiningTableOut,
     StoreConfigurationOut,
@@ -86,7 +88,7 @@ async def list_stores(
     db: DBDependency,
     admin: CurrentAdmin,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=100),
     is_active: bool | None = Query(None),
 ):
     """List all stores (paginated, optional is_active filter)."""
@@ -100,7 +102,7 @@ async def list_stores(
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
 
-    stmt = base_stmt.order_by(Store.id.desc()).offset((page - 1) * page_size).limit(page_size)
+    stmt = base_stmt.order_by(Store.position.asc(), Store.id.asc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
     items = [StoreOut.model_validate(r) for r in result.scalars().all()]
 
@@ -109,8 +111,8 @@ async def list_stores(
             items=items,
             total=total,
             page=page,
-            per_page=page_size,
-            total_pages=(total + page_size - 1) // page_size,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
         )
     )
 
@@ -136,8 +138,6 @@ async def create_store(
                 open_time=time(9, 0),
                 close_time=time(22, 0),
                 is_closed=False,
-                is_24_hours=False,
-                last_order_time=None,
             )
         )
 
@@ -160,6 +160,7 @@ async def create_store(
     )
 
     await db.commit()
+    await auto_translate_record(db, "stores", store.id, {"store_name": store.store_name})
     await db.refresh(store)
     return APIResponse(data=StoreOut.model_validate(store))
 
@@ -217,11 +218,34 @@ async def update_store(
     store = await _get_store_or_404(db, store_id)
 
     update_data = data.model_dump(exclude_unset=True)
+    hours_data = update_data.pop("operating_hours", None)
+
     for field, value in update_data.items():
         setattr(store, field, value)
 
+    # Update operating hours if provided
+    if hours_data is not None:
+        from app.models.store import StoreOperatingHours
+        existing = await db.execute(
+            select(StoreOperatingHours).where(StoreOperatingHours.store_id == store.id)
+        )
+        for h in existing.scalars().all():
+            await db.delete(h)
+        await db.flush()
+        for h in hours_data:
+            open_str = h.get("open_time", "08:00")
+            close_str = h.get("close_time", "22:00")
+            db.add(StoreOperatingHours(
+                store_id=store.id,
+                day_of_week=h.get("day_of_week", 0),
+                open_time=time.fromisoformat(open_str) if isinstance(open_str, str) else open_str,
+                close_time=time.fromisoformat(close_str) if isinstance(close_str, str) else close_str,
+                is_closed=h.get("is_closed", False),
+            ))
+
     store.updated_at = datetime.now(timezone.utc)
     await db.commit()
+    await auto_translate_record(db, "stores", store.id, {"store_name": store.store_name})
     await db.refresh(store)
     return APIResponse(data=StoreOut.model_validate(store))
 
@@ -238,6 +262,7 @@ async def delete_store(
     store.deleted_at = datetime.now(timezone.utc)
     store.is_active = False
     await db.commit()
+    await delete_translations(db, "stores", store_id)
     return APIResponse(data={"id": store.id, "deleted": True})
 
 
@@ -297,13 +322,11 @@ async def replace_operating_hours(
     for item in data:
         db.add(
             StoreOperatingHours(
-                store_id=store_id,
+                store_id=store.id,
                 day_of_week=item.day_of_week,
                 open_time=item.open_time,
                 close_time=item.close_time,
                 is_closed=item.is_closed,
-                is_24_hours=False,
-                last_order_time=None,
             )
         )
 
@@ -433,3 +456,81 @@ async def delete_table(
     table.is_active = False
     await db.commit()
     return APIResponse(data={"id": table.id, "deleted": True})
+
+
+# ---------------------------------------------------------------------------
+# QR Code generation
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/{store_id}/tables/{table_id}/generate-qr",
+    response_model=APIResponse[DiningTableOut],
+)
+async def generate_table_qr(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    store_id: int,
+    table_id: int,
+):
+    """Generate QR code URL for a dining table."""
+    await _get_store_or_404(db, store_id)
+
+    result = await db.execute(
+        select(DiningTable).where(
+            DiningTable.id == table_id,
+            DiningTable.store_id == store_id,
+            DiningTable.deleted_at.is_(None),
+        )
+    )
+    table = result.scalar_one_or_none()
+    if table is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Table not found")
+
+    # Use existing token or generate new one
+    token = table.qr_code_token or uuid4().hex
+    table.qr_code_token = token
+    table.qr_code_url = f"loka:table:{token}"
+    table.qr_generated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(table)
+    return APIResponse(data=DiningTableOut.model_validate(table))
+
+
+@router.get(
+    "/{store_id}/tables/{table_id}/qr-image",
+    response_class=Response,
+)
+async def download_table_qr(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    store_id: int,
+    table_id: int,
+):
+    """Download QR code as PNG image."""
+    await _get_store_or_404(db, store_id)
+
+    result = await db.execute(
+        select(DiningTable).where(
+            DiningTable.id == table_id,
+            DiningTable.store_id == store_id,
+            DiningTable.deleted_at.is_(None),
+        )
+    )
+    table = result.scalar_one_or_none()
+    if table is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Table not found")
+    if not table.qr_code_url:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="QR code not generated yet")
+
+    try:
+        import qrcode as qrlib
+        from io import BytesIO
+
+        img = qrlib.make(table.qr_code_url, box_size=10, border=2)
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        return Response(content=buf.getvalue(), media_type="image/png")
+    except ImportError:
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="qrcode package not installed")

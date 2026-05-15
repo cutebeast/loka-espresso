@@ -41,6 +41,16 @@ from app.models.platform import (
     DataRetentionPolicy,
     SystemHealthMetric,
 )
+from app.models.info_card import (
+    InformationCard,
+    SystemPage,
+    ProductCard,
+    EventCard,
+    EventRsvp,
+    PromoBanner,
+    ContentSection,
+    SplashScreen,
+)
 from app.models.menu import (
     MenuCategory,
     MenuItem,
@@ -50,6 +60,8 @@ from app.models.menu import (
     MenuItemRecipe,
     Allergen,
     MenuItemAllergen,
+    DietaryTag,
+    MenuItemDietaryTag,
     TaxCategory,
 )
 from app.models.inventory import (
@@ -99,10 +111,7 @@ from app.models.marketing import (
     MarketingCampaign,
     CampaignAnalytics,
 )
-from app.models.content import (
-    ContentBlock,
-    SplashScreen,
-)
+
 from app.models.survey import (
     SurveyDefinition,
     SurveyQuestion,
@@ -110,6 +119,8 @@ from app.models.survey import (
     SurveyAnswer,
 )
 from app.models.notification import (
+    AdminNotification,
+    NotificationTemplate,
     NotificationMessage,
     NotificationDeliveryLog,
     NotificationPreference,
@@ -118,3 +129,5 @@ from app.models.translation import (
     Translation,
     TranslationCache,
 )
+from app.models.feedback import FeedbackEntry
+from app.models.checkin import CustomerDailyCheckin

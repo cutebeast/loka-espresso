@@ -1,105 +1,54 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getReferralEvents, fulfillReferral, type ReferralEvent } from "@/lib/api";
+import { api } from "@/lib/api";
+
+interface Referral {
+  id: number; referrer_customer_id: number; invitee_customer_id: number;
+  referrer_name?: string | null; invitee_name?: string | null;
+  referral_code: string; status: string; created_at: string;
+  reward_points?: number; converted_at?: string;
+}
 
 export default function ReferralsPage() {
-  const [items, setItems] = useState<ReferralEvent[]>([]);
+  const [items, setItems] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const fetchData = () => {
     setLoading(true);
-    getReferralEvents()
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
+    api.get<{items:Referral[]}>("/admin/referrals?per_page=100")
+      .then(d => setItems(Array.isArray(d) ? d : []))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   };
+  useEffect(() => { fetchData(); }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleFulfill = async (id: number) => {
-    if (!confirm("Mark this referral as fulfilled?")) return;
-    try {
-      await fulfillReferral(id);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const statusClass = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-amber-100 text-amber-700";
-      case "fulfilled":
-        return "bg-green-100 text-green-700";
-      case "cancelled":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
+  const statusBadge = (s: string) => {
+    const colors: Record<string,string> = { pending: "badge-yellow", converted: "badge-blue", rewarded: "badge-green", expired: "badge-gray" };
+    return <span className={`badge badge-sm ${colors[s] || "badge-gray"}`}>{s}</span>;
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Referral Events</h1>
-      </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">Referrer</th>
-              <th className="text-left px-4 py-3 font-semibold">Referred</th>
-              <th className="text-left px-4 py-3 font-semibold">Code</th>
-              <th className="text-left px-4 py-3 font-semibold">Reward</th>
-              <th className="text-left px-4 py-3 font-semibold">Status</th>
-              <th className="text-left px-4 py-3 font-semibold">Date</th>
-              <th className="text-left px-4 py-3 font-semibold">Actions</th>
-            </tr>
-          </thead>
+    <div style={{padding:32}}>
+      <div className="page-header"><h1 className="page-title">Referrals</h1><p className="page-subtitle">{items.length} referrals — points auto-credited when invitee meets criteria</p></div>
+      {error && <div className="alert alert-error">{error}</div>}
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} referrals</span></div>
+      <div className="table-container">
+        <table className="data-table">
+          <thead><tr><th>Referrer</th><th>Code</th><th>Invitee</th><th>Reward Pts</th><th>Status</th><th>Date</th></tr></thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
-                  Loading...
-                </td>
+            {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
+            : items.map(item => (
+              <tr key={item.id}>
+                <td style={{fontWeight:600}}>{item.referrer_name || `#${item.referrer_customer_id}`}</td>
+                <td className="font-mono" style={{fontSize:11}}>{item.referral_code}</td>
+                <td>{item.invitee_name || `#${item.invitee_customer_id}`}</td>
+                <td>{item.reward_points ? `+${item.reward_points} pts` : "—"}</td>
+                <td>{statusBadge(item.status)}</td>
+                <td style={{fontSize:12}}>{item.created_at?.slice(0,10)}</td>
               </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
-                  No referral events found.
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3">{item.referrer_name}</td>
-                  <td className="px-4 py-3">{item.referred_name}</td>
-                  <td className="px-4 py-3 font-mono">{item.referral_code}</td>
-                  <td className="px-4 py-3">{item.reward || "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusClass(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{new Date(item.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    {item.status === "pending" ? (
-                      <button onClick={() => handleFulfill(item.id)} className="text-green-600 hover:underline text-sm">
-                        Mark Fulfilled
-                      </button>
-                    ) : (
-                      <span className="text-gray-400 text-xs">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
       </div>

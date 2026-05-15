@@ -11,7 +11,6 @@ from app.schemas.base import BaseSchema, TimestampedSchema
 class MarketingCampaignBase(BaseSchema):
     campaign_name: str = Field(..., max_length=100)
     campaign_key: str = Field(..., max_length=50)
-    store_id: int | None = None
     channel: Literal["push_notification", "email", "sms", "in_app", "whatsapp"]
     campaign_type: Literal[
         "promotional", "transactional", "retention", "acquisition", "reactivation"
@@ -45,7 +44,6 @@ class MarketingCampaignCreate(MarketingCampaignBase):
 class MarketingCampaignUpdate(BaseSchema):
     campaign_name: str | None = Field(None, max_length=100)
     campaign_key: str | None = Field(None, max_length=50)
-    store_id: int | None = None
     channel: Literal["push_notification", "email", "sms", "in_app", "whatsapp"] | None = None
     campaign_type: Literal[
         "promotional", "transactional", "retention", "acquisition", "reactivation"

@@ -15,7 +15,6 @@ class VoucherDefinitionBase(BaseSchema):
         "bundle_offer", "referral_reward", "loyalty_exclusive",
     ]
     scope: Literal["global", "store_specific", "category_specific", "item_specific", "customer_segment"] = "global"
-    store_id: int | None = None
     category_id: int | None = None
     menu_item_id: int | None = None
     display_title: str = Field(..., max_length=100)
@@ -33,6 +32,11 @@ class VoucherDefinitionBase(BaseSchema):
     stackable: bool = False
     image_url: str | None = Field(None, max_length=500)
     terms_and_conditions: str | None = None
+    how_to_redeem: str | None = None
+    short_description: str | None = Field(None, max_length=255)
+    long_description: str | None = None
+    promo_type: str | None = Field(None, max_length=50)
+    validity_days: int | None = None
     is_active: bool = True
 
 
@@ -47,7 +51,6 @@ class VoucherDefinitionUpdate(BaseSchema):
         "bundle_offer", "referral_reward", "loyalty_exclusive",
     ] | None = None
     scope: Literal["global", "store_specific", "category_specific", "item_specific", "customer_segment"] | None = None
-    store_id: int | None = None
     category_id: int | None = None
     menu_item_id: int | None = None
     display_title: str | None = Field(None, max_length=100)
@@ -65,6 +68,11 @@ class VoucherDefinitionUpdate(BaseSchema):
     stackable: bool | None = None
     image_url: str | None = Field(None, max_length=500)
     terms_and_conditions: str | None = None
+    how_to_redeem: str | None = None
+    short_description: str | None = Field(None, max_length=255)
+    long_description: str | None = None
+    promo_type: str | None = Field(None, max_length=50)
+    validity_days: int | None = None
     is_active: bool | None = None
 
 
@@ -78,7 +86,6 @@ class CustomerVoucherOut(BaseSchema):
     id: int
     customer_id: int
     voucher_definition_id: int
-    store_id: int | None = None
     voucher_code: str
     status: Literal["active", "reserved", "used", "expired", "revoked"]
     order_id: int | None = None

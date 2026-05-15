@@ -17,10 +17,9 @@ from app.schemas.translation import (
     TranslateResponse,
 )
 from app.services.translation import (
-    auto_translate,
+    auto_translate_text,
     clear_old_cache,
     get_cache_stats,
-    get_or_create_translation,
 )
 
 router = APIRouter(tags=["translations"])
@@ -41,17 +40,24 @@ async def _get_translation_or_404(db, translation_id: int) -> Translation:
 @router.get("", response_model=APIResponse[PaginatedResponse[TranslationOut]])
 async def list_translations(
     db: DBDependency,
+    namespace: str | None = Query(None),
+    locale: str | None = Query(None),
     table_name: str | None = Query(None),
     record_id: int | None = Query(None),
     column_name: str | None = Query(None),
-    locale: str | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=100),
 ):
     """List translations with optional filters."""
     stmt = select(Translation)
     count_stmt = select(func.count(Translation.id))
 
+    if namespace is not None:
+        stmt = stmt.where(Translation.namespace == namespace)
+        count_stmt = count_stmt.where(Translation.namespace == namespace)
+    if locale is not None:
+        stmt = stmt.where(Translation.locale == locale)
+        count_stmt = count_stmt.where(Translation.locale == locale)
     if table_name is not None:
         stmt = stmt.where(Translation.table_name == table_name)
         count_stmt = count_stmt.where(Translation.table_name == table_name)
@@ -61,14 +67,11 @@ async def list_translations(
     if column_name is not None:
         stmt = stmt.where(Translation.column_name == column_name)
         count_stmt = count_stmt.where(Translation.column_name == column_name)
-    if locale is not None:
-        stmt = stmt.where(Translation.locale == locale)
-        count_stmt = count_stmt.where(Translation.locale == locale)
 
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
 
-    stmt = stmt.order_by(Translation.id.desc()).offset((page - 1) * page_size).limit(page_size)
+    stmt = stmt.order_by(Translation.id.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
     items = [TranslationOut.model_validate(r) for r in result.scalars().all()]
 
@@ -77,8 +80,8 @@ async def list_translations(
             items=items,
             total=total,
             page=page,
-            per_page=page_size,
-            total_pages=(total + page_size - 1) // page_size,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
         )
     )
 
@@ -147,23 +150,12 @@ async def translate_text(
     data: TranslateRequest,
 ):
     """Auto-translate text with caching."""
-    translated_text, was_cached = await auto_translate(
+    translated_text, was_cached = await auto_translate_text(
         db,
         text=data.text,
         source_locale=data.source_locale,
         target_locale=data.target_locale,
     )
-
-    # Upsert into Translation table if context is provided
-    if data.table_name and data.record_id is not None and data.column_name:
-        await get_or_create_translation(
-            db,
-            table_name=data.table_name,
-            record_id=data.record_id,
-            column_name=data.column_name,
-            locale=data.target_locale,
-            text=translated_text,
-        )
 
     return APIResponse(
         data=TranslateResponse(

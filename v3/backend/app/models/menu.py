@@ -25,9 +25,6 @@ class MenuCategory(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "menu_categories"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    store_id: Mapped[int] = mapped_column(
-        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
-    )
     parent_category_id: Mapped[int | None] = mapped_column(
         ForeignKey("menu_categories.id", ondelete="SET NULL"), nullable=True
     )
@@ -39,7 +36,6 @@ class MenuCategory(Base, TimestampMixin, SoftDeleteMixin):
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    store: Mapped["Store"] = relationship("Store", back_populates="menu_categories")
     parent_category: Mapped["MenuCategory | None"] = relationship(
         "MenuCategory",
         remote_side=[id],
@@ -60,9 +56,6 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "menu_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    store_id: Mapped[int] = mapped_column(
-        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
-    )
     category_id: Mapped[int] = mapped_column(
         ForeignKey("menu_categories.id", ondelete="CASCADE"), nullable=False
     )
@@ -73,20 +66,17 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     base_price: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
     cost_price: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    image_gallery_urls: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_popular: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     prep_time_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
     calories: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    dietary_tags: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
     tax_category_id: Mapped[int | None] = mapped_column(
         ForeignKey("tax_categories.id", ondelete="SET NULL"), nullable=True
     )
 
-    store: Mapped["Store"] = relationship("Store")
     category: Mapped["MenuCategory"] = relationship(
         "MenuCategory", back_populates="menu_items"
     )
@@ -109,6 +99,9 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     allergens: Mapped[List["Allergen"]] = relationship(
         "Allergen", secondary="menu_item_allergens", back_populates="menu_items"
     )
+    dietary_tag_links: Mapped[List["MenuItemDietaryTag"]] = relationship(
+        "MenuItemDietaryTag", back_populates="menu_item", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         CheckConstraint("base_price >= 0", name="ck_menu_items_base_price"),
@@ -122,9 +115,6 @@ class TaxCategory(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "tax_categories"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    store_id: Mapped[int] = mapped_column(
-        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
-    )
     category_name: Mapped[str] = mapped_column(String(50), nullable=False)
     rate: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -135,7 +125,6 @@ class TaxCategory(Base, TimestampMixin, SoftDeleteMixin):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
-    store: Mapped["Store"] = relationship("Store")
     menu_items: Mapped[List["MenuItem"]] = relationship(
         "MenuItem", back_populates="tax_category"
     )
@@ -245,6 +234,7 @@ class Allergen(Base, SoftDeleteMixin):
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    color_hex: Mapped[str | None] = mapped_column(String(7), nullable=True, default="#22C55E")
     severity: Mapped[str] = mapped_column(String(20), nullable=False, default="high")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -313,3 +303,34 @@ class MenuItemRecipe(Base):
             name="ck_menu_item_recipes_waste_factor",
         ),
     )
+
+
+class DietaryTag(Base):
+    __tablename__ = "dietary_tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tag_key: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    icon: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    color_hex: Mapped[str | None] = mapped_column(String(7), nullable=True, default="#22C55E")
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    menu_items: Mapped[List["MenuItemDietaryTag"]] = relationship("MenuItemDietaryTag", back_populates="dietary_tag")
+
+
+class MenuItemDietaryTag(Base):
+    __tablename__ = "menu_item_dietary_tags"
+
+    menu_item_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), primary_key=True
+    )
+    dietary_tag_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("dietary_tags.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    menu_item: Mapped["MenuItem"] = relationship("MenuItem", back_populates="dietary_tag_links")
+    dietary_tag: Mapped["DietaryTag"] = relationship("DietaryTag", back_populates="menu_items")

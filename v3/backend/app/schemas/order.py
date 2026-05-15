@@ -41,10 +41,9 @@ class OrderAdjustmentOut(BaseSchema):
     id: int
     order_id: int
     adjustment_type: str
-    amount: float
+    amount_delta: float
     reason: str
     approved_by: int | None
-    is_approved: bool
     created_at: datetime
 
 
@@ -124,7 +123,7 @@ class OrderOut(BaseSchema):
     completed_at: datetime | None
     cancelled_at: datetime | None
     cancellation_reason: str | None
-    cancelled_by: int | None
+    cancelled_by: str | None
     line_items: list[OrderLineItemOut] = []
     fulfillment: OrderFulfillmentOut | None = None
     status_log: list[OrderStatusLogOut] = []

@@ -1,122 +1,80 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import { getInventoryMovements, type InventoryMovement } from "@/lib/api";
+import { api } from "@/lib/api";
+import { ArrowLeft } from "lucide-react";
+
+interface Store { id: number; store_name: string; }
 
 export default function InventoryMovementsPage() {
-  const [items, setItems] = useState<InventoryMovement[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [movementTypeFilter, setMovementTypeFilter] = useState("");
+  const [stores, setStores] = useState<Store[]>([]);
+  const [storeId, setStoreId] = useState("");
+  const [movementType, setMovementType] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  const fetchData = () => {
-    setLoading(true);
-    getInventoryMovements({
-      movement_type: movementTypeFilter || undefined,
-      from: fromDate || undefined,
-      to: toDate || undefined,
-    })
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+  const fetchStores = async () => {
+    try { const d = await api.getRaw<any>("/admin/stores?per_page=50"); setStores(d.items || []); if (!storeId && d.items?.length) setStoreId(String(d.items[0].id)); }
+    catch {}
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [movementTypeFilter, fromDate, toDate]);
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (movementType) params.set("movement_type", movementType);
+      if (fromDate) params.set("date_from", fromDate);
+      if (toDate) params.set("date_to", toDate);
+      const d = await api.getRaw<any>(`/admin/inventory/movements?${params}`);
+      let list = d.items || d || [];
+      if (storeId) list = list.filter((m: any) => String(m.store_id) === storeId);
+      setItems(Array.isArray(list) ? list : []);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
 
-  const typeClass = (type: string) => {
-    switch (type) {
-      case "in":
-        return "bg-green-100 text-green-700";
-      case "out":
-        return "bg-red-100 text-red-700";
-      case "adjustment":
-        return "bg-blue-100 text-blue-700";
-      case "waste":
-        return "bg-orange-100 text-orange-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
+  useEffect(() => { fetchStores(); }, []);
+  useEffect(() => { fetchData(); }, [movementType, fromDate, toDate, storeId]);
+
+  const typeBadge = (t: string) => {
+    const m: Record<string, string> = { in: "badge-green", out: "badge-red", adjustment: "badge-blue", waste: "badge-orange" };
+    return <span className={`badge badge-sm ${m[t] || "badge-gray"}`}>{t}</span>;
   };
 
   return (
-    <div className="p-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-        <h1 className="text-2xl font-bold">Inventory Movement Log</h1>
-        <div className="flex flex-wrap gap-3">
-          <select
-            value={movementTypeFilter}
-            onChange={(e) => setMovementTypeFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">All Types</option>
-            <option value="in">In</option>
-            <option value="out">Out</option>
-            <option value="adjustment">Adjustment</option>
-            <option value="waste">Waste</option>
-          </select>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          />
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          />
-        </div>
+    <div style={{ padding: 32 }}>
+      <div className="page-header"><div><h1 className="page-title">Inventory Movements</h1><p className="page-subtitle">{items.length} movements</p></div></div>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "end" }}>
+        <div><label style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Store</label>
+          <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
+        <div><label style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Type</label>
+          <select value={movementType} onChange={e => setMovementType(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All</option><option value="in">In</option><option value="out">Out</option><option value="adjustment">Adjustment</option><option value="waste">Waste</option></select></div>
+        <div><label style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>From</label><input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={{ padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
+        <div><label style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>To</label><input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={{ padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
       </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">Item</th>
-              <th className="text-left px-4 py-3 font-semibold">Type</th>
-              <th className="text-left px-4 py-3 font-semibold">Quantity</th>
-              <th className="text-left px-4 py-3 font-semibold">Unit Cost</th>
-              <th className="text-left px-4 py-3 font-semibold">Date</th>
-              <th className="text-left px-4 py-3 font-semibold">Performed By</th>
+
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} movements</span></div>
+      <div className="table-container"><table className="data-table">
+        <thead><tr><th>Item</th><th>Type</th><th style={{ textAlign: "center" }}>Qty</th><th style={{ textAlign: "right" }}>Unit Cost</th><th>Date</th><th>By</th></tr></thead>
+        <tbody>
+          {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
+          : items.length === 0 ? <tr><td colSpan={6} className="data-table-empty">No movements found.</td></tr>
+          : items.map(m => (
+            <tr key={m.id}>
+              <td style={{ fontWeight: 600 }}>{m.item_name || `#${m.inventory_item_id}`}</td>
+              <td>{typeBadge(m.movement_type)}</td>
+              <td style={{ textAlign: "center", fontWeight: 600, color: m.quantity < 0 ? "var(--color-error)" : "var(--color-success)" }}>{m.quantity > 0 ? `+${m.quantity}` : m.quantity}</td>
+              <td style={{ textAlign: "right" }}>{m.unit_cost ? `RM ${Number(m.unit_cost).toFixed(2)}` : "—"}</td>
+              <td style={{ fontSize: 12 }}>{m.created_at ? new Date(m.created_at).toLocaleDateString() : "—"}</td>
+              <td style={{ fontSize: 12 }}>{m.performed_by_name || "—"}</td>
             </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  Loading...
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  No movements found.
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3">{item.item_name}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${typeClass(item.movement_type)}`}>
-                      {item.movement_type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{item.quantity}</td>
-                  <td className="px-4 py-3">{item.unit_cost ? `RM ${item.unit_cost.toFixed(2)}` : "—"}</td>
-                  <td className="px-4 py-3">{new Date(item.created_at).toLocaleString()}</td>
-                  <td className="px-4 py-3">{item.performed_by}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table></div>
     </div>
   );
 }

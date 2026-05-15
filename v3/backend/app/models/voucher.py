@@ -28,9 +28,6 @@ class VoucherDefinition(Base, SoftDeleteMixin, TimestampMixin):
     voucher_code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     voucher_type: Mapped[str] = mapped_column(VoucherType, nullable=False)
     scope: Mapped[str] = mapped_column(VoucherScope, nullable=False, default="global")
-    store_id: Mapped[int | None] = mapped_column(
-        ForeignKey("stores.id", ondelete="SET NULL"), nullable=True, index=True
-    )
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("menu_categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -53,12 +50,16 @@ class VoucherDefinition(Base, SoftDeleteMixin, TimestampMixin):
     stackable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     terms_and_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    how_to_redeem: Mapped[str | None] = mapped_column(Text, nullable=True)
+    short_description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    long_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    promo_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    validity_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[int | None] = mapped_column(
         ForeignKey("admin_accounts.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
-    store: Mapped["Store"] = relationship("Store", back_populates="voucher_definitions")
     customer_vouchers: Mapped[List["CustomerVoucher"]] = relationship(
         "CustomerVoucher",
         back_populates="voucher_definition",
@@ -93,8 +94,8 @@ class CustomerVoucher(Base):
     voucher_definition_id: Mapped[int] = mapped_column(
         ForeignKey("voucher_definitions.id", ondelete="CASCADE"), nullable=False
     )
-    store_id: Mapped[int | None] = mapped_column(
-        ForeignKey("stores.id", ondelete="SET NULL"), nullable=True
+    store_id: Mapped[int] = mapped_column(
+        ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False
     )
     voucher_code: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")

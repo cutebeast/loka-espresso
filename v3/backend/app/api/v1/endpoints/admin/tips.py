@@ -5,9 +5,11 @@ from datetime import date, datetime, time, timezone
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.staff import StaffProfile, TipAllocation
+from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse
 
 router = APIRouter(prefix="/admin/staff", tags=["admin — staff"])
@@ -35,6 +37,9 @@ class TipAllocationOut(BaseModel):
     tip_percentage: float | None
     allocation_type: str
     created_at: datetime
+    store_id: int | None = None
+    store_name: str | None = None
+    total_tip: float = 0
 
 
 # ---------------------------------------------------------------------------
@@ -75,16 +80,28 @@ async def list_tip_allocations(
     total = total_result.scalar() or 0
 
     stmt = (
-        base_stmt.order_by(TipAllocation.created_at.desc())
+        base_stmt
+        .options(joinedload(TipAllocation.staff).joinedload(StaffProfile.store))
+        .order_by(TipAllocation.created_at.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    items = [TipAllocationOut.model_validate(r) for r in result.scalars().all()]
+    allocations = result.unique().scalars().all()
+
+    # Enrich with store info and order payment details
+    items_out = []
+    for a in allocations:
+        out = TipAllocationOut.model_validate(a)
+        if a.staff and a.staff.store:
+            out.store_id = a.staff.store.id
+            out.store_name = a.staff.store.store_name
+        out.total_tip = a.tip_amount
+        items_out.append(out)
 
     return APIResponse(
         data=PaginatedResponse(
-            items=items,
+            items=items_out,
             total=total,
             page=page,
             per_page=per_page,

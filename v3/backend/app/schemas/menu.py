@@ -14,6 +14,7 @@ class AllergenOut(BaseSchema):
     display_name: str
     description: str | None
     icon_url: str | None
+    color_hex: str | None = None
     severity: Literal["low", "medium", "high", "critical"] = "high"
     is_active: bool
     created_at: datetime | None = None
@@ -30,7 +31,6 @@ class MenuCategoryBase(BaseSchema):
 
 
 class MenuCategoryCreate(MenuCategoryBase):
-    store_id: int
     parent_category_id: int | None = None
 
 
@@ -47,7 +47,6 @@ class MenuCategoryUpdate(BaseSchema):
 
 class MenuCategoryOut(MenuCategoryBase, TimestampedSchema):
     id: int
-    store_id: int
     parent_category_id: int | None
 
 
@@ -106,19 +105,16 @@ class MenuItemBase(BaseSchema):
     base_price: float = Field(..., ge=0)
     cost_price: float | None = Field(None, ge=0)
     image_url: str | None = Field(None, max_length=500)
-    image_gallery_urls: list[str] | None = None
     is_available: bool = True
     is_featured: bool = False
     is_popular: bool = False
     display_order: int = Field(default=0, ge=0)
     prep_time_minutes: int = Field(default=10, ge=0)
     calories: int | None = Field(None, ge=0)
-    dietary_tags: list[str] | None = None
     tax_category_id: int | None = None
 
 
 class MenuItemCreate(MenuItemBase):
-    store_id: int
     category_id: int
 
 
@@ -130,7 +126,6 @@ class MenuItemUpdate(BaseSchema):
     base_price: float | None = Field(None, ge=0)
     cost_price: float | None = Field(None, ge=0)
     image_url: str | None = Field(None, max_length=500)
-    image_gallery_urls: list[str] | None = None
     is_available: bool | None = None
     is_featured: bool | None = None
     is_popular: bool | None = None
@@ -139,16 +134,18 @@ class MenuItemUpdate(BaseSchema):
     calories: int | None = Field(None, ge=0)
     dietary_tags: list[str] | None = None
     tax_category_id: int | None = None
-    store_id: int | None = None
     category_id: int | None = None
+    modifier_groups: list[dict] | None = None
+    allergen_ids: list[int] | None = None
+    dietary_tag_ids: list[int] | None = None
 
 
 class MenuItemOut(MenuItemBase, TimestampedSchema):
     id: int
-    store_id: int
     category_id: int
     category: MenuCategoryOut | None = None
     allergens: list[AllergenOut] = []
+    dietary_tags: list[dict] | None = None
     modifier_groups: list[MenuModifierGroupOut] = []
     variants: list[MenuVariantOut] = []
     recipes: list[MenuItemRecipeOut] = []
@@ -179,6 +176,50 @@ class MenuItemPublicOut(BaseSchema):
 class MenuPublicOut(BaseSchema):
     """Full public menu for a store."""
 
-    store_id: int
     categories: list[MenuCategoryOut]
     items: list[MenuItemPublicOut]
+
+
+# ── Tax Category ──
+
+class TaxCategoryBase(BaseSchema):
+    category_name: str = Field(..., min_length=1, max_length=50)
+    rate: float = Field(..., ge=0, le=1)
+    is_active: bool = True
+
+class TaxCategoryCreate(TaxCategoryBase):
+    pass
+
+class TaxCategoryUpdate(BaseSchema):
+    category_name: str | None = Field(None, min_length=1, max_length=50)
+    rate: float | None = Field(None, ge=0, le=1)
+    is_active: bool | None = None
+
+class TaxCategoryOut(TaxCategoryBase, TimestampedSchema):
+    id: int
+
+
+# ── Dietary Tag ──
+
+class DietaryTagBase(BaseSchema):
+    tag_key: str = Field(..., max_length=50)
+    display_name: str = Field(..., min_length=1, max_length=100)
+    icon: str | None = Field(None, max_length=10)
+    color_hex: str | None = Field(None, max_length=7)
+    description: str | None = None
+    is_active: bool = True
+
+class DietaryTagCreate(DietaryTagBase):
+    pass
+
+class DietaryTagUpdate(BaseSchema):
+    tag_key: str | None = Field(None, max_length=50)
+    display_name: str | None = Field(None, min_length=1, max_length=100)
+    icon: str | None = Field(None, max_length=10)
+    color_hex: str | None = Field(None, max_length=7)
+    description: str | None = None
+    is_active: bool | None = None
+
+class DietaryTagOut(DietaryTagBase):
+    id: int
+    created_at: datetime

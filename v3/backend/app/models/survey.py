@@ -30,29 +30,23 @@ class SurveyDefinition(Base, TimestampMixin, SoftDeleteMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     welcome_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     thank_you_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    reward_voucher_id: Mapped[int | None] = mapped_column(
-        ForeignKey("voucher_definitions.id", ondelete="SET NULL"), nullable=True, index=True
-    )
-    reward_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     completion_target: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_anonymous: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     allow_multiple_responses: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    reward_voucher_id: Mapped[int | None] = mapped_column(
+        ForeignKey("voucher_definitions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_by: Mapped[int | None] = mapped_column(
         ForeignKey("admin_accounts.id", ondelete="SET NULL"), nullable=True, index=True
     )
-
     questions: Mapped[List["SurveyQuestion"]] = relationship(
         "SurveyQuestion", back_populates="survey", cascade="all, delete-orphan"
     )
     responses: Mapped[List["SurveyResponse"]] = relationship(
         "SurveyResponse", back_populates="survey", cascade="all, delete-orphan"
-    )
-
-    __table_args__ = (
-        CheckConstraint("reward_points >= 0", name="ck_survey_definitions_reward_points"),
     )
 
 

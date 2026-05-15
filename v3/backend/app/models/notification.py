@@ -23,6 +23,88 @@ from app.models.base import Base, TimestampMixin
 from app.models.enums import CampaignChannel, NotificationPriority, NotificationStatus
 
 
+# ---------------------------------------------------------------------------
+# Admin Push Notifications (audience-targeted)
+# ---------------------------------------------------------------------------
+
+class AdminNotification(Base, TimestampMixin):
+    """Admin-created push notification sent to audience segments."""
+    __tablename__ = "admin_notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notification_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="general"
+    )
+    audience_segment: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="all_users"
+    )
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="draft"
+    )
+    scheduled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    action_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by: Mapped[int | None] = mapped_column(
+        ForeignKey("admin_accounts.id", ondelete="SET NULL"), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "notification_type IN ('general','order','reward','wallet','loyalty','promo','info','event')",
+            name="ck_admin_notifications_type",
+        ),
+        CheckConstraint(
+            "audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members')",
+            name="ck_admin_notifications_audience",
+        ),
+        CheckConstraint(
+            "status IN ('draft','scheduled','sent','failed')",
+            name="ck_admin_notifications_status",
+        ),
+    )
+
+
+class NotificationTemplate(Base, TimestampMixin):
+    """Reusable notification templates for quick compose."""
+    __tablename__ = "notification_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notification_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="general"
+    )
+    audience_segment: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="all_users"
+    )
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "notification_type IN ('general','order','reward','wallet','loyalty','promo','info','event')",
+            name="ck_notification_templates_type",
+        ),
+        CheckConstraint(
+            "audience_segment IN ('all_users','new_users','loyal_customers','inactive_users','platinum_members')",
+            name="ck_notification_templates_audience",
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Per-customer notification messages (existing)
+# ---------------------------------------------------------------------------
+
+
 class NotificationMessage(Base):
     __tablename__ = "notification_messages"
 

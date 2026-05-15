@@ -5,13 +5,16 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.menu import (
     Allergen,
+    DietaryTag,
     MenuCategory,
     MenuItem,
     MenuItemAllergen,
+    MenuItemDietaryTag,
     MenuModifierGroup,
     MenuModifierOption,
     MenuVariant,
@@ -29,7 +32,26 @@ from app.schemas.menu import (
     MenuModifierGroupOut,
     MenuModifierOptionOut,
     MenuVariantOut,
+    MenuItemRecipeOut,
 )
+from app.services.translation import auto_translate_record, delete_translations
+
+async def _translate_item_modifiers(db, item_id: int):
+    """Translate all modifier groups and options for a menu item."""
+    try:
+        mg_result = await db.execute(
+            select(MenuModifierGroup).where(MenuModifierGroup.menu_item_id == item_id)
+        )
+        for mg in mg_result.scalars().all():
+            await auto_translate_record(db, "menu_modifier_groups", mg.id, {"group_name": mg.group_name})
+            opt_result = await db.execute(
+                select(MenuModifierOption).where(MenuModifierOption.modifier_group_id == mg.id)
+            )
+            for opt in opt_result.scalars().all():
+                await auto_translate_record(db, "menu_modifier_options", opt.id, {"option_name": opt.option_name})
+    except Exception:
+        pass  # non-blocking
+
 
 router = APIRouter(prefix="/admin/menu", tags=["admin — menu"])
 
@@ -68,6 +90,7 @@ class MenuItemCreateRequest(MenuItemCreate):
     modifier_groups: list[_MenuModifierGroupInline] | None = None
     variants: list[_MenuVariantInline] | None = None
     allergen_ids: list[int] | None = None
+    dietary_tag_ids: list[int] | None = None
 
 
 class AllergenCreate(BaseSchema):
@@ -85,7 +108,6 @@ class AllergenUpdate(BaseSchema):
 
 
 class TaxCategoryCreate(BaseSchema):
-    store_id: int
     category_name: str
     rate: float
 
@@ -97,7 +119,6 @@ class TaxCategoryUpdate(BaseSchema):
 
 class TaxCategoryOut(TimestampedSchema):
     id: int
-    store_id: int
     category_name: str
     rate: float
     is_active: bool
@@ -111,13 +132,11 @@ class TaxCategoryOut(TimestampedSchema):
 async def list_categories(
     db: DBDependency,
     admin: CurrentAdmin,
-    store_id: int,
 ):
     """List menu categories for a store (excluding soft-deleted)."""
     result = await db.execute(
         select(MenuCategory)
         .where(
-            MenuCategory.store_id == store_id,
             MenuCategory.deleted_at.is_(None),
         )
         .order_by(MenuCategory.display_order)
@@ -126,6 +145,14 @@ async def list_categories(
     return APIResponse(
         data=[MenuCategoryOut.model_validate(c) for c in categories]
     )
+
+
+@router.get("/categories/{id}", response_model=APIResponse[MenuCategoryOut])
+async def get_category(db: DBDependency, admin: CurrentAdmin, id: int):
+    res = await db.execute(select(MenuCategory).where(MenuCategory.id == id, MenuCategory.deleted_at.is_(None)))
+    cat = res.scalar_one_or_none()
+    if not cat: raise HTTPException(status_code=404, detail="Category not found")
+    return APIResponse(data=MenuCategoryOut.model_validate(cat))
 
 
 @router.post(
@@ -143,6 +170,7 @@ async def create_category(
     db.add(category)
     await db.commit()
     await db.refresh(category)
+    await auto_translate_record(db, "menu_categories", category.id, {"category_name": category.category_name})
     return APIResponse(data=MenuCategoryOut.model_validate(category))
 
 
@@ -170,6 +198,7 @@ async def update_category(
 
     await db.commit()
     await db.refresh(category)
+    await auto_translate_record(db, "menu_categories", category.id, {"category_name": category.category_name})
     return APIResponse(data=MenuCategoryOut.model_validate(category))
 
 
@@ -192,6 +221,7 @@ async def delete_category(
 
     category.deleted_at = datetime.now(timezone.utc)
     await db.commit()
+    await delete_translations(db, "menu_categories", id)
     return None
 
 
@@ -203,7 +233,6 @@ async def delete_category(
 async def list_items(
     db: DBDependency,
     admin: CurrentAdmin,
-    store_id: int,
     category_id: int | None = Query(None),
     is_available: bool | None = Query(None),
     page: int = Query(1, ge=1),
@@ -211,7 +240,6 @@ async def list_items(
 ):
     """List menu items with optional filters and pagination."""
     base_stmt = select(MenuItem).where(
-        MenuItem.store_id == store_id,
         MenuItem.deleted_at.is_(None),
     )
     if category_id is not None:
@@ -220,7 +248,6 @@ async def list_items(
         base_stmt = base_stmt.where(MenuItem.is_available.is_(is_available))
 
     count_stmt = select(func.count(MenuItem.id)).where(
-        MenuItem.store_id == store_id,
         MenuItem.deleted_at.is_(None),
     )
     if category_id is not None:
@@ -242,12 +269,57 @@ async def list_items(
     )
     category_map = {c.id: MenuCategoryOut.model_validate(c) for c in cat_result.scalars().all()}
 
+    # Load allergens and dietary tags in bulk
+    item_ids = [i.id for i in items]
+    allergen_map: dict[int, list[dict]] = {}
+    dietary_map: dict[int, list[dict]] = {}
+    if item_ids:
+        # Allergens via junction table
+        allergen_result = await db.execute(
+            select(MenuItemAllergen.menu_item_id, Allergen)
+            .join(Allergen, Allergen.id == MenuItemAllergen.allergen_id)
+            .where(MenuItemAllergen.menu_item_id.in_(item_ids))
+        )
+        for mi_id, allergen in allergen_result.all():
+            if mi_id not in allergen_map:
+                allergen_map[mi_id] = []
+            allergen_map[mi_id].append(AllergenOut.model_validate(allergen).model_dump())
+
+        # Dietary tags via junction table
+        dietary_result = await db.execute(
+            select(MenuItemDietaryTag.menu_item_id, DietaryTag.id, DietaryTag.tag_key, DietaryTag.display_name, DietaryTag.icon)
+            .join(DietaryTag, DietaryTag.id == MenuItemDietaryTag.dietary_tag_id)
+            .where(MenuItemDietaryTag.menu_item_id.in_(item_ids))
+        )
+        for mi_id, d_id, d_key, d_name, d_icon in dietary_result.all():
+            if mi_id not in dietary_map:
+                dietary_map[mi_id] = []
+            dietary_map[mi_id].append({"id": d_id, "tag_key": d_key, "display_name": d_name, "icon": d_icon})
+
+    # Load modifier groups and options in bulk
+    modifier_map: dict[int, list[dict]] = {}
+    modifier_option_map: dict[int, list[dict]] = {}
+    if item_ids:
+        mg_result = await db.execute(
+            select(MenuModifierGroup)
+            .options(selectinload(MenuModifierGroup.options))
+            .where(MenuModifierGroup.menu_item_id.in_(item_ids))
+        )
+        for mg in mg_result.scalars().all():
+            if mg.menu_item_id not in modifier_map:
+                modifier_map[mg.menu_item_id] = []
+            options = [MenuModifierOptionOut.model_validate(opt).model_dump() for opt in mg.options]
+            modifier_map[mg.menu_item_id].append(
+                MenuModifierGroupOut.model_validate(mg).model_dump() | {"options": options}
+            )
+
     item_outs = []
     for item in items:
         item_dict = {c: getattr(item, c) for c in item.__table__.columns.keys()}
         item_dict["category"] = category_map.get(item.category_id)
-        item_dict["allergens"] = []
-        item_dict["modifier_groups"] = []
+        item_dict["allergens"] = allergen_map.get(item.id, [])
+        item_dict["dietary_tags"] = dietary_map.get(item.id, [])
+        item_dict["modifier_groups"] = modifier_map.get(item.id, [])
         item_dict["variants"] = []
         item_dict["recipes"] = []
         item_outs.append(MenuItemOut.model_validate(item_dict))
@@ -275,7 +347,7 @@ async def create_item(
 ):
     """Create a menu item with optional modifiers, variants, and allergens."""
     item_data = data.model_dump(
-        exclude={"modifier_groups", "variants", "allergen_ids"},
+        exclude={"modifier_groups", "variants", "allergen_ids", "dietary_tag_ids"},
         exclude_unset=False,
     )
     item = MenuItem(**item_data)
@@ -336,9 +408,21 @@ async def create_item(
         for allergen_id in data.allergen_ids:
             db.add(MenuItemAllergen(menu_item_id=item.id, allergen_id=allergen_id))
 
+    if data.dietary_tag_ids:
+        for dt_id in data.dietary_tag_ids:
+            db.add(MenuItemDietaryTag(menu_item_id=item.id, dietary_tag_id=dt_id))
+
     await db.commit()
     await db.refresh(item)
 
+    # Auto-translate menu item name and description for all locales
+    await auto_translate_record(db, "menu_items", item.id, {
+        "item_name": item.item_name,
+        "description": item.description or "",
+        "long_description": item.long_description or "",
+    })
+
+    await _translate_item_modifiers(db, item.id)
     return APIResponse(data=await _build_menu_item_out(db, item))
 
 
@@ -359,6 +443,7 @@ async def get_item(
     if item is None:
         raise HTTPException(status_code=404, detail="Menu item not found")
 
+    await _translate_item_modifiers(db, item.id)
     return APIResponse(data=await _build_menu_item_out(db, item))
 
 
@@ -369,7 +454,7 @@ async def update_item(
     id: int,
     data: MenuItemUpdate,
 ):
-    """Update core fields of a menu item."""
+    """Update core fields and optionally modifier_groups of a menu item."""
     result = await db.execute(
         select(MenuItem).where(
             MenuItem.id == id,
@@ -381,11 +466,82 @@ async def update_item(
         raise HTTPException(status_code=404, detail="Menu item not found")
 
     update_data = data.model_dump(exclude_unset=True)
+    modifier_groups_data = update_data.pop("modifier_groups", None)
+    allergen_ids_data = update_data.pop("allergen_ids", None)
+    dietary_tag_ids_data = update_data.pop("dietary_tag_ids", None)
+
     for field, value in update_data.items():
         setattr(item, field, value)
 
+    await db.flush()
+
+    # Replace modifier groups if provided
+    if modifier_groups_data is not None:
+        # Delete existing
+        existing = await db.execute(
+            select(MenuModifierGroup).where(MenuModifierGroup.menu_item_id == item.id)
+        )
+        for g in existing.scalars().all():
+            opts = await db.execute(
+                select(MenuModifierOption).where(MenuModifierOption.modifier_group_id == g.id)
+            )
+            for o in opts.scalars().all():
+                await db.delete(o)
+            await db.delete(g)
+
+        # Re-create
+        for group_data in modifier_groups_data:
+            group = MenuModifierGroup(
+                menu_item_id=item.id,
+                group_name=group_data["group_name"],
+                selection_type=group_data.get("selection_type", "single"),
+                is_required=group_data.get("is_required", False),
+                min_selections=group_data.get("min_selections", 0),
+                max_selections=group_data.get("max_selections", 1),
+            )
+            db.add(group)
+            await db.flush()
+            for opt_data in group_data.get("options", []):
+                option = MenuModifierOption(
+                    modifier_group_id=group.id,
+                    option_name=opt_data["option_name"],
+                    price_adjustment=opt_data.get("price_adjustment", 0),
+                    is_default=opt_data.get("is_default", False),
+                    is_available=opt_data.get("is_available", True),
+                )
+                db.add(option)
+
+    # Replace allergen_ids if provided
+    if allergen_ids_data is not None:
+        existing = await db.execute(
+            select(MenuItemAllergen).where(MenuItemAllergen.menu_item_id == item.id)
+        )
+        for a in existing.scalars().all():
+            await db.delete(a)
+        for aid in allergen_ids_data:
+            db.add(MenuItemAllergen(menu_item_id=item.id, allergen_id=aid))
+
+    # Replace dietary_tag_ids if provided
+    if dietary_tag_ids_data is not None:
+        existing = await db.execute(
+            select(MenuItemDietaryTag).where(MenuItemDietaryTag.menu_item_id == item.id)
+        )
+        for d in existing.scalars().all():
+            await db.delete(d)
+        for did in dietary_tag_ids_data:
+            db.add(MenuItemDietaryTag(menu_item_id=item.id, dietary_tag_id=did))
+
     await db.commit()
     await db.refresh(item)
+
+    # Re-translate on update
+    await auto_translate_record(db, "menu_items", item.id, {
+        "item_name": item.item_name,
+        "description": item.description or "",
+        "long_description": item.long_description or "",
+    })
+
+    await _translate_item_modifiers(db, item.id)
     return APIResponse(data=await _build_menu_item_out(db, item))
 
 
@@ -408,6 +564,12 @@ async def delete_item(
 
     item.deleted_at = datetime.now(timezone.utc)
     await db.commit()
+    await delete_translations(db, "menu_items", id)
+    # Cascade delete modifier group and option translations
+    for group in item.modifier_groups or []:
+        await delete_translations(db, "menu_modifier_groups", group.id)
+        for opt in group.options or []:
+            await delete_translations(db, "menu_modifier_options", opt.id)
     return None
 
 
@@ -432,6 +594,14 @@ async def list_allergens(
     )
 
 
+@router.get("/allergens/{id}", response_model=APIResponse[AllergenOut])
+async def get_allergen(db: DBDependency, admin: CurrentAdmin, id: int):
+    res = await db.execute(select(Allergen).where(Allergen.id == id, Allergen.deleted_at.is_(None)))
+    a = res.scalar_one_or_none()
+    if not a: raise HTTPException(status_code=404, detail="Allergen not found")
+    return APIResponse(data=AllergenOut.model_validate(a))
+
+
 @router.post(
     "/allergens",
     response_model=APIResponse[AllergenOut],
@@ -447,6 +617,7 @@ async def create_allergen(
     db.add(allergen)
     await db.commit()
     await db.refresh(allergen)
+    await auto_translate_record(db, "allergens", allergen.id, {"display_name": allergen.display_name, "description": allergen.description or ""})
     return APIResponse(data=AllergenOut.model_validate(allergen))
 
 
@@ -474,6 +645,7 @@ async def update_allergen(
 
     await db.commit()
     await db.refresh(allergen)
+    await auto_translate_record(db, "allergens", allergen.id, {"display_name": allergen.display_name, "description": allergen.description or ""})
     return APIResponse(data=AllergenOut.model_validate(allergen))
 
 
@@ -496,6 +668,7 @@ async def delete_allergen(
 
     allergen.deleted_at = datetime.now(timezone.utc)
     await db.commit()
+    await delete_translations(db, "allergens", id)
     return None
 
 
@@ -507,13 +680,11 @@ async def delete_allergen(
 async def list_tax_categories(
     db: DBDependency,
     admin: CurrentAdmin,
-    store_id: int,
 ):
     """List tax categories for a store (excluding soft-deleted)."""
     result = await db.execute(
         select(TaxCategory)
         .where(
-            TaxCategory.store_id == store_id,
             TaxCategory.deleted_at.is_(None),
         )
         .order_by(TaxCategory.category_name)
@@ -522,6 +693,14 @@ async def list_tax_categories(
     return APIResponse(
         data=[TaxCategoryOut.model_validate(t) for t in tax_categories]
     )
+
+
+@router.get("/tax-categories/{id}", response_model=APIResponse[TaxCategoryOut])
+async def get_tax_category(db: DBDependency, admin: CurrentAdmin, id: int):
+    res = await db.execute(select(TaxCategory).where(TaxCategory.id == id, TaxCategory.deleted_at.is_(None)))
+    t = res.scalar_one_or_none()
+    if not t: raise HTTPException(status_code=404, detail="Tax category not found")
+    return APIResponse(data=TaxCategoryOut.model_validate(t))
 
 
 @router.post(
@@ -539,6 +718,7 @@ async def create_tax_category(
     db.add(tax_category)
     await db.commit()
     await db.refresh(tax_category)
+    await auto_translate_record(db, "tax_categories", tax_category.id, {"category_name": tax_category.category_name})
     return APIResponse(data=TaxCategoryOut.model_validate(tax_category))
 
 
@@ -566,6 +746,7 @@ async def update_tax_category(
 
     await db.commit()
     await db.refresh(tax_category)
+    await auto_translate_record(db, "tax_categories", tax_category.id, {"category_name": tax_category.category_name})
     return APIResponse(data=TaxCategoryOut.model_validate(tax_category))
 
 
@@ -588,6 +769,7 @@ async def delete_tax_category(
 
     tax_category.deleted_at = datetime.now(timezone.utc)
     await db.commit()
+    await delete_translations(db, "tax_categories", id)
     return None
 
 
@@ -631,7 +813,8 @@ async def _build_menu_item_out(db, item: MenuItem) -> MenuItemOut:
 
     modifier_group_outs = []
     for g in modifier_groups:
-        group_out = MenuModifierGroupOut.model_validate(g)
+        group_dict = {c: getattr(g, c) for c in g.__table__.columns.keys()}
+        group_out = MenuModifierGroupOut.model_validate(group_dict)
         group_out.options = [
             MenuModifierOptionOut.model_validate(o) for o in options_map.get(g.id, [])
         ]
@@ -647,12 +830,27 @@ async def _build_menu_item_out(db, item: MenuItem) -> MenuItemOut:
     )
     allergens = [AllergenOut.model_validate(a) for a in allergen_result.scalars().all()]
 
+    # Dietary Tags
+    from app.models.menu import MenuItemDietaryTag, DietaryTag
+    dt_links = await db.execute(
+        select(MenuItemDietaryTag).where(MenuItemDietaryTag.menu_item_id == item.id)
+    )
+    dt_ids = {l.dietary_tag_id for l in dt_links.scalars().all()}
+    dt_result = await db.execute(
+        select(DietaryTag).where(DietaryTag.id.in_(dt_ids))
+    ) if dt_ids else None
+    dietary_tags_out = [
+        {"id": t.id, "display_name": t.display_name, "icon": t.icon, "tag_key": t.tag_key}
+        for t in (dt_result.scalars().all() if dt_result else [])
+    ]
+
     # Build output
     item_dict = {c: getattr(item, c) for c in item.__table__.columns.keys()}
     item_dict["category"] = category
     item_dict["variants"] = variants
     item_dict["modifier_groups"] = modifier_group_outs
     item_dict["allergens"] = allergens
+    item_dict["dietary_tags"] = dietary_tags_out
     item_dict["recipes"] = []
 
     return MenuItemOut.model_validate(item_dict)

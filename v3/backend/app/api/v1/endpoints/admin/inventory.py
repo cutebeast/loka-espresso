@@ -20,6 +20,7 @@ from app.schemas.inventory import (
     SupplierOut,
     SupplierUpdate,
 )
+from app.services.translation import auto_translate_record, delete_translations
 
 router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
 
@@ -64,12 +65,21 @@ async def create_category(
     data: InventoryCategoryCreate,
 ):
     """Create a new inventory category."""
-    category_data = data.model_dump(by_alias=True, exclude={"description"})
+    category_data = data.model_dump(by_alias=True)
     category_data["slug"] = _slugify(data.name)
     category = InventoryCategory(**category_data)
     db.add(category)
     await db.commit()
+    await auto_translate_record(db, "inventory_categories", category.id, {"category_name": category.category_name or "", "description": category.description or ""})
     await db.refresh(category)
+    return APIResponse(data=InventoryCategoryOut.model_validate(category))
+
+
+@router.get("/categories/{id}", response_model=APIResponse[InventoryCategoryOut])
+async def get_category(db: DBDependency, admin: CurrentAdmin, id: int):
+    result = await db.execute(select(InventoryCategory).where(InventoryCategory.id == id, InventoryCategory.deleted_at.is_(None)))
+    category = result.scalar_one_or_none()
+    if not category: raise HTTPException(404, "Category not found")
     return APIResponse(data=InventoryCategoryOut.model_validate(category))
 
 
@@ -94,7 +104,7 @@ async def update_category(
         )
 
     update_data = data.model_dump(
-        by_alias=True, exclude_unset=True, exclude={"description"}
+        by_alias=True, exclude_unset=True
     )
     if "category_name" in update_data:
         update_data["slug"] = _slugify(update_data["category_name"])
@@ -102,6 +112,7 @@ async def update_category(
         setattr(category, key, value)
 
     await db.commit()
+    await auto_translate_record(db, "inventory_categories", category.id, {"category_name": category.category_name or "", "description": category.description or ""})
     await db.refresh(category)
     return APIResponse(data=InventoryCategoryOut.model_validate(category))
 
@@ -127,6 +138,7 @@ async def delete_category(
 
     category.deleted_at = datetime.now(timezone.utc)
     await db.commit()
+    await delete_translations(db, "inventory_categories", id)
     return APIResponse(data={"id": category.id, "deleted": True})
 
 
@@ -191,6 +203,7 @@ async def create_item(
     db.add(item)
     await db.commit()
     await db.refresh(item)
+    await auto_translate_record(db, "inventory_items", item.id, {"item_name": item.item_name, "description": item.description or ""})
     return APIResponse(data=InventoryItemOut.model_validate(item))
 
 
@@ -241,6 +254,7 @@ async def update_item(
 
     await db.commit()
     await db.refresh(item)
+    await auto_translate_record(db, "inventory_items", item.id, {"item_name": item.item_name, "description": item.description or ""})
     return APIResponse(data=InventoryItemOut.model_validate(item))
 
 
@@ -265,6 +279,7 @@ async def delete_item(
 
     item.deleted_at = datetime.now(timezone.utc)
     await db.commit()
+    await delete_translations(db, "inventory_items", id)
     return APIResponse(data={"id": item.id, "deleted": True})
 
 
@@ -308,6 +323,14 @@ async def create_supplier(
     db.add(supplier)
     await db.commit()
     await db.refresh(supplier)
+    return APIResponse(data=SupplierOut.model_validate(supplier))
+
+
+@router.get("/suppliers/{id}", response_model=APIResponse[SupplierOut])
+async def get_supplier(db: DBDependency, admin: CurrentAdmin, id: int):
+    result = await db.execute(select(Supplier).where(Supplier.id == id, Supplier.deleted_at.is_(None)))
+    supplier = result.scalar_one_or_none()
+    if not supplier: raise HTTPException(404, "Supplier not found")
     return APIResponse(data=SupplierOut.model_validate(supplier))
 
 

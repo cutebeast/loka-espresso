@@ -53,6 +53,10 @@ from app.schemas.loyalty import (
 )
 from app.schemas.menu import (
     AllergenOut,
+    DietaryTagBase,
+    DietaryTagCreate,
+    DietaryTagOut,
+    DietaryTagUpdate,
     MenuCategoryCreate,
     MenuCategoryOut,
     MenuCategoryUpdate,
@@ -65,6 +69,10 @@ from app.schemas.menu import (
     MenuModifierOptionOut,
     MenuPublicOut,
     MenuVariantOut,
+    TaxCategoryBase,
+    TaxCategoryCreate,
+    TaxCategoryOut,
+    TaxCategoryUpdate,
 )
 from app.schemas.order import (
     OrderAdjustmentOut,
@@ -111,12 +119,31 @@ from app.schemas.voucher import (
     VoucherDefinitionUpdate,
 )
 from app.schemas.content import (
-    ContentBlockCreate,
-    ContentBlockOut,
-    ContentBlockUpdate,
     SplashScreenCreate,
     SplashScreenOut,
     SplashScreenUpdate,
+    InfoCardBase,
+    InfoCardCreate,
+    InfoCardUpdate,
+    InfoCardOut,
+    ProductCardBase,
+    ProductCardCreate,
+    ProductCardUpdate,
+    ProductCardOut,
+    EventCardBase,
+    EventCardCreate,
+    EventCardUpdate,
+    EventCardOut,
+    SystemPageBase,
+    SystemPageCreate,
+    SystemPageUpdate,
+    SystemPageOut,
+    PromoBannerBase,
+    PromoBannerCreate,
+    PromoBannerUpdate,
+    PromoBannerOut,
+    ContentSectionBase,
+    ContentSectionOut,
 )
 from app.schemas.marketing import (
     MarketingCampaignCreate,
@@ -126,6 +153,11 @@ from app.schemas.marketing import (
 from app.schemas.referral import (
     ReferralEventCreate,
     ReferralEventOut,
+)
+from app.schemas.reservation import (
+    ReservationCreate,
+    ReservationOut,
+    ReservationUpdate,
 )
 from app.schemas.survey import (
     SurveyDefinitionCreate,
@@ -200,6 +232,14 @@ __all__ = [
     "MenuModifierOptionOut",
     "MenuVariantOut",
     "MenuPublicOut",
+    "DietaryTagBase",
+    "DietaryTagCreate",
+    "DietaryTagOut",
+    "DietaryTagUpdate",
+    "TaxCategoryBase",
+    "TaxCategoryCreate",
+    "TaxCategoryOut",
+    "TaxCategoryUpdate",
     # Cart
     "CartModifierSelection",
     "CartLineItemCreate",
@@ -250,12 +290,26 @@ __all__ = [
     "NotificationPreferenceUpdate",
     "AdminNotificationCreate",
     # Content
-    "ContentBlockCreate",
-    "ContentBlockOut",
-    "ContentBlockUpdate",
     "SplashScreenCreate",
     "SplashScreenOut",
     "SplashScreenUpdate",
+    "InfoCardBase",
+    "InfoCardCreate",
+    "InfoCardOut",
+    "ProductCardBase",
+    "ProductCardCreate",
+    "ProductCardOut",
+    "EventCardBase",
+    "EventCardCreate",
+    "EventCardOut",
+    "SystemPageBase",
+    "SystemPageCreate",
+    "SystemPageOut",
+    "PromoBannerBase",
+    "PromoBannerCreate",
+    "PromoBannerOut",
+    "ContentSectionBase",
+    "ContentSectionOut",
     # Marketing
     "MarketingCampaignCreate",
     "MarketingCampaignOut",
@@ -263,6 +317,10 @@ __all__ = [
     # Referral
     "ReferralEventCreate",
     "ReferralEventOut",
+    # Reservation
+    "ReservationCreate",
+    "ReservationOut",
+    "ReservationUpdate",
     # Survey
     "SurveyDefinitionCreate",
     "SurveyDefinitionDetailOut",

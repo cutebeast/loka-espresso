@@ -1,0 +1,58 @@
+/* ============================================
+   Login Page
+   ============================================ */
+
+.login-page {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #F2EEE6 0%, #E8E2D8 100%);
+  padding: 24px;
+}
+.login-card {
+  max-width: 420px; width: 100%;
+  background: var(--color-bg-card); border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg); border: 1px solid var(--color-border-light);
+  padding: 40px 32px;
+}
+.login-brand {
+  text-align: center; margin-bottom: 32px;
+}
+.login-brand-icon {
+  width: 56px; height: 56px; border-radius: var(--radius-lg);
+  background: var(--color-primary);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+}
+.login-brand-icon svg { color: white; }
+.login-brand-name { font-size: 20px; font-weight: 700; color: var(--color-text-primary); }
+.login-brand-sub { font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
+
+.login-error {
+  margin-bottom: 16px; padding: 10px 14px; border-radius: var(--radius-md);
+  background: var(--color-error-bg); border: 1px solid #FECACA;
+  color: #991B1B; font-size: 13px;
+}
+
+.login-field { margin-bottom: 20px; }
+.login-field label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+.login-field label svg { color: var(--color-primary); }
+.login-field input {
+  width: 100%; padding: 12px 16px; font-size: 15px;
+  border-radius: var(--radius-md); border: 1px solid var(--color-border-light);
+  background: var(--color-bg-white); transition: border-color 0.15s, box-shadow 0.15s;
+}
+.login-field input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59,74,26,0.12);
+}
+.login-submit {
+  width: 100%; padding: 12px; font-size: 15px; font-weight: 600;
+  border-radius: var(--radius-md); border: none;
+  background: var(--color-primary); color: white;
+  cursor: pointer; transition: background 0.15s;
+}
+.login-submit:hover { background: var(--color-primary-dark); }
+.login-submit:disabled { opacity: 0.6; cursor: not-allowed; }

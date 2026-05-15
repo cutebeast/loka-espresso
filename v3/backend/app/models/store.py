@@ -47,19 +47,13 @@ class Store(Base, SoftDeleteMixin):
     email_address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="UTC")
     currency_code: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="USD")
-    default_locale: Mapped[str] = mapped_column(String(5), nullable=False, default="en-US")
-    tax_registration: Mapped[str | None] = mapped_column(String(50), nullable=True)
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     banner_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     pickup_lead_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
     delivery_radius_km: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False, default=10.00)
-    base_delivery_fee: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    minimum_order_amount: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    pos_integration_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    delivery_integration_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_accepting_orders: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    opening_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -82,9 +76,6 @@ class Store(Base, SoftDeleteMixin):
     admin_assignments: Mapped[List["StoreAssignment"]] = relationship(
         "StoreAssignment", back_populates="store"
     )
-    menu_categories: Mapped[List["MenuCategory"]] = relationship(
-        "MenuCategory", back_populates="store"
-    )
     inventory_categories: Mapped[List["InventoryCategory"]] = relationship(
         "InventoryCategory", back_populates="store"
     )
@@ -97,27 +88,10 @@ class Store(Base, SoftDeleteMixin):
     orders: Mapped[List["Order"]] = relationship(
         "Order", back_populates="store"
     )
-    marketing_campaigns: Mapped[List["MarketingCampaign"]] = relationship(
-        "MarketingCampaign", back_populates="store"
-    )
-    content_blocks: Mapped[List["ContentBlock"]] = relationship(
-        "ContentBlock", back_populates="store"
-    )
-    splash_screens: Mapped[List["SplashScreen"]] = relationship(
-        "SplashScreen", back_populates="store"
-    )
-    voucher_definitions: Mapped[List["VoucherDefinition"]] = relationship(
-        "VoucherDefinition", back_populates="store"
-    )
-    reward_catalog_entries: Mapped[List["RewardCatalog"]] = relationship(
-        "RewardCatalog", back_populates="store"
-    )
 
     __table_args__ = (
         CheckConstraint("pickup_lead_minutes BETWEEN 5 AND 120", name="ck_stores_pickup_lead_minutes"),
         CheckConstraint("delivery_radius_km > 0", name="ck_stores_delivery_radius_km"),
-        CheckConstraint("base_delivery_fee >= 0", name="ck_stores_base_delivery_fee"),
-        CheckConstraint("minimum_order_amount >= 0", name="ck_stores_minimum_order_amount"),
         CheckConstraint("latitude BETWEEN -90 AND 90", name="ck_stores_latitude"),
         CheckConstraint("longitude BETWEEN -180 AND 180", name="ck_stores_longitude"),
     )
@@ -134,8 +108,6 @@ class StoreOperatingHours(Base, TimestampMixin):
     open_time: Mapped[time] = mapped_column(nullable=False)
     close_time: Mapped[time] = mapped_column(nullable=False)
     is_closed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    is_24_hours: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    last_order_time: Mapped[time | None] = mapped_column(nullable=True)
 
     store: Mapped["Store"] = relationship("Store", back_populates="operating_hours")
 

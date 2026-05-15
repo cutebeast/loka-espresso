@@ -1,139 +1,61 @@
 "use client";
-
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-
-interface MenuItem {
-  id: number;
-  name: string;
-  code: string;
-  price: number;
-  available: boolean;
-}
+import { Plus, Edit2, Trash2 } from "lucide-react";
 
 export default function MenuItemsPage() {
-  const [items, setItems] = useState<MenuItem[]>([]);
+  const router = useRouter();
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<MenuItem | null>(null);
-  const [form, setForm] = useState({ name: "", code: "", price: "", available: true });
-
-  const fetchData = () => {
-    setLoading(true);
-    api
-      .get<MenuItem[]>("/admin/menu/items?store_id=1")
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
+  const [catFilter, setCatFilter] = useState("");
+  const [categories, setCategories] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchData();
+    api.getRaw<{ items: any[] }>("/admin/menu/items?per_page=100").then(d => setItems(d.items || [])).catch(()=>{}).finally(()=>setLoading(false));
+    api.getRaw<{ items: any[] }>("/admin/menu/categories?per_page=50").then(d => setCategories(d.items || [])).catch(()=>{});
   }, []);
 
-  const resetForm = () => {
-    setForm({ name: "", code: "", price: "", available: true });
-    setEditing(null);
-    setShowForm(false);
-  };
-
-  const openEdit = (item: MenuItem) => {
-    setEditing(item);
-    setForm({ name: item.name, code: item.code, price: String(item.price), available: item.available });
-    setShowForm(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = { ...form, price: Number(form.price) };
-    try {
-      if (editing) {
-        await api.patch(`/admin/menu/items/${editing.id}`, payload);
-      } else {
-        await api.post("/admin/menu/items", payload);
-      }
-      resetForm();
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure?")) return;
-    try {
-      await api.del(`/admin/menu/items/${id}`);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
+  const filtered = catFilter ? items.filter(i => i.category_id === Number(catFilter)) : items;
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Menu Items</h1>
-        <button onClick={() => { resetForm(); setShowForm(true); }} className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition">Add Item</button>
+    <div style={{ padding: 32 }}>
+      <div className="page-header">
+        <div><h1 className="page-title">Menu Items</h1><p className="page-subtitle">{items.length} items</p></div>
+        <button onClick={() => router.push("/menu/items/new")} className="btn btn-primary btn-sm"><Plus size={16} /> Add Item</button>
       </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      {showForm && (
-        <div className="mb-6 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">{editing ? "Edit Item" : "Add Item"}</h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Code</label>
-              <input required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Price</label>
-              <input required type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div className="flex items-center gap-2">
-              <input id="available" type="checkbox" checked={form.available} onChange={(e) => setForm({ ...form, available: e.target.checked })} />
-              <label htmlFor="available" className="text-sm">Available</label>
-            </div>
-            <div className="flex gap-2 md:col-span-2">
-              <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition">Save</button>
-              <button type="button" onClick={resetForm} className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition">Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">Name</th>
-              <th className="text-left px-4 py-3 font-semibold">Code</th>
-              <th className="text-left px-4 py-3 font-semibold">Price</th>
-              <th className="text-left px-4 py-3 font-semibold">Available</th>
-              <th className="text-left px-4 py-3 font-semibold">Actions</th>
-            </tr>
-          </thead>
+      <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center" }}>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>Category:</span>
+        <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ padding: "4px 12px", fontSize: 13, borderRadius: "var(--radius-sm)" }}>
+          <option value="">All ({items.length})</option>
+          {categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
+        </select>
+      </div>
+      <div className="table-container">
+        <table className="data-table">
+          <thead><tr><th>Name</th><th>Code</th><th>Price</th><th>Category</th><th>Tags</th><th>Add-ons</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {loading ? (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500">Loading...</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500">No items found.</td></tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3">{item.name}</td>
-                  <td className="px-4 py-3">{item.code}</td>
-                  <td className="px-4 py-3">{item.price}</td>
-                  <td className="px-4 py-3">{item.available ? "Yes" : "No"}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => openEdit(item)} className="text-blue-600 hover:underline mr-3">Edit</button>
-                    <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:underline">Delete</button>
-                  </td>
-                </tr>
-              ))
-            )}
+            {loading ? <tr><td colSpan={8} className="data-table-empty">Loading...</td></tr>
+            : filtered.map(item => (
+              <tr key={item.id}>
+                <td><div style={{ fontWeight: 600 }}>{item.item_name}</div>{item.description && <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{item.description?.slice(0, 60)}</div>}</td>
+                <td className="font-mono" style={{ fontSize: 12 }}>{item.item_code}</td>
+                <td>RM {Number(item.base_price).toFixed(2)}</td>
+                <td style={{ fontSize: 13 }}>{item.category?.category_name || "—"}</td>
+                <td style={{ fontSize: 11 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+                    {(item.allergens || []).map((a: any) => <span key={a.id} className="badge badge-sm badge-red" style={{ fontSize: 10 }}>{a.display_name}</span>)}
+                    {(item.dietary_tags || []).map((t: any) => <span key={t.id || t.dietary_tag_id} className="badge badge-sm badge-green" style={{ fontSize: 10 }}>{t.icon} {t.display_name}</span>)}
+                  </div>
+                </td>
+                <td style={{ fontSize: 12 }}>{(item.modifier_groups || []).length ? `${item.modifier_groups.length} groups` : "—"}</td>
+                <td><span className={`badge badge-sm ${item.is_available ? "badge-green" : "badge-gray"}`}>{item.is_available ? "Active" : "Inactive"}</span></td>
+                <td>
+                  <button onClick={() => router.push(`/menu/items/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}><Edit2 size={14} /></button>
+                  <button onClick={async () => { if (confirm("Delete?")) { await api.del(`/admin/menu/items/${item.id}`); const d = await api.getRaw<{items:any[]}>("/admin/menu/items?per_page=100"); setItems(d.items||[]); } }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

@@ -212,6 +212,50 @@ async def adjust_wallet(
     return APIResponse(data=WalletLedgerEntryOut.model_validate(entry))
 
 
+@admin_router.post("/topup", response_model=APIResponse[dict])
+async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: dict):
+    """Admin wallet top-up by customer_id."""
+    customer_id = int(data.get("user_id") or data.get("customer_id", 0))
+    amount = float(data.get("amount", 0))
+    reason = data.get("reason") or data.get("description") or "Admin top-up"
+    if amount <= 0: raise HTTPException(400, "Amount must be positive")
+
+    wallet = await _get_customer_wallet(db, customer_id)
+    if not wallet:
+        wallet = Wallet(customer_id=customer_id, currency_code="MYR")
+        db.add(wallet); await db.flush()
+
+    r = await db.execute(select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id).order_by(WalletLedgerEntry.id.desc()).limit(1))
+    last = r.scalar_one_or_none()
+    new_balance = (float(last.running_balance) if last else 0.0) + amount
+
+    entry = WalletLedgerEntry(wallet_id=wallet.id, entry_type="credit", amount=amount, running_balance=new_balance, description=reason, reference_type="adjustment")
+    db.add(entry); await db.commit(); await db.refresh(entry)
+    return APIResponse(data={"message": "Top-up complete", "new_balance": new_balance})
+
+
+@admin_router.post("/deduct", response_model=APIResponse[dict])
+async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: dict):
+    """Admin wallet deduction by customer_id."""
+    customer_id = int(data.get("user_id") or data.get("customer_id", 0))
+    amount = float(data.get("amount", 0))
+    reason = data.get("reason") or data.get("description") or "Admin deduction"
+    if amount <= 0: raise HTTPException(400, "Amount must be positive")
+
+    wallet = await _get_customer_wallet(db, customer_id)
+    if not wallet: raise HTTPException(404, "No wallet found")
+
+    r = await db.execute(select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id).order_by(WalletLedgerEntry.id.desc()).limit(1))
+    last = r.scalar_one_or_none()
+    current = float(last.running_balance) if last else 0.0
+    if current < amount: raise HTTPException(400, f"Insufficient balance: {current}")
+    new_balance = current - amount
+
+    entry = WalletLedgerEntry(wallet_id=wallet.id, entry_type="debit", amount=amount, running_balance=new_balance, description=reason, reference_type="adjustment")
+    db.add(entry); await db.commit(); await db.refresh(entry)
+    return APIResponse(data={"message": "Deducted", "new_balance": new_balance})
+
+
 # ---------------------------------------------------------------------------
 # Public endpoints
 # ---------------------------------------------------------------------------
@@ -221,10 +265,17 @@ async def get_my_wallet(
     customer: ActiveCustomer,
     db: DBDependency,
 ):
-    """Get current customer's wallet."""
+    """Get current customer's wallet. Auto-creates if not found."""
     wallet = await _get_customer_wallet(db, customer.id)
     if wallet is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+        # Auto-create wallet for existing customers
+        wallet = Wallet(
+            customer_id=customer.id,
+            currency_code="MYR",
+        )
+        db.add(wallet)
+        await db.commit()
+        await db.refresh(wallet)
     ledger_result = await db.execute(
         select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id)
     )
@@ -239,10 +290,18 @@ async def get_my_ledger(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
-    """Get current customer's ledger entries."""
+    """Get current customer's ledger entries. Returns empty if no wallet."""
     wallet = await _get_customer_wallet(db, customer.id)
     if wallet is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+        return APIResponse(
+            data=PaginatedResponse(
+                items=[],
+                total=0,
+                page=page,
+                per_page=per_page,
+                total_pages=0,
+            )
+        )
 
     count_stmt = select(func.count(WalletLedgerEntry.id)).where(WalletLedgerEntry.wallet_id == wallet.id)
     total_result = await db.execute(count_stmt)
@@ -275,12 +334,17 @@ async def request_topup(
     db: DBDependency,
     data: TopUpRequest,
 ):
-    """Request a wallet top-up."""
+    """Request a wallet top-up. Auto-creates wallet if needed."""
     wallet = await _get_customer_wallet(db, customer.id)
     if wallet is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+        wallet = Wallet(
+            customer_id=customer.id,
+            currency_code="MYR",
+        )
+        db.add(wallet)
+        await db.commit()
+        await db.refresh(wallet)
     # In a real implementation this would create a payment intent.
-    # Returning a placeholder success with the amount requested.
     return APIResponse(
         data={
             "status": "pending",

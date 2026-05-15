@@ -1,251 +1,128 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import {
-  getPurchaseOrders,
-  createPurchaseOrder,
-  receivePurchaseOrder,
-  cancelPurchaseOrder,
-  type PurchaseOrder,
-  type PurchaseOrderLineItem,
-} from "@/lib/api";
+import { api, getPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder, type PurchaseOrder, type PurchaseOrderLineItem } from "@/lib/api";
+import { Plus, Trash2, CheckCircle, XCircle } from "lucide-react";
+
+interface Supplier { id: number; supplier_name: string; }
+interface InvItem { id: number; item_name: string; current_stock: number; }
+interface Store { id: number; store_name: string; }
 
 export default function PurchaseOrdersPage() {
   const [items, setItems] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showForm, setShowForm] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
-  const [form, setForm] = useState({
-    supplier_id: "",
-    store_id: "1",
-    expected_delivery: "",
-    items: [{ item_id: "", quantity: "", unit_cost: "" }] as { item_id: string; quantity: string; unit_cost: string }[],
-  });
+  const [showForm, setShowForm] = useState(false);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [invItems, setInvItems] = useState<InvItem[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [storeId, setStoreId] = useState("");
+  const [form, setForm] = useState({ supplier_id: "", store_id: "", expected_delivery: "", lines: [{ inventory_item_id: "", quantity_ordered: "", unit_cost: "" }] as { inventory_item_id: string; quantity_ordered: string; unit_cost: string }[] });
 
-  const fetchData = () => {
-    setLoading(true);
-    getPurchaseOrders({ status: statusFilter || undefined })
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+  const fetchData = () => { setLoading(true);
+    getPurchaseOrders({ status: statusFilter || undefined, store_id: storeId || undefined }).then(d => setItems(d)).catch(e => setError(e.message)).finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [statusFilter]);
+  useEffect(() => { fetchData(); }, [statusFilter, storeId]);
+  useEffect(() => { (async () => {
+    try { const d = await api.getRaw<any>("/admin/inventory/suppliers"); setSuppliers(Array.isArray(d) ? d : (d.items || [])); } catch {}
+    try { const d = await api.getRaw<any>("/admin/stores?per_page=50"); setStores(d.items || []); } catch {}
+  })(); }, []);
 
-  const resetForm = () => {
-    setForm({
-      supplier_id: "",
-      store_id: "1",
-      expected_delivery: "",
-      items: [{ item_id: "", quantity: "", unit_cost: "" }],
-    });
-    setShowForm(false);
+  const loadItems = async (sid: string) => {
+    setStoreId(sid); setForm(f => ({ ...f, store_id: sid }));
+    if (!sid) return;
+    try { const d = await api.getRaw<any>(`/admin/inventory/items?store_id=${sid}&per_page=100`); setInvItems(Array.isArray(d) ? d : (d.items || [])); } catch {}
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = {
-      supplier_id: Number(form.supplier_id),
-      store_id: Number(form.store_id),
-      expected_delivery: form.expected_delivery,
-      items: form.items
-        .filter((i) => i.item_id && i.quantity)
-        .map((i) => ({ item_id: Number(i.item_id), quantity: Number(i.quantity), unit_cost: Number(i.unit_cost) || 0 })),
-    };
+  const resetForm = () => { setForm({ supplier_id: "", store_id: storeId, expected_delivery: "", lines: [{ inventory_item_id: "", quantity_ordered: "", unit_cost: "" }] }); setShowForm(false); };
+
+  const addLineItem = () => setForm({ ...form, lines: [...form.lines, { inventory_item_id: "", quantity_ordered: "", unit_cost: "" }] });
+  const updateLine = (i: number, p: Partial<typeof form.lines[0]>) => { const lns = [...form.lines]; lns[i] = { ...lns[i], ...p }; setForm({ ...form, lines: lns }); };
+  const removeLine = (i: number) => { if (form.lines.length <= 1) return; setForm({ ...form, lines: form.lines.filter((_, j) => j !== i) }); };
+
+  const handleSubmit = async (e: React.FormEvent) => { e.preventDefault();
     try {
-      await createPurchaseOrder(payload);
-      resetForm();
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
+      const pl = { supplier_id: Number(form.supplier_id), store_id: Number(form.store_id), expected_delivery: form.expected_delivery || new Date().toISOString().slice(0, 10), po_number: `PO-${Date.now()}`, lines: form.lines.map(i => ({ inventory_item_id: Number(i.inventory_item_id), quantity_ordered: Number(i.quantity_ordered), unit_cost: Number(i.unit_cost) })) };
+      await createPurchaseOrder(pl); resetForm(); fetchData();
+    } catch (err: any) { setError(err.message); }
   };
 
-  const handleReceive = async (id: number) => {
-    if (!confirm("Mark this purchase order as received?")) return;
-    try {
-      await receivePurchaseOrder(id);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
+  const handleReceive = async (id: number) => { if (!confirm("Confirm receipt of this PO?")) return; try { await receivePurchaseOrder(id); fetchData(); } catch {}; };
+  const handleCancel = async (id: number) => { if (!confirm("Cancel this PO?")) return; try { await cancelPurchaseOrder(id); fetchData(); } catch {}; };
 
-  const handleCancel = async (id: number) => {
-    if (!confirm("Cancel this purchase order?")) return;
-    try {
-      await cancelPurchaseOrder(id);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const statusClass = (status: string) => {
-    switch (status) {
-      case "draft":
-        return "bg-gray-100 text-gray-700";
-      case "pending":
-        return "bg-amber-100 text-amber-700";
-      case "approved":
-        return "bg-green-100 text-green-700";
-      case "received":
-        return "bg-green-100 text-green-700";
-      case "cancelled":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
-
-  const addLineItem = () => {
-    setForm((prev) => ({
-      ...prev,
-      items: [...prev.items, { item_id: "", quantity: "", unit_cost: "" }],
-    }));
-  };
-
-  const updateLineItem = (index: number, field: string, value: string) => {
-    setForm((prev) => {
-      const newItems = [...prev.items];
-      newItems[index] = { ...newItems[index], [field]: value };
-      return { ...prev, items: newItems };
-    });
-  };
-
-  const removeLineItem = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    }));
+  const sb = (s: string) => {
+    const m: Record<string, string> = { draft: "badge-yellow", submitted: "badge-blue", ordered: "badge-blue", partially_received: "badge-orange", received: "badge-green", cancelled: "badge-red" };
+    return <span className={`badge badge-sm ${m[s] || "badge-gray"}`}>{s?.replace(/_/g, " ")}</span>;
   };
 
   return (
-    <div className="p-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-        <h1 className="text-2xl font-bold">Purchase Orders</h1>
-        <div className="flex flex-wrap gap-3">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">All Statuses</option>
-            <option value="draft">Draft</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="received">Received</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <button
-            onClick={() => { resetForm(); setShowForm(true); }}
-            className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition"
-          >
-            Create PO
-          </button>
-        </div>
+    <div style={{ padding: 32 }}>
+      <div className="page-header">
+        <div><h1 className="page-title">Purchase Orders</h1><p className="page-subtitle">{items.length} POs</p></div>
+        <button onClick={() => { setShowForm(true); loadItems(storeId); }} className="btn btn-primary btn-sm"><Plus size={16} /> New PO</button>
       </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      {showForm && (
-        <div className="mb-6 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">New Purchase Order</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Supplier ID</label>
-                <input required type="number" value={form.supplier_id} onChange={(e) => setForm({ ...form, supplier_id: e.target.value })} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Store ID</label>
-                <input required type="number" value={form.store_id} onChange={(e) => setForm({ ...form, store_id: e.target.value })} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Expected Delivery</label>
-                <input required type="date" value={form.expected_delivery} onChange={(e) => setForm({ ...form, expected_delivery: e.target.value })} className="w-full border rounded px-3 py-2" />
-              </div>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
+        <div><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Store</label>
+          <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
+        <div><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Status</label>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Status</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="ordered">Ordered</option><option value="partially_received">Partially Received</option><option value="received">Received</option><option value="cancelled">Cancelled</option></select></div>
+      </div>
+
+      {showForm && <><div className="drawer-overlay" onClick={resetForm} /><div className="drawer" style={{ width: 640 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}><h3 style={{ margin: 0 }}>New Purchase Order</h3><button onClick={resetForm} className="btn btn-ghost btn-sm">✕</button></div>
+        <form onSubmit={handleSubmit}>
+          <div className="df-grid">
+            <div className="df-field"><label className="df-label">Store</label><select value={storeId} onChange={e => loadItems(e.target.value)} style={{ width: "100%" }}><option value="">Select</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
+            <div className="df-field"><label className="df-label">Supplier</label><select value={form.supplier_id} onChange={e => setForm({ ...form, supplier_id: e.target.value })} style={{ width: "100%" }} required><option value="">Select</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.supplier_name}</option>)}</select></div>
+            <div className="df-field"><label className="df-label">Expected Delivery</label><input type="date" value={form.expected_delivery} onChange={e => setForm({ ...form, expected_delivery: e.target.value })} /></div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <h4 style={{ margin: 0, fontSize: 13 }}>Line Items</h4>
+              <button type="button" onClick={addLineItem} className="btn btn-sm btn-outline"><Plus size={12} /> Add Item</button>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Line Items</label>
-              <div className="space-y-2">
-                {form.items.map((item, idx) => (
-                  <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
-                    <div>
-                      <label className="text-xs text-gray-500">Item ID</label>
-                      <input required type="number" value={item.item_id} onChange={(e) => updateLineItem(idx, "item_id", e.target.value)} className="w-full border rounded px-3 py-2 text-sm" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">Quantity</label>
-                      <input required type="number" value={item.quantity} onChange={(e) => updateLineItem(idx, "quantity", e.target.value)} className="w-full border rounded px-3 py-2 text-sm" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">Unit Cost</label>
-                      <input type="number" step="0.01" value={item.unit_cost} onChange={(e) => updateLineItem(idx, "unit_cost", e.target.value)} className="w-full border rounded px-3 py-2 text-sm" />
-                    </div>
-                    <div>
-                      <button type="button" onClick={() => removeLineItem(idx)} className="text-red-600 hover:underline text-sm">Remove</button>
-                    </div>
-                  </div>
-                ))}
+            {form.lines.map((li, i) => (
+              <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
+                <select value={li.inventory_item_id} onChange={e => updateLine(i, { inventory_item_id: e.target.value })} style={{ flex: 2, padding: "6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required><option value="">Item</option>{invItems.map(iv => <option key={iv.id} value={iv.id}>{iv.item_name} (stock: {iv.current_stock})</option>)}</select>
+                <input type="number" value={li.quantity_ordered} onChange={e => updateLine(i, { quantity_ordered: e.target.value })} placeholder="Qty" style={{ width: 70, padding: "6px 8px", fontSize: 12 }} required />
+                <input type="number" step="0.01" value={li.unit_cost} onChange={e => updateLine(i, { unit_cost: e.target.value })} placeholder="Cost" style={{ width: 90, padding: "6px 8px", fontSize: 12 }} />
+                <button type="button" onClick={() => removeLine(i)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
               </div>
-              <button type="button" onClick={addLineItem} className="mt-2 text-sm text-blue-600 hover:underline">+ Add line item</button>
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition">Save</button>
-              <button type="button" onClick={resetForm} className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition">Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">PO Number</th>
-              <th className="text-left px-4 py-3 font-semibold">Supplier</th>
-              <th className="text-left px-4 py-3 font-semibold">Status</th>
-              <th className="text-left px-4 py-3 font-semibold">Total</th>
-              <th className="text-left px-4 py-3 font-semibold">Order Date</th>
-              <th className="text-left px-4 py-3 font-semibold">Expected Delivery</th>
-              <th className="text-left px-4 py-3 font-semibold">Actions</th>
+            ))}
+          </div>
+          <div className="df-actions" style={{ marginTop: 16 }}>
+            <button type="button" onClick={resetForm} className="btn btn-ghost">Cancel</button>
+            <button type="submit" className="btn btn-primary">Create PO</button>
+          </div>
+        </form>
+      </div></>}
+
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} POs</span></div>
+      <div className="table-container"><table className="data-table">
+        <thead><tr><th>ID</th><th>Supplier</th><th>Status</th><th>Items</th><th style={{ textAlign: "right" }}>Total</th><th>Delivery</th><th style={{ width: 120 }}>Actions</th></tr></thead>
+        <tbody>
+          {loading ? <tr><td colSpan={7} className="data-table-empty">Loading...</td></tr>
+          : items.map(po => (
+            <tr key={po.id}>
+              <td className="font-mono" style={{ fontSize: 11 }}>PO-{po.id}</td>
+              <td style={{ fontWeight: 600 }}>{po.supplier_name || `#${po.supplier_id}`}</td>
+              <td>{sb(po.status)}</td>
+              <td style={{ fontSize: 12 }}>{po.items_count || (po.items || []).length} lines</td>
+              <td style={{ textAlign: "right", fontWeight: 600 }}>RM {Number(po.total_amount || 0).toFixed(2)}</td>
+              <td style={{ fontSize: 12 }}>{po.expected_delivery?.slice(0, 10) || "—"}</td>
+              <td>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {(["draft", "submitted", "ordered", "partially_received"] as string[]).includes(po.status) && <button onClick={() => handleReceive(po.id)} className="btn btn-ghost btn-sm" title="Receive" style={{ color: "var(--color-success)" }}><CheckCircle size={14} /></button>}
+                  {(["draft", "submitted"] as string[]).includes(po.status) && <button onClick={() => handleCancel(po.id)} className="btn btn-ghost btn-sm" title="Cancel" style={{ color: "var(--color-error)" }}><XCircle size={14} /></button>}
+                </div>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">Loading...</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">No purchase orders found.</td></tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3 font-mono">{item.po_number}</td>
-                  <td className="px-4 py-3">{item.supplier_name}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusClass(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">RM {item.total.toFixed(2)}</td>
-                  <td className="px-4 py-3">{new Date(item.order_date).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">{item.expected_delivery ? new Date(item.expected_delivery).toLocaleDateString() : "—"}</td>
-                  <td className="px-4 py-3">
-                    {item.status === "pending" || item.status === "approved" ? (
-                      <>
-                        <button onClick={() => handleReceive(item.id)} className="text-green-600 hover:underline mr-3">Receive</button>
-                        <button onClick={() => handleCancel(item.id)} className="text-red-600 hover:underline">Cancel</button>
-                      </>
-                    ) : (
-                      <span className="text-gray-400 text-xs">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table></div>
     </div>
   );
 }

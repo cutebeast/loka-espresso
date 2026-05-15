@@ -25,9 +25,6 @@ class RewardCatalog(Base, SoftDeleteMixin, TimestampMixin):
     __tablename__ = "reward_catalog"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    store_id: Mapped[int | None] = mapped_column(
-        ForeignKey("stores.id", ondelete="SET NULL"), nullable=True, index=True
-    )
     reward_name: Mapped[str] = mapped_column(String(100), nullable=False)
     reward_key: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -49,9 +46,14 @@ class RewardCatalog(Base, SoftDeleteMixin, TimestampMixin):
         ForeignKey("loyalty_tiers.id", ondelete="SET NULL"), nullable=True
     )
     terms_and_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    how_to_redeem: Mapped[str | None] = mapped_column(Text, nullable=True)
+    long_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    customer_segments: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    image_gallery_urls: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    gallery_video_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    store: Mapped["Store"] = relationship("Store", back_populates="reward_catalog_entries")
     customer_rewards: Mapped[List["CustomerReward"]] = relationship(
         "CustomerReward",
         back_populates="reward_catalog",
@@ -85,8 +87,8 @@ class CustomerReward(Base):
     reward_catalog_id: Mapped[int] = mapped_column(
         ForeignKey("reward_catalog.id", ondelete="CASCADE"), nullable=False
     )
-    store_id: Mapped[int | None] = mapped_column(
-        ForeignKey("stores.id", ondelete="SET NULL"), nullable=True
+    store_id: Mapped[int] = mapped_column(
+        ForeignKey("stores.id", ondelete="RESTRICT"), nullable=False
     )
     redemption_code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")

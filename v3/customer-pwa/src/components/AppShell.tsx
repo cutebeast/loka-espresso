@@ -7,7 +7,7 @@ import { Smartphone } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 
-import api from '@/lib/api';
+import api, { setStoreIdGetter } from '@/lib/api';
 import type { Store as StoreType } from '@/lib/api';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { useAuthFlow } from '@/hooks/useAuthFlow';
@@ -52,16 +52,23 @@ const SettingsPage = dynamic(() => import('./profile/SettingsPage'), { ssr: fals
 const ReferralPage = dynamic(() => import('./profile/ReferralPage'), { ssr: false });
 const MyCardPage = dynamic(() => import('./MyCardPage'), { ssr: false });
 const OrderDetailPage = dynamic(() => import('./OrderDetailPage'), { ssr: false });
+const SurveysPage = dynamic(() => import('./SurveysPage'), { ssr: false });
 const ReservationsPage = dynamic(() => import('./ReservationsPage'), { ssr: false });
 
 export default function AppShell() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const {
     page, selectedStore, stores, toast, pageParams, isGuest, requestSignIn,
     setPage, setSelectedStore, setStores, showToast,
     showStorePicker, setShowStorePicker, triggerSignIn, userLocation, setUserLocation,
   } = useUIStore();
+
+  // Initialize store ID getter for menu URL mapping in api.ts
+  useEffect(() => {
+    setStoreIdGetter(() => selectedStore?.id ?? null);
+  }, [selectedStore]);
   const reducedMotion = useReducedMotion();
   const a2hs = useA2HS();
 
@@ -74,6 +81,15 @@ export default function AppShell() {
   const [swUpdateAvailable, setSwUpdateAvailable] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const prevRequestSignIn = useRef(requestSignIn);
+
+  // Handle auth expiration from API layer
+  useEffect(() => {
+    const handler = () => {
+      logout();
+    };
+    window.addEventListener('auth:expired', handler);
+    return () => window.removeEventListener('auth:expired', handler);
+  }, [logout]);
 
   // Scroll to top on page change
   useEffect(() => {
@@ -187,6 +203,7 @@ export default function AppShell() {
       case 'my-card': return <MyCardPage />;
       case 'order-detail': return <OrderDetailPage />;
       case 'reservations': return <ReservationsPage onBack={() => setPage('profile')} />;
+      case 'surveys': return <SurveysPage />;
       default: return <HomePage />;
     }
   };

@@ -1,165 +1,69 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import { getReservations, updateReservationStatus, type Reservation } from "@/lib/api";
+import { api } from "@/lib/api";
+import { CalendarClock } from "lucide-react";
+
+interface Res { id: number; customer_name?: string; customer_phone?: string; guest_count: number; reservation_date: string; reservation_time?: string; status: string; store_name?: string; }
 
 export default function ReservationsPage() {
-  const [items, setItems] = useState<Reservation[]>([]);
+  const [items, setItems] = useState<Res[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
+  const [status, setStatus] = useState("");
+  const [date, setDate] = useState("");
 
-  const fetchData = () => {
-    setLoading(true);
-    getReservations({ status: statusFilter || undefined, date: dateFilter || undefined })
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
+  const fetch = () => { setLoading(true);
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (date) { params.set("date_from", date); params.set("date_to", date); }
+    api.get<{items:Res[]}>(`/admin/reservations?${params}`)
+      .then(d => setItems(Array.isArray(d) ? d : (d.items || [])))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   };
+  useEffect(() => { fetch(); }, [status, date]);
 
-  useEffect(() => {
-    fetchData();
-  }, [statusFilter, dateFilter]);
+  const updateStatus = async (id: number, s: string) => { if (!confirm(`${s} this reservation?`)) return;
+    try { await api.patch(`/admin/reservations/${id}/status`, { status: s }); fetch(); } catch {}; };
 
-  const handleStatusChange = async (id: number, status: Reservation["status"]) => {
-    try {
-      await updateReservationStatus(id, status);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const badgeClass = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "bg-green-100 text-green-700";
-      case "seated":
-        return "bg-blue-100 text-blue-700";
-      case "no_show":
-      case "cancelled":
-        return "bg-red-100 text-red-700";
-      case "requested":
-      case "completed":
-        return "bg-gray-100 text-gray-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
+  const sb = (s: string) => {
+    const m: Record<string, string> = { requested: "badge-yellow", confirmed: "badge-blue", seated: "badge-green", completed: "badge-green", cancelled: "badge-red", no_show: "badge-gray" };
+    return <span className={`badge badge-sm ${m[s] || "badge-gray"}`}>{s?.replace(/_/g, " ")}</span>;
   };
 
   return (
-    <div className="p-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-        <h1 className="text-2xl font-bold">Reservations</h1>
-        <div className="flex gap-3">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">All Statuses</option>
-            <option value="requested">Requested</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="seated">Seated</option>
-            <option value="no_show">No Show</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="completed">Completed</option>
-          </select>
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          />
-        </div>
+    <div style={{ padding: 32 }}>
+      <div className="page-header"><div><h1 className="page-title">Reservations</h1><p className="page-subtitle">{items.length} reservations</p></div></div>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Status</option><option value="requested">Requested</option><option value="confirmed">Confirmed</option><option value="seated">Seated</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option><option value="no_show">No Show</option></select>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />
       </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">ID</th>
-              <th className="text-left px-4 py-3 font-semibold">Store</th>
-              <th className="text-left px-4 py-3 font-semibold">Customer</th>
-              <th className="text-left px-4 py-3 font-semibold">Party Size</th>
-              <th className="text-left px-4 py-3 font-semibold">Date</th>
-              <th className="text-left px-4 py-3 font-semibold">Time</th>
-              <th className="text-left px-4 py-3 font-semibold">Status</th>
-              <th className="text-left px-4 py-3 font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
-                  Loading...
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
-                  No reservations found.
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3">{item.id}</td>
-                  <td className="px-4 py-3">{item.store_name}</td>
-                  <td className="px-4 py-3">{item.customer_name}</td>
-                  <td className="px-4 py-3">{item.party_size}</td>
-                  <td className="px-4 py-3">{item.date}</td>
-                  <td className="px-4 py-3">{item.time}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${badgeClass(
-                        item.status
-                      )}`}
-                    >
-                      {item.status.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {item.status === "requested" && (
-                      <button
-                        onClick={() => handleStatusChange(item.id, "confirmed")}
-                        className="text-green-600 hover:underline mr-2"
-                      >
-                        Confirm
-                      </button>
-                    )}
-                    {item.status === "confirmed" && (
-                      <button
-                        onClick={() => handleStatusChange(item.id, "seated")}
-                        className="text-blue-600 hover:underline mr-2"
-                      >
-                        Seat
-                      </button>
-                    )}
-                    {item.status === "seated" && (
-                      <button
-                        onClick={() => handleStatusChange(item.id, "completed")}
-                        className="text-gray-600 hover:underline mr-2"
-                      >
-                        Complete
-                      </button>
-                    )}
-                    {(item.status === "requested" || item.status === "confirmed") && (
-                      <button
-                        onClick={() => handleStatusChange(item.id, "cancelled")}
-                        className="text-red-600 hover:underline"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} reservations</span></div>
+      <div className="table-container"><table className="data-table">
+        <thead><tr><th>Customer</th><th>Guests</th><th>Date</th><th>Time</th><th>Store</th><th style={{ width: 90 }}>Status</th><th style={{ width: 160 }}>Actions</th></tr></thead>
+        <tbody>
+          {loading ? <tr><td colSpan={7} className="data-table-empty">Loading...</td></tr>
+          : items.map(r => (<tr key={r.id}>
+            <td><div style={{ fontWeight: 600 }}>{r.customer_name || "—"}</div>{r.customer_phone && <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{r.customer_phone}</div>}</td>
+            <td>{r.guest_count}</td>
+            <td style={{ fontSize: 12 }}>{r.reservation_date?.slice(0, 10)}</td>
+            <td style={{ fontSize: 12 }}>{r.reservation_time || "—"}</td>
+            <td>{r.store_name || "—"}</td>
+            <td>{sb(r.status)}</td>
+            <td>
+              <div style={{ display: "flex", gap: 4 }}>
+                {r.status === "requested" && <button onClick={() => updateStatus(r.id, "confirmed")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Confirm</button>}
+                {r.status === "confirmed" && <button onClick={() => updateStatus(r.id, "seated")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Seat</button>}
+                {r.status === "seated" && <button onClick={() => updateStatus(r.id, "completed")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Complete</button>}
+                {(r.status === "requested" || r.status === "confirmed") && <button onClick={() => updateStatus(r.id, "cancelled")} className="btn btn-sm btn-ghost" style={{ fontSize: 11, color: "var(--color-error)" }}>Cancel</button>}
+              </div>
+            </td>
+          </tr>))}
+        </tbody>
+      </table></div>
     </div>
   );
 }

@@ -27,6 +27,8 @@ class ReferralEventOut(BaseSchema):
     id: int
     referrer_customer_id: int
     invitee_customer_id: int
+    referrer_name: str | None = None
+    invitee_name: str | None = None
     referral_code: str
     status: Literal["pending", "converted", "expired", "rewarded"]
     converted_at: datetime | None = None

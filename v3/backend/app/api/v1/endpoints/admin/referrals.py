@@ -61,7 +61,21 @@ async def list_referrals(
 
     stmt = base_stmt.order_by(ReferralEvent.id.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
-    items = [ReferralEventOut.model_validate(r) for r in result.scalars().all()]
+    entries = result.scalars().all()
+    
+    from app.models.customer import Customer
+    customer_ids = {e.referrer_customer_id for e in entries} | {e.invitee_customer_id for e in entries}
+    cust_result = await db.execute(
+        select(Customer.id, Customer.display_name).where(Customer.id.in_(customer_ids))
+    )
+    customer_names = {row[0]: row[1] for row in cust_result.all()}
+    
+    items = []
+    for r in entries:
+        d = {c: getattr(r, c) for c in r.__table__.columns.keys()}
+        d["referrer_name"] = customer_names.get(r.referrer_customer_id)
+        d["invitee_name"] = customer_names.get(r.invitee_customer_id)
+        items.append(ReferralEventOut.model_validate(d))
 
     return APIResponse(
         data=PaginatedResponse(
@@ -91,8 +105,11 @@ async def fulfill_referral(
     admin: CurrentAdmin,
     referral_id: int,
 ):
-    """Mark referral event as fulfilled / rewarded."""
+    """Mark referral event as fulfilled / rewarded — credits referrer loyalty points."""
     referral = await _get_referral_or_404(db, referral_id)
+
+    from app.services.commerce import credit_referral_points
+    await credit_referral_points(db, referral.referrer_customer_id, referral.invitee_customer_id)
 
     referral.status = "rewarded"
     referral.reward_issued_at = datetime.now(timezone.utc)

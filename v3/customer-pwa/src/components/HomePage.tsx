@@ -32,12 +32,22 @@ export default function HomePage() {
       const res = await api.get(`/menu/items`, {
         params: { featured: true, available_only: true, limit: 10 },
       });
-      let list: MenuItem[] = Array.isArray(res.data) ? res.data : [];
+      // v3 returns { items: [...], categories: [...] } from /menu/stores/{store_id}
+      let list: MenuItem[] = [];
+      if (res.data && typeof res.data === 'object' && res.data.items) {
+        list = Array.isArray(res.data.items) ? res.data.items : [];
+      } else if (Array.isArray(res.data)) {
+        list = res.data;
+      }
       if (list.length === 0) {
         const all = await api.get(`/menu/items`, {
           params: { available_only: true, limit: 8 },
         });
-        list = Array.isArray(all.data) ? all.data : [];
+        if (all.data && typeof all.data === 'object' && all.data.items) {
+          list = Array.isArray(all.data.items) ? all.data.items : [];
+        } else if (Array.isArray(all.data)) {
+          list = all.data;
+        }
       }
       setFeaturedItems(list.slice(0, 10));
     } catch {

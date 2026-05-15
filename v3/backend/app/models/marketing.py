@@ -25,9 +25,6 @@ class MarketingCampaign(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     campaign_name: Mapped[str] = mapped_column(String(100), nullable=False)
     campaign_key: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
-    store_id: Mapped[int | None] = mapped_column(
-        ForeignKey("stores.id", ondelete="SET NULL"), nullable=True
-    )
     channel: Mapped[str] = mapped_column(CampaignChannel, nullable=False)
     campaign_type: Mapped[str] = mapped_column(String(50), nullable=False)
     audience_segment: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -68,7 +65,6 @@ class MarketingCampaign(Base, TimestampMixin):
         ForeignKey("admin_accounts.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
-    store: Mapped["Store | None"] = relationship("Store", back_populates="marketing_campaigns")
     analytics: Mapped["CampaignAnalytics | None"] = relationship(
         "CampaignAnalytics", back_populates="campaign", uselist=False
     )
@@ -83,7 +79,7 @@ class MarketingCampaign(Base, TimestampMixin):
             name="ck_marketing_campaigns_ab_test_variant",
         ),
         CheckConstraint(
-            "status IN ('draft','scheduled','running','paused','completed','cancelled')",
+            "status IN ('draft','review_pending','scheduled','active','paused','completed','cancelled')",
             name="ck_marketing_campaigns_status",
         ),
         CheckConstraint("budget_allocated >= 0", name="ck_marketing_campaigns_budget_allocated"),

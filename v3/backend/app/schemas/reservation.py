@@ -12,7 +12,7 @@ class ReservationBase(BaseSchema):
     store_id: int
     customer_id: int | None = None
     dining_table_id: int | None = None
-    party_size: int = Field(..., ge=1)
+    party_size: int | None = Field(None, ge=1)
     reservation_date: date
     reservation_time: time
     duration_minutes: int = Field(default=90, ge=1)

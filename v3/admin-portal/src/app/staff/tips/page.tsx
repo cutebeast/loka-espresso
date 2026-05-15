@@ -8,64 +8,32 @@ export default function StaffTipsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchData = () => {
-    setLoading(true);
-    getTipAllocations()
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+  const fetchData = () => { setLoading(true);
+    getTipAllocations().then(d => setItems(d)).catch(e => setError(e.message)).finally(() => setLoading(false));
   };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Tip Allocations</h1>
-      </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">Order</th>
-              <th className="text-left px-4 py-3 font-semibold">Store</th>
-              <th className="text-left px-4 py-3 font-semibold">Total Tip</th>
-              <th className="text-left px-4 py-3 font-semibold">Method</th>
-              <th className="text-left px-4 py-3 font-semibold">Distributed By</th>
-              <th className="text-left px-4 py-3 font-semibold">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  Loading...
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  No tip allocations found.
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3 font-mono">{item.order_number}</td>
-                  <td className="px-4 py-3">{item.store_name}</td>
-                  <td className="px-4 py-3 font-medium">RM {item.total_tip.toFixed(2)}</td>
-                  <td className="px-4 py-3">{item.method}</td>
-                  <td className="px-4 py-3">{item.distributed_by}</td>
-                  <td className="px-4 py-3">{new Date(item.created_at).toLocaleString()}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+    <div style={{ padding: 32 }}>
+      <div className="page-header"><div><h1 className="page-title">Tip Allocations</h1><p className="page-subtitle">{items.length} allocations</p></div></div>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} allocations</span></div>
+      <div className="table-container"><table className="data-table">
+        <thead><tr><th>Order</th><th>Store</th><th style={{ textAlign: "right" }}>Total Tip</th><th>Method</th><th>Distributed By</th><th>Date</th></tr></thead>
+        <tbody>
+          {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
+          : items.length === 0 ? <tr><td colSpan={6} className="data-table-empty">No tip allocations found.</td></tr>
+          : items.map(t => (<tr key={t.id}>
+            <td className="font-mono" style={{ fontSize: 11 }}>#{t.order_id}</td>
+            <td>{t.store_name || `Store #${t.store_id}`}</td>
+            <td style={{ textAlign: "right", fontWeight: 600 }}>RM {Number(t.total_tip || 0).toFixed(2)}</td>
+            <td style={{ textTransform: "capitalize", fontSize: 12 }}>{t.payment_method || "—"}</td>
+            <td>{t.distributed_by_name || "—"}</td>
+            <td style={{ fontSize: 12 }}>{t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
+          </tr>))}
+        </tbody>
+      </table></div>
     </div>
   );
 }

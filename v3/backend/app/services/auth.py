@@ -14,6 +14,8 @@ from app.core.security import (
 )
 from app.models.customer import Customer, CustomerDevice
 from app.models.iam import AdminAccount
+from app.models.wallet import Wallet
+from app.models.loyalty import LoyaltyAccount
 from app.schemas.auth import (
     AdminLoginRequest,
     CustomerRegisterRequest,
@@ -55,16 +57,71 @@ async def register_customer(
             raise AuthError("Phone number already registered", 409)
     
     # Create customer (no password — OTP auth)
+    import secrets
+    referral_code = "LOKA" + secrets.token_hex(3).upper()
+    # Ensure uniqueness
+    for _ in range(5):
+        existing = await db.execute(select(Customer).where(Customer.referral_code == referral_code))
+        if not existing.scalar_one_or_none():
+            break
+        referral_code = "LOKA" + secrets.token_hex(3).upper()
+
     customer = Customer(
         email_address=data.email_address,
         phone_number=data.phone_number,
         display_name=data.display_name,
+        referral_code=referral_code,
         is_active=True,
         order_count=0,
         lifetime_value=0.0,
     )
     db.add(customer)
     await db.flush()  # Get customer.id
+    
+    # Auto-create wallet for new customer
+    wallet = Wallet(
+        customer_id=customer.id,
+        currency_code="MYR",
+    )
+    db.add(wallet)
+    
+    # Auto-create loyalty account for new customer (lowest tier)
+    from app.models.loyalty import LoyaltyPointsLedger
+    from app.services.commerce import get_default_tier_id
+    default_tier = await get_default_tier_id(db)
+    loyalty = LoyaltyAccount(
+        customer_id=customer.id,
+        current_tier_id=default_tier,
+        points_balance=0,
+        lifetime_points_earned=0,
+    )
+    db.add(loyalty)
+    await db.flush()
+    
+    # Credit welcome bonus
+    try:
+        from app.core.config import get_settings
+        settings = get_settings()
+        from app.models.platform import PlatformConfig
+        result = await db.execute(
+            select(PlatformConfig).where(PlatformConfig.config_key == "loyalty.welcome_bonus")
+        )
+        config = result.scalar_one_or_none()
+        welcome_pts = int(config.config_value) if config and config.config_value else 50
+    except Exception:
+        welcome_pts = 50
+    
+    ledger = LoyaltyPointsLedger(
+        loyalty_account_id=loyalty.id,
+        customer_id=customer.id,
+        event_type="welcome_bonus",
+        points_delta=welcome_pts,
+        running_balance=welcome_pts,
+        description=f"Welcome bonus: {welcome_pts} points",
+    )
+    loyalty.points_balance = welcome_pts
+    loyalty.lifetime_points_earned = welcome_pts
+    db.add(ledger)
     
     # Create device record if fingerprint provided
     if data.device_fingerprint:

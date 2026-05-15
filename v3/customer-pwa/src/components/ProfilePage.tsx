@@ -18,6 +18,7 @@ import {
   Bell,
   ShoppingBag,
   CalendarCheck,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
@@ -88,6 +89,7 @@ export default function ProfilePage() {
     { id: 'card', icon: IdCard, label: t('profile.myCard'), iconClass: 'profile-icon-card', onClick: () => setPage('my-card') },
     { id: 'notification', icon: Bell, label: t('profile.notifications'), iconClass: 'profile-icon-notif', onClick: () => setPage('notifications') },
     { id: 'reservations', icon: CalendarCheck, label: t('profile.reservations') || 'Reservations', iconClass: 'profile-icon-notif', onClick: () => setPage('reservations') },
+    { id: 'surveys', icon: ClipboardList, label: t('profile.surveys') || 'Surveys', iconClass: 'profile-icon-notif', onClick: () => setPage('surveys') },
   ];
 
   const menuItems2 = [

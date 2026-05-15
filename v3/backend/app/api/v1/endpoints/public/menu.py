@@ -36,18 +36,16 @@ async def get_store_menu(
     is_featured: bool | None = Query(None),
 ):
     """Get full public menu for a store."""
-    # Fetch categories
+    # Fetch categories (global menu, not per-store)
     cat_stmt = select(MenuCategory).where(
-        MenuCategory.store_id == store_id,
         MenuCategory.is_available.is_(True),
         MenuCategory.deleted_at.is_(None),
     ).order_by(MenuCategory.display_order)
     cat_result = await db.execute(cat_stmt)
     categories = cat_result.scalars().all()
     
-    # Fetch items
+    # Fetch items (global menu, not per-store)
     item_stmt = select(MenuItem).where(
-        MenuItem.store_id == store_id,
         MenuItem.is_available.is_(True),
         MenuItem.deleted_at.is_(None),
     )

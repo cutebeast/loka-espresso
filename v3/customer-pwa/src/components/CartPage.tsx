@@ -85,9 +85,20 @@ export default function CartPage() {
     if (!item) return;
     try {
       setEditLoading(true);
-      const res = await api.get(`/menu/items/${item.menu_item_id}/customizations`);
-      const options = Array.isArray(res.data) ? res.data : [];
-      setEditOptions(options);
+      // v3: customization options are included in the menu item response
+      // via the /menu/stores/{store_id} endpoint. Try the dedicated endpoint first,
+      // but fall back to using the menu items already loaded.
+      try {
+        const res = await api.get(`/menu/items/${item.menu_item_id}/customizations`);
+        const options = Array.isArray(res.data) ? res.data : 
+          (res.data && res.data.items ? res.data.items : []);
+        setEditOptions(options);
+      } catch {
+        // Fallback: use menu items already in state
+        const { menuItems } = useUIStore.getState();
+        const menuItem = menuItems.find((mi: any) => mi.id === item.menu_item_id);
+        setEditOptions(menuItem?.customization_options || []);
+      }
       setEditItem({ id: item.menu_item_id, name: item.name, base_price: item.base_price ?? item.price, category_id: 0 } as MenuItem);
       setEditingItem(index);
     } catch { showToast(t('toast.genericError'), 'error'); }

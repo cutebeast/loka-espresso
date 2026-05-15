@@ -409,3 +409,4 @@
 .aspect-square { aspect-ratio: 1 / 1; }
 .object-cover { object-fit: cover; }
 .object-contain { object-fit: contain; }
+.rounded { border-radius: var(--radius-sm); }

@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
 from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.services.translation import auto_translate_record, delete_translations
 from app.schemas.loyalty import (
     LoyaltyAccountOut,
     LoyaltyPointsLedgerOut,
@@ -25,16 +26,33 @@ public_loyalty_router = APIRouter()
 # ---------------------------------------------------------------------------
 
 def _serialize_account(account: LoyaltyAccount) -> LoyaltyAccountOut:
-    tier = account.current_tier
+    """Serialize a LoyaltyAccount to output schema.
+    Works with or without the current_tier relationship loaded."""
+    tier_name = ""
+    tier_multiplier = 1.0
+    tier_key = None
+    color_hex = None
+    try:
+        tier = account.current_tier
+        if tier:
+            tier_name = tier.display_name
+            tier_multiplier = float(tier.points_multiplier)
+            tier_key = tier.tier_key
+            color_hex = tier.color_hex
+    except Exception:
+        pass
     return LoyaltyAccountOut(
         id=account.id,
         customer_id=account.customer_id,
+        customer_name=None,
         tier_id=account.current_tier_id or 0,
-        tier_name=tier.display_name if tier else "None",
+        tier_name=tier_name,
+        tier_key=tier_key,
+        color_hex=color_hex,
         current_points=account.points_balance,
         lifetime_points=account.lifetime_points_earned,
         points_to_next_tier=None,
-        tier_multiplier=float(tier.points_multiplier) if tier else 1.0,
+        tier_multiplier=tier_multiplier,
         last_activity_at=None,
         last_tier_change_at=account.last_tier_change_at,
         created_at=account.created_at,
@@ -57,6 +75,14 @@ async def list_loyalty_tiers(
     return APIResponse(data=[LoyaltyTierOut.model_validate(t) for t in tiers])
 
 
+@loyalty_router.get("/tiers/{id}", response_model=APIResponse[LoyaltyTierOut])
+async def get_loyalty_tier(db: DBDependency, admin: CurrentAdmin, id: int):
+    res = await db.execute(select(LoyaltyTier).where(LoyaltyTier.id == id))
+    t = res.scalar_one_or_none()
+    if not t: raise HTTPException(status_code=404, detail="Tier not found")
+    return APIResponse(data=LoyaltyTierOut.model_validate(t))
+
+
 @loyalty_router.post(
     "/tiers",
     response_model=APIResponse[LoyaltyTierOut],
@@ -71,6 +97,7 @@ async def create_loyalty_tier(
     tier = LoyaltyTier(**data.model_dump())
     db.add(tier)
     await db.commit()
+    await auto_translate_record(db, "loyalty_tiers", tier.id, {"display_name": tier.display_name})
     await db.refresh(tier)
     return APIResponse(data=LoyaltyTierOut.model_validate(tier))
 
@@ -92,6 +119,7 @@ async def update_loyalty_tier(
     for field, value in data.model_dump().items():
         setattr(tier, field, value)
     await db.commit()
+    await auto_translate_record(db, "loyalty_tiers", tier.id, {"display_name": tier.display_name})
     await db.refresh(tier)
     return APIResponse(data=LoyaltyTierOut.model_validate(tier))
 
@@ -111,6 +139,7 @@ async def delete_loyalty_tier(
         )
     await db.delete(tier)
     await db.commit()
+    await delete_translations(db, "loyalty_tiers", id)
     return APIResponse(data={"id": tier.id, "deleted": True})
 
 
@@ -149,8 +178,22 @@ async def list_loyalty_accounts(
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
+    from app.models.customer import Customer
     result = await db.execute(stmt)
-    items = [_serialize_account(a) for a in result.scalars().all()]
+    accounts = result.scalars().all()
+    
+    # Batch fetch customer names
+    customer_ids = {a.customer_id for a in accounts}
+    cust_result = await db.execute(
+        select(Customer.id, Customer.display_name).where(Customer.id.in_(customer_ids))
+    )
+    customer_names = {row[0]: row[1] or f"Customer #{row[0]}" for row in cust_result.all()}
+    
+    items = []
+    for a in accounts:
+        out = _serialize_account(a)
+        out.customer_name = customer_names.get(a.customer_id, f"Customer #{a.customer_id}")
+        items.append(out)
 
     return APIResponse(
         data=PaginatedResponse(
@@ -209,8 +252,17 @@ async def list_ledger_entries(
         base_stmt = base_stmt.where(LoyaltyPointsLedger.customer_id == customer_id)
         count_stmt = count_stmt.where(LoyaltyPointsLedger.customer_id == customer_id)
     if event_type is not None:
-        base_stmt = base_stmt.where(LoyaltyPointsLedger.event_type == event_type)
-        count_stmt = count_stmt.where(LoyaltyPointsLedger.event_type == event_type)
+        # Map UI category names to actual DB event types
+        category_map: dict[str, list[str]] = {
+            "earn": ["order_earned", "referral_bonus", "birthday_bonus", "welcome_bonus",
+                     "tier_bonus", "promo_bonus", "social_share", "review_submitted"],
+            "redeem": ["reward_redemption", "voucher_conversion"],
+            "expire": ["points_expired"],
+            "adjustment": ["manual_adjustment", "return_deduction"],
+        }
+        types = category_map.get(event_type.lower(), [event_type])
+        base_stmt = base_stmt.where(LoyaltyPointsLedger.event_type.in_(types))
+        count_stmt = count_stmt.where(LoyaltyPointsLedger.event_type.in_(types))
 
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
@@ -221,7 +273,21 @@ async def list_ledger_entries(
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    items = [LoyaltyPointsLedgerOut.model_validate(r) for r in result.scalars().all()]
+    entries = result.scalars().all()
+    
+    # Batch fetch customer names
+    from app.models.customer import Customer
+    customer_ids = {e.customer_id for e in entries}
+    cust_result = await db.execute(
+        select(Customer.id, Customer.display_name).where(Customer.id.in_(customer_ids))
+    )
+    customer_names = {row[0]: row[1] for row in cust_result.all()}
+    
+    items = []
+    for r in entries:
+        d = {c: getattr(r, c) for c in r.__table__.columns.keys()}
+        d["customer_name"] = customer_names.get(r.customer_id)
+        items.append(LoyaltyPointsLedgerOut.model_validate(d))
 
     return APIResponse(
         data=PaginatedResponse(
@@ -234,57 +300,27 @@ async def list_ledger_entries(
     )
 
 
-class _LedgerCreate(BaseModel):
-    loyalty_account_id: int
-    points_delta: int
-    description: str | None = None
-
-
-@loyalty_router.post(
-    "/ledger",
+@loyalty_router.get(
+    "/ledger/{entry_id}",
     response_model=APIResponse[LoyaltyPointsLedgerOut],
-    status_code=status.HTTP_201_CREATED,
 )
-async def create_ledger_entry(
+async def get_ledger_entry(
     db: DBDependency,
     admin: CurrentAdmin,
-    data: _LedgerCreate,
+    entry_id: int,
 ):
-    """Manually adjust loyalty points for an account."""
+    """Get a single ledger entry."""
     result = await db.execute(
-        select(LoyaltyAccount).where(LoyaltyAccount.id == data.loyalty_account_id)
+        select(LoyaltyPointsLedger).where(LoyaltyPointsLedger.id == entry_id)
     )
-    account = result.scalar_one_or_none()
-    if account is None:
+    entry = result.scalar_one_or_none()
+    if entry is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found"
         )
-
-    new_balance = account.points_balance + data.points_delta
-    if new_balance < 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient points"
-        )
-
-    entry = LoyaltyPointsLedger(
-        loyalty_account_id=account.id,
-        customer_id=account.customer_id,
-        event_type="adjust_manual",
-        points_delta=data.points_delta,
-        running_balance=new_balance,
-        description=data.description,
-    )
-    db.add(entry)
-
-    account.points_balance = new_balance
-    if data.points_delta > 0:
-        account.lifetime_points_earned += data.points_delta
-    else:
-        account.lifetime_points_redeemed += abs(data.points_delta)
-
-    await db.commit()
-    await db.refresh(entry)
-    return APIResponse(data=LoyaltyPointsLedgerOut.model_validate(entry))
+    d = {c: getattr(entry, c) for c in entry.__table__.columns.keys()}
+    d["customer_name"] = None
+    return APIResponse(data=LoyaltyPointsLedgerOut.model_validate(d))
 
 
 # ---------------------------------------------------------------------------
@@ -296,15 +332,34 @@ async def get_my_loyalty_account(
     db: DBDependency,
     customer: ActiveCustomer,
 ):
-    """Get current customer's loyalty account."""
+    """Get current customer's loyalty account. Auto-creates if not found."""
+    from sqlalchemy.orm import selectinload
     result = await db.execute(
-        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer.id)
+        select(LoyaltyAccount)
+        .options(selectinload(LoyaltyAccount.current_tier))
+        .where(LoyaltyAccount.customer_id == customer.id)
     )
     account = result.scalar_one_or_none()
     if account is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Loyalty account not found"
+        # Auto-create loyalty account for customer, assign lowest tier
+        from app.services.commerce import get_default_tier_id
+        default_tier = await get_default_tier_id(db)
+        account = LoyaltyAccount(
+            customer_id=customer.id,
+            current_tier_id=default_tier,
+            points_balance=0,
+            lifetime_points_earned=0,
         )
+        db.add(account)
+        await db.commit()
+        await db.refresh(account)
+        # Re-fetch with tier relationship loaded
+        result = await db.execute(
+            select(LoyaltyAccount)
+            .options(selectinload(LoyaltyAccount.current_tier))
+            .where(LoyaltyAccount.id == account.id)
+        )
+        account = result.scalar_one()
     return APIResponse(data=_serialize_account(account))
 
 
@@ -318,14 +373,20 @@ async def get_my_ledger_entries(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
-    """Get current customer's loyalty ledger entries."""
+    """Get current customer's loyalty ledger entries. Returns empty if no account."""
     result = await db.execute(
         select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer.id)
     )
     account = result.scalar_one_or_none()
     if account is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Loyalty account not found"
+        return APIResponse(
+            data=PaginatedResponse(
+                items=[],
+                total=0,
+                page=page,
+                per_page=per_page,
+                total_pages=0,
+            )
         )
 
     base_stmt = select(LoyaltyPointsLedger).where(

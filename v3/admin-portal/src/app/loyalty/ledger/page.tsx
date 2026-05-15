@@ -27,15 +27,39 @@ export default function LoyaltyLedgerPage() {
     fetchData();
   }, [eventTypeFilter, accountId]);
 
+  const eventBadge = (eventType: string) => {
+    const colors: Record<string, string> = {
+      earn: "badge-green",
+      redeem: "badge-red",
+      expire: "badge-gray",
+      adjustment: "badge-blue",
+    };
+    return (
+      <span className={`badge badge-sm ${colors[eventType] || "badge-gray"}`}>
+        {eventType}
+      </span>
+    );
+  };
+
   return (
-    <div className="p-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-        <h1 className="text-2xl font-bold">Points Ledger</h1>
-        <div className="flex gap-3">
+    <div style={{ padding: 32 }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Points Ledger</h1>
+          <p className="page-subtitle">
+            {accountId ? `Transactions for account #${accountId}` : "All loyalty point transactions"}
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
           <select
             value={eventTypeFilter}
             onChange={(e) => setEventTypeFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
+            style={{
+              border: "1px solid var(--color-border-light)",
+              borderRadius: "var(--radius-sm)",
+              padding: "6px 12px",
+              fontSize: 13,
+            }}
           >
             <option value="">All Event Types</option>
             <option value="earn">Earn</option>
@@ -45,45 +69,46 @@ export default function LoyaltyLedgerPage() {
           </select>
         </div>
       </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div className="table-header-bar">
+        <span className="text-sm font-semibold">{items.length} entries</span>
+      </div>
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
             <tr>
-              <th className="text-left px-4 py-3 font-semibold">Customer</th>
-              <th className="text-left px-4 py-3 font-semibold">Event Type</th>
-              <th className="text-left px-4 py-3 font-semibold">Points Delta</th>
-              <th className="text-left px-4 py-3 font-semibold">Running Balance</th>
-              <th className="text-left px-4 py-3 font-semibold">Date</th>
+              <th>Customer</th>
+              <th>Event Type</th>
+              <th>Points Delta</th>
+              <th>Running Balance</th>
+              <th>Date</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                  Loading...
-                </td>
+                <td colSpan={5} className="data-table-empty">Loading...</td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                  No ledger entries found.
-                </td>
+                <td colSpan={5} className="data-table-empty">No ledger entries found.</td>
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3">{item.customer_name}</td>
-                  <td className="px-4 py-3">{item.event_type}</td>
+                <tr key={item.id}>
+                  <td style={{ fontWeight: 600 }}>{item.customer_name || `Customer #${item.customer_id}`}</td>
+                  <td>{eventBadge(item.event_type)}</td>
                   <td
-                    className={`px-4 py-3 font-medium ${
-                      item.points_delta >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
+                    style={{
+                      fontWeight: 600,
+                      color: item.points_delta >= 0 ? "var(--color-success)" : "var(--color-error)",
+                    }}
                   >
                     {item.points_delta > 0 ? `+${item.points_delta}` : item.points_delta}
                   </td>
-                  <td className="px-4 py-3">{item.running_balance}</td>
-                  <td className="px-4 py-3">{new Date(item.created_at).toLocaleString()}</td>
+                  <td>{item.running_balance}</td>
+                  <td style={{ fontSize: 12 }}>{new Date(item.created_at).toLocaleString()}</td>
                 </tr>
               ))
             )}

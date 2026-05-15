@@ -13,9 +13,6 @@ class StoreOperatingHoursBase(BaseSchema):
     open_time: time
     close_time: time
     is_closed: bool = False
-    split_shift: bool = False
-    second_open_time: time | None = None
-    second_close_time: time | None = None
 
 
 class StoreOperatingHoursOut(StoreOperatingHoursBase, TimestampedSchema):
@@ -38,8 +35,8 @@ class StoreSpecialHoursOut(StoreSpecialHoursBase, TimestampedSchema):
 
 class StoreConfigurationBase(BaseSchema):
     config_key: str = Field(..., max_length=50)
-    config_value: str
-    data_type: Literal["string", "integer", "float", "boolean", "json"] = "string"
+    config_value: dict = Field(default_factory=dict)
+    description: str | None = Field(None, max_length=255)
 
 
 class StoreConfigurationOut(StoreConfigurationBase, TimestampedSchema):
@@ -64,18 +61,13 @@ class StoreBase(BaseSchema):
     email_address: str | None = Field(None, max_length=255)
     timezone: str = Field(default="Asia/Kuala_Lumpur", max_length=50)
     currency_code: str = Field(default="MYR", max_length=3)
-    tax_registration: str | None = Field(None, max_length=50)
     logo_url: str | None = Field(None, max_length=500)
     banner_image_url: str | None = Field(None, max_length=500)
     pickup_lead_minutes: int = Field(default=15, ge=0)
     delivery_radius_km: float = Field(default=10.0, ge=0)
-    base_delivery_fee: float = Field(default=0.0, ge=0)
-    minimum_order_amount: float = Field(default=0.0, ge=0)
-    pos_integration_type: str | None = Field(None, max_length=50)
-    delivery_integration_type: str | None = Field(None, max_length=50)
     is_active: bool = True
     is_accepting_orders: bool = True
-    opening_date: date | None = None
+    position: int = Field(default=0, ge=0)
 
 
 class StoreCreate(StoreBase):
@@ -99,18 +91,14 @@ class StoreUpdate(BaseSchema):
     email_address: str | None = Field(None, max_length=255)
     timezone: str | None = Field(None, max_length=50)
     currency_code: str | None = Field(None, max_length=3)
-    tax_registration: str | None = Field(None, max_length=50)
     logo_url: str | None = Field(None, max_length=500)
     banner_image_url: str | None = Field(None, max_length=500)
     pickup_lead_minutes: int | None = Field(None, ge=0)
     delivery_radius_km: float | None = Field(None, ge=0)
-    base_delivery_fee: float | None = Field(None, ge=0)
-    minimum_order_amount: float | None = Field(None, ge=0)
-    pos_integration_type: str | None = Field(None, max_length=50)
-    delivery_integration_type: str | None = Field(None, max_length=50)
     is_active: bool | None = None
     is_accepting_orders: bool | None = None
-    opening_date: date | None = None
+    position: int | None = Field(None, ge=0)
+    operating_hours: list[dict] | None = None
 
 
 class StoreOut(StoreBase, TimestampedSchema):
@@ -137,36 +125,30 @@ class StorePublicOut(BaseSchema):
     email_address: str | None
     timezone: str
     currency_code: str
-    tax_registration: str | None
     logo_url: str | None
     banner_image_url: str | None
     pickup_lead_minutes: int
     delivery_radius_km: float
-    base_delivery_fee: float
-    minimum_order_amount: float
-    pos_integration_type: str | None
-    delivery_integration_type: str | None
     is_active: bool
     is_accepting_orders: bool
-    opening_date: date | None
     operating_hours: list[StoreOperatingHoursOut] = []
     special_hours: list[StoreSpecialHoursOut] = []
 
 
 class DiningTableBase(BaseSchema):
     table_number: str = Field(..., max_length=20)
+    display_name: str | None = Field(None, max_length=50)
     capacity: int = Field(..., ge=1, le=50)
     section: str | None = Field(None, max_length=50)
-    table_type: Literal["standard", "booth", "outdoor", "private", "bar", "high_top"] = "standard"
-    shape: Literal["round", "square", "rectangular", "oval"] = "round"
     is_active: bool = True
-    qr_code_url: str | None = Field(None, max_length=500)
-    pos_identifier: str | None = Field(None, max_length=20)
+    qr_code_image_url: str | None = Field(None, max_length=500)
 
 
 class DiningTableOut(DiningTableBase, TimestampedSchema):
     id: int
     store_id: int
+    qr_code_token: str | None = None
+    qr_generated_at: datetime | None = None
     current_status: Literal["available", "occupied", "reserved", "cleaning", "maintenance"] = "available"
 
 

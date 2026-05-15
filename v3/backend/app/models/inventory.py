@@ -29,6 +29,7 @@ class InventoryCategory(Base, TimestampMixin, SoftDeleteMixin):
     )
     category_name: Mapped[str] = mapped_column(String(100), nullable=False)
     slug: Mapped[str] = mapped_column(String(50), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     parent_category_id: Mapped[int | None] = mapped_column(
         ForeignKey("inventory_categories.id", ondelete="SET NULL"), nullable=True
     )

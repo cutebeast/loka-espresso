@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints.common import health
+from app.api.v1.endpoints.common import upload
 from app.api.v1.endpoints import auth
 from app.api.v1.endpoints.admin import auth as admin_auth
 from app.api.v1.endpoints.admin import stores as admin_stores
@@ -28,17 +29,31 @@ from app.api.v1.endpoints.admin import purchase_orders as admin_purchase_orders
 from app.api.v1.endpoints.admin import tips as admin_tips
 from app.api.v1.endpoints.admin import consents as admin_consents
 from app.api.v1.endpoints.admin import devices as admin_devices
-from app.api.v1.endpoints.admin import content as admin_content
 from app.api.v1.endpoints.admin import marketing as admin_marketing
 from app.api.v1.endpoints.admin import referrals as admin_referrals
 from app.api.v1.endpoints.admin import surveys as admin_surveys
+from app.api.v1.endpoints.admin import orders as admin_orders
+from app.api.v1.endpoints.admin import customers as admin_customers
+from app.api.v1.endpoints.admin import feedback as admin_feedback
+from app.api.v1.endpoints.admin import config as admin_config
+from app.api.v1.endpoints.admin import dietary_tags as admin_dietary_tags
+from app.api.v1.endpoints.admin import info_cards as admin_info_cards
+from app.api.v1.endpoints.admin import system_pages as admin_system_pages
+from app.api.v1.endpoints.admin import product_cards as admin_product_cards
+from app.api.v1.endpoints.admin import event_cards as admin_event_cards
+from app.api.v1.endpoints.admin import promo_banners as admin_promo_banners
+from app.api.v1.endpoints.admin import content_sections as admin_content_sections
+from app.api.v1.endpoints.admin import splash_screens as admin_splash_screens
+from app.api.v1.endpoints.admin import checkins as admin_checkins
 from app.api.v1.endpoints.public import menu as public_menu
+from app.api.v1.endpoints.public import rsvp as public_rsvp
 from app.api.v1.endpoints.public import store as public_store
 
 api_router = APIRouter()
 
 # System
 api_router.include_router(health.router, prefix="/health", tags=["system"])
+api_router.include_router(upload.router, tags=["upload"])
 
 # Authentication
 api_router.include_router(auth.router, tags=["authentication"])
@@ -48,6 +63,12 @@ api_router.include_router(admin_auth.router, tags=["admin — authentication"])
 api_router.include_router(admin_stores.router, tags=["admin — stores"])
 api_router.include_router(admin_menu.router, tags=["admin — menu"])
 api_router.include_router(admin_inventory.router, tags=["admin — inventory"])
+
+# Time Events & Tips (must be before staff router to avoid /{staff_id} catching /time-events and /tips)
+api_router.include_router(admin_time_events.admin_router, tags=["admin — staff"])
+api_router.include_router(admin_time_events.staff_router, tags=["staff"])
+api_router.include_router(admin_tips.router, tags=["admin — staff"])
+
 api_router.include_router(admin_staff.router, tags=["admin — staff"])
 api_router.include_router(admin_dashboard.router, tags=["admin — dashboard"])
 
@@ -73,19 +94,13 @@ api_router.include_router(admin_notifications.public_router, tags=["notification
 # Public (no auth required)
 api_router.include_router(public_store.router, tags=["public — stores"])
 api_router.include_router(public_menu.router, tags=["public — menu"])
-
-# Time Events
-api_router.include_router(admin_time_events.admin_router, tags=["admin — staff"])
-api_router.include_router(admin_time_events.staff_router, tags=["staff"])
+api_router.include_router(public_rsvp.router, tags=["public — events"])
 
 # Inventory Movements
 api_router.include_router(admin_inventory_movement.router, tags=["admin — inventory"])
 
 # Purchase Orders
 api_router.include_router(admin_purchase_orders.router, tags=["admin — inventory"])
-
-# Tips
-api_router.include_router(admin_tips.router, tags=["admin — staff"])
 
 # Consents
 api_router.include_router(admin_consents.admin_router, tags=["admin — customers"])
@@ -96,8 +111,6 @@ api_router.include_router(admin_devices.admin_router, tags=["admin — customers
 api_router.include_router(admin_devices.public_router, tags=["customer"])
 
 # Content
-api_router.include_router(admin_content.admin_router, tags=["admin — content"])
-api_router.include_router(admin_content.public_router, tags=["content"])
 
 # Marketing
 api_router.include_router(admin_marketing.admin_router, tags=["admin — marketing"])
@@ -106,9 +119,34 @@ api_router.include_router(admin_marketing.admin_router, tags=["admin — marketi
 api_router.include_router(admin_referrals.admin_router, tags=["admin — referrals"])
 api_router.include_router(admin_referrals.public_router, tags=["referrals"])
 
+# Orders (admin)
+api_router.include_router(admin_orders.router, tags=["admin — orders"])
+
+# Customers (admin)
+api_router.include_router(admin_customers.router, tags=["admin — customers"])
+
 # Surveys
 api_router.include_router(admin_surveys.admin_router, tags=["admin — surveys"])
 api_router.include_router(admin_surveys.public_router, tags=["surveys"])
+
+# Feedback
+api_router.include_router(admin_feedback.router, tags=["admin — feedback"])
+
+# Config
+api_router.include_router(admin_config.router, tags=["admin — config"])
+
+# Dietary Tags
+api_router.include_router(admin_dietary_tags.router, tags=["admin — dietary tags"])
+
+# Info Cards
+api_router.include_router(admin_info_cards.router, tags=["admin — information cards"])
+api_router.include_router(admin_system_pages.router, tags=["admin — system pages"])
+api_router.include_router(admin_product_cards.router, tags=["admin — product cards"])
+api_router.include_router(admin_event_cards.router, tags=["admin — event cards"])
+api_router.include_router(admin_promo_banners.router, tags=["admin — promo banners"])
+api_router.include_router(admin_content_sections.router, tags=["admin — content sections"])
+api_router.include_router(admin_splash_screens.router, tags=["admin — splash screens"])
+api_router.include_router(admin_checkins.router, tags=["admin — check-ins"])
 
 # Reservations
 api_router.include_router(

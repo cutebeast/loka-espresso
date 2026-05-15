@@ -10,99 +10,45 @@ export default function CustomerConsentsPage() {
   const [consentTypeFilter, setConsentTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const fetchData = () => {
-    setLoading(true);
-    getCustomerConsents({
-      consent_type: consentTypeFilter || undefined,
-      status: statusFilter || undefined,
-    })
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+  const fetchData = () => { setLoading(true);
+    getCustomerConsents({ consent_type: consentTypeFilter || undefined, status: statusFilter || undefined })
+      .then(data => setItems(data)).catch(err => setError(err.message)).finally(() => setLoading(false));
   };
+  useEffect(() => { fetchData(); }, [consentTypeFilter, statusFilter]);
 
-  useEffect(() => {
-    fetchData();
-  }, [consentTypeFilter, statusFilter]);
-
-  const statusClass = (status: string) => {
-    switch (status) {
-      case "granted":
-        return "bg-green-100 text-green-700";
-      case "withdrawn":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
+  const statusBadge = (s: string) => <span className={`badge badge-sm ${s === "granted" ? "badge-green" : s === "revoked" ? "badge-red" : "badge-gray"}`}>{s}</span>;
 
   return (
-    <div className="p-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-        <h1 className="text-2xl font-bold">Customer Consents</h1>
-        <div className="flex flex-wrap gap-3">
-          <input
-            placeholder="Consent Type"
-            value={consentTypeFilter}
-            onChange={(e) => setConsentTypeFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">All Statuses</option>
-            <option value="granted">Granted</option>
-            <option value="withdrawn">Withdrawn</option>
-          </select>
-        </div>
+    <div style={{ padding: 32 }}>
+      <div className="page-header"><div><h1 className="page-title">Customer Consents</h1><p className="page-subtitle">{items.length} records</p></div></div>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <select value={consentTypeFilter} onChange={e => setConsentTypeFilter(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+          <option value="">All Types</option><option value="marketing">Marketing</option><option value="analytics">Analytics</option><option value="data_processing">Data Processing</option>
+        </select>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+          <option value="">All Status</option><option value="granted">Granted</option><option value="revoked">Revoked</option>
+        </select>
       </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">Customer</th>
-              <th className="text-left px-4 py-3 font-semibold">Consent Type</th>
-              <th className="text-left px-4 py-3 font-semibold">Status</th>
-              <th className="text-left px-4 py-3 font-semibold">Granted At</th>
-              <th className="text-left px-4 py-3 font-semibold">Withdrawn At</th>
-              <th className="text-left px-4 py-3 font-semibold">IP</th>
+
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} records</span></div>
+      <div className="table-container"><table className="data-table">
+        <thead><tr><th>Customer</th><th>Type</th><th style={{ width: 90 }}>Status</th><th>Granted</th><th>Revoked</th></tr></thead>
+        <tbody>
+          {loading ? <tr><td colSpan={5} className="data-table-empty">Loading...</td></tr>
+          : items.length === 0 ? <tr><td colSpan={5} className="data-table-empty">No consents found.</td></tr>
+          : items.map(c => (
+            <tr key={c.id}>
+              <td style={{ fontWeight: 600 }}>{c.customer_name || `Customer #${c.customer_id}`}</td>
+              <td style={{ textTransform: "capitalize", fontSize: 12 }}>{c.consent_type?.replace(/_/g, " ")}</td>
+              <td>{statusBadge(c.status)}</td>
+              <td style={{ fontSize: 12 }}>{c.granted_at ? new Date(c.granted_at).toLocaleString() : "—"}</td>
+              <td style={{ fontSize: 12 }}>{c.revoked_at ? new Date(c.revoked_at).toLocaleString() : "—"}</td>
             </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  Loading...
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  No consents found.
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3">{item.customer_name}</td>
-                  <td className="px-4 py-3">{item.consent_type}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusClass(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{item.granted_at ? new Date(item.granted_at).toLocaleString() : "—"}</td>
-                  <td className="px-4 py-3">{item.withdrawn_at ? new Date(item.withdrawn_at).toLocaleString() : "—"}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{item.ip_address}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table></div>
     </div>
   );
 }

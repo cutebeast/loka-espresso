@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { QrCode, Bell } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -24,10 +25,16 @@ export function HomeHeader({
   onQRScanClick,
 }: HomeHeaderProps) {
   const { t } = useTranslation();
+  const [greeting, setGreeting] = useState(t('home.greetingMorning'));
+
+  useEffect(() => {
+    setGreeting(getGreeting(t));
+  }, [t]);
+
   return (
     <div className="home-header">
       <div>
-        <div className="greeting-text">{getGreeting(t)}</div>
+        <div className="greeting-text">{greeting}</div>
         <div className="user-name">{userName || t('home.guestName')}</div>
       </div>
       <div className="header-icons">

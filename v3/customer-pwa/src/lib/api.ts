@@ -21,10 +21,28 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Store-scoped helper: extracts store_id from UI state for menu/category calls
+let _getStoreId: (() => number | null) = () => {
+  try {
+    const { useUIStore } = require('@/stores/uiStore');
+    return useUIStore.getState()?.selectedStore?.id ?? null;
+  } catch { return null; }
+};
+export function setStoreIdGetter(fn: () => number | null) { _getStoreId = fn; }
+
 // URL mapping: old v1 endpoints → v3 endpoints
-function mapUrl(url: string): string {
+function mapUrl(url: string, method?: string): string {
   if (!url) return url;
-  // Exact matches
+  
+  // Strip query params for matching, re-attach later
+  let queryPart = '';
+  const qIdx = url.indexOf('?');
+  if (qIdx >= 0) {
+    queryPart = url.substring(qIdx);
+    url = url.substring(0, qIdx);
+  }
+
+  // ---- Exact path matches ----
   const exactMap: Record<string, string> = {
     '/auth/session': '/auth/login',
     '/auth/logout': '/auth/logout',
@@ -32,13 +50,14 @@ function mapUrl(url: string): string {
     '/users/me': '/me',
     '/users/me/avatar': '/me',
     '/users/me/addresses': '/me/addresses',
-    '/users/me/payment-methods': '/me/addresses',
     '/users/me/notifications': '/notifications/me',
     '/users/me/notifications/preferences': '/notifications/preferences/me',
+    '/users/me/payment-methods': '/payments',
     '/content/stores': '/stores',
     '/content/location': '/stores',
     '/promos/banners': '/content/blocks',
     '/rewards': '/rewards/catalog',
+    '/rewards/catalog': '/rewards/catalog',
     '/wallet': '/wallet/me',
     '/wallet/balance': '/wallet/me',
     '/me/wallet': '/wallet/me',
@@ -62,150 +81,577 @@ function mapUrl(url: string): string {
     '/config': '/stores',
     '/config/bootstrap': '/stores',
     '/vouchers/validate': '/vouchers/apply',
+    '/vouchers/apply': '/vouchers/apply',
+    '/reservations': '/reservations',
   };
-  if (exactMap[url]) return exactMap[url];
+  if (exactMap[url]) { url = exactMap[url]; return queryPart ? url + queryPart : url; }
 
-  // Prefix matches
-  if (url.startsWith('/content/information')) return url.replace('/content/information', '/content/blocks');
-  if (url.startsWith('/content/legal/')) return '/content/blocks';
-  if (url.startsWith('/orders/') && url.includes('/pos-webhook')) return url;
-  if (url.startsWith('/orders/') && url.includes('/delivery-webhook')) return url;
+  // ---- Menu items/categories → /menu/stores/{store_id} ----
+  if (url.startsWith('/menu/items') || url.startsWith('/menu/categories')) {
+    const storeId = _getStoreId();
+    if (storeId) {
+      url = `/menu/stores/${storeId}`;
+    } else {
+      url = '/menu/stores/1'; // fallback
+    }
+    return queryPart ? url + queryPart : url;
+  }
 
-  return url;
+  // ---- Prefix matches ----
+  // /content/information → /content/blocks (public info cards)
+  if (url.startsWith('/content/information')) {
+    url = url.replace('/content/information', '/content/blocks');
+    return queryPart ? url + queryPart : url;
+  }
+  // /content/legal → /content/blocks (legal content)
+  if (url.startsWith('/content/legal/')) {
+    url = '/content/blocks' + queryPart;
+    return url;
+  }
+  // /content/version → /stores (no version endpoint; use stores to verify connectivity)
+  if (url.startsWith('/content/version')) {
+    url = '/stores' + queryPart;
+    return url;
+  }
+  // /orders/{id}/reorder → POST /orders (create new order from cart)
+  if (url.match(/^\/orders\/\d+\/reorder/)) {
+    url = '/orders' + queryPart;
+    return url;
+  }
+  // /orders/{id}/cancel → PATCH /orders/{id} with status=cancelled (if backend supports)
+  if (url.match(/^\/orders\/\d+\/cancel/)) {
+    // Keep URL as-is for now, will be handled in request interceptor
+    return url + queryPart;
+  }
+  // /promos/banners/{id}/claim → /vouchers/apply
+  if (url.match(/^\/promos\/banners\/\d+\/claim/)) {
+    url = '/vouchers/apply' + queryPart;
+    return url;
+  }
+  // /promos/banners/{id}/status → /content/blocks/{id}
+  if (url.match(/^\/promos\/banners\/\d+\/status/)) {
+    const id = url.split('/')[3];
+    url = `/content/blocks/${id}` + queryPart;
+    return url;
+  }
+  // /notifications/{id}/read → PATCH /notifications/me/{id}/read
+  if (url.match(/^\/notifications\/\d+\/read/)) {
+    const id = url.split('/')[2];
+    url = `/notifications/me/${id}/read`;
+    return queryPart ? url + queryPart : url;
+  }
+  if (url.match(/^\/surveys\/\d+\/submit/)) {
+    const id = url.split('/')[2];
+    url = `/surveys/${id}/responses` + queryPart;
+    return url;
+  }
+  // /payments/{id}/confirm → POST /payments/{id}/confirm
+  if (url.match(/^\/payments\/\d+\/confirm/)) {
+    return url + queryPart; // keep as-is
+  }
+  // /payments/{id}/cancel → POST /payments/{id}/cancel
+  if (url.match(/^\/payments\/\d+\/cancel/)) {
+    return url + queryPart; // keep as-is
+  }
+  // /orders/* webhook passthrough
+  if (url.startsWith('/orders/') && (url.includes('/pos-webhook') || url.includes('/delivery-webhook'))) {
+    return url + queryPart;
+  }
+
+  // ---- Pagination param fix: page_size → per_page ----
+  if (queryPart && queryPart.includes('page_size=')) {
+    queryPart = queryPart.replace('page_size=', 'per_page=');
+  }
+
+  return url + queryPart;
+}
+
+// Legacy params rewriter for known patterns
+function rewriteParams(url: string, params?: Record<string, any>): Record<string, any> {
+  if (!params) return params || {};
+  const result = { ...params };
+  
+  // Map legacy param names
+  if ('page_size' in result) {
+    result.per_page = result.page_size;
+    delete result.page_size;
+  }
+  if ('available_only' in result) {
+    result.is_available = result.available_only;
+    delete result.available_only;
+  }
+  if ('featured' in result) {
+    result.is_featured = result.featured;
+    delete result.featured;
+  }
+  
+  return result;
 }
 
 // Response mapping helpers
 function unwrapV3(data: any): any {
+  // Unwrap standard v3 APIResponse wrapper: { success, message, data }
   if (data && typeof data === 'object' && 'data' in data && ('success' in data || 'status' in data || 'message' in data)) {
     return unwrapV3(data.data);
+  }
+  // Unwrap paginated response: { items, total, page, per_page, total_pages }
+  if (data && typeof data === 'object' && 'items' in data && !Array.isArray(data)) {
+    return unwrapV3(data.items);
   }
   return data;
 }
 
-function mapV3Response(url: string, data: any): any {
-  const unwrapped = unwrapV3(data);
-  if (!unwrapped) return unwrapped;
-
-  // Map v3 shapes back to v1 shapes for compatibility
-  if (url.includes('/stores') && Array.isArray(unwrapped)) {
-    return unwrapped.map((s: any) => ({
-      ...s,
-      opening_hours: s.operating_hours || s.opening_hours,
-      lat: s.latitude,
-      lng: s.longitude,
-    }));
+function unwrapPaginatedV3(data: any): { items: any[]; total: number; page: number; total_pages: number } | null {
+  if (!data) return null;
+  if (data && typeof data === 'object' && 'data' in data && ('success' in data || 'message' in data)) {
+    return unwrapPaginatedV3(data.data);
   }
-  if (url.includes('/stores/') && !Array.isArray(unwrapped) && unwrapped) {
+  if (data && typeof data === 'object' && 'items' in data && 'total' in data) {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return { items: data, total: data.length, page: 1, total_pages: 1 };
+  }
+  return null;
+}
+
+function mapV3Response(url: string, data: any): any {
+  const raw = data; // keep original for paginated wrapper extraction
+
+  // Extract items if this is a paginated response
+  const paginated = unwrapPaginatedV3(data);
+  const unwrapped = paginated ? paginated.items : unwrapV3(data);
+  
+  if (!unwrapped) {
+    // Return empty array for list endpoints
+    if (['/stores','/orders','/rewards/catalog','/rewards/me','/vouchers/me',
+         '/notifications/me','/wallet/ledger','/loyalty/ledger','/referrals/me',
+         '/surveys','/reservations','/cart','/cart/items','/content/blocks'].some(p => url.includes(p))) {
+      return [];
+    }
+    return null;
+  }
+
+  // ============================================
+  // STORES — map field names
+  // ============================================
+  if (url.includes('/stores')) {
+    const mapStore = (s: any) => ({
+      ...s,
+      name: s.store_name || s.name,
+      address: s.address_line_1 ? `${s.address_line_1}, ${s.city || ''}` : s.address,
+      phone: s.phone_number || s.phone,
+      image_url: s.logo_url || s.image_url,
+      lat: s.latitude ?? s.lat,
+      lng: s.longitude ?? s.lng,
+      opening_hours: s.operating_hours || s.opening_hours,
+      delivery_fee: s.base_delivery_fee ?? s.delivery_fee,
+      min_order: s.minimum_order_amount ?? s.min_order,
+      pickup_lead_minutes: s.pickup_lead_minutes,
+      delivery_radius_km: s.delivery_radius_km,
+      pos_integration_enabled: s.pos_integration_type !== 'none' && s.pos_integration_type !== null,
+      delivery_integration_enabled: s.delivery_integration_type !== 'none' && s.delivery_integration_type !== null,
+    });
+    if (Array.isArray(unwrapped)) return unwrapped.map(mapStore);
+    return mapStore(unwrapped);
+  }
+
+  // ============================================
+  // MENU /menu/stores/{id} → flat items array
+  // ============================================
+  if (url.includes('/menu/stores/')) {
+    const categories = unwrapped.categories || [];
+    const items = unwrapped.items || [];
+    const modifierGroups = unwrapped.modifier_groups || [];
+    
+    // Build a lookup of modifier options per item
+    const itemModifiers: Record<number, any[]> = {};
+    for (const mg of modifierGroups) {
+      // modifier groups might reference items differently; skip if no direct item link
+    }
+    
+    // Map menu items to PWA shape
+    const mappedItems = items.map((item: any) => ({
+      ...item,
+      name: item.item_name || item.name,
+      category_id: item.category_id,
+      base_price: item.base_price ?? item.price ?? 0,
+      description: item.description || '',
+      image_url: item.image_url || null,
+      is_available: item.is_available ?? item.is_active ?? true,
+      is_featured: item.is_featured ?? false,
+      display_order: item.display_order ?? 0,
+      dietary_tags: item.dietary_tags || item.allergens?.map((a: any) => a.name) || [],
+      customization_count: item.modifier_groups?.length || 0,
+      customization_options: (item.modifier_groups || []).flatMap((mg: any) => 
+        (mg.options || []).map((opt: any) => ({
+          id: opt.id,
+          name: opt.option_name || opt.name,
+          option_type: mg.group_type || 'General',
+          price_adjustment: opt.price_adjustment ?? 0,
+          is_active: opt.is_active ?? true,
+          is_popular: opt.is_default ?? false,
+        }))
+      ),
+    }));
+
+    // Map categories to PWA shape
+    const mappedCategories = categories.map((cat: any) => ({
+      ...cat,
+      name: cat.category_name || cat.name,
+      is_active: cat.is_available ?? cat.is_active ?? true,
+      display_order: cat.display_order ?? 0,
+    }));
+
+    // Return both as combined object (some pages expect items, some expect categories)
+    return { items: mappedItems, categories: mappedCategories };
+  }
+
+  // ============================================
+  // /me — unwrap profile from nested shape
+  // ============================================
+  if (url === '/me' || url.startsWith('/me')) {
+    if (url.includes('/addresses')) {
+      // Address list - keep as-is or transform
+      return Array.isArray(unwrapped) ? unwrapped : [];
+    }
+    if (url.includes('/consents') || url.includes('/devices')) {
+      return Array.isArray(unwrapped) ? unwrapped : [];
+    }
+    
+    // Profile: v3 /me returns { profile: {...}, addresses, devices, consents }
+    const profile = unwrapped.profile || unwrapped;
     return {
-      ...unwrapped,
-      opening_hours: unwrapped.operating_hours || unwrapped.opening_hours,
-      lat: unwrapped.latitude,
-      lng: unwrapped.longitude,
+      ...profile,
+      name: profile.display_name || profile.name || '',
+      email: profile.email_address || profile.email || '',
+      phone: profile.phone_number || profile.phone || '',
+      avatar_url: profile.avatar_url || profile.profile_image_url,
+      user_type: 'customer',
+      date_of_birth: profile.date_of_birth,
+      created_at: profile.created_at,
+      referral_code: profile.referral_code || profile.code,
+      // Preserve addresses if needed downstream
+      addresses: unwrapped.addresses || profile.addresses || [],
+      default_address: unwrapped.default_address,
     };
   }
-  if (url.includes('/menu/stores/') && unwrapped?.categories) {
-    return unwrapped;
-  }
-  if (url.includes('/orders') && unwrapped) {
-    if (Array.isArray(unwrapped)) {
-      return unwrapped.map((o: any) => ({
+
+  // ============================================
+  // ORDERS — map field names
+  // ============================================
+  if (url.includes('/orders')) {
+    const mapOrder = (o: any) => {
+      const items = o.items || o.order_items || o.line_items || [];
+      const mappedItems = items.map((li: any) => ({
+        id: li.id,
+        menu_item_id: li.menu_item_id,
+        name: li.item_name || li.name || '',
+        price: li.line_total ?? li.unit_price ?? li.price ?? 0,
+        unit_price: li.unit_price ?? li.price ?? 0,
+        quantity: li.quantity ?? 1,
+        customizations: li.customizations || li.modifiers || {},
+        image_url: li.image_url,
+      }));
+      return {
         ...o,
         order_number: o.order_number || `ORD-${o.id}`,
-        total: o.total_amount ?? o.total,
-        items: o.items || o.order_items || [],
+        total: o.total_amount ?? o.total ?? 0,
+        subtotal: o.items_subtotal ?? o.subtotal ?? 0,
+        discount: o.discount_amount ?? o.discount ?? 0,
+        notes: o.customer_notes ?? o.notes,
+        table_id: o.dining_table_id ?? o.table_id,
+        points_earned: o.loyalty_points_earned ?? o.points_earned ?? 0,
+        items: mappedItems,
+        status_timeline: o.status_log || o.status_timeline || o.timeline || [],
+        timeline: o.status_log || o.timeline || o.status_timeline || [],
+      };
+    };
+    if (Array.isArray(unwrapped)) return unwrapped.map(mapOrder);
+    return mapOrder(unwrapped);
+  }
+
+  // ============================================
+  // WALLET
+  // ============================================
+  if (url.includes('/wallet')) {
+    if (url.includes('/ledger') && Array.isArray(unwrapped)) {
+      return unwrapped.map((t: any) => ({
+        ...t,
+        amount: t.amount ?? t.debit_amount ?? t.credit_amount ?? 0,
+        type: t.entry_type ?? t.transaction_type ?? t.type ?? 'unknown',
+        description: t.description || t.notes || '',
+        created_at: t.created_at,
+        reference_id: t.reference_id,
+      }));
+    }
+    // Wallet balance
+    return {
+      ...unwrapped,
+      balance: unwrapped.balance ?? unwrapped.current_balance ?? 0,
+      currency: unwrapped.currency ?? 'MYR',
+    };
+  }
+
+  // ============================================
+  // LOYALTY
+  // ============================================
+  if (url.includes('/loyalty')) {
+    if (url.includes('/ledger') && Array.isArray(unwrapped)) {
+      return unwrapped.map((e: any) => ({
+        ...e,
+        points: e.points_delta ?? e.points ?? 0,
+        type: e.event_type ?? e.type ?? 'unknown',
+        description: e.description || '',
+        created_at: e.created_at,
       }));
     }
     return {
       ...unwrapped,
-      order_number: unwrapped.order_number || `ORD-${unwrapped.id}`,
-      total: unwrapped.total_amount ?? unwrapped.total,
-      items: unwrapped.items || unwrapped.order_items || [],
-    };
-  }
-  if (url.includes('/wallet/me') && unwrapped) {
-    return {
-      balance: unwrapped.balance ?? 0,
-      currency: unwrapped.currency ?? 'MYR',
-      loyalty_points: unwrapped.loyalty_points ?? 0,
-      tier: unwrapped.tier_name ?? unwrapped.tier ?? 'Bronze',
-      total_points_earned: unwrapped.total_points_earned ?? 0,
-    };
-  }
-  if (url.includes('/wallet/ledger') && Array.isArray(unwrapped)) {
-    return unwrapped.map((t: any) => ({
-      ...t,
-      type: t.transaction_type ?? t.type,
-      description: t.description || t.notes || t.type,
-    }));
-  }
-  if (url.includes('/loyalty/me') && unwrapped) {
-    return {
       points: unwrapped.points_balance ?? unwrapped.points ?? 0,
+      points_balance: unwrapped.points_balance ?? unwrapped.points ?? 0,
       tier: unwrapped.tier_name ?? unwrapped.tier ?? 'Bronze',
+      tier_name: unwrapped.tier_name ?? unwrapped.tier ?? 'Bronze',
       lifetime_points: unwrapped.lifetime_points ?? 0,
     };
   }
-  if (url.includes('/loyalty/ledger') && Array.isArray(unwrapped)) {
-    return unwrapped.map((e: any) => ({
-      ...e,
-      points: e.points_delta ?? e.points ?? 0,
-      type: e.event_type ?? e.type,
-    }));
+
+  // ============================================
+  // CONTENT BLOCKS — map to PromoBanner/InformationCard shapes
+  // ============================================
+  if (url.includes('/content/blocks')) {
+    return unwrapped.map((b: any) => {
+      const ct = b.content_type || 'hero_banner';
+      return {
+        ...b,
+        title: b.block_name || b.title || '',
+        short_description: b.body_text || b.short_description || null,
+        long_description: b.body_text || b.long_description || null,
+        image_url: b.image_url || null,
+        gallery_urls: b.image_gallery_urls || [],
+        action_url: b.cta_url || b.action_url,
+        action_type: b.cta_action || b.action_type,
+        action_label: b.cta_text || b.action_label,
+        start_date: b.start_date || null,
+        end_date: b.end_date || null,
+        content_type: ct,
+        sections: b.sections || [],
+        icon: b.icon || null,
+        terms: b.terms_and_conditions ? (Array.isArray(b.terms_and_conditions) ? b.terms_and_conditions : [b.terms_and_conditions]) : [],
+        how_to_redeem: b.how_to_redeem || null,
+        voucher_id: b.voucher_definition_id || b.voucher_id,
+        survey_id: b.survey_definition_id || b.survey_id,
+      };
+    });
   }
-  if (url.includes('/me') && !url.includes('/addresses') && !url.includes('/consents') && !url.includes('/devices') && unwrapped) {
-    return {
-      ...unwrapped,
-      avatar_url: unwrapped.avatar_url || unwrapped.profile_image_url,
-    };
-  }
-  if (url.includes('/content/blocks') && Array.isArray(unwrapped)) {
-    return unwrapped.map((b: any) => ({
-      ...b,
-      title: b.title || b.block_key || b.name,
-      image_url: b.image_url || b.content,
-    }));
-  }
-  if (url.includes('/rewards/catalog') && Array.isArray(unwrapped)) {
+
+  // ============================================
+  // REWARDS
+  // ============================================
+  if (url.includes('/rewards')) {
+    if (url.includes('/catalog')) {
+      return unwrapped.map((r: any) => ({
+        ...r,
+        name: r.reward_name || r.name || '',
+        short_description: r.short_description || r.description || null,
+        description: r.long_description || r.description || '',
+        points_cost: r.points_required ?? r.points_cost ?? 0,
+        base_price: r.points_required ?? r.points_cost ?? 0,
+        reward_type: r.reward_type || 'discount',
+        image_url: r.image_url || null,
+        is_active: r.is_active ?? true,
+        validity_days: r.validity_days,
+        terms: r.terms_and_conditions ? (Array.isArray(r.terms_and_conditions) ? r.terms_and_conditions : [r.terms_and_conditions]) : [],
+        how_to_redeem: r.how_to_redeem || null,
+      }));
+    }
+    // /rewards/me (customer's redeemed rewards)
     return unwrapped.map((r: any) => ({
       ...r,
-      base_price: r.base_price ?? r.price ?? 0,
-      description: r.description || r.short_description || '',
-    }));
-  }
-  if (url.includes('/rewards/me') && Array.isArray(unwrapped)) {
-    return unwrapped.map((r: any) => ({
-      ...r,
-      reward_name: r.reward_name || r.name,
+      reward_id: r.reward_definition_id || r.reward_id,
+      reward_name: r.reward_name || r.name || '',
+      redemption_code: r.redemption_code || r.code || '',
       status: r.status || 'available',
+      expires_at: r.expires_at || r.expiry_date,
+      reward_image_url: r.reward_image_url || r.image_url,
+      points_spent: r.points_spent ?? r.points_used ?? 0,
+      redeemed_at: r.redeemed_at || r.created_at,
+      used_at: r.used_at,
     }));
   }
-  if (url.includes('/vouchers/me') && Array.isArray(unwrapped)) {
+
+  // ============================================
+  // VOUCHERS
+  // ============================================
+  if (url.includes('/vouchers')) {
     return unwrapped.map((v: any) => ({
       ...v,
-      voucher_title: v.voucher_title || v.title || v.code,
+      voucher_id: v.voucher_definition_id || v.voucher_id,
+      code: v.voucher_code || v.code || '',
+      voucher_title: v.voucher_title || v.definition_name || v.title || v.code,
+      discount_type: v.discount_type || 'percentage',
+      discount_value: v.discount_value ?? v.discount_percent ?? 0,
       status: v.status || 'available',
+      expires_at: v.expires_at || v.expiry_date,
+      min_spend: v.minimum_spend ?? v.min_spend,
+      max_discount: v.maximum_discount ?? v.max_discount,
+      voucher_image_url: v.voucher_image_url || v.image_url,
+      source: v.source || 'unknown',
+      issued_at: v.created_at || v.issued_at,
+      used_at: v.used_at,
     }));
   }
-  if (url.includes('/notifications/me') && Array.isArray(unwrapped)) {
+
+  // ============================================
+  // NOTIFICATIONS
+  // ============================================
+  if (url.includes('/notifications')) {
+    if (url.includes('/preferences')) return unwrapped;
     return unwrapped.map((n: any) => ({
       ...n,
-      title: n.title || n.subject,
-      body: n.body || n.message,
-      is_read: n.is_read ?? n.read_at !== null,
+      title: n.title || n.subject || '',
+      body: n.body || n.message || '',
+      is_read: n.is_read ?? (n.read_at != null),
+      created_at: n.created_at || n.sent_at,
     }));
   }
-  if (url.includes('/referrals/me') && unwrapped) {
+
+  // ============================================
+  // REFERRALS
+  // ============================================
+  if (url.includes('/referrals')) {
+    if (Array.isArray(unwrapped)) {
+      // Referral events list
+      return unwrapped.map((r: any) => ({
+        ...r,
+        referred_name: r.invitee_name || r.referred_name,
+        status: r.status || 'completed',
+        points_earned: r.points_awarded ?? r.points_earned ?? 0,
+        created_at: r.created_at,
+      }));
+    }
+    // Referral stats object
     return {
-      referral_code: unwrapped.referral_code || unwrapped.code,
-      total_referrals: unwrapped.total_referrals ?? 0,
-      total_rewards: unwrapped.total_rewards ?? 0,
+      referral_code: unwrapped.referral_code || unwrapped.code || '',
+      total_referrals: unwrapped.total_referrals ?? unwrapped.referral_count ?? 0,
+      total_rewards: unwrapped.total_rewards ?? unwrapped.referral_earnings_total ?? 0,
+      code: unwrapped.referral_code || unwrapped.code || '',
+      referrals: unwrapped.total_referrals ?? unwrapped.referral_count ?? 0,
+      points_earned: unwrapped.total_rewards ?? unwrapped.referral_earnings_total ?? 0,
+      paid_rewards: unwrapped.total_rewards ?? unwrapped.referral_earnings_total ?? 0,
+      invited_users: (unwrapped.invited_users || unwrapped.invitees || []).map((u: any) => ({
+        name: u.display_name || u.name,
+        status: u.status || 'joined',
+        joined_at: u.joined_at || u.created_at,
+      })),
     };
   }
-  if (url.includes('/surveys') && Array.isArray(unwrapped)) {
-    return unwrapped.map((s: any) => ({
-      ...s,
-      title: s.title || s.survey_key,
+
+  // ============================================
+  // SURVEYS — handle both list and single survey
+  // ============================================
+  if (url.includes('/surveys')) {
+    // Single survey by ID (not a list)
+    if (url.match(/\/surveys\/\d+(\/responses)?$/) && !Array.isArray(unwrapped) && typeof unwrapped === 'object' && !unwrapped.items) {
+      return {
+        ...unwrapped,
+        title: unwrapped.survey_name || unwrapped.title || unwrapped.survey_key || '',
+        survey_key: unwrapped.survey_key || unwrapped.slug || `survey-${unwrapped.id}`,
+        description: unwrapped.description || '',
+        survey_type: unwrapped.survey_type || 'feedback',
+        is_active: unwrapped.is_active ?? true,
+        starts_at: unwrapped.starts_at || unwrapped.start_date,
+        ends_at: unwrapped.ends_at || unwrapped.end_date,
+        questions: unwrapped.questions || [],
+      };
+    }
+    // Survey list
+    if (Array.isArray(unwrapped)) {
+      return unwrapped.map((s: any) => ({
+        ...s,
+        title: s.survey_name || s.title || s.survey_key || '',
+        survey_key: s.survey_key || s.slug || `survey-${s.id}`,
+        description: s.description || '',
+        survey_type: s.survey_type || 'feedback',
+        is_active: s.is_active ?? true,
+        starts_at: s.starts_at || s.start_date,
+        ends_at: s.ends_at || s.end_date,
+        questions: s.questions || [],
+      }));
+    }
+    return unwrapped;
+  }
+
+  // ============================================
+  // RESERVATIONS
+  // ============================================
+  if (url.includes('/reservations')) {
+    return unwrapped.map((r: any) => ({
+      ...r,
+      store_name: r.store_name || r.store?.store_name,
+      customer_name: r.customer_name || r.display_name,
+      reservation_date: r.reservation_date || r.date,
+      reservation_time: r.reservation_time || r.time_slot,
+      table_number: r.table_number || r.table?.table_number,
     }));
+  }
+
+  // ============================================
+  // CART
+  // ============================================
+  if (url.includes('/cart')) {
+    if (url.includes('/items')) {
+      // Cart items list
+      return unwrapped.map((ci: any) => ({
+        id: ci.id,
+        menu_item_id: ci.menu_item_id,
+        name: ci.item_name || ci.name || '',
+        price: ci.unit_price ?? ci.price ?? 0,
+        base_price: ci.unit_price ?? ci.price ?? 0,
+        quantity: ci.quantity ?? 1,
+        customizations: ci.modifiers || ci.customizations || {},
+        customization_option_ids: ci.modifier_option_ids || ci.customization_option_ids || [],
+        customization_count: ci.modifier_option_ids?.length || ci.customization_count || 0,
+        image_url: ci.image_url,
+      }));
+    }
+    // Cart container
+    return {
+      ...unwrapped,
+      items: (unwrapped.items || unwrapped.line_items || []).map((ci: any) => ({
+        id: ci.id,
+        menu_item_id: ci.menu_item_id,
+        name: ci.item_name || ci.name || '',
+        price: ci.unit_price ?? ci.price ?? 0,
+        base_price: ci.unit_price ?? ci.price ?? 0,
+        quantity: ci.quantity ?? 1,
+        customizations: ci.modifiers || ci.customizations || {},
+        customization_option_ids: ci.modifier_option_ids || ci.customization_option_ids || [],
+        customization_count: ci.modifier_option_ids?.length || ci.customization_count || 0,
+        image_url: ci.image_url,
+      })),
+      total_items: unwrapped.total_items ?? (unwrapped.items?.length || 0),
+      total_amount: unwrapped.total_amount ?? 0,
+    };
+  }
+
+  // ============================================
+  // PAYMENTS
+  // ============================================
+  if (url.includes('/payments')) {
+    return {
+      ...unwrapped,
+      client_secret: unwrapped.client_secret,
+      redirect_url: unwrapped.redirect_url,
+      status: unwrapped.status,
+    };
+  }
+
+  // ============================================
+  // AUTH RESPONSES — keep as-is
+  // ============================================
+  if (url.includes('/auth')) {
+    return unwrapped;
   }
 
   return unwrapped;
@@ -215,7 +661,7 @@ let _refreshPromise: Promise<any> | null = null;
 
 api.interceptors.response.use(
   (res) => {
-    const mappedUrl = mapUrl(res.config.url || '');
+    const mappedUrl = mapUrl(res.config.url || '', res.config.method?.toUpperCase());
     res.data = mapV3Response(mappedUrl, res.data);
     return res;
   },
@@ -234,11 +680,13 @@ api.interceptors.response.use(
         }
         const response = await _refreshPromise;
         _refreshPromise = null;
-        const unwrapped = unwrapV3(response.data);
-        if (unwrapped?.access_token) {
-          localStorage.setItem('token', unwrapped.access_token);
-          if (unwrapped.refresh_token) {
-            localStorage.setItem('refreshToken', unwrapped.refresh_token);
+        const data = response.data;
+        // Unwrap nested v3 response for token extraction
+        const tokens = (data?.data?.tokens) || data?.tokens || data;
+        if (tokens?.access_token) {
+          localStorage.setItem('token', tokens.access_token);
+          if (tokens.refresh_token) {
+            localStorage.setItem('refreshToken', tokens.refresh_token);
           }
           return api(originalRequest);
         }
@@ -253,11 +701,18 @@ api.interceptors.response.use(
   }
 );
 
-// Override request methods to apply URL mapping
+// Override request methods to apply URL mapping and param rewriting
 const originalRequest = api.request.bind(api);
 api.request = function(config: any) {
   if (config.url) {
-    config.url = mapUrl(config.url);
+    config.url = mapUrl(config.url, config.method?.toUpperCase());
+  }
+  if (config.params) {
+    config.params = rewriteParams(config.url, config.params);
+  }
+  // Method override: PUT /notifications/me/{id}/read → PATCH
+  if (config.url && /\/notifications\/me\/\d+\/read/.test(config.url) && config.method?.toUpperCase() === 'PUT') {
+    config.method = 'PATCH';
   }
   return originalRequest(config);
 };
@@ -580,7 +1035,7 @@ export interface SurveyResponse {
   answers: { question_id: number; answer: string }[];
 }
 
-export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support' | 'legal' | 'settings' | 'my-card' | 'referral' | 'reservations';
+export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support' | 'legal' | 'settings' | 'my-card' | 'referral' | 'reservations' | 'surveys';
 export type OrderMode = 'pickup' | 'delivery' | 'dine_in';
 
 export function cacheBust(url: string, ts?: number): string {

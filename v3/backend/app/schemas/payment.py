@@ -9,8 +9,8 @@ from app.schemas.base import BaseSchema
 
 
 class PaymentMethodBase(BaseSchema):
-    method_type: Literal["credit_card", "debit_card", "ewallet", "online_banking", "cash", "card_terminal", "qr_pay", "points", "voucher"]
-    provider: Literal["stripe", "adyen", "paypal", "billplz", "toyyibpay", "grabpay", "touchngo", "boost", "shopeepay", "cash", "internal"] = "internal"
+    method_type: Literal["credit_card", "debit_card", "e_wallet", "online_banking", "cash", "card_terminal", "qr_pay", "points", "voucher"]
+    provider: Literal["stripe", "adyen", "braintree", "paypal", "cash", "store_credit", "internal_wallet", "grabpay", "gcash", "alipay", "wechat_pay"] = "internal_wallet"
     display_label: str | None = Field(None, max_length=100)
     card_brand: str | None = Field(None, max_length=20)
     card_last_four: str | None = Field(None, max_length=4)

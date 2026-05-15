@@ -1,131 +1,41 @@
 "use client";
-
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-
-interface Allergen {
-  id: number;
-  key: string;
-  name: string;
-  severity?: string;
-}
+import { Plus, Edit2, Trash2 } from "lucide-react";
 
 export default function AllergensPage() {
-  const [items, setItems] = useState<Allergen[]>([]);
+  const router = useRouter();
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Allergen | null>(null);
-  const [form, setForm] = useState({ key: "", name: "", severity: "" });
-
-  const fetchData = () => {
-    setLoading(true);
-    api
-      .get<Allergen[]>("/admin/menu/allergens")
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
 
   useEffect(() => {
-    fetchData();
+    api.getRaw<{ items: any[] }>("/admin/menu/allergens").then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(() => {}).finally(() => setLoading(false));
   }, []);
-
-  const resetForm = () => {
-    setForm({ key: "", name: "", severity: "" });
-    setEditing(null);
-    setShowForm(false);
-  };
-
-  const openEdit = (item: Allergen) => {
-    setEditing(item);
-    setForm({ key: item.key, name: item.name, severity: item.severity || "" });
-    setShowForm(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editing) {
-        await api.patch(`/admin/menu/allergens/${editing.id}`, form);
-      } else {
-        await api.post("/admin/menu/allergens", form);
-      }
-      resetForm();
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure?")) return;
-    try {
-      await api.del(`/admin/menu/allergens/${id}`);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
+  const refresh = () => api.getRaw<{ items: any[] }>("/admin/menu/allergens").then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(()=>{});
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Allergens</h1>
-        <button onClick={() => { resetForm(); setShowForm(true); }} className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition">Add Allergen</button>
+    <div style={{ padding: 32 }}>
+      <div className="page-header">
+        <div><h1 className="page-title">Allergens</h1><p className="page-subtitle">{items.length} allergens</p></div>
+        <button onClick={() => router.push("/menu/allergens/new")} className="btn btn-primary btn-sm"><Plus size={16} /> Add Allergen</button>
       </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      {showForm && (
-        <div className="mb-6 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">{editing ? "Edit Allergen" : "Add Allergen"}</h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Key</label>
-              <input required value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Severity</label>
-              <input value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div className="flex gap-2 md:col-span-2">
-              <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition">Save</button>
-              <button type="button" onClick={resetForm} className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition">Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">Key</th>
-              <th className="text-left px-4 py-3 font-semibold">Name</th>
-              <th className="text-left px-4 py-3 font-semibold">Severity</th>
-              <th className="text-left px-4 py-3 font-semibold">Actions</th>
-            </tr>
-          </thead>
+      <div className="table-container" style={{ marginTop: 16 }}>
+        <table className="data-table">
+          <thead><tr><th>Name</th><th>Key</th><th>Severity</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {loading ? (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500">Loading...</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500">No allergens found.</td></tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3">{item.key}</td>
-                  <td className="px-4 py-3">{item.name}</td>
-                  <td className="px-4 py-3">{item.severity}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => openEdit(item)} className="text-blue-600 hover:underline mr-3">Edit</button>
-                    <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:underline">Delete</button>
-                  </td>
-                </tr>
-              ))
-            )}
+            {loading ? <tr><td colSpan={5} className="data-table-empty">Loading...</td></tr>
+            : items.map(item => (
+              <tr key={item.id}>
+                <td><div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: item.color_hex || (item.severity === "high" || item.severity === "critical" ? "#EF4444" : "#F59E0B"), display: "inline-block" }} />{item.display_name}</div>{item.description && <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{item.description}</div>}</td>
+                <td className="font-mono" style={{ fontSize: 12 }}>{item.allergen_key}</td>
+                <td><span className={`badge badge-sm ${item.severity === "high" || item.severity === "critical" ? "badge-red" : "badge-yellow"}`}>{item.severity}</span></td>
+                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+                <td>
+                  <button onClick={() => router.push(`/menu/allergens/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}><Edit2 size={14} /></button>
+                  <button onClick={async () => { if (confirm("Delete?")) { await api.del(`/admin/menu/allergens/${item.id}`); refresh(); } }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

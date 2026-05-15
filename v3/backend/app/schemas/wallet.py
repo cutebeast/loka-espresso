@@ -15,10 +15,12 @@ class WalletBase(BaseSchema):
 class WalletOut(BaseSchema):
     id: int
     customer_id: int
-    balance: float = 0.0
     currency_code: str
     is_frozen: bool
+    frozen_at: datetime | None = None
     freeze_reason: str | None = None
+    frozen_by: int | None = None
+    balance: float = 0.0
     total_credited: float = 0.0
     total_debited: float = 0.0
     created_at: datetime
@@ -26,12 +28,12 @@ class WalletOut(BaseSchema):
 
 
 class WalletLedgerEntryBase(BaseSchema):
-    amount: float
-    entry_type: Literal["credit", "debit", "refund", "reversal", "adjustment", "promo_bonus"]
-    reference_type: Literal["order", "refund", "top_up", "withdrawal", "promotion", "referral", "adjustment", "loyalty_redemption"] = "order"
+    wallet_id: int
+    entry_type: Literal["credit", "debit", "hold", "release", "adjustment"]
+    amount: float = Field(..., gt=0)
+    reference_type: str | None = Field(None, max_length=50)
     reference_id: int | None = None
-    description: str | None = Field(None, max_length=255)
-    expires_at: datetime | None = None
+    note: str | None = None
 
 
 class WalletLedgerEntryOut(WalletLedgerEntryBase):

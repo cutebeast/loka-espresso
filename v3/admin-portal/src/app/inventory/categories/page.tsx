@@ -1,117 +1,61 @@
 "use client";
-
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { Plus, Edit2, Trash2 } from "lucide-react";
 
-interface InventoryCategory {
-  id: number;
-  name: string;
-}
+interface Category { id: number; category_name: string; slug: string; description?: string; is_active: boolean; }
+interface Store { id: number; store_name: string; }
 
 export default function InventoryCategoriesPage() {
-  const [items, setItems] = useState<InventoryCategory[]>([]);
+  const router = useRouter();
+  const [items, setItems] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<InventoryCategory | null>(null);
-  const [form, setForm] = useState({ name: "" });
-
-  const fetchData = () => {
-    setLoading(true);
-    api
-      .get<InventoryCategory[]>("/admin/inventory/categories?store_id=1")
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
+  const [stores, setStores] = useState<Store[]>([]);
+  const [storeId, setStoreId] = useState("");
 
   useEffect(() => {
-    fetchData();
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const list = d.items || []; setStores(list); if (list.length > 0) setStoreId(String(list[0].id)); }).catch(()=>{});
   }, []);
 
-  const resetForm = () => {
-    setForm({ name: "" });
-    setEditing(null);
-    setShowForm(false);
-  };
-
-  const openEdit = (item: InventoryCategory) => {
-    setEditing(item);
-    setForm({ name: item.name });
-    setShowForm(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editing) {
-        await api.patch(`/admin/inventory/categories/${editing.id}`, form);
-      } else {
-        await api.post("/admin/inventory/categories", form);
-      }
-      resetForm();
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure?")) return;
-    try {
-      await api.del(`/admin/inventory/categories/${id}`);
-      fetchData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
+  useEffect(() => {
+    if (!storeId) return;
+    setLoading(true);
+    api.getRaw<{ items: Category[] }>(`/admin/inventory/categories?store_id=${storeId}`)
+      .then(d => setItems(Array.isArray(d) ? d : (d.items || [])))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [storeId]);
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Inventory Categories</h1>
-        <button onClick={() => { resetForm(); setShowForm(true); }} className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition">Add Category</button>
+    <div style={{ padding: 32 }}>
+      <div className="page-header">
+        <div><h1 className="page-title">Inventory Categories</h1><p className="page-subtitle">{items.length} categories</p></div>
+        <button onClick={() => router.push("/inventory/categories/new")} className="btn btn-primary btn-sm"><Plus size={16} /> Add Category</button>
       </div>
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-      {showForm && (
-        <div className="mb-6 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">{editing ? "Edit Category" : "Add Category"}</h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition">Save</button>
-              <button type="button" onClick={resetForm} className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition">Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">Name</th>
-              <th className="text-left px-4 py-3 font-semibold">Actions</th>
-            </tr>
-          </thead>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div style={{ marginBottom: 16 }}>
+        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select>
+      </div>
+
+      <div className="table-container" style={{ marginTop: 16 }}>
+        <table className="data-table">
+          <thead><tr><th>Name</th><th>Slug</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {loading ? (
-              <tr><td colSpan={2} className="px-4 py-6 text-center text-gray-500">Loading...</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={2} className="px-4 py-6 text-center text-gray-500">No categories found.</td></tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="px-4 py-3">{item.name}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => openEdit(item)} className="text-blue-600 hover:underline mr-3">Edit</button>
-                    <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:underline">Delete</button>
-                  </td>
-                </tr>
-              ))
-            )}
+            {loading ? <tr><td colSpan={4} className="data-table-empty">Loading...</td></tr>
+            : items.map(item => (
+              <tr key={item.id}>
+                <td><div style={{ fontWeight: 600 }}>{item.category_name}</div>{item.description && <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{item.description}</div>}</td>
+                <td className="font-mono" style={{ fontSize: 12 }}>{item.slug}</td>
+                <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
+                <td>
+                  <button onClick={() => router.push(`/inventory/categories/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}><Edit2 size={14} /></button>
+                  <button onClick={async () => { if (confirm("Delete?")) { await api.del(`/admin/inventory/categories/${item.id}`); setItems(items.filter(i => i.id !== item.id)); } }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
