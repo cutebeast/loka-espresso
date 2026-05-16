@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getStaffTimeEvents, verifyTimeEvent, type StaffTimeEvent } from "@/lib/api";
 import { api } from "@/lib/api";
 
@@ -16,11 +16,13 @@ export default function StaffTimeEventsPage() {
 
   useEffect(() => { api.getRaw<any>("/admin/stores?per_page=50").then(d => { const l = d.items||[]; setStores(l); if (l.length>0) setStoreId(String(l[0].id)); }).catch(()=>{}); }, []);
 
-  const fetchData = () => { setLoading(true);
-    getStaffTimeEvents({ event_type: eventTypeFilter || undefined, date_from: dateFilter || undefined, date_to: dateFilter || undefined, store_id: storeId || undefined })
-      .then(data => setItems(data)).catch(err => setError(err.message)).finally(() => setLoading(false));
-  };
-  useEffect(() => { fetchData(); }, [eventTypeFilter, dateFilter, storeId]);
+  const fetchData = useCallback(() => { setLoading(true);
+    const qs = new URLSearchParams({ per_page: "50" }); if (storeId) qs.set("store_id", storeId); if (eventTypeFilter) qs.set("event_type", eventTypeFilter); if (dateFilter) { qs.set("date_from", dateFilter); qs.set("date_to", dateFilter); }
+    api.getRaw<any>(`/admin/staff/time-events?${qs.toString()}`).then(d => setItems(d.items||d||[])).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, [storeId, eventTypeFilter, dateFilter]);
+  useEffect(() => {(async () => {
+ fetchData(); 
+})();}, [fetchData]);
 
   const handleVerify = async (id: number) => { try { await verifyTimeEvent(id); fetchData(); } catch {}; };
 

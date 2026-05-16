@@ -1,0 +1,60 @@
+"use client";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { ArrowLeft, RotateCcw } from "lucide-react";
+
+interface Refund { id: number; payment_id: number; order_id: number; order_number?: string; store_id?: number; amount: number; reason: string; status: string; created_at: string; }
+interface Store { id: number; store_name: string; }
+
+export default function RefundsPage() {
+  const [items, setItems] = useState<Refund[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [stores, setStores] = useState<Store[]>([]);
+  const [storeId, setStoreId] = useState("");
+
+  useEffect(() => {
+    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch(() => {});
+  }, []);
+
+  const fetch = () => {
+    setLoading(true);
+    const qs = storeId ? `?store_id=${storeId}&per_page=100` : "?per_page=100";
+    api.get<any>(`/admin/refunds${qs}`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(e => setError(e.message)).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetch(); }, [storeId]);
+
+  const sb = (s: string) => {
+    const m: Record<string, string> = { pending: "badge-yellow", completed: "badge-green", failed: "badge-red", cancelled: "badge-gray" };
+    return <span className={`badge badge-sm ${m[s] || "badge-gray"}`}>{s}</span>;
+  };
+
+  return (
+    <div style={{ padding: 32 }}>
+      <div className="page-header"><div style={{ display: "flex", alignItems: "center", gap: 8 }}><ArrowLeft size={18} style={{ cursor: "pointer" }} /><h1 className="page-title">Refunds</h1></div><p className="page-subtitle">{items.length} refunds</p></div>
+      {error && <div className="alert alert-error">{error}</div>}
+      <div style={{ marginBottom: 12, display: "flex", gap: 12, alignItems: "center" }}>
+        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+          <option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
+        </select>
+        <span style={{ fontSize: 12, opacity: 0.5 }}>{items.length} refunds</span>
+      </div>
+      <div className="table-container"><table className="data-table">
+        <thead><tr><th>Order</th><th>Amount</th><th>Reason</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+          {loading ? <tr><td colSpan={5} className="data-table-empty">Loading...</td></tr>
+          : items.map(r => (
+            <tr key={r.id}>
+              <td style={{ fontWeight: 600 }}>{r.order_number || `#${r.order_id}`}</td>
+              <td style={{ fontWeight: 600, color: "var(--color-error)" }}>RM {Number(r.amount || 0).toFixed(2)}</td>
+              <td style={{ fontSize: 12 }}>{r.reason || "—"}</td>
+              <td>{sb(r.status)}</td>
+              <td style={{ fontSize: 12 }}>{r.created_at?.slice(0, 10)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+    </div>
+  );
+}

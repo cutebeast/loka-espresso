@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, MapPin, Trash2, Edit2 } from "lucide-react";
@@ -19,16 +19,15 @@ export default function StoresPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
     try {
       const data = await api.getRaw<{ items: Store[] }>("/admin/stores?per_page=50");
       setItems(data.items || []);
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { (async () => { await fetchData(); })(); }, []);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this store?")) return;

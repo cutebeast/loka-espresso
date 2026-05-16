@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2, ArrowLeft } from "lucide-react";
@@ -13,10 +13,12 @@ export default function TemplatesPage() {
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
-  const fetch = () => { setLoading(true);
+  const fetch = useCallback(() => { setLoading(true);
     api.get<{items:Template[]}>("/admin/notifications/templates/list").then(d => setItems(Array.isArray(d)?d:(d.items||[]))).catch(e=>setError(e.message)).finally(()=>setLoading(false));
-  };
-  useEffect(()=>{fetch();},[]);
+  }, []);
+  useEffect(()=>{(async () => {
+fetch();
+})();},[fetch]);
 
   const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/notifications/templates/${id}`);setConfirmDelete(null);fetch();}catch{}; };
 
@@ -36,7 +38,7 @@ export default function TemplatesPage() {
         <tbody>
           {loading ? <tr><td colSpan={5} className="data-table-empty">Loading...</td></tr>
           : items.map(t => (
-            <tr key={t.id} className="clickable" onClick={()=>router.push(`/notifications/templates/${t.id}`)} style={{ cursor: "pointer" }}>
+            <tr key={t.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(()=>router.push(`/notifications/templates/${t.id}`))();}}} onClick={()=>router.push(`/notifications/templates/${t.id}`)} style={{ cursor: "pointer" }}>
               <td style={{ fontWeight: 600 }}>{t.name}</td>
               <td>{t.title}</td>
               <td>{typeBadge(t.notification_type)}</td>

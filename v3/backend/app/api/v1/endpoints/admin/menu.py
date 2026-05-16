@@ -219,6 +219,7 @@ async def delete_category(
     if category is None:
         raise HTTPException(status_code=404, detail="Category not found")
 
+    category.is_active = False
     category.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     await delete_translations(db, "menu_categories", id)
@@ -486,7 +487,9 @@ async def update_item(
                 select(MenuModifierOption).where(MenuModifierOption.modifier_group_id == g.id)
             )
             for o in opts.scalars().all():
+                await delete_translations(db, "menu_modifier_options", o.id)
                 await db.delete(o)
+            await delete_translations(db, "menu_modifier_groups", g.id)
             await db.delete(g)
 
         # Re-create
@@ -562,6 +565,7 @@ async def delete_item(
     if item is None:
         raise HTTPException(status_code=404, detail="Menu item not found")
 
+    item.is_active = False
     item.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     await delete_translations(db, "menu_items", id)
@@ -666,6 +670,7 @@ async def delete_allergen(
     if allergen is None:
         raise HTTPException(status_code=404, detail="Allergen not found")
 
+    allergen.is_active = False
     allergen.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     await delete_translations(db, "allergens", id)
@@ -767,6 +772,7 @@ async def delete_tax_category(
     if tax_category is None:
         raise HTTPException(status_code=404, detail="Tax category not found")
 
+    tax_category.is_active = False
     tax_category.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     await delete_translations(db, "tax_categories", id)

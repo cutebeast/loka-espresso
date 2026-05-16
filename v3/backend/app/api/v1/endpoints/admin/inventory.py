@@ -136,6 +136,7 @@ async def delete_category(
             status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
         )
 
+    category.is_active = False
     category.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     await delete_translations(db, "inventory_categories", id)
@@ -277,6 +278,7 @@ async def delete_item(
             status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
         )
 
+    item.is_active = False
     item.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     await delete_translations(db, "inventory_items", id)
@@ -382,6 +384,7 @@ async def delete_supplier(
             status_code=status.HTTP_404_NOT_FOUND, detail="Supplier not found"
         )
 
+    supplier.is_active = False
     supplier.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     return APIResponse(data={"id": supplier.id, "deleted": True})

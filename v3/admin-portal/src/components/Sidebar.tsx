@@ -89,6 +89,13 @@ const navItems: NavItem[] = [
       { label: "Reservation Settings", href: "/settings/reservations" },
     ],
   },
+  {
+    label: "Admin User", href: "/admins", icon: UserCircle,
+    children: [
+      { label: "Admin Listing", href: "/admins" },
+      { label: "Admin Roles", href: "/admins/roles" },
+    ],
+  },
   { label: "Translations", href: "/translations", icon: Languages },
 
   // ═══════════════════════════════════
@@ -113,6 +120,13 @@ const navItems: NavItem[] = [
   // ═══════════════════════════════════
   { type: "section", label: "Store Operations" },
   { label: "Orders", href: "/orders", icon: ShoppingBag },
+  { label: "Refunds", href: "/refunds", icon: Wallet },
+  {
+    label: "Reservations", href: "/reservations", icon: Calendar,
+    children: [
+      { label: "Reservation List", href: "/reservations" },
+    ],
+  },
   { label: "Tables", href: "/tables", icon: Grid3X3 },
   {
     label: "Inventory", href: "/inventory", icon: Package,
@@ -128,14 +142,10 @@ const navItems: NavItem[] = [
     label: "Staff", href: "/staff", icon: Users,
     children: [
       { label: "Staff List", href: "/staff" },
-      { label: "Time Events", href: "/staff/time-events" },
+      { label: "Staff Roles", href: "/staff/roles" },
+      { label: "Staff Shifts", href: "/staff/shifts" },
+      { label: "Attendance", href: "/staff/attendance" },
       { label: "Tips", href: "/staff/tips" },
-    ],
-  },
-  {
-    label: "Reservations", href: "/reservations", icon: Calendar,
-    children: [
-      { label: "Reservation List", href: "/reservations" },
     ],
   },
 ];
@@ -153,6 +163,7 @@ export default function Sidebar() {
     Staff: pathname.startsWith("/staff"),
     "Customers List": pathname.startsWith("/customers"),
     Notifications: pathname.startsWith("/notifications"),
+    "Admin User": pathname.startsWith("/admins"),
     Settings: pathname.startsWith("/settings"),
   });
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -160,8 +171,7 @@ export default function Sidebar() {
   const toggleMenu = (label: string) => setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
   const handleLogout = () => { adminLogout(); router.push("/login"); };
   const isActive = (href: string) => pathname === href;
-  const [adminEmail, setAdminEmail] = useState("");
-  useEffect(() => { setAdminEmail(localStorage.getItem("adminEmail") || "admin@loyaltysystem.uk"); }, []);
+  const [adminEmail, setAdminEmail] = useState(() => typeof window !== "undefined" ? localStorage.getItem("adminEmail") || "admin@loyaltysystem.uk" : "admin@loyaltysystem.uk");
 
   return (
     <>

@@ -44,7 +44,10 @@ function isOverdue(reservation: Reservation): boolean {
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
-  const [storeId, setStoreId] = useState<number>(2);
+  const [storeId, setStoreId] = useState<number>(() => {
+    if (typeof window !== "undefined") { const s = localStorage.getItem("staffStoreId"); if (s) return Number(s); }
+    return 2;
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<ReservationStatus | "all">("all");

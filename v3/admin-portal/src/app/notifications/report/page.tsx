@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
@@ -12,7 +12,6 @@ export default function NotificationReportPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
     api.get<Stats>("/admin/notifications/stats").then(d => setStats(d)).catch(()=>{}).finally(()=>setLoading(false));
   }, []);
 

@@ -37,7 +37,7 @@ export default function FeedbackPage() {
   const [replyError, setReplyError] = useState("");
 
   const fetchData = useCallback(async (p: number = 1) => {
-    setLoading(true);
+
     try {
       const params = new URLSearchParams({ page: String(p), per_page: String(PAGE_SIZE) });
       if (fromDate) params.set("from_date", fromDate + "T00:00:00");
@@ -64,7 +64,9 @@ export default function FeedbackPage() {
     } catch { /* ignore */ }
   }, [fromDate, toDate]);
 
-  useEffect(() => { fetchData(1); fetchStats(); }, [fetchData, fetchStats]);
+  useEffect(() => {(async () => {
+ fetchData(1); fetchStats(); 
+})();}, [fetchData, fetchStats]);
 
   const openReply = (item: FeedbackItem, isEdit: boolean = false) => {
     setReplyModal(item);

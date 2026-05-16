@@ -91,6 +91,7 @@ export default function StoreEditPage() {
   const [activeLocale, setActiveLocale] = useState<LocaleTab>("en");
   const [regenerating, setRegenerating] = useState<string>(""); // "field:locale"
   const [msg, setMsg] = useState("");
+  const [specialHours, setSpecialHours] = useState<any[]>([]);
 
   // Form data — English source
   const [form, setForm] = useState<Record<string, any>>({});
@@ -120,6 +121,9 @@ export default function StoreEditPage() {
       // Load operating hours
       if (d.operating_hours && Array.isArray(d.operating_hours)) {
         setHours(d.operating_hours);
+      }
+      if (d.special_hours && Array.isArray(d.special_hours)) {
+        setSpecialHours(d.special_hours);
       }
 
       // Load translations for all locales — filtered by THIS store's record_id
@@ -152,6 +156,7 @@ export default function StoreEditPage() {
         else if (payload[k] !== null) payload[k] = Number(payload[k]);
       });
       payload.operating_hours = hours;
+      payload.special_hours = specialHours;
       await api.patch(`/admin/stores/${storeId}`, payload);
       setMsg("Saved");
       setTimeout(() => setMsg(""), 2000);
@@ -329,6 +334,22 @@ export default function StoreEditPage() {
                 <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 8 }}><input type="checkbox" checked={h.is_closed} onChange={e => { const hh = [...hours]; hh[i].is_closed = e.target.checked; setHours(hh); }} /> Closed</label>
               </div>
             ))}
+          </div>
+          {/* Special Hours */}
+          <div className={sectionClass}>
+            <div className={sectionTitle}>Special Hours (Holidays & Events)</div>
+            {specialHours.map((sh: any, i: number) => (
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, flexWrap: "wrap", opacity: sh.is_closed ? 0.5 : 1 }}>
+                <input type="date" value={sh.special_date || ""} onChange={e => { const hh = [...specialHours]; hh[i].special_date = e.target.value; setSpecialHours(hh); }} className={inputClass} style={{ width: 140 }} title="Date" />
+                <input type="text" value={sh.reason || ""} onChange={e => { const hh = [...specialHours]; hh[i].reason = e.target.value; setSpecialHours(hh); }} className={inputClass} style={{ width: 100 }} placeholder="Reason" />
+                <input type="time" value={sh.open_time || ""} onChange={e => { const hh = [...specialHours]; hh[i].open_time = e.target.value; setSpecialHours(hh); }} className={inputClass} style={{ width: 110 }} disabled={sh.is_closed} title="Open" />
+				<span style={{ fontSize: 12 }}>to</span>
+                <input type="time" value={sh.close_time || ""} onChange={e => { const hh = [...specialHours]; hh[i].close_time = e.target.value; setSpecialHours(hh); }} className={inputClass} style={{ width: 110 }} disabled={sh.is_closed} title="Close" />
+                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}><input type="checkbox" checked={sh.is_closed} onChange={e => { const hh = [...specialHours]; hh[i].is_closed = e.target.checked; setSpecialHours(hh); }} /> Closed</label>
+                <button type="button" onClick={() => setSpecialHours(shs => shs.filter((_s, idx) => idx !== i))} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)", fontSize: 11 }}>Remove</button>
+              </div>
+            ))}
+            <button type="button" onClick={() => setSpecialHours([...specialHours, { special_date: "", reason: "", open_time: "", close_time: "", is_closed: false }])} className="btn btn-sm btn-outline" style={{ marginTop: 8 }}>+ Add Special Date</button>
           </div>
           <div className="df-actions">
             <button type="button" onClick={() => router.push("/stores")} className="btn btn-ghost">Cancel</button>

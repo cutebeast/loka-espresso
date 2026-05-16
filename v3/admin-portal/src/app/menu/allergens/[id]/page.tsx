@@ -1,11 +1,176 @@
-"use client";import{useEffect,useState}from"react";import{useParams,useRouter}from"next/navigation";import{api}from"@/lib/api";import{ArrowLeft,Save,RefreshCw}from"lucide-react";
-const L=[{code:"en",label:"English",flag:"🇬🇧"},{code:"ms",label:"BM",flag:"🇲🇾"},{code:"zh",label:"中文",flag:"🇨🇳"},{code:"ta",label:"தமிழ்",flag:"🇮🇳"},{code:"tr",label:"TR",flag:"🇹🇷"}];const F=[{key:"display_name",label:"Display Name"},{key:"description",label:"Description"}];
-export default function(){const p=useParams();const r=useRouter();const id=p.id as string;const[form,setForm]=useState<Record<string,any>>({});const[l,setL]=useState(true);const[loc,setLoc]=useState("en");const[s,setS]=useState(false);const[msg,setMsg]=useState("");const[regen,setRegen]=useState(false);const[tr,setTr]=useState<Record<string,string>>({});
-useEffect(()=>{load();},[id]);
-const load=async()=>{setL(true);try{const d=await api.getRaw<any>(`/admin/menu/allergens/${id}`);setForm({display_name:d.display_name||"",allergen_key:d.allergen_key||"",description:d.description||"",severity:d.severity||"high",color_hex:d.color_hex||"#EF4444",is_active:d.is_active});const x:Record<string,string>={};for(const lc of L){if(lc.code==="en")continue;const rt=await api.getRaw<{items:{translation_key:string;translated_text:string}[]}>(`/translations?table_name=allergens&record_id=${id}&locale=${lc.code}&per_page=10`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}setTr(x);}catch{}finally{setL(false);}};
-const save=async()=>{setS(true);try{const p:any={...form};await api.patch(`/admin/menu/allergens/${id}`,p);setMsg("Saved");setTimeout(()=>setMsg(""),2000);}catch{}finally{setS(false);}};
-const upsert=async(field:string,locale:string,src:string,text:string)=>{const rt=await api.getRaw<{items:{id:number}[]}>(`/translations?table_name=allergens&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/translations/${ex.id}`,{translated_text:text});else await api.post("/translations",{translation_key:`allergens.${id}.${field}`,locale,namespace:"allergens",translated_text:text,source_text:src,table_name:"allergens",record_id:Number(id),column_name:field});};
-const ra=async()=>{setRegen(true);let c=0;for(const f of F){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsert(f.key,loc,src,rt.translated_text);c++;}}catch{}}setMsg(`Regenerated ${c}`);setTimeout(()=>setMsg(""),2500);setRegen(false);};
-const sa=async()=>{for(const f of F){const t=tr[`${loc}:${f.key}`]||"";if(t)await upsert(f.key,loc,(form[f.key]||"").trim(),t);}setMsg("Saved");setTimeout(()=>setMsg(""),2000);};
-if(l)return<div style={{padding:32}}>Loading...</div>;
-return(<div style={{padding:32}}><div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button onClick={()=>r.push("/menu/allergens")} className="btn btn-ghost btn-sm"><ArrowLeft size={18}/></button><div><h1 className="page-title" style={{margin:0}}>{form.display_name||"Allergen"}</h1></div></div>{msg&&<div className="alert alert-success" style={{marginBottom:12}}>{msg}</div>}<div style={{display:"flex",gap:4,marginBottom:20,borderBottom:"2px solid var(--color-border-light)",paddingBottom:0}}>{L.map(lc=>(<button key={lc.code} onClick={()=>setLoc(lc.code)} style={{padding:"10px 20px",fontSize:13,fontWeight:loc===lc.code?700:400,border:"none",borderBottom:loc===lc.code?"3px solid var(--color-primary)":"3px solid transparent",background:loc===lc.code?"rgba(59,74,26,0.05)":"transparent",cursor:"pointer",color:loc===lc.code?"var(--color-primary)":"var(--color-text-muted)",borderRadius:"4px 4px 0 0"}}>{lc.flag} {lc.label}</button>))}</div>{loc==="en"?<div className="card" style={{padding:24,maxWidth:500}}><div className="df-grid"><div className="df-field"><label className="form-label">Display Name *</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.display_name||""} onChange={e=>setForm({...form,display_name:e.target.value})}/></div><div className="df-field"><label className="form-label">Key</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.allergen_key||""} onChange={e=>setForm({...form,allergen_key:e.target.value})}/></div><div className="df-field" style={{gridColumn:"1/-1"}}><label className="form-label">Description</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.description||""} onChange={e=>setForm({...form,description:e.target.value})}/></div><div className="df-field"><label className="form-label">Severity</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.severity||"high"} onChange={e=>setForm({...form,severity:e.target.value})}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></div><div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={!!form.is_active} onChange={e=>setForm({...form,is_active:e.target.checked})}/>Active</label></div></div><div className="df-actions" style={{marginTop:16}}><button type="button" onClick={()=>r.push("/menu/allergens")} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={s} className="btn btn-primary"><Save size={16}/>{s?"Saving...":"Save"}</button></div></div>:<div className="card" style={{padding:24,maxWidth:600}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{margin:0}}>{L.find(l=>l.code===loc)?.flag} {L.find(l=>l.code===loc)?.label} Translation</h3><button onClick={ra} disabled={regen} className="btn btn-primary btn-sm"><RefreshCw size={14}/>{regen?"...":"Regenerate All"}</button></div><div className="df-grid">{F.map(f=>{const k=`${loc}:${f.key}`;return<div className="df-field" key={f.key}><label style={{fontSize:11,fontWeight:600,color:"var(--color-text-muted)"}}>{f.label}<span style={{fontWeight:400,fontStyle:"italic",marginLeft:8}}>EN: {(form[f.key]||"").slice(0,30)}</span></label><input value={tr[k]||""} onChange={e=>setTr(p=>({...p,[k]:e.target.value}))} style={{width:"100%",padding:"8px 10px",fontSize:13,border:tr[k]?"1px solid var(--color-border-light)":"2px solid #FCD34D",borderRadius:"var(--radius-sm)",background:tr[k]?"var(--color-bg-white)":"#FFFBEB"}} placeholder="—"/></div>;})}</div><div style={{marginTop:20}}><button onClick={sa} className="btn btn-primary"><Save size={16}/>Save Translations</button></div></div>}</div>);}
+"use client";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { ArrowLeft, Save, RefreshCw } from "lucide-react";
+
+const LOCALES = [
+  { code: "en", label: "English", flag: "🇬🇧" },
+  { code: "ms", label: "BM", flag: "🇲🇾" },
+  { code: "zh", label: "中文", flag: "🇨🇳" },
+  { code: "ta", label: "தமிழ்", flag: "🇮🇳" },
+  { code: "tr", label: "TR", flag: "🇹🇷" },
+];
+
+const FIELDS = [
+  { key: "display_name", label: "Display Name" },
+  { key: "description", label: "Description" },
+];
+
+const SEVERITY_OPTIONS = [
+  { value: "low", label: "Low", color: "#166534" },
+  { value: "medium", label: "Medium", color: "#92400E" },
+  { value: "high", label: "High", color: "#991B1B" },
+  { value: "critical", label: "Critical", color: "#7C3AED" },
+];
+
+export default function AllergenEditPage() {
+  const p = useParams();
+  const r = useRouter();
+  const id = Number(p.id);
+  const [form, setForm] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+  const [activeLocale, setActiveLocale] = useState("en");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [regen, setRegen] = useState(false);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    api.get<Record<string, any>>(`/admin/menu/allergens/${id}`).then(d => {
+      if (d) {
+        setForm(d);
+        setTranslations((d as any).translations || {});
+      }
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [id]);
+
+  const save = async () => {
+    setSaving(true);
+    setMsg("");
+    try {
+      await api.patch(`/admin/menu/allergens/${id}`, form);
+      setMsg("Saved");
+      setTimeout(() => setMsg(""), 2000);
+    } catch (e: any) {
+      setMsg(e.message || "Failed to save");
+    } finally { setSaving(false); }
+  };
+
+  const saveTranslation = async () => {
+    setSaving(true);
+    try {
+      const payload: Record<string, any> = {};
+      FIELDS.forEach(f => {
+        const key = `${f.key}_${activeLocale}`;
+        if (form[key] !== undefined) payload[f.key] = form[key];
+      });
+      await api.post("/admin/translations", {
+        table_name: "allergens",
+        record_id: id,
+        locale: activeLocale,
+        fields: payload,
+      });
+      setTranslations(prev => ({ ...prev, [activeLocale]: JSON.stringify(payload) }));
+      setMsg("Translation saved");
+    } catch (e: any) {
+      setMsg(e.message || "Failed");
+    } finally { setSaving(false); }
+  };
+
+  const regenTranslations = async () => {
+    setRegen(true);
+    setMsg("");
+    try {
+      await api.post("/admin/translations/regen", { table_name: "allergens", record_id: id });
+      setMsg("Translations regenerated");
+    } catch (e: any) { setMsg(e.message || "Failed"); }
+    finally { setRegen(false); }
+  };
+
+  if (loading) return <div style={{ padding: 40, textAlign: "center", opacity: 0.5 }}>Loading...</div>;
+
+  return (
+    <div style={{ padding: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <button onClick={() => r.push("/menu/allergens")} className="btn btn-ghost btn-sm">
+          <ArrowLeft size={18} />
+        </button>
+        <h1 className="page-title" style={{ margin: 0 }}>Edit Allergen</h1>
+        <div style={{ flex: 1 }} />
+        {msg && <span style={{ fontSize: 12, color: msg === "Saved" ? "var(--color-success)" : "var(--color-error)" }}>{msg}</span>}
+        <button onClick={regenTranslations} disabled={regen} className="btn btn-ghost btn-sm" title="Regenerate all translations">
+          <RefreshCw size={14} /> {regen ? "..." : "Re-translate"}
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+        {LOCALES.map(loc => (
+          <button key={loc.code} onClick={() => setActiveLocale(loc.code)}
+            style={{
+              padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+              border: activeLocale === loc.code ? "2px solid var(--color-primary)" : "1px solid var(--color-border-light)",
+              background: activeLocale === loc.code ? "rgba(59,74,26,0.08)" : "white",
+              cursor: "pointer",
+            }}>
+            {loc.flag} {loc.label}
+          </button>
+        ))}
+      </div>
+
+      {activeLocale === "en" ? (
+        <div className="card" style={{ padding: 24, maxWidth: 500 }}>
+          <div className="df-grid">
+            <div className="df-field">
+              <label className="form-label">Allergen Key</label>
+              <input className="w-full border rounded px-3 py-2 text-sm" value={form.allergen_key || ""} onChange={e => setForm({ ...form, allergen_key: e.target.value })} disabled />
+            </div>
+            <div className="df-field">
+              <label className="form-label">Display Name *</label>
+              <input required className="w-full border rounded px-3 py-2 text-sm" value={form.display_name || ""} onChange={e => setForm({ ...form, display_name: e.target.value })} />
+            </div>
+            <div className="df-field" style={{ gridColumn: "1/-1" }}>
+              <label className="form-label">Description</label>
+              <input className="w-full border rounded px-3 py-2 text-sm" value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} />
+            </div>
+            <div className="df-field">
+              <label className="form-label">Severity</label>
+              <select className="w-full border rounded px-3 py-2 text-sm" value={form.severity || "high"} onChange={e => setForm({ ...form, severity: e.target.value })}>
+                {SEVERITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div className="df-field">
+              <label className="form-label">Color</label>
+              <input type="color" className="w-full border rounded px-3 py-2 text-sm" value={form.color_hex || "#991B1B"} onChange={e => setForm({ ...form, color_hex: e.target.value })} style={{ height: 36 }} />
+            </div>
+            <div className="df-field">
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                <input type="checkbox" checked={form.is_active !== false} onChange={e => setForm({ ...form, is_active: e.target.checked })} />
+                Active
+              </label>
+            </div>
+          </div>
+          <div className="df-actions">
+            <button type="button" onClick={() => r.push("/menu/allergens")} className="btn btn-ghost">Cancel</button>
+            <button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Saving..." : "Save"}</button>
+          </div>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: 24, maxWidth: 500 }}>
+          <h4 style={{ marginBottom: 16 }}>Translation — {LOCALES.find(l => l.code === activeLocale)?.label}</h4>
+          <div className="df-grid">
+            {FIELDS.map(f => (
+              <div className="df-field" key={f.key} style={{ gridColumn: f.key === "description" ? "1/-1" : undefined }}>
+                <label className="form-label">{f.label}</label>
+                <input className="w-full border rounded px-3 py-2 text-sm" value={(form as any)[`${f.key}_${activeLocale}`] || ""} onChange={e => setForm({ ...form, [`${f.key}_${activeLocale}`]: e.target.value })} />
+              </div>
+            ))}
+          </div>
+          <div className="df-actions">
+            <button onClick={saveTranslation} disabled={saving} className="btn btn-primary"><Save size={16} />{saving ? "Saving..." : "Save Translation"}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

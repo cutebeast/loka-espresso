@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api, getMarketingCampaigns, sendCampaign, type MarketingCampaign } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -11,20 +11,27 @@ export default function MarketingCampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchData = () => {
-    setLoading(true);
-    getMarketingCampaigns().then(d => setItems(d)).catch(e => setError(e.message)).finally(() => setLoading(false));
-  };
-  useEffect(() => { fetchData(); }, []);
+  const fetchData = useCallback(async () => {
+    return getMarketingCampaigns();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchData()
+      .then((d) => { if (!cancelled) setItems(d); })
+      .catch((e) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [fetchData]);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this campaign?")) return;
-    try { await api.del(`/admin/marketing/campaigns/${id}`); fetchData(); } catch { /* ignore */ }
+    try { await api.del(`/admin/marketing/campaigns/${id}`); setItems(await fetchData()); } catch { /* ignore */ }
   };
 
   const handleSend = async (id: number) => {
     if (!confirm("Send this campaign now?")) return;
-    try { await sendCampaign(id); fetchData(); } catch (err: any) { setError(err.message); }
+    try { await sendCampaign(id); setItems(await fetchData()); } catch (err: any) { setError(err.message); }
   };
 
   const statusBadge = (s: string) => {
@@ -47,7 +54,7 @@ export default function MarketingCampaignsPage() {
         <tbody>
           {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
           : items.map(item => (
-            <tr key={item.id} className="clickable" onClick={() => router.push(`/marketing/campaigns/${item.id}`)} style={{ cursor: "pointer" }}>
+            <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/marketing/campaigns/${item.id}`))();}}} onClick={() => router.push(`/marketing/campaigns/${item.id}`)} style={{ cursor: "pointer" }}>
               <td><div style={{ fontWeight: 600 }}>{item.campaign_name}</div><div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{item.campaign_type}</div></td>
               <td><span className="badge badge-sm badge-blue">{channelLabel(item.channel)}</span></td>
               <td>{statusBadge(item.status)}</td>

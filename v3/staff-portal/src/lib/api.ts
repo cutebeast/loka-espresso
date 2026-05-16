@@ -51,12 +51,17 @@ export const api = {
 };
 
 export async function staffLogin(email: string, password: string) {
-  const data = await api.post<{ tokens?: { access_token?: string }; profile?: { email?: string; display_name?: string } }>("/admin/auth/login", { email, password });
+  const data = await api.post<{ tokens?: { access_token?: string }; profile?: { email?: string; display_name?: string; store_id?: number; staff_id?: number } }>("/staff/auth/login", { email, password });
   const token = data.tokens?.access_token;
   if (token) {
     localStorage.setItem("token", token);
-    if (data.profile?.email) localStorage.setItem("staffEmail", data.profile.email);
-    if (data.profile?.display_name) localStorage.setItem("staffName", data.profile.display_name);
+    if (data.profile) {
+      localStorage.setItem("staffProfile", JSON.stringify(data.profile));
+      if (data.profile.email) localStorage.setItem("staffEmail", data.profile.email);
+      if (data.profile.display_name) localStorage.setItem("staffName", data.profile.display_name);
+      if (data.profile.store_id) localStorage.setItem("staffStoreId", String(data.profile.store_id));
+      if (data.profile.staff_id) localStorage.setItem("staffId", String(data.profile.staff_id));
+    }
   }
   return data;
 }

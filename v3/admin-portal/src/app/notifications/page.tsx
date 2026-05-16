@@ -25,20 +25,26 @@ export default function NotificationsPage() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
   const fetchData = useCallback(async (p: number = 1) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(p), per_page: String(PAGE_SIZE), is_archived: String(tab === "archived") });
-      const d = await api.getRaw<{ items: Notif[]; total: number; total_pages: number }>(`/admin/notifications?${params}`);
-      setItems(d.items || []); setTotal(d.total || 0); setTotalPages(d.total_pages || 1); setPage(p);
-    } catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
+    const params = new URLSearchParams({ page: String(p), per_page: String(PAGE_SIZE), is_archived: String(tab === "archived") });
+    return api.getRaw<{ items: Notif[]; total: number; total_pages: number }>(`/admin/notifications?${params}`);
   }, [tab]);
 
-  useEffect(() => { fetchData(1); }, [fetchData]);
+  const applyData = useCallback((d: { items: Notif[]; total: number; total_pages: number }, p: number) => {
+    setItems(d.items || []); setTotal(d.total || 0); setTotalPages(d.total_pages || 1); setPage(p);
+  }, []);
 
-  const sendNow = async (id: number) => { if (!confirm("Send now?")) return; try { await api.post(`/admin/notifications/${id}/send`, {}); fetchData(page); } catch (e: any) { setError(e.message); } };
-  const toggleArchive = async (id: number) => { try { await api.patch(`/admin/notifications/${id}/archive`, {}); fetchData(page); } catch {}; };
-  const handleDelete = async (id: number) => { try { await api.del(`/admin/notifications/${id}`); setConfirmDelete(null); fetchData(page); } catch {}; };
+  useEffect(() => {
+    let cancelled = false;
+    fetchData(1)
+      .then((d) => { if (!cancelled) applyData(d, 1); })
+      .catch((e: any) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [fetchData, applyData]);
+
+  const sendNow = async (id: number) => { if (!confirm("Send now?")) return; try { await api.post(`/admin/notifications/${id}/send`, {}); applyData(await fetchData(page), page); } catch (e: any) { setError(e.message); } };
+  const toggleArchive = async (id: number) => { try { await api.patch(`/admin/notifications/${id}/archive`, {}); applyData(await fetchData(page), page); } catch {}; };
+  const handleDelete = async (id: number) => { try { await api.del(`/admin/notifications/${id}`); setConfirmDelete(null); applyData(await fetchData(page), page); } catch {}; };
 
   const statusBadge = (s: string, scheduled?: string) => {
     if (scheduled && s === "draft") return <span className="badge badge-sm badge-yellow"><Clock size={10} /> Scheduled</span>;
@@ -72,7 +78,7 @@ export default function NotificationsPage() {
           {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
           : items.length === 0 ? <tr><td colSpan={6} className="data-table-empty">No notifications.</td></tr>
           : items.map(n => (
-            <tr key={n.id} className="clickable" onClick={() => router.push(`/notifications/${n.id}`)} style={{ cursor: "pointer" }}>
+            <tr key={n.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/notifications/${n.id}`))();}}} onClick={() => router.push(`/notifications/${n.id}`)} style={{ cursor: "pointer" }}>
               <td><div style={{ fontWeight: 600 }}>{n.title}</div>{n.body && <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{n.body.slice(0, 60)}</div>}</td>
               <td><span className="badge badge-sm badge-outline">{TYPE_LABELS[n.notification_type] || n.notification_type}</span></td>
               <td>{AUD_LABELS[n.audience_segment] || n.audience_segment}</td>
@@ -93,9 +99,9 @@ export default function NotificationsPage() {
 
       {totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "center", marginTop: 16 }}>
-          <button className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={() => fetchData(page - 1)}><ChevronLeft size={14} /> Prev</button>
+          <button className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={async () => { applyData(await fetchData(page - 1), page - 1); }}><ChevronLeft size={14} /> Prev</button>
           <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Page {page} of {totalPages}</span>
-          <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={() => fetchData(page + 1)}>Next <ChevronRight size={14} /></button>
+          <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={async () => { applyData(await fetchData(page + 1), page + 1); }}>Next <ChevronRight size={14} /></button>
         </div>
       )}
     </div>

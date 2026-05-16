@@ -77,3 +77,4 @@ class MarketingCampaignOut(MarketingCampaignBase, TimestampedSchema):
     budget_spent: float = 0
     actual_roi: float | None = None
     created_by: int | None = None
+    delivered_count: int | None = None  # computed — set by send endpoint

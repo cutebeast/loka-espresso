@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -9,13 +9,12 @@ export default function LoyaltyTiersPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetch = async () => {
-    setLoading(true);
+  const fetch = useCallback(async () => {
     try { const d = await api.getRaw<any>("/admin/loyalty/tiers?per_page=50"); setItems(Array.isArray(d) ? d : (d.items||[])); } catch {}
     finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { (async () => { await fetch(); })(); }, [fetch]);
 
   return (
     <div style={{ padding: 32 }}>

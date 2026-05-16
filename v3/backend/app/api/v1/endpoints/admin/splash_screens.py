@@ -53,6 +53,8 @@ async def create_item(db: DBDependency, admin: CurrentAdmin, data: dict):
         'dismissible': data.get('dismissible', True),
         'active_from': data.get('active_from'),
         'active_until': data.get('active_until'),
+        'image_gallery_urls': data.get('image_gallery_urls'),
+        'gallery_video_url': data.get('gallery_video_url'),
     }
     item = SplashScreen(**kwargs)
     db.add(item); await db.commit();

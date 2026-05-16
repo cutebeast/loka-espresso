@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
 export default function CheckinsPage() {
@@ -8,9 +8,10 @@ export default function CheckinsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<{items:any[]}>("/admin/checkins?per_page=50").then(d => setItems(Array.isArray(d) ? d : (d.items||[]))).catch(()=>{});
-    api.get<any>("/admin/checkins/stats").then(d => setStats(d||{})).catch(()=>{});
-    setLoading(false);
+    Promise.all([
+      api.get<{items:any[]}>("/admin/checkins?per_page=50").then(d => setItems(Array.isArray(d) ? d : (d.items||[]))).catch(()=>{}),
+      api.get<any>("/admin/checkins/stats").then(d => setStats(d||{})).catch(()=>{}),
+    ]).finally(() => setLoading(false));
   }, []);
 
   return (

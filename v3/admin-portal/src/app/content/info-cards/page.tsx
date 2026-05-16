@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -12,8 +12,10 @@ export default function InfoCardsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetch = () => { setLoading(true); api.get<{items:Card[]}>("/admin/info-cards?per_page=100").then(d => setItems(Array.isArray(d)?d:(d.items||[]))).catch(e=>setError(e.message)).finally(()=>setLoading(false)); };
-  useEffect(()=>{fetch();},[]);
+  const fetch = useCallback(() => { setLoading(true); api.get<{items:Card[]}>("/admin/info-cards?per_page=100").then(d => setItems(Array.isArray(d)?d:(d.items||[]))).catch(e=>setError(e.message)).finally(()=>setLoading(false)); }, []);
+  useEffect(()=>{(async () => {
+fetch();
+})();},[fetch]);
 
   const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/info-cards/${id}`);fetch();}catch{}; };
 
@@ -27,7 +29,7 @@ export default function InfoCardsPage() {
         <tbody>
           {loading?<tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
           :items.map(item=>(
-            <tr key={item.id} className="clickable" onClick={()=>router.push(`/content/info-cards/${item.id}`)} style={{cursor:"pointer"}}>
+            <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(()=>router.push(`/content/info-cards/${item.id}`))();}}} onClick={()=>router.push(`/content/info-cards/${item.id}`)} style={{cursor:"pointer"}}>
               <td>{item.image_url?<img src={item.image_url} alt="" style={{width:32,height:32,borderRadius:6,objectFit:"cover"}}/>:<span>—</span>}</td>
               <td style={{fontWeight:600}}>{item.title}</td>
               <td className="font-mono" style={{fontSize:11}}>{item.slug}</td>

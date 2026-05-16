@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -15,13 +15,10 @@ export default function PromotionsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchBanners = () => {
-    setLoading(true);
-    api.get<{ items: Banner[] }>("/admin/promo-banners?per_page=100")
+  const fetchBanners = useCallback(() => { api.get<{ items: Banner[] }>("/admin/promo-banners?per_page=100")
       .then(d => setBanners(Array.isArray(d) ? d : (d.items || [])))
       .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-  };
+      .finally(() => setLoading(false)); }, []);
 
   useEffect(() => { fetchBanners(); }, []);
 
@@ -51,7 +48,7 @@ export default function PromotionsPage() {
         <tbody>
           {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
             : banners.map(b => (
-              <tr key={b.id} className="clickable" onClick={() => router.push(`/promotions/${b.id}`)} style={{ cursor: "pointer" }}>
+              <tr key={b.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/promotions/${b.id}`))();}}} onClick={() => router.push(`/promotions/${b.id}`)} style={{ cursor: "pointer" }}>
                 <td><div style={{ fontWeight: 600 }}>{b.title}</div>{b.short_description && <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{b.short_description.slice(0, 60)}</div>}</td>
                 <td>{actionBadge(b.action_type || "")}</td>
                 <td style={{ fontSize: 12 }}>{b.voucher_display_title || "—"}</td>

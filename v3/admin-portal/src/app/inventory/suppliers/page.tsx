@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -20,12 +20,16 @@ export default function InventorySuppliersPage() {
     try { const d = await api.getRaw<any>("/admin/stores?per_page=50"); const list = d.items || []; setStores(list); if (!storeId && list.length > 0) setStoreId(String(list[0].id)); }
     catch {}
   };
-  const fetchData = async () => { if (!storeId) return; setLoading(true);
+  const fetchData = useCallback(async () => { if (!storeId) return; setLoading(true);
     try { const d = await api.getRaw<any>(`/admin/inventory/suppliers?store_id=${storeId}`); setItems(Array.isArray(d) ? d : (d.items||[])); }
     catch (e: any) { setError(e.message); } finally { setLoading(false); }
-  };
-  useEffect(() => { fetchStores(); }, []);
-  useEffect(() => { fetchData(); }, [storeId]);
+  }, [storeId]);
+  useEffect(() => {(async () => {
+ fetchStores(); 
+})();}, []);
+  useEffect(() => {(async () => {
+ fetchData(); 
+})();}, [fetchData]);
 
   const handleDelete = async (id: number) => { if (!confirm("Delete?")) return; try { await api.del(`/admin/inventory/suppliers/${id}`); setConfirmDelete(null); fetchData(); } catch {}; };
 
@@ -38,7 +42,7 @@ export default function InventorySuppliersPage() {
       <div className="table-container"><table className="data-table">
         <thead><tr><th>Name</th><th>Contact</th><th>Phone</th><th style={{width:80}}>Status</th><th style={{width:80}}>Actions</th></tr></thead>
         <tbody>{loading ? <tr><td colSpan={5} className="data-table-empty">Loading...</td></tr>
-          : items.map(s => (<tr key={s.id} className="clickable" onClick={()=>r.push(`/inventory/suppliers/${s.id}`)} style={{cursor:"pointer"}}>
+          : items.map(s => (<tr key={s.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(()=>r.push(`/inventory/suppliers/${s.id}`))();}}} onClick={()=>r.push(`/inventory/suppliers/${s.id}`)} style={{cursor:"pointer"}}>
             <td style={{fontWeight:600}}>{s.supplier_name}</td><td>{s.contact_person||"—"}</td><td style={{fontSize:12}}>{s.phone_number||"—"}</td>
             <td onClick={e=>e.stopPropagation()}><span className={`badge badge-sm ${s.is_active?"badge-green":"badge-gray"}`}>{s.is_active?"Active":"Inactive"}</span></td>
             <td onClick={e=>e.stopPropagation()}><button onClick={()=>r.push(`/inventory/suppliers/${s.id}`)} className="btn btn-ghost btn-sm" style={{color:"var(--color-info)"}}><Edit2 size={14}/></button>{confirmDelete===s.id?<><button onClick={()=>handleDelete(s.id)} className="btn btn-ghost btn-sm" style={{color:"var(--color-error)",fontWeight:600}}>✓</button><button onClick={()=>setConfirmDelete(null)} className="btn btn-ghost btn-sm">✕</button></>:<button onClick={()=>setConfirmDelete(s.id)} className="btn btn-ghost btn-sm" style={{color:"var(--color-error)"}}><Trash2 size={14}/></button>}</td>

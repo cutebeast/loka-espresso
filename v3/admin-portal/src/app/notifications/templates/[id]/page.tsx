@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
@@ -18,9 +18,7 @@ export default function TemplateEditPage() {
   const [form,setForm] = useState<Record<string,any>>({});
   const [tr,setTr] = useState<Record<string,string>>({});
 
-  useEffect(()=>{load();},[id]);
-
-  const load = async () => { setLoading(true);
+  const load = useCallback(async () => {
     try{
       const d = await api.getRaw<any>(`/admin/notifications/templates/list`);
       // Templates list returns all — find the one
@@ -32,7 +30,11 @@ export default function TemplateEditPage() {
       for(const lc of LOCALES){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/translations?table_name=notification_templates&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}}
       setTr(x);
     }catch{}finally{setLoading(false);}
-  };
+  }, [id]);
+
+  useEffect(()=>{(async () => {
+load();
+})();},[load]);
 
   const save = async () => { setSaving(true);
     try{await api.put(`/admin/notifications/templates/${id}`,form);setMsg("Saved");setTimeout(()=>setMsg(""),2000);}catch{}finally{setSaving(false)}; };

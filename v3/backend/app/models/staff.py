@@ -1,6 +1,6 @@
 """Staff & Workforce models."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from typing import List
 
 from sqlalchemy import (
@@ -9,11 +9,14 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
+    Time,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -36,6 +39,7 @@ class StaffProfile(Base, SoftDeleteMixin, TimestampMixin):
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     email_address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(StaffRole, nullable=False)
     hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
     hire_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -74,6 +78,9 @@ class StaffShift(Base, TimestampMixin):
     staff_id: Mapped[int] = mapped_column(
         ForeignKey("staff_profiles.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    shift_template_id: Mapped[int | None] = mapped_column(
+        ForeignKey("shift_templates.id", ondelete="SET NULL"), nullable=True
+    )
     shift_date: Mapped[date] = mapped_column(Date, nullable=False)
     planned_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     planned_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -85,6 +92,7 @@ class StaffShift(Base, TimestampMixin):
 
     store: Mapped["Store"] = relationship("Store")
     staff: Mapped["StaffProfile"] = relationship("StaffProfile")
+    template: Mapped["ShiftTemplate | None"] = relationship("ShiftTemplate", back_populates="shifts")
 
     __table_args__ = (
         CheckConstraint("break_duration_minutes >= 0", name="ck_staff_shifts_break_duration_minutes"),
@@ -93,6 +101,22 @@ class StaffShift(Base, TimestampMixin):
             name="ck_staff_shifts_status",
         ),
     )
+
+
+class ShiftTemplate(Base):
+    __tablename__ = "shift_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    store_id: Mapped[int] = mapped_column(
+        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    start_time: Mapped[time] = mapped_column(Time, nullable=False)
+    end_time: Mapped[time] = mapped_column(Time, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    store: Mapped["Store"] = relationship("Store")
+    shifts: Mapped[List["StaffShift"]] = relationship("StaffShift", back_populates="template")
 
 
 class StaffTimeEvent(Base):

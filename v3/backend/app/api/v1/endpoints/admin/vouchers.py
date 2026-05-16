@@ -142,6 +142,7 @@ async def delete_voucher(
     """Soft-delete a voucher definition."""
     voucher = await _get_voucher_or_404(db, voucher_id)
 
+    voucher.is_active = False
     voucher.deleted_at = datetime.now(timezone.utc)
     voucher.is_active = False
     await db.commit()

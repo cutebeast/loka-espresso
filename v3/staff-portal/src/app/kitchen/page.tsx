@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { getOrders, getStores, updateOrderStatus, Order, OrderStatus, Store } from "@/lib/api";
 import OrderCard from "@/components/OrderCard";
-import { Filter, RefreshCw, Store as StoreIcon, CheckCircle2, ChefHat, PackageCheck, Check } from "lucide-react";
+import { Filter, RefreshCw, Store as StoreIcon, CheckCircle2, ChefHat, PackageCheck, Check, Volume2, VolumeX } from "lucide-react";
 
 const statusFilters: { label: string; value: OrderStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -27,11 +27,17 @@ const nextStatusMap: Record<OrderStatus, { label: string; next: OrderStatus; ico
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
-  const [storeId, setStoreId] = useState<number | undefined>(undefined);
+  const [storeId, setStoreId] = useState<number | undefined>(() => {
+    if (typeof window !== "undefined") { const s = localStorage.getItem("staffStoreId"); if (s) return Number(s); }
+    return undefined;
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [soundOn, setSoundOn] = useState(true);
+  const prevCountRef = useRef(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   const fetchStores = useCallback(async () => {
     try {
@@ -45,7 +51,23 @@ export default function OrdersPage() {
   const fetchOrders = useCallback(async () => {
     try {
       const data = await getOrders(storeId, filter === "all" ? undefined : filter);
-      setOrders(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setOrders(list);
+      // New order sound notification
+      if (soundOn && list.length > prevCountRef.current) {
+        try {
+          if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const ctx = audioCtxRef.current;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.frequency.value = 800;
+          osc.type = "sine";
+          gain.gain.value = 0.1;
+          osc.start(); osc.stop(ctx.currentTime + 0.15);
+        } catch {}
+      }
+      prevCountRef.current = list.length;
       setError("");
     } catch (err: any) {
       setError(err.message || "Failed to load orders");
@@ -87,7 +109,10 @@ export default function OrdersPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold">Orders</h2>
-        <button
+          <button onClick={() => setSoundOn(!soundOn)} className="p-2 rounded-lg hover:bg-gray-100" title={soundOn ? "Mute sound" : "Unmute sound"}>
+            {soundOn ? <Volume2 size={16} className="text-gray-500" /> : <VolumeX size={16} className="text-gray-400" />}
+          </button>
+          <button
           onClick={fetchOrders}
           className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50 transition"
         >

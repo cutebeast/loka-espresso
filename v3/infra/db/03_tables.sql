@@ -987,39 +987,6 @@ CREATE TABLE campaign_analytics (
 
 -- ============================================================
 -- 4.14 CONTENT MANAGEMENT
--- ============================================================
-
-CREATE TABLE content_blocks (
-    id SERIAL PRIMARY KEY,
-    store_id INTEGER REFERENCES stores(id) ON DELETE SET NULL,
-    block_key VARCHAR(50) NOT NULL UNIQUE,
-    block_name VARCHAR(100) NOT NULL,
-    content_type VARCHAR(50) NOT NULL CHECK (content_type IN ('hero_banner','promo_card','info_card','announcement','story','popup')),
-    title VARCHAR(100) NOT NULL,
-    subtitle VARCHAR(200),
-    body_text TEXT,
-    image_url VARCHAR(500),
-    image_gallery_urls JSONB,
-    cta_text VARCHAR(50),
-    cta_url VARCHAR(500),
-    cta_action VARCHAR(50) CHECK (cta_action IN ('open_detail','apply_voucher','open_url','open_survey','share')),
-    voucher_definition_id INTEGER REFERENCES voucher_definitions(id) ON DELETE SET NULL,
-    survey_id INTEGER REFERENCES survey_definitions(id) ON DELETE SET NULL,
-    background_color CHAR(7),
-    text_color CHAR(7),
-    display_order INTEGER NOT NULL DEFAULT 0,
-    start_date TIMESTAMPTZ,
-    end_date TIMESTAMPTZ CHECK (end_date > start_date),
-    priority SMALLINT NOT NULL DEFAULT 0 CHECK (priority BETWEEN 0 AND 10),
-    is_dismissible BOOLEAN NOT NULL DEFAULT true,
-    target_segments JSONB,
-    target_platforms JSONB NOT NULL DEFAULT '["ios","android","web"]',
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    created_by BIGINT REFERENCES admin_accounts(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
 CREATE TABLE splash_screens (
     id SERIAL PRIMARY KEY,
     store_id INTEGER REFERENCES stores(id) ON DELETE SET NULL,

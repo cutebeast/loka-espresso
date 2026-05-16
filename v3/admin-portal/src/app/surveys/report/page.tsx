@@ -36,29 +36,38 @@ export default function SurveyReportPage() {
   }, []);
 
   const fetchResponses = useCallback(async (p: number = 1) => {
-    if (!selectedId) return;
-    setLoading(true);
-    try {
-      const d = await api.getRaw<{ items: Response[]; total: number; page: number; total_pages: number }>(
-        `/admin/surveys/${selectedId}/responses?page=${p}&per_page=${PAGE_SIZE}`
-      );
-      setResponses(d.items || []);
-      setTotalPages(d.total_pages || 1);
-      setTotalResponses(d.total || 0);
-      setPage(p);
-    } catch { setResponses([]); }
-    finally { setLoading(false); }
+    if (!selectedId) return { items: [] as Response[], total: 0, total_pages: 1 };
+    return api.getRaw<{ items: Response[]; total: number; page: number; total_pages: number }>(
+      `/admin/surveys/${selectedId}/responses?page=${p}&per_page=${PAGE_SIZE}`
+    );
   }, [selectedId]);
 
+  const applyResponses = useCallback((d: { items: Response[]; total: number; total_pages: number }, p: number) => {
+    setResponses(d.items || []);
+    setTotalPages(d.total_pages || 1);
+    setTotalResponses(d.total || 0);
+    setPage(p);
+  }, []);
+
   useEffect(() => {
-    if (selectedId) fetchResponses(1);
-    else { setResponses([]); setTotalPages(1); setTotalResponses(0); setPage(1); }
-  }, [selectedId, fetchResponses]);
+    let cancelled = false;
+    if (selectedId) {
+      fetchResponses(1)
+        .then((d) => { if (!cancelled && d) applyResponses(d, 1); })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    } else {
+      Promise.resolve().then(() => {
+        if (!cancelled) { setResponses([]); setTotalPages(1); setTotalResponses(0); setPage(1); }
+      });
+    }
+    return () => { cancelled = true; };
+  }, [selectedId, fetchResponses, applyResponses]);
 
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -197,7 +206,7 @@ export default function SurveyReportPage() {
               <button
                 className="btn btn-sm btn-ghost"
                 disabled={page <= 1}
-                onClick={() => fetchResponses(page - 1)}
+                onClick={async () => { const d = await fetchResponses(page - 1); if (d) applyResponses(d, page - 1); }}
               >
                 <ChevronLeft size={14} /> Prev
               </button>
@@ -207,7 +216,7 @@ export default function SurveyReportPage() {
               <button
                 className="btn btn-sm btn-ghost"
                 disabled={page >= totalPages}
-                onClick={() => fetchResponses(page + 1)}
+                onClick={async () => { const d = await fetchResponses(page + 1); if (d) applyResponses(d, page + 1); }}
               >
                 Next <ChevronRight size={14} />
               </button>

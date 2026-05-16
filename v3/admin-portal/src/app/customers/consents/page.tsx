@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getCustomerConsents, type CustomerConsent } from "@/lib/api";
 
 export default function CustomerConsentsPage() {
@@ -10,11 +10,13 @@ export default function CustomerConsentsPage() {
   const [consentTypeFilter, setConsentTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const fetchData = () => { setLoading(true);
+  const fetchData = useCallback(() => { setLoading(true);
     getCustomerConsents({ consent_type: consentTypeFilter || undefined, status: statusFilter || undefined })
       .then(data => setItems(data)).catch(err => setError(err.message)).finally(() => setLoading(false));
-  };
-  useEffect(() => { fetchData(); }, [consentTypeFilter, statusFilter]);
+  }, []);
+  useEffect(() => {(async () => {
+ fetchData(); 
+})();}, [fetchData]);
 
   const statusBadge = (s: string) => <span className={`badge badge-sm ${s === "granted" ? "badge-green" : s === "revoked" ? "badge-red" : "badge-gray"}`}>{s}</span>;
 

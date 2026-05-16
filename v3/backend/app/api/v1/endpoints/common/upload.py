@@ -12,7 +12,7 @@ from app.core.config import get_settings
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".mp4", ".mov", ".avi", ".webm", ".mkv"}
 MAX_SIZE = 10 * 1024 * 1024  # 10 MB
 
 @router.post("/image")

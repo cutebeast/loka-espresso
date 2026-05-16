@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
-from app.models.iam import IAMPrincipal
+from app.models.iam import IAMPrincipal, IAMRole, RoleAssignment
 from app.models.staff import StaffProfile, StaffShift
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.staff import (
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/admin/staff", tags=["admin — staff"])
 async def list_staff(
     db: DBDependency,
     admin: CurrentAdmin,
-    store_id: int = Query(...),
+    store_id: int | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
@@ -60,32 +60,101 @@ async def list_staff(
     )
 
 
-@router.post("", response_model=APIResponse[StaffProfileOut], status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
 async def create_staff(
     db: DBDependency,
     admin: CurrentAdmin,
-    data: StaffProfileCreate,
+    data: dict,
 ):
-    """Create a new staff profile with an IAMPrincipal."""
-    principal = IAMPrincipal(
-        principal_type="human",
-        status="active",
-    )
+    """Create a new staff profile with credentials."""
+    import bcrypt
+
+    email = (data.get("email") or "").strip()
+    password = (data.get("password") or "").strip()
+    pin = (data.get("pin") or "000000").strip()
+    display_name = (data.get("display_name") or "").strip()
+
+    if not display_name:
+        raise HTTPException(status_code=400, detail="Display name required")
+
+    principal = IAMPrincipal(principal_type="human", status="active")
     db.add(principal)
     await db.flush()
-    await db.refresh(principal)
 
-    profile_data = data.model_dump()
-    profile_data["principal_id"] = principal.id
+    pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode() if password else None
+    pin_hash = bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
 
-    profile = StaffProfile(**profile_data)
+    profile = StaffProfile(
+        principal_id=principal.id,
+        store_id=data.get("store_id"),
+        display_name=display_name,
+        email_address=email or None,
+        password_hash=pw_hash,
+        pin_hash=pin_hash,
+        phone_number=data.get("phone_number"),
+        role=data.get("role", "server"),
+        is_active=True,
+    )
     db.add(profile)
     await db.commit()
     await db.refresh(profile)
 
-    return APIResponse(data=StaffProfileOut.model_validate(profile))
+    return APIResponse(data={
+        "id": profile.id,
+        "display_name": profile.display_name,
+        "email": email,
+        "password": password,
+        "pin": pin,
+        "message": "Staff created — share credentials with user",
+    })
 
 
+
+@router.get("/roles", response_model=APIResponse[list[dict]])
+async def list_staff_roles(db: DBDependency, admin: CurrentAdmin):
+    """List all staff profiles with their IAM role assignments."""
+    from app.models.iam import RoleAssignment
+    from sqlalchemy.orm import joinedload
+    result = await db.execute(
+        select(StaffProfile)
+        .options(joinedload(StaffProfile.store))
+        .where(StaffProfile.deleted_at.is_(None))
+        .order_by(StaffProfile.id)
+    )
+    items = []
+    for sp in result.scalars().all():
+        role_result = await db.execute(
+            select(IAMRole.display_name, IAMRole.id)
+            .join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
+            .where(RoleAssignment.assignee_id == sp.principal_id)
+        )
+        roles = [{"id": r[1], "name": r[0]} for r in role_result.all()]
+        items.append({
+            "id": sp.id, "principal_id": sp.principal_id,
+            "display_name": sp.display_name,
+            "email_address": sp.email_address,
+            "employee_id": sp.employee_id,
+            "store_id": sp.store_id,
+            "store_name": sp.store.store_name if sp.store else None,
+            "has_pin": bool(sp.pin_hash),
+            "is_active": sp.is_active,
+            "roles": roles,
+        })
+    return APIResponse(data=items)
+
+
+@router.put("/{staff_id}/roles", response_model=APIResponse[dict])
+async def set_staff_roles(db: DBDependency, admin: CurrentAdmin, staff_id: int, data: dict):
+    """Set IAM roles for a staff profile (replaces all)."""
+    from app.models.iam import RoleAssignment
+    result = await db.execute(
+        select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.deleted_at.is_(None))
+    )
+    sp = result.scalar_one_or_none()
+    if not sp:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    # Remove existing
+    await db.execute(delete(RoleAssignment).where(RoleAssignment.assignee_id == sp.principal_id))
 @router.get("/{staff_id}", response_model=APIResponse[StaffProfileDetailOut])
 async def get_staff(
     db: DBDependency,
@@ -160,6 +229,7 @@ async def delete_staff(
     if profile is None:
         raise HTTPException(status_code=404, detail="Staff not found")
 
+    profile.is_active = False
     profile.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     return APIResponse(data={"id": staff_id, "deleted": True})
@@ -275,3 +345,26 @@ async def update_staff_shift(
     await db.commit()
     await db.refresh(shift)
     return APIResponse(data=StaffShiftOut.model_validate(shift))
+
+@router.get("/shift-templates", response_model=APIResponse[list[dict]])
+async def list_shift_templates(db: DBDependency, admin: CurrentAdmin, store_id: int = Query(...)):
+    from app.models.staff import ShiftTemplate
+    result = await db.execute(select(ShiftTemplate).where(ShiftTemplate.store_id == store_id).order_by(ShiftTemplate.name))
+    items = [{"id": t.id, "store_id": t.store_id, "name": t.name, "start_time": str(t.start_time), "end_time": str(t.end_time)} for t in result.scalars().all()]
+    return APIResponse(data=items)
+
+@router.post("/shift-templates", response_model=APIResponse[dict], status_code=201)
+async def create_shift_template(db: DBDependency, admin: CurrentAdmin, data: dict):
+    from app.models.staff import ShiftTemplate
+    t = ShiftTemplate(store_id=data["store_id"], name=data["name"], start_time=data["start_time"], end_time=data["end_time"])
+    db.add(t); await db.commit(); await db.refresh(t)
+    return APIResponse(data={"id": t.id, "name": t.name})
+
+
+# ── Staff Role Management ──
+
+    # Add new
+    for rid in data.get("role_ids", []):
+        db.add(RoleAssignment(assignee_id=sp.principal_id, role_id=rid, effective_from=datetime.now(timezone.utc), is_active=True))
+    await db.commit()
+    return APIResponse(data={"staff_id": staff_id, "updated": True})

@@ -116,7 +116,7 @@ async def update_loyalty_tier(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Tier not found"
         )
-    for field, value in data.model_dump().items():
+    for field, value in data.model_dump(exclude_unset=True).items():
         setattr(tier, field, value)
     await db.commit()
     await auto_translate_record(db, "loyalty_tiers", tier.id, {"display_name": tier.display_name})

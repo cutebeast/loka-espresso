@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
@@ -17,10 +17,7 @@ export default function TierEditPage() {
   const [regen,setRegen]=useState(false);
   const [tr,setTr]=useState<Record<string,string>>({});
 
-  useEffect(()=>{load();},[id]);
-
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     try {
       const d = await api.getRaw<any>(`/admin/loyalty/tiers/${id}`);
       setForm({display_name:d.display_name||"",tier_key:d.tier_key||"",color_hex:d.color_hex||"#FFD700",min_lifetime_points:d.min_lifetime_points,points_multiplier:d.points_multiplier,sort_order:d.sort_order,is_active:d.is_active});
@@ -28,7 +25,11 @@ export default function TierEditPage() {
       for(const lc of L){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/translations?table_name=loyalty_tiers&record_id=${id}&locale=${lc.code}&per_page=10`);if(rt?.items)for(const t of rt.items){const fk=t.translation_key.split(".").pop()||"";x[`${lc.code}:${fk}`]=t.translated_text||"";}}catch{}}
       setTr(x);
     } catch {} finally { setLoading(false); }
-  };
+  }, [id]);
+
+  useEffect(()=>{(async () => {
+load();
+})();},[load]);
 
   const save = async () => { setSaving(true); try { const pl:any={...form};pl.min_lifetime_points=Number(pl.min_lifetime_points);pl.points_multiplier=Number(pl.points_multiplier);pl.sort_order=Number(pl.sort_order);await api.put(`/admin/loyalty/tiers/${id}`,pl);setMsg("Saved");setTimeout(()=>setMsg(""),2000); } catch {} finally { setSaving(false); } };
 

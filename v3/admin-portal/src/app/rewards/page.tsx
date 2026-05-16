@@ -22,23 +22,28 @@ export default function RewardsPage() {
   const [totalPages, setTotalPages] = useState(1);
 
   const fetchData = useCallback(async (p: number = 1) => {
-    setLoading(true);
-    try {
-      const d = await api.getRaw<{ items: Reward[]; total: number; total_pages: number }>(
-        `/admin/rewards?page=${p}&per_page=${PAGE_SIZE}`
-      );
-      setItems(d.items || []);
-      setTotalPages(d.total_pages || 1);
-      setPage(p);
-    } catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
+    return api.getRaw<{ items: Reward[]; total: number; total_pages: number }>(
+      `/admin/rewards?page=${p}&per_page=${PAGE_SIZE}`
+    );
   }, []);
 
-  useEffect(() => { fetchData(1); }, [fetchData]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchData(1)
+      .then((d) => {
+        if (cancelled) return;
+        setItems(d.items || []);
+        setTotalPages(d.total_pages || 1);
+        setPage(1);
+      })
+      .catch((e: any) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [fetchData]);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this reward?")) return;
-    try { await api.del(`/admin/rewards/${id}`); fetchData(page); } catch { /* ignore */ }
+    try { await api.del(`/admin/rewards/${id}`); const d = await fetchData(page); setItems(d.items || []); setTotalPages(d.total_pages || 1); } catch { /* ignore */ }
   };
 
   const typeLabel = (t: string) => {
@@ -59,7 +64,7 @@ export default function RewardsPage() {
         <tbody>
           {loading ? <tr><td colSpan={7} className="data-table-empty">Loading...</td></tr>
             : items.map(item => (
-              <tr key={item.id} className="clickable" onClick={() => router.push(`/rewards/${item.id}`)} style={{ cursor: "pointer" }}>
+              <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/rewards/${item.id}`))();}}} onClick={() => router.push(`/rewards/${item.id}`)} style={{ cursor: "pointer" }}>
                 <td>{item.image_url ? <img src={item.image_url} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover" }} /> : <span style={{ fontSize: 16 }}>🎁</span>}</td>
                 <td style={{ fontWeight: 600 }}>{item.reward_name}</td>
                 <td>{typeLabel(item.reward_type)}</td>
@@ -78,9 +83,9 @@ export default function RewardsPage() {
       </table></div>
       {totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "center", marginTop: 16 }}>
-          <button className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={() => fetchData(page - 1)}><ChevronLeft size={14} /> Prev</button>
+          <button className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={async () => { const d = await fetchData(page - 1); setItems(d.items || []); setTotalPages(d.total_pages || 1); setPage(page - 1); }}><ChevronLeft size={14} /> Prev</button>
           <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Page {page} of {totalPages}</span>
-          <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={() => fetchData(page + 1)}>Next <ChevronRight size={14} /></button>
+          <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={async () => { const d = await fetchData(page + 1); setItems(d.items || []); setTotalPages(d.total_pages || 1); setPage(page + 1); }}>Next <ChevronRight size={14} /></button>
         </div>
       )}
     </div>

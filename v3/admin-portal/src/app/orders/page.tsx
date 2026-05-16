@@ -28,10 +28,12 @@ export default function OrdersPage() {
     catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { fetchStores(); }, [fetchStores]);
+  useEffect(() => {(async () => {
+ fetchStores(); 
+})();}, [fetchStores]);
 
   const fetchOrders = useCallback(async (p: number = 1) => {
-    setLoading(true);
+
     try {
       const params = new URLSearchParams({ page: String(p), per_page: String(PAGE_SIZE) });
       if (storeId) params.set("store_id", storeId);
@@ -44,7 +46,9 @@ export default function OrdersPage() {
     finally { setLoading(false); }
   }, [storeId, status, orderType, search]);
 
-  useEffect(() => { fetchOrders(1); }, [fetchOrders]);
+  useEffect(() => {(async () => {
+ fetchOrders(1); 
+})();}, [fetchOrders]);
 
   const sb = (s: string) => {
     const m: Record<string, string> = { pending: "badge-yellow", confirmed: "badge-blue", preparing: "badge-orange", ready_for_pickup: "badge-green", out_for_delivery: "badge-blue", delivered: "badge-green", completed: "badge-green", cancelled: "badge-red", refunded: "badge-gray" };
@@ -74,7 +78,7 @@ export default function OrdersPage() {
           {loading ? <tr><td colSpan={7} className="data-table-empty">Loading...</td></tr>
           : items.length === 0 ? <tr><td colSpan={7} className="data-table-empty">No orders found.</td></tr>
           : items.map(o => (
-            <tr key={o.id} className="clickable" onClick={() => router.push(`/orders/${o.id}`)} style={{ cursor: "pointer" }}>
+            <tr key={o.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/orders/${o.id}`))();}}} onClick={() => router.push(`/orders/${o.id}`)} style={{ cursor: "pointer" }}>
               <td className="font-mono" style={{ fontSize: 11 }}>{o.order_number}</td>
               <td>{o.customer_name || "—"}</td>
               <td style={{ textTransform: "capitalize", fontSize: 12 }}>{o.order_type?.replace(/_/g, " ")}</td>

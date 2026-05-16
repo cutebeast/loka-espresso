@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { BarChart3, TrendingUp, DollarSign, ShoppingBag } from "lucide-react";
 
@@ -14,26 +14,35 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"sales" | "marketing">("sales");
-  const [data, setData] = useState({ revenue: 0, orders: 0, avgOrder: 0 });
+  const [data, setData] = useState({ revenue: 0, orders: 0, avgOrder: 0, customers: 0, stores: 0 });
+  const [analytics, setAnalytics] = useState<any[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   useEffect(() => {
     api.get<{ items: Store[] }>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : (d.items || []))).catch(() => {});
+    setAnalyticsLoading(true);
+    api.get<any>("/admin/marketing/analytics").then(d => setAnalytics(Array.isArray(d) ? d : [])).catch(() => {}).finally(() => setAnalyticsLoading(false));
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
     try {
-      const metrics = await api.get<{ revenue_today: number; orders_today: number }>("/admin/dashboard/metrics");
+      const qs = new URLSearchParams();
+      if (selectedStore) qs.set("store_id", selectedStore);
+      if (dateFrom) qs.set("date_from", dateFrom);
+      if (dateTo) qs.set("date_to", dateTo);
+      const metrics = await api.get<any>(`/admin/dashboard/metrics${qs.toString() ? "?" + qs.toString() : ""}`);
       setData({
-        revenue: metrics.revenue_today || 0,
-        orders: metrics.orders_today || 0,
-        avgOrder: metrics.revenue_today && metrics.orders_today ? metrics.revenue_today / metrics.orders_today : 0,
+        revenue: metrics.revenue_today || metrics.total_revenue || 0,
+        orders: metrics.orders_today || metrics.total_orders || 0,
+        avgOrder: (metrics.revenue_today && metrics.orders_today) ? metrics.revenue_today / metrics.orders_today : 0,
+        customers: metrics.new_customers || 0,
+        stores: metrics.active_stores || stores.length,
       });
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, [selectedStore, dateFrom, dateTo]);
+  useEffect(() => { (async () => { await fetchData(); })(); }, [fetchData]);
 
   const fmt = (v: number) => `RM ${Number(v || 0).toFixed(2)}`;
 
@@ -63,12 +72,14 @@ export default function ReportsPage() {
         ))}
       </div>
 
+      {activeTab === "sales" && (
       <div style={{ display: "flex", gap: 12, marginBottom: 20, alignItems: "end" }}>
         <div><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Store</label>
           <select value={selectedStore} onChange={e => setSelectedStore(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 13 }}><option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
         <div><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>From</label><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 10px", fontSize: 13 }} /></div>
         <div><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>To</label><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 10px", fontSize: 13 }} /></div>
       </div>
+      )}
 
       {loading ? <div style={{ textAlign: "center", padding: 48, color: "var(--color-text-muted)" }}>Loading...</div>
       : activeTab === "sales" ? (
@@ -77,11 +88,36 @@ export default function ReportsPage() {
             <div className="kpi-card"><div className="kpi-label">Total Revenue</div><div className="kpi-value">{fmt(data.revenue)}</div></div>
             <div className="kpi-card"><div className="kpi-label">Total Orders</div><div className="kpi-value">{data.orders}</div></div>
             <div className="kpi-card"><div className="kpi-label">Avg Order Value</div><div className="kpi-value">{fmt(data.avgOrder)}</div></div>
+            <div className="kpi-card"><div className="kpi-label">New Customers</div><div className="kpi-value">{data.customers}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Active Stores</div><div className="kpi-value">{data.stores}</div></div>
           </div>
-          <div className="card" style={{ padding: 24 }}><p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>Detailed reports coming soon.</p></div>
+          <div className="card" style={{ padding: 24 }}><p style={{ fontSize: 13, opacity: 0.6 }}>
+            Showing aggregated sales metrics{selectedStore ? ` for ${stores.find(s => String(s.id) === selectedStore)?.store_name || "selected store"}` : " across all stores"}{dateFrom ? ` from ${dateFrom}` : ""}{dateTo ? ` to ${dateTo}` : ""}.
+          </p></div>
         </>
       ) : (
-        <div className="card" style={{ padding: 24 }}><h3 style={{ marginBottom: 12 }}>Marketing ROI</h3><p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>Marketing analytics coming soon. View Campaigns for performance data.</p></div>
+        <div className="card" style={{ padding: 24 }}>
+          <h3 style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}><TrendingUp size={18} /> Campaign Analytics</h3>
+          {analyticsLoading ? <p style={{ opacity: 0.5 }}>Loading...</p>
+          : analytics.length === 0 ? <p style={{ opacity: 0.5 }}>No campaigns have been sent yet.</p>
+          : (
+            <div className="table-container"><table className="data-table">
+              <thead><tr><th>Campaign</th><th style={{ textAlign: "center" }}>Audience</th><th style={{ textAlign: "center" }}>Sent</th><th style={{ textAlign: "center" }}>Opens</th><th style={{ textAlign: "center" }}>Clicks</th><th style={{ textAlign: "center" }}>Revenue</th></tr></thead>
+              <tbody>
+                {analytics.map((a: any) => (
+                  <tr key={a.campaign_id}>
+                    <td style={{ fontWeight: 600 }}>{a.campaign_name}</td>
+                    <td style={{ textAlign: "center" }}>{a.audience_size}</td>
+                    <td style={{ textAlign: "center" }}>{a.messages_sent}</td>
+                    <td style={{ textAlign: "center" }}>{a.opens_count}</td>
+                    <td style={{ textAlign: "center" }}>{a.clicks_count}</td>
+                    <td style={{ textAlign: "center", fontWeight: 600, color: "var(--color-success)" }}>{a.conversion_revenue ? `RM ${Number(a.conversion_revenue).toFixed(2)}` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table></div>
+          )}
+        </div>
       )}
     </div>
   );

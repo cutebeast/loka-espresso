@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { getLoyaltyLedger, type LoyaltyLedgerEntry } from "@/lib/api";
 
@@ -12,20 +12,21 @@ export default function LoyaltyLedgerPage() {
   const searchParams = useSearchParams();
   const accountId = searchParams.get("account_id");
 
-  const fetchData = () => {
-    setLoading(true);
-    getLoyaltyLedger({
+  const fetchData = useCallback(async () => {
+    return getLoyaltyLedger({
       event_type: eventTypeFilter || undefined,
       account_id: accountId ? Number(accountId) : undefined,
-    })
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
+    });
+  }, [eventTypeFilter, accountId]);
 
   useEffect(() => {
-    fetchData();
-  }, [eventTypeFilter, accountId]);
+    let cancelled = false;
+    fetchData()
+      .then((data) => { if (!cancelled) setItems(data); })
+      .catch((err) => { if (!cancelled) setError(err.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [fetchData]);
 
   const eventBadge = (eventType: string) => {
     const colors: Record<string, string> = {

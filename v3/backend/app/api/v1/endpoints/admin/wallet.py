@@ -225,7 +225,13 @@ async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: dict):
         wallet = Wallet(customer_id=customer_id, currency_code="MYR")
         db.add(wallet); await db.flush()
 
-    r = await db.execute(select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id).order_by(WalletLedgerEntry.id.desc()).limit(1))
+    r = await db.execute(
+        select(WalletLedgerEntry)
+        .where(WalletLedgerEntry.wallet_id == wallet.id)
+        .order_by(WalletLedgerEntry.id.desc())
+        .limit(1)
+        .with_for_update()
+    )
     last = r.scalar_one_or_none()
     new_balance = (float(last.running_balance) if last else 0.0) + amount
 
@@ -245,7 +251,13 @@ async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: dict):
     wallet = await _get_customer_wallet(db, customer_id)
     if not wallet: raise HTTPException(404, "No wallet found")
 
-    r = await db.execute(select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id).order_by(WalletLedgerEntry.id.desc()).limit(1))
+    r = await db.execute(
+        select(WalletLedgerEntry)
+        .where(WalletLedgerEntry.wallet_id == wallet.id)
+        .order_by(WalletLedgerEntry.id.desc())
+        .limit(1)
+        .with_for_update()
+    )
     last = r.scalar_one_or_none()
     current = float(last.running_balance) if last else 0.0
     if current < amount: raise HTTPException(400, f"Insufficient balance: {current}")

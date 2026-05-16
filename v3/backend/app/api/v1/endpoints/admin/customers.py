@@ -285,6 +285,7 @@ async def delete_customer(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
+    customer.is_active = False
     customer.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     return APIResponse(data={"id": customer_id, "deleted": True})
@@ -349,12 +350,23 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
     vd = rv.scalar_one_or_none()
     if not vd: raise HTTPException(404, "Voucher not found")
 
-    import secrets
+    import secrets, json
+    snapshot = {
+        "display_title": vd.display_title or "",
+        "voucher_code": vd.voucher_code or "",
+        "voucher_type": vd.voucher_type or "",
+        "discount_value": str(vd.discount_value or 0),
+        "minimum_order_value": str(vd.minimum_order_value or 0),
+    }
     cv = CustomerVoucher(
-        customer_id=customer_id, voucher_definition_id=voucher_id,
+        customer_id=customer_id,
+        voucher_definition_id=voucher_id,
+        store_id=0,  # admin-awarded vouchers are store-agnostic
+        source="admin_awarded",
+        source_id=admin.id,
         redemption_code=f"ADMIN-{secrets.token_hex(4).upper()}",
         status="active",
-        awarded_by=admin.id,
+        voucher_snapshot=snapshot,
         expires_at=vd.valid_until or (datetime.now(timezone.utc) + __import__('datetime').timedelta(days=vd.validity_days or 30)),
     )
     db.add(cv)

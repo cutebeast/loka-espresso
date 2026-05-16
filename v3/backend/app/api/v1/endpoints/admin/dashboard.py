@@ -7,7 +7,10 @@ from sqlalchemy import func, select, extract
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.customer import Customer
+from app.models.inventory import InventoryItem
+from app.models.menu import MenuItem
 from app.models.order import Order
+from app.models.staff import StaffProfile
 from app.models.store import Store
 from app.schemas.base import APIResponse, BaseSchema
 
@@ -59,9 +62,9 @@ async def dashboard_metrics(
 
     # Counts
     stores = (await db.execute(select(func.count()).select_from(Store).where(Store.deleted_at.is_(None)))).scalar() or 0
-    menu_items = 0  # simplified
-    inventory_items = 0
-    staff = 0
+    menu_items = (await db.execute(select(func.count()).select_from(MenuItem).where(MenuItem.deleted_at.is_(None)))).scalar() or 0
+    inventory_items = (await db.execute(select(func.count()).select_from(InventoryItem).where(InventoryItem.deleted_at.is_(None)))).scalar() or 0
+    staff = (await db.execute(select(func.count()).select_from(StaffProfile).where(StaffProfile.deleted_at.is_(None), StaffProfile.is_active.is_(True)))).scalar() or 0
     customers = (await db.execute(select(func.count()).select_from(Customer).where(Customer.deleted_at.is_(None), Customer.anonymized_at.is_(None)))).scalar() or 0
 
     # Today

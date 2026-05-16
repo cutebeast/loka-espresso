@@ -58,6 +58,8 @@ async def create_card(db: DBDependency, admin: CurrentAdmin, data: dict):
         action_type=data.get("action_type"), action_label=data.get("action_label"),
         position=data.get("position", 0), is_active=data.get("is_active", True),
         start_date=data.get("start_date"), end_date=data.get("end_date"),
+        image_gallery_urls=data.get("image_gallery_urls"),
+        gallery_video_url=data.get("gallery_video_url"),
     )
     db.add(card); await db.commit(); await db.refresh(card)
     await auto_translate_record(db, "information_cards", card.id, {"title": data.get("title",""), "short_description": data.get("short_description",""), "long_description": data.get("long_description","")})

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getLoyaltyAccounts, type LoyaltyAccount } from "@/lib/api";
 
@@ -10,17 +10,18 @@ export default function LoyaltyAccountsPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const fetchData = () => {
-    setLoading(true);
-    getLoyaltyAccounts()
-      .then((data) => setItems(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
+  const fetchData = useCallback(async () => {
+    return getLoyaltyAccounts();
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    let cancelled = false;
+    fetchData()
+      .then((data) => { if (!cancelled) setItems(data); })
+      .catch((err) => { if (!cancelled) setError(err.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [fetchData]);
 
   const tierBadge = (tierName: string | null, colorHex?: string) => {
     if (!tierName) return <span className="badge badge-sm badge-gray">None</span>;
@@ -77,7 +78,7 @@ export default function LoyaltyAccountsPage() {
               items.map((item) => (
                 <tr
                   key={item.id}
-                  className="clickable"
+                  className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/loyalty/ledger?account_id=${item.id}`))();}}}
                   onClick={() => router.push(`/loyalty/ledger?account_id=${item.id}`)}
                   style={{ cursor: "pointer" }}
                 >

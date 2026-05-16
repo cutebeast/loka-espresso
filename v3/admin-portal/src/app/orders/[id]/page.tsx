@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, type OrderDetail } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
@@ -22,14 +22,21 @@ export default function OrderDetailPage() {
   const [updating, setUpdating] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const load = async () => { setLoading(true);
-    try { setOrder(await api.get<OrderDetail>(`/admin/orders/${id}`)); } catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [id]);
+  const load = useCallback(async () => {
+    return api.get<OrderDetail>(`/admin/orders/${id}`);
+  }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    load()
+      .then((data) => { if (!cancelled) setOrder(data); })
+      .catch((e: any) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [load]);
 
   const update = async (status: string) => { setUpdating(true);
-    try { await api.patch(`/admin/orders/${id}/status`, { status, reason: reason || undefined }); setMsg(`Updated to ${status.replace(/_/g, " ")}`); setReason(""); await load(); }
+    try { await api.patch(`/admin/orders/${id}/status`, { status, reason: reason || undefined }); setMsg(`Updated to ${status.replace(/_/g, " ")}`); setReason(""); setOrder(await load()); }
     catch (e: any) { setError(e.message); }
     finally { setUpdating(false); }
   };

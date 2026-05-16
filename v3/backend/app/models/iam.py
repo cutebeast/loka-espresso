@@ -61,6 +61,7 @@ class AdminAccount(Base, SoftDeleteMixin):
         ForeignKey("iam_principals.id", ondelete="RESTRICT"), nullable=False, unique=True
     )
     email: Mapped[str] = mapped_column(String(255), nullable=False)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     password_algorithm: Mapped[str] = mapped_column(String(20), nullable=False, default="argon2id")

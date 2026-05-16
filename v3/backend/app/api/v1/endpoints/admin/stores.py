@@ -11,10 +11,12 @@ from sqlalchemy import delete, func, select
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.store import (
     DiningTable,
+    Reservation,
     Store,
     StoreConfiguration,
     StoreOperatingHours,
     StoreSpecialHours,
+    TableStatusSnapshot,
 )
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.services.translation import auto_translate_record, delete_translations
@@ -200,9 +202,13 @@ async def get_store(
     store_dict["configuration"] = [
         _StoreConfigurationOut.model_validate(c) for c in config_result.scalars().all()
     ]
-    store_dict["dining_tables"] = [
-        DiningTableOut.model_validate(t) for t in tables_result.scalars().all()
-    ]
+    # Enrich table statuses
+    tables_enriched = []
+    for t in tables_result.scalars().all():
+        out = DiningTableOut.model_validate(t)
+        out.current_status = await _enrich_table_status(db, t)
+        tables_enriched.append(out)
+    store_dict["dining_tables"] = tables_enriched
 
     return APIResponse(data=StoreDetailOut.model_validate(store_dict))
 
@@ -259,6 +265,7 @@ async def delete_store(
     """Soft-delete a store."""
     store = await _get_store_or_404(db, store_id)
 
+    store.is_active = False
     store.deleted_at = datetime.now(timezone.utc)
     store.is_active = False
     await db.commit()
@@ -362,7 +369,32 @@ async def list_tables(
         )
     )
     tables = result.scalars().all()
-    return APIResponse(data=[DiningTableOut.model_validate(t) for t in tables])
+
+    # Enrich with current_status from table_status_snapshot
+    table_ids = [t.id for t in tables]
+    snap_query = (
+        select(TableStatusSnapshot)
+        .where(TableStatusSnapshot.table_id.in_(table_ids))
+        .order_by(TableStatusSnapshot.table_id)
+    )
+    snap_result = await db.execute(snap_query)
+    snap_map = {s.table_id: s.status for s in snap_result.scalars().all()}
+
+    items = []
+    for t in tables:
+        out = DiningTableOut.model_validate(t)
+        out.current_status = snap_map.get(t.id, "available")
+        items.append(out)
+    return APIResponse(data=items)
+
+
+async def _enrich_table_status(db, table):
+    """Look up current_status from table_status_snapshot."""
+    result = await db.execute(
+        select(TableStatusSnapshot.status).where(TableStatusSnapshot.table_id == table.id)
+    )
+    status = result.scalar_one_or_none()
+    return status or "available"
 
 
 @router.post(
@@ -391,7 +423,9 @@ async def create_table(
     db.add(table)
     await db.commit()
     await db.refresh(table)
-    return APIResponse(data=DiningTableOut.model_validate(table))
+    out = DiningTableOut.model_validate(table)
+    out.current_status = await _enrich_table_status(db, table)
+    return APIResponse(data=out)
 
 
 @router.patch(
@@ -425,7 +459,9 @@ async def update_table(
 
     await db.commit()
     await db.refresh(table)
-    return APIResponse(data=DiningTableOut.model_validate(table))
+    out = DiningTableOut.model_validate(table)
+    out.current_status = await _enrich_table_status(db, table)
+    return APIResponse(data=out)
 
 
 @router.delete(
@@ -452,6 +488,7 @@ async def delete_table(
     if table is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Table not found")
 
+    table.is_active = False
     table.deleted_at = datetime.now(timezone.utc)
     table.is_active = False
     await db.commit()
@@ -489,12 +526,14 @@ async def generate_table_qr(
     # Use existing token or generate new one
     token = table.qr_code_token or uuid4().hex
     table.qr_code_token = token
-    table.qr_code_url = f"loka:table:{token}"
+    table.qr_code_image_url = f"loka:table:{token}"
     table.qr_generated_at = datetime.now(timezone.utc)
 
     await db.commit()
     await db.refresh(table)
-    return APIResponse(data=DiningTableOut.model_validate(table))
+    out = DiningTableOut.model_validate(table)
+    out.current_status = await _enrich_table_status(db, table)
+    return APIResponse(data=out)
 
 
 @router.get(
@@ -520,14 +559,14 @@ async def download_table_qr(
     table = result.scalar_one_or_none()
     if table is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Table not found")
-    if not table.qr_code_url:
+    if not table.qr_code_image_url:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="QR code not generated yet")
 
     try:
         import qrcode as qrlib
         from io import BytesIO
 
-        img = qrlib.make(table.qr_code_url, box_size=10, border=2)
+        img = qrlib.make(table.qr_code_image_url, box_size=10, border=2)
         buf = BytesIO()
         img.save(buf, format="PNG")
         buf.seek(0)

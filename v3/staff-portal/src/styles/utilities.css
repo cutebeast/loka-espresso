@@ -409,3 +409,27 @@
 .aspect-square { aspect-ratio: 1 / 1; }
 .object-cover { object-fit: cover; }
 .object-contain { object-fit: contain; }
+
+/* ── Home Dashboard Grid ── */
+.home-grid { display: grid; gap: 12px; padding: 8px 0; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 600px) { .home-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.home-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 20px 12px; min-height: 140px;
+  border-radius: 16px; background: var(--brand-bg-card, #FFFDF8);
+  border: 2px solid var(--border-light, #E5E0D5); position: relative;
+  cursor: pointer; transition: transform 0.1s; text-decoration: none; color: inherit;
+  font-family: inherit; font-size: inherit;
+}
+.home-btn:active { transform: scale(0.97); }
+.home-btn--primary { border-color: var(--brand-gold, #C9A84C); background: linear-gradient(135deg, #FFFDF8, #F5F0E6); }
+.home-btn-icon { line-height: 1; display: flex; }
+.home-btn-label { font-size: 13px; font-weight: 600; text-align: center; }
+.home-btn-badge {
+  position: absolute; top: 8px; right: 8px;
+  min-width: 24px; height: 24px; border-radius: 12px;
+  background: var(--brand-primary, #3B4A1A); color: white;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; padding: 0 6px;
+}

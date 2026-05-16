@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount, LoyaltyTier
-from app.models.marketing import MarketingCampaign
+from app.models.marketing import CampaignAnalytics, MarketingCampaign
 from app.models.notification import NotificationMessage
 from app.models.platform import PlatformConfig
 from app.schemas.base import APIResponse, PaginatedResponse
@@ -125,6 +125,32 @@ async def _get_campaign_or_404(db, campaign_id: int) -> MarketingCampaign:
     if campaign is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
     return campaign
+
+
+@admin_router.get("/analytics", response_model=APIResponse[list[dict]])
+async def list_analytics(db: DBDependency, admin: CurrentAdmin):
+    """Get campaign analytics for all campaigns."""
+    result = await db.execute(
+        select(CampaignAnalytics, MarketingCampaign.campaign_name)
+        .join(MarketingCampaign, CampaignAnalytics.campaign_id == MarketingCampaign.id)
+        .order_by(CampaignAnalytics.id.desc())
+    )
+    items = []
+    for a, name in result.all():
+        items.append({
+            "campaign_id": a.campaign_id,
+            "campaign_name": name,
+            "audience_size": a.audience_size,
+            "messages_sent": a.messages_sent,
+            "messages_delivered": a.messages_delivered,
+            "messages_failed": a.messages_failed,
+            "opens_count": a.opens_count,
+            "clicks_count": a.clicks_count,
+            "conversions_count": a.conversions_count,
+            "conversion_revenue": float(a.conversion_revenue or 0),
+            "unsubscribes": a.unsubscribes,
+        })
+    return APIResponse(data=items)
 
 
 @admin_router.get("/campaigns", response_model=APIResponse[PaginatedResponse[MarketingCampaignOut]])
@@ -319,6 +345,20 @@ async def send_campaign(
 
     await db.commit()
     await db.refresh(campaign)
+
+    # Update campaign analytics
+    analytics_result = await db.execute(
+        select(CampaignAnalytics).where(CampaignAnalytics.campaign_id == campaign.id)
+    )
+    analytics = analytics_result.scalar_one_or_none()
+    if not analytics:
+        analytics = CampaignAnalytics(campaign_id=campaign.id)
+        db.add(analytics)
+    analytics.audience_size = len(customer_ids) if customer_ids else 0
+    analytics.messages_delivered = delivered_count
+    analytics.messages_sent = delivered_count
+    analytics.messages_failed = max(0, len(customer_ids) - delivered_count) if customer_ids else 0
+    await db.commit()
 
     out = MarketingCampaignOut.model_validate(campaign)
     out.delivered_count = delivered_count

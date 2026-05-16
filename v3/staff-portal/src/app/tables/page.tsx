@@ -9,7 +9,10 @@ import { RefreshCw, Store as StoreIcon, X, ShoppingBag, CalendarCheck, User, Clo
 export default function TablesPage() {
   const [tables, setTables] = useState<Table[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
-  const [storeId, setStoreId] = useState<number>(2);
+  const [storeId, setStoreId] = useState<number>(() => {
+    if (typeof window !== "undefined") { const s = localStorage.getItem("staffStoreId"); if (s) return Number(s); }
+    return 2;
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
@@ -18,9 +18,7 @@ export default function InfoCardEditPage() {
   const [form,setForm] = useState<Record<string,any>>({});
   const [tr,setTr] = useState<Record<string,string>>({});
 
-  useEffect(()=>{load();},[id]);
-
-  const load = async () => { setLoading(true);
+  const load = useCallback(async () => {
     try{
       const d = await api.getRaw<any>(`/admin/info-cards/${id}`);
       setForm({title:d.title||"",short_description:d.short_description||"",long_description:d.long_description||"",image_url:d.image_url||"",image_gallery_urls:d.image_gallery_urls||[],gallery_video_url:d.gallery_video_url||"",action_type:d.action_type||"",action_url:d.action_url||"",position:d.position||0,start_date:d.start_date?.slice(0,10)||"",end_date:d.end_date?.slice(0,10)||"",is_active:d.is_active,slug:d.slug||""});
@@ -29,7 +27,11 @@ export default function InfoCardEditPage() {
       for(const lc of LOCALES){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/translations?table_name=information_cards&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}}
       setTr(x);
     }catch{}finally{setLoading(false);}
-  };
+  }, [id]);
+
+  useEffect(()=>{(async () => {
+load();
+})();},[load]);
 
   const handleUpload = async () => { const f = fileRef.current?.files?.[0]; if(!f)return; setUploading(true);
     try{const fd=new FormData();fd.append("file",f);const j=await api.upload("/upload/image",fd);const url=j.url||j.filename||"";setForm({...form,image_url:url});setImg(url);}catch{}finally{setUploading(false)}; };

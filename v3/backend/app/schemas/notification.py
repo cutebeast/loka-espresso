@@ -108,6 +108,7 @@ class AdminNotificationOut(AdminNotificationBase, TimestampedSchema):
     sent_at: datetime | None = None
     is_archived: bool = False
     created_by: int | None = None
+    delivered_count: int | None = None  # computed — set by send endpoint
 
 
 # ---------------------------------------------------------------------------

@@ -37,8 +37,10 @@ export default function OrderDetailPage() {
 
   const fetchOrder = async () => {
     try {
-      const data = await api.get<Order>(`/orders/${id}`);
-      setOrder(data);
+      const res = await fetch(`/api/v1/admin/orders/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+      if (!res.ok) throw new Error("Failed to load order");
+      const json = await res.json();
+      setOrder(json.data || json);
       setError("");
     } catch (err: any) {
       setError(err.message || "Failed to load order");
@@ -98,7 +100,7 @@ export default function OrderDetailPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <button
-        onClick={() => router.push("/orders")}
+        onClick={() => router.push("/kitchen")}
         className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800 mb-4"
       >
         <ArrowLeft size={16} />

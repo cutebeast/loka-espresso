@@ -66,3 +66,7 @@ class ReservationStatusUpdate(BaseSchema):
 
 class ReservationOut(ReservationBase, TimestampedSchema):
     id: int
+    customer_name: str | None = None
+    customer_phone: str | None = None
+    store_name: str | None = None
+    table_number: str | None = None

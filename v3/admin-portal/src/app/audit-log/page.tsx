@@ -13,13 +13,13 @@ export default function AuditLogPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  const fetchData = () => {
-    setLoading(true);
+  useEffect(() => {
+    let cancelled = false;
     getAuditLog({ action: actionFilter || undefined, resource_type: resourceTypeFilter || undefined, severity: severityFilter || undefined, date_from: fromDate || undefined, date_to: toDate || undefined })
-      .then(data => setItems(data)).catch(err => setError(err.message)).finally(() => setLoading(false));
-  };
-
-  useEffect(() => { fetchData(); }, [actionFilter, resourceTypeFilter, severityFilter, fromDate, toDate]);
+      .then(data => { if (!cancelled) { setItems(data); setLoading(false); } })
+      .catch(err => { if (!cancelled) { setError(err.message); setLoading(false); } });
+    return () => { cancelled = true; };
+  }, [actionFilter, resourceTypeFilter, severityFilter, fromDate, toDate]);
 
   const sevBadge = (s: string) => {
     const m: Record<string, string> = { low: "badge-gray", medium: "badge-yellow", high: "badge-red", critical: "badge-red" };

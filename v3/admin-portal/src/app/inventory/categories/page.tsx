@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -19,14 +19,16 @@ export default function InventoryCategoriesPage() {
     api.getRaw<any>("/admin/stores?per_page=50").then(d => { const list = d.items || []; setStores(list); if (list.length > 0) setStoreId(String(list[0].id)); }).catch(()=>{});
   }, []);
 
-  useEffect(() => {
-    if (!storeId) return;
-    setLoading(true);
-    api.getRaw<{ items: Category[] }>(`/admin/inventory/categories?store_id=${storeId}`)
-      .then(d => setItems(Array.isArray(d) ? d : (d.items || [])))
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [storeId]);
+  useEffect(() => {(async () => {
+
+      if (!storeId) return;
+      setLoading(true);
+      api.getRaw<{ items: Category[] }>(`/admin/inventory/categories?store_id=${storeId}`)
+        .then(d => setItems(Array.isArray(d) ? d : (d.items || [])))
+        .catch(e => setError(e.message))
+        .finally(() => setLoading(false));
+    
+})();}, [storeId]);
 
   return (
     <div style={{ padding: 32 }}>

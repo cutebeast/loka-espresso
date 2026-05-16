@@ -1,6 +1,16 @@
 """Aggregate all models for Alembic and runtime."""
 
 from app.models.base import Base
+from app.models.enums import (
+    CampaignStatus,
+    LoyaltyEventType,
+    PaymentMethodType,
+    PaymentProvider,
+    PaymentStatus,
+    OrderStatus,
+    FulfillmentType,
+    ReservationStatus,
+)
 from app.models.iam import (
     IAMPrincipal,
     AdminAccount,
@@ -73,9 +83,8 @@ from app.models.inventory import (
     PurchaseOrderLine,
 )
 from app.models.cart import (
-    CustomerCart,
     CartLineItem,
-    CheckoutSession,
+    CustomerCart,
 )
 from app.models.order import (
     Order,

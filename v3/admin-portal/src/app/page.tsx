@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { ShoppingBag, DollarSign, Flame, Users, TrendingUp, Store as StoreIcon } from "lucide-react";
 
@@ -28,11 +28,10 @@ export default function DashboardPage() {
   useEffect(() => {
     api.get<{ items: Store[] }>("/admin/stores?per_page=50")
       .then(d => setStores(d.items || (Array.isArray(d) ? d : [])))
-      .catch(() => {});
+      .catch(() => { /* ignore store fetch errors */ });
   }, []);
 
   useEffect(() => {
-    setLoading(true);
     const qs = new URLSearchParams();
     if (selectedStore) qs.set("store_id", selectedStore);
     if (fromDate) qs.set("from_date", fromDate);

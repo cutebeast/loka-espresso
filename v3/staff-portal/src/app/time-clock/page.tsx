@@ -71,6 +71,12 @@ export default function TimeClockPage() {
   const handleAction = async (action: string, fn: () => Promise<TimeEvent>) => {
     setActionLoading(action);
     try {
+      const pin = prompt("Enter your 4-digit PIN to " + action.replace("_", " "));
+      if (!pin || pin.length < 4) { setError("PIN required"); setActionLoading(null); return; }
+      const token = localStorage.getItem("token") || "";
+      const vr = await fetch("/api/v1/staff/auth/verify-pin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ pin }) });
+      const vd = await vr.json();
+      if (!(vd.data?.valid || vd.valid)) { setError("Invalid PIN"); setActionLoading(null); return; }
       await fn();
       await fetchEvents();
     } catch (err: any) {

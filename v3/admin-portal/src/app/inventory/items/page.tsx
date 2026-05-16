@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -27,7 +27,7 @@ export default function InventoryItemsPage() {
     api.get<{ items: InvCategory[] }>(`/admin/inventory/categories?store_id=${storeId}&per_page=50`).then(d => setCategories(d.items||(Array.isArray(d)?d:[]))).catch(()=>{});
   }, [storeId]);
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     if (!storeId) return;
     setLoading(true);
     const qs = new URLSearchParams({ store_id: String(storeId), per_page: "100" });
@@ -36,9 +36,11 @@ export default function InventoryItemsPage() {
       .then(d => setItems(Array.isArray(d) ? d : []))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  };
+  }, [storeId, catFilter]);
 
-  useEffect(() => { fetchData(); }, [storeId, catFilter]);
+  useEffect(() => {(async () => {
+ fetchData(); 
+})();}, [fetchData]);
 
   return (
     <div style={{ padding: 32 }}>

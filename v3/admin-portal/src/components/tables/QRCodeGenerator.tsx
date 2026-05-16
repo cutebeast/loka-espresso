@@ -77,7 +77,6 @@ export function useQrImages(tables: TableQrInfo[], storeId: number | string) {
     if (!storeKey || !tables.length) {
       blobUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
       blobUrlsRef.current = [];
-      setQrUrls({});
       return;
     }
 

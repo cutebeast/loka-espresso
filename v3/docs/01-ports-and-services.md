@@ -4,28 +4,49 @@
 
 ---
 
-## Service Port Map
+## Production PM2 Ports (Current)
 
-| Service | Host Port | Container Port | Purpose |
-|---------|-----------|----------------|---------|
-| **Backend API** | `13800` | `13800` | FastAPI + SQLAlchemy async |
-| **Admin Portal** | `13801` | `3000` | Next.js — HQ & Store Manager dashboard |
-| **Customer PWA** | `13802` | `3000` | Next.js — Customer ordering app |
-| **Staff Portal** | `13803` | `3000` | Next.js — Service crew counter ops |
-| **PostgreSQL v3** | `13334` | `5432` | `fnb_enterprise_v3` database |
-| **Redis v3** | `13335` | `6379` | Cache, rate limiting, OTP sessions |
+| Service | Port | PM2 Name | Domain |
+|---------|------|----------|--------|
+| **Backend API** | 13800 | `v3-backend` | Caddy `/api/*` proxy |
+| **Admin Portal** | 13810 | `admin-portal-v3` | `admin.loyaltysystem.uk` |
+| **Staff Portal** | 13820 | `staff-portal-v3` | `staff.loyaltysystem.uk` |
+| **Customer PWA** | 13830 | `customer-pwa-v3` | `app.loyaltysystem.uk` |
+
+## Docker Compose Ports (for container deployment)
+
+| Service | Host Port | Container Port |
+|---------|-----------|----------------|
+| Backend API | 13800 | 13800 |
+| Admin Portal | 13810 | 3000 |
+| Staff Portal | 13820 | 3000 |
+| Customer PWA | 13830 | 3000 |
+| PostgreSQL v3 | 13334 | 5432 |
+| Redis v3 | 13335 | 6379 |
 
 ---
 
-## Legacy Port Map (Untouched)
+## Legacy Ports (Untouched)
 
-| Service | Port | Note |
-|---------|------|------|
-| Legacy Backend | `3002` | Existing FastAPI |
-| Legacy Admin Frontend | `3001` | Existing Next.js |
-| Legacy Customer PWA | `3003` | Existing Next.js |
-| Legacy PostgreSQL | `5433` | Existing `fnb` database |
-| Legacy Redis | `6379` | Existing Redis |
+| Service | Port |
+|---------|------|
+| Legacy Backend | 3002 |
+| Legacy Admin Frontend | 3001 |
+| Legacy Customer PWA | 3003 |
+| Legacy PostgreSQL | 5433 |
+| Legacy Redis | 6379 |
+
+---
+
+## Service Domain Map
+
+```
+admin.loyaltysystem.uk  → Caddy → localhost:13810 (admin-portal-v3)
+staff.loyaltysystem.uk  → Caddy → localhost:13820 (staff-portal-v3)
+app.loyaltysystem.uk    → Caddy → localhost:13830 (customer-pwa-v3)
+/api/*                  → Caddy → localhost:13800 (v3-backend)
+/uploads/*              → Caddy → filesystem serve
+```
 
 ---
 
@@ -33,74 +54,12 @@
 
 ### Backend `.env`
 ```env
-# Internal container networking
 DATABASE_URL=postgresql+asyncpg://fnb_user:fnb_pass@postgres:5432/fnb_enterprise_v3
 REDIS_URL=redis://redis:6379/0
-
-# CORS must include all v3 frontend ports
-CORS_ORIGINS=http://localhost:13801,http://localhost:13802,http://localhost:13803
+CORS_ORIGINS=http://localhost:13810,http://localhost:13820,http://localhost:13830
 ```
 
 ### Frontend `.env` (all three apps)
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:13800/api/v1
-```
-
----
-
-## Docker Compose Mapping
-
-```yaml
-services:
-  backend:
-    ports:
-      - "13800:13800"
-
-  admin-portal:
-    ports:
-      - "13801:3000"
-
-  customer-pwa:
-    ports:
-      - "13802:3000"
-
-  staff-portal:
-    ports:
-      - "13803:3000"
-
-  postgres:
-    ports:
-      - "13334:5432"
-
-  redis:
-    ports:
-      - "13335:6379"
-```
-
----
-
-## Local Development URLs
-
-| App | Local URL |
-|-----|-----------|
-| Backend API Docs | http://localhost:13800/docs |
-| Backend Health | http://localhost:13800/health |
-| Admin Portal | http://localhost:13801 |
-| Customer PWA | http://localhost:13802 |
-| Staff Portal | http://localhost:13803 |
-
----
-
-## Port Collision Check
-
-Run this before starting v3 to ensure ports are free:
-
-```bash
-for port in 13800 13801 13802 13803 13334 13335; do
-  if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "WARNING: Port $port is already in use"
-  else
-    echo "OK: Port $port is free"
-  fi
-done
 ```

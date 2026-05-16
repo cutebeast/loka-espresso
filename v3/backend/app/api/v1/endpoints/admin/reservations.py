@@ -6,7 +6,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
 from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
-from app.models.store import Reservation
+from app.models.customer import Customer
+from app.models.store import DiningTable, Reservation, Store
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.reservation import (
     ReservationCreate,
@@ -45,14 +46,14 @@ async def _get_reservation_or_404(db, reservation_id: int) -> Reservation:
 async def list_reservations(
     db: DBDependency,
     admin: CurrentAdmin,
-    store_id: int | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
     status: str | None = Query(None),
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
-    page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    store_id: int | None = Query(None),
 ):
-    """List reservations with optional filters."""
+    """List reservations (admin)."""
     base_stmt = select(Reservation)
     count_stmt = select(func.count(Reservation.id))
 
@@ -72,10 +73,37 @@ async def list_reservations(
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
 
+    from sqlalchemy.orm import joinedload
     stmt = (
-        base_stmt.order_by(Reservation.id.desc())
+        base_stmt
+        .options(joinedload(Reservation.customer), joinedload(Reservation.store), joinedload(Reservation.dining_table))
+        .order_by(Reservation.id.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
+    )
+    result = await db.execute(stmt)
+    reservations = result.unique().scalars().all()
+
+    items = []
+    for r in reservations:
+        out = ReservationOut.model_validate(r)
+        if r.customer:
+            out.customer_name = r.customer.display_name
+            out.customer_phone = r.customer.phone_number
+        if r.store:
+            out.store_name = r.store.store_name
+        if r.dining_table:
+            out.table_number = r.dining_table.table_number
+        items.append(out)
+
+    return APIResponse(
+        data=PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
     )
     result = await db.execute(stmt)
     items = [ReservationOut.model_validate(r) for r in result.scalars().all()]

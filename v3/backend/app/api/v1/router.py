@@ -31,6 +31,7 @@ from app.api.v1.endpoints.admin import consents as admin_consents
 from app.api.v1.endpoints.admin import devices as admin_devices
 from app.api.v1.endpoints.admin import marketing as admin_marketing
 from app.api.v1.endpoints.admin import referrals as admin_referrals
+from app.api.v1.endpoints.admin import refunds as admin_refunds
 from app.api.v1.endpoints.admin import surveys as admin_surveys
 from app.api.v1.endpoints.admin import orders as admin_orders
 from app.api.v1.endpoints.admin import customers as admin_customers
@@ -48,6 +49,7 @@ from app.api.v1.endpoints.admin import checkins as admin_checkins
 from app.api.v1.endpoints.public import menu as public_menu
 from app.api.v1.endpoints.public import rsvp as public_rsvp
 from app.api.v1.endpoints.public import store as public_store
+from app.api.v1.endpoints.staff import staff_ops as staff_operations
 
 api_router = APIRouter()
 
@@ -94,6 +96,7 @@ api_router.include_router(admin_notifications.public_router, tags=["notification
 # Public (no auth required)
 api_router.include_router(public_store.router, tags=["public — stores"])
 api_router.include_router(public_menu.router, tags=["public — menu"])
+api_router.include_router(staff_operations.router, tags=["staff — operations"])
 api_router.include_router(public_rsvp.router, tags=["public — events"])
 
 # Inventory Movements
@@ -118,6 +121,7 @@ api_router.include_router(admin_marketing.admin_router, tags=["admin — marketi
 # Referrals
 api_router.include_router(admin_referrals.admin_router, tags=["admin — referrals"])
 api_router.include_router(admin_referrals.public_router, tags=["referrals"])
+api_router.include_router(admin_refunds.router, tags=["admin — refunds"])
 
 # Orders (admin)
 api_router.include_router(admin_orders.router, tags=["admin — orders"])

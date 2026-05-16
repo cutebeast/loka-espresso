@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 
@@ -20,8 +20,7 @@ export default function InventoryMovementsPage() {
     catch {}
   };
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (movementType) params.set("movement_type", movementType);
@@ -33,10 +32,10 @@ export default function InventoryMovementsPage() {
       setItems(Array.isArray(list) ? list : []);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetchStores(); }, []);
-  useEffect(() => { fetchData(); }, [movementType, fromDate, toDate, storeId]);
+  useEffect(() => { (async () => { await fetchStores(); })(); }, []);
+  useEffect(() => { (async () => { await fetchData(); })(); }, [fetchData]);
 
   const typeBadge = (t: string) => {
     const m: Record<string, string> = { in: "badge-green", out: "badge-red", adjustment: "badge-blue", waste: "badge-orange" };

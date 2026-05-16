@@ -1,20 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getTipAllocations, type TipAllocation } from "@/lib/api";
+import { api } from "@/lib/api";
+
+interface Store { id: number; store_name: string; }
 
 export default function StaffTipsPage() {
   const [items, setItems] = useState<TipAllocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [storeId, setStoreId] = useState("");
+  const [stores, setStores] = useState<Store[]>([]);
 
-  const fetchData = () => { setLoading(true);
-    getTipAllocations().then(d => setItems(d)).catch(e => setError(e.message)).finally(() => setLoading(false));
-  };
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch(() => {});
+  }, []);
+
+  const fetchData = useCallback(async () => {
+    return getTipAllocations({ store_id: storeId ? Number(storeId) : undefined });
+  }, [storeId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchData()
+      .then((d) => { if (!cancelled) setItems(d); })
+      .catch((e) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [fetchData]);
 
   return (
     <div style={{ padding: 32 }}>
+      <div className="page-header"><div><h1 className="page-title">Tip Allocations</h1><p className="page-subtitle">{items.length} tips</p></div></div>
+      {error && <div className="alert alert-error">{error}</div>}
+      <div style={{ marginBottom: 12 }}>
+        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+          <option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
+        </select>
+      </div>
       <div className="page-header"><div><h1 className="page-title">Tip Allocations</h1><p className="page-subtitle">{items.length} allocations</p></div></div>
       {error && <div className="alert alert-error">{error}</div>}
 

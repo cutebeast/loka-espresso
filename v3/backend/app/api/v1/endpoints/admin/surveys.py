@@ -297,6 +297,13 @@ async def delete_survey(
 
     survey.deleted_at = datetime.now(timezone.utc)
     survey.is_active = False
+    survey.is_active = False
+    # Clean up question translations before soft-deleting
+    qs = await db.execute(
+        select(SurveyQuestion).where(SurveyQuestion.survey_id == survey_id)
+    )
+    for q in qs.scalars().all():
+        await delete_translations(db, "survey_questions", q.id)
     await db.commit()
     await delete_translations(db, "survey_definitions", survey_id)
     return APIResponse(data={"id": survey.id, "deleted": True})
@@ -327,6 +334,8 @@ async def add_question(
     db.add(question)
     await db.commit()
     await db.refresh(question)
+    # Auto-translate the question text
+    await auto_translate_record(db, "survey_questions", question.id, {"question_text": question.question_text or ""})
     return APIResponse(data=SurveyQuestionOut.model_validate(question))
 
 
@@ -347,6 +356,7 @@ async def remove_question(
             detail="Question does not belong to this survey",
         )
 
+    await delete_translations(db, "survey_questions", question_id)
     await db.delete(question)
     await db.commit()
     return APIResponse(data={"id": question_id, "deleted": True})

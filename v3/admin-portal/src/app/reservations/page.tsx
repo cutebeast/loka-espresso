@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { CalendarClock } from "lucide-react";
 
@@ -11,17 +11,22 @@ export default function ReservationsPage() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [date, setDate] = useState("");
+  const [storeId, setStoreId] = useState("");
+  const [stores, setStores] = useState<{id:number;store_name:string}[]>([]);
+
+  useEffect(() => { api.get<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(()=>{}); }, []);
 
   const fetch = () => { setLoading(true);
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (date) { params.set("date_from", date); params.set("date_to", date); }
+    if (storeId) params.set("store_id", storeId);
     api.get<{items:Res[]}>(`/admin/reservations?${params}`)
       .then(d => setItems(Array.isArray(d) ? d : (d.items || [])))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { fetch(); }, [status, date]);
+  useEffect(() => { fetch(); }, [status, date, storeId]);
 
   const updateStatus = async (id: number, s: string) => { if (!confirm(`${s} this reservation?`)) return;
     try { await api.patch(`/admin/reservations/${id}/status`, { status: s }); fetch(); } catch {}; };
@@ -37,6 +42,7 @@ export default function ReservationsPage() {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select>
         <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Status</option><option value="requested">Requested</option><option value="confirmed">Confirmed</option><option value="seated">Seated</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option><option value="no_show">No Show</option></select>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />
       </div>

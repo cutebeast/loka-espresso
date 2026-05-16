@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
 interface Referral {
@@ -15,13 +15,10 @@ export default function ReferralsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchData = () => {
-    setLoading(true);
-    api.get<{items:Referral[]}>("/admin/referrals?per_page=100")
+  const fetchData = useCallback(() => { api.get<{items:Referral[]}>("/admin/referrals?per_page=100")
       .then(d => setItems(Array.isArray(d) ? d : []))
       .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-  };
+      .finally(() => setLoading(false)); }, []);
   useEffect(() => { fetchData(); }, []);
 
   const statusBadge = (s: string) => {

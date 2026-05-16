@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
@@ -19,10 +19,7 @@ export default function DietaryTagEditPage() {
   const [tr,setTr]=useState<Record<string,string>>({});
   const [showEmoji,setShowEmoji]=useState(false);
 
-  useEffect(()=>{load();},[id]);
-
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     try {
       const d = await api.getRaw<any>(`/admin/dietary-tags/${id}`);
       setForm({ display_name: d.display_name || "", tag_key: d.tag_key || "", icon: d.icon || "", color_hex: d.color_hex || "#22C55E", is_active: d.is_active });
@@ -36,7 +33,11 @@ export default function DietaryTagEditPage() {
       }
       setTr(x);
     } catch {} finally { setLoading(false); }
-  };
+  }, [id]);
+
+  useEffect(()=>{(async () => {
+load();
+})();},[load]);
 
   const save = async () => { setSaving(true); try { await api.patch(`/admin/dietary-tags/${id}`, form); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); } catch {} finally { setSaving(false); } };
   const upsert = async (field: string, locale: string, src: string, text: string) => {

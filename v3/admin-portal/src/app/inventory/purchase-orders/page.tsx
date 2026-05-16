@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api, getPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder, type PurchaseOrder, type PurchaseOrderLineItem } from "@/lib/api";
 import { Plus, Trash2, CheckCircle, XCircle } from "lucide-react";
 
@@ -19,11 +19,13 @@ export default function PurchaseOrdersPage() {
   const [storeId, setStoreId] = useState("");
   const [form, setForm] = useState({ supplier_id: "", store_id: "", expected_delivery: "", lines: [{ inventory_item_id: "", quantity_ordered: "", unit_cost: "" }] as { inventory_item_id: string; quantity_ordered: string; unit_cost: string }[] });
 
-  const fetchData = () => { setLoading(true);
+  const fetchData = useCallback(() => { setLoading(true);
     getPurchaseOrders({ status: statusFilter || undefined, store_id: storeId || undefined }).then(d => setItems(d)).catch(e => setError(e.message)).finally(() => setLoading(false));
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, [statusFilter, storeId]);
+  useEffect(() => {(async () => {
+ fetchData(); 
+})();}, [fetchData]);
   useEffect(() => { (async () => {
     try { const d = await api.getRaw<any>("/admin/inventory/suppliers"); setSuppliers(Array.isArray(d) ? d : (d.items || [])); } catch {}
     try { const d = await api.getRaw<any>("/admin/stores?per_page=50"); setStores(d.items || []); } catch {}

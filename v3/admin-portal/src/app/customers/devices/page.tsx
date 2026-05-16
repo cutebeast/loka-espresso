@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getCustomerDevices, type CustomerDevice } from "@/lib/api";
 
 export default function CustomerDevicesPage() {
@@ -10,11 +10,13 @@ export default function CustomerDevicesPage() {
   const [deviceTypeFilter, setDeviceTypeFilter] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
 
-  const fetchData = () => { setLoading(true);
+  const fetchData = useCallback(() => { setLoading(true);
     getCustomerDevices({ platform: deviceTypeFilter || undefined, is_active: activeFilter === "" ? undefined : activeFilter === "true" })
       .then(data => setItems(data)).catch(err => setError(err.message)).finally(() => setLoading(false));
-  };
-  useEffect(() => { fetchData(); }, [deviceTypeFilter, activeFilter]);
+  }, []);
+  useEffect(() => {(async () => {
+ fetchData(); 
+})();}, [fetchData]);
 
   return (
     <div style={{ padding: 32 }}>

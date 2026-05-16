@@ -142,6 +142,7 @@ async def delete_reward(
     """Soft-delete a reward catalog entry."""
     reward = await _get_reward_or_404(db, reward_id)
 
+    reward.is_active = False
     reward.deleted_at = datetime.now(timezone.utc)
     reward.is_active = False
     await db.commit()

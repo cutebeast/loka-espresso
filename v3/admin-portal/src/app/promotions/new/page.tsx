@@ -37,7 +37,10 @@ export default function PromotionNewPage() {
   }, []);
 
   useEffect(() => {
-    if (!form.voucher_id) { setVoucherSegments([]); return; }
+    if (!form.voucher_id) {
+      Promise.resolve().then(() => setVoucherSegments([]));
+      return;
+    }
     api.getRaw<any>(`/admin/vouchers/${form.voucher_id}`).then(d => {
       const segs = d.customer_segments || [];
       setVoucherSegments(Array.isArray(segs) ? segs : []);

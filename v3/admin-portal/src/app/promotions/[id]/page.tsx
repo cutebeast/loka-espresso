@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw, Upload } from "lucide-react";
@@ -31,21 +31,22 @@ export default function PromotionEditPage() {
 
   useEffect(() => { load(); loadRefs(); }, [id]);
 
-  useEffect(() => {
-    if (!form.voucher_id) { setVoucherSegments([]); return; }
-    api.getRaw<any>(`/admin/vouchers/${form.voucher_id}`).then(d => {
-      const segs = d.customer_segments || [];
-      setVoucherSegments(Array.isArray(segs) ? segs : []);
-    }).catch(() => setVoucherSegments([]));
-  }, [form.voucher_id]);
+  useEffect(() => {(async () => {
+
+      if (!form.voucher_id) { setVoucherSegments([]); return; }
+      api.getRaw<any>(`/admin/vouchers/${form.voucher_id}`).then(d => {
+        const segs = d.customer_segments || [];
+        setVoucherSegments(Array.isArray(segs) ? segs : []);
+      }).catch(() => setVoucherSegments([]));
+    
+})();}, [form.voucher_id]);
 
   const loadRefs = async () => {
     try { const d = await api.getRaw<any>("/admin/vouchers?per_page=100&is_active=true"); setVouchers(Array.isArray(d) ? d : (d.items||[])); } catch {}
     try { const d = await api.getRaw<any>("/admin/surveys?per_page=100"); setSurveys(Array.isArray(d) ? d : (d.items||[])); } catch {}
   };
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     try {
       const d = await api.getRaw<any>(`/admin/promo-banners/${id}`);
       setForm({ title: d.title || "", short_description: d.short_description || "", long_description: d.long_description || "", image_url: d.image_url || "", image_gallery_urls: d.image_gallery_urls||[], gallery_video_url: d.gallery_video_url||"", action_type: d.action_type || "", action_url: d.action_url || "", voucher_id: String(d.voucher_id || ""), survey_id: String(d.survey_id || ""), position: d.position||0, is_active: d.is_active, start_date: d.start_date?.slice(0,10)||"", end_date: d.end_date?.slice(0,10)||"" });
@@ -56,7 +57,7 @@ export default function PromotionEditPage() {
       }
       setTr(x);
     } catch {} finally { setLoading(false); }
-  };
+  }, [id]);
 
   const handleUpload = async () => {
     const f = fileRef.current?.files?.[0]; if (!f) return; setUploading(true);

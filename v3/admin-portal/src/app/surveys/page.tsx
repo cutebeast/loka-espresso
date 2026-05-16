@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -13,7 +13,7 @@ export default function SurveysPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchData = () => { setLoading(true); api.get<{items:Survey[]}>("/admin/surveys?per_page=100").then(d => setItems(Array.isArray(d) ? d : (d.items||[]))).catch(e => setError(e.message)).finally(() => setLoading(false)); };
+  const fetchData = useCallback(() => { api.get<{items:Survey[]}>("/admin/surveys?per_page=100").then(d => setItems(Array.isArray(d) ? d : (d.items||[]))).catch(e => setError(e.message)).finally(() => setLoading(false)); }, []);
   useEffect(() => { fetchData(); }, []);
 
   const handleDelete = async (id: number) => {
@@ -31,7 +31,7 @@ export default function SurveysPage() {
         <tbody>
           {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
           : items.map(item => (
-            <tr key={item.id} className="clickable" onClick={() => router.push(`/surveys/${item.id}`)} style={{ cursor: "pointer" }}>
+            <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/surveys/${item.id}`))();}}} onClick={() => router.push(`/surveys/${item.id}`)} style={{ cursor: "pointer" }}>
               <td className="font-mono" style={{ fontSize: 11 }}>{item.survey_key}</td>
               <td style={{ fontWeight: 600 }}>{item.survey_name}</td>
               <td>{item.question_count ?? "—"}</td>

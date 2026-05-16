@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw, Plus } from "lucide-react";
@@ -21,10 +21,7 @@ export default function SurveyEditPage() {
   const [tr,setTr] = useState<Record<string,string>>({});
   const [qTr,setQTr] = useState<{questions:{id:number;text:string;options:string[]}[]}>({questions:[]});
 
-  useEffect(()=>{load();},[id]);
-
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     try {
       const d = await api.getRaw<any>(`/admin/surveys/${id}`);
       const qs = (d.questions||[]).map((q:any)=>({
@@ -48,7 +45,11 @@ export default function SurveyEditPage() {
       }
       setTr(x);
     } catch {} finally { setLoading(false); }
-  };
+  }, [id]);
+
+  useEffect(()=>{(async () => {
+load();
+})();},[load]);
 
   // Question CRUD
   const addQ = () => { if(form.questions.length>=MAX_Q)return; setForm({...form,questions:[...form.questions,{question_text:"",question_type:"text_open",is_required:false,display_order:form.questions.length,options:[]}]}); };

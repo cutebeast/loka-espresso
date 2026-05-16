@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { Save } from "lucide-react";
 
@@ -11,7 +11,6 @@ export default function ReservationSettingsPage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    setLoading(true);
     api.getRaw<any>("/admin/config?prefix=reservation")
       .then(d => { const m: Record<string, any> = {}; (Array.isArray(d) ? d : (d.items || [])).forEach((c: any) => { m[c.config_key.replace("reservation.", "")] = c.config_value; }); setForm(prev => ({ ...prev, ...m })); })
       .catch(() => {})

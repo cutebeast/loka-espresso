@@ -38,17 +38,20 @@ export default function CustomerDetailPage() {
   const [walletTx, setWalletTx] = useState<any>({ items: [], total: 0, page: 1, total_pages: 0 });
   const [rewardsVouchers, setRewardsVouchers] = useState<any>({ rewards: [], vouchers: [] });
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     try { setC(await api.get<any>(`/admin/customers/${id}`)); } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  };
+  }, [id]);
 
-  useEffect(() => { load(); api.get<any>("/admin/vouchers?is_active=true&per_page=100").then(d => setVouchers(Array.isArray(d)?d:(d.items||[]))).catch(()=>{}); }, [id]);
+  useEffect(() => {(async () => {
+ load(); api.get<any>("/admin/vouchers?is_active=true&per_page=100").then(d => setVouchers(Array.isArray(d)?d:(d.items||[]))).catch(() => { /* ignore voucher preload errors */ }); 
+})();}, [id]);
 
-  useEffect(() => {
-    if (c) { setForm({ display_name: c.display_name || "", phone_number: c.phone_number || "", email_address: c.email_address || "", date_of_birth: c.date_of_birth || "", is_active: c.is_active }); }
-  }, [c]);
+  useEffect(() => {(async () => {
+
+      if (c) { setForm({ display_name: c.display_name || "", phone_number: c.phone_number || "", email_address: c.email_address || "", date_of_birth: c.date_of_birth || "", is_active: c.is_active }); }
+    
+})();}, [c]);
 
   const fetchTab = useCallback(async (t: string, pg: number = 1) => {
     const SIZE = 10;
@@ -67,7 +70,9 @@ export default function CustomerDetailPage() {
     }
   }, [id]);
 
-  useEffect(() => { fetchTab(tab); }, [tab, fetchTab]);
+  useEffect(() => {(async () => {
+ fetchTab(tab); 
+})();}, [tab, fetchTab]);
 
   const handleSave = async () => { setSaving(true); setMsg("");
     try { await api.patch(`/admin/customers/${id}`, form); setMsg("Saved"); setEdit(false); load(); } catch (e: any) { setError(e.message); }

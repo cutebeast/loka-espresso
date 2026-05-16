@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
@@ -12,12 +12,14 @@ export default function EventRsvpReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetch = () => { setLoading(true);
+  const fetch = useCallback(() => { setLoading(true);
     api.get<{items:Event[]}>("/admin/event-cards?per_page=100")
       .then(d => setItems((Array.isArray(d)?d:(d.items||[])).filter(e=>e.rsvp_enabled)))
       .catch(e=>setError(e.message)).finally(()=>setLoading(false));
-  };
-  useEffect(()=>{fetch();},[]);
+  }, []);
+  useEffect(()=>{(async () => {
+fetch();
+})();},[fetch]);
 
   const totalRsvp = items.reduce((s,i)=>s+(i.rsvp_count||0),0);
 

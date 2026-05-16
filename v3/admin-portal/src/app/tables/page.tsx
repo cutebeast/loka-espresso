@@ -29,24 +29,43 @@ export default function TablesPage() {
   const qrExpiry = useQrExpiry(qrInfo);
   const physicalStores = stores.filter(s => s.id > 0);
 
-  const fetchStores = async () => {
-    try { const data = await api.get<{ items: Store[] }>("/admin/stores?per_page=50"); setStores(Array.isArray(data) ? data : []); } catch {}
-  };
+  const fetchStores = useCallback(async () => {
+    return api.get<{ items: Store[] }>("/admin/stores?per_page=50");
+  }, []);
 
   const fetchTables = useCallback(async () => {
-    if (!selectedStore) return; setLoading(true); setError("");
-    try {
-      const data = await api.get<TableItem[]>(`/admin/stores/${selectedStore}/tables`);
-      const list = Array.isArray(data) ? data : [];
-      list.sort((a, b) => (a.table_number || "").localeCompare(b.table_number || "", undefined, { numeric: true }));
-      setTables(list);
-    } catch (err: any) { setError(err.message || "Failed to load tables"); }
-    finally { setLoading(false); }
+    if (!selectedStore) return null;
+    return api.get<TableItem[]>(`/admin/stores/${selectedStore}/tables`);
   }, [selectedStore]);
 
-  useEffect(() => { fetchStores(); }, []);
-  useEffect(() => { if (physicalStores.length > 0 && !selectedStore) setSelectedStore(physicalStores[0].id); }, [physicalStores]);
-  useEffect(() => { fetchTables(); }, [fetchTables]);
+  const applyTables = useCallback((data: TableItem[] | null) => {
+    if (data === null) return;
+    const list = Array.isArray(data) ? data : [];
+    list.sort((a, b) => (a.table_number || "").localeCompare(b.table_number || "", undefined, { numeric: true }));
+    setTables(list);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchStores()
+      .then((data) => {
+        if (cancelled) return;
+        const list = Array.isArray(data) ? data : [];
+        setStores(list);
+        if (list.length > 0) setSelectedStore(list[0].id);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [fetchStores]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTables()
+      .then((data) => { if (!cancelled) applyTables(data); })
+      .catch((err: any) => { if (!cancelled) setError(err.message || "Failed to load tables"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [fetchTables, applyTables]);
 
   const resetForm = () => { setForm({ table_number: "", display_name: "", capacity: 4, section: "" }); setEditing(null); setShowForm(false); setConfirmDelete(null); };
   const openEdit = (t: TableItem) => { setForm({ table_number: t.table_number, display_name: t.display_name || "", capacity: t.capacity || 4, section: t.section || "" }); setEditing(t); setShowForm(true); };
@@ -55,14 +74,14 @@ export default function TablesPage() {
     try {
       if (editing) { await api.patch(`/admin/stores/${selectedStore}/tables/${editing.id}`, form); setSuccess(`Table ${form.table_number} updated`); }
       else { await api.post(`/admin/stores/${selectedStore}/tables`, form); setSuccess(`Table ${form.table_number} created`); }
-      resetForm(); await fetchTables(); setTimeout(() => setSuccess(""), 3000);
+      resetForm(); applyTables(await fetchTables()); setTimeout(() => setSuccess(""), 3000);
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }
   };
 
-  const handleToggle = async (t: TableItem) => { try { await api.patch(`/admin/stores/${selectedStore}/tables/${t.id}`, { is_active: !t.is_active }); fetchTables(); } catch (err: any) { setError(err.message); } };
-  const handleDelete = async (t: TableItem) => { try { await api.del(`/admin/stores/${selectedStore}/tables/${t.id}`); setConfirmDelete(null); fetchTables(); } catch (err: any) { setError(err.message); } };
-  const handleGenerateQr = async (t: TableItem) => { try { await api.post(`/admin/stores/${selectedStore}/tables/${t.id}/generate-qr`); fetchTables(); } catch (err: any) { setError(err.message); } };
-  const handleRegenerateQr = async (t: TableItem) => { try { await api.post(`/admin/stores/${selectedStore}/tables/${t.id}/generate-qr`); fetchTables(); } catch (err: any) { setError(err.message); } };
+  const handleToggle = async (t: TableItem) => { try { await api.patch(`/admin/stores/${selectedStore}/tables/${t.id}`, { is_active: !t.is_active }); applyTables(await fetchTables()); } catch (err: any) { setError(err.message); } };
+  const handleDelete = async (t: TableItem) => { try { await api.del(`/admin/stores/${selectedStore}/tables/${t.id}`); setConfirmDelete(null); applyTables(await fetchTables()); } catch (err: any) { setError(err.message); } };
+  const handleGenerateQr = async (t: TableItem) => { try { await api.post(`/admin/stores/${selectedStore}/tables/${t.id}/generate-qr`); applyTables(await fetchTables()); } catch (err: any) { setError(err.message); } };
+  const handleRegenerateQr = async (t: TableItem) => { try { await api.post(`/admin/stores/${selectedStore}/tables/${t.id}/generate-qr`); applyTables(await fetchTables()); } catch (err: any) { setError(err.message); } };
 
   const handleDownloadQr = async (t: TableItem) => {
     const dataUrl = qrImages[t.id];
@@ -79,15 +98,15 @@ export default function TablesPage() {
 
   return (
     <div style={{ padding: 32 }}>
-      <div className="page-header" style={{ marginBottom: 20 }}>
+      <div className="page-header" style={{ marginBottom: 12 }}>
         <div><h1 className="page-title">Tables</h1><p className="page-subtitle">{tables.length} tables</p></div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <select value={selectedStore || ""} onChange={e => setSelectedStore(Number(e.target.value))} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-            <option value="" disabled>Select a store</option>
-            {physicalStores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
-          </select>
-          {selectedStore > 0 && <button onClick={() => { resetForm(); setShowForm(true); }} className="btn btn-primary btn-sm"><Plus size={16} /> Add Table</button>}
-        </div>
+        {selectedStore > 0 && <button onClick={() => { resetForm(); setShowForm(true); }} className="btn btn-primary btn-sm"><Plus size={16} /> Add Table</button>}
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
+        <select value={selectedStore || ""} onChange={e => setSelectedStore(Number(e.target.value))} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+          <option value="" disabled>Select a store</option>
+          {physicalStores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
+        </select>
       </div>
 
       {!selectedStore && <div style={{ textAlign: "center", padding: 60, color: "var(--color-text-muted)" }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: "0 auto 12px", opacity: 0.4 }}><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2" /></svg><p style={{ fontSize: 14 }}>Select a store to manage tables</p></div>}

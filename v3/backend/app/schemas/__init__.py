@@ -23,11 +23,11 @@ from app.schemas.base import (
     TimestampedSchema,
 )
 from app.schemas.cart import (
+    CartLineItemBase,
     CartLineItemCreate,
     CartLineItemOut,
     CartLineItemUpdate,
     CartModifierSelection,
-    CheckoutSessionOut,
     CustomerCartOut,
 )
 from app.schemas.customer import (
@@ -40,6 +40,25 @@ from app.schemas.customer import (
     CustomerProfileCreate,
     CustomerProfileOut,
     CustomerProfileUpdate,
+)
+from app.schemas.feedback import (
+    FeedbackEntryOut,
+    FeedbackReplyRequest,
+    FeedbackStatsOut,
+)
+from app.schemas.inventory import (
+    InventoryCategoryBase,
+    InventoryCategoryCreate,
+    InventoryCategoryOut,
+    InventoryCategoryUpdate,
+    InventoryItemBase,
+    InventoryItemCreate,
+    InventoryItemOut,
+    InventoryItemUpdate,
+    SupplierBase,
+    SupplierCreate,
+    SupplierOut,
+    SupplierUpdate,
 )
 from app.schemas.loyalty import (
     CustomerRewardOut,
@@ -91,6 +110,17 @@ from app.schemas.payment import (
     PaymentWebhookPayload,
     RefundOut,
 )
+from app.schemas.staff import (
+    StaffProfileBase,
+    StaffProfileCreate,
+    StaffProfileDetailOut,
+    StaffProfileOut,
+    StaffProfileUpdate,
+    StaffShiftBase,
+    StaffShiftCreate,
+    StaffShiftOut,
+    StaffShiftUpdate,
+)
 from app.schemas.store import (
     DiningTableOut,
     StoreBase,
@@ -110,6 +140,11 @@ from app.schemas.notification import (
     NotificationMessageOut,
     NotificationPreferenceOut,
     NotificationPreferenceUpdate,
+)
+from app.schemas.translation import (
+    TranslationOut,
+    TranslateRequest,
+    TranslateResponse,
 )
 from app.schemas.voucher import (
     CustomerVoucherOut,
@@ -245,8 +280,9 @@ __all__ = [
     "CartLineItemCreate",
     "CartLineItemUpdate",
     "CartLineItemOut",
+    "CartLineItemUpdate",
+    "CartModifierSelection",
     "CustomerCartOut",
-    "CheckoutSessionOut",
     # Order
     "OrderCreate",
     "OrderOut",

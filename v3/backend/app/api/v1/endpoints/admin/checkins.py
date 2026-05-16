@@ -1,15 +1,17 @@
 """Daily check-in admin endpoint."""
 
+from datetime import date
+
 from fastapi import APIRouter, Query
-from sqlalchemy import text as sa_text
+from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.checkin import CustomerDailyCheckin
+from app.models.customer import Customer
+from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.base import APIResponse, PaginatedResponse
 
 router = APIRouter(prefix="/admin/checkins", tags=["admin — check-ins"])
-
-CHECKIN_TABLE = CustomerDailyCheckin.__tablename__
 
 
 @router.get("", response_model=APIResponse[PaginatedResponse[dict]])
@@ -17,22 +19,38 @@ async def list_checkins(
     db: DBDependency, admin: CurrentAdmin,
     page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=100),
 ):
-    total = (await db.execute(sa_text(f"SELECT COUNT(*) FROM {CHECKIN_TABLE}"))).scalar() or 0
+    total = (await db.execute(select(func.count(CustomerDailyCheckin.id)))).scalar() or 0
     rows = (await db.execute(
-        sa_text(f"SELECT cd.*, c.display_name as customer_name FROM {CHECKIN_TABLE} cd JOIN customers c ON c.id = cd.customer_id ORDER BY cd.checkin_date DESC, cd.id DESC LIMIT :limit OFFSET :offset"),
-        {"limit": per_page, "offset": (page-1)*per_page}
+        select(CustomerDailyCheckin, Customer.display_name)
+        .join(Customer, Customer.id == CustomerDailyCheckin.customer_id, isouter=True)
+        .order_by(CustomerDailyCheckin.checkin_date.desc(), CustomerDailyCheckin.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )).all()
-    items = [dict(r._mapping) for r in rows] if rows else []
-    for i in items:
-        for k in list(i.keys()):
-            v = i[k]
-            if hasattr(v, 'isoformat'): i[k] = v.isoformat()
-    return APIResponse(data=PaginatedResponse(items=items, total=total, page=page, per_page=per_page, total_pages=(total+per_page-1)//per_page if per_page else 0))
+
+    items = []
+    for cd, cust_name in rows:
+        item = {
+            "id": cd.id, "customer_id": cd.customer_id,
+            "customer_name": cust_name or f"Customer #{cd.customer_id}",
+            "checkin_date": cd.checkin_date.isoformat(),
+            "created_at": cd.created_at.isoformat() if cd.created_at else None,
+        }
+        items.append(item)
+
+    return APIResponse(data=PaginatedResponse(items=items, total=total, page=page, per_page=per_page, total_pages=(total + per_page - 1) // per_page if per_page else 0))
 
 
 @router.get("/stats", response_model=APIResponse[dict])
 async def checkin_stats(db: DBDependency, admin: CurrentAdmin):
-    total = (await db.execute(sa_text(f"SELECT COUNT(*) FROM {CHECKIN_TABLE}"))).scalar() or 0
-    today = (await db.execute(sa_text(f"SELECT COUNT(DISTINCT customer_id) FROM {CHECKIN_TABLE} WHERE checkin_date = CURRENT_DATE"))).scalar() or 0
-    week = (await db.execute(sa_text(f"SELECT COUNT(DISTINCT customer_id) FROM {CHECKIN_TABLE} WHERE checkin_date >= CURRENT_DATE - 7"))).scalar() or 0
-    return APIResponse(data={"today": today, "this_week": week, "total_checkins": total})
+    today = date.today()
+    total = (await db.execute(select(func.count(CustomerDailyCheckin.id)))).scalar() or 0
+    today_cnt = (await db.execute(
+        select(func.count(func.distinct(CustomerDailyCheckin.customer_id)))
+        .where(CustomerDailyCheckin.checkin_date == today)
+    )).scalar() or 0
+    week_cnt = (await db.execute(
+        select(func.count(func.distinct(CustomerDailyCheckin.customer_id)))
+        .where(CustomerDailyCheckin.checkin_date >= func.current_date() - 7)
+    )).scalar() or 0
+    return APIResponse(data={"today": today_cnt, "this_week": week_cnt, "total_checkins": total})

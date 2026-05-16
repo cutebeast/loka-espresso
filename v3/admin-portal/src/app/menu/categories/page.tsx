@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -13,16 +13,15 @@ export default function MenuCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
     try {
       const d = await api.getRaw<{ items: Category[] }>("/admin/menu/categories?per_page=50");
       setItems(Array.isArray(d) ? d : (d.items || []));
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { (async () => { await fetchData(); })(); }, []);
 
   return (
     <div style={{ padding: 32 }}>
