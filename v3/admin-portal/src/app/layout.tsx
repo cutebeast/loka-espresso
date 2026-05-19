@@ -15,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isLogin = pathname === "/login";
   const [checked, setChecked] = useState(false);
   const [forbidden, setForbidden] = useState(false);
+  const [favicon, setFavicon] = useState("");
 
   useEffect(() => {
     if (isLogin) { setChecked(true); return; }
@@ -22,9 +23,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // Verify admin access (staff-only accounts cannot access admin portal)
     const token = localStorage.getItem("token");
     fetch("/api/v1/admin/auth/me", { headers: { Authorization: `Bearer ${token || ""}` } })
-      .then(r => { if (r.status === 403) { setForbidden(true); localStorage.removeItem("token"); setTimeout(() => router.replace("/login"), 2000); } else setChecked(true); })
+      .then(r => { if (r.status === 403) { setForbidden(true); localStorage.removeItem("token"); setTimeout(() => router.replace("/login"), 2000); } else { setChecked(true); fetchFavicon(token!); } })
       .catch(() => setChecked(true));
   }, [pathname, router]);
+
+  const fetchFavicon = (token: string) => {
+    fetch("/api/v1/admin/config?prefix=branding.admin_favicon", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { const items = d.data || []; const fv = items.find((i: any) => i.config_key === "branding.admin_favicon_url"); if (fv?.config_value) setFavicon(fv.config_value); })
+      .catch(() => {});
+  };
 
   return (
     <html lang="en" style={{ height: "100%" }}>

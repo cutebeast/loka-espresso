@@ -1,234 +1,228 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { api, updateOrderStatus, Order, OrderStatus } from "@/lib/api";
-import StatusBadge from "@/components/StatusBadge";
-import { ArrowLeft, Clock, User, Phone, MapPin, CreditCard } from "lucide-react";
+import { getOrderById, updateOrderStatus, OrderDetail, OrderStatus } from "@/lib/api";
+import { usePolling } from "@/hooks/usePolling";
+import PageHeader from "@/components/PageHeader";
+import Alert from "@/components/Alert";
+import Badge from "@/components/Badge";
+import SkeletonCard from "@/components/SkeletonCard";
+import { ArrowLeft, CheckCircle, Clock, Printer, XCircle } from "lucide-react";
 
-const statusFlow: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "completed"];
-
-const statusActions: Record<OrderStatus, { label: string; next?: OrderStatus; variant: string }> = {
-  pending: { label: "Confirm", next: "confirmed", variant: "blue" },
-  confirmed: { label: "Start Preparing", next: "preparing", variant: "amber" },
-  preparing: { label: "Mark Ready", next: "ready", variant: "green" },
-  ready: { label: "Complete", next: "completed", variant: "slate" },
-  completed: { label: "Completed", variant: "slate" },
-  cancelled: { label: "Cancelled", variant: "red" },
+const STATUS_FLOW: Record<string, { next: OrderStatus[]; label: string; color: string }> = {
+  pending: { next: ["confirmed", "cancelled_by_merchant"], label: "Pending", color: "yellow" },
+  confirmed: { next: ["preparing", "cancelled_by_merchant"], label: "Confirmed", color: "blue" },
+  preparing: { next: ["ready_for_pickup", "cancelled_by_merchant"], label: "Preparing", color: "orange" },
+  ready_for_pickup: { next: ["delivered", "cancelled_by_merchant"], label: "Ready", color: "green" },
+  delivered: { next: [], label: "Delivered", color: "green" },
+  cancelled_by_merchant: { next: [], label: "Cancelled", color: "red" },
 };
 
-function timeSince(dateString: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ${minutes % 60}m ago`;
-}
+const STATUS_ORDER = ["pending", "confirmed", "preparing", "ready_for_pickup", "delivered"];
 
-export default function OrderDetailPage() {
+export default function KitchenDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
-  const [order, setOrder] = useState<Order | null>(null);
+  const id = String(params.id);
+  const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [msg, setMsg] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
-  const fetchOrder = async () => {
+  const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/v1/admin/orders/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
-      if (!res.ok) throw new Error("Failed to load order");
-      const json = await res.json();
-      setOrder(json.data || json);
+      const data = await getOrderById(id);
+      setOrder(data);
       setError("");
-    } catch (err: any) {
-      setError(err.message || "Failed to load order");
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchOrder();
   }, [id]);
 
-  const updateStatus = async (newStatus: OrderStatus) => {
+  usePolling(load, [id], { interval: 10000 });
+
+  const handleUpdate = async (status: OrderStatus) => {
     setUpdating(true);
     try {
-      await updateOrderStatus(id, newStatus);
-      await fetchOrder();
-    } catch (err: any) {
-      setError(err.message || "Failed to update status");
+      await updateOrderStatus(id, status, status.includes("cancelled") ? cancelReason : undefined);
+      setMsg(`Order updated to ${status}`);
+      setCancelReason("");
+      const updated = await getOrderById(id);
+      setOrder(updated);
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setUpdating(false);
     }
   };
 
-  const cancelOrder = async () => {
-    if (!confirm("Are you sure you want to cancel this order?")) return;
-    setUpdating(true);
-    try {
-      await updateOrderStatus(id, "cancelled");
-      await fetchOrder();
-    } catch (err: any) {
-      setError(err.message || "Failed to cancel order");
-    } finally {
-      setUpdating(false);
-    }
+  const fmt = (v: number) => `RM ${Number(v || 0).toFixed(2)}`;
+  const dt = (s: string | null) => {
+    if (!s) return "—";
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? "—" : d.toLocaleString();
   };
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="text-gray-500 text-sm">Loading order...</div>
+      <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
+        <SkeletonCard count={4} />
       </div>
     );
   }
 
   if (!order) {
     return (
-      <div className="p-6">
-        <div className="text-gray-500 text-sm">Order not found.</div>
+      <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
+        <Alert variant="error">{error || "Order not found"}</Alert>
+        <button className="btn btn-primary" onClick={() => router.push("/kitchen")} style={{ marginTop: 16 }}>
+          <ArrowLeft size={16} /> Back to Kitchen
+        </button>
       </div>
     );
   }
 
-  const action = statusActions[order.status];
-  const currentIndex = statusFlow.indexOf(order.status);
+  const flow = STATUS_FLOW[order.status] || STATUS_FLOW.pending;
+  const currentStatusIndex = STATUS_ORDER.indexOf(order.status);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <button
-        onClick={() => router.push("/kitchen")}
-        className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800 mb-4"
-      >
-        <ArrowLeft size={16} />
-        Back to Orders
-      </button>
+    <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
+      <PageHeader
+        title={order.order_number}
+        subtitle={`${order.customer_name || "Walk-in"} · ${dt(order.created_at)}`}
+       
+        action={<Badge variant={flow.color as any}>{flow.label}</Badge>}
+      />
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold">{order.order_number}</h2>
-          <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-            <span className="flex items-center gap-1"><Clock size={14} /> {timeSince(order.created_at)}</span>
-            <span className="capitalize">{order.type.replace("_", " ")}</span>
+      {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
+      {msg && <Alert variant="success" onDismiss={() => setMsg("")} autoDismiss={3000}>{msg}</Alert>}
+
+      {/* Status Actions */}
+      {flow.next.length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Update Status</h4>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
+            {flow.next.map((s) => (
+              <button
+                key={s}
+                onClick={() => handleUpdate(s)}
+                disabled={updating}
+                className={`btn btn-sm ${s.includes("cancelled") ? "btn-danger" : "btn-primary"}`}
+              >
+                {s.includes("cancelled") ? <XCircle size={14} /> : <CheckCircle size={14} />}
+                {s.replace("_", " ")}
+              </button>
+            ))}
+            {flow.next.some((s) => s.includes("cancelled")) && (
+              <input
+                className="form-input"
+                style={{ minWidth: 200 }}
+                placeholder="Reason for cancellation (optional)"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              />
+            )}
           </div>
         </div>
-        <StatusBadge status={order.status} />
+      )}
+
+      {/* Order Summary */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Order Summary</h4>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+          {[
+            ["Order Type", order.order_type?.replace(/_/g, " ")],
+            ["Payment", order.payment_method || "—"],
+            ["Payment Status", order.payment_status || "—"],
+            ["Subtotal", fmt(order.items_subtotal || 0)],
+            ["Tax", fmt(order.tax_amount || 0)],
+            ["Discount", fmt(order.discount_amount || 0)],
+            ["Total", fmt(order.total_amount || 0)],
+          ].map(([label, value]) => (
+            <div key={label as string} style={{ textAlign: "center", padding: 10, background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)" }}>
+              <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 2 }}>{label}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: label === "Total" ? "var(--color-primary)" : "inherit" }}>{value}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Items</h3>
-            <div className="space-y-3">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {item.quantity}x {item.name}
-                    </p>
-                    {item.notes && <p className="text-xs text-gray-400 mt-0.5">{item.notes}</p>}
-                  </div>
-                  <span className="text-sm text-gray-600">RM {(item.price * item.quantity).toFixed(2)}</span>
-                </div>
+      {/* Line Items */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Line Items</h4>
+        <div className="table-container" style={{ borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-light)" }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th style={{ textAlign: "center" }}>Qty</th>
+                <th style={{ textAlign: "right" }}>Unit Price</th>
+                <th style={{ textAlign: "right" }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(order.line_items || []).map((li: any) => (
+                <tr key={`${li.menu_item_id || li.id || li.item_name}-${li.modifiers_label || "none"}`}>
+                  <td style={{ fontWeight: 600 }}>
+                    {li.item_name || li.name || "—"}
+                    {li.notes && <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 400 }}>Note: {li.notes}</div>}
+                    {li.modifiers_label && <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 400 }}>{li.modifiers_label}</div>}
+                  </td>
+                  <td style={{ textAlign: "center" }}>{li.quantity}</td>
+                  <td style={{ textAlign: "right" }}>{fmt(li.unit_price || li.price || 0)}</td>
+                  <td style={{ textAlign: "right" }}>{fmt((li.unit_price || li.price || 0) * li.quantity)}</td>
+                </tr>
               ))}
-            </div>
-            <div className="border-t border-gray-100 mt-4 pt-4 flex items-center justify-between">
-              <span className="font-medium">Total</span>
-              <span className="font-bold text-lg">RM {order.total.toFixed(2)}</span>
-            </div>
-          </div>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Status Timeline</h3>
-            <div className="flex items-center gap-2">
-              {statusFlow.map((s, idx) => {
-                const active = idx <= currentIndex && order.status !== "cancelled";
-                return (
-                  <div key={s} className="flex items-center gap-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        active ? "bg-slate-800" : "bg-gray-200"
-                      }`}
-                    />
-                    <span className={`text-xs capitalize ${active ? "text-gray-800 font-medium" : "text-gray-400"}`}>
-                      {s.replace("_", " ")}
-                    </span>
-                    {idx < statusFlow.length - 1 && (
-                      <div className={`w-6 h-0.5 ${idx < currentIndex ? "bg-slate-800" : "bg-gray-200"}`} />
-                    )}
+      {/* Status Timeline */}
+      {(order.status_log || []).length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Status Timeline</h4>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {(order.status_log || []).map((sl: any, i: number, arr: any[]) => {
+              const isLast = i === arr.length - 1;
+              return (
+                <div key={`${sl.to_status}-${sl.created_at || i}`} style={{ display: "flex", gap: 12 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <div style={{
+                      width: 12, height: 12, borderRadius: "50%",
+                      background: isLast ? "var(--color-primary)" : "var(--color-border-light)",
+                      border: `2px solid ${isLast ? "var(--color-primary)" : "var(--color-border-light)"}`,
+                    }} />
+                    {!isLast && <div style={{ width: 2, flex: 1, background: "var(--color-border-light)", margin: "4px 0" }} />}
                   </div>
-                );
-              })}
-            </div>
+                  <div style={{ paddingBottom: isLast ? 0 : 16 }}>
+                    <Badge variant={STATUS_FLOW[sl.to_status]?.color as any || "gray"} size="sm">
+                      {sl.to_status?.replace(/_/g, " ")}
+                    </Badge>
+                    <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 4 }}>
+                      <Clock size={10} style={{ display: "inline", marginRight: 4 }} />
+                      {dt(sl.created_at)}
+                      {sl.actor_type && <> · by {sl.actor_type}{sl.actor_id ? ` #${sl.actor_id}` : ""}</>}
+                    </div>
+                    {sl.reason && <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>Reason: {sl.reason}</div>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
+      )}
 
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Customer</h3>
-            <div className="space-y-3 text-sm">
-              {order.customer_name && (
-                <div className="flex items-center gap-2 text-gray-700">
-                  <User size={16} className="text-gray-400" />
-                  {order.customer_name}
-                </div>
-              )}
-              {order.customer_phone && (
-                <div className="flex items-center gap-2 text-gray-700">
-                  <Phone size={16} className="text-gray-400" />
-                  {order.customer_phone}
-                </div>
-              )}
-              {order.table_number && (
-                <div className="flex items-center gap-2 text-gray-700">
-                  <MapPin size={16} className="text-gray-400" />
-                  Table {order.table_number}
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-gray-700">
-                <CreditCard size={16} className="text-gray-400" />
-                {order.payment_status || "Unpaid"}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Actions</h3>
-            <div className="space-y-2">
-              {action.next && (
-                <button
-                  onClick={() => updateStatus(action.next!)}
-                  disabled={updating}
-                  className={`w-full py-2 rounded text-sm font-medium text-white transition disabled:opacity-50 ${
-                    action.variant === "blue"
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : action.variant === "amber"
-                      ? "bg-amber-500 hover:bg-amber-600"
-                      : action.variant === "green"
-                      ? "bg-green-600 hover:bg-green-700"
-                      : "bg-slate-700 hover:bg-slate-800"
-                  }`}
-                >
-                  {updating ? "Updating..." : action.label}
-                </button>
-              )}
-              {order.status !== "cancelled" && order.status !== "completed" && (
-                <button
-                  onClick={cancelOrder}
-                  disabled={updating}
-                  className="w-full py-2 rounded text-sm font-medium border border-red-300 text-red-600 hover:bg-red-50 transition disabled:opacity-50"
-                >
-                  Cancel Order
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Print Ticket */}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="btn btn-outline" disabled title="Printer integration pending">
+          <Printer size={16} /> Print Kitchen Ticket
+        </button>
       </div>
     </div>
   );

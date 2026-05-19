@@ -3,17 +3,18 @@
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
-from app.api.v1.deps import CurrentAdmin, DBDependency
+from app.api.v1.deps import CurrentAdmin, CurrentStaff, DBDependency
 from app.models.customer import Customer
-from app.models.iam import RolePermission
+from app.models.iam import AdminAccount, IAMRole, RoleAssignment, RolePermission
 from app.models.inventory import InventoryItem
 from app.models.menu import MenuItem, MenuModifierGroup, MenuModifierOption
 from app.models.order import Order, OrderLineItem
 from app.models.payment import Payment
 from app.models.staff import StaffProfile, StaffTimeEvent, TipAllocation
+from app.models.platform import PlatformConfig
 from app.models.store import Store, DiningTable, StoreConfiguration, TableStatusSnapshot
 from app.schemas.base import APIResponse, PaginatedResponse
 
@@ -26,73 +27,317 @@ router = APIRouter(tags=["staff — operations"])
 # ── Staff Auth (login, verify) ──
 
 @router.get("/staff/auth/names")
-async def staff_name_list(db: DBDependency):
-    """List staff display names for the login dropdown."""
-    result = await db.execute(
-        select(StaffProfile.id, StaffProfile.display_name, Store.store_name)
-        .join(Store, StaffProfile.store_id == Store.id)
-        .where(StaffProfile.deleted_at.is_(None), StaffProfile.is_active.is_(True))
-        .order_by(StaffProfile.display_name)
-    )
+async def staff_name_list(db: DBDependency, store_id: int | None = None):
+    """List staff display names for the login dropdown, optionally filtered by store."""
+    q = select(StaffProfile.id, StaffProfile.display_name, Store.store_name).join(Store, StaffProfile.store_id == Store.id).where(StaffProfile.deleted_at.is_(None), StaffProfile.is_active.is_(True))
+    if store_id:
+        q = q.where(StaffProfile.store_id == store_id)
+    result = await db.execute(q.order_by(StaffProfile.display_name))
     items = [{"id": r[0], "display_name": r[1], "store_name": r[2]} for r in result.all()]
     return APIResponse(data=items)
 
 
 @router.post("/staff/auth/login")
 async def staff_login(db: DBDependency, data: dict):
-    """Staff portal login using email + password from staff_profiles."""
+    """Login: store selection → email+password/PIN or name+PIN."""
+    import bcrypt, jwt, os
+    from datetime import timedelta
+
+    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
     email = (data.get("email") or "").strip()
     password = (data.get("password") or "").strip()
-    if not email or not password:
-        raise HTTPException(status_code=422, detail="Email and password required")
+    display_name = (data.get("display_name") or "").strip()
+    store_id = data.get("store_id")
 
-    # Support login by staff ID (from name dropdown) + PIN
-    result = None
-    if email.isdigit():
-        # Login by staff ID + PIN
+    # ── Mode 1: Name + PIN (staff, based on store selected) ──
+    if display_name and store_id:
         result = await db.execute(
             select(StaffProfile).where(
-                StaffProfile.id == int(email),
+                StaffProfile.display_name == display_name,
+                StaffProfile.store_id == int(store_id),
                 StaffProfile.deleted_at.is_(None),
                 StaffProfile.is_active.is_(True),
             )
         )
         staff = result.scalar_one_or_none()
         if not staff or not staff.pin_hash:
-            raise HTTPException(status_code=401, detail="Invalid PIN")
-        import bcrypt
-        try:
-            ok = bcrypt.checkpw(password.encode(), staff.pin_hash.encode() if isinstance(staff.pin_hash, str) else staff.pin_hash)
-        except Exception:
-            ok = False
+            raise HTTPException(status_code=401, detail="Staff not found or no PIN set")
+        if not _pin_allowed(staff.pin_hash, password):
+            raise HTTPException(status_code=401, detail="Default PIN not allowed for login. Use password or change PIN first.")
+        ok = bcrypt.checkpw(password.encode(), staff.pin_hash.encode() if isinstance(staff.pin_hash, str) else staff.pin_hash)
         if not ok:
             raise HTTPException(status_code=401, detail="Invalid PIN")
-    else:
-        # Login by email + password
-        result = await db.execute(
-            select(StaffProfile).where(
-                StaffProfile.email_address == email,
-                StaffProfile.deleted_at.is_(None),
-                StaffProfile.is_active.is_(True),
-            )
+        return _make_token(staff)
+
+    # ── Mode 2: Email + password/PIN ──
+    if not email or not password:
+        raise HTTPException(status_code=422, detail="Email and password required")
+
+    # Try staff login first
+    result = await db.execute(
+        select(StaffProfile).where(
+            StaffProfile.email_address == email,
+            StaffProfile.deleted_at.is_(None),
+            StaffProfile.is_active.is_(True),
         )
-        staff = result.scalar_one_or_none()
-        if not staff or not staff.password_hash:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-        import bcrypt
+    )
+    staff = result.scalar_one_or_none()
+
+    if staff and (staff.password_hash or staff.pin_hash):
+        # Try password first, then PIN
+        if staff.password_hash:
+            try:
+                pw_ok = bcrypt.checkpw(password.encode(), staff.password_hash.encode() if isinstance(staff.password_hash, str) else staff.password_hash)
+            except Exception:
+                pw_ok = False
+            if pw_ok:
+                return _make_token(staff)
+        # Fallback: try PIN (but reject default 000000)
+        if staff.pin_hash:
+            if not _pin_allowed(staff.pin_hash, password):
+                raise HTTPException(status_code=401, detail="Default PIN not allowed. Use password or change PIN first.")
+            try:
+                pin_ok = bcrypt.checkpw(password.encode(), staff.pin_hash.encode() if isinstance(staff.pin_hash, str) else staff.pin_hash)
+            except Exception:
+                pin_ok = False
+            if pin_ok:
+                return _make_token(staff)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # ── Mode 3: Admin login (email + password, no staff profile) ──
+    from app.models.iam import AdminAccount, RoleAssignment, RolePermission
+    admin_result = await db.execute(
+        select(AdminAccount).where(
+            AdminAccount.email == email,
+            AdminAccount.deleted_at.is_(None),
+            AdminAccount.is_active.is_(True),
+        )
+    )
+    admin = admin_result.scalar_one_or_none()
+    if not admin or not admin.password_hash:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    import argon2
+    pw_ok = False
+    try:
+        ph = argon2.PasswordHasher()
+        ph.verify(admin.password_hash, password)
+        pw_ok = True
+    except Exception:
+        pass
+    if not pw_ok:
         try:
-            ok = bcrypt.checkpw(password.encode(), staff.password_hash.encode() if isinstance(staff.password_hash, str) else staff.password_hash)
+            pw_ok = bcrypt.checkpw(password.encode(), admin.password_hash.encode() if isinstance(admin.password_hash, str) else admin.password_hash)
         except Exception:
-            ok = False
-        if not ok:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            pw_ok = False
+    if not pw_ok:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # Admin verified — if store_id provided, return staff token. Otherwise return admin token with store list.
+    store_id = data.get("store_id")
+    if store_id:
+        # Verify store exists
+        store_check = await db.execute(select(Store).where(Store.id == int(store_id), Store.deleted_at.is_(None), Store.is_active.is_(True)))
+        if not store_check.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Store not found")
+        payload = {"sub": str(admin.principal_id), "type": "staff", "staff_id": 0, "store_id": int(store_id),
+                   "admin_id": admin.id, "admin_name": admin.display_name,
+                   "iss": "fnb-enterprise-v3", "aud": "fnb-app",
+                   "exp": datetime.now(timezone.utc) + timedelta(minutes=30)}
+        access_token = jwt.encode(payload, secret, algorithm="HS256")
+        refresh_payload = {"sub": str(admin.principal_id), "type": "refresh", "staff_id": 0, "store_id": int(store_id),
+                           "admin_id": admin.id, "iss": "fnb-enterprise-v3", "aud": "fnb-app",
+                           "exp": datetime.now(timezone.utc) + timedelta(days=7)}
+        refresh_token = jwt.encode(refresh_payload, secret, algorithm="HS256")
+        return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id), "is_admin": True}}
+    # No store_id — return admin token with store list for store selection
+    store_list = await db.execute(select(Store).where(Store.deleted_at.is_(None), Store.is_active.is_(True)))
+    stores = [{"id": s.id, "store_name": s.store_name} for s in store_list.scalars().all()]
+    payload = {"sub": str(admin.id), "type": "admin", "admin_id": admin.id, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": datetime.now(timezone.utc) + timedelta(minutes=30)}
+    access_token = jwt.encode(payload, secret, algorithm="HS256")
+    refresh_payload = {"sub": str(admin.id), "type": "refresh", "admin_id": admin.id, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": datetime.now(timezone.utc) + timedelta(days=7)}
+    refresh_token = jwt.encode(refresh_payload, secret, algorithm="HS256")
+    return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "is_admin": True, "stores": stores}}
+
+
+# ── Admin Store Selection (after login) ──
+
+@router.post("/staff/auth/admin-store")
+async def admin_select_store(db: DBDependency, data: dict):
+    """Admin selects a store — returns a staff token scoped to that store."""
+    token = (data.get("token") or "").strip()
+    store_id = data.get("store_id")
+    if not token or not store_id:
+        raise HTTPException(status_code=400, detail="Token and store_id required")
+    import jwt, os
+    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+        if payload.get("type") != "admin":
+            raise HTTPException(status_code=401, detail="Not an admin token")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Verify store exists
+    store_result = await db.execute(select(Store).where(Store.id == int(store_id), Store.deleted_at.is_(None), Store.is_active.is_(True)))
+    if not store_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    # Create admin user lookup
+    admin_id = int(payload.get("admin_id", 0))
+    admin_result = await db.execute(
+        select(AdminAccount).where(AdminAccount.id == admin_id, AdminAccount.is_active.is_(True))
+    )
+    admin = admin_result.scalar_one_or_none()
+    if not admin:
+        raise HTTPException(status_code=401, detail="Admin not found")
 
     from datetime import timedelta
-    import jwt, os
-    secret = os.environ.get("JWT_SECRET", "fnb-super-app-dev-secret")
-    payload = {"sub": str(staff.principal_id), "type": "staff", "staff_id": staff.id, "store_id": staff.store_id, "exp": datetime.now(timezone.utc) + timedelta(hours=8)}
+    payload = {"sub": str(admin.principal_id), "type": "staff", "staff_id": 0, "store_id": int(store_id),
+               "admin_id": admin.id, "admin_name": admin.display_name,
+               "iss": "fnb-enterprise-v3", "aud": "fnb-app",
+               "exp": datetime.now(timezone.utc) + timedelta(minutes=30)}
     access_token = jwt.encode(payload, secret, algorithm="HS256")
-    return {"tokens": {"access_token": access_token}, "profile": {"email": staff.email_address, "display_name": staff.display_name, "store_id": staff.store_id, "staff_id": staff.id}}
+    return {"tokens": {"access_token": access_token}, "profile": {
+        "email": admin.email, "display_name": admin.display_name, "store_id": int(store_id),
+        "staff_id": 0,
+    }}
+
+
+def _make_token(staff):
+    import jwt, os
+    from datetime import timedelta
+    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    payload = {"sub": str(staff.principal_id), "type": "staff", "staff_id": staff.id, "store_id": staff.store_id, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": datetime.now(timezone.utc) + timedelta(minutes=30)}
+    access_token = jwt.encode(payload, secret, algorithm="HS256")
+    refresh_payload = {"sub": str(staff.principal_id), "type": "refresh", "staff_id": staff.id, "store_id": staff.store_id, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": datetime.now(timezone.utc) + timedelta(days=7)}
+    refresh_token = jwt.encode(refresh_payload, secret, algorithm="HS256")
+    return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": staff.email_address, "display_name": staff.display_name, "store_id": staff.store_id, "staff_id": staff.id}}
+
+
+def _pin_allowed(pin_hash, attempted_pin):
+    """Check if PIN is allowed for login (not the default 000000)."""
+    if not pin_hash:
+        return False
+    try:
+        import bcrypt
+        return not bcrypt.checkpw(b"000000", pin_hash.encode() if isinstance(pin_hash, str) else pin_hash)
+    except Exception:
+        return True  # allow on error
+
+
+# ── Token Refresh ──
+
+@router.post("/staff/auth/refresh")
+async def staff_refresh_token(db: DBDependency, data: dict):
+    """Refresh staff access token using a refresh token."""
+    token = (data.get("refresh_token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="refresh_token required")
+    import jwt, os
+    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    token_type = payload.get("type")
+    staff_id = payload.get("staff_id", 0)
+    store_id = payload.get("store_id")
+
+    if staff_id:
+        result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.deleted_at.is_(None)))
+        staff = result.scalar_one_or_none()
+        if not staff or not staff.is_active:
+            raise HTTPException(status_code=401, detail="Staff not found or inactive")
+        return _make_token(staff)
+
+    # Admin refresh (staff_id == 0)
+    admin_id = payload.get("admin_id")
+    if admin_id:
+        admin_result = await db.execute(select(AdminAccount).where(AdminAccount.id == int(admin_id), AdminAccount.is_active.is_(True)))
+        admin = admin_result.scalar_one_or_none()
+        if not admin:
+            raise HTTPException(status_code=401, detail="Admin not found")
+        from datetime import timedelta
+        new_payload = {"sub": str(admin.principal_id), "type": "staff", "staff_id": 0, "store_id": int(store_id or 0),
+                       "admin_id": admin.id, "admin_name": admin.display_name,
+                       "iss": "fnb-enterprise-v3", "aud": "fnb-app",
+                       "exp": datetime.now(timezone.utc) + timedelta(minutes=30)}
+        access_token = jwt.encode(new_payload, secret, algorithm="HS256")
+        return {"tokens": {"access_token": access_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id or 0), "staff_id": 0}}
+
+    raise HTTPException(status_code=401, detail="Invalid token")
+
+
+# ── Staff Profile (me) ──
+
+@router.get("/staff/auth/me")
+async def staff_profile_me(db: DBDependency, request: Request):
+    """Get the current user's profile with IAM roles."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    import jwt, os
+    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    token_type = payload.get("type", "")
+    is_admin = token_type == "admin"
+
+    if token_type == "admin":
+        admin_id = payload.get("admin_id")
+        admin_result = await db.execute(select(AdminAccount).where(AdminAccount.id == int(admin_id)))
+        admin = admin_result.scalar_one_or_none()
+        if not admin:
+            raise HTTPException(status_code=401, detail="Admin not found")
+        role_result = await db.execute(
+            select(IAMRole.display_name).join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
+            .where(RoleAssignment.assignee_id == admin.id, RoleAssignment.is_active.is_(True))
+        )
+        roles = [r[0] for r in role_result.all()]
+        return APIResponse(data={
+            "display_name": admin.display_name, "email": admin.email,
+            "is_admin": True, "roles": roles, "store_id": payload.get("store_id"),
+        })
+
+    # Staff user
+    staff_id = payload.get("staff_id", 0)
+    if staff_id:
+        staff = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.deleted_at.is_(None)))
+        sp = staff.scalar_one_or_none()
+        if sp:
+            role_result = await db.execute(
+                select(IAMRole.display_name).join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
+                .where(RoleAssignment.assignee_id == sp.principal_id, RoleAssignment.is_active.is_(True))
+            )
+            roles = [r[0] for r in role_result.all()]
+            return APIResponse(data={
+                "display_name": sp.display_name, "email": sp.email_address,
+                "is_admin": False, "roles": roles or [sp.role.replace("_", " ").title()],
+                "store_id": sp.store_id, "staff_role": sp.role,
+            })
+
+    # Admin user on staff portal (staff_id == 0)
+    admin_id = payload.get("admin_id")
+    if admin_id:
+        admin_result = await db.execute(select(AdminAccount).where(AdminAccount.id == int(admin_id)))
+        admin = admin_result.scalar_one_or_none()
+        if admin:
+            return APIResponse(data={
+                "display_name": admin.display_name,
+                "email": admin.email,
+                "is_admin": True,
+                "roles": ["Staff Portal"],
+                "store_id": payload.get("store_id"),
+            })
+
+    return APIResponse(data={"display_name": payload.get("admin_name", "User"), "roles": ["Staff Portal"]})
 
 
 # ── Helper ──
@@ -112,8 +357,7 @@ async def _get_staff_profile(db, admin) -> StaffProfile:
 # ── Dashboard ──
 
 @router.get("/staff/dashboard")
-async def staff_dashboard(db: DBDependency, admin: CurrentAdmin):
-    staff = await _get_staff_profile(db, admin)
+async def staff_dashboard(db: DBDependency, staff: CurrentStaff):
     store_id = staff.store_id
 
     pending = (await db.execute(
@@ -156,13 +400,16 @@ async def staff_dashboard(db: DBDependency, admin: CurrentAdmin):
             clock_status = "break"
             shift_start = last_event.created_at
 
+    # Query store name separately (avoid lazy load)
+    store_name = (await db.execute(select(Store.store_name).where(Store.id == staff.store_id))).scalar_one_or_none() or ""
+
     return APIResponse(data={
         "pending_orders": pending,
         "occupied_tables": occupied,
         "today_reservations": 0,
         "clock_status": clock_status,
         "current_shift_start": shift_start.isoformat() if shift_start else None,
-        "store_name": staff.store.store_name if staff.store else "",
+        "store_name": store_name,
         "staff_name": staff.display_name,
         "store_id": store_id,
     })
@@ -218,36 +465,58 @@ async def staff_verify_pin(db: DBDependency, admin: CurrentAdmin, data: dict):
     return APIResponse(data={"valid": True, "message": "PIN verified"})
 
 
-# ── Staff Auth (portal access check) ──
+# ── Change Password / PIN ──
 
-@router.get("/staff/auth/me")
-async def staff_auth_me(db: DBDependency, admin: CurrentAdmin):
-    """Check if the current user has staff portal access (permission 26)."""
-    from app.models.iam import RoleAssignment
-    # Get admin's role IDs
-    role_result = await db.execute(
-        select(RoleAssignment.role_id).where(RoleAssignment.assignee_id == admin.id)
-    )
-    admin_role_ids = {r[0] for r in role_result.all()}
-    if not admin_role_ids:
-        raise HTTPException(status_code=403, detail="No roles assigned")
-    # Check if any role has staff_portal access (permission 26)
-    perm_result = await db.execute(
-        select(RolePermission.role_id).where(
-            RolePermission.role_id.in_(admin_role_ids),
-            RolePermission.permission_id == 26,
-        )
-    )
-    if not perm_result.first():
-        raise HTTPException(status_code=403, detail="No staff portal access")
+@router.post("/staff/auth/change-password")
+async def staff_change_password(db: DBDependency, request: Request, data: dict):
+    """Change staff password."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token: raise HTTPException(status_code=401, detail="Not authenticated")
+    import jwt, os, bcrypt
+    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if payload.get("type") == "admin":
+        raise HTTPException(status_code=403, detail="Admins must use the admin portal")
+    staff_id = payload.get("staff_id", 0)
+    if not staff_id:
+        raise HTTPException(status_code=404, detail="Staff profile not found")
+    result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id))
+    staff = result.scalar_one_or_none()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    pw = (data.get("password") or "").strip()
+    if len(pw) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    staff.password_hash = bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
+    await db.commit()
+    return APIResponse(data={"updated": True})
 
-    staff = await _get_staff_profile(db, admin)
-    return APIResponse(data={
-        "staff_id": staff.id,
-        "display_name": staff.display_name,
-        "store_id": staff.store_id,
-        "has_staff_access": True,
-    })
+
+@router.post("/staff/auth/change-pin")
+async def staff_change_pin(db: DBDependency, request: Request, data: dict):
+    """Change staff PIN."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token: raise HTTPException(status_code=401, detail="Not authenticated")
+    import jwt, os, bcrypt
+    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if payload.get("type") == "admin":
+        raise HTTPException(status_code=403, detail="Admins cannot change PIN here")
+    staff_id = payload.get("staff_id", 0)
+    result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id))
+    staff = result.scalar_one_or_none()
+    if not staff: raise HTTPException(status_code=404, detail="Staff not found")
+    p = (data.get("pin") or "").strip()
+    if len(p) < 4: raise HTTPException(status_code=400, detail="PIN must be at least 4 digits")
+    staff.pin_hash = bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
+    await db.commit()
+    return APIResponse(data={"updated": True})
 
 
 # ── POS Order Create ──
@@ -288,7 +557,7 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: di
         if not menu_item.is_available:
             raise HTTPException(status_code=400, detail=f"{menu_item.item_name} is currently unavailable")
 
-        unit_price = float(menu_item.price or 0)
+        unit_price = float(menu_item.base_price or 0)
         modifier_total = 0.0
 
         modifier_ids = li.get("modifier_ids", [])
@@ -305,11 +574,12 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: di
 
         line_items.append(OrderLineItem(
             menu_item_id=menu_item_id,
-            item_name=menu_item.item_name,
+            item_snapshot={"item_name": menu_item.item_name, "image_url": menu_item.image_url},
             quantity=qty,
             unit_price=unit_price,
-            total_price=total_price,
+            line_total=total_price,
             modifier_total=modifier_total,
+            selected_modifiers={"modifier_ids": modifier_ids},
             special_instructions=special,
         ))
 
@@ -336,10 +606,10 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: di
         dining_table_id=dining_table_id,
         order_number=order_number,
         order_type=order_type,
-        order_channel="pos_counter",
-        fulfillment_type="dine_in",
+        order_channel="pos",
+        fulfillment_type={"dine_in":"dine_in_service","takeaway":"counter_pickup","delivery":"standard_delivery","drive_thru":"counter_pickup"}.get(order_type,"dine_in_service"),
         status="confirmed",
-        payment_status="paid" if payment_data else "initiated",
+        payment_status="captured" if payment_data else "initiated",
         item_count=len(line_items),
         items_subtotal=round(subtotal, 2),
         service_charge=service_charge,
@@ -361,11 +631,11 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: di
         change = round(max(0, amount_tendered - total), 2)
         payment = Payment(
             order_id=order.id,
-            provider="internal",
+            provider="cash",
             payment_method_type=payment_data.get("method", "cash"),
             amount=total,
             currency_code=store.currency_code or "MYR",
-            status="completed",
+            status="captured",
             net_amount=total,
         )
         db.add(payment)
@@ -391,3 +661,15 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: di
         "change": change,
         "created_at": order.created_at.isoformat(),
     })
+
+
+# ── Public Branding Config ──
+
+@router.get("/staff/config/branding")
+async def branding_config(db: DBDependency):
+    """Public branding config — no auth required."""
+    result = await db.execute(
+        select(PlatformConfig).where(PlatformConfig.config_key.startswith("branding."))
+    )
+    items = {c.config_key: c.config_value for c in result.scalars().all()}
+    return APIResponse(data=items)

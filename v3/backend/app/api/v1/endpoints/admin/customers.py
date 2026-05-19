@@ -105,6 +105,22 @@ async def get_customer_detail(admin: CurrentAdmin, db: DBDependency, customer_id
         select(Wallet).where(Wallet.customer_id == customer_id)
     )
     wallet = w_result.scalar_one_or_none()
+    wallet_balance = 0.0
+    if wallet:
+        from app.models.wallet import WalletLedgerEntry
+        lr = await db.execute(
+            select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id)
+        )
+        total_credited = 0.0
+        total_debited = 0.0
+        for entry in lr.scalars().all():
+            if entry.entry_type in ("credit", "release"):
+                total_credited += float(entry.amount)
+            elif entry.entry_type in ("debit", "hold"):
+                total_debited += float(entry.amount)
+            elif entry.entry_type == "adjustment":
+                total_credited += float(entry.amount)
+        wallet_balance = total_credited - total_debited
 
     # Addresses
     addr_result = await db.execute(
@@ -167,6 +183,7 @@ async def get_customer_detail(admin: CurrentAdmin, db: DBDependency, customer_id
                 "id": wallet.id,
                 "is_frozen": wallet.is_frozen,
                 "currency_code": wallet.currency_code,
+                "balance": wallet_balance,
             } if wallet else None,
             "addresses": [
                 {
@@ -361,10 +378,10 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
     cv = CustomerVoucher(
         customer_id=customer_id,
         voucher_definition_id=voucher_id,
-        store_id=0,  # admin-awarded vouchers are store-agnostic
+        store_id=1,  # admin-awarded vouchers default to store 1
         source="admin_awarded",
         source_id=admin.id,
-        redemption_code=f"ADMIN-{secrets.token_hex(4).upper()}",
+        voucher_code=f"ADMIN-{secrets.token_hex(4).upper()}",
         status="active",
         voucher_snapshot=snapshot,
         expires_at=vd.valid_until or (datetime.now(timezone.utc) + __import__('datetime').timedelta(days=vd.validity_days or 30)),
@@ -372,7 +389,77 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
     db.add(cv)
     await db.commit()
     await db.refresh(cv)
-    return APIResponse(data={"message": "Voucher awarded", "voucher_code": cv.redemption_code, "voucher_title": vd.display_title})
+    return APIResponse(data={"message": "Voucher awarded", "voucher_code": cv.voucher_code, "voucher_title": vd.display_title})
+
+
+@router.post("/{customer_id}/use-reward/{reward_id}", response_model=APIResponse[dict])
+async def use_reward(admin: CurrentAdmin, db: DBDependency, customer_id: int, reward_id: int, data: dict):
+    """Mark a customer's reward as used in-store."""
+    result = await db.execute(
+        select(CustomerReward).where(
+            CustomerReward.id == reward_id,
+            CustomerReward.customer_id == customer_id,
+        )
+    )
+    cr = result.scalar_one_or_none()
+    if not cr:
+        raise HTTPException(status_code=404, detail="Reward not found for this customer")
+
+    if cr.status == "used":
+        raise HTTPException(status_code=400, detail="Reward already used")
+    if cr.status == "expired":
+        raise HTTPException(status_code=400, detail="Reward has expired")
+    if cr.status == "cancelled":
+        raise HTTPException(status_code=400, detail="Reward was cancelled")
+
+    now = datetime.now(timezone.utc)
+    if cr.expires_at and cr.expires_at < now:
+        cr.status = "expired"
+        await db.commit()
+        raise HTTPException(status_code=400, detail="Reward has expired")
+
+    cr.status = "used"
+    cr.used_at = now
+    if data.get("store_id"):
+        cr.store_id = int(data["store_id"])
+
+    await db.commit()
+    return APIResponse(data={"message": "Reward marked as used", "success": True})
+
+
+@router.post("/{customer_id}/use-voucher/{voucher_id}", response_model=APIResponse[dict])
+async def use_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, voucher_id: int, data: dict):
+    """Mark a customer's voucher as used in-store."""
+    result = await db.execute(
+        select(CustomerVoucher).where(
+            CustomerVoucher.id == voucher_id,
+            CustomerVoucher.customer_id == customer_id,
+        )
+    )
+    cv = result.scalar_one_or_none()
+    if not cv:
+        raise HTTPException(status_code=404, detail="Voucher not found for this customer")
+
+    if cv.status == "used":
+        raise HTTPException(status_code=400, detail="Voucher already used")
+    if cv.status == "expired":
+        raise HTTPException(status_code=400, detail="Voucher has expired")
+    if cv.status == "revoked":
+        raise HTTPException(status_code=400, detail="Voucher was revoked")
+
+    now = datetime.now(timezone.utc)
+    if cv.expires_at and cv.expires_at < now:
+        cv.status = "expired"
+        await db.commit()
+        raise HTTPException(status_code=400, detail="Voucher has expired")
+
+    cv.status = "used"
+    cv.used_at = now
+    if data.get("store_id"):
+        cv.store_id = int(data["store_id"])
+
+    await db.commit()
+    return APIResponse(data={"message": "Voucher marked as used", "success": True})
 
 
 @router.post("/{customer_id}/set-tier", response_model=APIResponse[dict])
@@ -464,13 +551,55 @@ async def wallet_history(admin: CurrentAdmin, db: DBDependency, customer_id: int
 @router.get("/{customer_id}/wallet", response_model=APIResponse[dict])
 async def customer_wallet_items(admin: CurrentAdmin, db: DBDependency, customer_id: int):
     """Get customer's active rewards and vouchers."""
-    rr = await db.execute(select(CustomerReward).where(CustomerReward.customer_id == customer_id, CustomerReward.status.in_(["active","reserved"])))
-    rewards = [{"id": r.id, "reward_catalog_id": r.reward_catalog_id, "redemption_code": r.redemption_code, "status": r.status, "points_spent": r.points_spent, "expires_at": r.expires_at.isoformat() if r.expires_at else None} for r in rr.scalars().all()]
+    from app.models.reward import RewardCatalog
+
+    rr = await db.execute(
+        select(CustomerReward, RewardCatalog)
+        .join(RewardCatalog, CustomerReward.reward_catalog_id == RewardCatalog.id, isouter=True)
+        .where(CustomerReward.customer_id == customer_id, CustomerReward.status.in_(["active","reserved"]))
+    )
+    rewards = []
+    for r, rc in rr.all():
+        rewards.append({
+            "id": r.id,
+            "reward_id": r.reward_catalog_id,
+            "name": rc.reward_name if rc else (r.reward_snapshot.get("reward_name") if r.reward_snapshot else None),
+            "redemption_code": r.redemption_code,
+            "status": r.status,
+            "points_spent": r.points_spent,
+            "expires_at": r.expires_at.isoformat() if r.expires_at else None,
+        })
 
     rv = await db.execute(select(CustomerVoucher).where(CustomerVoucher.customer_id == customer_id, CustomerVoucher.status == "active"))
     vouchers = []
     for v in rv.scalars().all():
         vd = await db.get(VoucherDefinition, v.voucher_definition_id)
-        vouchers.append({"id": v.id, "redemption_code": v.redemption_code, "voucher_title": vd.display_title if vd else None, "voucher_code": vd.voucher_code if vd else None, "status": v.status, "expires_at": v.expires_at.isoformat() if v.expires_at else None})
+        vouchers.append({
+            "id": v.id,
+            "voucher_id": v.voucher_definition_id,
+            "title": vd.display_title if vd else (v.voucher_snapshot.get("display_title") if v.voucher_snapshot else None),
+            "code": v.voucher_code,
+            "discount_type": vd.voucher_type.replace("_off", "").replace("fixed_amount", "fixed").replace("percentage", "percent") if vd else None,
+            "discount_value": float(vd.discount_value) if vd else None,
+            "min_spend": float(vd.minimum_order_value) if vd else None,
+            "expires_at": v.expires_at.isoformat() if v.expires_at else None,
+        })
 
-    return APIResponse(data={"rewards": rewards, "vouchers": vouchers})
+    # Get wallet balance
+    w_result = await db.execute(select(Wallet).where(Wallet.customer_id == customer_id))
+    wallet = w_result.scalar_one_or_none()
+    wallet_balance = 0.0
+    if wallet:
+        lr = await db.execute(select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id))
+        total_credited = 0.0
+        total_debited = 0.0
+        for entry in lr.scalars().all():
+            if entry.entry_type in ("credit", "release"):
+                total_credited += float(entry.amount)
+            elif entry.entry_type in ("debit", "hold"):
+                total_debited += float(entry.amount)
+            elif entry.entry_type == "adjustment":
+                total_credited += float(entry.amount)
+        wallet_balance = total_credited - total_debited
+
+    return APIResponse(data={"balance": wallet_balance, "rewards": rewards, "vouchers": vouchers})

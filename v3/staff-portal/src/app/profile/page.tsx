@@ -1,77 +1,208 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, StaffMember } from "@/lib/api";
-import { User, Mail, Shield, Phone } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import PageHeader from "@/components/PageHeader";
+import Alert from "@/components/Alert";
+import Card from "@/components/Card";
+import SkeletonCard from "@/components/SkeletonCard";
+import { Mail, Shield, Store, Lock, KeyRound, AlertCircle, User } from "lucide-react";
 
 export default function ProfilePage() {
-  const [staff, setStaff] = useState<StaffMember | null>(null);
+  const router = useRouter();
+  const isAdmin = useIsAdmin();
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [showPin, setShowPin] = useState(false);
+  const [newPw, setNewPw] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [msg, setMsg] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchMe = async () => {
-      try {
-        const data = await api.get<StaffMember>("/admin/auth/me");
-        setStaff(data);
-        setError("");
-      } catch (err: any) {
-        setError(err.message || "Failed to load profile");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMe();
+    let mounted = true;
+    api.get<any>("/staff/auth/me")
+      .then((d) => { if (mounted) setProfile(d); })
+      .catch((e) => { console.error("Failed to load profile:", e); if (mounted) setProfile(null); })
+      .finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
   }, []);
 
-  const email = typeof window !== "undefined" ? localStorage.getItem("staffEmail") || "" : "";
-  const name = typeof window !== "undefined" ? localStorage.getItem("staffName") || email : "";
+  const roles = profile?.roles || [];
+  const name = profile?.display_name || (typeof window !== "undefined" ? localStorage.getItem("staffName") || "Staff Member" : "Staff Member");
+  const email = profile?.email || (typeof window !== "undefined" ? localStorage.getItem("staffEmail") || "" : "");
+  const storeId = profile?.store_id;
+
+  const handlePasswordChange = async () => {
+    if (!newPw || newPw.length < 6) { setMsg("Password must be at least 6 characters"); return; }
+    setSaving(true);
+    try {
+      await api.post("/staff/auth/change-password", { password: newPw });
+      setMsg("Password updated");
+      setShowPw(false);
+      setNewPw("");
+    } catch (e: any) {
+      console.error("Password change failed:", e);
+      setMsg(e.message || "Failed");
+    } finally { setSaving(false); }
+  };
+
+  const handlePinChange = async () => {
+    if (!newPin || newPin.length < 4) { setMsg("PIN must be at least 4 digits"); return; }
+    setSaving(true);
+    try {
+      await api.post("/staff/auth/change-pin", { pin: newPin });
+      setMsg("PIN updated");
+      setShowPin(false);
+      setNewPin("");
+    } catch (e: any) {
+      console.error("PIN change failed:", e);
+      setMsg(e.message || "Failed");
+    } finally { setSaving(false); }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
+        <PageHeader title="My Profile" />
+        <SkeletonCard count={3} />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 max-w-xl mx-auto">
-      <h2 className="text-xl font-bold mb-6">My Profile</h2>
+    <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
+      <PageHeader title="My Profile" />
 
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
+      {msg && (
+        <Alert
+          variant={msg.includes("Failed") || msg.includes("required") ? "error" : "success"}
+          onDismiss={() => setMsg("")}
+          autoDismiss={msg.includes("Failed") ? undefined : 3000}
+        >
+          {msg}
+        </Alert>
+      )}
 
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-full bg-slate-800 text-white flex items-center justify-center text-xl font-bold">
+      {/* Profile Card */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: "50%",
+            background: "var(--color-bg-dark)", color: "white",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 24, fontWeight: 700
+          }}>
             {name ? name.charAt(0).toUpperCase() : "S"}
           </div>
           <div>
-            <h3 className="text-lg font-semibold">{staff?.name || name || "Staff Member"}</h3>
-            <p className="text-sm text-gray-500">{staff?.role || "Staff"}</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 text-sm">
-            <Mail size={16} className="text-gray-400" />
-            <span className="text-gray-500 w-20">Email</span>
-            <span className="font-medium">{staff?.email || email}</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <Shield size={16} className="text-gray-400" />
-            <span className="text-gray-500 w-20">Role</span>
-            <span className="font-medium">{staff?.role || "Staff"}</span>
-          </div>
-          {staff?.phone && (
-            <div className="flex items-center gap-3 text-sm">
-              <Phone size={16} className="text-gray-400" />
-              <span className="text-gray-500 w-20">Phone</span>
-              <span className="font-medium">{staff.phone}</span>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{name}</h3>
+            <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+              {roles.map((r: string) => (
+                <span key={r} className="badge badge-sm badge-outline">{r}</span>
+              ))}
+              {roles.length === 0 && (
+                <span className="badge badge-sm badge-outline">{isAdmin ? "Administrator" : "Staff"}</span>
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mt-4">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">App Info</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>Staff Portal v1.0</p>
-          <p>FNB Super App v3</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="flex items-center gap-3 text-sm">
+            <Mail size={16} style={{ color: "var(--color-text-muted)" }} />
+            <span style={{ color: "var(--color-text-muted)", width: 60 }}>Email</span>
+            <span style={{ fontWeight: 600 }}>{email || "—"}</span>
+          </div>
+          <div className="flex items-center gap-3 text-sm">
+            <Shield size={16} style={{ color: "var(--color-text-muted)" }} />
+            <span style={{ color: "var(--color-text-muted)", width: 60 }}>Role</span>
+            <span style={{ fontWeight: 600 }}>{roles.length > 0 ? roles.join(", ") : (isAdmin ? "Administrator" : "Staff")}</span>
+          </div>
+          <div className="flex items-center gap-3 text-sm">
+            <Store size={16} style={{ color: "var(--color-text-muted)" }} />
+            <span style={{ color: "var(--color-text-muted)", width: 60 }}>Store</span>
+            <span style={{ fontWeight: 600 }}>{storeId ? `Store #${storeId}` : "All Stores"}</span>
+          </div>
         </div>
-      </div>
+      </Card>
+
+      {/* Security Card */}
+      <Card title="Security" style={{ marginBottom: 16 }}>
+        {isAdmin ? (
+          <div className="alert alert-warning" style={{ marginBottom: 0 }}>
+            <div className="flex items-start gap-3">
+              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>Password and PIN management is not available here. Admin users should manage their credentials from the <strong>admin portal</strong>.</span>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              {showPw ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <input
+                    type="password"
+                    value={newPw}
+                    onChange={e => setNewPw(e.target.value)}
+                    placeholder="New password (min 6 chars)"
+                    className="form-input"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button className="btn btn-primary btn-sm" onClick={handlePasswordChange} disabled={saving}>
+                      {saving ? "Saving..." : "Save"}
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setShowPw(false); setNewPw(""); }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button className="btn btn-ghost" onClick={() => setShowPw(true)} style={{ justifyContent: "flex-start" }}>
+                  <Lock size={16} /> Change Password
+                </button>
+              )}
+            </div>
+            <div>
+              {showPin ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <input
+                    type="password"
+                    value={newPin}
+                    onChange={e => setNewPin(e.target.value)}
+                    placeholder="New PIN (min 4 digits)"
+                    maxLength={6}
+                    className="form-input"
+                    style={{ textAlign: "center" }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button className="btn btn-primary btn-sm" onClick={handlePinChange} disabled={saving}>
+                      {saving ? "Saving..." : "Save"}
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setShowPin(false); setNewPin(""); }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button className="btn btn-ghost" onClick={() => setShowPin(true)} style={{ justifyContent: "flex-start" }}>
+                  <KeyRound size={16} /> Change PIN
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
+
+      <Card title="App Info">
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, color: "var(--color-text-muted)" }}>
+          <p>Staff Portal v3</p>
+          <p>LOKA Espresso — FNB Super App</p>
+        </div>
+      </Card>
     </div>
   );
 }

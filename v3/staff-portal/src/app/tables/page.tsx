@@ -1,40 +1,42 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { getTables, getStores, Table, Store, Order, getOrders } from "@/lib/api";
-import TableGrid from "@/components/TableGrid";
-import StatusBadge from "@/components/StatusBadge";
-import { RefreshCw, Store as StoreIcon, X, ShoppingBag, CalendarCheck, User, Clock } from "lucide-react";
+import { useState, useCallback, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { getTables, generateTableQr, updateTableStatus, type Table } from "@/lib/api";
+import { usePolling } from "@/hooks/usePolling";
+import { useQrImages } from "@/hooks/useQrImages";
+import { useQrExpiry } from "@/hooks/useQrExpiry";
+import PageHeader from "@/components/PageHeader";
+import Alert from "@/components/Alert";
+import EmptyState from "@/components/EmptyState";
+import Modal from "@/components/Modal";
+import SkeletonCard from "@/components/SkeletonCard";
+import {
+  RefreshCw, QrCode, Download, Users, Circle, Receipt,
+  UtensilsCrossed, ShoppingCart, CheckCircle, AlertTriangle,
+  Armchair, MapPin
+} from "lucide-react";
 
 export default function TablesPage() {
+  const router = useRouter();
+  const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
   const [tables, setTables] = useState<Table[]>([]);
-  const [stores, setStores] = useState<Store[]>([]);
-  const [storeId, setStoreId] = useState<number>(() => {
-    if (typeof window !== "undefined") { const s = localStorage.getItem("staffStoreId"); if (s) return Number(s); }
-    return 2;
-  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
-  const [tableOrders, setTableOrders] = useState<Order[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  const fetchStores = useCallback(async () => {
-    try {
-      const data = await getStores();
-      setStores(Array.isArray(data) ? data : []);
-      const physical = Array.isArray(data) ? data.find((s) => s.type === "physical" || s.id === 2) : undefined;
-      if (physical) setStoreId(physical.id);
-    } catch {
-      // ignore
-    }
-  }, []);
+  const [sectionFilter, setSectionFilter] = useState<string>("all");
+  const [generatingQr, setGeneratingQr] = useState<number | null>(null);
+  const [confirmClean, setConfirmClean] = useState<Table | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchTables = useCallback(async () => {
-    setLoading(true);
+    if (!storeId) return;
     try {
       const data = await getTables(storeId);
-      setTables(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      list.sort((a, b) => (a.table_number || "").localeCompare(b.table_number || "", undefined, { numeric: true }));
+      setTables(list);
       setError("");
     } catch (err: any) {
       setError(err.message || "Failed to load tables");
@@ -43,154 +45,307 @@ export default function TablesPage() {
     }
   }, [storeId]);
 
-  useEffect(() => {
-    fetchStores();
-  }, [fetchStores]);
+  usePolling(fetchTables, [storeId], { interval: 30000 });
 
-  useEffect(() => {
-    fetchTables();
-  }, [fetchTables]);
+  const qrInfo = useMemo(() => tables.map(t => ({ id: t.id, qr_code_url: t.qr_code_image_url, qr_code_token: t.qr_code_token, qr_generated_at: t.qr_generated_at })), [tables]);
+  const qrImages = useQrImages(qrInfo, storeId);
+  const qrExpiry = useQrExpiry(qrInfo);
 
-  const handleTableClick = async (table: Table) => {
-    setSelectedTable(table);
-    if (table.current_order_id || table.status !== "available") {
-      setDetailLoading(true);
-      try {
-        const orders = await getOrders(storeId);
-        const relevant = Array.isArray(orders)
-          ? orders.filter(
-              (o) =>
-                o.table_number === table.number ||
-                (table.current_order_id && o.id === table.current_order_id)
-            )
-          : [];
-        setTableOrders(relevant);
-      } catch {
-        setTableOrders([]);
-      } finally {
-        setDetailLoading(false);
-      }
-    } else {
-      setTableOrders([]);
+  const sections = useMemo(() => {
+    const set = new Set<string>();
+    tables.forEach((t) => { if (t.section) set.add(t.section); });
+    return Array.from(set).sort();
+  }, [tables]);
+
+  const filteredTables = useMemo(() => {
+    if (sectionFilter === "all") return tables;
+    return tables.filter((t) => t.section === sectionFilter);
+  }, [tables, sectionFilter]);
+
+  const statusCounts = useMemo(() => ({
+    available: tables.filter((t) => t.current_status === "available").length,
+    occupied: tables.filter((t) => t.current_status === "occupied").length,
+    reserved: tables.filter((t) => t.current_status === "reserved").length,
+    cleaning: tables.filter((t) => t.current_status === "cleaning").length,
+  }), [tables]);
+
+  const handleGenerateQr = async (table: Table) => {
+    setGeneratingQr(table.id);
+    try {
+      await generateTableQr(storeId, table.id);
+      await fetchTables();
+      setSuccess(`QR generated for Table ${table.table_number}`);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setGeneratingQr(null);
     }
   };
 
-  const available = tables.filter((t) => t.status === "available").length;
-  const occupied = tables.filter((t) => t.status === "occupied").length;
-  const reserved = tables.filter((t) => t.status === "reserved").length;
+  const handleMarkCleaned = async (table: Table) => {
+    setConfirmClean(table);
+  };
+  const confirmMarkCleaned = async () => {
+    if (!confirmClean) return;
+    try {
+      await updateTableStatus(storeId, confirmClean.id, "available");
+      await fetchTables();
+      setSelectedTable(null);
+      setConfirmClean(null);
+      setSuccess(`Table ${confirmClean.table_number} marked as available`);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const statusColor = (s: string) => {
+    switch (s) {
+      case "available": return "var(--color-success)";
+      case "occupied": return "var(--color-error)";
+      case "reserved": return "var(--color-warning)";
+      case "cleaning": return "var(--color-text-muted)";
+      default: return "var(--color-text-muted)";
+    }
+  };
+
+  const downloadQr = (table: Table) => {
+    const url = qrImages[table.id];
+    if (!url) return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `table-${table.table_number}-qr.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold">Table Management</h2>
-        <button
-          onClick={fetchTables}
-          className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50 transition"
-        >
-          <RefreshCw size={14} />
-          Refresh
-        </button>
+    <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+      <PageHeader
+        title="Tables"
+        subtitle={`${tables.length} tables · ${statusCounts.available} available`}
+       
+        action={
+          <button className="btn btn-ghost btn-sm" onClick={fetchTables}>
+            <RefreshCw size={14} /> Refresh
+          </button>
+        }
+      />
+
+      {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
+      {success && <Alert variant="success" onDismiss={() => setSuccess("")} autoDismiss={3000}>{success}</Alert>}
+
+      {/* Status Summary */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        {[
+          { label: "Available", count: statusCounts.available, color: "var(--color-success)" },
+          { label: "Occupied", count: statusCounts.occupied, color: "var(--color-error)" },
+          { label: "Reserved", count: statusCounts.reserved, color: "var(--color-warning)" },
+          { label: "Cleaning", count: statusCounts.cleaning, color: "var(--color-text-muted)" },
+        ].map((s) => (
+          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.color }} />
+            {s.label} ({s.count})
+          </div>
+        ))}
       </div>
 
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
-
-      <div className="flex items-center gap-4 mb-6">
-        <div className="flex items-center gap-2">
-          <StoreIcon size={16} className="text-gray-400" />
-          <select
-            value={storeId}
-            onChange={(e) => setStoreId(Number(e.target.value))}
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+      {/* Section Filter */}
+      {sections.length > 0 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto" }}>
+          <button
+            className={`badge badge-sm cursor-pointer ${sectionFilter === "all" ? "badge-primary" : "badge-outline"}`}
+            onClick={() => setSectionFilter("all")}
           >
-            {stores.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-            {stores.length === 0 && <option value={2}>Store 2</option>}
-          </select>
+            <MapPin size={10} /> All Sections
+          </button>
+          {sections.map((s) => (
+            <button
+              key={s}
+              className={`badge badge-sm cursor-pointer ${sectionFilter === s ? "badge-primary" : "badge-outline"}`}
+              onClick={() => setSectionFilter(s)}
+            >
+              {s}
+            </button>
+          ))}
         </div>
-
-        <div className="flex items-center gap-2 text-sm">
-          <span className="w-3 h-3 rounded-full bg-green-400" />
-          <span className="text-gray-600">Available ({available})</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="w-3 h-3 rounded-full bg-red-400" />
-          <span className="text-gray-600">Occupied ({occupied})</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="w-3 h-3 rounded-full bg-amber-400" />
-          <span className="text-gray-600">Reserved ({reserved})</span>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="text-gray-500 text-sm">Loading tables...</div>
-      ) : (
-        <TableGrid tables={tables} onTableClick={handleTableClick} />
       )}
 
-      {selectedTable && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-lg w-full max-w-lg max-h-[80vh] overflow-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <div>
-                <h3 className="text-lg font-bold">Table {selectedTable.number}</h3>
-                <p className="text-sm text-gray-500">{selectedTable.seats} seats</p>
-              </div>
-              <button
-                onClick={() => setSelectedTable(null)}
-                className="p-1 rounded hover:bg-gray-100 transition"
+      {loading ? (
+        <SkeletonCard count={8} />
+      ) : filteredTables.length === 0 ? (
+        <EmptyState title="No tables" description={sectionFilter !== "all" ? "No tables in this section." : "No tables configured for this store."} />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+          {filteredTables.map((table) => {
+            const expiry = qrExpiry[table.id];
+            const hasQr = !!(table.qr_code_image_url || table.qr_code_token) && !expiry?.expired;
+            const qrUrl = qrImages[table.id];
+
+            return (
+              <div
+                key={table.id}
+                className="card"
+                style={{
+                  borderLeft: `4px solid ${statusColor(table.current_status)}`,
+                  cursor: "pointer",
+                  padding: 16,
+                  transition: "transform 0.1s",
+                }}
+                onClick={() => setSelectedTable(table)}
               >
-                <X size={18} className="text-gray-500" />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Armchair size={18} style={{ color: statusColor(table.current_status) }} />
+                      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{table.table_number}</h3>
+                    </div>
+                    {table.display_name && <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--color-text-muted)" }}>{table.display_name}</p>}
+                  </div>
+                  <span className="badge badge-sm" style={{ background: statusColor(table.current_status) + "20", color: statusColor(table.current_status) }}>
+                    {table.current_status?.toUpperCase()}
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, fontSize: 12, color: "var(--color-text-muted)" }}>
+                  <span className="flex items-center gap-1"><Users size={12} /> {table.capacity} seats</span>
+                  {table.section && <span className="flex items-center gap-1"><MapPin size={12} /> {table.section}</span>}
+                </div>
+
+                {/* Active Order */}
+                {table.active_order && (
+                  <div style={{ marginBottom: 10, padding: 10, background: "var(--color-error-bg)", borderRadius: "var(--radius-md)", border: "1px solid rgba(220, 38, 38, 0.15)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <Receipt size={12} style={{ color: "var(--color-error)" }} />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-error)" }}>Active Order</span>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>#{table.active_order.order_number}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, fontSize: 12, color: "var(--color-text-muted)" }}>
+                      <span className="badge badge-sm badge-outline">{table.active_order.status}</span>
+                      <span>{table.active_order.payment_status}</span>
+                      <span style={{ fontWeight: 600 }}>RM {Number(table.active_order.total_amount || 0).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* QR Status */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto" }}>
+                  {hasQr ? (
+                    <span className="badge badge-sm badge-green flex items-center gap-1">
+                      <QrCode size={10} /> QR Active
+                    </span>
+                  ) : (
+                    <span className="badge badge-sm badge-outline flex items-center gap-1">
+                      <AlertTriangle size={10} /> No QR
+                    </span>
+                  )}
+                  {table.current_status === "occupied" && (
+                    <span className="badge badge-sm badge-red flex items-center gap-1">
+                      <Circle size={6} fill="currentColor" /> In Use
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Table Detail Modal */}
+      <Modal
+        open={!!selectedTable}
+        onClose={() => setSelectedTable(null)}
+        title={selectedTable ? `Table ${selectedTable.table_number}` : ""}
+        size="md"
+      >
+        {selectedTable && (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13 }}>
+                  {selectedTable.capacity} seats {selectedTable.section && `· ${selectedTable.section}`}
+                </p>
+              </div>
+              <span className="badge badge-sm" style={{ background: statusColor(selectedTable.current_status) + "20", color: statusColor(selectedTable.current_status) }}>
+                {selectedTable.current_status?.toUpperCase()}
+              </span>
+            </div>
+
+            {/* QR Code */}
+            <div style={{ textAlign: "center", marginBottom: 20, padding: 16, background: "var(--color-bg-muted)", borderRadius: "var(--radius-lg)" }}>
+              {qrImages[selectedTable.id] ? (
+                <>
+                  <img src={qrImages[selectedTable.id]} alt={`QR for Table ${selectedTable.table_number}`} style={{ width: 180, height: 180, margin: "0 auto", borderRadius: "var(--radius-md)" }} />
+                  <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 8 }}>
+                    {qrExpiry[selectedTable.id]?.expired
+                      ? "QR Expired"
+                      : `Expires in ${Math.floor((qrExpiry[selectedTable.id]?.remaining || 0) / 60)}m ${(qrExpiry[selectedTable.id]?.remaining || 0) % 60}s`}
+                  </p>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12 }}>
+                    <button className="btn btn-sm btn-primary" onClick={() => downloadQr(selectedTable)}>
+                      <Download size={14} /> Download
+                    </button>
+                    <button className="btn btn-sm btn-outline" onClick={() => handleGenerateQr(selectedTable)} disabled={generatingQr === selectedTable.id}>
+                      <RefreshCw size={14} className={generatingQr === selectedTable.id ? "animate-spin" : ""} /> Regenerate
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ width: 180, height: 180, margin: "0 auto", background: "var(--color-bg-card)", borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center", border: "2px dashed var(--color-border-light)" }}>
+                    <QrCode size={48} style={{ opacity: 0.3 }} />
+                  </div>
+                  <button className="btn btn-sm btn-primary" style={{ marginTop: 12 }} onClick={() => handleGenerateQr(selectedTable)} disabled={generatingQr === selectedTable.id}>
+                    <QrCode size={14} /> Generate QR
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Active Order Actions */}
+            <div style={{ marginBottom: 16 }}>
+              <button className="btn btn-primary w-full" onClick={() => router.push(`/pos?table=${selectedTable.id}&type=dine_in`)}>
+                <UtensilsCrossed size={16} /> Start Order
               </button>
             </div>
-            <div className="px-5 py-4">
-              <div className="flex items-center gap-2 mb-4">
-                <StatusBadge status={selectedTable.status} />
-              </div>
 
-              {detailLoading ? (
-                <div className="text-sm text-gray-500">Loading details...</div>
-              ) : tableOrders.length > 0 ? (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Active Orders</h4>
-                  {tableOrders.map((order) => (
-                    <div key={order.id} className="border border-gray-200 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <ShoppingBag size={14} className="text-gray-500" />
-                          <span className="font-medium text-sm">{order.order_number}</span>
-                        </div>
-                        <StatusBadge status={order.status} />
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Clock size={12} />
-                          {new Date(order.created_at).toLocaleTimeString()}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <User size={12} />
-                          {order.customer_name || "Walk-in"}
-                        </span>
-                      </div>
-                      <div className="mt-2 text-sm font-semibold">RM {order.total.toFixed(2)}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : selectedTable.status === "reserved" ? (
-                <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-3 rounded">
-                  <CalendarCheck size={14} />
-                  This table is reserved. No active orders yet.
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">No active orders for this table.</div>
+            {/* Table Actions */}
+            <div style={{ display: "flex", gap: 8 }}>
+              {selectedTable.current_status === "occupied" && (
+                <button className="btn btn-outline flex-1" onClick={() => handleMarkCleaned(selectedTable)}>
+                  <CheckCircle size={14} /> Mark as Cleaned
+                </button>
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
+
+      {/* Confirm Clean Modal */}
+      <Modal
+        open={!!confirmClean}
+        onClose={() => setConfirmClean(null)}
+        title="Mark as Cleaned?"
+        size="sm"
+      >
+        {confirmClean && (
+          <div>
+            <p style={{ margin: "0 0 16px", fontSize: 14 }}>
+              Mark Table <strong>{confirmClean.table_number}</strong> as available after cleaning?
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-outline flex-1" onClick={() => setConfirmClean(null)}>Cancel</button>
+              <button className="btn btn-primary flex-1" onClick={confirmMarkCleaned}>
+                <CheckCircle size={14} /> Confirm
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

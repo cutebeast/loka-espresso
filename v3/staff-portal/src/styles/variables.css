@@ -1,18 +1,98 @@
-/* Brand variables — LOKA Espresso */
+/* ============================================
+   LOKA Espresso — Design Tokens (v3 Staff Portal)
+   Merged from admin portal + staff portal brand aliases
+   ============================================ */
+
 :root {
-  --brand-primary: #3B4A1A;
-  --brand-primary-dark: #263210;
-  --brand-primary-deep: #1A2309;
-  --brand-primary-light: #4E6E20;
-  --brand-gold: #C9A84C;
-  --brand-cream: #F5F0E6;
-  --brand-bg: #F2EEE6;
-  --brand-bg-card: #FFFDF8;
-  --brand-text: #1E1B18;
-  --brand-text-secondary: #4A4038;
-  --brand-text-muted: #8A8078;
-  --brand-border: #D5CCBE;
-  --brand-sidebar: #1E1B18;
-  --brand-sidebar-hover: #2A2520;
-  --brand-sidebar-active: #3B4A1A;
+  /* Primary — Turkish Olive */
+  --color-primary: #3B4A1A;
+  --color-primary-dark: #263210;
+  --color-primary-deep: #1A2309;
+  --color-primary-light: #4E6E20;
+
+  /* Accent */
+  --color-accent: #85B085;
+  --color-accent-light: #A0C0A0;
+  --color-accent-gold: #C9A84C;
+  --color-accent-copper: #9B6625;
+  --color-accent-brown: #57280D;
+
+  /* Backgrounds */
+  --color-bg-page: #F2EEE6;
+  --color-bg-card: #FFFDF8;
+  --color-bg-muted: #E8E2D8;
+  --color-bg-dark: #1E1B18;
+  --color-bg-white: #FFFFFF;
+
+  /* Borders */
+  --color-border: #C4CED8;
+  --color-border-light: #D5CCBE;
+  --color-border-dark: #9BA8B8;
+
+  /* Text */
+  --color-text-primary: #1E1B18;
+  --color-text-secondary: #4A4038;
+  --color-text-muted: #8A8078;
+  --color-text-light: #FFFFFF;
+  --color-text-copper: #C4893A;
+
+  /* Status */
+  --color-success: #16A34A;
+  --color-success-bg: #F0FDF4;
+  --color-warning: #D97706;
+  --color-warning-bg: #FFFBEB;
+  --color-error: #DC2626;
+  --color-error-bg: #FEF2F2;
+  --color-info: #2563EB;
+  --color-info-bg: #EFF6FF;
+
+  /* Sidebar */
+  --sidebar-bg: #1E1B18;
+  --sidebar-bg-hover: #2A2520;
+  --sidebar-bg-active: rgba(59,74,26,0.35);
+  --sidebar-text: #C8D0D8;
+  --sidebar-text-muted: #8A9AA5;
+  --sidebar-accent: #85B085;
+  --sidebar-border: rgba(255,255,255,0.08);
+  --sidebar-icon-active: #C9A84C;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(27,32,35,0.06);
+  --shadow-md: 0 4px 12px rgba(27,32,35,0.10);
+  --shadow-lg: 0 8px 24px rgba(27,32,35,0.14);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* ── Backward-compatible brand aliases ── */
+  --brand-primary: var(--color-primary);
+  --brand-primary-dark: var(--color-primary-dark);
+  --brand-primary-deep: var(--color-primary-deep);
+  --brand-primary-light: var(--color-primary-light);
+  --brand-gold: var(--color-accent-gold);
+  --brand-cream: var(--color-bg-page);
+  --brand-bg: var(--color-bg-page);
+  --brand-bg-card: var(--color-bg-card);
+  --brand-text: var(--color-text-primary);
+  --brand-text-secondary: var(--color-text-secondary);
+  --brand-text-muted: var(--color-text-muted);
+  --brand-border: var(--color-border-light);
+  --brand-sidebar: var(--color-bg-dark);
+  --brand-sidebar-hover: var(--sidebar-bg-hover);
+  --brand-sidebar-active: var(--color-primary);
 }

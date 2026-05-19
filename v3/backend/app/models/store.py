@@ -88,6 +88,9 @@ class Store(Base, SoftDeleteMixin):
     orders: Mapped[List["Order"]] = relationship(
         "Order", back_populates="store"
     )
+    pos_terminals: Mapped[List["PosTerminal"]] = relationship(
+        "PosTerminal", back_populates="store"
+    )
 
     __table_args__ = (
         CheckConstraint("pickup_lead_minutes BETWEEN 5 AND 120", name="ck_stores_pickup_lead_minutes"),

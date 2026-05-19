@@ -1,105 +1,479 @@
 "use client";
-import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Search, QrCode, ArrowLeft, Wallet } from "lucide-react";
 
-interface Customer { id: number; display_name: string; phone_number: string; wallet_balance?: number; loyalty_tier?: string; }
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import {
+  searchCustomers, getCustomerWallet, getCustomerById, topUpWallet,
+  useReward, useVoucher, scanCustomerCode, scanRewardCode, scanVoucherCode,
+  type Customer, type CustomerWallet, type Reward, type Voucher
+} from "@/lib/api";
+import PageHeader from "@/components/PageHeader";
+import Alert from "@/components/Alert";
+import Card from "@/components/Card";
+import EmptyState from "@/components/EmptyState";
+import QrScannerModal from "@/components/QrScannerModal";
+import SkeletonCard from "@/components/SkeletonCard";
+import {
+  Search, QrCode, Wallet, Banknote, CreditCard, Smartphone,
+  Gift, Ticket, User, Lock, CheckCircle, ScanLine
+} from "lucide-react";
+
+type Tab = "topup" | "rewards";
+type PaymentMethod = "cash" | "card" | "qr";
+
+const QUICK_AMOUNTS = [20, 50, 100, 200, 300, 500];
 
 export default function WalletPage() {
   const router = useRouter();
+  const [tab, setTab] = useState<Tab>("topup");
   const [searchQ, setSearchQ] = useState("");
-  const [results, setResults] = useState<Customer[]>([]);
-  const [selected, setSelected] = useState<Customer | null>(null);
+  const [searchResults, setSearchResults] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [walletData, setWalletData] = useState<CustomerWallet | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // Top-up state
   const [amount, setAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [notes, setNotes] = useState("");
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [toppingUp, setToppingUp] = useState(false);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") || "" : "";
+  // QR Scanner
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanMode, setScanMode] = useState<"customer" | "reward" | "voucher">("customer");
 
-  const search = useCallback(async (q: string) => {
-    if (q.length < 2) { setResults([]); return; }
+  // Redeem state
+  const [redeemingId, setRedeemingId] = useState<number | null>(null);
+  const [redeemType, setRedeemType] = useState<"reward" | "voucher" | null>(null);
+
+  const doSearch = useCallback(async (q: string) => {
+    if (q.length < 2) { setSearchResults([]); return; }
+    setLoading(true);
     try {
-      const r = await fetch(`/api/v1/staff/customers/search?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${token}` } });
-      const d = await r.json();
-      setResults((d.data?.items || d.items || []).slice(0, 5));
-    } catch { setResults([]); }
-  }, [token]);
+      const data = await searchCustomers(q);
+      setSearchResults((Array.isArray(data) ? data : []).slice(0, 5));
+      setError("");
+    } catch (e) { console.error("Customer search failed:", e); setSearchResults([]); }
+    finally { setLoading(false); }
+  }, []);
+
+  const loadCustomer = async (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setSearchResults([]);
+    setSearchQ(customer.display_name);
+    setLoading(true);
+    try {
+      const wallet = await getCustomerWallet(customer.id);
+      setWalletData(wallet);
+      setError("");
+    } catch (err: any) {
+      setError(err.message || "Failed to load customer wallet");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScan = async (code: string) => {
+    setShowScanner(false);
+    setLoading(true);
+    try {
+      if (scanMode === "customer") {
+        const data = await scanCustomerCode(code);
+        const customer = await getCustomerById(data.customer_id);
+        await loadCustomer(customer);
+        setSuccess(`Found customer: ${data.customer_name}`);
+      } else if (scanMode === "reward") {
+        const data = await scanRewardCode(code);
+        if (!data.valid) { setError("Invalid or expired reward"); return; }
+        if (data.customer_id && selectedCustomer?.id !== data.customer_id) {
+          const customer = await getCustomerById(data.customer_id);
+          await loadCustomer(customer);
+        }
+        setSuccess(`Reward found: ${data.name}`);
+        setTab("rewards");
+      } else if (scanMode === "voucher") {
+        const data = await scanVoucherCode(code);
+        if (!data.valid) { setError("Invalid or expired voucher"); return; }
+        if (data.customer_id && selectedCustomer?.id !== data.customer_id) {
+          const customer = await getCustomerById(data.customer_id);
+          await loadCustomer(customer);
+        }
+        setSuccess(`Voucher found: ${data.title}`);
+        setTab("rewards");
+      }
+    } catch (err: any) {
+      setError(err.message || "Scan failed");
+    } finally {
+      setLoading(false);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
+    }
+  };
 
   const verifyPin = async (): Promise<boolean> => {
     try {
+      const token = localStorage.getItem("token") || "";
       const r = await fetch("/api/v1/staff/auth/verify-pin", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ pin }),
       });
       const d = await r.json();
       return (d.data?.valid || d.valid) === true;
-    } catch { return false; }
+    } catch (e) { console.error("PIN verification failed:", e); return false; }
   };
 
   const handleTopUp = async () => {
-    if (!selected || !amount || parseFloat(amount) <= 0) return;
-    setSaving(true);
+    const amt = parseFloat(amount);
+    if (!selectedCustomer || !amount || isNaN(amt) || amt <= 0) return;
+    setToppingUp(true);
     try {
       const valid = await verifyPin();
-      if (!valid) { setMsg("Invalid PIN"); setSaving(false); return; }
-      const r = await fetch("/api/v1/admin/wallets/topup", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ customer_id: selected.id, amount: parseFloat(amount), reason: "Staff top-up" }),
+      if (!valid) { setError("Invalid PIN"); setToppingUp(false); return; }
+      const res = await topUpWallet({
+        customer_id: selectedCustomer.id,
+        amount: parseFloat(amount),
+        payment_method: paymentMethod,
+        notes: notes || undefined,
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || "Failed");
-      setMsg(`✅ Top-up successful! New balance: RM ${d.data?.new_balance || "—"}`);
-      setAmount(""); setPin(""); setShowPin(false);
-    } catch (e: any) { setMsg(e.message); } finally { setSaving(false); }
+      const bal = typeof res.new_balance === "number" && !isNaN(res.new_balance) ? res.new_balance.toFixed(2) : "—";
+      setSuccess(`Top-up successful! New balance: RM ${bal}`);
+      setAmount(""); setPin(""); setNotes(""); setShowPin(false);
+      if (selectedCustomer) loadCustomer(selectedCustomer);
+    } catch (e: any) { setError(e.message); } finally { setToppingUp(false); }
+  };
+
+  const handleUseReward = async (reward: Reward) => {
+    if (!selectedCustomer) return;
+    setRedeemingId(reward.id);
+    setRedeemType("reward");
+    try {
+      const res = await useReward(selectedCustomer.id, reward.id);
+      setSuccess(res.message || "Reward used successfully");
+      if (selectedCustomer) loadCustomer(selectedCustomer);
+    } catch (e: any) { setError(e.message); } finally { setRedeemingId(null); setRedeemType(null); }
+  };
+
+  const handleUseVoucher = async (voucher: Voucher) => {
+    if (!selectedCustomer) return;
+    setRedeemingId(voucher.id);
+    setRedeemType("voucher");
+    try {
+      const res = await useVoucher(selectedCustomer.id, voucher.id);
+      setSuccess(res.message || "Voucher used successfully");
+      if (selectedCustomer) loadCustomer(selectedCustomer);
+    } catch (e: any) { setError(e.message); } finally { setRedeemingId(null); setRedeemType(null); }
+  };
+
+  const formatRewardName = (r: Reward) => {
+    return r.name || (r.redemption_code ? `Reward #${r.redemption_code}` : `Reward #${r.id}`);
+  };
+
+  const formatVoucherName = (v: Voucher) => {
+    return v.title || v.code || v.voucher_title || v.voucher_code || `Voucher #${v.id}`;
   };
 
   return (
-    <div style={{ padding: 16, maxWidth: 500, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <button onClick={() => router.push("/")} style={{ border: "none", background: "none", cursor: "pointer" }}><ArrowLeft size={18} /></button>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Wallet Top-Up</h2>
-      </div>
+    <div style={{ padding: 24, maxWidth: 700, margin: "0 auto" }}>
+      <PageHeader title="Customer Service" subtitle="Wallet, Rewards & Vouchers" />
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-        <div style={{ flex: 1, position: "relative" }}>
-          <Search size={14} style={{ position: "absolute", left: 8, top: 9, opacity: 0.4 }} />
-          <input value={searchQ} onChange={e => { setSearchQ(e.target.value); search(e.target.value); }} placeholder="Search customer..." style={{ width: "100%", padding: "8px 8px 8px 28px", borderRadius: 10, border: "1px solid #ddd", fontSize: 14 }} />
-        </div>
-        <button style={{ border: "1px solid #ddd", borderRadius: 10, padding: "8px 12px", background: "white", cursor: "pointer" }}><QrCode size={18} /></button>
-      </div>
-      {results.map(c => (
-        <button key={c.id} onClick={() => { setSelected(c); setSearchQ(c.display_name); setResults([]); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "1px solid #eee", borderRadius: 10, marginBottom: 4, background: selected?.id === c.id ? "rgba(59,74,26,0.08)" : "white", cursor: "pointer", fontSize: 13 }}>
-          {c.display_name} · {c.phone_number}
+      {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
+      {success && <Alert variant="success" onDismiss={() => setSuccess("")} autoDismiss={3000}>{success}</Alert>}
+
+      {/* Big Scan QR Button */}
+      {!selectedCustomer && (
+        <button
+          className="btn btn-primary w-full"
+          style={{ padding: "20px 16px", fontSize: 18, fontWeight: 700, marginBottom: 16, gap: 10 }}
+          onClick={() => { setScanMode("customer"); setShowScanner(true); }}
+        >
+          <ScanLine size={28} />
+          Scan Customer QR Code
         </button>
-      ))}
+      )}
 
-      {selected && (
-        <div style={{ marginTop: 16, padding: 16, borderRadius: 12, background: "white", border: "1px solid #eee" }}>
-          <div style={{ marginBottom: 12 }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{selected.display_name}</span>
-            {selected.loyalty_tier && <span style={{ marginLeft: 8, fontSize: 11, padding: "2px 8px", borderRadius: 8, background: "var(--brand-gold)", color: "#1E1B18" }}>{selected.loyalty_tier}</span>}
+      {/* Customer Search */}
+      <Card style={{ marginBottom: 16 }}>
+        <label className="form-label" style={{ marginBottom: 8, display: "block" }}>
+          {selectedCustomer ? "Customer" : "Search Customer"}
+        </label>
+        {!selectedCustomer ? (
+          <>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <div style={{ flex: 1, position: "relative" }}>
+                <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", opacity: 0.4, pointerEvents: "none" }} />
+                <input
+                  className="form-input"
+                  style={{ paddingLeft: 40 }}
+                  value={searchQ}
+                  onChange={e => setSearchQ(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") doSearch(searchQ); }}
+                  placeholder="Type phone number or name..."
+                  disabled={loading}
+                />
+              </div>
+              <button className="btn btn-primary" onClick={() => doSearch(searchQ)} disabled={loading || searchQ.length < 2}>
+                <Search size={16} /> Search
+              </button>
+            </div>
+            {searchResults.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {searchResults.map(c => (
+                  <button
+                    key={c.id}
+                    className="btn btn-ghost w-full"
+                    style={{ justifyContent: "flex-start", padding: "10px 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-light)", background: "white" }}
+                    onClick={() => loadCustomer(c)}
+                  >
+                    <User size={16} style={{ marginRight: 10, opacity: 0.5 }} />
+                    <span style={{ fontSize: 14 }}>{c.display_name} · {c.phone_number}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {searchQ.length >= 2 && !loading && searchResults.length === 0 && (
+              <p style={{ fontSize: 13, color: "var(--color-text-muted)", textAlign: "center", padding: 8 }}>No customers found.</p>
+            )}
+          </>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--color-bg-dark)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>
+                {selectedCustomer.display_name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{selectedCustomer.display_name}</div>
+                <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{selectedCustomer.phone_number}</div>
+              </div>
+            </div>
+            <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedCustomer(null); setWalletData(null); setSearchQ(""); setSearchResults([]); }}>
+              Change
+            </button>
           </div>
-          <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 8 }}>Current Balance: RM {(selected.wallet_balance || 0).toFixed(2)}</div>
-          <label style={{ fontSize: 12, opacity: 0.6 }}>Top-Up Amount</label>
-          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="RM 20.00" style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #ddd", fontSize: 20, fontWeight: 700, marginTop: 4, marginBottom: 8 }} />
-          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-            {[20, 50, 100].map(v => (
-              <button key={v} onClick={() => setAmount(String(v))} style={{ flex: 1, padding: "8px", borderRadius: 8, border: amount === String(v) ? "2px solid var(--brand-primary)" : "1px solid #ddd", background: amount === String(v) ? "rgba(59,74,26,0.08)" : "white", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>RM {v}</button>
-            ))}
+        )}
+      </Card>
+
+      {/* Customer Card */}
+      {selectedCustomer && walletData && (
+        <Card style={{ marginBottom: 16, borderLeft: "4px solid var(--color-primary)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--color-bg-dark)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700 }}>
+                {selectedCustomer.display_name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{selectedCustomer.display_name}</div>
+                <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{selectedCustomer.phone_number}</div>
+              </div>
+            </div>
           </div>
-          {!showPin ? (
-            <button onClick={() => setShowPin(true)} disabled={!amount || parseFloat(amount) <= 0} style={{ width: "100%", padding: "12px", borderRadius: 10, background: (!amount || parseFloat(amount) <= 0) ? "#ccc" : "var(--brand-primary)", color: "white", border: "none", fontSize: 15, fontWeight: 700, cursor: (!amount || parseFloat(amount) <= 0) ? "not-allowed" : "pointer" }}>🔒 Confirm with PIN</button>
-          ) : (
-            <div>
-              <input type="password" value={pin} onChange={e => setPin(e.target.value)} placeholder="Enter 4-digit PIN" maxLength={6} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #ddd", fontSize: 16, textAlign: "center", marginBottom: 8 }} autoFocus />
-              <button onClick={handleTopUp} disabled={saving || pin.length < 4} style={{ width: "100%", padding: "12px", borderRadius: 10, background: (saving || pin.length < 4) ? "#ccc" : "var(--brand-primary)", color: "white", border: "none", fontSize: 15, fontWeight: 700, cursor: (saving || pin.length < 4) ? "not-allowed" : "pointer" }}>{saving ? "Processing..." : "Confirm Top-Up"}</button>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+            <div style={{ textAlign: "center", padding: 10, background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)" }}>
+              <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 2 }}>Rewards</div>
+              <div style={{ fontSize: 18, fontWeight: 700 }}>{walletData.rewards?.length || 0}</div>
+            </div>
+            <div style={{ textAlign: "center", padding: 10, background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)" }}>
+              <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 2 }}>Vouchers</div>
+              <div style={{ fontSize: 18, fontWeight: 700 }}>{walletData.vouchers?.length || 0}</div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {loading && <SkeletonCard count={3} />}
+
+      {/* Tabs */}
+      {selectedCustomer && walletData && !loading && (
+        <>
+          <div className="tab-bar" style={{ marginBottom: 16 }}>
+            <button className={`tab ${tab === "topup" ? "active" : ""}`} onClick={() => setTab("topup")}>
+              <Wallet size={14} style={{ marginRight: 6 }} /> Wallet Top-Up
+            </button>
+            <button className={`tab ${tab === "rewards" ? "active" : ""}`} onClick={() => setTab("rewards")}>
+              <Gift size={14} style={{ marginRight: 6 }} /> Rewards & Vouchers
+            </button>
+          </div>
+
+          {tab === "topup" && (
+            <Card>
+              <label className="form-label">Top-Up Amount</label>
+              <input
+                type="number"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                placeholder="0.00"
+                className="form-input"
+                style={{ fontSize: 24, fontWeight: 700, marginBottom: 10 }}
+              />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16 }}>
+                {QUICK_AMOUNTS.map(v => (
+                  <button
+                    key={v}
+                    className={`btn btn-sm ${amount === String(v) ? "btn-primary" : "btn-ghost"}`}
+                    onClick={() => setAmount(String(v))}
+                  >
+                    RM {v}
+                  </button>
+                ))}
+              </div>
+
+              <label className="form-label">Payment Method</label>
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                {(["cash", "card", "qr"] as PaymentMethod[]).map(m => (
+                  <button
+                    key={m}
+                    className={`btn flex-1 ${paymentMethod === m ? "btn-primary" : "btn-ghost"}`}
+                    onClick={() => setPaymentMethod(m)}
+                  >
+                    {m === "cash" ? <Banknote size={16} /> : m === "card" ? <CreditCard size={16} /> : <Smartphone size={16} />}
+                    {m.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+
+              <label className="form-label">Notes (optional)</label>
+              <input
+                className="form-input"
+                style={{ marginBottom: 16 }}
+                placeholder="e.g. Counter 1, Staff: Ahmad"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+              />
+
+              {!showPin ? (
+                <button
+                  className="btn btn-primary w-full"
+                  onClick={() => setShowPin(true)}
+                  disabled={!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0}
+                >
+                  <Lock size={16} /> Confirm with PIN
+                </button>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <input
+                    type="password"
+                    value={pin}
+                    onChange={e => setPin(e.target.value)}
+                    placeholder="Enter 4-digit PIN"
+                    maxLength={6}
+                    className="form-input"
+                    style={{ textAlign: "center" }}
+                    autoFocus
+                  />
+                  <button
+                    className="btn btn-primary w-full"
+                    onClick={handleTopUp}
+                    disabled={toppingUp || pin.length < 4}
+                  >
+                    {toppingUp ? "Processing..." : `Top-Up RM ${(() => { const a = parseFloat(amount || "0"); return isNaN(a) ? "0.00" : a.toFixed(2); })()}`}
+                  </button>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {tab === "rewards" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Rewards */}
+              <Card title={`Available Rewards (${walletData.rewards?.length || 0})`}>
+                {(!walletData.rewards || walletData.rewards.length === 0) ? (
+                  <EmptyState title="No rewards" description="This customer has no available rewards." icon={<Gift size={40} />} />
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {walletData.rewards.map((reward: Reward) => (
+                      <div
+                        key={reward.id}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          padding: 12, background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)"
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{formatRewardName(reward)}</div>
+                          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+                            {reward.redemption_code && <>Code: {reward.redemption_code} · </>}
+                            {reward.points_spent !== undefined && <>{reward.points_spent} pts · </>}
+                            {reward.expires_at && <>{(() => { const d = new Date(reward.expires_at); return !isNaN(d.getTime()) ? `Expires: ${d.toLocaleDateString()}` : null; })()}</>}
+                          </div>
+                        </div>
+                        <button
+                          className="btn btn-sm btn-success"
+                          onClick={() => handleUseReward(reward)}
+                          disabled={redeemingId === reward.id && redeemType === "reward"}
+                        >
+                          {redeemingId === reward.id && redeemType === "reward" ? "..." : <><CheckCircle size={12} /> Use</>}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ marginTop: 12, textAlign: "center" }}>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => { setScanMode("reward"); setShowScanner(true); }}
+                  >
+                    <QrCode size={14} /> Scan Reward QR
+                  </button>
+                </div>
+              </Card>
+
+              {/* Vouchers */}
+              <Card title={`Available Vouchers (${walletData.vouchers?.length || 0})`}>
+                {(!walletData.vouchers || walletData.vouchers.length === 0) ? (
+                  <EmptyState title="No vouchers" description="This customer has no available vouchers." icon={<Ticket size={40} />} />
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {walletData.vouchers.map((voucher: Voucher) => (
+                      <div
+                        key={voucher.id}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          padding: 12, background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)"
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{formatVoucherName(voucher)}</div>
+                          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+                            Code: {voucher.code || voucher.voucher_code || voucher.redemption_code || "—"}
+                            {voucher.expires_at && <>{(() => { const d = new Date(voucher.expires_at); return !isNaN(d.getTime()) ? ` · Exp: ${d.toLocaleDateString()}` : null; })()}</>}
+                          </div>
+                        </div>
+                        <button
+                          className="btn btn-sm btn-success"
+                          onClick={() => handleUseVoucher(voucher)}
+                          disabled={redeemingId === voucher.id && redeemType === "voucher"}
+                        >
+                          {redeemingId === voucher.id && redeemType === "voucher" ? "..." : <><CheckCircle size={12} /> Use</>}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ marginTop: 12, textAlign: "center" }}>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => { setScanMode("voucher"); setShowScanner(true); }}
+                  >
+                    <QrCode size={14} /> Scan Voucher QR
+                  </button>
+                </div>
+              </Card>
             </div>
           )}
-          {msg && <div style={{ marginTop: 8, fontSize: 13, color: msg.startsWith("✅") ? "var(--brand-primary)" : "#E53E3E" }}>{msg}</div>}
-        </div>
+        </>
       )}
+
+      {/* QR Scanner */}
+      <QrScannerModal
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={handleScan}
+        title={scanMode === "customer" ? "Scan Customer QR" : scanMode === "reward" ? "Scan Reward QR" : "Scan Voucher QR"}
+      />
     </div>
   );
 }

@@ -1,41 +1,159 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { staffLogin } from "@/lib/api";
-import { Store, Lock, Mail, User } from "lucide-react";
+import { Store, Lock, Mail, User, ChevronDown, ChevronUp } from "lucide-react";
+
+interface StoreInfo { id: number; store_name: string; }
+
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  label,
+  icon,
+  disabled = false,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: { value: string; label: string }[];
+  placeholder: string;
+  label: string;
+  icon: React.ReactNode;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const selectedLabel = options.find((o) => o.value === value)?.label || placeholder;
+
+  return (
+    <div className="form-group login-select-wrap" ref={ref}>
+      <label className="form-label flex items-center gap-2">
+        {icon} {label}
+      </label>
+      <button
+        type="button"
+        className="form-input flex items-center justify-between w-full"
+        onClick={() => !disabled && setOpen(!open)}
+        disabled={disabled}
+        style={{
+          background: disabled ? "var(--color-bg-muted)" : "white",
+          cursor: disabled ? "not-allowed" : "pointer",
+        }}
+      >
+        <span className={value ? "" : "opacity-50"}>{selectedLabel}</span>
+        {open ? <ChevronUp size={16} className="opacity-40" /> : <ChevronDown size={16} className="opacity-40" />}
+      </button>
+      {open && (
+        <div className="login-select-dropdown">
+          {options.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              className={`login-select-option ${o.value === value ? "login-select-option-selected" : ""}`}
+              onClick={() => { onChange(o.value); setOpen(false); }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
+  const [stores, setStores] = useState<StoreInfo[]>([]);
+  const [selectedStore, setSelectedStore] = useState("");
   const [mode, setMode] = useState<"email" | "name">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [nameList, setNameList] = useState<{ id: number; display_name: string; store_name: string }[]>([]);
+  const [nameList, setNameList] = useState<{ id: number; display_name: string }[]>([]);
+  const [selectedName, setSelectedName] = useState("");
 
   useEffect(() => {
-    fetch("/api/v1/staff/auth/names")
-      .then(r => r.json())
-      .then(d => setNameList(Array.isArray(d.data) ? d.data : []))
-      .catch(() => {});
+    let mounted = true;
+    fetch("/api/v1/stores")
+      .then(async r => {
+        if (!r.ok) throw new Error("Failed to load stores");
+        const d = await r.json();
+        const list = d.data?.items || d.items || [];
+        if (mounted) setStores(list.filter((s: any) => s.is_active !== false));
+      })
+      .catch((err) => { console.error("Store fetch failed:", err); if (mounted) setStores([]); });
+    return () => { mounted = false; };
   }, []);
 
-  const [selectedName, setSelectedName] = useState("");
+  useEffect(() => {
+    if (!selectedStore || mode !== "name") return;
+    let mounted = true;
+    fetch(`/api/v1/staff/auth/names?store_id=${selectedStore}`)
+      .then(async r => {
+        if (!r.ok) throw new Error("Failed to load staff list");
+        const d = await r.json();
+        if (mounted) setNameList(d.data || []);
+      })
+      .catch((err) => { console.error("Staff names fetch failed:", err); if (mounted) setNameList([]); });
+    return () => { mounted = false; };
+  }, [selectedStore, mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      if (mode === "email") {
-        await staffLogin(email, pin);
+      const payload: any = {};
+      if (!selectedStore) { setError("Please select a store"); setLoading(false); return; }
+
+      if (mode === "name") {
+        if (!selectedName) { setError("Please select your name"); setLoading(false); return; }
+        payload.display_name = selectedName;
+        payload.store_id = Number(selectedStore);
+        payload.password = pin;
       } else {
-        // Name + PIN: use PIN as password, selectedName ID as email
-        const staff = nameList.find(n => n.display_name === selectedName);
-        if (!staff) { setError("Please select a name"); setLoading(false); return; }
-        await staffLogin(String(staff.id), pin); // sends id as email, pin as password
+        payload.email = email;
+        payload.password = pin || password;
+        payload.store_id = Number(selectedStore);
+      }
+
+      const r = await fetch("/api/v1/staff/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      let d: any;
+      try { d = await r.json(); } catch (e) { console.error("Login response parse failed:", e); throw new Error("Server error. Please try again."); }
+      if (!r.ok) throw new Error(d.detail || "Login failed");
+      const token = d.tokens?.access_token;
+      const refresh = d.tokens?.refresh_token;
+      if (!token) throw new Error("Invalid response from server");
+      try {
+        localStorage.setItem("token", token);
+        if (refresh) localStorage.setItem("refreshToken", refresh);
+        if (d.profile) {
+          localStorage.setItem("staffProfile", JSON.stringify(d.profile));
+          if (d.profile.email) localStorage.setItem("staffEmail", d.profile.email);
+          if (d.profile.display_name) localStorage.setItem("staffName", d.profile.display_name);
+          if (d.profile.store_id) localStorage.setItem("staffStoreId", String(d.profile.store_id));
+          if (d.profile.staff_id) localStorage.setItem("staffId", String(d.profile.staff_id));
+          if (d.profile.is_admin) localStorage.setItem("isAdmin", "true");
+        }
+      } catch (err) {
+        console.error("localStorage failed:", err);
+        throw new Error("Browser storage blocked. Please disable private mode.");
       }
       router.replace("/");
     } catch (err: any) {
@@ -46,71 +164,91 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-brand-bg px-4">
-      <div className="w-full max-w-md bg-brand-card rounded-2xl border border-brand-border-light shadow-lg p-8">
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-xl bg-brand flex items-center justify-center mx-auto mb-4">
+    <div className="login-page">
+      <div className="login-card card">
+        <div className="login-brand">
+          <div className="login-brand-icon">
             <Store size={28} className="text-white" />
           </div>
-          <h1 className="text-xl font-bold text-brand-text">LOKA Espresso</h1>
-          <p className="text-sm text-brand-text-muted mt-1">Staff Portal</p>
+          <h1 className="login-brand-title">LOKA Espresso</h1>
+          <p className="login-brand-subtitle">Staff Portal</p>
         </div>
 
-        <div className="flex gap-2 mb-6">
-          <button onClick={() => setMode("email")} className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${mode === "email" ? "bg-brand text-white" : "bg-gray-100 text-gray-600"}`}>
+        {/* Store Selection */}
+        <CustomSelect
+          value={selectedStore}
+          onChange={(val) => { setSelectedStore(val); setNameList([]); setSelectedName(""); }}
+          options={stores.map((s) => ({ value: String(s.id), label: s.store_name }))}
+          placeholder="Select a store..."
+          label="Store"
+          icon={<Store size={16} className="login-icon-primary" />}
+        />
+
+        {/* Mode Toggle */}
+        <div className="login-mode-toggle">
+          <button
+            onClick={() => setMode("email")}
+            className={`btn flex-1 justify-center ${mode === "email" ? "btn-primary" : "btn-ghost"}`}
+          >
             Email + PIN
           </button>
-          <button onClick={() => setMode("name")} className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${mode === "name" ? "bg-brand text-white" : "bg-gray-100 text-gray-600"}`}>
+          <button
+            onClick={() => setMode("name")}
+            className={`btn flex-1 justify-center ${mode === "name" ? "btn-primary" : "btn-ghost"}`}
+          >
             Name + PIN
           </button>
         </div>
 
-        {error && (
-          <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
-            {error}
-          </div>
-        )}
+        {error && <div className="alert alert-error mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "email" ? (
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-brand-text-secondary mb-2">
-                <Mail size={16} className="text-brand" />
-                Email
+            <div className="form-group">
+              <label className="form-label flex items-center gap-2">
+                <Mail size={16} className="login-icon-primary" /> Email
               </label>
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 placeholder="staff@loyaltysystem.uk"
-                className="w-full px-4 py-3 text-base bg-white border border-brand-border rounded-lg text-brand-text placeholder:text-brand-text-muted/50 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
+                className="form-input"
+              />
             </div>
           ) : (
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-brand-text-secondary mb-2">
-                <User size={16} className="text-brand" />
-                Name
-              </label>
-              <select value={selectedName} onChange={e => setSelectedName(e.target.value)} required
-                className="w-full px-4 py-3 text-base bg-white border border-brand-border rounded-lg text-brand-text focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand">
-                <option value="">Select staff...</option>
-                {nameList.map(n => (
-                  <option key={n.id} value={n.display_name}>{n.display_name} — {n.store_name}</option>
-                ))}
-              </select>
-            </div>
+            <CustomSelect
+              value={selectedName}
+              onChange={setSelectedName}
+              options={nameList.map((n) => ({ value: n.display_name, label: n.display_name }))}
+              placeholder={selectedStore ? "Select staff..." : "Select a store first"}
+              label="Name"
+              icon={<User size={16} className="login-icon-primary" />}
+              disabled={!selectedStore || nameList.length === 0}
+            />
           )}
 
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-brand-text-secondary mb-2">
-              <Lock size={16} className="text-brand" />
-              PIN
+          <div className="form-group">
+            <label className="form-label flex items-center gap-2">
+              <Lock size={16} className="login-icon-primary" /> {mode === "email" ? "PIN or Password" : "PIN"}
             </label>
-            <input type="password" required value={pin} onChange={e => setPin(e.target.value)}
-              placeholder="4-digit PIN"
-              maxLength={6}
-              className="w-full px-4 py-3 text-base bg-white border border-brand-border rounded-lg text-brand-text placeholder:text-brand-text-muted/50 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand text-center" />
+            <input
+              type="password"
+              required
+              value={mode === "email" ? password : pin}
+              onChange={e => mode === "email" ? setPassword(e.target.value) : setPin(e.target.value)}
+              placeholder={mode === "email" ? "PIN (6 digits) or password" : "6-digit PIN"}
+              maxLength={mode === "email" ? 50 : 6}
+              className={`form-input ${mode === "name" ? "login-input-center" : ""}`}
+            />
           </div>
 
-          <button type="submit" disabled={loading}
-            className="w-full bg-brand hover:bg-brand-dark text-white font-medium py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+          <button
+            type="submit"
+            disabled={loading || !selectedStore}
+            className="btn btn-primary w-full login-submit"
+          >
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>

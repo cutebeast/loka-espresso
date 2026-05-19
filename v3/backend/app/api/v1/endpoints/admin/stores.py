@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
+from app.models.order import Order
 from app.models.store import (
     DiningTable,
     Reservation,
@@ -65,6 +66,7 @@ class DiningTableUpdate(BaseModel):
     display_name: str | None = Field(None, max_length=50)
     capacity: int | None = Field(None, ge=1, le=50)
     qr_code_token: str | None = Field(None, max_length=64)
+    current_status: str | None = Field(None, max_length=20)
 
 
 # ---------------------------------------------------------------------------
@@ -378,12 +380,34 @@ async def list_tables(
         .order_by(TableStatusSnapshot.table_id)
     )
     snap_result = await db.execute(snap_query)
-    snap_map = {s.table_id: s.status for s in snap_result.scalars().all()}
+    snap_map = {s.table_id: s for s in snap_result.scalars().all()}
+
+    # Batch-fetch active orders
+    active_order_ids = [snap.current_order_id for snap in snap_map.values() if snap.current_order_id]
+    order_map = {}
+    if active_order_ids:
+        o_result = await db.execute(
+            select(Order.id, Order.order_number, Order.status, Order.payment_status, Order.total_amount)
+            .where(Order.id.in_(active_order_ids))
+        )
+        order_map = {r[0]: r for r in o_result.all()}
 
     items = []
     for t in tables:
         out = DiningTableOut.model_validate(t)
-        out.current_status = snap_map.get(t.id, "available")
+        snap = snap_map.get(t.id)
+        out.current_status = snap.status if snap else "available"
+        if snap and snap.current_order_id:
+            out.active_order_id = snap.current_order_id
+            o = order_map.get(snap.current_order_id)
+            if o:
+                out.active_order = {
+                    "id": o[0],
+                    "order_number": o[1],
+                    "status": o[2],
+                    "payment_status": o[3],
+                    "total_amount": float(o[4]) if o[4] else 0,
+                }
         items.append(out)
     return APIResponse(data=items)
 
@@ -454,8 +478,24 @@ async def update_table(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Table not found")
 
     update_data = data.model_dump(exclude_unset=True)
+    current_status = update_data.pop("current_status", None)
+
     for field, value in update_data.items():
         setattr(table, field, value)
+
+    if current_status is not None:
+        existing_snap = await db.execute(
+            select(TableStatusSnapshot).where(TableStatusSnapshot.table_id == table.id)
+        )
+        snap = existing_snap.scalar_one_or_none()
+        if snap:
+            snap.status = current_status
+        else:
+            db.add(TableStatusSnapshot(
+                table_id=table.id,
+                store_id=store_id,
+                status=current_status,
+            ))
 
     await db.commit()
     await db.refresh(table)

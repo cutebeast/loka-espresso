@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency, security_scheme
 from app.core.security import decode_token
+from app.models.iam import AdminAccount
 from app.models.staff import StaffProfile, StaffTimeEvent
 from app.schemas.base import APIResponse, PaginatedResponse
 
@@ -36,18 +37,53 @@ async def get_current_staff(
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 
-    if payload.get("type") != "access":
+    token_type = payload.get("type")
+    if token_type not in ("access", "staff"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    staff_id = int(payload.get("sub", 0))
-    if not staff_id:
+    raw_staff_id = payload.get("staff_id")
+    staff_id = int(raw_staff_id) if raw_staff_id is not None else int(payload.get("sub", 0))
+
+    # Admin users on staff portal have staff_id=0 — look up or create a StaffProfile
+    if staff_id == 0:
+        admin_id = payload.get("admin_id")
+        if admin_id:
+            admin_result = await db.execute(
+                select(AdminAccount).where(AdminAccount.id == int(admin_id))
+            )
+            admin = admin_result.scalar_one_or_none()
+            if admin:
+                # Try to find existing staff profile by principal_id
+                sp_result = await db.execute(
+                    select(StaffProfile).where(
+                        StaffProfile.principal_id == admin.principal_id,
+                        StaffProfile.deleted_at.is_(None),
+                    )
+                )
+                sp = sp_result.scalar_one_or_none()
+                if sp:
+                    return sp
+                # Create a shadow StaffProfile for the admin
+                sp = StaffProfile(
+                    principal_id=admin.principal_id,
+                    store_id=int(payload.get("store_id", 0)),
+                    employee_id=f"ADMIN-{admin.id}",
+                    display_name=admin.display_name,
+                    email_address=admin.email,
+                    role="shift_supervisor",
+                    is_active=True,
+                )
+                db.add(sp)
+                await db.commit()
+                await db.refresh(sp)
+                return sp
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token subject",
+            detail="Admin staff profile not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

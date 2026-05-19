@@ -1,39 +1,47 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
-import { Store, LogOut, ArrowLeft } from "lucide-react";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { Store, LogOut, Shield } from "lucide-react";
 
 export default function StoreHeader() {
   const router = useRouter();
   const path = usePathname();
+  const isAdmin = useIsAdmin();
   const isHome = path === "/";
   const staffName = typeof window !== "undefined" ? localStorage.getItem("staffName") || "" : "";
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("staffName");
     localStorage.removeItem("staffEmail");
+    localStorage.removeItem("staffStoreId");
+    localStorage.removeItem("staffProfile");
+    localStorage.removeItem("staffId");
+    localStorage.removeItem("isAdmin");
     router.replace("/login");
   };
 
   return (
-    <header style={{
-      position: "sticky", top: 0, zIndex: 50,
-      background: "var(--brand-sidebar, #1E1B18)", color: "#F5F0E6",
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "10px 14px", minHeight: 48,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {!isHome && (
-          <button onClick={() => router.push("/")} style={{ background: "none", border: "none", color: "#F5F0E6", cursor: "pointer", padding: 4 }}>
-            <ArrowLeft size={22} />
-          </button>
+    <header className="store-header">
+      <button
+        className="store-header-brand"
+        onClick={() => router.push("/")}
+        aria-label="Back to dashboard"
+      >
+        <Store size={24} />
+        <span className="store-header-brand-name">Loka Espresso</span>
+      </button>
+      <div className="store-header-actions">
+        {isAdmin && (
+          <span className="badge badge-sm" style={{ background: "var(--color-accent-gold)", color: "#1E1B18" }}>
+            <Shield size={10} /> Admin
+          </span>
         )}
-        <Store size={20} />
-        <span style={{ fontWeight: 600, fontSize: 15 }}>Loka Espresso</span>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 12, opacity: 0.7, maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{staffName}</span>
-        <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#C9A84C", cursor: "pointer", padding: 4 }} title="Logout">
+        <span className="store-header-name">
+          {staffName}
+        </span>
+        <button type="button" className="store-header-logout" onClick={handleLogout} title="Logout" aria-label="Logout">
           <LogOut size={18} />
         </button>
       </div>

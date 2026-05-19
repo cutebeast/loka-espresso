@@ -2,26 +2,51 @@
 
 import { OrderStatus, ReservationStatus } from "@/lib/api";
 
-const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-  pending: { bg: "bg-amber-100", text: "text-amber-800", label: "Pending" },
-  confirmed: { bg: "bg-blue-100", text: "text-blue-800", label: "Confirmed" },
-  preparing: { bg: "bg-amber-100", text: "text-amber-800", label: "Preparing" },
-  ready: { bg: "bg-green-100", text: "text-green-800", label: "Ready" },
-  completed: { bg: "bg-slate-100", text: "text-slate-800", label: "Completed" },
-  cancelled: { bg: "bg-red-100", text: "text-red-800", label: "Cancelled" },
-  available: { bg: "bg-green-100", text: "text-green-800", label: "Available" },
-  occupied: { bg: "bg-red-100", text: "text-red-800", label: "Occupied" },
-  reserved: { bg: "bg-amber-100", text: "text-amber-800", label: "Reserved" },
-  requested: { bg: "bg-amber-100", text: "text-amber-800", label: "Requested" },
-  seated: { bg: "bg-blue-100", text: "text-blue-800", label: "Seated" },
-  no_show: { bg: "bg-red-100", text: "text-red-800", label: "No Show" },
+const STATUS_MAP: Record<string, { label: string; variant: "green" | "yellow" | "red" | "blue" | "gray" | "orange" }> = {
+  pending: { label: "Pending", variant: "yellow" },
+  confirmed: { label: "Confirmed", variant: "blue" },
+  preparing: { label: "Preparing", variant: "orange" },
+  ready_for_pickup: { label: "Ready", variant: "green" },
+  out_for_delivery: { label: "Out for Delivery", variant: "blue" },
+  delivered: { label: "Delivered", variant: "green" },
+  cancelled_by_customer: { label: "Cancelled", variant: "red" },
+  cancelled_by_merchant: { label: "Cancelled", variant: "red" },
+  refunded: { label: "Refunded", variant: "gray" },
+  partially_refunded: { label: "Partial Refund", variant: "gray" },
+  disputed: { label: "Disputed", variant: "orange" },
+  // Legacy aliases
+  ready: { label: "Ready", variant: "green" },
+  completed: { label: "Completed", variant: "green" },
+  cancelled: { label: "Cancelled", variant: "red" },
+  requested: { label: "Requested", variant: "yellow" },
+  seated: { label: "Seated", variant: "blue" },
+  no_show: { label: "No Show", variant: "red" },
+  available: { label: "Available", variant: "green" },
+  occupied: { label: "Occupied", variant: "red" },
+  reserved: { label: "Reserved", variant: "yellow" },
+  cleaning: { label: "Cleaning", variant: "gray" },
+  cancelled_by_guest: { label: "Cancelled", variant: "red" },
 };
 
-export default function StatusBadge({ status }: { status: OrderStatus | ReservationStatus | string }) {
-  const config = statusConfig[status] || { bg: "bg-gray-100", text: "text-gray-800", label: status };
+interface StatusBadgeProps {
+  status: OrderStatus | ReservationStatus | string;
+  className?: string;
+}
+
+export default function StatusBadge({ status, className = "" }: StatusBadgeProps) {
+  const mapped = STATUS_MAP[status] || { label: status.replace(/_/g, " "), variant: "gray" as const };
+  const colors: Record<string, string> = {
+    green: "badge-green",
+    yellow: "badge-yellow",
+    red: "badge-red",
+    blue: "badge-blue",
+    gray: "badge-gray",
+    orange: "badge-orange",
+  };
+
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
-      {config.label}
+    <span className={`badge badge-sm ${colors[mapped.variant]} ${className}`}>
+      {mapped.label}
     </span>
   );
 }

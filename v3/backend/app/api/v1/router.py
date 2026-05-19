@@ -50,6 +50,8 @@ from app.api.v1.endpoints.public import menu as public_menu
 from app.api.v1.endpoints.public import rsvp as public_rsvp
 from app.api.v1.endpoints.public import store as public_store
 from app.api.v1.endpoints.staff import staff_ops as staff_operations
+from app.api.v1.endpoints.admin import scan as admin_scan
+from app.api.v1.endpoints.admin import pos as admin_pos
 
 api_router = APIRouter()
 
@@ -76,6 +78,7 @@ api_router.include_router(admin_dashboard.router, tags=["admin — dashboard"])
 
 # Wallets
 api_router.include_router(admin_wallet.admin_router, tags=["admin — wallets"])
+api_router.include_router(admin_wallet.wallet_alias_router, tags=["admin — wallets"])
 api_router.include_router(admin_wallet.public_router, tags=["wallet"])
 
 # Vouchers
@@ -125,6 +128,12 @@ api_router.include_router(admin_refunds.router, tags=["admin — refunds"])
 
 # Orders (admin)
 api_router.include_router(admin_orders.router, tags=["admin — orders"])
+
+# Scan (admin)
+api_router.include_router(admin_scan.router, tags=["admin — scan"])
+
+# POS (admin)
+api_router.include_router(admin_pos.router, tags=["admin — pos"])
 
 # Customers (admin)
 api_router.include_router(admin_customers.router, tags=["admin — customers"])

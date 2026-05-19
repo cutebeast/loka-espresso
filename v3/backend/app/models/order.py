@@ -98,6 +98,9 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     store: Mapped["Store"] = relationship("Store", back_populates="orders")
     dining_table: Mapped["DiningTable"] = relationship("DiningTable")
     cancelled_by_staff: Mapped["StaffProfile | None"] = relationship("StaffProfile")
+    modification_logs: Mapped[List["OrderModificationLog"]] = relationship(
+        "OrderModificationLog", back_populates="order", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         CheckConstraint(

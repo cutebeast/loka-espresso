@@ -11,6 +11,7 @@ from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.wallet import TopUpRequest, WalletLedgerEntryOut, WalletOut
 
 admin_router = APIRouter(prefix="/admin/wallets", tags=["admin — wallets"])
+wallet_alias_router = APIRouter(prefix="/admin/wallet", tags=["admin — wallets"])
 public_router = APIRouter(prefix="/wallet", tags=["wallet"])
 
 
@@ -238,6 +239,13 @@ async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: dict):
     entry = WalletLedgerEntry(wallet_id=wallet.id, entry_type="credit", amount=amount, running_balance=new_balance, description=reason, reference_type="adjustment")
     db.add(entry); await db.commit(); await db.refresh(entry)
     return APIResponse(data={"message": "Top-up complete", "new_balance": new_balance})
+
+
+@wallet_alias_router.post("/topup", response_model=APIResponse[dict])
+async def admin_topup_alias(db: DBDependency, admin: CurrentAdmin, data: dict):
+    """Alias for /admin/wallets/topup (matches frontend url)."""
+    return await admin_topup(db, admin, data)
+
 
 
 @admin_router.post("/deduct", response_model=APIResponse[dict])

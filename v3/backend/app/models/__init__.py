@@ -138,5 +138,10 @@ from app.models.translation import (
     Translation,
     TranslationCache,
 )
+from app.models.pos import (
+    PosTerminal,
+    PosSession,
+    OrderModificationLog,
+)
 from app.models.feedback import FeedbackEntry
 from app.models.checkin import CustomerDailyCheckin

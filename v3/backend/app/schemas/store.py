@@ -150,6 +150,8 @@ class DiningTableOut(DiningTableBase, TimestampedSchema):
     qr_code_token: str | None = None
     qr_generated_at: datetime | None = None
     current_status: Literal["available", "occupied", "reserved", "cleaning", "maintenance"] = "available"
+    active_order_id: int | None = None
+    active_order: dict | None = None
 
 
 class StoreListParams(BaseSchema):
