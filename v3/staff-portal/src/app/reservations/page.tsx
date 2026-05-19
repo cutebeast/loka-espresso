@@ -306,7 +306,7 @@ export default function ReservationsPage() {
           <div style={{ padding: "8px 0" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, padding: 12, background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)" }}>
               <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--color-primary)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
-                {confirmRes.customer_name.charAt(0).toUpperCase()}
+                {(confirmRes.customer_name || "?").charAt(0).toUpperCase()}
               </div>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{confirmRes.customer_name}</div>

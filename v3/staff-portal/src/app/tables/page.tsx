@@ -34,7 +34,7 @@ export default function TablesPage() {
     if (!storeId) return;
     try {
       const data = await getTables(storeId);
-      const list = Array.isArray(data) ? data : [];
+      const list = Array.isArray(data) ? [...data] : [];
       list.sort((a, b) => (a.table_number || "").localeCompare(b.table_number || "", undefined, { numeric: true }));
       setTables(list);
       setError("");

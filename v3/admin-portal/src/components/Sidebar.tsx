@@ -177,7 +177,7 @@ export default function Sidebar() {
     <>
       <div className="sb-mobile-header">
         <span className="sb-mobile-brand">LOKA Espresso</span>
-        <button className="sb-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}>
+        <button type="button" className="sb-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
@@ -198,7 +198,7 @@ export default function Sidebar() {
                 <li key={item.label}>
                   {hasChildren ? (
                     <>
-                      <button className={`sb-nav-link ${active ? "active" : ""}`} onClick={() => toggleMenu(item.label)}>
+                      <button type="button" className={`sb-nav-link ${active ? "active" : ""}`} onClick={() => toggleMenu(item.label)}>
                         <span className="sb-nav-icon">{Icon && <Icon size={17} />}</span><span>{item.label}</span>
                         <ChevronRight size={14} className={`sb-chevron ${isOpen ? "open" : ""}`} />
                       </button>
@@ -222,7 +222,7 @@ export default function Sidebar() {
         </nav>
         <div className="sb-footer">
           <div className="sb-footer-email">{adminEmail}</div>
-          <button className="sb-logout-btn" onClick={handleLogout}><LogOut size={14} className="sb-logout-icon" /> Logout</button>
+          <button type="button" className="sb-logout-btn" onClick={handleLogout}><LogOut size={14} className="sb-logout-icon" /> Logout</button>
         </div>
       </aside>
     </>

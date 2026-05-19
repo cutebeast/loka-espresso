@@ -235,6 +235,79 @@ async def delete_staff(
     return APIResponse(data={"id": staff_id, "deleted": True})
 
 
+# ── Flat Shift endpoints (must be before /{staff_id}/* routes) ──
+
+@router.get("/shifts", response_model=APIResponse[PaginatedResponse[dict]])
+async def list_all_shifts(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    store_id: int = Query(..., description="Store ID"),
+    staff_id: int | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(200, ge=1, le=500),
+):
+    """List shifts flat, filterable by store_id and optionally staff_id."""
+    count_stmt = select(func.count(StaffShift.id))
+    base_stmt = select(StaffShift)
+    if store_id:
+        count_stmt = count_stmt.where(StaffShift.store_id == store_id)
+        base_stmt = base_stmt.where(StaffShift.store_id == store_id)
+    if staff_id:
+        count_stmt = count_stmt.where(StaffShift.staff_id == staff_id)
+        base_stmt = base_stmt.where(StaffShift.staff_id == staff_id)
+    total = (await db.execute(count_stmt)).scalar() or 0
+    stmt = base_stmt.order_by(StaffShift.shift_date.desc()).offset((page - 1) * per_page).limit(per_page)
+    result = await db.execute(stmt)
+    items = []
+    for s in result.scalars().all():
+        staff_result = await db.execute(select(StaffProfile.display_name).where(StaffProfile.id == s.staff_id))
+        staff_name = staff_result.scalar_one_or_none() or "Unknown"
+        items.append({
+            "id": s.id, "staff_id": s.staff_id, "staff_name": staff_name,
+            "store_id": s.store_id, "shift_template_id": s.shift_template_id,
+            "shift_date": s.shift_date.isoformat() if s.shift_date else None,
+            "planned_start": s.planned_start.isoformat() if s.planned_start else None,
+            "planned_end": s.planned_end.isoformat() if s.planned_end else None,
+            "actual_start": s.actual_start.isoformat() if s.actual_start else None,
+            "actual_end": s.actual_end.isoformat() if s.actual_end else None,
+            "status": s.status, "notes": s.notes,
+        })
+    return APIResponse(data=PaginatedResponse(items=items, total=total, page=page, per_page=per_page,
+        total_pages=(total + per_page - 1) // per_page if per_page else 0))
+
+
+@router.post("/shifts", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def create_shift_flat(db: DBDependency, admin: CurrentAdmin, data: dict):
+    """Create a shift (staff_id in body, for admin frontend)."""
+    sid = int(data.get("staff_id", 0))
+    if not sid:
+        raise HTTPException(status_code=400, detail="staff_id required")
+    profile_result = await db.execute(select(StaffProfile).where(StaffProfile.id == sid, StaffProfile.deleted_at.is_(None)))
+    if profile_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    shift = StaffShift(
+        store_id=int(data.get("store_id", 0)), staff_id=sid,
+        shift_template_id=data.get("shift_template_id"),
+        shift_date=data.get("shift_date"),
+        planned_start=data.get("planned_start") or data.get("shift_date"),
+        planned_end=data.get("planned_end") or data.get("shift_date"),
+        status=data.get("status", "scheduled"), notes=data.get("notes"),
+    )
+    db.add(shift); await db.commit(); await db.refresh(shift)
+    return APIResponse(data={"id": shift.id, "message": "Shift created"})
+
+
+@router.delete("/shifts/{shift_id}", response_model=APIResponse[dict])
+async def delete_shift_flat(db: DBDependency, admin: CurrentAdmin, shift_id: int):
+    """Delete a shift."""
+    result = await db.execute(select(StaffShift).where(StaffShift.id == shift_id))
+    shift = result.scalar_one_or_none()
+    if not shift:
+        raise HTTPException(status_code=404, detail="Shift not found")
+    await db.delete(shift); await db.commit()
+    return APIResponse(data={"id": shift_id, "deleted": True})
+
+
 @router.get("/{staff_id}/shifts", response_model=APIResponse[PaginatedResponse[StaffShiftOut]])
 async def list_staff_shifts(
     db: DBDependency,
@@ -361,7 +434,22 @@ async def create_shift_template(db: DBDependency, admin: CurrentAdmin, data: dic
     return APIResponse(data={"id": t.id, "name": t.name})
 
 
-# ── Staff Role Management ──
+# ── Staff Role Management ── 
+
+@router.post("/{staff_id}/roles", response_model=APIResponse[dict])
+async def update_staff_roles(db: DBDependency, admin: CurrentAdmin, staff_id: int, data: dict):
+    """Replace role assignments for a staff member."""
+    result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.deleted_at.is_(None)))
+    sp = result.scalar_one_or_none()
+    if not sp:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    # Remove existing role assignments
+    existing = await db.execute(
+        select(RoleAssignment).where(RoleAssignment.assignee_id == sp.principal_id)
+    )
+    for ra in existing.scalars().all():
+        ra.is_active = False
 
     # Add new
     for rid in data.get("role_ids", []):

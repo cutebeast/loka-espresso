@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await adminLogin(email, password);
-      window.location.href = "/";
+      router.push("/");
     } catch (err: any) {
       setError(err.message || "Invalid email or password");
     } finally {

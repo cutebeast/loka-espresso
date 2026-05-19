@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  searchCustomers, getCustomerWallet, getCustomerById, topUpWallet,
+  searchCustomers, getCustomerWallet, getCustomerById, topUpWallet, api,
   useReward, useVoucher, scanCustomerCode, scanRewardCode, scanVoucherCode,
   type Customer, type CustomerWallet, type Reward, type Voucher
 } from "@/lib/api";
@@ -117,13 +117,8 @@ export default function WalletPage() {
 
   const verifyPin = async (): Promise<boolean> => {
     try {
-      const token = localStorage.getItem("token") || "";
-      const r = await fetch("/api/v1/staff/auth/verify-pin", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pin }),
-      });
-      const d = await r.json();
-      return (d.data?.valid || d.valid) === true;
+      const d = await api.post<{ valid?: boolean; data?: { valid?: boolean } }>("/staff/auth/verify-pin", { pin });
+      return (d?.valid || d?.data?.valid) === true;
     } catch (e) { console.error("PIN verification failed:", e); return false; }
   };
 
@@ -243,7 +238,7 @@ export default function WalletPage() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--color-bg-dark)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>
-                {selectedCustomer.display_name.charAt(0).toUpperCase()}
+                {(selectedCustomer.display_name || "?").charAt(0).toUpperCase()}
               </div>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{selectedCustomer.display_name}</div>
@@ -263,7 +258,7 @@ export default function WalletPage() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--color-bg-dark)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700 }}>
-                {selectedCustomer.display_name.charAt(0).toUpperCase()}
+                {(selectedCustomer.display_name || "?").charAt(0).toUpperCase()}
               </div>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700 }}>{selectedCustomer.display_name}</div>

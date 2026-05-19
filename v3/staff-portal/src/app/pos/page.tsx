@@ -149,7 +149,7 @@ export default function PosPage() {
         // Load held orders
         const held = localStorage.getItem("pos_held_orders");
         if (held) {
-          try { setHeldOrders(JSON.parse(held)); } catch { setHeldOrders([]); }
+          try { setHeldOrders(JSON.parse(held)); } catch (e) { console.error("Failed to parse held orders:", e); setHeldOrders([]); }
         }
 
         // Checkout mode: load existing order

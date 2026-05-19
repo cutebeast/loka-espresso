@@ -41,7 +41,7 @@ export default function StoresPage() {
           <h1 className="page-title">Store Locations</h1>
           <p className="page-subtitle">{items.length} stores</p>
         </div>
-        <button onClick={() => router.push("/stores/new")} className="btn btn-primary btn-sm">
+        <button type="button" onClick={() => router.push("/stores/new")} className="btn btn-primary btn-sm">
           <Plus size={16} /> Add Store
         </button>
       </div>
@@ -65,10 +65,10 @@ export default function StoresPage() {
                 <td style={{ fontSize: 12 }}>{item.phone_number}</td>
                 <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
                 <td>
-                  <button onClick={() => router.push(`/stores/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}>
+                  <button type="button" onClick={() => router.push(`/stores/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}>
                     <Edit2 size={14} />
                   </button>
-                  <button onClick={() => handleDelete(item.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}>
+                  <button type="button" onClick={() => handleDelete(item.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}>
                     <Trash2 size={14} />
                   </button>
                 </td>

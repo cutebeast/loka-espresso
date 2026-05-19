@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePolling } from "@/hooks/usePolling";
+import { api } from "@/lib/api";
 import SkeletonCard from "@/components/SkeletonCard";
 import {
-  UtensilsCrossed, Armchair, CreditCard, CalendarCheck, Clock, UserCircle, Wallet,
+  Armchair, CreditCard, CalendarCheck, Clock, UserCircle, Wallet,
   ChefHat, ClipboardList
 } from "lucide-react";
 
@@ -35,13 +36,8 @@ export default function HomePage() {
 
   const fetchData = async () => {
     try {
-      const t = localStorage.getItem("token");
-      if (!t) return;
-      const res = await fetch("/api/v1/staff/dashboard", { headers: { Authorization: `Bearer ${t}` } });
-      if (res.ok) {
-        const j = await res.json();
-        setData(j.data || j);
-      }
+      const data = await api.get<DashboardData>("/staff/dashboard");
+      if (data) setData(data);
     } catch (e) { console.error("Dashboard fetch failed:", e); } finally { setLoading(false); }
   };
 

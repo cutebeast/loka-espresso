@@ -14,11 +14,12 @@ function parseJwtExp(token: string): number | null {
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     const json = JSON.parse(atob(base64));
     return json.exp ? json.exp * 1000 : null;
-  } catch { return null; }
+  } catch (e) { console.error("Failed to parse JWT:", e); return null; }
 }
 
 async function refreshToken(): Promise<boolean> {
   try {
+    if (typeof window === "undefined") return false;
     const refresh = localStorage.getItem("refreshToken");
     if (!refresh) return false;
     const res = await fetch("/api/v1/admin/auth/refresh", {
@@ -34,7 +35,7 @@ async function refreshToken(): Promise<boolean> {
       return true;
     }
     return false;
-  } catch { return false; }
+  } catch (e) { console.error("Token refresh failed:", e); return false; }
 }
 
 function clearSession() {
@@ -111,8 +112,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             const fv = items.find((i: any) => i.config_key === "branding.admin_favicon_url");
             if (fv?.config_value) setFavicon(fv.config_value);
           })
-          .catch(() => {});
-      } catch {
+          .catch((err) => { console.error("Favicon fetch failed:", err); });
+      } catch (err) {
+        console.error("Auth verification failed:", err);
         if (!cancelled) setChecked(true);
       }
     };

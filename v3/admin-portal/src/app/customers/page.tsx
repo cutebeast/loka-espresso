@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Search, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
@@ -12,6 +13,7 @@ interface CustomerSummary {
 }
 
 export default function CustomersPage() {
+  const router = useRouter();
   const [items, setItems] = useState<CustomerSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ export default function CustomersPage() {
           {loading ? <tr><td colSpan={8} className="data-table-empty">Loading...</td></tr>
           : items.length === 0 ? <tr><td colSpan={8} className="data-table-empty">No customers found.</td></tr>
           : items.map(c => (
-            <tr key={c.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => window.open(`/customers/${c.id}`, "_self"))();}}} style={{ cursor: "pointer" }} onClick={() => window.open(`/customers/${c.id}`, "_self")}>
+            <tr key={c.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();router.push(`/customers/${c.id}`);}}} style={{ cursor: "pointer" }} onClick={() => router.push(`/customers/${c.id}`)}>
               <td style={{ fontWeight: 600 }}>{c.display_name || "—"}</td>
               <td className="font-mono" style={{ fontSize: 11 }}>{c.phone_number || "—"}</td>
               <td style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{c.email_address || "—"}</td>

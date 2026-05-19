@@ -20,7 +20,7 @@ export default function Button({
 }: ButtonProps) {
   const sizeClass = size === "icon" ? "btn-icon" : size === "sm" ? "btn-sm" : size === "lg" ? "btn-lg" : "";
   return (
-    <button className={`btn btn-${variant} ${sizeClass} ${className}`} disabled={disabled || loading} {...props}>
+    <button type="button" className={`btn btn-${variant} ${sizeClass} ${className}`} disabled={disabled || loading} {...props}>
       {loading && <Loader2 size={16} className="animate-spin" />}
       {children}
     </button>

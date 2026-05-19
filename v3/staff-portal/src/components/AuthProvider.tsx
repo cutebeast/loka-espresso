@@ -9,7 +9,8 @@ function parseJwtExp(token: string): number | null {
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     const json = JSON.parse(atob(base64));
     return json.exp ? json.exp * 1000 : null;
-  } catch {
+  } catch (e) {
+    console.error("Failed to parse JWT:", e);
     return null;
   }
 }
@@ -32,7 +33,8 @@ async function refreshToken(): Promise<boolean> {
       return true;
     }
     return false;
-  } catch {
+  } catch (e) {
+    console.error("Token refresh failed:", e);
     return false;
   }
 }
@@ -57,6 +59,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   // Branding favicon
   useEffect(() => {
+    let injectedLink: HTMLLinkElement | null = null;
     fetch("/api/v1/staff/config/branding")
       .then((r) => r.json())
       .then((d) => {
@@ -68,12 +71,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             link = document.createElement("link");
             link.rel = "icon";
             document.head.appendChild(link);
+            injectedLink = link;
           }
           link.type = "image/svg+xml";
           link.href = fv;
         }
       })
       .catch((err) => { console.error("Branding fetch failed:", err); });
+    return () => { if (injectedLink) injectedLink.remove(); };
   }, []);
 
   // ── Idle timeout (30 min) ──

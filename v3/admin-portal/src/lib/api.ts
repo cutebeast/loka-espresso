@@ -1,12 +1,14 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 function getAuthHeaders(): HeadersInit {
+  if (typeof window === "undefined") return { "Content-Type": "application/json" };
   const token = localStorage.getItem("token");
   return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 async function refreshToken(): Promise<boolean> {
   try {
+    if (typeof window === "undefined") return false;
     const refresh = localStorage.getItem("refreshToken");
     if (!refresh) return false;
     const res = await fetch(`${BASE_URL}/admin/auth/refresh`, {
@@ -22,7 +24,7 @@ async function refreshToken(): Promise<boolean> {
       return true;
     }
     return false;
-  } catch { return false; }
+  } catch (e) { console.error("Token refresh failed:", e); return false; }
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {

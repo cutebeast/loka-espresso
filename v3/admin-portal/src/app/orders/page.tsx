@@ -85,7 +85,7 @@ export default function OrdersPage() {
               <td>{sb(o.status)}</td>
               <td style={{ textAlign: "right", fontWeight: 600 }}>RM {Number(o.total_amount).toFixed(2)}</td>
               <td style={{ fontSize: 12 }}>{o.created_at ? new Date(o.created_at).toLocaleDateString() : "—"}</td>
-              <td><button onClick={e => { e.stopPropagation(); router.push(`/orders/${o.id}`); }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><ExternalLink size={12} /> View</button></td>
+              <td><button type="button" onClick={e => { e.stopPropagation(); router.push(`/orders/${o.id}`); }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><ExternalLink size={12} /> View</button></td>
             </tr>
           ))}
         </tbody>
@@ -93,9 +93,9 @@ export default function OrdersPage() {
 
       {totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 16 }}>
-          <button className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={() => fetchOrders(page - 1)}><ChevronLeft size={14} /> Prev</button>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={() => fetchOrders(page - 1)}><ChevronLeft size={14} /> Prev</button>
           <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Page {page} of {totalPages}</span>
-          <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={() => fetchOrders(page + 1)}>Next <ChevronRight size={14} /></button>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={() => fetchOrders(page + 1)}>Next <ChevronRight size={14} /></button>
         </div>
       )}
     </div>

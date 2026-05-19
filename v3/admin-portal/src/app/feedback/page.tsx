@@ -119,7 +119,7 @@ export default function FeedbackPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
           <div className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Average Rating</div>
-            <div style={{ fontSize: 28, fontWeight: 700 }}>{stats.average_rating.toFixed(1)}</div>
+            <div style={{ fontSize: 28, fontWeight: 700 }}>{typeof stats.average_rating === "number" ? stats.average_rating.toFixed(1) : "—"}</div>
             <div>{renderStars(Math.round(stats.average_rating))}</div>
           </div>
           <div className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 4 }}>
