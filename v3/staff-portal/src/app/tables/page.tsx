@@ -39,6 +39,7 @@ export default function TablesPage() {
       setTables(list);
       setError("");
     } catch (err: any) {
+      console.error("Failed to load tables:", err);
       setError(err.message || "Failed to load tables");
     } finally {
       setLoading(false);

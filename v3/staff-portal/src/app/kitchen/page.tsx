@@ -78,6 +78,7 @@ export default function KitchenPage() {
       prevCountRef.current = list.length;
       setError("");
     } catch (err: any) {
+      console.error("Kitchen: Failed to load orders:", err);
       setConnected(false);
       setError(err.message || "Failed to load orders");
     } finally {

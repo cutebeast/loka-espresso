@@ -38,6 +38,7 @@ export default function KitchenDetailPage() {
       setOrder(data);
       setError("");
     } catch (e: any) {
+      console.error("Failed to load kitchen order:", e);
       setError(e.message);
     } finally {
       setLoading(false);

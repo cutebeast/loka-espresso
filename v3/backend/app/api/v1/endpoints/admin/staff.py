@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.iam import IAMPrincipal, IAMRole, RoleAssignment
-from app.models.staff import StaffProfile, StaffShift
+from app.models.staff import StaffProfile, StaffShift, ShiftTemplate
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.staff import (
     StaffProfileCreate,
@@ -143,18 +143,6 @@ async def list_staff_roles(db: DBDependency, admin: CurrentAdmin):
     return APIResponse(data=items)
 
 
-@router.put("/{staff_id}/roles", response_model=APIResponse[dict])
-async def set_staff_roles(db: DBDependency, admin: CurrentAdmin, staff_id: int, data: dict):
-    """Set IAM roles for a staff profile (replaces all)."""
-    from app.models.iam import RoleAssignment
-    result = await db.execute(
-        select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.deleted_at.is_(None))
-    )
-    sp = result.scalar_one_or_none()
-    if not sp:
-        raise HTTPException(status_code=404, detail="Staff not found")
-    # Remove existing
-    await db.execute(delete(RoleAssignment).where(RoleAssignment.assignee_id == sp.principal_id))
 @router.get("/{staff_id}", response_model=APIResponse[StaffProfileDetailOut])
 async def get_staff(
     db: DBDependency,
@@ -262,9 +250,24 @@ async def list_all_shifts(
     for s in result.scalars().all():
         staff_result = await db.execute(select(StaffProfile.display_name).where(StaffProfile.id == s.staff_id))
         staff_name = staff_result.scalar_one_or_none() or "Unknown"
+        template_name = "—"
+        start_time = None
+        end_time = None
+        if s.shift_template_id:
+            tpl_result = await db.execute(select(ShiftTemplate).where(ShiftTemplate.id == s.shift_template_id))
+            tpl = tpl_result.scalar_one_or_none()
+            if tpl:
+                template_name = tpl.name
+                start_time = str(tpl.start_time)
+                end_time = str(tpl.end_time)
+        if not start_time and s.planned_start:
+            start_time = s.planned_start.strftime("%H:%M")
+        if not end_time and s.planned_end:
+            end_time = s.planned_end.strftime("%H:%M")
         items.append({
             "id": s.id, "staff_id": s.staff_id, "staff_name": staff_name,
             "store_id": s.store_id, "shift_template_id": s.shift_template_id,
+            "template_name": template_name, "start_time": start_time, "end_time": end_time,
             "shift_date": s.shift_date.isoformat() if s.shift_date else None,
             "planned_start": s.planned_start.isoformat() if s.planned_start else None,
             "planned_end": s.planned_end.isoformat() if s.planned_end else None,

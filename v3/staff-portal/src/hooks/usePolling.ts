@@ -24,6 +24,7 @@ export function usePolling(
     try {
       await fnRef.current();
     } catch (err) {
+      console.error("Polling error:", err);
       try { onErrorRef.current?.(err); }
       catch (handlerErr) { console.error("Polling onError threw:", handlerErr); }
     }

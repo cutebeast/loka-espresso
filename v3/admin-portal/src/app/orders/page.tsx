@@ -25,7 +25,7 @@ export default function OrdersPage() {
 
   const fetchStores = useCallback(async () => {
     try { const d = await api.getRaw<any>("/admin/stores?per_page=50"); const list = d.items || []; setStores(list); if (!storeId) setStoreId(""); }
-    catch { /* ignore */ }
+    catch (e: any) { console.error("Failed to load stores:", e); }
   }, []);
 
   useEffect(() => {(async () => {

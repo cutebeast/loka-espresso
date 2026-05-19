@@ -95,6 +95,7 @@ export default function ReservationsPage() {
       }
       setError("");
     } catch (err: any) {
+      console.error("Failed to load reservations:", err);
       setError(err.message || "Failed to load reservations");
     } finally {
       setLoading(false);
@@ -112,6 +113,7 @@ export default function ReservationsPage() {
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
     } catch (err: any) {
+      console.error("Failed to update reservation:", err);
       setError(err.message || "Failed to update reservation");
     } finally {
       setUpdatingId(null);

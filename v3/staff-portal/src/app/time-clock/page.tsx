@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { clockIn, clockOut, startBreak, endBreak, getMyTimeEvents, type TimeEvent } from "@/lib/api";
+import { clockIn, clockOut, startBreak, endBreak, getMyTimeEvents, api, type TimeEvent } from "@/lib/api";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
@@ -82,6 +82,7 @@ export default function TimeClockPage() {
       setEvents(Array.isArray(data) ? data : []);
       setError("");
     } catch (err: any) {
+      console.error("Time clock: Failed to load events:", err);
       setError(err.message || "Failed to load");
     } finally {
       setLoading(false);
@@ -144,14 +145,8 @@ export default function TimeClockPage() {
     }
     setActionLoading(true);
     try {
-      const token = localStorage.getItem("token") || "";
-      const vr = await fetch("/api/v1/staff/auth/verify-pin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pin }),
-      });
-      const vd = await vr.json();
-      if (!(vd.data?.valid || vd.valid)) {
+      const vd = await api.post<{ valid?: boolean; data?: { valid?: boolean } }>("/staff/auth/verify-pin", { pin });
+      if (!(vd?.valid || vd?.data?.valid)) {
         setError("Wrong PIN. Try again.");
         setActionLoading(false);
         return;
@@ -163,6 +158,7 @@ export default function TimeClockPage() {
       setPin("");
       setPendingAction(null);
     } catch (err: any) {
+      console.error("Time clock: Action failed:", err);
       setError(err.message || "Failed");
     } finally {
       setActionLoading(false);

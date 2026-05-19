@@ -22,14 +22,14 @@ export default function StaffShiftsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch(() => {});
+    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch((err: any) => { console.error("Failed to load stores:", err); });
   }, []);
 
   useEffect(() => {
     if (!storeId) return;
-    api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(() => {}).finally(() => setLoading(false));
-    api.get<any>(`/admin/staff/shift-templates?store_id=${storeId}`).then(d => setTemplates(Array.isArray(d) ? d : [])).catch(() => {});
-    api.get<any>(`/admin/staff?store_id=${storeId}&per_page=200`).then(d => setStaffList(Array.isArray(d) ? d : (d.items || []))).catch(() => {});
+    api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch((err: any) => { console.error("Failed to load shifts:", err); }).finally(() => setLoading(false));
+    api.get<any>(`/admin/staff/shift-templates?store_id=${storeId}`).then(d => setTemplates(Array.isArray(d) ? d : [])).catch((err: any) => { console.error("Failed to load templates:", err); });
+    api.get<any>(`/admin/staff?store_id=${storeId}&per_page=200`).then(d => setStaffList(Array.isArray(d) ? d : (d.items || []))).catch((err: any) => { console.error("Failed to load staff list:", err); });
   }, [storeId]);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -40,8 +40,8 @@ export default function StaffShiftsPage() {
       setShowForm(false);
       setForm({ staff_id: "", shift_template_id: "", shift_date: "" });
       // refresh
-      api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(() => {});
-    } catch {} finally { setSaving(false); }
+      api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch((err: any) => { console.error("Failed to refresh shifts after create:", err); });
+    } catch (e: any) { console.error("Failed to create shift:", e); } finally { setSaving(false); }
   };
 
   const handleCreateTemplate = async (e: React.FormEvent) => {
@@ -51,20 +51,20 @@ export default function StaffShiftsPage() {
       await api.post("/admin/staff/shift-templates", { ...tplForm, store_id: Number(storeId) });
       setShowTemplateForm(false);
       setTplForm({ name: "", start_time: "", end_time: "", store_id: "" });
-      api.get<any>(`/admin/staff/shift-templates?store_id=${storeId}`).then(d => setTemplates(Array.isArray(d) ? d : [])).catch(() => {});
-    } catch {} finally { setSaving(false); }
+      api.get<any>(`/admin/staff/shift-templates?store_id=${storeId}`).then(d => setTemplates(Array.isArray(d) ? d : [])).catch((err: any) => { console.error("Failed to refresh templates:", err); });
+    } catch (e: any) { console.error("Failed to create template:", e); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete?")) return;
     try { await api.del(`/admin/staff/shifts/${id}`);
-      api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(() => {});
-    } catch {}
+      api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch((err: any) => { console.error("Failed to refresh shifts after delete:", err); });
+    } catch (e: any) { console.error("Failed to delete shift:", e); }
   };
 
   return (
     <div style={{ padding: 32 }}>
-      <div className="page-header"><div><h1 className="page-title">Staff Shifts</h1><p className="page-subtitle">{storeId ? `${items.length} assignments` : "Select a store"}</p></div><div style={{ display: "flex", gap: 8 }}><button onClick={() => setShowTemplateForm(true)} className="btn btn-outline btn-sm"><Plus size={14} /> Template</button><button onClick={() => setShowForm(true)} disabled={!storeId || templates.length === 0} className="btn btn-primary btn-sm" title={!storeId ? "Select a store first" : templates.length === 0 ? "Create a template first" : ""}><Plus size={14} /> Assign</button></div></div>
+      <div className="page-header"><div><h1 className="page-title">Staff Shifts</h1><p className="page-subtitle">{storeId ? `${items.length} assignments` : "Select a store"}</p></div><div style={{ display: "flex", gap: 8 }}><button type="button" onClick={() => setShowTemplateForm(true)} className="btn btn-outline btn-sm"><Plus size={14} /> Template</button><button type="button" onClick={() => setShowForm(true)} disabled={!storeId || templates.length === 0} className="btn btn-primary btn-sm" title={!storeId ? "Select a store first" : templates.length === 0 ? "Create a template first" : ""}><Plus size={14} /> Assign</button></div></div>
 
       <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
         <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
@@ -84,7 +84,7 @@ export default function StaffShiftsPage() {
       {!loading && storeId && templates.length === 0 ? (
         <div style={{ marginBottom: 16, padding: 16, borderRadius: 10, background: "#FFF7ED", border: "1px solid #FED7AA", fontSize: 13 }}>
           <strong>No shift templates yet.</strong> You need at least one template before assigning staff.<br />
-          <button onClick={() => setShowTemplateForm(true)} style={{ marginTop: 8, fontSize: 12, background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, textDecoration: "underline" }}>+ Create your first template</button>
+          <button type="button" onClick={() => setShowTemplateForm(true)} style={{ marginTop: 8, fontSize: 12, background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, textDecoration: "underline" }}>+ Create your first template</button>
         </div>
       ) : templates.length > 0 && (
         <div style={{ marginBottom: 20, display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -152,7 +152,7 @@ export default function StaffShiftsPage() {
               <td>{s.template_name || "—"}</td>
               <td>{s.shift_date}</td>
               <td>{s.start_time} – {s.end_time}</td>
-              <td><button onClick={() => handleDelete(s.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button></td>
+              <td><button type="button" onClick={() => handleDelete(s.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button></td>
             </tr>
           ))}
         </tbody>

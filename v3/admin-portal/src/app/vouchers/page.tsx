@@ -43,7 +43,7 @@ export default function VouchersPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this voucher?")) return;
-    try { await api.del(`/admin/vouchers/${id}`); const d = await fetchData(page); setItems(d.items || []); setTotalPages(d.total_pages || 1); } catch { /* ignore */ }
+    try { await api.del(`/admin/vouchers/${id}`); const d = await fetchData(page); setItems(d.items || []); setTotalPages(d.total_pages || 1); } catch (e: any) { console.error("Failed to delete voucher:", e); }
   };
 
   const discountLabel = (v: Voucher) => {

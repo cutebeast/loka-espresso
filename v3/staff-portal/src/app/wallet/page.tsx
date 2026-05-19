@@ -72,6 +72,7 @@ export default function WalletPage() {
       setWalletData(wallet);
       setError("");
     } catch (err: any) {
+      console.error("Failed to load customer wallet:", err);
       setError(err.message || "Failed to load customer wallet");
     } finally {
       setLoading(false);
@@ -107,6 +108,7 @@ export default function WalletPage() {
         setTab("rewards");
       }
     } catch (err: any) {
+      console.error("Scan failed:", err);
       setError(err.message || "Scan failed");
     } finally {
       setLoading(false);
@@ -139,7 +141,7 @@ export default function WalletPage() {
       setSuccess(`Top-up successful! New balance: RM ${bal}`);
       setAmount(""); setPin(""); setNotes(""); setShowPin(false);
       if (selectedCustomer) loadCustomer(selectedCustomer);
-    } catch (e: any) { setError(e.message); } finally { setToppingUp(false); }
+    } catch (e: any) { console.error("Top-up failed:", e); setError(e.message); } finally { setToppingUp(false); }
   };
 
   const handleUseReward = async (reward: Reward) => {

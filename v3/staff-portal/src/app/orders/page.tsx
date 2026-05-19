@@ -47,6 +47,7 @@ export default function OrdersPage() {
       setOrders(list);
       setError("");
     } catch (err: any) {
+      console.error("Failed to load orders:", err);
       setError(err.message || "Failed to load orders");
     } finally {
       setLoading(false);

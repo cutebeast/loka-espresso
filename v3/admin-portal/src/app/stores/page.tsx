@@ -31,7 +31,7 @@ export default function StoresPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this store?")) return;
-    try { await api.del(`/admin/stores/${id}`); fetchData(); } catch { /* ignore */ }
+    try { await api.del(`/admin/stores/${id}`); fetchData(); } catch (e: any) { console.error("Failed to delete store:", e); }
   };
 
   return (

@@ -61,7 +61,7 @@ export default function FeedbackPage() {
       if (toDate) params.set("to_date", toDate + "T23:59:59");
       const s = await api.getRaw<FeedbackStats>(`/admin/feedback/stats?${params}`);
       setStats(s);
-    } catch { /* ignore */ }
+    } catch (e: any) { console.error("Failed to load feedback stats:", e); }
   }, [fromDate, toDate]);
 
   useEffect(() => {(async () => {
@@ -91,7 +91,7 @@ export default function FeedbackPage() {
     try {
       await api.post(`/admin/feedback/${item.id}/reply`, { admin_reply: "", clear_reply: true });
       fetchData(page); fetchStats();
-    } catch { /* ignore */ }
+    } catch (e: any) { console.error("Failed to delete reply:", e); }
   };
 
   const renderStars = (rating: number) => (

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { ShoppingBag, DollarSign, Flame, Users, TrendingUp, Store as StoreIcon } from "lucide-react";
+import { ShoppingBag, DollarSign, Flame, Users, TrendingUp } from "lucide-react";
 
 interface DashboardData {
   stores: number; customers: number;
@@ -28,7 +28,7 @@ export default function DashboardPage() {
   useEffect(() => {
     api.get<{ items: Store[] }>("/admin/stores?per_page=50")
       .then(d => setStores(d.items || (Array.isArray(d) ? d : [])))
-      .catch(() => { /* ignore store fetch errors */ });
+      .catch((err: any) => { console.error("Failed to load stores:", err); });
   }, []);
 
   useEffect(() => {
