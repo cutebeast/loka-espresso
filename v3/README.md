@@ -1,7 +1,18 @@
-# FNB Enterprise v3 — Ground-Up Rebuild
+# FNB Enterprise v3
 
-> **Status**: Foundation Complete | **Date**: 2026-05-07
-> **Scope**: New database, new backend, new frontends — zero touch on legacy `fnb-super-app`
+> **Status**: Live | **Date**: 2026-05-19
+> **Backend**: 53 endpoint files, 24 models | **Staff Portal**: 12 pages | **Admin Portal**: 90+ pages
+
+---
+
+## Services
+
+| Service | Stack | Port | Build |
+|---------|-------|------|-------|
+| **Backend** | FastAPI + SQLAlchemy async | 13800 | Python 3.12+ |
+| **Staff Portal** | Next.js 16 (Turbopack) + pure CSS | 13820 | TypeScript |
+| **Admin Portal** | Next.js 16 (Turbopack) + pure CSS | 13830 | TypeScript |
+| **Customer PWA** | Next.js 16 (Turbopack) + pure CSS | 13810 | TypeScript |
 
 ---
 
@@ -10,130 +21,114 @@
 ### 1. Start Infrastructure
 ```bash
 cd v3/infra/docker
-docker-compose up -d postgres redis
+docker compose up -d postgres redis
 ```
 
 ### 2. Initialize Database
 ```bash
-cd v3/scripts
-./init-database.sh
+cd v3/backend
+alembic upgrade head
+python scripts/seed_v3.py
 ```
 
 ### 3. Run Backend
 ```bash
 cd v3/backend
-python -m venv .venv
-source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 13800
 ```
 
-### 4. Health Check
+### 4. Run Frontends
 ```bash
-curl http://localhost:13800/health
+# Staff Portal
+cd v3/staff-portal && npm install && npm run dev
+# or production: npm run build && npx next start -p 13820
+
+# Admin Portal
+cd v3/admin-portal && npm install && npm run dev
+# or production: npm run build && npx next start -p 13830
+
+# Customer PWA
+cd v3/customer-pwa && npm install && npm run dev
+```
+
+### 5. Health Check
+```bash
+curl http://localhost:13800/api/v1/health
+curl http://localhost:13820/login
+curl http://localhost:13830/
 ```
 
 ---
 
-## Architecture
-
-### Database (`fnb_enterprise_v3`)
-- **78 tables** across 18 domains
-- **21 native PostgreSQL ENUMs**
-- **232+ indexes** (B-tree, composite, partial, GIN, GiST, BRIN, Hash)
-- **Row Level Security (RLS)** policies for tenant isolation
-- **Append-only ledgers** for orders, payments, wallet, loyalty, inventory
-- **AES-256-GCM** encrypted payment tokens and MFA secrets
-- **Argon2id** for admin passwords, **bcrypt** for staff PINs
-
-### Backend (FastAPI + SQLAlchemy 2.0 async)
-- **Clean identity domains**: Customer ≠ Staff ≠ Admin (unified via `iam_principals`)
-- **RBAC + ABAC**: Roles → Permissions with conditional store scoping
-- **Explicit transactions**: `get_db()` does NOT auto-commit
-- **Domain-organized models**: `models/iam/`, `models/store/`, `models/customer/`, etc.
-- **Domain-organized API**: `endpoints/admin/`, `endpoints/customer/`, `endpoints/staff/`, `endpoints/common/`
-
-### Frontends
-| App | Port | Purpose | Auth |
-|-----|------|---------|------|
-| `admin-portal/` | 13801 | HQ / Store Manager dashboard | Email + Argon2id + optional TOTP |
-| `customer-pwa/` | 13802 | Customer ordering PWA | Phone OTP |
-| `staff-portal/` | 13803 | Service crew counter ops | PIN (bcrypt) + JWT session |
-
----
-
-## Folder Structure
+## Directory Structure
 
 ```
 v3/
-├── backend/                    # FastAPI + Alembic
+├── backend/                    # FastAPI backend
 │   ├── app/
-│   │   ├── api/v1/endpoints/   # admin/ customer/ staff/ common/
-│   │   ├── core/               # config, database, security, middleware
-│   │   ├── models/             # Domain-organized SQLAlchemy models
-│   │   ├── schemas/            # Pydantic v2
-│   │   ├── services/           # Business logic
-│   │   └── dependencies/       # FastAPI deps
-│   ├── alembic/
-│   └── tests/
-├── admin-portal/               # Next.js 16
-├── customer-pwa/               # Next.js 16
-├── staff-portal/               # Next.js 16
-├── shared/packages/            # Types, API client, UI components (future)
-├── infra/
-│   ├── docker/                 # docker-compose.yml + Dockerfiles
-│   └── db/                     # Complete DDL + seed data
-├── scripts/
-│   ├── init-database.sh        # Bootstrap new DB from SQL files
-│   └── seed/                   # Domain seed scripts (future)
-└── docs/
-    └── 00-rebuild-plan.md      # Full migration plan
+│   │   ├── api/v1/
+│   │   │   ├── deps.py         # CurrentAdmin, DBDependency
+│   │   │   ├── router.py       # Route registration
+│   │   │   └── endpoints/
+│   │   │       ├── admin/      # 37 CRUD endpoint files
+│   │   │       ├── staff/      # Staff auth + POS
+│   │   │       ├── customer/   # Customer-facing
+│   │   │       ├── public/     # Unauthenticated
+│   │   │       └── common/     # Health, upload
+│   │   ├── models/             # 24 SQLAlchemy models
+│   │   ├── schemas/            # Pydantic v2 schemas
+│   │   └── services/           # Business logic
+│   ├── alembic/                # Database migrations
+│   └── scripts/                # Seed scripts
+├── staff-portal/               # Staff POS + operations (12 pages)
+│   └── src/
+│       ├── app/                # Page routes
+│       ├── components/         # 22 shared components
+│       ├── hooks/              # 5 custom hooks
+│       ├── lib/api.ts          # API client
+│       └── styles/             # CSS variables + utilities
+├── admin-portal/               # Admin dashboard (90+ pages)
+│   └── src/
+│       ├── app/                # Page routes
+│       ├── components/         # Sidebar, GalleryUpload, QR
+│       ├── lib/api.ts          # API client
+│       └── styles/             # CSS
+├── customer-pwa/               # Customer mobile PWA
+├── scripts/                    # Init scripts + seed data
+└── infra/                      # Docker + DB schema
 ```
 
 ---
 
-## Migration Phases
+## Database
 
-| Phase | Status | Deliverables |
-|-------|--------|--------------|
-| **0: Foundation** | ✅ Complete | Folder structure, DDL, backend skeleton, Docker |
-| **1: Core Domains** | 🔄 Next | All 78 SQLAlchemy models, Pydantic schemas, auth endpoints |
-| **2: Customer & Commerce** | ⏳ Pending | Cart, checkout, orders, wallet, payments, PWA |
-| **3: Staff & Operations** | ⏳ Pending | POS, KDS, clock-in, staff portal |
-| **4: Marketing & Loyalty** | ⏳ Pending | Rewards, vouchers, campaigns, notifications |
-| **5: Migration & Cutover** | ⏳ Pending | Data migration scripts, shadow mode, DNS cutover |
-
----
-
-## Key Design Decisions
-
-1. **New Database**: `fnb_enterprise_v3` — zero migration from legacy `fnb`. Clean slate.
-2. **No JSON Duplication**: `orders.items` JSON removed. `order_line_items` is sole source.
-3. **Staff PINs**: Hashed with bcrypt (legacy was plaintext).
-4. **Wallet**: Double-entry ledger (`wallet_ledger_entries`). No mutable `balance` column.
-5. **Loyalty**: Points ledger with FIFO expiry. Tier auto-computation.
-6. **RLS Enabled**: Customer isolation at database level.
-7. **One Brand, Multi-Store**: `stores.brand_name` for now. Add `brands` table if multi-brand SaaS needed later.
-8. **DB-Driven Runtime Config**: OTP bypass, feature flags, and business rules live in `platform_config` — never in `.env`. Admin API controls these without restarts.
+- **Database**: `fnb_enterprise_v3` (PostgreSQL)
+- **Models**: 24 domain-organized SQLAlchemy models
+- **Migrations**: Alembic (baseline + 8 incremental)
+- **Key decisions**: Wallet double-entry ledger, loyalty points ledger with FIFO expiry, staff PINs bcrypt-hashed, RLS for tenant isolation, DB-driven platform config
 
 ---
 
 ## Legacy Coexistence
 
-The existing `/root/fnb-super-app/backend/`, `frontend/`, `customer-app/` are **untouched**.
-Both systems can run simultaneously on different ports/databases until cutover.
+The existing `/root/fnb-super-app/backend/`, `frontend/`, `customer-app/` are untouched.
+Both systems can run simultaneously until cutover.
 
 | System | Database | Backend Port |
 |--------|----------|--------------|
-| Legacy v1 | `fnb` (port 5433) | 3002 |
+| Legacy v1/v2 | `fnb` (port 5433) | 3002 |
 | Enterprise v3 | `fnb_enterprise_v3` (port 13334) | 13800 |
 
 ---
 
-## Next Immediate Steps
+## Design Decisions
 
-1. **Implement remaining SQLAlchemy models** (menu, inventory, cart, order, payment, wallet, loyalty, reward, voucher, marketing, content, survey, notification, platform)
-2. **Auth endpoints** (OTP, password login, refresh, logout)
-3. **Alembic baseline migration** generated from models
-4. **Seed scripts** for stores, menu, inventory
-5. **Copy/adapt legacy frontend components** into new portals
+1. **New Database**: `fnb_enterprise_v3` — clean slate, no legacy migration
+2. **Separate Identity Domains**: Customer ≠ Staff ≠ Admin, unified via `iam_principals`
+3. **Wallet**: Double-entry ledger — no mutable `balance` column
+4. **Loyalty**: Points ledger with FIFO expiry, tier auto-computation
+5. **Staff PINs**: Bcrypt-hashed (legacy was plaintext)
+6. **DB-Driven Config**: Feature flags and business rules in `platform_config` table
+7. **Pure CSS**: No frameworks — CSS variables design system across all 3 portals
+8. **Client-Side Auth**: localStorage JWT tokens with auto-refresh on 401

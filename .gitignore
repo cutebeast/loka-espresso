@@ -20,3 +20,5 @@ seed_state*.json
 # Seed state with live JWT tokens
 scripts/seed/seed_state.json
 .next/
+tsconfig.tsbuildinfo
+CLAUDE.md
