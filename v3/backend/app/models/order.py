@@ -259,7 +259,7 @@ class OrderAdjustment(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "adjustment_type IN ('refund','add_item','remove_item','tip_addition','discount_override')",
+            "adjustment_type IN ('refund','add_item','remove_item','tip_addition','discount_override','voucher','reward')",
             name="ck_order_adjustments_adjustment_type",
         ),
     )
