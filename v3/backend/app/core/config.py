@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     # JWT
     jwt_secret: str = "super-secret-jwt-key-for-development-only-12345"
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 30
+    jwt_expire_minutes: int = 480  # 8 hours for admin portal usability
     jwt_refresh_expire_days: int = 7
     jwt_secret_previous: str | None = None
 
