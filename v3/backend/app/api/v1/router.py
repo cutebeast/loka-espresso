@@ -38,6 +38,7 @@ from app.api.v1.endpoints.admin import customers as admin_customers
 from app.api.v1.endpoints.admin import feedback as admin_feedback
 from app.api.v1.endpoints.public import content as public_content
 from app.api.v1.endpoints.admin import config as admin_config
+from app.api.v1.endpoints.admin import system as admin_system
 from app.api.v1.endpoints.admin import dietary_tags as admin_dietary_tags
 from app.api.v1.endpoints.admin import info_cards as admin_info_cards
 from app.api.v1.endpoints.admin import system_pages as admin_system_pages
@@ -150,6 +151,9 @@ api_router.include_router(admin_feedback.public_router, tags=["feedback"])
 
 # Config
 api_router.include_router(admin_config.router, tags=["admin — config"])
+
+# System
+api_router.include_router(admin_system.router, tags=["admin — system"])
 
 # Dietary Tags
 api_router.include_router(admin_dietary_tags.router, tags=["admin — dietary tags"])

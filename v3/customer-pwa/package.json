@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prebuild": "node scripts/bump-sw-version.js",
+    "prebuild": "node scripts/bump-sw-version.js && node scripts/generate-version.js",
     "dev": "next dev -p 3012",
     "build": "next build",
     "start": "next start -p 3012",

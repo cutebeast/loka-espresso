@@ -88,6 +88,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "App Settings", href: "/settings" },
       { label: "Reservation Settings", href: "/settings/reservations" },
+      { label: "Version Control", href: "/settings/version-control" },
     ],
   },
   {
