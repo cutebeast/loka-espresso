@@ -81,7 +81,7 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
         const storeId = useUIStore.getState().selectedStore?.id;
 
         const payload = {
-          item_id: desired.menu_item_id,
+          menu_item_id: desired.menu_item_id,
           quantity: desired.quantity,
           customization_option_ids: customizationOptionIds,
           store_id: storeId,
@@ -232,7 +232,7 @@ if (typeof window !== 'undefined') {
       _wasOffline = false;
       const items = useCartStore.getState().items;
       if (items.length > 0) {
-        syncCartToServer(items).catch(() => {});
+        syncCartToServer(items).catch((err) => console.error('[CartSync] Background sync failed:', err));
       }
     }
   });

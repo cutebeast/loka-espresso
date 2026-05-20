@@ -18,7 +18,7 @@ import {
   Bell,
   ShoppingBag,
   CalendarCheck,
-  ClipboardList,
+  Tag,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
@@ -70,7 +70,7 @@ export default function ProfilePage() {
           imageUrl: o.items?.[0]?.image_url ? resolveAssetUrl(o.items[0].image_url) : null,
         })));
       })
-      .catch(() => setRecentOrders([]));
+      .catch((err) => { console.error('[Profile] Recent orders fetch failed:', err); setRecentOrders([]); });
   }, []);
 
   const handleLogout = async () => {
@@ -89,7 +89,8 @@ export default function ProfilePage() {
     { id: 'card', icon: IdCard, label: t('profile.myCard'), iconClass: 'profile-icon-card', onClick: () => setPage('my-card') },
     { id: 'notification', icon: Bell, label: t('profile.notifications'), iconClass: 'profile-icon-notif', onClick: () => setPage('notifications') },
     { id: 'reservations', icon: CalendarCheck, label: t('profile.reservations') || 'Reservations', iconClass: 'profile-icon-notif', onClick: () => setPage('reservations') },
-    { id: 'surveys', icon: ClipboardList, label: t('profile.surveys') || 'Surveys', iconClass: 'profile-icon-notif', onClick: () => setPage('surveys') },
+    { id: 'events', icon: CalendarCheck, label: 'Events', iconClass: 'profile-icon-notif', onClick: () => setPage('events') },
+    { id: 'promotions', icon: Tag, label: t('profile.promotions') || 'Promotions', iconClass: 'profile-icon-reward', onClick: () => setPage('promotions') },
   ];
 
   const menuItems2 = [

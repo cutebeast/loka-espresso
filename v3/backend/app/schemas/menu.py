@@ -155,6 +155,7 @@ class MenuItemPublicOut(BaseSchema):
     """Simplified menu item for public/customer view."""
 
     id: int
+    category_id: int
     item_code: str
     item_name: str
     description: str | None
@@ -167,7 +168,7 @@ class MenuItemPublicOut(BaseSchema):
     is_featured: bool
     is_popular: bool
     display_order: int
-    dietary_tags: list[str] | None
+    dietary_tags: list[str] | None = None
     allergens: list[AllergenOut] = []
     modifier_groups: list[MenuModifierGroupOut] = []
     variants: list[MenuVariantOut] = []
@@ -176,6 +177,7 @@ class MenuItemPublicOut(BaseSchema):
 class MenuPublicOut(BaseSchema):
     """Full public menu for a store."""
 
+    store_id: int
     categories: list[MenuCategoryOut]
     items: list[MenuItemPublicOut]
 

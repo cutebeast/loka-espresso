@@ -212,7 +212,20 @@ async def list_my_vouchers(
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    items = [CustomerVoucherOut.model_validate(v) for v in result.scalars().all()]
+    vouchers = result.scalars().all()
+
+    items = []
+    for v in vouchers:
+        item = CustomerVoucherOut.model_validate(v).model_dump()
+        vd_result = await db.execute(select(VoucherDefinition).where(VoucherDefinition.id == v.voucher_definition_id))
+        vd = vd_result.scalar_one_or_none()
+        item["discount_type"] = vd.voucher_type if vd else None
+        item["discount_value"] = float(vd.discount_value) if vd else None
+        item["min_spend"] = float(vd.minimum_order_value) if vd else None
+        item["max_discount"] = float(vd.maximum_discount) if vd else None
+        item["voucher_title"] = vd.display_title if vd else None
+        item["voucher_image_url"] = vd.image_url if vd else None
+        items.append(item)
 
     return APIResponse(
         data=PaginatedResponse(

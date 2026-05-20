@@ -76,12 +76,14 @@ export default function OrderDetailPage() {
     try {
       const res = await api.post(`/orders/${order.id}/reorder`);
       clearCart();
-      const items = res.data?.items ?? [];
+      const storeId = res.data?.store_id || order.store_id;
+      const cartRes = await api.get('/cart/items', { params: { store_id: storeId } });
+      const items = cartRes.data ?? [];
       for (const item of items) {
         const cartItem: CartItem = {
-          menu_item_id: item.item_id || item.menu_item_id,
-          name: item.item_name || item.name || '',
-          price: item.unit_price || item.price || 0,
+          menu_item_id: item.menu_item_id || item.item_id,
+          name: item.name || item.item_name || '',
+          price: item.price || item.unit_price || 0,
           quantity: item.quantity || 1,
           customization_option_ids: item.customization_option_ids || [],
           customizations: item.customizations || {},
@@ -125,8 +127,8 @@ export default function OrderDetailPage() {
       t('orderDetail.shareTotal', { amount: formatPrice(order.total) }),
     ];
     const text = lines.join('\n');
-    if (navigator.share) navigator.share({ title: t('orderDetail.orderNumber', { number: order.order_number }), text }).catch(() => {});
-    else navigator.clipboard.writeText(text).then(() => showToast(t('toast.receiptCopied'), 'success')).catch(() => {});
+    if (navigator.share) navigator.share({ title: t('orderDetail.orderNumber', { number: order.order_number }), text }).catch((err) => console.error('[OrderDetail] Share failed:', err));
+    else navigator.clipboard.writeText(text).then(() => showToast(t('toast.receiptCopied'), 'success')).catch((err) => console.error('[OrderDetail] Clipboard copy failed:', err));
   };
 
   if (loading || !order) {

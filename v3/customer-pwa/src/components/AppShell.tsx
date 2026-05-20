@@ -52,8 +52,8 @@ const SettingsPage = dynamic(() => import('./profile/SettingsPage'), { ssr: fals
 const ReferralPage = dynamic(() => import('./profile/ReferralPage'), { ssr: false });
 const MyCardPage = dynamic(() => import('./MyCardPage'), { ssr: false });
 const OrderDetailPage = dynamic(() => import('./OrderDetailPage'), { ssr: false });
-const SurveysPage = dynamic(() => import('./SurveysPage'), { ssr: false });
 const ReservationsPage = dynamic(() => import('./ReservationsPage'), { ssr: false });
+const EventsPage = dynamic(() => import('./EventsPage'), { ssr: false });
 
 export default function AppShell() {
   const { t } = useTranslation();
@@ -102,7 +102,7 @@ export default function AppShell() {
     if ((showStoreModal || showStorePicker) && stores.length === 0) {
       api.get('/content/stores')
         .then((res) => setStores(res.data))
-        .catch(() => showToast(t('toast.storesLoadFailed'), 'error'));
+        .catch((err) => { console.error('[AppShell] Store list fetch failed:', err); showToast(t('toast.storesLoadFailed'), 'error'); });
     }
   }, [showStoreModal, showStorePicker, stores.length, setStores, showToast]);
 
@@ -203,7 +203,7 @@ export default function AppShell() {
       case 'my-card': return <MyCardPage />;
       case 'order-detail': return <OrderDetailPage />;
       case 'reservations': return <ReservationsPage onBack={() => setPage('profile')} />;
-      case 'surveys': return <SurveysPage />;
+      case 'events': return <EventsPage onBack={() => setPage('profile')} />;
       default: return <HomePage />;
     }
   };

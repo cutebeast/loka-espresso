@@ -84,7 +84,7 @@ function getHashPage(): PageId {
   const validPages: PageId[] = [
     'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
     'wallet', 'history', 'promotions', 'information', 'my-rewards',
-    'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'reservations',
+    'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'reservations', 'events', 'referral',
   ];
   return validPages.includes(pagePart as PageId) ? (pagePart as PageId) : 'home';
 }

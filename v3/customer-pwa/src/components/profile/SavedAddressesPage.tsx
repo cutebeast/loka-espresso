@@ -54,7 +54,7 @@ export default function SavedAddressesPage() {
         list.sort((a: Address, b: Address) => order.indexOf(a.label) - order.indexOf(b.label));
         setAddresses(list);
       })
-      .catch(() => setAddresses([]))
+      .catch((err) => { console.error('[SavedAddresses] Fetch failed:', err); setAddresses([]); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { fetchAddresses(); }, []);

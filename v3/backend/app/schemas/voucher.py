@@ -96,6 +96,12 @@ class CustomerVoucherOut(BaseSchema):
     source: str
     source_id: int | None = None
     created_at: datetime
+    discount_type: str | None = None
+    discount_value: float | None = None
+    min_spend: float | None = None
+    max_discount: float | None = None
+    voucher_title: str | None = None
+    voucher_image_url: str | None = None
 
 
 class VoucherApplyRequest(BaseSchema):

@@ -139,3 +139,4 @@ class CustomerMeOut(BaseSchema):
     default_address: CustomerAddressOut | None = None
     devices: list[CustomerDeviceOut]
     consents: list[CustomerConsentOut]
+    referral_code: str | None = None

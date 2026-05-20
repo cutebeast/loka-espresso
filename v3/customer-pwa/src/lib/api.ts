@@ -48,14 +48,14 @@ function mapUrl(url: string, method?: string): string {
     '/auth/logout': '/auth/logout',
     '/auth/refresh': '/auth/refresh',
     '/users/me': '/me',
-    '/users/me/avatar': '/me',
+    '/users/me/avatar': '/me/avatar',
     '/users/me/addresses': '/me/addresses',
     '/users/me/notifications': '/notifications/me',
     '/users/me/notifications/preferences': '/notifications/preferences/me',
-    '/users/me/payment-methods': '/payments',
+    '/users/me/payment-methods': '/payments/methods',
     '/content/stores': '/stores',
     '/content/location': '/stores',
-    '/promos/banners': '/content/blocks',
+    '/promos/banners': '/promos/banners',
     '/rewards': '/rewards/catalog',
     '/rewards/catalog': '/rewards/catalog',
     '/wallet': '/wallet/me',
@@ -70,24 +70,33 @@ function mapUrl(url: string, method?: string): string {
     '/referral/code': '/referrals/me',
     '/referral/apply': '/referrals',
     '/notifications': '/notifications/me',
-    '/payments/methods': '/payments',
+    '/payments/methods': '/payments/methods',
     '/payments/create-intent': '/payments/intent',
     '/payments/confirm': '/payments/intent',
     '/cart': '/cart',
     '/cart/items': '/cart/items',
     '/checkout': '/orders',
-    '/feedback': '/surveys',
-    '/tables/scan': '/stores',
-    '/config': '/stores',
-    '/config/bootstrap': '/stores',
+    '/feedback': '/feedback',
+    '/tables/scan': '/stores/tables/scan',
+    '/config': '/config/bootstrap',
+    '/config/bootstrap': '/config/bootstrap',
     '/vouchers/validate': '/vouchers/apply',
     '/vouchers/apply': '/vouchers/apply',
     '/reservations': '/reservations',
   };
   if (exactMap[url]) { url = exactMap[url]; return queryPart ? url + queryPart : url; }
 
+  // /users/me/addresses/{id} → /me/addresses/{id}
+  if (url.startsWith('/users/me/addresses/')) {
+    const suffix = url.split('/').slice(3).join('/');
+    url = '/me/addresses/' + suffix;
+    return queryPart ? url + queryPart : url;
+  }
+
   // ---- Menu items/categories → /menu/stores/{store_id} ----
-  if (url.startsWith('/menu/items') || url.startsWith('/menu/categories')) {
+  // Only remap bare /menu/items or /menu/categories (not sub-paths like /menu/items/3/customizations)
+  const isMenuItemsRoot = url === '/menu/items' || url === '/menu/categories';
+  if (isMenuItemsRoot) {
     const storeId = _getStoreId();
     if (storeId) {
       url = `/menu/stores/${storeId}`;
@@ -96,43 +105,39 @@ function mapUrl(url: string, method?: string): string {
     }
     return queryPart ? url + queryPart : url;
   }
-
-  // ---- Prefix matches ----
-  // /content/information → /content/blocks (public info cards)
-  if (url.startsWith('/content/information')) {
-    url = url.replace('/content/information', '/content/blocks');
+  // Sub-paths like /menu/items/{id} → keep as-is (backend has /menu/items/{item_id})
+  if (url.startsWith('/menu/items/')) {
     return queryPart ? url + queryPart : url;
   }
-  // /content/legal → /content/blocks (legal content)
+
+  // ---- Prefix matches ----
+  // /content/information → keep as-is (new public endpoint exists)
+  if (url.startsWith('/content/information')) {
+    // url stays as /content/information/...
+    return queryPart ? url + queryPart : url;
+  }
+  // /content/legal → keep as-is (new public endpoint exists)
   if (url.startsWith('/content/legal/')) {
-    url = '/content/blocks' + queryPart;
-    return url;
+    // url stays as /content/legal/{page_key}
+    return queryPart ? url + queryPart : url;
   }
-  // /content/version → /stores (no version endpoint; use stores to verify connectivity)
-  if (url.startsWith('/content/version')) {
-    url = '/stores' + queryPart;
-    return url;
-  }
-  // /orders/{id}/reorder → POST /orders (create new order from cart)
+
+  // /orders/{id}/reorder → keep as-is (new endpoint exists)
   if (url.match(/^\/orders\/\d+\/reorder/)) {
-    url = '/orders' + queryPart;
-    return url;
-  }
-  // /orders/{id}/cancel → PATCH /orders/{id} with status=cancelled (if backend supports)
-  if (url.match(/^\/orders\/\d+\/cancel/)) {
-    // Keep URL as-is for now, will be handled in request interceptor
     return url + queryPart;
   }
-  // /promos/banners/{id}/claim → /vouchers/apply
+  // /orders/{id}/cancel → keep as-is (new endpoint exists)
+  if (url.match(/^\/orders\/\d+\/cancel/)) {
+    return url + queryPart;
+  }
+  // /promos/banners/{id}/claim → /vouchers/apply (claim linked voucher)
   if (url.match(/^\/promos\/banners\/\d+\/claim/)) {
     url = '/vouchers/apply' + queryPart;
     return url;
   }
-  // /promos/banners/{id}/status → /content/blocks/{id}
+  // /promos/banners/{id}/status → keep as-is (new endpoint exists)
   if (url.match(/^\/promos\/banners\/\d+\/status/)) {
-    const id = url.split('/')[3];
-    url = `/content/blocks/${id}` + queryPart;
-    return url;
+    return url + queryPart;
   }
   // /notifications/{id}/read → PATCH /notifications/me/{id}/read
   if (url.match(/^\/notifications\/\d+\/read/)) {
@@ -215,6 +220,19 @@ function unwrapPaginatedV3(data: any): { items: any[]; total: number; page: numb
   return null;
 }
 
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function convertOperatingHours(hours: any[] | undefined): Record<string,string> {
+  const result: Record<string,string> = {};
+  if (!Array.isArray(hours)) return result;
+  for (const h of hours) {
+    const day = DAY_NAMES[h.day_of_week] ?? String(h.day_of_week);
+    const open = (h.open_time || '').substring(0,5);
+    const close = (h.close_time || '').substring(0,5);
+    result[day] = open && close ? `${open} - ${close}` : 'Closed';
+  }
+  return result;
+}
+
 function mapV3Response(url: string, data: any): any {
   const raw = data; // keep original for paginated wrapper extraction
 
@@ -244,7 +262,7 @@ function mapV3Response(url: string, data: any): any {
       image_url: s.logo_url || s.image_url,
       lat: s.latitude ?? s.lat,
       lng: s.longitude ?? s.lng,
-      opening_hours: s.operating_hours || s.opening_hours,
+      opening_hours: convertOperatingHours(s.operating_hours || s.opening_hours),
       delivery_fee: s.base_delivery_fee ?? s.delivery_fee,
       min_order: s.minimum_order_amount ?? s.min_order,
       pickup_lead_minutes: s.pickup_lead_minutes,
@@ -281,13 +299,18 @@ function mapV3Response(url: string, data: any): any {
       is_available: item.is_available ?? item.is_active ?? true,
       is_featured: item.is_featured ?? false,
       display_order: item.display_order ?? 0,
-      dietary_tags: item.dietary_tags || item.allergens?.map((a: any) => a.name) || [],
+      dietary_tags: item.dietary_tags || [],
+      allergens: (item.allergens || []).map((a: any) => ({
+        display_name: a.display_name || a.name || a.allergen_name || '',
+        severity: a.severity || 'medium',
+        icon: a.icon_url || a.icon || null,
+      })),
       customization_count: item.modifier_groups?.length || 0,
       customization_options: (item.modifier_groups || []).flatMap((mg: any) => 
         (mg.options || []).map((opt: any) => ({
           id: opt.id,
           name: opt.option_name || opt.name,
-          option_type: mg.group_type || 'General',
+          option_type: mg.selection_type || mg.group_type || 'single',
           price_adjustment: opt.price_adjustment ?? 0,
           is_active: opt.is_active ?? true,
           is_popular: opt.is_default ?? false,
@@ -346,16 +369,17 @@ function mapV3Response(url: string, data: any): any {
       const mappedItems = items.map((li: any) => ({
         id: li.id,
         menu_item_id: li.menu_item_id,
-        name: li.item_name || li.name || '',
+        name: li.item_snapshot?.item_name || li.item_snapshot?.name || li.item_name || li.name || '',
         price: li.line_total ?? li.unit_price ?? li.price ?? 0,
         unit_price: li.unit_price ?? li.price ?? 0,
         quantity: li.quantity ?? 1,
-        customizations: li.customizations || li.modifiers || {},
-        image_url: li.image_url,
+        customizations: li.selected_modifiers || li.customizations || li.modifiers || {},
+        image_url: li.item_snapshot?.image_url || li.image_url || null,
       }));
-      return {
+      const mapped = {
         ...o,
         order_number: o.order_number || `ORD-${o.id}`,
+        order_type: o.order_type === 'takeaway' ? 'pickup' : o.order_type,
         total: o.total_amount ?? o.total ?? 0,
         subtotal: o.items_subtotal ?? o.subtotal ?? 0,
         discount: o.discount_amount ?? o.discount ?? 0,
@@ -366,6 +390,19 @@ function mapV3Response(url: string, data: any): any {
         status_timeline: o.status_log || o.status_timeline || o.timeline || [],
         timeline: o.status_log || o.timeline || o.status_timeline || [],
       };
+      const flatFulfillment: any = {};
+      if (mapped.fulfillment && typeof mapped.fulfillment === 'object') {
+        const f = mapped.fulfillment;
+        flatFulfillment.pickup_time = f.estimated_ready_at || f.scheduled_time;
+        flatFulfillment.delivery_address = f.delivery_address_snapshot ? (typeof f.delivery_address_snapshot === 'string' ? f.delivery_address_snapshot : f.delivery_address_snapshot.formatted_address || f.delivery_address_snapshot.address_line_1) : '';
+        flatFulfillment.delivery_courier_name = f.driver_name || f.courier_name;
+        flatFulfillment.delivery_courier_phone = f.driver_phone || f.courier_phone;
+        flatFulfillment.delivery_tracking_url = f.tracking_url;
+        flatFulfillment.delivery_eta_minutes = f.eta_minutes;
+        flatFulfillment.recipient_name = f.recipient_name;
+        flatFulfillment.recipient_phone = f.recipient_phone;
+      }
+      return { ...mapped, ...flatFulfillment };
     };
     if (Array.isArray(unwrapped)) return unwrapped.map(mapOrder);
     return mapOrder(unwrapped);
@@ -380,7 +417,7 @@ function mapV3Response(url: string, data: any): any {
         ...t,
         amount: t.amount ?? t.debit_amount ?? t.credit_amount ?? 0,
         type: t.entry_type ?? t.transaction_type ?? t.type ?? 'unknown',
-        description: t.description || t.notes || '',
+        description: t.note || t.description || t.notes || '',
         created_at: t.created_at,
         reference_id: t.reference_id,
       }));
@@ -389,7 +426,7 @@ function mapV3Response(url: string, data: any): any {
     return {
       ...unwrapped,
       balance: unwrapped.balance ?? unwrapped.current_balance ?? 0,
-      currency: unwrapped.currency ?? 'MYR',
+      currency: unwrapped.currency_code || unwrapped.currency || 'MYR',
     };
   }
 
@@ -408,7 +445,7 @@ function mapV3Response(url: string, data: any): any {
     }
     return {
       ...unwrapped,
-      points: unwrapped.points_balance ?? unwrapped.points ?? 0,
+      points: unwrapped.current_points ?? unwrapped.points_balance ?? unwrapped.points ?? 0,
       points_balance: unwrapped.points_balance ?? unwrapped.points ?? 0,
       tier: unwrapped.tier_name ?? unwrapped.tier ?? 'Bronze',
       tier_name: unwrapped.tier_name ?? unwrapped.tier ?? 'Bronze',
@@ -417,32 +454,37 @@ function mapV3Response(url: string, data: any): any {
   }
 
   // ============================================
-  // CONTENT BLOCKS — map to PromoBanner/InformationCard shapes
+  // CONTENT — PromoBanner / InfoCard / ProductCard / EventCard / SystemPage / SplashScreen
   // ============================================
-  if (url.includes('/content/blocks')) {
-    return unwrapped.map((b: any) => {
-      const ct = b.content_type || 'hero_banner';
+  if (url.includes('/content/') || url.includes('/promos/banners') || url.includes('/splash')) {
+    const mapContent = (b: any) => {
+      if (!b) return b;
       return {
         ...b,
-        title: b.block_name || b.title || '',
-        short_description: b.body_text || b.short_description || null,
-        long_description: b.body_text || b.long_description || null,
+        title: b.title || b.block_name || b.screen_name || '',
+        short_description: b.short_description || b.subtitle || null,
+        long_description: b.long_description || b.body_text || null,
         image_url: b.image_url || null,
         gallery_urls: b.image_gallery_urls || [],
-        action_url: b.cta_url || b.action_url,
-        action_type: b.cta_action || b.action_type,
-        action_label: b.cta_text || b.action_label,
-        start_date: b.start_date || null,
-        end_date: b.end_date || null,
-        content_type: ct,
+        action_url: b.action_url || b.cta_url || null,
+        action_type: b.action_type || b.cta_action || null,
+        action_label: b.action_label || b.cta_text || null,
+        start_date: b.start_date || b.active_from || null,
+        end_date: b.end_date || b.active_until || null,
+        content_type: b.content_type || 'information',
         sections: b.sections || [],
         icon: b.icon || null,
         terms: b.terms_and_conditions ? (Array.isArray(b.terms_and_conditions) ? b.terms_and_conditions : [b.terms_and_conditions]) : [],
         how_to_redeem: b.how_to_redeem || null,
-        voucher_id: b.voucher_definition_id || b.voucher_id,
-        survey_id: b.survey_definition_id || b.survey_id,
+        description: b.long_description || b.short_description || b.description || '',
+        voucher_id: b.voucher_id || b.voucher_definition_id || null,
+        survey_id: b.survey_id || b.survey_definition_id || null,
+        page_key: b.page_key || null,
+        slug: b.slug || null,
       };
-    });
+    };
+    if (Array.isArray(unwrapped)) return unwrapped.map(mapContent);
+    return mapContent(unwrapped);
   }
 
   // ============================================
@@ -462,13 +504,16 @@ function mapV3Response(url: string, data: any): any {
         is_active: r.is_active ?? true,
         validity_days: r.validity_days,
         terms: r.terms_and_conditions ? (Array.isArray(r.terms_and_conditions) ? r.terms_and_conditions : [r.terms_and_conditions]) : [],
+        discount_value: r.discount_value || r.discount_amount || 0,
+        discount_max_amount: r.discount_max_amount || r.max_discount || 0,
+        minimum_order_value: r.minimum_order_value || r.min_spend || 0,
         how_to_redeem: r.how_to_redeem || null,
       }));
     }
     // /rewards/me (customer's redeemed rewards)
     return unwrapped.map((r: any) => ({
       ...r,
-      reward_id: r.reward_definition_id || r.reward_id,
+      reward_id: r.reward_catalog_id || r.reward_definition_id || r.reward_id,
       reward_name: r.reward_name || r.name || '',
       redemption_code: r.redemption_code || r.code || '',
       status: r.status || 'available',
@@ -509,6 +554,7 @@ function mapV3Response(url: string, data: any): any {
     if (url.includes('/preferences')) return unwrapped;
     return unwrapped.map((n: any) => ({
       ...n,
+      type: n.message_type || n.type || 'general',
       title: n.title || n.subject || '',
       body: n.body || n.message || '',
       is_read: n.is_read ?? (n.read_at != null),
@@ -590,6 +636,7 @@ function mapV3Response(url: string, data: any): any {
       ...r,
       store_name: r.store_name || r.store?.store_name,
       customer_name: r.customer_name || r.display_name,
+      notes: r.special_requests || r.notes || '',
       reservation_date: r.reservation_date || r.date,
       reservation_time: r.reservation_time || r.time_slot,
       table_number: r.table_number || r.table?.table_number,
@@ -605,14 +652,14 @@ function mapV3Response(url: string, data: any): any {
       return unwrapped.map((ci: any) => ({
         id: ci.id,
         menu_item_id: ci.menu_item_id,
-        name: ci.item_name || ci.name || '',
+        name: ci.item_snapshot?.item_name || ci.item_snapshot?.name || ci.item_name || ci.name || '',
         price: ci.unit_price ?? ci.price ?? 0,
         base_price: ci.unit_price ?? ci.price ?? 0,
         quantity: ci.quantity ?? 1,
-        customizations: ci.modifiers || ci.customizations || {},
+        customizations: ci.selected_modifiers || ci.modifiers || ci.customizations || {},
         customization_option_ids: ci.modifier_option_ids || ci.customization_option_ids || [],
         customization_count: ci.modifier_option_ids?.length || ci.customization_count || 0,
-        image_url: ci.image_url,
+        image_url: ci.item_snapshot?.image_url || ci.image_url || null,
       }));
     }
     // Cart container
@@ -621,17 +668,17 @@ function mapV3Response(url: string, data: any): any {
       items: (unwrapped.items || unwrapped.line_items || []).map((ci: any) => ({
         id: ci.id,
         menu_item_id: ci.menu_item_id,
-        name: ci.item_name || ci.name || '',
+        name: ci.item_snapshot?.item_name || ci.item_snapshot?.name || ci.item_name || ci.name || '',
         price: ci.unit_price ?? ci.price ?? 0,
         base_price: ci.unit_price ?? ci.price ?? 0,
         quantity: ci.quantity ?? 1,
-        customizations: ci.modifiers || ci.customizations || {},
+        customizations: ci.selected_modifiers || ci.modifiers || ci.customizations || {},
         customization_option_ids: ci.modifier_option_ids || ci.customization_option_ids || [],
         customization_count: ci.modifier_option_ids?.length || ci.customization_count || 0,
-        image_url: ci.image_url,
+        image_url: ci.item_snapshot?.image_url || ci.image_url || null,
       })),
       total_items: unwrapped.total_items ?? (unwrapped.items?.length || 0),
-      total_amount: unwrapped.total_amount ?? 0,
+      total_amount: unwrapped.total_amount ?? unwrapped.subtotal ?? 0,
     };
   }
 
@@ -798,6 +845,7 @@ export interface MenuItem {
   is_featured?: boolean;
   display_order?: number;
   dietary_tags?: string[];
+  allergens?: Array<{ display_name: string; severity: string; icon?: string }>;
   customization_count?: number;
   customization_options?: CustomizationOption[];
 }
@@ -822,7 +870,7 @@ export interface UserReward {
   reward_id: number;
   reward_name: string;
   redemption_code: string;
-  status: 'available' | 'used' | 'expired';
+  status: 'available' | 'used' | 'expired' | 'active';
   expires_at: string;
   reward_image_url?: string;
   reward_snapshot?: string;
@@ -837,7 +885,7 @@ export interface UserVoucher {
   code: string;
   discount_type: string;
   discount_value: number;
-  status: 'available' | 'used' | 'expired';
+  status: 'available' | 'used' | 'expired' | 'active';
   expires_at: string;
   min_spend?: number;
   max_discount?: number;
@@ -1035,7 +1083,7 @@ export interface SurveyResponse {
   answers: { question_id: number; answer: string }[];
 }
 
-export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support' | 'legal' | 'settings' | 'my-card' | 'referral' | 'reservations' | 'surveys';
+export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support' | 'legal' | 'settings' | 'my-card' | 'referral' | 'reservations' | 'events';
 export type OrderMode = 'pickup' | 'delivery' | 'dine_in';
 
 export function cacheBust(url: string, ts?: number): string {

@@ -299,6 +299,46 @@
 .menu-tag-copper { background: rgba(196, 137, 58,0.12); color: var(--loka-accent-brown); }
 .menu-tag-teal { background: rgba(133,176,133,0.15); color: var(--loka-success); }
 
+/* Allergen badges */
+.menu-product-allergens {
+  display: flex;
+  gap: 3px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+.menu-allergen-badge {
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-family: var(--font-sans);
+  border: 1px solid;
+}
+.menu-allergen-high {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.25);
+}
+.menu-allergen-medium {
+  background: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.25);
+}
+.menu-allergen-low {
+  background: rgba(100, 116, 139, 0.08);
+  color: #64748b;
+  border-color: rgba(100, 116, 139, 0.2);
+}
+.menu-allergen-critical {
+  background: rgba(185, 28, 28, 0.1);
+  color: #991b1b;
+  border-color: rgba(185, 28, 28, 0.3);
+  font-weight: 700;
+}
+
 /* Bottom row: price + add btn */
 .menu-product-bottom {
   display: flex;

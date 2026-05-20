@@ -8,16 +8,16 @@ import type { PageId } from '@/lib/api';
 const VALID_PAGES: PageId[] = [
   'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
   'wallet', 'history', 'promotions', 'information', 'my-rewards',
-  'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'referral', 'reservations', 'surveys',
+  'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'referral', 'reservations', 'events',
 ];
 
 export const SUB_PAGES: PageId[] = [
   'cart', 'checkout', 'order-detail', 'wallet', 'history',
   'promotions', 'information', 'my-rewards', 'account-details',
-  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'surveys',
+  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'events',
 ];
 
-const GUEST_RESTRICTED: PageId[] = ['profile', 'orders', 'wallet', 'checkout', 'payment-methods', 'notifications', 'my-rewards', 'account-details', 'saved-addresses', 'my-card', 'referral', 'order-detail', 'history', 'settings', 'reservations', 'surveys'];
+const GUEST_RESTRICTED: PageId[] = ['profile', 'orders', 'wallet', 'checkout', 'payment-methods', 'notifications', 'my-rewards', 'account-details', 'saved-addresses', 'my-card', 'referral', 'order-detail', 'history', 'settings', 'reservations'];
 
 export function usePageRouter() {
   const setPage = useUIStore((s) => s.setPage);

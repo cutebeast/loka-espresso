@@ -61,7 +61,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       });
       setPromotions(active);
       if (!isGuest) {
-        const statuses = await Promise.all(active.map((p: PromoBanner) => api.get(`/promos/banners/${p.id}/status`).then((r) => ({ id: p.id, status: r.data })).catch(() => null)));
+        const statuses = await Promise.all(active.map((p: PromoBanner) => api.get(`/promos/banners/${p.id}/status`).then((r) => ({ id: p.id, status: r.data })).catch((err) => { console.error('[Promotions] Banner status check failed:', err); return null; })));
         const map: Record<number, BannerStatus> = {};
         statuses.forEach((s) => { if (s) map[s.id] = s.status; });
         setBannerStatus(map);

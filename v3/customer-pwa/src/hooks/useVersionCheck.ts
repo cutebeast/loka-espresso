@@ -16,18 +16,10 @@ export function useVersionCheck() {
     checkInProgress.current = true;
 
     try {
-      // Get stored version
-      const storedVersion = localStorage.getItem(STORAGE_KEY) || '1.0.0';
-      
-      // Check server version
-      const res = await api.get(`/content/version?client_version=${storedVersion}`);
-      const data = res.data;
-
-      if (data.requires_update) {
-        // Store new version
-        localStorage.setItem(STORAGE_KEY, data.version);
-        
-        // Dispatch event so AppShell can show a user-facing update prompt
+      // Check for Service Worker updates (browser-native, no backend endpoint needed)
+      const registration = await navigator.serviceWorker?.getRegistration();
+      if (registration?.waiting) {
+        // A new SW is already waiting — prompt user to refresh
         window.dispatchEvent(new CustomEvent('sw-update-available'));
       }
     } catch (err) {
@@ -39,36 +31,16 @@ export function useVersionCheck() {
 
   const checkNotifications = useCallback(async () => {
     try {
-      const lastCheck = localStorage.getItem('loka_last_notification_check');
-      const url = lastCheck 
-        ? `/content/notifications?last_check=${encodeURIComponent(lastCheck)}`
-        : '/content/notifications';
-      
-      const res = await api.get(url);
+      // Fetch unread count only — lightweight check
+      const res = await api.get('/notifications/me?per_page=1&is_read=false');
       const data = res.data;
-      
-      if (data.notifications && data.notifications.length > 0) {
-        // Show notification badge or toast for new notifications
-        const unreadCount = data.notifications.filter((n: {is_read: boolean}) => !n.is_read).length;
-        if (unreadCount > 0) {
-          showToast(`${unreadCount} new notification${unreadCount > 1 ? 's' : ''}`, 'info');
-        }
-        
-        // Store check time
-        localStorage.setItem('loka_last_notification_check', data.server_time);
-        
-        // Return notifications for UI to display
-        return data.notifications;
+      const items = Array.isArray(data) ? data : (data?.items ?? []);
+      if (items.length > 0) {
+        showToast(`${items.length} new notification${items.length > 1 ? 's' : ''}`, 'info');
       }
-      
-      // Store check time even if no new notifications
-      if (data.server_time) {
-        localStorage.setItem('loka_last_notification_check', data.server_time);
-      }
-      
-      return [];
-    } catch (err) {
-      console.error('[PWA] Notification check failed:', err);
+      return items;
+    } catch (err: any) {
+      console.error('[PWA] Notification check failed:', err?.response?.status || err?.message || err);
       return [];
     }
   }, [showToast]);

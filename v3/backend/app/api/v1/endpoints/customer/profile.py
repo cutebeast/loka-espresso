@@ -10,6 +10,7 @@ from app.schemas.customer import (
     CustomerAddressCreate,
     CustomerAddressOut,
     CustomerAddressUpdate,
+    CustomerDeviceOut,
     CustomerMeOut,
     CustomerProfileOut,
     CustomerProfileUpdate,
@@ -44,6 +45,7 @@ async def get_me(customer: ActiveCustomer, db: DBDependency):
             default_address=default_address,
             devices=devices,
             consents=[],
+            referral_code=customer.referral_code,
         )
     )
 
@@ -61,6 +63,32 @@ async def update_me(
     
     await db.commit()
     await db.refresh(customer)
+    return APIResponse(data=CustomerProfileOut.model_validate(customer))
+
+
+# PUT alias for PWA compatibility (frontend uses PUT)
+@router.put("", response_model=APIResponse[CustomerProfileOut])
+async def update_me_put(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    data: CustomerProfileUpdate,
+):
+    """Update current customer profile (PUT alias)."""
+    return await update_me(customer, db, data)
+
+
+@router.put("/avatar", response_model=APIResponse[CustomerProfileOut])
+async def update_avatar(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    data: dict,
+):
+    """Update customer avatar URL."""
+    avatar_url = data.get("avatar_url") or data.get("image_url")
+    if avatar_url:
+        customer.avatar_url = avatar_url
+        await db.commit()
+        await db.refresh(customer)
     return APIResponse(data=CustomerProfileOut.model_validate(customer))
 
 
@@ -131,6 +159,18 @@ async def update_address(
     await db.commit()
     await db.refresh(address)
     return APIResponse(data=CustomerAddressOut.model_validate(address))
+
+
+# PUT alias for PWA compatibility
+@router.put("/addresses/{address_id}", response_model=APIResponse[CustomerAddressOut])
+async def update_address_put(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    address_id: int,
+    data: CustomerAddressUpdate,
+):
+    """Update address (PUT alias)."""
+    return await update_address(customer, db, address_id, data)
 
 
 @router.delete("/addresses/{address_id}", status_code=status.HTTP_204_NO_CONTENT)

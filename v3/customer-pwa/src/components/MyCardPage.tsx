@@ -30,7 +30,7 @@ export default function MyCardPage() {
         if (created) {
           setMemberSince(new Date(created).toLocaleDateString(getLocale(), { month: 'long', year: 'numeric' }));
         }
-      }).catch(() => {});
+      }).catch((err) => console.error('[MyCard] Failed to load user:', err));
   }, []);
 
   /* Generate QR code for the user's ID to be scanned by staff */
@@ -41,7 +41,7 @@ export default function MyCardPage() {
       width: 120,
       margin: 0,
       color: { dark: LOKA.textPrimary, light: LOKA.white },
-    }).then(setQrDataUrl).catch(() => {});
+    }).then(setQrDataUrl).catch((err) => console.error('[MyCard] QR generation failed:', err));
   }, [user?.id]);
 
   const handleShare = async () => {

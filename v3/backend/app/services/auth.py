@@ -25,6 +25,10 @@ from app.schemas.auth import (
 
 settings = get_settings()
 
+# In-memory revoked refresh token JTI set (cleared on restart)
+# For production, replace with Redis SET or DB table.
+_revoked_refresh_jtis: set[str] = set()
+
 
 class AuthError(Exception):
     """Authentication-related error."""
@@ -100,8 +104,7 @@ async def register_customer(
     
     # Credit welcome bonus
     try:
-        from app.core.config import get_settings
-        settings = get_settings()
+        from app.core.config import get_settings as _get_auth_settings
         from app.models.platform import PlatformConfig
         result = await db.execute(
             select(PlatformConfig).where(PlatformConfig.config_key == "loyalty.welcome_bonus")
@@ -163,7 +166,7 @@ async def refresh_customer_tokens(
     db: AsyncSession,
     data: RefreshTokenRequest,
 ) -> TokenPair:
-    """Refresh access token using refresh token."""
+    """Refresh access token using refresh token. One-time use — old token is revoked."""
     try:
         payload = decode_token(data.refresh_token)
     except Exception as exc:
@@ -172,14 +175,23 @@ async def refresh_customer_tokens(
     if payload.get("type") != "refresh":
         raise AuthError("Invalid token type", 401)
     
+    # Check if this refresh token has already been used (replay protection)
+    jti = payload.get("jti")
+    if jti and jti in _revoked_refresh_jtis:
+        raise AuthError("Refresh token has already been used", 401)
+    
     customer_id = int(payload.get("sub", 0))
     result = await db.execute(
         select(Customer).where(Customer.id == customer_id)
     )
     customer = result.scalar_one_or_none()
     
-    if customer is None or customer.deleted_at is not None:
-        raise AuthError("Customer not found", 401)
+    if customer is None or customer.deleted_at is not None or not customer.is_active:
+        raise AuthError("Customer not found or inactive", 401)
+    
+    # Revoke this refresh token so it cannot be reused
+    if jti:
+        _revoked_refresh_jtis.add(jti)
     
     return await create_customer_tokens(customer)
 
@@ -245,7 +257,7 @@ async def refresh_admin_tokens(
     db: AsyncSession,
     data: RefreshTokenRequest,
 ) -> TokenPair:
-    """Refresh admin access token using refresh token."""
+    """Refresh admin access token using refresh token. One-time use."""
     try:
         payload = decode_token(data.refresh_token)
     except Exception as exc:
@@ -254,13 +266,22 @@ async def refresh_admin_tokens(
     if payload.get("type") != "refresh":
         raise AuthError("Invalid token type", 401)
     
+    # Replay protection
+    jti = payload.get("jti")
+    if jti and jti in _revoked_refresh_jtis:
+        raise AuthError("Refresh token has already been used", 401)
+    
     admin_id = int(payload.get("sub", 0))
     result = await db.execute(
         select(AdminAccount).where(AdminAccount.id == admin_id)
     )
     admin = result.scalar_one_or_none()
     
-    if admin is None or admin.deleted_at is not None:
+    if admin is None or admin.deleted_at is not None or not admin.is_active:
         raise AuthError("Admin not found", 401)
+    
+    # Revoke old refresh token
+    if jti:
+        _revoked_refresh_jtis.add(jti)
     
     return await create_admin_tokens(admin)

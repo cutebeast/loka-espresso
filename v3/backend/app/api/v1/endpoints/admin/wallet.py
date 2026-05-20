@@ -364,12 +364,26 @@ async def request_topup(
         db.add(wallet)
         await db.commit()
         await db.refresh(wallet)
-    # In a real implementation this would create a payment intent.
-    return APIResponse(
-        data={
-            "status": "pending",
-            "amount": data.amount,
-            "payment_method_id": data.payment_method_id,
-            "wallet_id": wallet.id,
-        }
+
+    r = await db.execute(
+        select(WalletLedgerEntry)
+        .where(WalletLedgerEntry.wallet_id == wallet.id)
+        .order_by(WalletLedgerEntry.id.desc())
+        .limit(1)
+        .with_for_update()
     )
+    last = r.scalar_one_or_none()
+    new_balance = (float(last.running_balance) if last else 0.0) + data.amount
+
+    entry = WalletLedgerEntry(
+        wallet_id=wallet.id,
+        entry_type="credit",
+        amount=data.amount,
+        running_balance=new_balance,
+        description=f"Top-up via payment method {data.payment_method_id}",
+        reference_type="topup",
+    )
+    db.add(entry)
+    await db.commit()
+    await db.refresh(entry)
+    return APIResponse(data={"message": "Top-up complete", "new_balance": new_balance})

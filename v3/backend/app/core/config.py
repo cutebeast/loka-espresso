@@ -58,6 +58,23 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET must be at least 32 bytes")
         return v
 
+    @field_validator("jwt_secret")
+    @classmethod
+    def _reject_default_secret_in_production(cls, v: str, info) -> str:
+        # Check environment from the values being validated
+        env = info.data.get("environment", "") if info.data else ""
+        if env == "production" and v == "super-secret-jwt-key-for-development-only-12345":
+            raise ValueError("Cannot use default JWT_SECRET in production. Set JWT_SECRET env var.")
+        return v
+
+    @field_validator("database_url")
+    @classmethod
+    def _reject_default_db_in_production(cls, v: str, info) -> str:
+        env = info.data.get("environment", "") if info.data else ""
+        if env == "production" and "fnb_user:fnb_pass" in v:
+            raise ValueError("Cannot use default database credentials in production. Set DATABASE_URL env var.")
+        return v
+
     # Argon2
     argon2_time_cost: int = 3
     argon2_memory_cost: int = 65536
@@ -69,6 +86,27 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    # Trusted Hosts
+    trusted_hosts: str = "localhost,127.0.0.1"
+
+    @property
+    def allowed_hosts_list(self) -> List[str]:
+        hosts = [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
+        if not hosts:
+            return ["*"]  # fallback for empty config
+        return hosts
+
+    def get_allowed_hosts(self) -> List[str]:
+        if self.is_development:
+            # Allow all in dev for local testing
+            hosts = self.allowed_hosts_list
+            if "localhost" not in hosts:
+                hosts.append("localhost")
+            if "127.0.0.1" not in hosts:
+                hosts.append("127.0.0.1")
+            return hosts
+        return self.allowed_hosts_list
 
     # Uploads
     upload_dir: Path = Path("./uploads")

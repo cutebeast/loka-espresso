@@ -1,16 +1,18 @@
 """Public menu endpoints (no auth required)."""
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import DBDependency
 from app.models.menu import (
     Allergen,
+    DietaryTag,
     MenuCategory,
     MenuItem,
     MenuItemAllergen,
+    MenuItemDietaryTag,
     MenuModifierGroup,
-    MenuModifierOption,
     MenuVariant,
 )
 from app.schemas.base import APIResponse
@@ -43,7 +45,7 @@ async def get_store_menu(
     ).order_by(MenuCategory.display_order)
     cat_result = await db.execute(cat_stmt)
     categories = cat_result.scalars().all()
-    
+
     # Fetch items (global menu, not per-store)
     item_stmt = select(MenuItem).where(
         MenuItem.is_available.is_(True),
@@ -58,71 +60,74 @@ async def get_store_menu(
         )
     if is_featured is not None:
         item_stmt = item_stmt.where(MenuItem.is_featured.is_(is_featured))
-    
+
     item_result = await db.execute(item_stmt)
     items = item_result.scalars().all()
     item_ids = [i.id for i in items]
-    
-    # Fetch related data in bulk
+
+    # Variants
     variants_result = await db.execute(
         select(MenuVariant).where(
             MenuVariant.parent_item_id.in_(item_ids),
             MenuVariant.is_available.is_(True),
         )
     )
-    variants_map = {}
+    variants_map: dict[int, list] = {}
     for v in variants_result.scalars().all():
         variants_map.setdefault(v.parent_item_id, []).append(v)
-    
-    modifiers_result = await db.execute(
-        select(MenuModifierGroup).where(MenuModifierGroup.menu_item_id.in_(item_ids))
+
+    # Modifier groups with options (selectinload avoids N+1)
+    mg_result = await db.execute(
+        select(MenuModifierGroup)
+        .options(selectinload(MenuModifierGroup.options))
+        .where(MenuModifierGroup.menu_item_id.in_(item_ids))
     )
-    modifier_groups = modifiers_result.scalars().all()
-    group_ids = [g.id for g in modifier_groups]
-    
-    options_result = await db.execute(
-        select(MenuModifierOption).where(
-            MenuModifierOption.modifier_group_id.in_(group_ids),
-            MenuModifierOption.is_available.is_(True),
+    modifier_map: dict[int, list] = {}
+    for mg in mg_result.scalars().all():
+        group_out = MenuModifierGroupOut.model_validate(mg)
+        group_out.options = [
+            MenuModifierOptionOut.model_validate(opt)
+            for opt in mg.options
+            if opt.is_available
+        ]
+        modifier_map.setdefault(mg.menu_item_id, []).append(group_out)
+
+    # Allergens via junction table (single-query join)
+    allergen_map: dict[int, list] = {}
+    if item_ids:
+        allergen_result = await db.execute(
+            select(MenuItemAllergen.menu_item_id, Allergen)
+            .join(Allergen, Allergen.id == MenuItemAllergen.allergen_id)
+            .where(MenuItemAllergen.menu_item_id.in_(item_ids))
         )
-    )
-    options_map = {}
-    for o in options_result.scalars().all():
-        options_map.setdefault(o.modifier_group_id, []).append(o)
-    
-    modifiers_map = {}
-    for g in modifier_groups:
-        group_out = MenuModifierGroupOut.model_validate(g)
-        group_out.options = [MenuModifierOptionOut.model_validate(o) for o in options_map.get(g.id, [])]
-        modifiers_map.setdefault(g.menu_item_id, []).append(group_out)
-    
-    # Fetch allergens
-    allergen_links = await db.execute(
-        select(MenuItemAllergen).where(MenuItemAllergen.menu_item_id.in_(item_ids))
-    )
-    allergen_ids = {a.allergen_id for a in allergen_links.scalars().all()}
-    allergen_result = await db.execute(select(Allergen).where(Allergen.id.in_(allergen_ids)))
-    allergen_map = {a.id: AllergenOut.model_validate(a) for a in allergen_result.scalars().all()}
-    
-    item_allergen_map = {}
-    for link in allergen_links.scalars().all():
-        item_allergen_map.setdefault(link.menu_item_id, []).append(allergen_map.get(link.allergen_id))
-    
-    # Build output — use column dict to avoid lazy-loading relationships
+        for mi_id, allergen in allergen_result.all():
+            allergen_map.setdefault(mi_id, []).append(AllergenOut.model_validate(allergen))
+
+    # Dietary tags via junction table (single-query join)
+    dietary_map: dict[int, list[str]] = {}
+    if item_ids:
+        dietary_result = await db.execute(
+            select(MenuItemDietaryTag.menu_item_id, DietaryTag.tag_key)
+            .join(DietaryTag, DietaryTag.id == MenuItemDietaryTag.dietary_tag_id)
+            .where(MenuItemDietaryTag.menu_item_id.in_(item_ids))
+        )
+        for mi_id, tag_key in dietary_result.all():
+            dietary_map.setdefault(mi_id, []).append(tag_key)
+
+    # Build output
     item_outs = []
     for item in items:
         item_dict = {c: getattr(item, c) for c in item.__table__.columns.keys()}
-        item_out = MenuItemPublicOut.model_validate(item_dict)
-        item_out.variants = [MenuVariantOut.model_validate(v) for v in variants_map.get(item.id, [])]
-        item_out.modifier_groups = modifiers_map.get(item.id, [])
-        item_out.allergens = [a for a in item_allergen_map.get(item.id, []) if a is not None]
-        # Convert dietary_tags JSONB to list if needed
-        if item.dietary_tags and isinstance(item.dietary_tags, dict):
-            item_out.dietary_tags = list(item.dietary_tags.keys()) if item.dietary_tags else None
-        item_outs.append(item_out)
-    
+        item_dict["variants"] = [
+            MenuVariantOut.model_validate(v) for v in variants_map.get(item.id, [])
+        ]
+        item_dict["modifier_groups"] = modifier_map.get(item.id, [])
+        item_dict["allergens"] = allergen_map.get(item.id, [])
+        item_dict["dietary_tags"] = dietary_map.get(item.id) or None
+        item_outs.append(MenuItemPublicOut.model_validate(item_dict))
+
     cat_outs = [MenuCategoryOut.model_validate(c) for c in categories]
-    
+
     return APIResponse(
         data=MenuPublicOut(
             store_id=store_id,
@@ -145,48 +150,52 @@ async def get_menu_item(db: DBDependency, item_id: int):
     item = result.scalar_one_or_none()
     if item is None:
         raise HTTPException(status_code=404, detail="Menu item not found")
-    
+
+    # Variants
     variants_result = await db.execute(
         select(MenuVariant).where(
             MenuVariant.parent_item_id == item_id,
             MenuVariant.is_available.is_(True),
         )
     )
-    modifiers_result = await db.execute(
-        select(MenuModifierGroup).where(MenuModifierGroup.menu_item_id == item_id)
-    )
-    modifier_groups = modifiers_result.scalars().all()
-    group_ids = [g.id for g in modifier_groups]
-    
-    options_result = await db.execute(
-        select(MenuModifierOption).where(
-            MenuModifierOption.modifier_group_id.in_(group_ids),
-            MenuModifierOption.is_available.is_(True),
-        )
-    )
-    options_map = {}
-    for o in options_result.scalars().all():
-        options_map.setdefault(o.modifier_group_id, []).append(o)
-    
-    modifier_outs = []
-    for g in modifier_groups:
-        group_out = MenuModifierGroupOut.model_validate(g)
-        group_out.options = [MenuModifierOptionOut.model_validate(o) for o in options_map.get(g.id, [])]
-        modifier_outs.append(group_out)
-    
-    allergen_links = await db.execute(
-        select(MenuItemAllergen).where(MenuItemAllergen.menu_item_id == item_id)
-    )
-    allergen_ids = {a.allergen_id for a in allergen_links.scalars().all()}
-    allergen_result = await db.execute(select(Allergen).where(Allergen.id.in_(allergen_ids)))
-    allergen_outs = [AllergenOut.model_validate(a) for a in allergen_result.scalars().all()]
-    
-    item_dict = {c: getattr(item, c) for c in item.__table__.columns.keys()}
-    item_out = MenuItemPublicOut.model_validate(item_dict)
-    item_out.variants = [MenuVariantOut.model_validate(v) for v in variants_result.scalars().all()]
-    item_out.modifier_groups = modifier_outs
-    item_out.allergens = allergen_outs
-    if item.dietary_tags and isinstance(item.dietary_tags, dict):
-        item_out.dietary_tags = list(item.dietary_tags.keys()) if item.dietary_tags else None
+    variants = [MenuVariantOut.model_validate(v) for v in variants_result.scalars().all()]
 
-    return APIResponse(data=item_out)
+    # Modifier groups with options
+    mg_result = await db.execute(
+        select(MenuModifierGroup)
+        .options(selectinload(MenuModifierGroup.options))
+        .where(MenuModifierGroup.menu_item_id == item_id)
+    )
+    modifier_outs = []
+    for mg in mg_result.scalars().all():
+        group_out = MenuModifierGroupOut.model_validate(mg)
+        group_out.options = [
+            MenuModifierOptionOut.model_validate(opt)
+            for opt in mg.options
+            if opt.is_available
+        ]
+        modifier_outs.append(group_out)
+
+    # Allergens (single-query join)
+    allergen_result = await db.execute(
+        select(MenuItemAllergen.menu_item_id, Allergen)
+        .join(Allergen, Allergen.id == MenuItemAllergen.allergen_id)
+        .where(MenuItemAllergen.menu_item_id == item_id)
+    )
+    allergen_outs = [AllergenOut.model_validate(a) for _, a in allergen_result.all()]
+
+    # Dietary tags (single-query join)
+    dietary_result = await db.execute(
+        select(MenuItemDietaryTag.menu_item_id, DietaryTag.tag_key)
+        .join(DietaryTag, DietaryTag.id == MenuItemDietaryTag.dietary_tag_id)
+        .where(MenuItemDietaryTag.menu_item_id == item_id)
+    )
+    dietary_tags = [tag_key for _, tag_key in dietary_result.all()] or None
+
+    item_dict = {c: getattr(item, c) for c in item.__table__.columns.keys()}
+    item_dict["variants"] = variants
+    item_dict["modifier_groups"] = modifier_outs
+    item_dict["allergens"] = allergen_outs
+    item_dict["dietary_tags"] = dietary_tags
+
+    return APIResponse(data=MenuItemPublicOut.model_validate(item_dict))

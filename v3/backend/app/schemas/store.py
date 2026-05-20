@@ -28,9 +28,10 @@ class StoreSpecialHoursBase(BaseSchema):
     reason: str | None = Field(None, max_length=100)
 
 
-class StoreSpecialHoursOut(StoreSpecialHoursBase, TimestampedSchema):
+class StoreSpecialHoursOut(StoreSpecialHoursBase):
     id: int
     store_id: int
+    created_at: datetime | None = None
 
 
 class StoreConfigurationBase(BaseSchema):

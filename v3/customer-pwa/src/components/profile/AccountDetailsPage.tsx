@@ -38,7 +38,7 @@ export default function AccountDetailsPage() {
         setEmail(res.data.email || '');
         setDob(res.data.date_of_birth || '');
       }
-    }).catch(() => {});
+    }).catch((err) => console.error('[AccountDetails] Profile fetch failed:', err));
   }, [setUser]);
 
   const handleSave = async () => {

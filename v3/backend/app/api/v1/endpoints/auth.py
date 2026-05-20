@@ -88,3 +88,15 @@ async def customer_refresh(db: DBDependency, data: RefreshTokenRequest):
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     return tokens
+
+
+@router.post("/logout")
+async def customer_logout():
+    """Logout endpoint — client-side token invalidation.
+    
+    In a stateless JWT setup, logout is handled entirely on the client
+    by discarding tokens. Server-side token blacklisting can be added
+    here for production (Redis/DB token revocation list).
+    """
+    # Future: add refresh_token to a revocation list
+    return {"success": True, "message": "Logged out successfully"}

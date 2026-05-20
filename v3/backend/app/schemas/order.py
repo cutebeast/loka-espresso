@@ -20,6 +20,8 @@ class OrderLineItemOut(BaseSchema):
     line_total: float
     selected_modifiers: dict | list = {}
     special_instructions: str | None
+    name: str | None = None
+    image_url: str | None = None
     fulfillment_status: str | None
     served_at: datetime | None
     served_by: int | None
@@ -124,6 +126,9 @@ class OrderOut(BaseSchema):
     cancelled_at: datetime | None
     cancellation_reason: str | None
     cancelled_by: str | None
+    store_name: str | None = None
+    store_address: str | None = None
+    payment_method: str | None = None
     line_items: list[OrderLineItemOut] = []
     fulfillment: OrderFulfillmentOut | None = None
     status_log: list[OrderStatusLogOut] = []

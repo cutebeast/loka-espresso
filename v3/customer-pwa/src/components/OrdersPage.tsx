@@ -84,12 +84,14 @@ export default function OrdersPage() {
       const res = await api.post(`/orders/${order.id}/reorder`);
       const { clearCart } = useCartStore.getState();
       clearCart();
-      const items = res.data?.items ?? [];
+      const storeId = res.data?.store_id || order.store_id;
+      const cartRes = await api.get('/cart/items', { params: { store_id: storeId } });
+      const items = cartRes.data ?? [];
       for (const item of items) {
         const cartItem: CartItem = {
-          menu_item_id: item.item_id || item.menu_item_id,
-          name: item.item_name || item.name || '',
-          price: item.unit_price || item.price || 0,
+          menu_item_id: item.menu_item_id || item.item_id,
+          name: item.name || item.item_name || '',
+          price: item.price || item.unit_price || 0,
           quantity: item.quantity || 1,
           customization_option_ids: item.customization_option_ids || [],
           customizations: item.customizations || {},

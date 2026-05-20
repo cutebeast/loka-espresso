@@ -293,6 +293,15 @@ export default function MenuPage() {
                               ))}
                             </div>
                           )}
+                          {item.allergens && item.allergens.length > 0 && (
+                            <div className="menu-product-allergens">
+                              {item.allergens.map((a) => (
+                                <span key={a.display_name} className={`menu-allergen-badge menu-allergen-${a.severity || 'medium'}`} title={a.display_name}>
+                                  {a.display_name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="menu-product-bottom">
                           <span className="menu-product-price">{formatPrice(item.base_price)}</span>

@@ -42,6 +42,8 @@ class CartLineItemOut(BaseSchema):
     modifier_total: float
     selected_modifiers: dict | list = {}
     special_instructions: str | None
+    item_name: str | None = None
+    image_url: str | None = None
     added_at: datetime
 
 
@@ -52,6 +54,7 @@ class CustomerCartOut(BaseSchema):
     item_count: int
     subtotal: float
     last_activity_at: datetime
+    line_items: list[CartLineItemOut] = []
     created_at: datetime
     updated_at: datetime
 

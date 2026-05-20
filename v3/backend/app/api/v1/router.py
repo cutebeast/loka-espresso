@@ -36,6 +36,7 @@ from app.api.v1.endpoints.admin import surveys as admin_surveys
 from app.api.v1.endpoints.admin import orders as admin_orders
 from app.api.v1.endpoints.admin import customers as admin_customers
 from app.api.v1.endpoints.admin import feedback as admin_feedback
+from app.api.v1.endpoints.public import content as public_content
 from app.api.v1.endpoints.admin import config as admin_config
 from app.api.v1.endpoints.admin import dietary_tags as admin_dietary_tags
 from app.api.v1.endpoints.admin import info_cards as admin_info_cards
@@ -99,6 +100,7 @@ api_router.include_router(admin_notifications.public_router, tags=["notification
 # Public (no auth required)
 api_router.include_router(public_store.router, tags=["public — stores"])
 api_router.include_router(public_menu.router, tags=["public — menu"])
+api_router.include_router(public_content.router, tags=["public — content"])
 api_router.include_router(staff_operations.router, tags=["staff — operations"])
 api_router.include_router(public_rsvp.router, tags=["public — events"])
 
@@ -144,6 +146,7 @@ api_router.include_router(admin_surveys.public_router, tags=["surveys"])
 
 # Feedback
 api_router.include_router(admin_feedback.router, tags=["admin — feedback"])
+api_router.include_router(admin_feedback.public_router, tags=["feedback"])
 
 # Config
 api_router.include_router(admin_config.router, tags=["admin — config"])

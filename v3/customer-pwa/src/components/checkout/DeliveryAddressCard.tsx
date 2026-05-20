@@ -50,7 +50,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
   /* Fetch */
   const fetchSaved = async () => {
     if (!user) return;
-    const r: any = await api.get('/users/me/addresses').catch(() => ({ data: [] }));
+    const r: any = await api.get('/users/me/addresses').catch((err) => { console.error('[DeliveryAddress] Fetch failed:', err); return { data: [] }; });
     if (Array.isArray(r.data)) setSaved(r.data);
   };
   useEffect(() => { fetchSaved(); }, [user]);

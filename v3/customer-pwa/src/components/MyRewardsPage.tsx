@@ -41,8 +41,8 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
 
   const getCountdownClass = (days: number) => days <= 3 ? 'danger' : 'warn';
 
-  const availableRewards = rewards.filter((r) => r.status === 'available');
-  const availableVouchers = vouchers.filter((v) => v.status === 'available');
+  const availableRewards = rewards.filter((r) => r.status === 'available' || r.status === 'active');
+  const availableVouchers = vouchers.filter((v) => v.status === 'available' || v.status === 'active');
   const totalOwned = rewards.length + vouchers.length;
   const usedThisMonth = rewards.filter((r) => r.status === 'used').length;
 

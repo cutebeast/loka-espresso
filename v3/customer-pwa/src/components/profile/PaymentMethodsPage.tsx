@@ -28,7 +28,7 @@ export default function PaymentMethodsPage() {
   useEffect(() => {
     api.get('/payments/methods')
       .then((res) => setMethods(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setMethods([]))
+      .catch((err) => { console.error('[PaymentMethods] Fetch failed:', err); setMethods([]); })
       .finally(() => setLoading(false));
   }, []);
 

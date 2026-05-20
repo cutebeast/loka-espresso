@@ -1,14 +1,15 @@
 """Payment endpoints."""
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Body, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
 from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
-from app.models.payment import Payment, Refund
+from app.models.payment import Payment, PaymentMethod, Refund
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.payment import (
     PaymentIntentRequest,
     PaymentIntentResponse,
+    PaymentMethodOut,
     PaymentOut,
     RefundCreate,
     RefundOut,
@@ -74,9 +75,23 @@ async def _get_payment_or_404(db, payment_id: int) -> Payment:
 async def create_intent(
     customer: ActiveCustomer,
     db: DBDependency,
-    data: PaymentIntentRequest,
+    raw_data: dict = Body(...),
 ):
     """Create a payment intent for an order."""
+    # Accept legacy PWA field names
+    if "payment_method" in raw_data and "payment_method_type" not in raw_data:
+        raw_data["payment_method_type"] = raw_data["payment_method"]
+    if "payment_method" in raw_data and "provider" not in raw_data:
+        pm = raw_data["payment_method"]
+        raw_data["provider"] = {
+            "wallet": "internal_wallet",
+            "cash": "cash",
+            "pay_at_store": "cash",
+            "cod": "cash",
+            "gateway": "stripe",
+        }.get(str(pm), str(pm))
+    data = PaymentIntentRequest(**raw_data)
+
     try:
         payment, provider_response = await create_payment_intent(
             db=db,
@@ -150,6 +165,103 @@ async def cancel(
     return APIResponse(data=_build_payment_out(payment))
 
 
+# ---------------------------------------------------------------------------
+# Customer payment methods (MUST be before /{payment_id} to avoid route clash)
+# ---------------------------------------------------------------------------
+
+
+def _safe_payment_method_dict(pm: PaymentMethod) -> dict:
+    """Return customer-safe payment method fields."""
+    return {
+        "id": pm.id,
+        "customer_id": pm.customer_id,
+        "method_type": pm.method_type,
+        "provider": pm.provider,
+        "display_label": pm.display_label,
+        "card_brand": pm.card_brand,
+        "card_last_four": pm.card_last_four,
+        "card_expiry_month": pm.card_expiry_month,
+        "card_expiry_year": pm.card_expiry_year,
+        "is_default": pm.is_default,
+        "is_active": pm.is_active,
+        "billing_address_snapshot": pm.billing_address_snapshot,
+        "verified_at": pm.verified_at.isoformat() if pm.verified_at else None,
+        "created_at": pm.created_at.isoformat() if pm.created_at else None,
+        "updated_at": pm.updated_at.isoformat() if pm.updated_at else None,
+    }
+
+
+@router.get("/methods", response_model=APIResponse[list[dict]])
+async def list_payment_methods(
+    customer: ActiveCustomer,
+    db: DBDependency,
+):
+    """List customer's saved payment methods."""
+    result = await db.execute(
+        select(PaymentMethod).where(
+            PaymentMethod.customer_id == customer.id,
+            PaymentMethod.is_active.is_(True),
+        )
+    )
+    items = result.scalars().all()
+    return APIResponse(data=[_safe_payment_method_dict(i) for i in items])
+
+
+@router.delete("/methods/{method_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_payment_method(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    method_id: int,
+):
+    """Soft-delete a payment method."""
+    result = await db.execute(
+        select(PaymentMethod).where(
+            PaymentMethod.id == method_id,
+            PaymentMethod.customer_id == customer.id,
+        )
+    )
+    pm = result.scalar_one_or_none()
+    if pm is None:
+        raise HTTPException(status_code=404, detail="Payment method not found")
+    pm.is_active = False
+    await db.commit()
+    return None
+
+
+@router.put("/methods/{method_id}/default", response_model=APIResponse[dict])
+async def set_default_payment_method(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    method_id: int,
+):
+    """Set a payment method as default."""
+    result = await db.execute(
+        select(PaymentMethod).where(
+            PaymentMethod.id == method_id,
+            PaymentMethod.customer_id == customer.id,
+            PaymentMethod.is_active.is_(True),
+        )
+    )
+    pm = result.scalar_one_or_none()
+    if pm is None:
+        raise HTTPException(status_code=404, detail="Payment method not found")
+
+    # Unset other defaults
+    others = await db.execute(
+        select(PaymentMethod).where(
+            PaymentMethod.customer_id == customer.id,
+            PaymentMethod.is_default.is_(True),
+        )
+    )
+    for other in others.scalars().all():
+        other.is_default = False
+
+    pm.is_default = True
+    await db.commit()
+    await db.refresh(pm)
+    return APIResponse(data=_safe_payment_method_dict(pm))
+
+
 @router.get("/{payment_id}", response_model=APIResponse[PaymentOut])
 async def get_payment(
     customer: ActiveCustomer,
@@ -165,6 +277,103 @@ async def get_payment(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     return APIResponse(data=_build_payment_out(payment))
+
+
+# ---------------------------------------------------------------------------
+# Admin-facing payment operations
+# ---------------------------------------------------------------------------
+
+
+def _safe_payment_method_dict(pm: PaymentMethod) -> dict:
+    """Return customer-safe payment method fields."""
+    return {
+        "id": pm.id,
+        "customer_id": pm.customer_id,
+        "method_type": pm.method_type,
+        "provider": pm.provider,
+        "display_label": pm.display_label,
+        "card_brand": pm.card_brand,
+        "card_last_four": pm.card_last_four,
+        "card_expiry_month": pm.card_expiry_month,
+        "card_expiry_year": pm.card_expiry_year,
+        "is_default": pm.is_default,
+        "is_active": pm.is_active,
+        "billing_address_snapshot": pm.billing_address_snapshot,
+        "verified_at": pm.verified_at.isoformat() if pm.verified_at else None,
+        "created_at": pm.created_at.isoformat() if pm.created_at else None,
+        "updated_at": pm.updated_at.isoformat() if pm.updated_at else None,
+    }
+
+
+@router.get("/methods", response_model=APIResponse[list[dict]])
+async def list_payment_methods(
+    customer: ActiveCustomer,
+    db: DBDependency,
+):
+    """List customer's saved payment methods."""
+    result = await db.execute(
+        select(PaymentMethod).where(
+            PaymentMethod.customer_id == customer.id,
+            PaymentMethod.is_active.is_(True),
+        )
+    )
+    items = result.scalars().all()
+    return APIResponse(data=[_safe_payment_method_dict(i) for i in items])
+
+
+@router.delete("/methods/{method_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_payment_method(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    method_id: int,
+):
+    """Soft-delete a payment method."""
+    result = await db.execute(
+        select(PaymentMethod).where(
+            PaymentMethod.id == method_id,
+            PaymentMethod.customer_id == customer.id,
+        )
+    )
+    pm = result.scalar_one_or_none()
+    if pm is None:
+        raise HTTPException(status_code=404, detail="Payment method not found")
+    pm.is_active = False
+    await db.commit()
+    return None
+
+
+@router.put("/methods/{method_id}/default", response_model=APIResponse[dict])
+async def set_default_payment_method(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    method_id: int,
+):
+    """Set a payment method as default."""
+    result = await db.execute(
+        select(PaymentMethod).where(
+            PaymentMethod.id == method_id,
+            PaymentMethod.customer_id == customer.id,
+            PaymentMethod.is_active.is_(True),
+        )
+    )
+    pm = result.scalar_one_or_none()
+    if pm is None:
+        raise HTTPException(status_code=404, detail="Payment method not found")
+
+    # Unset other defaults
+    others = await db.execute(
+        select(PaymentMethod).where(
+            PaymentMethod.customer_id == customer.id,
+            PaymentMethod.is_default.is_(True),
+        )
+    )
+    for other in others.scalars().all():
+        other.is_default = False
+
+    pm.is_default = True
+    await db.commit()
+    await db.refresh(pm)
+    return APIResponse(data=_safe_payment_method_dict(pm))
 
 
 # ---------------------------------------------------------------------------

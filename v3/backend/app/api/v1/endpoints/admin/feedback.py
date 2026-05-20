@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
-from app.api.v1.deps import CurrentAdmin, DBDependency
+from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
 from app.models.customer import Customer
 from app.models.feedback import FeedbackEntry
 from app.models.store import Store
@@ -13,6 +13,7 @@ from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.feedback import FeedbackEntryOut, FeedbackReplyRequest, FeedbackStatsOut
 
 router = APIRouter(prefix="/admin/feedback", tags=["admin — feedback"])
+public_router = APIRouter(tags=["feedback"])
 
 
 @router.get("", response_model=APIResponse[PaginatedResponse[FeedbackEntryOut]])
@@ -161,3 +162,37 @@ async def reply_feedback(
     out["store_name"] = store_name
 
     return APIResponse(data=out)
+
+
+# ---------------------------------------------------------------------------
+# Public feedback submission
+# ---------------------------------------------------------------------------
+
+@public_router.post("/feedback", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def submit_feedback(
+    db: DBDependency,
+    data: dict,
+    customer: ActiveCustomer,
+):
+    """Submit customer feedback."""
+    title = data.get("title") or data.get("subject") or "Feedback"
+    body = data.get("body") or data.get("message") or ""
+    rating = data.get("rating", 5)
+    store_id = data.get("store_id")
+
+    # Validate rating
+    if not isinstance(rating, int) or rating < 1 or rating > 5:
+        rating = 5
+
+    entry = FeedbackEntry(
+        customer_id=customer.id,
+        store_id=store_id,
+        title=title,
+        body=body,
+        rating=rating,
+    )
+    db.add(entry)
+    await db.commit()
+    await db.refresh(entry)
+
+    return APIResponse(data={"id": entry.id, "message": "Feedback submitted"})

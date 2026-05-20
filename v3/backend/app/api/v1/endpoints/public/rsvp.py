@@ -67,3 +67,28 @@ async def rsvp_to_event(
         "rsvp_count": event.rsvp_count,
         "message": "RSVP confirmed",
     })
+
+
+@router.get("/rsvps/me", response_model=APIResponse[dict])
+async def list_my_rsvps(db: DBDependency, customer: ActiveCustomer):
+    """List all events the current customer has RSVP'd to."""
+    result = await db.execute(
+        select(EventRsvp, EventCard)
+        .join(EventCard, EventRsvp.event_id == EventCard.id)
+        .where(EventRsvp.customer_id == customer.id)
+        .order_by(EventRsvp.created_at.desc())
+    )
+    items = []
+    for rsvp, event in result.all():
+        items.append({
+            "rsvp_id": rsvp.id,
+            "event_id": event.id,
+            "title": event.title,
+            "event_datetime": event.event_datetime.isoformat() if event.event_datetime else None,
+            "location": event.location,
+            "image_url": event.image_url,
+            "slug": event.slug,
+            "rsvp_count": event.rsvp_count,
+            "rsvped_at": rsvp.created_at.isoformat() if rsvp.created_at else None,
+        })
+    return APIResponse(data={"items": items, "total": len(items)})

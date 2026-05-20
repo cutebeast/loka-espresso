@@ -88,40 +88,48 @@ export const useConfigStore = create<ConfigState>((set) => ({
   loadConfig: async () => {
     try {
       const res = await api.get('/config/bootstrap');
-      const data = res.data as { config: Record<string, unknown>; tiers: Array<Record<string, unknown>> };
-      const rawConfig = data.config || {};
-      const rawTiers = data.tiers || [];
+      const raw = (res.data || {}) as Record<string, unknown>;
+      const rawConfig = (raw.config || raw) as Record<string, unknown>;
+      const rawTiers = (raw.tiers || raw.loyalty_tiers || []) as Array<Record<string, unknown>>;
+      const featuresCfg = (rawConfig.features as Record<string, unknown> | undefined) || {};
+      const referralCfg = (rawConfig.referral as Record<string, unknown> | undefined) || {};
+      const walletCfg = (rawConfig.wallet as Record<string, unknown> | undefined) || {};
+      const vouchersCfg = (rawConfig.vouchers as Record<string, unknown> | undefined) || {};
+      const loyaltyCfg = (rawConfig.loyalty as Record<string, unknown> | undefined) || {};
+      const paymentsCfg = (rawConfig.payments as Record<string, unknown> | undefined) || {};
+      const ordersCfg = (rawConfig.orders as Record<string, unknown> | undefined) || {};
 
       set({
         config: {
           delivery_fee: parseNumber(rawConfig.delivery_fee, DEFAULT_CONFIG.delivery_fee),
-          min_order_delivery: parseNumber(rawConfig.min_order_delivery, DEFAULT_CONFIG.min_order_delivery),
-          pickup_lead_minutes: parseNumber(rawConfig.pickup_lead_minutes, DEFAULT_CONFIG.pickup_lead_minutes),
+          min_order_delivery: parseNumber(rawConfig.minimum_order_amount ?? rawConfig.min_order_delivery, DEFAULT_CONFIG.min_order_delivery),
+          pickup_lead_minutes: parseNumber(rawConfig.pickup_lead_minutes ?? ordersCfg.pickup_lead, DEFAULT_CONFIG.pickup_lead_minutes),
           currency_symbol: typeof rawConfig.currency_symbol === 'string' ? rawConfig.currency_symbol : DEFAULT_CONFIG.currency_symbol,
           earn_rate: parseNumber(rawConfig.earn_rate, DEFAULT_CONFIG.earn_rate),
-          loyalty_enabled: parseBoolean(rawConfig.loyalty_enabled, DEFAULT_CONFIG.loyalty_enabled),
+          loyalty_enabled: parseBoolean(featuresCfg.loyalty_enabled ?? rawConfig.loyalty_enabled, DEFAULT_CONFIG.loyalty_enabled),
           loyalty_points_per_rmse: parseNumber(rawConfig.loyalty_points_per_rmse, DEFAULT_CONFIG.loyalty_points_per_rmse),
-          referral_reward_points: parseNumber(rawConfig.referral_reward_points, DEFAULT_CONFIG.referral_reward_points),
-          referral_min_orders: parseNumber(rawConfig.referral_min_orders, DEFAULT_CONFIG.referral_min_orders),
-          topup_presets: parseNumberArray(rawConfig.topup_presets, DEFAULT_CONFIG.topup_presets),
-          topup_min_amount: parseNumber(rawConfig.topup_min_amount, DEFAULT_CONFIG.topup_min_amount),
-          max_vouchers_per_user: typeof rawConfig.max_vouchers_per_user === 'number' ? rawConfig.max_vouchers_per_user : DEFAULT_CONFIG.max_vouchers_per_user,
-          voucher_expiry_days: typeof rawConfig.voucher_expiry_days === 'number' ? rawConfig.voucher_expiry_days : DEFAULT_CONFIG.voucher_expiry_days,
-          points_redemption_rate: parseNumber(rawConfig.points_redemption_rate, DEFAULT_CONFIG.points_redemption_rate),
-          payment_gateway_provider: typeof rawConfig.payment_gateway_provider === 'string' ? rawConfig.payment_gateway_provider : null,
-          order_polling_interval_seconds: parseNumber(rawConfig.order_polling_interval_seconds, DEFAULT_CONFIG.order_polling_interval_seconds),
+          referral_reward_points: parseNumber(referralCfg.reward_points ?? rawConfig.referral_reward_points, DEFAULT_CONFIG.referral_reward_points),
+          referral_min_orders: parseNumber(referralCfg.min_orders ?? rawConfig.referral_min_orders, DEFAULT_CONFIG.referral_min_orders),
+          topup_presets: parseNumberArray(rawConfig.topup_presets ?? walletCfg.topup_presets, DEFAULT_CONFIG.topup_presets),
+          topup_min_amount: parseNumber(rawConfig.topup_min_amount ?? walletCfg.topup_min_amount, DEFAULT_CONFIG.topup_min_amount),
+          max_vouchers_per_user: typeof rawConfig.max_vouchers_per_user === 'number' ? rawConfig.max_vouchers_per_user : (typeof vouchersCfg.max_per_user === 'number' ? vouchersCfg.max_per_user : DEFAULT_CONFIG.max_vouchers_per_user),
+          voucher_expiry_days: typeof rawConfig.voucher_expiry_days === 'number' ? rawConfig.voucher_expiry_days : (typeof vouchersCfg.expiry_days === 'number' ? vouchersCfg.expiry_days : DEFAULT_CONFIG.voucher_expiry_days),
+          points_redemption_rate: parseNumber(rawConfig.points_redemption_rate ?? loyaltyCfg.redemption_rate, DEFAULT_CONFIG.points_redemption_rate),
+          payment_gateway_provider: typeof rawConfig.payment_gateway_provider === 'string' ? rawConfig.payment_gateway_provider : (typeof paymentsCfg.provider === 'string' ? paymentsCfg.provider : null),
+          order_polling_interval_seconds: parseNumber(rawConfig.order_polling_interval_seconds ?? ordersCfg.polling_interval, DEFAULT_CONFIG.order_polling_interval_seconds),
         },
         tiers: rawTiers.map((t) => ({
-          id: t.id as number,
+          id: (t.id || t.tier_id || 0) as number,
           name: t.name as string,
           min_points: parseNumber(t.min_points, 0),
           points_multiplier: parseNumber(t.points_multiplier, 1),
-          benefits: (t.benefits as Record<string, unknown>) || null,
+          benefits: (t.benefits || []) as Record<string, unknown> | null,
           sort_order: parseNumber(t.sort_order, 0),
         })).sort((a, b) => a.sort_order - b.sort_order),
         isLoaded: true,
       });
-    } catch {
+    } catch (err) {
+      console.error('[ConfigStore] Bootstrap config fetch failed:', err);
       set({ isLoaded: true });
     }
   },

@@ -77,7 +77,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
           });
         }
       }
-    } catch {
+    } catch (err) {
+      console.error('[WalletStore] Wallet refresh failed:', err);
       // keep existing values on error
     } finally {
       set({ isLoading: false });

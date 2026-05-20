@@ -82,13 +82,13 @@ export default function NotificationsPage() {
     api.get('/config').then((res) => {
       const v = parseInt(res.data?.notification_retention_days, 10);
       if (!isNaN(v) && v > 0) setRetentionDays(v);
-    }).catch(() => {});
+    }).catch((err) => console.error('[Notifications] Config fetch failed:', err));
   }, []);
 
   const fetchNotifications = useCallback(() => {
     api.get('/notifications')
       .then((res) => setNotifications(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setNotifications([]))
+      .catch((err) => { console.error('[Notifications] Fetch failed:', err); setNotifications([]); })
       .finally(() => setLoading(false));
   }, []);
 
