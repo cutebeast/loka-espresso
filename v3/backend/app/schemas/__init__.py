@@ -280,7 +280,6 @@ __all__ = [
     "CartLineItemCreate",
     "CartLineItemUpdate",
     "CartLineItemOut",
-    "CartLineItemUpdate",
     "CartModifierSelection",
     "CustomerCartOut",
     # Order

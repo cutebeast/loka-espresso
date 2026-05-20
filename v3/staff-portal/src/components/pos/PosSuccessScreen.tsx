@@ -1,0 +1,51 @@
+"use client";
+
+import { ShoppingCart, Printer, Archive, Receipt, CheckCircle } from "lucide-react";
+import { PaymentMethod } from "./usePosState";
+import { FEATURE_FLAGS, showFeatureToast } from "@/lib/featureFlags";
+
+interface PosSuccessScreenProps {
+  mode: "new_order" | "checkout";
+  result: { order_number?: string | number; order_id?: string | number; total?: number };
+  total: number;
+  change: number;
+  paymentMethod: PaymentMethod;
+  onNewOrder: () => void;
+}
+
+export default function PosSuccessScreen({ mode, result, total, change, paymentMethod, onNewOrder }: PosSuccessScreenProps) {
+  return (
+    <div style={{ padding: 24, maxWidth: 500, margin: "0 auto", textAlign: "center" }}>
+      <div style={{ fontSize: 56, marginBottom: 16, color: "var(--color-success)" }}><CheckCircle size={56} /></div>
+      <h2 style={{ margin: "0 0 4px" }}>{mode === "checkout" ? "Payment Successful" : "Order Sent to Kitchen"}</h2>
+      <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>#{result.order_number || result.order_id}</p>
+      <p style={{ fontSize: 13, opacity: 0.7, margin: "4px 0 0" }}>
+        {mode === "checkout" ? `${paymentMethod.toUpperCase()}` : "Kitchen notified"} · Total: RM {(result.total ?? total).toFixed(2)}
+      </p>
+      {change > 0 && <p style={{ fontSize: 13, opacity: 0.7 }}>Change: RM {change.toFixed(2)}</p>}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
+        <button className="btn btn-primary" style={{ padding: "14px", fontSize: 16 }} onClick={onNewOrder}>
+          <ShoppingCart size={18} /> New Order
+        </button>
+        {mode === "checkout" && (
+          <>
+            <button className="btn btn-outline" onClick={() => FEATURE_FLAGS.printer ? undefined : showFeatureToast("Printer")} title="Printer integration pending">
+              <Printer size={16} /> Print Receipt
+            </button>
+            {paymentMethod === "cash" && (
+              <button className="btn btn-outline" onClick={() => FEATURE_FLAGS.cashDrawer ? undefined : showFeatureToast("Cash Drawer")} title="Cash drawer integration pending">
+                <Archive size={16} /> Open Cash Drawer
+              </button>
+            )}
+          </>
+        )}
+        {mode === "new_order" && (
+          <button className="btn btn-outline" onClick={() => FEATURE_FLAGS.kitchenTicketPrinter ? undefined : showFeatureToast("Kitchen Ticket Printer")} title="Kitchen ticket printing pending">
+            <Receipt size={16} /> Print Kitchen Ticket
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

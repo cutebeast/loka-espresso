@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import { BrandProvider } from "@/components/BrandProvider";
 
 function isLoggedIn(): boolean {
   if (typeof window === "undefined") return false;
@@ -127,8 +128,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" style={{ height: "100%" }}>
       <head>{favicon && <link rel="icon" type="image/svg+xml" href={favicon} />}</head>
       <body style={{ height: "100%", display: "flex", margin: 0 }}>
-        {!isLogin && !forbidden && <Sidebar />}
-        <main style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
+        <BrandProvider>
+          {!isLogin && !forbidden && <Sidebar />}
+          <main style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
           {forbidden ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center" }}>
               <div><p style={{ fontSize: 18, fontWeight: 700, color: "#991B1B" }}>Access Denied</p><p style={{ fontSize: 13, opacity: 0.6 }}>Staff accounts cannot access the admin portal.<br />Redirecting to login...</p></div>
@@ -138,7 +140,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div style={{ color: "var(--color-text-muted)" }}>Loading...</div>
             </div>
           )}
-        </main>
+          </main>
+        </BrandProvider>
       </body>
     </html>
   );

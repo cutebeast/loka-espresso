@@ -43,7 +43,8 @@ async def staff_login(db: DBDependency, data: dict):
     import bcrypt, jwt, os
     from datetime import timedelta
 
-    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    from app.core.config import get_settings
+    secret = get_settings().jwt_secret
     email = (data.get("email") or "").strip()
     password = (data.get("password") or "").strip()
     display_name = (data.get("display_name") or "").strip()

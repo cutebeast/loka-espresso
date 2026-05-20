@@ -134,7 +134,7 @@ export default function ReservationsPage() {
     if (!confirmRes) return;
     setUpdatingId(confirmRes.id);
     try {
-      await updateReservationStatus(confirmRes.id, "confirmed");
+      await updateReservationStatus(confirmRes.id, "confirmed", selectedTableId);
       await fetchReservations();
       setSuccess("Reservation confirmed");
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
@@ -145,6 +145,7 @@ export default function ReservationsPage() {
       setUpdatingId(null);
       setConfirmModalOpen(false);
       setConfirmRes(null);
+      setSelectedTableId(null);
     }
   };
 

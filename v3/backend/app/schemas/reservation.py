@@ -62,6 +62,7 @@ class ReservationStatusUpdate(BaseSchema):
         "cancelled_by_merchant",
         "completed",
     ]
+    dining_table_id: int | None = None
 
 
 class ReservationOut(ReservationBase, TimestampedSchema):

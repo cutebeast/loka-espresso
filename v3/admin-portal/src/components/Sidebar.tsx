@@ -11,6 +11,7 @@ import {
   Star, Settings, Languages, TrendingUp,
 } from "lucide-react";
 import { adminLogout } from "@/lib/api";
+import { useBrand } from "./BrandProvider";
 
 type NavItem = {
   type?: "section";
@@ -153,6 +154,7 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { brandName } = useBrand();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
     Stores: pathname.startsWith("/stores"),
     Menu: pathname.startsWith("/menu"),
@@ -176,7 +178,7 @@ export default function Sidebar() {
   return (
     <>
       <div className="sb-mobile-header">
-        <span className="sb-mobile-brand">LOKA Espresso</span>
+        <span className="sb-mobile-brand">{brandName}</span>
         <button type="button" className="sb-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
@@ -184,7 +186,7 @@ export default function Sidebar() {
       <aside className={`sb-aside ${mobileOpen ? "mobile-open" : "mobile-closed"}`}>
         <div className="sb-brand">
           <div className="sb-brand-icon"><Store size={18} /></div>
-          <div><div className="sb-brand-name">LOKA Espresso</div><div className="sb-brand-sub">Admin Portal</div></div>
+          <div><div className="sb-brand-name">{brandName}</div><div className="sb-brand-sub">Admin Portal</div></div>
         </div>
         <nav className="sb-nav">
           <ul className="sb-nav-list">

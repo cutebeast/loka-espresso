@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminLogin } from "@/lib/api";
 import { Store, Lock, Mail } from "lucide-react";
+import { useBrand } from "@/components/BrandProvider";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { brandName } = useBrand();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -31,7 +33,7 @@ export default function LoginPage() {
       <div className="login-card">
         <div className="login-brand">
           <div className="login-brand-icon"><Store size={28} /></div>
-          <div className="login-brand-name">LOKA Espresso</div>
+          <div className="login-brand-name">{brandName}</div>
           <div className="login-brand-sub">Admin Portal</div>
         </div>
 

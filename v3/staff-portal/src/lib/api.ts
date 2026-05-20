@@ -529,8 +529,12 @@ export function getReservations(storeId: number, date?: string, status?: Reserva
   return api.get<Reservation[]>(`/admin/reservations?${params.toString()}`);
 }
 
-export function updateReservationStatus(id: number, status: ReservationStatus) {
-  return api.patch(`/admin/reservations/${id}/status`, { status });
+export function updateReservationStatus(id: number, status: ReservationStatus, tableId?: number | null) {
+  const body: Record<string, unknown> = { status };
+  if (tableId != null) {
+    body.dining_table_id = tableId;
+  }
+  return api.patch(`/admin/reservations/${id}/status`, body);
 }
 
 export function clockIn() {

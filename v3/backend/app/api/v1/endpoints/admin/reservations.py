@@ -184,6 +184,8 @@ async def update_reservation_status(
     """Update reservation status."""
     reservation = await _get_reservation_or_404(db, id)
     reservation.status = data.status
+    if data.dining_table_id is not None and data.status == "confirmed":
+        reservation.dining_table_id = data.dining_table_id
     reservation.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(reservation)

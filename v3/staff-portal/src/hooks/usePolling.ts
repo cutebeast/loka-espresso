@@ -5,7 +5,7 @@ import { useEffect, useRef, useCallback } from "react";
 interface UsePollingOptions {
   interval?: number;
   enabled?: boolean;
-  onError?: (err: any) => void;
+  onError?: (err: unknown) => void;
 }
 
 export function usePolling(
@@ -15,10 +15,16 @@ export function usePolling(
 ) {
   const { interval = 10000, enabled = true, onError } = options;
   const fnRef = useRef(fn);
-  fnRef.current = fn;
   const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep refs in sync without triggering re-renders
+  useEffect(() => {
+    fnRef.current = fn;
+  });
+  useEffect(() => {
+    onErrorRef.current = onError;
+  });
 
   const poll = useCallback(async () => {
     try {

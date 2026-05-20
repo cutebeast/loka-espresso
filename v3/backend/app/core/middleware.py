@@ -3,8 +3,11 @@
 import time
 from typing import Callable
 
+import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+
+logger = structlog.get_logger()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -26,6 +29,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         start = time.perf_counter()
         response = await call_next(request)
         duration = (time.perf_counter() - start) * 1000
-        # TODO: integrate structlog
-        print(f"{request.method} {request.url.path} {response.status_code} {duration:.2f}ms")
+        logger.info(
+            "request",
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_ms=round(duration, 2),
+        )
         return response
