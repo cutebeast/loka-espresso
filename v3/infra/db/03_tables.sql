@@ -396,7 +396,7 @@ CREATE TABLE menu_item_recipes (
     id SERIAL PRIMARY KEY,
     menu_item_id INTEGER NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
     menu_variant_id INTEGER REFERENCES menu_variants(id) ON DELETE CASCADE,
-    inventory_item_id INTEGER NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+    inventory_item_id INTEGER NOT NULL,
     quantity_required NUMERIC(10,4) NOT NULL CHECK (quantity_required > 0),
     unit_of_measure VARCHAR(20) NOT NULL,
     is_primary_component BOOLEAN NOT NULL DEFAULT false,
@@ -540,15 +540,15 @@ CREATE TABLE checkout_sessions (
     customer_id BIGINT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
     cart_snapshot JSONB NOT NULL,
-    applied_voucher_id INTEGER REFERENCES voucher_definitions(id) ON DELETE SET NULL,
-    applied_reward_id INTEGER REFERENCES reward_catalog(id) ON DELETE SET NULL,
+    applied_voucher_id INTEGER,
+    applied_reward_id INTEGER,
     discount_amount NUMERIC(10,4) NOT NULL DEFAULT 0 CHECK (discount_amount >= 0),
     delivery_fee NUMERIC(10,4) NOT NULL DEFAULT 0 CHECK (delivery_fee >= 0),
     tax_amount NUMERIC(10,4) NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
     subtotal NUMERIC(10,4) NOT NULL CHECK (subtotal >= 0),
     total_amount NUMERIC(10,4) NOT NULL CHECK (total_amount >= 0),
     is_completed BOOLEAN NOT NULL DEFAULT false,
-    completed_order_id BIGINT REFERENCES orders(id) ON DELETE SET NULL,
+    completed_order_id BIGINT,
     expires_at TIMESTAMPTZ NOT NULL,
     ip_address INET NOT NULL,
     device_fingerprint VARCHAR(64),
@@ -1193,7 +1193,8 @@ CREATE TABLE staff_shifts (
     status VARCHAR(20) NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled','confirmed','in_progress','completed','cancelled','no_show')),
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ck_staff_shifts_time_order CHECK (planned_end > planned_start)
 );
 
 CREATE TABLE tip_allocations (

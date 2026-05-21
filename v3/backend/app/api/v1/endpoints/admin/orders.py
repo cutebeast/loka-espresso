@@ -3,7 +3,7 @@
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from sqlalchemy.orm import joinedload
 
 from app.api.v1.deps import CurrentAdmin, DBDependency, get_staff_store_id_from_request
@@ -249,19 +249,9 @@ async def update_order_status(
     elif status_value in ("cancelled_by_customer", "cancelled_by_merchant"):
         order.cancelled_at = now
 
+    await db.execute(text("SET LOCAL app.current_actor_type = 'staff'"))
     order.status = status_value
     order.updated_at = now
-
-    # Log status change
-    log = OrderStatusLog(
-        order_id=order.id,
-        from_status=from_status,
-        to_status=status_value,
-        reason=data.get("reason", "Admin status update"),
-        actor_type="staff",
-        actor_id=admin.id,
-    )
-    db.add(log)
     await db.commit()
     await db.refresh(order)
 

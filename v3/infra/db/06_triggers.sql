@@ -98,10 +98,16 @@ CREATE TRIGGER trg_data_retention_policies_updated_at BEFORE UPDATE ON data_rete
 -- ============================================================
 CREATE OR REPLACE FUNCTION trigger_log_order_status_change()
 RETURNS TRIGGER AS $$
+DECLARE
+    _actor_type VARCHAR(20);
 BEGIN
     IF OLD.status IS DISTINCT FROM NEW.status THEN
+        _actor_type := COALESCE(current_setting('app.current_actor_type', true), 'system');
+        IF _actor_type NOT IN ('customer','staff','system','webhook') THEN
+            _actor_type := 'system';
+        END IF;
         INSERT INTO order_status_log (order_id, from_status, to_status, actor_type, created_at)
-        VALUES (NEW.id, OLD.status, NEW.status, 'system', now());
+        VALUES (NEW.id, OLD.status, NEW.status, _actor_type, now());
     END IF;
     RETURN NEW;
 END;

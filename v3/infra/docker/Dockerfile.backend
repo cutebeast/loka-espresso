@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r appgroup && useradd -r -g appgroup appuser
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -18,7 +19,9 @@ COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
 
-RUN mkdir -p uploads
+RUN mkdir -p uploads && chown -R appuser:appgroup /app
+
+USER appuser
 
 EXPOSE 13800
 

@@ -284,12 +284,15 @@ CREATE UNIQUE INDEX idx_campaign_analytics_campaign ON campaign_analytics(campai
 -- ============================================================
 -- Content Indexes
 -- ============================================================
-CREATE UNIQUE INDEX idx_content_blocks_key ON content_blocks(block_key) WHERE deleted_at IS NULL;
-CREATE INDEX idx_content_blocks_store ON content_blocks(store_id);
-CREATE INDEX idx_content_blocks_type ON content_blocks(content_type);
-CREATE INDEX idx_content_blocks_date ON content_blocks(start_date, end_date);
-CREATE INDEX idx_content_blocks_active ON content_blocks(is_active) WHERE is_active = true;
-CREATE INDEX idx_content_blocks_order ON content_blocks(display_order);
+-- NOTE: content_blocks table was intentionally removed and replaced with
+-- separate tables (info_cards, product_cards, event_cards, etc.).
+-- These indexes are kept commented for reference only.
+-- CREATE UNIQUE INDEX idx_content_blocks_key ON content_blocks(block_key) WHERE deleted_at IS NULL;
+-- CREATE INDEX idx_content_blocks_store ON content_blocks(store_id);
+-- CREATE INDEX idx_content_blocks_type ON content_blocks(content_type);
+-- CREATE INDEX idx_content_blocks_date ON content_blocks(start_date, end_date);
+-- CREATE INDEX idx_content_blocks_active ON content_blocks(is_active) WHERE is_active = true;
+-- CREATE INDEX idx_content_blocks_order ON content_blocks(display_order);
 
 CREATE INDEX idx_splash_screens_store ON splash_screens(store_id);
 CREATE INDEX idx_splash_screens_active ON splash_screens(is_active) WHERE is_active = true;
@@ -365,3 +368,12 @@ CREATE INDEX idx_scheduled_jobs_active ON scheduled_jobs(is_active) WHERE is_act
 CREATE INDEX idx_health_metrics_name ON system_health_metrics(metric_name, bucket_start DESC);
 CREATE INDEX idx_health_metrics_store ON system_health_metrics(store_id);
 CREATE INDEX idx_health_metrics_dimensions ON system_health_metrics USING GIN (dimensions);
+
+-- ============================================================
+-- Reservation Indexes
+-- ============================================================
+CREATE INDEX idx_reservations_store ON reservations(store_id);
+CREATE INDEX idx_reservations_customer ON reservations(customer_id);
+CREATE INDEX idx_reservations_date ON reservations(reservation_date);
+CREATE INDEX idx_reservations_table ON reservations(dining_table_id);
+CREATE INDEX idx_reservations_status ON reservations(status);

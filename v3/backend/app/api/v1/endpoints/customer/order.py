@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.api.v1.deps import ActiveCustomer, DBDependency
 from app.models.cart import CustomerCart, CartLineItem
@@ -113,19 +113,9 @@ async def cancel_order(
     if order.status not in ("pending", "initiated"):
         raise HTTPException(status_code=400, detail=f"Cannot cancel order with status '{order.status}'")
 
+    await db.execute(text("SET LOCAL app.current_actor_type = 'customer'"))
     order.status = "cancelled"
     order.cancelled_at = datetime.now(timezone.utc)
-
-    # Log status change
-    log = OrderStatusLog(
-        order_id=order.id,
-        status="cancelled",
-        changed_by=customer.id,
-        changed_at=datetime.now(timezone.utc),
-        notes="Cancelled by customer",
-    )
-    db.add(log)
-
     await db.commit()
     return APIResponse(data={"order_id": order.id, "status": "cancelled"})
 

@@ -31,11 +31,11 @@ ALTER TABLE table_status_snapshot
     FOREIGN KEY (server_staff_id) REFERENCES staff_profiles(id) ON DELETE SET NULL;
 
 -- ============================================================
--- Content → Survey deferred FK
--- ============================================================
-ALTER TABLE content_blocks
-    ADD CONSTRAINT fk_content_blocks_survey
-    FOREIGN KEY (survey_id) REFERENCES survey_definitions(id) ON DELETE SET NULL;
+-- NOTE: content_blocks table was intentionally removed.
+-- The following constraint is kept commented for reference only.
+-- ALTER TABLE content_blocks
+--     ADD CONSTRAINT fk_content_blocks_survey
+--     FOREIGN KEY (survey_id) REFERENCES survey_definitions(id) ON DELETE SET NULL;
 
 -- ============================================================
 -- Payment → Payment Method deferred FK
@@ -54,6 +54,10 @@ ALTER TABLE checkout_sessions
 ALTER TABLE checkout_sessions
     ADD CONSTRAINT fk_checkout_reward
     FOREIGN KEY (applied_reward_id) REFERENCES reward_catalog(id) ON DELETE SET NULL;
+
+ALTER TABLE checkout_sessions
+    ADD CONSTRAINT fk_checkout_completed_order
+    FOREIGN KEY (completed_order_id) REFERENCES orders(id) ON DELETE SET NULL;
 
 -- ============================================================
 -- Loyalty → Reward Catalog deferred FK

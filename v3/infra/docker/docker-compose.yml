@@ -6,16 +6,16 @@ services:
     container_name: fnb-v3-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: fnb_user
-      POSTGRES_PASSWORD: fnb_pass
-      POSTGRES_DB: fnb_enterprise_v3
+      POSTGRES_USER: ${POSTGRES_USER:-fnb_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-fnb_enterprise_v3}
     ports:
       - "13334:5432"
     volumes:
       - fnb_v3_db_data:/var/lib/postgresql/data
       - ../db:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fnb_user -d fnb_enterprise_v3"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fnb_user} -d ${POSTGRES_DB:-fnb_enterprise_v3}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -44,10 +44,10 @@ services:
     ports:
       - "13800:13800"
     environment:
-      DATABASE_URL: postgresql+asyncpg://fnb_user:fnb_pass@postgres:5432/fnb_enterprise_v3
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-fnb_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-fnb_enterprise_v3}
       REDIS_URL: redis://redis:6379/0
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-min-32-chars-long}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required — minimum 32 characters}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
       CORS_ORIGINS: "http://localhost:13801,http://localhost:13802,http://localhost:13803"
     volumes:
       - fnb_v3_uploads:/app/uploads
@@ -74,6 +74,11 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:13800/api/v1
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   customer-pwa:
     build:
@@ -82,11 +87,16 @@ services:
     container_name: fnb-v3-customer
     restart: unless-stopped
     ports:
-      - "13802:3000"
+      - "13802:3012"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:13800/api/v1
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   staff-portal:
     build:
@@ -100,6 +110,11 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:13800/api/v1
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
 volumes:
   fnb_v3_db_data:
