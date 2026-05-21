@@ -72,6 +72,9 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     prep_time_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
     calories: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    minimum_tier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("loyalty_tiers.id", ondelete="SET NULL"), nullable=True
+    )
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
     tax_category_id: Mapped[int | None] = mapped_column(
         ForeignKey("tax_categories.id", ondelete="SET NULL"), nullable=True

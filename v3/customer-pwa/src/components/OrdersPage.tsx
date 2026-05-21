@@ -31,7 +31,7 @@ function formatDate(dateStr: string): string {
 }
 
 const ACTIVE = ['pending', 'confirmed', 'preparing', 'in_progress', 'ready', 'out_for_delivery', 'driver_assigned'];
-const STEPS = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed'];
+const STEPS = ['orders.steps.pending', 'orders.steps.confirmed', 'orders.steps.preparing', 'orders.steps.ready', 'orders.steps.completed'];
 
 function activeStepIdx(status: string): number {
   const s = status?.toLowerCase();

@@ -6,6 +6,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import type { UserReward, UserVoucher } from '@/lib/api';
 import { LOKA, resolveAssetUrl } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
+import { getLocale } from '@/stores/localeStore';
 
 interface MyRewardsPageProps {
   onBack: () => void;
@@ -28,7 +29,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('en-MY', { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(dateStr).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const [now] = useState(() => Date.now());

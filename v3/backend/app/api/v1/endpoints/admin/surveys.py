@@ -8,7 +8,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
+from app.services.translation import merge_translations, translate_single
 from app.models.survey import SurveyAnswer, SurveyDefinition, SurveyQuestion, SurveyResponse
 from app.models.translation import Translation
 from app.schemas.base import APIResponse, PaginatedResponse
@@ -193,7 +194,15 @@ async def create_survey(
         .where(SurveyDefinition.id == survey.id)
     )
     survey = result.scalar_one()
-    return APIResponse(data=SurveyDefinitionDetailOut.model_validate(survey))
+    survey_dict = SurveyDefinitionDetailOut.model_validate(survey).model_dump()
+    # Translate survey definition fields
+    await translate_single(db, survey_dict, "survey_definitions", locale)
+    # Translate questions
+    questions = survey_dict.get("questions", [])
+    await merge_translations(db, questions, "survey_questions", locale)
+    # Apply back
+    survey_dict["questions"] = questions
+    return APIResponse(data=survey_dict)
 
 
 @admin_router.get("/{survey_id}", response_model=APIResponse[SurveyDefinitionDetailOut])
@@ -470,6 +479,7 @@ async def list_survey_responses(
 @public_router.get("", response_model=APIResponse[PaginatedResponse[SurveyDefinitionOut]])
 async def list_public_surveys(
     db: DBDependency,
+    locale: OptionalLocale,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
@@ -488,11 +498,12 @@ async def list_public_surveys(
 
     stmt = base_stmt.order_by(SurveyDefinition.id.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
-    items = [SurveyDefinitionOut.model_validate(s) for s in result.scalars().all()]
+    item_dicts = [SurveyDefinitionOut.model_validate(s).model_dump() for s in result.scalars().all()]
+    await merge_translations(db, item_dicts, "survey_definitions", locale)
 
     return APIResponse(
         data=PaginatedResponse(
-            items=items,
+            items=item_dicts,
             total=total,
             page=page,
             per_page=per_page,
@@ -504,6 +515,7 @@ async def list_public_surveys(
 @public_router.get("/{survey_id}", response_model=APIResponse[SurveyDefinitionDetailOut])
 async def get_public_survey(
     db: DBDependency,
+    locale: OptionalLocale,
     survey_id: int,
 ):
     """Get active survey with questions."""

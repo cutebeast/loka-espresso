@@ -6,7 +6,11 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from decimal import Decimal
+
 from app.models.cart import CartLineItem, CustomerCart
+from app.models.inventory import InventoryItem, InventoryMovementLog
+from app.models.menu import MenuItemRecipe
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.staff import TipAllocation
 from app.models.store import Store, StoreConfiguration
@@ -26,6 +30,71 @@ def generate_order_number() -> str:
     """Generate a unique order number."""
     now = datetime.now(timezone.utc)
     return f"ORD-{now.strftime('%Y%m%d')}-{secrets.token_hex(4).upper()}"
+
+
+async def _deduct_stock_for_order(
+    db: AsyncSession,
+    order: Order,
+    line_items: list,
+) -> None:
+    """Deduct inventory stock based on menu item recipes for an order.
+
+    `line_items` should be objects with `menu_item_id`, `menu_variant_id`, and `quantity` attributes.
+    """
+    from sqlalchemy import select
+
+    recipe_needs: dict[int, Decimal] = {}
+    for li in line_items:
+        menu_variant_id = getattr(li, "menu_variant_id", None)
+        recipe_result = await db.execute(
+            select(MenuItemRecipe).where(
+                MenuItemRecipe.menu_item_id == li.menu_item_id,
+                MenuItemRecipe.menu_variant_id == menu_variant_id if menu_variant_id else MenuItemRecipe.menu_variant_id.is_(None),
+            )
+        )
+        recipes = recipe_result.scalars().all()
+        for rc in recipes:
+            qty_needed = Decimal(str(rc.quantity_required)) * Decimal(li.quantity) * (Decimal(1) + Decimal(str(rc.waste_factor)))
+            recipe_needs[rc.inventory_item_id] = recipe_needs.get(rc.inventory_item_id, Decimal(0)) + qty_needed
+
+    if not recipe_needs:
+        return
+
+    inv_result = await db.execute(
+        select(InventoryItem).where(
+            InventoryItem.id.in_(list(recipe_needs.keys())),
+            InventoryItem.store_id == order.store_id,
+        )
+    )
+    inv_items = {inv.id: inv for inv in inv_result.scalars().all()}
+
+    for inv_id, qty_needed in recipe_needs.items():
+        inv = inv_items.get(inv_id)
+        if inv is None:
+            raise OrderError(f"Inventory item {inv_id} not found for this store", 400)
+        current = Decimal(str(inv.current_stock))
+        if current < qty_needed:
+            raise OrderError(f"Insufficient stock for {inv.item_name}: need {float(qty_needed):.3f}, have {float(current):.3f}", 400)
+
+    for inv_id, qty_needed in recipe_needs.items():
+        inv = inv_items[inv_id]
+        old_stock = Decimal(str(inv.current_stock))
+        new_stock = old_stock - qty_needed
+        inv.current_stock = new_stock
+        db.add(InventoryMovementLog(
+            store_id=order.store_id,
+            inventory_item_id=inv_id,
+            movement_type="out",
+            quantity_delta=-float(qty_needed),
+            stock_after=float(new_stock),
+            reserved_delta=0,
+            reserved_after=float(inv.reserved_stock),
+            reason=f"Order {order.order_number} stock deduction",
+            reference_type="order",
+            reference_id=order.id,
+            unit_cost_at_movement=float(inv.unit_cost) if inv.unit_cost else None,
+            movement_cost=float(qty_needed * Decimal(str(inv.unit_cost or 0))),
+        ))
 
 
 async def create_order_from_cart(
@@ -116,7 +185,10 @@ async def create_order_from_cart(
             special_instructions=ci.special_instructions,
         )
         db.add(oli)
-    
+
+    # Deduct recipe-based stock
+    await _deduct_stock_for_order(db, order, cart_items)
+
     # Create initial status log
     status_log = OrderStatusLog(
         order_id=order.id,

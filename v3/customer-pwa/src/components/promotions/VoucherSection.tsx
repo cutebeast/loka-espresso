@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { resolveAssetUrl } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { PromoBanner } from '@/lib/api';
+import { getLocale } from '@/stores/localeStore';
 
 interface BannerStatus {
   action_type: string;
@@ -26,7 +27,7 @@ interface SurveyQuestion {
 
 function formatDate(d: string | null) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('en-MY', { month: 'short', day: 'numeric' });
+  return new Date(d).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' });
 }
 
 interface VoucherSectionProps {

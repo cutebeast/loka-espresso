@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
+import { getLocale } from '@/stores/localeStore';
 
 interface EventItem {
   id: number;
@@ -33,14 +34,14 @@ function resolveCardImage(event: EventItem): string | null {
 function formatEventDate(dateStr: string): string {
   try {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-MY', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    return d.toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   } catch { return dateStr; }
 }
 
 function formatEventTime(dateStr: string): string {
   try {
     const d = new Date(dateStr);
-    return d.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
   } catch { return ''; }
 }
 
@@ -77,18 +78,18 @@ export default function EventsPage({ onBack }: EventsPageProps) {
     try {
       await api.post(`/events/${eventId}/rsvp`);
       setRsvpStatus(prev => ({ ...prev, [eventId]: 'success' }));
-      showToast(t('events.rsvpSuccess') || 'RSVP confirmed!', 'success');
+      showToast(t('events.rsvpSuccess'), 'success');
       loadEvents();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || '';
       if (msg.toLowerCase().includes('capacity')) {
         setRsvpStatus(prev => ({ ...prev, [eventId]: 'full' }));
-        showToast(t('events.capacityFull') || 'Event is at full capacity', 'error');
+        showToast(t('events.capacityFull'), 'error');
       } else if (msg.toLowerCase().includes('already')) {
         setRsvpStatus(prev => ({ ...prev, [eventId]: 'already' }));
-        showToast(t('events.alreadyRsvpd') || 'You have already RSVP\'d', 'info');
+        showToast(t('events.alreadyRsvpd'), 'info');
       } else {
-        showToast(t('events.rsvpError') || 'Failed to RSVP', 'error');
+        showToast(t('events.rsvpError'), 'error');
       }
     }
     finally { setRsvping(false); }
@@ -125,7 +126,7 @@ export default function EventsPage({ onBack }: EventsPageProps) {
           {selectedEvent.is_active && (
             <span className="info-detail-tag experience">
               <Calendar size={14} />
-              Upcoming
+              {t('events.upcoming')}
             </span>
           )}
         </div>
@@ -151,13 +152,13 @@ export default function EventsPage({ onBack }: EventsPageProps) {
           {selectedEvent.rsvp_enabled && (
             <div className="info-detail-meta">
               <span className="info-detail-meta-item">
-                <Users size={16} /> {selectedEvent.rsvp_count}{selectedEvent.rsvp_max_capacity > 0 ? ` / ${selectedEvent.rsvp_max_capacity}` : ''} attending
+                <Users size={16} /> {selectedEvent.rsvp_count}{selectedEvent.rsvp_max_capacity > 0 ? ` / ${selectedEvent.rsvp_max_capacity}` : ''} {t('events.attending')}
               </span>
             </div>
           )}
 
           <p className="info-detail-desc">
-            {selectedEvent.description || 'No description available.'}
+            {selectedEvent.description || t('events.noDescription')}
           </p>
         </div>
 
@@ -166,21 +167,21 @@ export default function EventsPage({ onBack }: EventsPageProps) {
             {status === 'success' ? (
               <div className="info-share-btn" style={{ background: 'var(--loka-success)', color: '#fff', justifyContent: 'center', gap: '8px' }}>
                 <CheckCircle size={18} />
-                <span>{t('events.rsvpd') || 'You\'re going!'}</span>
+                <span>{t('events.rsvpd')}</span>
               </div>
             ) : isFull || status === 'full' ? (
               <button className="info-share-btn" disabled style={{ opacity: 0.5 }}>
                 <Users size={18} />
-                <span>{t('events.capacityFull') || 'Event full'}</span>
+                <span>{t('events.capacityFull')}</span>
               </button>
             ) : status === 'already' ? (
               <button className="info-share-btn" disabled style={{ opacity: 0.5 }}>
                 <CheckCircle size={18} />
-                <span>{t('events.alreadyRsvpd') || 'Already RSVP\'d'}</span>
+                <span>{t('events.alreadyRsvpd')}</span>
               </button>
             ) : (
               <button className="info-share-btn" onClick={() => handleRsvp(selectedEvent.id)} disabled={rsvping} style={{ justifyContent: 'center', gap: '8px' }}>
-                <span>{rsvping ? t('common.loading') : (t('events.rsvp') || 'RSVP')}</span>
+                <span>{rsvping ? t('common.loading') : t('events.rsvp')}</span>
                 <Calendar size={18} />
               </button>
             )}
@@ -198,7 +199,7 @@ export default function EventsPage({ onBack }: EventsPageProps) {
           <button className="info-back-btn" onClick={onBack} aria-label={t('common.back')}>
             <ArrowLeft size={20} />
           </button>
-          <h1 className="info-page-title">{t('events.title') || 'Events'}</h1>
+          <h1 className="info-page-title">{t('events.title')}</h1>
         </div>
       </div>
 
@@ -212,8 +213,8 @@ export default function EventsPage({ onBack }: EventsPageProps) {
         ) : events.length === 0 ? (
           <div className="info-empty">
             <Calendar size={40} className="info-empty-icon" />
-            <p className="info-empty-title">{t('events.noEvents') || 'No upcoming events'}</p>
-            <p className="info-empty-desc">{t('events.checkBackSoon') || 'Check back soon for new events'}</p>
+            <p className="info-empty-title">{t('events.noEvents')}</p>
+            <p className="info-empty-desc">{t('events.checkBackSoon')}</p>
           </div>
         ) : (
           events.map((event) => {
@@ -248,7 +249,7 @@ export default function EventsPage({ onBack }: EventsPageProps) {
                   )}
                   {event.rsvp_enabled && (
                     <div className="info-card-tag experience">
-                      <Users size={12} /> {event.rsvp_count}{event.rsvp_max_capacity > 0 ? `/${event.rsvp_max_capacity}` : ''} RSVP
+                      <Users size={12} /> {event.rsvp_count}{event.rsvp_max_capacity > 0 ? `/${event.rsvp_max_capacity}` : ''} {t('events.rsvpTag')}
                     </div>
                   )}
                 </div>

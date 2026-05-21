@@ -108,7 +108,29 @@ async def list_stores(
 
     stmt = base_stmt.order_by(Store.position.asc(), Store.id.asc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
-    items = [StoreOut.model_validate(r) for r in result.scalars().all()]
+    stores = result.scalars().all()
+
+    # Bulk-load operating hours for all stores in page
+    store_ids = [s.id for s in stores]
+    hours_result = await db.execute(
+        select(StoreOperatingHours).where(StoreOperatingHours.store_id.in_(store_ids))
+    )
+    hours_map: dict[int, list] = {}
+    for h in hours_result.scalars().all():
+        hours_map.setdefault(h.store_id, []).append({
+            "day_of_week": h.day_of_week,
+            "open_time": h.open_time,
+            "close_time": h.close_time,
+            "is_closed": h.is_closed,
+            "is_24_hours": h.is_24_hours,
+            "last_order_time": h.last_order_time,
+        })
+
+    items = []
+    for s in stores:
+        store_dict = {c: getattr(s, c) for c in s.__table__.columns.keys()}
+        store_dict["operating_hours"] = hours_map.get(s.id, [])
+        items.append(StoreOut.model_validate(store_dict).model_dump())
 
     return APIResponse(
         data=PaginatedResponse(
@@ -142,6 +164,7 @@ async def create_store(
                 open_time=time(9, 0),
                 close_time=time(22, 0),
                 is_closed=False,
+                is_24_hours=False,
             )
         )
 
@@ -243,12 +266,15 @@ async def update_store(
         for h in hours_data:
             open_str = h.get("open_time", "08:00")
             close_str = h.get("close_time", "22:00")
+            lot_str = h.get("last_order_time")
             db.add(StoreOperatingHours(
                 store_id=store.id,
                 day_of_week=h.get("day_of_week", 0),
                 open_time=time.fromisoformat(open_str) if isinstance(open_str, str) else open_str,
                 close_time=time.fromisoformat(close_str) if isinstance(close_str, str) else close_str,
                 is_closed=h.get("is_closed", False),
+                is_24_hours=h.get("is_24_hours", False),
+                last_order_time=time.fromisoformat(lot_str) if isinstance(lot_str, str) and lot_str else (lot_str if lot_str else None),
             ))
 
     store.updated_at = datetime.now(timezone.utc)
@@ -331,11 +357,13 @@ async def replace_operating_hours(
     for item in data:
         db.add(
             StoreOperatingHours(
-                store_id=store.id,
+                store_id=store_id,
                 day_of_week=item.day_of_week,
                 open_time=item.open_time,
                 close_time=item.close_time,
                 is_closed=item.is_closed,
+                is_24_hours=item.is_24_hours,
+                last_order_time=item.last_order_time,
             )
         )
 

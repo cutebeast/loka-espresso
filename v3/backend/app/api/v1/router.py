@@ -54,6 +54,7 @@ from app.api.v1.endpoints.public import store as public_store
 from app.api.v1.endpoints.staff import staff_ops as staff_operations
 from app.api.v1.endpoints.admin import scan as admin_scan
 from app.api.v1.endpoints.admin import pos as admin_pos
+from app.api.v1.endpoints.admin import equipment as admin_equipment
 
 api_router = APIRouter()
 
@@ -110,6 +111,9 @@ api_router.include_router(admin_inventory_movement.router, tags=["admin — inve
 
 # Purchase Orders
 api_router.include_router(admin_purchase_orders.router, tags=["admin — inventory"])
+
+# Equipment
+api_router.include_router(admin_equipment.router, tags=["admin — equipment"])
 
 # Consents
 api_router.include_router(admin_consents.admin_router, tags=["admin — customers"])

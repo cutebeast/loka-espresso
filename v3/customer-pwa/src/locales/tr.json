@@ -29,7 +29,7 @@
     "saving": "Tasarruf...",
     "apply": "Başvurmak",
     "share": "Paylaş",
-    "processing": "İşlem...",
+    "processing": "İşleniyor...",
     "addToHomeScreen": "Ana Ekrana Ekle",
     "allCountries": "Tüm ülkeler",
     "and": "ve",
@@ -64,7 +64,6 @@
     "currencySymbol": "RM",
     "pointsAbbr": "puan",
     "stepCount": "Adım {current} / {total}",
-    "processing": "İşleniyor...",
     "promotion": "Promosyon",
     "each": "her biri"
   },
@@ -269,7 +268,15 @@
     },
     "updatedAt": "Güncellendi {time}",
     "orderNumber": "Sipariş #{number}",
-    "totalCount": "{count} toplam"
+    "totalCount": "{count} toplam",
+    "steps": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "outForDelivery": "On the way",
+      "completed": "Completed"
+    }
   },
   "profile": {
     "title": "Profil",
@@ -559,7 +566,13 @@
     "specialInstructions": "Özel Talimatlar",
     "specialInstructionsPlaceholder": "özel tali̇matlar...",
     "title": "Başlık",
-    "viewCart": "Sepeti Görüntüle"
+    "viewCart": "Sepeti Görüntüle",
+    "cup": {
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "regular": "Regular"
+    }
   },
   "notifications": {
     "markAllAsRead": "Tümünü Okundu Olarak İşaretle",
@@ -573,7 +586,21 @@
       "justNow": "Az önce",
       "minutes": "{minutes} dk önce"
     },
-    "title": "Başlık"
+    "title": "Başlık",
+    "filters": {
+      "all": "All",
+      "order": "Order",
+      "reward": "Reward",
+      "wallet": "Wallet",
+      "loyalty": "Loyalty",
+      "promo": "Promo",
+      "info": "Info"
+    },
+    "dateGroup": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "earlier": "Earlier"
+    }
   },
   "paymentMethods": {
     "active": "Aktif",
@@ -792,5 +819,34 @@
     "results_other": "{count} sonuçları",
     "searchPlaceholder": "İsme veya bölgeye göre arama",
     "title": "Lokanızı seçin"
+  },
+  "events": {
+    "title": "Events",
+    "upcoming": "Upcoming",
+    "attending": "attending",
+    "noEvents": "No upcoming events",
+    "checkBackSoon": "Check back soon for new events",
+    "rsvp": "RSVP",
+    "rsvpSuccess": "RSVP confirmed!",
+    "rsvpError": "Failed to RSVP",
+    "capacityFull": "Event is at full capacity",
+    "alreadyRsvpd": "You have already RSVP'd",
+    "rsvpd": "You're going!",
+    "noDescription": "No description available.",
+    "rsvpTag": "RSVP"
+  },
+  "reservations": {
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "seated": "Seated",
+      "completed": "Completed",
+      "noShow": "No Show"
+    }
+  },
+  "store": {
+    "closed": "Closed",
+    "open24Hours": "Open 24 Hours"
   }
 }

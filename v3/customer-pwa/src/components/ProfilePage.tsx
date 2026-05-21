@@ -28,6 +28,7 @@ import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import type { Order } from '@/lib/api';
+import { getLocale } from '@/stores/localeStore';
 
 interface OrderPreview {
   id: number;
@@ -64,7 +65,7 @@ export default function ProfilePage() {
         setRecentOrders(data.slice(0, 3).map((o) => ({
           id: o.id,
           items: o.items?.map((i) => i.name).filter(Boolean).join(', ') || t('profile.orderNumber', { id: o.id }),
-          date: o.created_at ? new Date(o.created_at).toLocaleDateString('en-MY', { month: 'short', day: 'numeric' }) : '',
+          date: o.created_at ? new Date(o.created_at).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' }) : '',
           status: o.status || 'Completed',
           total: o.total || 0,
           imageUrl: o.items?.[0]?.image_url ? resolveAssetUrl(o.items[0].image_url) : null,

@@ -25,11 +25,11 @@ interface ItemCustomizeSheetProps {
 }
 
 /** Cup sizes with proportional visual dimensions */
-const CUP_SIZES: Record<string, { w: number; h: number; label: string }> = {
-  small:  { w: 24, h: 32, label: 'Small' },
-  medium: { w: 28, h: 38, label: 'Medium' },
-  large:  { w: 32, h: 44, label: 'Large' },
-  regular:{ w: 28, h: 38, label: 'Regular' },
+const CUP_SIZES: Record<string, { w: number; h: number }> = {
+  small:  { w: 24, h: 32 },
+  medium: { w: 28, h: 38 },
+  large:  { w: 32, h: 44 },
+  regular:{ w: 28, h: 38 },
 };
 
 /** Milk option colors */
@@ -53,6 +53,12 @@ export default function ItemCustomizeSheet({
   initialSelections,
 }: ItemCustomizeSheetProps) {
   const { t } = useTranslation();
+  const cupLabels: Record<string, string> = {
+    small: t('menu.cup.small'),
+    medium: t('menu.cup.medium'),
+    large: t('menu.cup.large'),
+    regular: t('menu.cup.regular'),
+  };
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
   const [notes, setNotes] = useState('');
@@ -152,6 +158,11 @@ export default function ItemCustomizeSheet({
               <div className="ics-body">
                 <h2 className="ics-title">{item.name}</h2>
                 <p className="ics-desc">{item.description}</p>
+                {item.calories != null && item.calories > 0 && (
+                  <p className="ics-calories" style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    {item.calories} kcal
+                  </p>
+                )}
               </div>
 
               {/* Live price */}
@@ -218,7 +229,7 @@ export default function ItemCustomizeSheet({
                                   <path d={`M${cup.w - 6} ${cup.h / 3} C${cup.w} ${cup.h / 3} ${cup.w + 3} ${cup.h / 2} ${cup.w + 3} ${cup.h / 2 + 3} C${cup.w + 3} ${cup.h / 2 + 8} ${cup.w} ${cup.h / 2 + 10} ${cup.w - 6} ${cup.h / 2 + 10}`} stroke={LOKA.brown} strokeWidth="2" fill="none" />
                                 </svg>
                               </div>
-                              <span className="ics-cup-label">{t(`menu.cup.${cupLabelKey}`)}</span>
+                              <span className="ics-cup-label">{cupLabels[cupLabelKey]}</span>
                               <span className="ics-cup-price">{formatPrice(basePrice + opt.price_adjustment)}</span>
                             </div>
                           );

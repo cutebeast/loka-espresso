@@ -4,7 +4,8 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.api.v1.deps import DBDependency
+from app.api.v1.deps import DBDependency, OptionalLocale
+from app.services.translation import translate_menu_response, translate_single
 from app.models.menu import (
     Allergen,
     DietaryTag,
@@ -32,6 +33,7 @@ router = APIRouter(prefix="/menu", tags=["public — menu"])
 @router.get("/stores/{store_id}", response_model=APIResponse[MenuPublicOut])
 async def get_store_menu(
     db: DBDependency,
+    locale: OptionalLocale,
     store_id: int,
     category_id: int | None = Query(None),
     search: str | None = Query(None, max_length=100),
@@ -128,17 +130,19 @@ async def get_store_menu(
 
     cat_outs = [MenuCategoryOut.model_validate(c) for c in categories]
 
-    return APIResponse(
-        data=MenuPublicOut(
-            store_id=store_id,
-            categories=cat_outs,
-            items=item_outs,
-        )
-    )
+    menu_data = MenuPublicOut(
+        store_id=store_id,
+        categories=cat_outs,
+        items=item_outs,
+    ).model_dump()
+
+    await translate_menu_response(db, menu_data, locale)
+
+    return APIResponse(data=menu_data)
 
 
 @router.get("/items/{item_id}", response_model=APIResponse[MenuItemPublicOut])
-async def get_menu_item(db: DBDependency, item_id: int):
+async def get_menu_item(db: DBDependency, locale: OptionalLocale, item_id: int):
     """Get public menu item details."""
     result = await db.execute(
         select(MenuItem).where(
@@ -193,9 +197,11 @@ async def get_menu_item(db: DBDependency, item_id: int):
     dietary_tags = [tag_key for _, tag_key in dietary_result.all()] or None
 
     item_dict = {c: getattr(item, c) for c in item.__table__.columns.keys()}
-    item_dict["variants"] = variants
-    item_dict["modifier_groups"] = modifier_outs
-    item_dict["allergens"] = allergen_outs
+    item_dict["variants"] = [v.model_dump() for v in variants]
+    item_dict["modifier_groups"] = [mg.model_dump() for mg in modifier_outs]
+    item_dict["allergens"] = [a.model_dump() for a in allergen_outs]
     item_dict["dietary_tags"] = dietary_tags
 
-    return APIResponse(data=MenuItemPublicOut.model_validate(item_dict))
+    await translate_single(db, item_dict, "menu_items", locale)
+
+    return APIResponse(data=item_dict)

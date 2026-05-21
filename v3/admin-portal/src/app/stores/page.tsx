@@ -11,6 +11,7 @@ interface Store {
   postal_code: string; country_code: string;
   phone_number: string; timezone: string; currency_code: string;
   is_active: boolean;
+  operating_hours?: { day_of_week: number; open_time: string; close_time: string; is_closed: boolean; is_24_hours: boolean; last_order_time: string | null }[];
 }
 
 export default function StoresPage() {
@@ -49,10 +50,14 @@ export default function StoresPage() {
 
       <div className="table-container">
         <table className="data-table">
-          <thead><tr><th>Store</th><th>City</th><th>State</th><th>Postal</th><th>Country</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Store</th><th>City</th><th>State</th><th>Postal</th><th>Country</th><th>Phone</th><th>Hours</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={8} className="data-table-empty">Loading...</td></tr>
-            : items.map(item => (
+            {loading ? <tr><td colSpan={9} className="data-table-empty">Loading...</td></tr>
+            : items.map(item => {
+              const hours = item.operating_hours || [];
+              const has24h = hours.some(h => h.is_24_hours);
+              const closedDays = hours.filter(h => h.is_closed).length;
+              return (
               <tr key={item.id}>
                 <td>
                   <div style={{ fontWeight: 600 }}>{item.store_name}</div>
@@ -63,6 +68,13 @@ export default function StoresPage() {
                 <td style={{ fontSize: 12 }}>{item.postal_code}</td>
                 <td style={{ fontSize: 12 }}>{item.country_code}</td>
                 <td style={{ fontSize: 12 }}>{item.phone_number}</td>
+                <td style={{ fontSize: 12 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {has24h && <span className="badge badge-sm badge-blue">24h</span>}
+                    {closedDays > 0 && <span className="badge badge-sm badge-gray">{closedDays}d closed</span>}
+                    {!has24h && closedDays === 0 && <span className="badge badge-sm badge-green">Regular</span>}
+                  </div>
+                </td>
                 <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
                 <td>
                   <button type="button" onClick={() => router.push(`/stores/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}>
@@ -73,7 +85,7 @@ export default function StoresPage() {
                   </button>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>

@@ -226,6 +226,14 @@ function convertOperatingHours(hours: any[] | undefined): Record<string,string> 
   if (!Array.isArray(hours)) return result;
   for (const h of hours) {
     const day = DAY_NAMES[h.day_of_week] ?? String(h.day_of_week);
+    if (h.is_closed) {
+      result[day] = 'Closed';
+      continue;
+    }
+    if (h.is_24_hours) {
+      result[day] = 'Open 24 Hours';
+      continue;
+    }
     const open = (h.open_time || '').substring(0,5);
     const close = (h.close_time || '').substring(0,5);
     result[day] = open && close ? `${open} - ${close}` : 'Closed';
@@ -263,6 +271,7 @@ function mapV3Response(url: string, data: any): any {
       lat: s.latitude ?? s.lat,
       lng: s.longitude ?? s.lng,
       opening_hours: convertOperatingHours(s.operating_hours || s.opening_hours),
+      operating_hours: s.operating_hours || s.opening_hours,
       delivery_fee: s.base_delivery_fee ?? s.delivery_fee,
       min_order: s.minimum_order_amount ?? s.min_order,
       pickup_lead_minutes: s.pickup_lead_minutes,
@@ -774,12 +783,15 @@ export interface Store {
   address?: string;
   phone?: string;
   opening_hours?: Record<string, string>;
+  operating_hours?: any[];
   is_active?: boolean;
   image_url?: string;
   lat?: number;
   lng?: number;
   pickup_lead_minutes?: number;
   delivery_radius_km?: number;
+  first_order_minutes_after_open?: number;
+  last_order_minutes_before_close?: number;
   delivery_fee?: number;
   min_order?: number;
   pos_integration_enabled?: boolean;
@@ -844,6 +856,9 @@ export interface MenuItem {
   is_available: boolean;
   is_featured?: boolean;
   display_order?: number;
+  calories?: number | null;
+  minimum_tier_id?: number | null;
+  minimum_tier_name?: string | null;
   dietary_tags?: string[];
   allergens?: Array<{ display_name: string; severity: string; icon?: string }>;
   customization_count?: number;

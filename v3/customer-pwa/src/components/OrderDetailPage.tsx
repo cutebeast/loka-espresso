@@ -9,9 +9,10 @@ import api from '@/lib/api';
 import type { Order, CartItem } from '@/lib/api';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
+import { getLocale } from '@/stores/localeStore';
 
-const PICKUP_STEPS = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed'];
-const DELIVERY_STEPS = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'On the way', 'Completed'];
+const PICKUP_STEPS = ['orders.steps.pending', 'orders.steps.confirmed', 'orders.steps.preparing', 'orders.steps.ready', 'orders.steps.completed'];
+const DELIVERY_STEPS = ['orders.steps.pending', 'orders.steps.confirmed', 'orders.steps.preparing', 'orders.steps.ready', 'orders.steps.outForDelivery', 'orders.steps.completed'];
 
 function getSteps(orderType?: string): string[] {
   return orderType === 'delivery' ? DELIVERY_STEPS : PICKUP_STEPS;
@@ -32,19 +33,6 @@ function stepIdx(status: string, orderType?: string): number {
     if (s === 'completed' || s === 'picked_up') return 4;
   }
   return 0;
-}
-
-function stepTranslationKey(step: string): string {
-  const normalized = step.toLowerCase().replace(/ /g, '');
-  const map: Record<string, string> = {
-    pending: 'orders.status.pending',
-    confirmed: 'orders.status.confirmed',
-    preparing: 'orders.status.preparing',
-    ready: 'orders.status.ready',
-    completed: 'orders.status.completed',
-    ontheway: 'orders.status.outForDelivery',
-  };
-  return map[normalized] || '';
 }
 
 export default function OrderDetailPage() {
@@ -111,7 +99,7 @@ export default function OrderDetailPage() {
 
   const handleShare = () => {
     if (!order) return;
-    const dateStr = new Date(order.created_at).toLocaleString('en-MY');
+    const dateStr = new Date(order.created_at).toLocaleString(getLocale());
     const statusKey = `orders.status.${order.status?.toLowerCase()}`;
     const statusLabel = t(statusKey);
     const lines = [
@@ -161,7 +149,7 @@ export default function OrderDetailPage() {
           <div className="od-eta-card">
             <div className="od-eta-title">{order.order_type === 'delivery' ? t('orderDetail.estimatedDelivery') : t('orderDetail.estimatedReady')}</div>
             <div className="od-eta-time">
-              {order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+              {order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' }) : '--:--'}
             </div>
             <div className="od-eta-sub">{order.order_type === 'delivery' ? t('orderDetail.preparingDelivery') : order.order_type === 'dine_in' ? t('orderDetail.preparingDineIn') : t('orderDetail.preparingPickup')}</div>
             <div className="od-eta-progress"><div className="od-eta-fill" style={{ width: `${Math.min((current / steps.length) * 100, 100)}%` }} /></div>
@@ -182,8 +170,7 @@ export default function OrderDetailPage() {
               {steps.map((step, i) => {
                 const done = i < current;
                 const cur = i === current;
-                const stepKey = stepTranslationKey(step);
-                const stepLabel = stepKey ? t(stepKey) : step;
+                const stepLabel = t(step);
                 return (
                   <div key={step} className={`od-progress-col${done ? ' completed' : ''}`}>
                     <div className={`od-step-circle${done ? ' done' : ''}${cur ? ' current' : ''}`}>

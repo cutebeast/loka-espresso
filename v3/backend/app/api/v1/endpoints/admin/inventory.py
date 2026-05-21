@@ -293,17 +293,17 @@ async def delete_item(
 async def list_suppliers(
     db: DBDependency,
     admin: CurrentAdmin,
-    store_id: int = Query(...),
+    store_id: int | None = Query(None),
 ):
     """List suppliers for a store."""
-    result = await db.execute(
+    stmt = (
         select(Supplier)
-        .where(
-            Supplier.store_id == store_id,
-            Supplier.deleted_at.is_(None),
-        )
+        .where(Supplier.deleted_at.is_(None))
         .order_by(Supplier.supplier_name)
     )
+    if store_id is not None:
+        stmt = stmt.where(Supplier.store_id == store_id)
+    result = await db.execute(stmt)
     suppliers = result.scalars().all()
     return APIResponse(
         data=[SupplierOut.model_validate(s) for s in suppliers]
@@ -321,7 +321,10 @@ async def create_supplier(
     data: SupplierCreate,
 ):
     """Create a new supplier."""
-    supplier = Supplier(**data.model_dump(by_alias=True))
+    supplier_data = data.model_dump()
+    field_map = {"phone_number": "phone", "email_address": "email"}
+    mapped = {field_map.get(k, k): v for k, v in supplier_data.items()}
+    supplier = Supplier(**mapped)
     db.add(supplier)
     await db.commit()
     await db.refresh(supplier)
@@ -356,8 +359,10 @@ async def update_supplier(
             status_code=status.HTTP_404_NOT_FOUND, detail="Supplier not found"
         )
 
-    update_data = data.model_dump(by_alias=True, exclude_unset=True)
-    for key, value in update_data.items():
+    update_data = data.model_dump(exclude_unset=True)
+    field_map = {"phone_number": "phone", "email_address": "email"}
+    mapped = {field_map.get(k, k): v for k, v in update_data.items()}
+    for key, value in mapped.items():
         setattr(supplier, key, value)
 
     await db.commit()

@@ -1,11 +1,12 @@
 """Public store endpoints (no auth required)."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 
-from app.api.v1.deps import DBDependency
+from app.api.v1.deps import DBDependency, OptionalLocale
+from app.services.translation import merge_translations, translate_single
 from app.models.store import (
     DiningTable,
     Store,
@@ -19,9 +20,58 @@ from app.schemas.store import StoreListParams, StoreOperatingHoursOut, StorePubl
 router = APIRouter(prefix="/stores", tags=["public — stores"])
 
 
+def _is_store_open(store, operating_hours, special_hours) -> bool:
+    """Check if a store is currently open based on its timezone, special hours, and operating hours."""
+    tz = store.timezone or "UTC"
+    try:
+        import zoneinfo
+        now_local = datetime.now(zoneinfo.ZoneInfo(tz))
+    except Exception:
+        # Fallback: treat as UTC
+        now_local = datetime.now(timezone.utc)
+
+    today = now_local.date()
+    current_time = now_local.time()
+    current_minutes = current_time.hour * 60 + current_time.minute
+
+    # Check special hours first
+    if special_hours:
+        for sh in special_hours:
+            if sh.special_date == today:
+                if sh.is_closed:
+                    return False
+                open_m = sh.open_time.hour * 60 + sh.open_time.minute if sh.open_time else 0
+                close_m = sh.close_time.hour * 60 + sh.close_time.minute if sh.close_time else 24 * 60
+                if close_m <= open_m:
+                    close_m += 24 * 60
+                if current_minutes >= open_m and current_minutes < close_m:
+                    return True
+                return False
+
+    # Check regular operating hours
+    day_of_week = today.weekday()  # 0=Monday (but our DB uses 0=Sunday!)
+    # Convert Python weekday (Mon=0) to DB day_of_week (Sun=0)
+    db_dow = (day_of_week + 1) % 7
+
+    for oh in operating_hours:
+        if oh.day_of_week == db_dow:
+            if oh.is_closed:
+                return False
+            if oh.is_24_hours:
+                return True
+            open_m = oh.open_time.hour * 60 + oh.open_time.minute if oh.open_time else 0
+            close_m = oh.close_time.hour * 60 + oh.close_time.minute if oh.close_time else 24 * 60
+            if close_m <= open_m:
+                close_m += 24 * 60
+            return current_minutes >= open_m and current_minutes < close_m
+
+    return False
+
+
 @router.get("", response_model=APIResponse[PaginatedResponse[StorePublicOut]])
 async def list_stores(
     db: DBDependency,
+    locale: OptionalLocale,
     latitude: float | None = Query(None, ge=-90, le=90),
     longitude: float | None = Query(None, ge=-180, le=180),
     radius_km: float | None = Query(None, gt=0, le=100),
@@ -33,7 +83,7 @@ async def list_stores(
 ):
     """List public stores with optional filters."""
     stmt = select(Store).where(Store.is_active.is_(True))
-    
+
     if city:
         stmt = stmt.where(Store.city.ilike(f"%{city}%"))
     if search:
@@ -41,42 +91,46 @@ async def list_stores(
             Store.store_name.ilike(f"%{search}%")
             | Store.brand_name.ilike(f"%{search}%")
         )
-    
-    # Count total (apply same filters)
-    count_stmt = select(Store.id).where(Store.is_active.is_(True))
-    if city:
-        count_stmt = count_stmt.where(Store.city.ilike(f"%{city}%"))
-    if search:
-        count_stmt = count_stmt.where(
-            Store.store_name.ilike(f"%{search}%")
-            | Store.brand_name.ilike(f"%{search}%")
-        )
-    count_result = await db.execute(count_stmt)
-    total = len(count_result.scalars().all())
-    
-    # Pagination
-    stmt = stmt.offset((page - 1) * per_page).limit(per_page)
+
     result = await db.execute(stmt)
-    stores = result.scalars().all()
-    
-    # Enrich with operating hours
-    store_ids = [s.id for s in stores]
+    all_stores = result.scalars().all()
+
+    # Enrich with operating hours (needed for is_open filter)
+    store_ids = [s.id for s in all_stores]
     hours_result = await db.execute(
         select(StoreOperatingHours).where(StoreOperatingHours.store_id.in_(store_ids))
     )
     hours_map = {}
     for h in hours_result.scalars().all():
         hours_map.setdefault(h.store_id, []).append(h)
-    
+
     special_result = await db.execute(
         select(StoreSpecialHours).where(StoreSpecialHours.store_id.in_(store_ids))
     )
     special_map = {}
     for s in special_result.scalars().all():
         special_map.setdefault(s.store_id, []).append(s)
-    
-    items = []
-    for store in stores:
+
+    # Apply is_open filter in Python (timezone-aware)
+    filtered = []
+    for store in all_stores:
+        if is_open is not None:
+            open_now = _is_store_open(
+                store,
+                hours_map.get(store.id, []),
+                special_map.get(store.id, []),
+            )
+            if open_now != is_open:
+                continue
+        filtered.append(store)
+
+    total = len(filtered)
+
+    # Pagination after filtering
+    paginated = filtered[(page - 1) * per_page : page * per_page]
+
+    store_dicts = []
+    for store in paginated:
         store_dict = {
             c: getattr(store, c)
             for c in store.__table__.columns.keys()
@@ -87,8 +141,13 @@ async def list_stores(
         store_dict["special_hours"] = [
             StoreSpecialHoursOut.model_validate(h) for h in special_map.get(store.id, [])
         ]
-        items.append(StorePublicOut.model_validate(store_dict))
-    
+        store_dicts.append(store_dict)
+
+    # Apply translations
+    await merge_translations(db, store_dicts, "stores", locale)
+
+    items = [StorePublicOut.model_validate(d) for d in store_dicts]
+
     return APIResponse(
         data=PaginatedResponse(
             items=items,
@@ -101,7 +160,7 @@ async def list_stores(
 
 
 @router.get("/{store_id}", response_model=APIResponse[StorePublicOut])
-async def get_store(db: DBDependency, store_id: int):
+async def get_store(db: DBDependency, locale: OptionalLocale, store_id: int):
     """Get public store details by ID."""
     result = await db.execute(
         select(Store).where(Store.id == store_id, Store.is_active.is_(True))
@@ -127,7 +186,9 @@ async def get_store(db: DBDependency, store_id: int):
     store_dict["special_hours"] = [
         StoreSpecialHoursOut.model_validate(h) for h in special_result.scalars().all()
     ]
-    
+
+    await translate_single(db, store_dict, "stores", locale)
+
     return APIResponse(data=StorePublicOut.model_validate(store_dict))
 
 

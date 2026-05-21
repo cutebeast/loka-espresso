@@ -15,6 +15,7 @@ from app.models.menu import (
     MenuItem,
     MenuItemAllergen,
     MenuItemDietaryTag,
+    MenuItemRecipe,
     MenuModifierGroup,
     MenuModifierOption,
     MenuVariant,
@@ -86,11 +87,21 @@ class _MenuVariantInline(BaseSchema):
     is_available: bool = True
 
 
+class _MenuItemRecipeInline(BaseSchema):
+    inventory_item_id: int
+    menu_variant_id: int | None = None
+    quantity_required: float = 1.0
+    unit_of_measure: str = "unit"
+    is_primary_component: bool = False
+    waste_factor: float = 0.05
+
+
 class MenuItemCreateRequest(MenuItemCreate):
     modifier_groups: list[_MenuModifierGroupInline] | None = None
     variants: list[_MenuVariantInline] | None = None
     allergen_ids: list[int] | None = None
     dietary_tag_ids: list[int] | None = None
+    recipes: list[_MenuItemRecipeInline] | None = None
 
 
 class AllergenCreate(BaseSchema):
@@ -314,6 +325,17 @@ async def list_items(
                 MenuModifierGroupOut.model_validate(mg).model_dump() | {"options": options}
             )
 
+    # Load recipes in bulk
+    recipe_map: dict[int, list[dict]] = {}
+    if item_ids:
+        recipe_result = await db.execute(
+            select(MenuItemRecipe).where(MenuItemRecipe.menu_item_id.in_(item_ids))
+        )
+        for r in recipe_result.scalars().all():
+            if r.menu_item_id not in recipe_map:
+                recipe_map[r.menu_item_id] = []
+            recipe_map[r.menu_item_id].append(MenuItemRecipeOut.model_validate(r).model_dump())
+
     item_outs = []
     for item in items:
         item_dict = {c: getattr(item, c) for c in item.__table__.columns.keys()}
@@ -322,7 +344,7 @@ async def list_items(
         item_dict["dietary_tags"] = dietary_map.get(item.id, [])
         item_dict["modifier_groups"] = modifier_map.get(item.id, [])
         item_dict["variants"] = []
-        item_dict["recipes"] = []
+        item_dict["recipes"] = recipe_map.get(item.id, [])
         item_outs.append(MenuItemOut.model_validate(item_dict))
 
     return APIResponse(
@@ -348,7 +370,7 @@ async def create_item(
 ):
     """Create a menu item with optional modifiers, variants, and allergens."""
     item_data = data.model_dump(
-        exclude={"modifier_groups", "variants", "allergen_ids", "dietary_tag_ids"},
+        exclude={"modifier_groups", "variants", "allergen_ids", "dietary_tag_ids", "recipes"},
         exclude_unset=False,
     )
     item = MenuItem(**item_data)
@@ -413,6 +435,18 @@ async def create_item(
         for dt_id in data.dietary_tag_ids:
             db.add(MenuItemDietaryTag(menu_item_id=item.id, dietary_tag_id=dt_id))
 
+    if data.recipes:
+        for r_data in data.recipes:
+            db.add(MenuItemRecipe(
+                menu_item_id=item.id,
+                menu_variant_id=r_data.menu_variant_id,
+                inventory_item_id=r_data.inventory_item_id,
+                quantity_required=r_data.quantity_required,
+                unit_of_measure=r_data.unit_of_measure,
+                is_primary_component=r_data.is_primary_component,
+                waste_factor=r_data.waste_factor,
+            ))
+
     await db.commit()
     await db.refresh(item)
 
@@ -470,6 +504,7 @@ async def update_item(
     modifier_groups_data = update_data.pop("modifier_groups", None)
     allergen_ids_data = update_data.pop("allergen_ids", None)
     dietary_tag_ids_data = update_data.pop("dietary_tag_ids", None)
+    recipes_data = update_data.pop("recipes", None)
 
     for field, value in update_data.items():
         setattr(item, field, value)
@@ -533,6 +568,24 @@ async def update_item(
             await db.delete(d)
         for did in dietary_tag_ids_data:
             db.add(MenuItemDietaryTag(menu_item_id=item.id, dietary_tag_id=did))
+
+    # Replace recipes if provided
+    if recipes_data is not None:
+        existing = await db.execute(
+            select(MenuItemRecipe).where(MenuItemRecipe.menu_item_id == item.id)
+        )
+        for r in existing.scalars().all():
+            await db.delete(r)
+        for r_data in recipes_data:
+            db.add(MenuItemRecipe(
+                menu_item_id=item.id,
+                menu_variant_id=r_data.get("menu_variant_id"),
+                inventory_item_id=r_data["inventory_item_id"],
+                quantity_required=r_data.get("quantity_required", 1.0),
+                unit_of_measure=r_data.get("unit_of_measure", "unit"),
+                is_primary_component=r_data.get("is_primary_component", False),
+                waste_factor=r_data.get("waste_factor", 0.05),
+            ))
 
     await db.commit()
     await db.refresh(item)
@@ -850,6 +903,12 @@ async def _build_menu_item_out(db, item: MenuItem) -> MenuItemOut:
         for t in (dt_result.scalars().all() if dt_result else [])
     ]
 
+    # Recipes
+    recipe_result = await db.execute(
+        select(MenuItemRecipe).where(MenuItemRecipe.menu_item_id == item.id)
+    )
+    recipes = [MenuItemRecipeOut.model_validate(r) for r in recipe_result.scalars().all()]
+
     # Build output
     item_dict = {c: getattr(item, c) for c in item.__table__.columns.keys()}
     item_dict["category"] = category
@@ -857,6 +916,6 @@ async def _build_menu_item_out(db, item: MenuItem) -> MenuItemOut:
     item_dict["modifier_groups"] = modifier_group_outs
     item_dict["allergens"] = allergens
     item_dict["dietary_tags"] = dietary_tags_out
-    item_dict["recipes"] = []
+    item_dict["recipes"] = recipes
 
     return MenuItemOut.model_validate(item_dict)

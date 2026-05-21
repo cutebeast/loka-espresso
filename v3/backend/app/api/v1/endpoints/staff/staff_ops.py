@@ -17,6 +17,7 @@ from app.models.staff import StaffProfile, StaffTimeEvent, TipAllocation
 from app.models.platform import PlatformConfig
 from app.models.store import Store, DiningTable, StoreConfiguration, TableStatusSnapshot
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.services.order import _deduct_stock_for_order
 
 router = APIRouter(tags=["staff — operations"])
 
@@ -624,6 +625,9 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: di
     for li in line_items:
         li.order_id = order.id
         db.add(li)
+
+    # Deduct recipe-based stock
+    await _deduct_stock_for_order(db, order, line_items)
 
     # Create payment
     change = 0.0

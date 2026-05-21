@@ -19,6 +19,7 @@ interface WalletState {
   balance: number;
   points: number;
   tier: string;
+  tierId: number;
   rewards: UserReward[];
   vouchers: UserVoucher[];
   transactions: Transaction[];
@@ -26,6 +27,7 @@ interface WalletState {
   setBalance: (balance: number) => void;
   setPoints: (points: number) => void;
   setTier: (tier: string) => void;
+  setTierId: (tierId: number) => void;
   setRewards: (rewards: UserReward[]) => void;
   setVouchers: (vouchers: UserVoucher[]) => void;
   setTransactions: (transactions: Transaction[]) => void;
@@ -38,6 +40,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   balance: 0,
   points: 0,
   tier: 'Bronze',
+  tierId: 0,
   rewards: [],
   vouchers: [],
   transactions: [],
@@ -45,6 +48,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   setBalance: (balance) => set({ balance: normalizeNumber(balance, 0) }),
   setPoints: (points) => set({ points: normalizeNumber(points, 0) }),
   setTier: (tier) => set({ tier }),
+  setTierId: (tierId) => set({ tierId: normalizeNumber(tierId, 0) }),
   setRewards: (rewards) => set({ rewards }),
   setVouchers: (vouchers) => set({ vouchers }),
   setTransactions: (transactions) => set({ transactions }),
@@ -73,7 +77,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         if (d) {
           set({
             points: normalizeNumber(d.points_balance ?? d.points ?? get().points, get().points),
-            tier: d.tier ?? get().tier,
+            tier: d.tier_name ?? d.tier ?? get().tier,
+            tierId: normalizeNumber(d.tier_id ?? get().tierId, get().tierId),
           });
         }
       }
@@ -88,6 +93,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     balance: 0,
     points: 0,
     tier: 'Bronze',
+    tierId: 0,
     rewards: [],
     vouchers: [],
     transactions: [],

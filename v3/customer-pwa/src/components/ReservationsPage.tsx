@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { getLocale } from '@/stores/localeStore';
 import api from '@/lib/api';
 import type { Reservation, Store } from '@/lib/api';
 import { GuestGate } from '@/components/auth/GuestGate';
@@ -93,12 +94,12 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
 
   const statusLabel = (status: string) => {
     const s = status.toLowerCase();
-    if (s === 'confirmed') return 'Confirmed';
-    if (s === 'cancelled') return 'Cancelled';
-    if (s === 'seated') return 'Seated';
-    if (s === 'completed') return 'Completed';
-    if (s === 'no_show') return 'No Show';
-    return 'Pending';
+    if (s === 'confirmed') return t('reservations.status.confirmed');
+    if (s === 'cancelled') return t('reservations.status.cancelled');
+    if (s === 'seated') return t('reservations.status.seated');
+    if (s === 'completed') return t('reservations.status.completed');
+    if (s === 'no_show') return t('reservations.status.noShow');
+    return t('reservations.status.pending');
   };
 
   const statusClass = (status: string) => {

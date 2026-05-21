@@ -26,13 +26,13 @@ export default function InventoryMovementsPage() {
       if (movementType) params.set("movement_type", movementType);
       if (fromDate) params.set("date_from", fromDate);
       if (toDate) params.set("date_to", toDate);
+      if (storeId) params.set("store_id", storeId);
       const d = await api.getRaw<any>(`/admin/inventory/movements?${params}`);
-      let list = d.items || d || [];
-      if (storeId) list = list.filter((m: any) => String(m.store_id) === storeId);
+      const list = d.items || d || [];
       setItems(Array.isArray(list) ? list : []);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, []);
+  }, [movementType, fromDate, toDate, storeId]);
 
   useEffect(() => { (async () => { await fetchStores(); })(); }, []);
   useEffect(() => { (async () => { await fetchData(); })(); }, [fetchData]);
@@ -66,8 +66,8 @@ export default function InventoryMovementsPage() {
             <tr key={m.id}>
               <td style={{ fontWeight: 600 }}>{m.item_name || `#${m.inventory_item_id}`}</td>
               <td>{typeBadge(m.movement_type)}</td>
-              <td style={{ textAlign: "center", fontWeight: 600, color: m.quantity < 0 ? "var(--color-error)" : "var(--color-success)" }}>{m.quantity > 0 ? `+${m.quantity}` : m.quantity}</td>
-              <td style={{ textAlign: "right" }}>{m.unit_cost ? `RM ${Number(m.unit_cost).toFixed(2)}` : "—"}</td>
+              <td style={{ textAlign: "center", fontWeight: 600, color: m.quantity_delta < 0 ? "var(--color-error)" : "var(--color-success)" }}>{m.quantity_delta > 0 ? `+${m.quantity_delta}` : m.quantity_delta}</td>
+              <td style={{ textAlign: "right" }}>{m.unit_cost_at_movement ? `RM ${Number(m.unit_cost_at_movement).toFixed(2)}` : "—"}</td>
               <td style={{ fontSize: 12 }}>{m.created_at ? new Date(m.created_at).toLocaleDateString() : "—"}</td>
               <td style={{ fontSize: 12 }}>{m.performed_by_name || "—"}</td>
             </tr>

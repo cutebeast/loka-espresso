@@ -29,7 +29,7 @@
     "saving": "节约...",
     "apply": "申请",
     "share": "分享",
-    "processing": "处理...",
+    "processing": "处理中...",
     "addToHomeScreen": "添加到主屏幕",
     "allCountries": "所有国家",
     "and": "和",
@@ -64,7 +64,6 @@
     "currencySymbol": "RM",
     "pointsAbbr": "分",
     "stepCount": "第{current}步，共{total}步",
-    "processing": "处理中...",
     "promotion": "促销",
     "each": "每件"
   },
@@ -269,7 +268,15 @@
     },
     "updatedAt": "更新{time}",
     "orderNumber": "订购 #{number}",
-    "totalCount": "{count} total"
+    "totalCount": "{count} total",
+    "steps": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "outForDelivery": "On the way",
+      "completed": "Completed"
+    }
   },
   "profile": {
     "title": "简介",
@@ -559,7 +566,13 @@
     "specialInstructions": "特别说明",
     "specialInstructionsPlaceholder": "特别说明...",
     "title": "标题",
-    "viewCart": "查看购物车"
+    "viewCart": "查看购物车",
+    "cup": {
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "regular": "Regular"
+    }
   },
   "notifications": {
     "markAllAsRead": "标记全部已读",
@@ -573,7 +586,21 @@
       "justNow": "刚刚",
       "minutes": "{minutes}分钟前"
     },
-    "title": "标题"
+    "title": "标题",
+    "filters": {
+      "all": "All",
+      "order": "Order",
+      "reward": "Reward",
+      "wallet": "Wallet",
+      "loyalty": "Loyalty",
+      "promo": "Promo",
+      "info": "Info"
+    },
+    "dateGroup": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "earlier": "Earlier"
+    }
   },
   "paymentMethods": {
     "active": "活跃",
@@ -792,5 +819,34 @@
     "results_other": "{count}结果",
     "searchPlaceholder": "按名称或区域搜索",
     "title": "选择您的洛卡"
+  },
+  "events": {
+    "title": "Events",
+    "upcoming": "Upcoming",
+    "attending": "attending",
+    "noEvents": "No upcoming events",
+    "checkBackSoon": "Check back soon for new events",
+    "rsvp": "RSVP",
+    "rsvpSuccess": "RSVP confirmed!",
+    "rsvpError": "Failed to RSVP",
+    "capacityFull": "Event is at full capacity",
+    "alreadyRsvpd": "You have already RSVP'd",
+    "rsvpd": "You're going!",
+    "noDescription": "No description available.",
+    "rsvpTag": "RSVP"
+  },
+  "reservations": {
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "seated": "Seated",
+      "completed": "Completed",
+      "noShow": "No Show"
+    }
+  },
+  "store": {
+    "closed": "Closed",
+    "open24Hours": "Open 24 Hours"
   }
 }

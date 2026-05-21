@@ -51,6 +51,8 @@ class Store(Base, SoftDeleteMixin):
     banner_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     pickup_lead_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
     delivery_radius_km: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False, default=10.00)
+    first_order_minutes_after_open: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    last_order_minutes_before_close: Mapped[int] = mapped_column(Integer, nullable=False, default=45)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_accepting_orders: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -111,6 +113,8 @@ class StoreOperatingHours(Base, TimestampMixin):
     open_time: Mapped[time] = mapped_column(nullable=False)
     close_time: Mapped[time] = mapped_column(nullable=False)
     is_closed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_24_hours: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    last_order_time: Mapped[time | None] = mapped_column(nullable=True)
 
     store: Mapped["Store"] = relationship("Store", back_populates="operating_hours")
 

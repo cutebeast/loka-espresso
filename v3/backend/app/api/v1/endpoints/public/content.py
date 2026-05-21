@@ -6,7 +6,8 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 
-from app.api.v1.deps import DBDependency
+from app.api.v1.deps import DBDependency, OptionalLocale
+from app.services.translation import merge_translations, translate_single
 from app.models.info_card import (
     EventCard,
     InformationCard,
@@ -34,6 +35,7 @@ router = APIRouter(tags=["public — content"])
 @router.get("/promos/banners", response_model=APIResponse[list[PromoBannerOut]])
 async def list_promo_banners(
     db: DBDependency,
+    locale: OptionalLocale,
     limit: int = Query(20, ge=1, le=100),
 ):
     """List active promo banners for PWA display."""
@@ -52,19 +54,24 @@ async def list_promo_banners(
     )
     result = await db.execute(stmt)
     items = result.scalars().all()
-    return APIResponse(data=[PromoBannerOut.model_validate(i) for i in items])
+    item_dicts = [PromoBannerOut.model_validate(i).model_dump() for i in items]
+    await merge_translations(db, item_dicts, "promo_banners", locale)
+    return APIResponse(data=item_dicts)
 
 
 @router.get("/promos/banners/{banner_id}", response_model=APIResponse[PromoBannerOut])
 async def get_promo_banner(
     db: DBDependency,
+    locale: OptionalLocale,
     banner_id: int,
 ):
     """Get a single promo banner."""
     item = await db.get(PromoBanner, banner_id)
     if not item or not item.is_active:
         raise HTTPException(status_code=404, detail="Banner not found")
-    return APIResponse(data=PromoBannerOut.model_validate(item))
+    item_dict = PromoBannerOut.model_validate(item).model_dump()
+    await translate_single(db, item_dict, "promo_banners", locale)
+    return APIResponse(data=item_dict)
 
 
 @router.get("/promos/banners/{banner_id}/status", response_model=APIResponse[dict])
@@ -84,6 +91,7 @@ async def get_banner_status(
 @router.get("/content/information", response_model=APIResponse[list[InfoCardOut]])
 async def list_information_cards(
     db: DBDependency,
+    locale: OptionalLocale,
     content_type: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
 ):
@@ -105,12 +113,15 @@ async def list_information_cards(
         stmt = stmt.where(InformationCard.content_type == content_type)
     result = await db.execute(stmt)
     items = result.scalars().all()
-    return APIResponse(data=[InfoCardOut.model_validate(i) for i in items])
+    item_dicts = [InfoCardOut.model_validate(i).model_dump() for i in items]
+    await merge_translations(db, item_dicts, "information_cards", locale)
+    return APIResponse(data=item_dicts)
 
 
 @router.get("/content/information/{slug}", response_model=APIResponse[InfoCardOut])
 async def get_information_card(
     db: DBDependency,
+    locale: OptionalLocale,
     slug: str,
 ):
     """Get a single information card by slug."""
@@ -122,7 +133,9 @@ async def get_information_card(
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Information card not found")
-    return APIResponse(data=InfoCardOut.model_validate(item))
+    item_dict = InfoCardOut.model_validate(item).model_dump()
+    await translate_single(db, item_dict, "information_cards", locale)
+    return APIResponse(data=item_dict)
 
 
 # ── Product Cards ──
@@ -130,6 +143,7 @@ async def get_information_card(
 @router.get("/content/products", response_model=APIResponse[list[ProductCardOut]])
 async def list_product_cards(
     db: DBDependency,
+    locale: OptionalLocale,
     limit: int = Query(20, ge=1, le=100),
 ):
     """List active product cards."""
@@ -141,12 +155,15 @@ async def list_product_cards(
     )
     result = await db.execute(stmt)
     items = result.scalars().all()
-    return APIResponse(data=[ProductCardOut.model_validate(i) for i in items])
+    item_dicts = [ProductCardOut.model_validate(i).model_dump() for i in items]
+    await merge_translations(db, item_dicts, "product_cards", locale)
+    return APIResponse(data=item_dicts)
 
 
 @router.get("/content/products/{slug}", response_model=APIResponse[ProductCardOut])
 async def get_product_card(
     db: DBDependency,
+    locale: OptionalLocale,
     slug: str,
 ):
     """Get a single product card by slug."""
@@ -158,7 +175,9 @@ async def get_product_card(
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Product card not found")
-    return APIResponse(data=ProductCardOut.model_validate(item))
+    item_dict = ProductCardOut.model_validate(item).model_dump()
+    await translate_single(db, item_dict, "product_cards", locale)
+    return APIResponse(data=item_dict)
 
 
 # ── Event Cards ──
@@ -166,6 +185,7 @@ async def get_product_card(
 @router.get("/content/events", response_model=APIResponse[list[EventCardOut]])
 async def list_event_cards(
     db: DBDependency,
+    locale: OptionalLocale,
     limit: int = Query(20, ge=1, le=100),
 ):
     """List active event cards."""
@@ -181,12 +201,15 @@ async def list_event_cards(
     )
     result = await db.execute(stmt)
     items = result.scalars().all()
-    return APIResponse(data=[EventCardOut.model_validate(i) for i in items])
+    item_dicts = [EventCardOut.model_validate(i).model_dump() for i in items]
+    await merge_translations(db, item_dicts, "event_cards", locale)
+    return APIResponse(data=item_dicts)
 
 
 @router.get("/content/events/{slug}", response_model=APIResponse[EventCardOut])
 async def get_event_card(
     db: DBDependency,
+    locale: OptionalLocale,
     slug: str,
 ):
     """Get a single event card by slug."""
@@ -198,7 +221,9 @@ async def get_event_card(
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Event card not found")
-    return APIResponse(data=EventCardOut.model_validate(item))
+    item_dict = EventCardOut.model_validate(item).model_dump()
+    await translate_single(db, item_dict, "event_cards", locale)
+    return APIResponse(data=item_dict)
 
 
 # ── Legal / System Pages ──
@@ -206,6 +231,7 @@ async def get_event_card(
 @router.get("/content/legal/{page_key}", response_model=APIResponse[SystemPageOut])
 async def get_legal_page(
     db: DBDependency,
+    locale: OptionalLocale,
     page_key: str,
 ):
     """Get a system page (terms, privacy, about) by page_key."""
@@ -217,7 +243,9 @@ async def get_legal_page(
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Page not found")
-    return APIResponse(data=SystemPageOut.model_validate(item))
+    item_dict = SystemPageOut.model_validate(item).model_dump()
+    await translate_single(db, item_dict, "system_pages", locale)
+    return APIResponse(data=item_dict)
 
 
 # ── Splash Screen ──
@@ -225,6 +253,7 @@ async def get_legal_page(
 @router.get("/splash", response_model=APIResponse[SplashScreenOut | None])
 async def get_active_splash(
     db: DBDependency,
+    locale: OptionalLocale,
 ):
     """Get the currently active splash screen."""
     now = datetime.now(timezone.utc)
@@ -243,7 +272,11 @@ async def get_active_splash(
     )
     result = await db.execute(stmt)
     item = result.scalar_one_or_none()
-    return APIResponse(data=SplashScreenOut.model_validate(item) if item else None)
+    if not item:
+        return APIResponse(data=None)
+    item_dict = SplashScreenOut.model_validate(item).model_dump()
+    await translate_single(db, item_dict, "splash_screens", locale)
+    return APIResponse(data=item_dict)
 
 
 # ── Config Bootstrap ──
@@ -251,6 +284,7 @@ async def get_active_splash(
 @router.get("/config/bootstrap", response_model=APIResponse[dict])
 async def get_config_bootstrap(
     db: DBDependency,
+    locale: OptionalLocale,
 ):
     """Return app config for PWA boot — currency, fees, loyalty tiers, stores list."""
     from app.models.loyalty import LoyaltyTier
@@ -283,29 +317,42 @@ async def get_config_bootstrap(
     delivery_fee = config.get("base_delivery_fee", "0")
     min_order = config.get("minimum_order_amount", "0")
 
+    # Prepare translatable structures
+    tier_dicts = [
+        {"id": t.id, "display_name": t.display_name, "min_points": t.min_lifetime_points, "color": t.color_hex or "#A0783A"}
+        for t in tiers
+    ]
+    store_dicts = [
+        {"id": s.id, "store_name": s.store_name, "slug": s.slug, "address_line_1": s.address_line_1, "city": s.city, "phone_number": s.phone_number, "logo_url": s.logo_url, "latitude": s.latitude, "longitude": s.longitude, "is_active": s.is_active}
+        for s in stores
+    ]
+
+    await merge_translations(db, tier_dicts, "loyalty_tiers", locale)
+    await merge_translations(db, store_dicts, "stores", locale)
+
     return APIResponse(data={
         "currency": currency,
         "currency_symbol": "RM" if currency == "MYR" else "$",
         "delivery_fee": float(delivery_fee) if delivery_fee else 0,
         "minimum_order_amount": float(min_order) if min_order else 0,
         "loyalty_tiers": [
-            {"name": t.display_name, "min_points": t.min_lifetime_points, "color": t.color_hex or "#A0783A"}
-            for t in tiers
+            {"name": t["display_name"], "min_points": t["min_points"], "color": t["color"]}
+            for t in tier_dicts
         ],
         "stores": [
             {
-                "id": s.id,
-                "store_name": s.store_name,
-                "slug": s.slug,
-                "address_line_1": s.address_line_1,
-                "city": s.city,
-                "phone_number": s.phone_number,
-                "logo_url": s.logo_url,
-                "latitude": s.latitude,
-                "longitude": s.longitude,
-                "is_active": s.is_active,
+                "id": s["id"],
+                "store_name": s["store_name"],
+                "slug": s["slug"],
+                "address_line_1": s["address_line_1"],
+                "city": s["city"],
+                "phone_number": s["phone_number"],
+                "logo_url": s["logo_url"],
+                "latitude": s["latitude"],
+                "longitude": s["longitude"],
+                "is_active": s["is_active"],
             }
-            for s in stores
+            for s in store_dicts
         ],
         "features": {
             "wallet_enabled": True,

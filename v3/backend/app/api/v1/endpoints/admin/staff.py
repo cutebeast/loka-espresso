@@ -288,12 +288,19 @@ async def create_shift_flat(db: DBDependency, admin: CurrentAdmin, data: dict):
     profile_result = await db.execute(select(StaffProfile).where(StaffProfile.id == sid, StaffProfile.deleted_at.is_(None)))
     if profile_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Staff not found")
+    from datetime import datetime, date
+    shift_date_raw = data.get("shift_date")
+    shift_date = date.fromisoformat(shift_date_raw) if isinstance(shift_date_raw, str) else shift_date_raw
+    planned_start_raw = data.get("planned_start")
+    planned_end_raw = data.get("planned_end")
+    planned_start = datetime.fromisoformat(planned_start_raw) if isinstance(planned_start_raw, str) else planned_start_raw
+    planned_end = datetime.fromisoformat(planned_end_raw) if isinstance(planned_end_raw, str) else planned_end_raw
     shift = StaffShift(
         store_id=int(data.get("store_id", 0)), staff_id=sid,
         shift_template_id=data.get("shift_template_id"),
-        shift_date=data.get("shift_date"),
-        planned_start=data.get("planned_start") or data.get("shift_date"),
-        planned_end=data.get("planned_end") or data.get("shift_date"),
+        shift_date=shift_date,
+        planned_start=planned_start,
+        planned_end=planned_end,
         status=data.get("status", "scheduled"), notes=data.get("notes"),
     )
     db.add(shift); await db.commit(); await db.refresh(shift)

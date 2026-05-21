@@ -216,7 +216,10 @@ async def auto_translate_text(
         hash=cache_hash,
     )
     db.add(cache_entry)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
     return translated, False
 
 
@@ -395,6 +398,73 @@ async def merge_translations(
                     item[col] = lookup[tid][col]
 
     return items
+
+
+async def translate_single(
+    db: AsyncSession,
+    item: dict,
+    table_name: str,
+    locale: str,
+) -> dict:
+    """Merge translations into a single API response item."""
+    if locale == SOURCE_LOCALE or not item or not item.get("id"):
+        return item
+    await merge_translations(db, [item], table_name, locale)
+    return item
+
+
+async def translate_menu_response(
+    db: AsyncSession,
+    data: dict,
+    locale: str,
+) -> dict:
+    """Merge translations into a public menu response dict.
+
+    The response shape is:
+    {
+      categories: [MenuCategoryOut...],
+      items: [
+        {
+          ...,
+          allergens: [AllergenOut...],
+          modifier_groups: [
+            {..., options: [MenuModifierOptionOut...]}
+          ],
+          variants: [MenuVariantOut...],
+          dietary_tags: [DietaryTagOut...],
+        }
+      ]
+    }
+    """
+    if locale == SOURCE_LOCALE:
+        return data
+
+    # Collect flat lists per entity type
+    categories: list[dict] = list(data.get("categories", []))
+    items: list[dict] = list(data.get("items", []))
+    allergens: list[dict] = []
+    modifier_groups: list[dict] = []
+    modifier_options: list[dict] = []
+    variants: list[dict] = []
+    dietary_tags: list[dict] = []
+
+    for item in items:
+        allergens.extend(item.get("allergens", []))
+        for mg in item.get("modifier_groups", []):
+            modifier_groups.append(mg)
+            modifier_options.extend(mg.get("options", []))
+        variants.extend(item.get("variants", []))
+        dietary_tags.extend(item.get("dietary_tags", []))
+
+    await merge_translations(db, categories, "menu_categories", locale)
+    await merge_translations(db, items, "menu_items", locale)
+    await merge_translations(db, allergens, "allergens", locale)
+    await merge_translations(db, modifier_groups, "menu_modifier_groups", locale)
+    await merge_translations(db, modifier_options, "menu_modifier_options", locale)
+    await merge_translations(db, variants, "menu_variants", locale)
+    await merge_translations(db, dietary_tags, "dietary_tags", locale)
+
+    return data
 
 
 async def get_cache_stats(db: AsyncSession) -> dict:

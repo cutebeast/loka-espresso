@@ -69,6 +69,8 @@ const ALL_FIELDS: { section: string; fields: { key: string; label: string; type?
   { section: "Operations", fields: [
     { key: "pickup_lead_minutes", label: "Pickup Lead (min)", type: "number" },
     { key: "delivery_radius_km", label: "Delivery Radius (km)", type: "number" },
+    { key: "first_order_minutes_after_open", label: "First Order After Open (min)", type: "number" },
+    { key: "last_order_minutes_before_close", label: "Last Order Before Close (min)", type: "number" },
   ]},
   { section: "Media", fields: [
     { key: "logo_url", label: "Logo URL" },
@@ -95,7 +97,7 @@ export default function StoreEditPage() {
 
   // Form data — English source
   const [form, setForm] = useState<Record<string, any>>({});
-  const [hours, setHours] = useState(DAYS.map((_, i) => ({ day_of_week: i, open_time: "08:00", close_time: "22:00", is_closed: false, last_order_time: "" })));
+  const [hours, setHours] = useState(DAYS.map((_, i) => ({ day_of_week: i, open_time: "08:00", close_time: "22:00", is_closed: false, is_24_hours: false, last_order_time: "" })));
 
   // Translations: { "zh:store_name": "value", ... }
   const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -151,7 +153,7 @@ export default function StoreEditPage() {
     setSaving(true);
     try {
       const payload: any = { ...form };
-      ["latitude","longitude","pickup_lead_minutes","delivery_radius_km","position"].forEach(k => {
+      ["latitude","longitude","pickup_lead_minutes","delivery_radius_km","first_order_minutes_after_open","last_order_minutes_before_close","position"].forEach(k => {
         if (payload[k] === "" || payload[k] === undefined) { delete payload[k]; }
         else if (payload[k] !== null) payload[k] = Number(payload[k]);
       });
@@ -326,12 +328,25 @@ export default function StoreEditPage() {
           <div className={sectionClass}>
             <div className={sectionTitle}>Operating Hours</div>
             {hours.map((h, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, opacity: h.is_closed ? 0.5 : 1 }}>
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, opacity: h.is_closed ? 0.5 : 1, flexWrap: "wrap" }}>
                 <span style={{ width: 40, fontSize: 13, fontWeight: 600 }}>{DAYS[i]}</span>
-                <input type="time" value={h.open_time} onChange={e => { const hh = [...hours]; hh[i].open_time = e.target.value; setHours(hh); }} className={inputClass} style={{ width: 120 }} disabled={h.is_closed} />
+                <input type="time" value={h.open_time || "00:00"} onChange={e => { const hh = [...hours]; hh[i].open_time = e.target.value; setHours(hh); }} className={inputClass} style={{ width: 120 }} disabled={h.is_closed || h.is_24_hours} />
                 <span style={{ fontSize: 12 }}>to</span>
-                <input type="time" value={h.close_time} onChange={e => { const hh = [...hours]; hh[i].close_time = e.target.value; setHours(hh); }} className={inputClass} style={{ width: 120 }} disabled={h.is_closed} />
-                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 8 }}><input type="checkbox" checked={h.is_closed} onChange={e => { const hh = [...hours]; hh[i].is_closed = e.target.checked; setHours(hh); }} /> Closed</label>
+                <input type="time" value={h.close_time || "23:59"} onChange={e => { const hh = [...hours]; hh[i].close_time = e.target.value; setHours(hh); }} className={inputClass} style={{ width: 120 }} disabled={h.is_closed || h.is_24_hours} />
+                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}><input type="checkbox" checked={h.is_closed} onChange={e => { const hh = [...hours]; hh[i].is_closed = e.target.checked; setHours(hh); }} /> Closed</label>
+                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}><input type="checkbox" checked={h.is_24_hours} onChange={e => { const hh = [...hours]; hh[i].is_24_hours = e.target.checked; if (e.target.checked) { hh[i].open_time = "00:00"; hh[i].close_time = "23:59"; } setHours(hh); }} /> 24h</label>
+                {!h.is_closed && !h.is_24_hours && (
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}>
+                    <span style={{ color: "var(--color-text-muted)" }}>Last order</span>
+                    <input type="time" value={h.last_order_time || ""} onChange={e => { const hh = [...hours]; hh[i].last_order_time = e.target.value; setHours(hh); }} className={inputClass} style={{ width: 100 }} />
+                  </label>
+                )}
+                {!h.is_closed && h.is_24_hours && (
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}>
+                    <span style={{ color: "var(--color-text-muted)" }}>Last order</span>
+                    <input type="time" value={h.last_order_time || ""} onChange={e => { const hh = [...hours]; hh[i].last_order_time = e.target.value; setHours(hh); }} className={inputClass} style={{ width: 100 }} />
+                  </label>
+                )}
               </div>
             ))}
           </div>

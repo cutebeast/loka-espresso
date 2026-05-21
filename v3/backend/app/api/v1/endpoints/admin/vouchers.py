@@ -5,7 +5,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
-from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
+from app.services.translation import merge_translations, translate_single
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.voucher import (
@@ -196,6 +197,7 @@ async def list_voucher_redemptions(
 async def list_my_vouchers(
     customer: ActiveCustomer,
     db: DBDependency,
+    locale: OptionalLocale,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
@@ -215,6 +217,7 @@ async def list_my_vouchers(
     vouchers = result.scalars().all()
 
     items = []
+    vd_ids = []
     for v in vouchers:
         item = CustomerVoucherOut.model_validate(v).model_dump()
         vd_result = await db.execute(select(VoucherDefinition).where(VoucherDefinition.id == v.voucher_definition_id))
@@ -225,7 +228,30 @@ async def list_my_vouchers(
         item["max_discount"] = float(vd.maximum_discount) if vd else None
         item["voucher_title"] = vd.display_title if vd else None
         item["voucher_image_url"] = vd.image_url if vd else None
+        if vd:
+            vd_ids.append(vd.id)
+            item["_vd_id"] = vd.id
         items.append(item)
+
+    # Translate voucher definitions
+    if vd_ids:
+        vd_dicts = []
+        for item in items:
+            if item.get("_vd_id"):
+                vd_dicts.append({
+                    "id": item["_vd_id"],
+                    "display_title": item.get("voucher_title") or "",
+                    "description": "",
+                    "short_description": "",
+                    "long_description": "",
+                })
+        await merge_translations(db, vd_dicts, "voucher_definitions", locale)
+        # Apply translated titles back
+        vd_lookup = {d["id"]: d for d in vd_dicts}
+        for item in items:
+            vd_id = item.pop("_vd_id", None)
+            if vd_id and vd_id in vd_lookup and vd_lookup[vd_id].get("display_title"):
+                item["voucher_title"] = vd_lookup[vd_id]["display_title"]
 
     return APIResponse(
         data=PaginatedResponse(

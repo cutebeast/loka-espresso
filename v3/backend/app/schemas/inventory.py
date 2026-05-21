@@ -84,8 +84,8 @@ class SupplierBase(BaseSchema):
     store_id: int
     supplier_name: str
     contact_person: str | None = None
-    phone_number: str | None = Field(default=None, alias="phone")
-    email_address: str | None = Field(default=None, alias="email")
+    phone_number: str | None = Field(default=None, validation_alias="phone")
+    email_address: str | None = Field(default=None, validation_alias="email")
     address: str | None = None
     lead_time_days: int = 1
     is_active: bool = True
@@ -101,8 +101,8 @@ class SupplierUpdate(BaseSchema):
     store_id: int | None = None
     supplier_name: str | None = None
     contact_person: str | None = None
-    phone_number: str | None = Field(default=None, alias="phone")
-    email_address: str | None = Field(default=None, alias="email")
+    phone_number: str | None = Field(default=None, validation_alias="phone")
+    email_address: str | None = Field(default=None, validation_alias="email")
     address: str | None = None
     lead_time_days: int | None = None
     is_active: bool | None = None

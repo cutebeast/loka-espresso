@@ -18,6 +18,30 @@ from app.models.staff import StaffProfile
 settings = get_settings()
 security_scheme = HTTPBearer(auto_error=False)
 
+SUPPORTED_LOCALES = {"ms", "zh", "ta", "tr"}
+SOURCE_LOCALE = "en"
+
+
+def get_locale_from_request(request: Request) -> str:
+    """Extract locale from query param or Accept-Language header.
+    Falls back to 'en'. Only allows supported locales."""
+    # 1. Check query param
+    locale = request.query_params.get("locale")
+    if locale and locale in SUPPORTED_LOCALES:
+        return locale
+    # 2. Check Accept-Language header
+    accept_lang = request.headers.get("accept-language", "")
+    if accept_lang:
+        # Parse simple locale codes like "ms", "zh", "ta", "tr"
+        for part in accept_lang.replace(";", ",").split(","):
+            part = part.strip().split("-")[0].lower()
+            if part in SUPPORTED_LOCALES:
+                return part
+    return SOURCE_LOCALE
+
+
+OptionalLocale = Annotated[str, Depends(get_locale_from_request)]
+
 
 def get_staff_store_id_from_request(request: Request) -> int | None:
     """Extract store_id from a staff JWT token in the request headers."""

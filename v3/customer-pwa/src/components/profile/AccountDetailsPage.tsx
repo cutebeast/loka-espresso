@@ -9,6 +9,7 @@ import { resolveAssetUrl } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import DatePicker from '@/components/ui/DatePicker';
 import api from '@/lib/api';
+import { getLocale } from '@/stores/localeStore';
 
 export default function AccountDetailsPage() {
   const { user, setUser } = useAuthStore();
@@ -27,7 +28,7 @@ export default function AccountDetailsPage() {
   const initials = user?.name?.charAt(0)?.toUpperCase() || 'U';
   const avatarUrl = user?.avatar_url ? resolveAssetUrl(user.avatar_url) : null;
   const memberSince = user?.created_at
-    ? new Date(user.created_at).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' })
+    ? new Date(user.created_at).toLocaleDateString(getLocale(), { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
 
   useEffect(() => {

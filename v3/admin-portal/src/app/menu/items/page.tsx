@@ -33,9 +33,9 @@ export default function MenuItemsPage() {
       </div>
       <div className="table-container">
         <table className="data-table">
-          <thead><tr><th>Name</th><th>Code</th><th>Price</th><th>Category</th><th>Tags</th><th>Add-ons</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Code</th><th>Price</th><th>Category</th><th>Tags</th><th>Add-ons</th><th>Recipes</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={8} className="data-table-empty">Loading...</td></tr>
+            {loading ? <tr><td colSpan={9} className="data-table-empty">Loading...</td></tr>
             : filtered.map(item => (
               <tr key={item.id}>
                 <td><div style={{ fontWeight: 600 }}>{item.item_name}</div>{item.description && <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{item.description?.slice(0, 60)}</div>}</td>
@@ -49,6 +49,11 @@ export default function MenuItemsPage() {
                   </div>
                 </td>
                 <td style={{ fontSize: 12 }}>{(item.modifier_groups || []).length ? `${item.modifier_groups.length} groups` : "—"}</td>
+                <td style={{ fontSize: 12 }}>
+                  {(item.recipes || []).length ? (
+                    <span className="badge badge-sm badge-blue">{(item.recipes || []).length} components</span>
+                  ) : "—"}
+                </td>
                 <td><span className={`badge badge-sm ${item.is_available ? "badge-green" : "badge-gray"}`}>{item.is_available ? "Active" : "Inactive"}</span></td>
                 <td>
                   <button onClick={() => router.push(`/menu/items/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}><Edit2 size={14} /></button>

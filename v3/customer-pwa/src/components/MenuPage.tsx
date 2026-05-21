@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Search, X, ArrowLeft, Plus, Coffee, Star, RefreshCw } from 'lucide-react';
+import { Search, X, ArrowLeft, Plus, Coffee, Star, RefreshCw, Crown } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
+import { useWalletStore } from '@/stores/walletStore';
 import api from '@/lib/api';
 import type { MenuItem } from '@/lib/api';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
@@ -28,6 +29,7 @@ export default function MenuPage() {
   } = useUIStore();
 
   const addItem = useCartStore((s) => s.addItem);
+  const customerTierId = useWalletStore((s) => s.tierId);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -110,8 +112,9 @@ export default function MenuPage() {
   const filteredItems = useMemo(() => menuItems.filter((item) => {
     const matchesSearch = !debouncedSearch || item.name.toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchesDietary = !selectedDietaryTag || (item.dietary_tags && item.dietary_tags.some((t: string) => t.toLowerCase() === selectedDietaryTag.toLowerCase()));
-    return matchesSearch && matchesDietary && item.is_available;
-  }), [menuItems, debouncedSearch, selectedDietaryTag]);
+    const hasTierAccess = !item.minimum_tier_id || customerTierId >= item.minimum_tier_id;
+    return matchesSearch && matchesDietary && hasTierAccess && item.is_available;
+  }), [menuItems, debouncedSearch, selectedDietaryTag, customerTierId]);
 
   const availableDietaryTags = useMemo(() => {
     const tags = new Set<string>();
@@ -279,6 +282,11 @@ export default function MenuPage() {
                         {item.is_featured && (
                           <span className="menu-img-badge"><Star color="#C9A84C" size={12} fill="currentColor" /></span>
                         )}
+                        {item.minimum_tier_id && (
+                          <span className="menu-img-badge" style={{ right: 4, top: 4, left: 'auto', background: 'rgba(0,0,0,0.6)', color: '#C9A84C', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}>
+                            <Crown size={10} style={{ display: 'inline', verticalAlign: 'middle' }} /> MEMBERS
+                          </span>
+                        )}
                       </div>
                       <div className="menu-product-info">
                         <div>
@@ -291,6 +299,11 @@ export default function MenuPage() {
                               {item.dietary_tags.map((tag: string) => (
                                 <span key={tag} className={`menu-product-tag ${tag === 'Vegan' || tag === 'Vegetarian' || tag === 'Gluten-Free' || tag === 'Dairy-Free' || tag === 'Sugar-Free' ? 'menu-tag-teal' : tag === 'Hot' || tag === 'Iced' || tag === 'Caffeinated' || tag === 'Decaf' ? 'menu-tag-green' : 'menu-tag-copper'}`}>{tag}</span>
                               ))}
+                            </div>
+                          )}
+                          {item.calories != null && item.calories > 0 && (
+                            <div className="menu-product-calories" style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                              {item.calories} kcal
                             </div>
                           )}
                           {item.allergens && item.allergens.length > 0 && (

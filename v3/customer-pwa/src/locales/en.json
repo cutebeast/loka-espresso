@@ -828,5 +828,131 @@
   },
   "voucher": {
     "showToBarista": "Show this code to the barista"
+  },
+  "events": {
+    "title": "Events",
+    "upcoming": "Upcoming",
+    "attending": "attending",
+    "noEvents": "No upcoming events",
+    "checkBackSoon": "Check back soon for new events",
+    "rsvp": "RSVP",
+    "rsvpSuccess": "RSVP confirmed!",
+    "rsvpError": "Failed to RSVP",
+    "capacityFull": "Event is at full capacity",
+    "alreadyRsvpd": "You have already RSVP'd",
+    "rsvpd": "You're going!",
+    "noDescription": "No description available.",
+    "rsvpTag": "RSVP"
+  },
+  "orders": {
+    "title": "Orders",
+    "autoUpdating": "Auto-updating",
+    "tapToRefresh": "Tap to refresh",
+    "activeOrders": "Active Orders",
+    "pastOrders": "Past Orders",
+    "trackOrder": "Track Order",
+    "reorder": "Reorder",
+    "loadMore": "Load More ({count} more)",
+    "emptyTitle": "No orders yet",
+    "emptySubtitle": "Your order history will appear here",
+    "startOrdering": "Start Ordering",
+    "eta": "Estimated ready in ~{minutes} min",
+    "updatedAt": "Updated {time}",
+    "orderNumber": "Order #{number}",
+    "totalCount": "{count} total",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "outForDelivery": "Out for delivery",
+      "delivered": "Delivered",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "steps": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "outForDelivery": "On the way",
+      "completed": "Completed"
+    }
+  },
+  "reservations": {
+    "bookNow": "Book Now",
+    "confirm": "Confirm Booking",
+    "date": "Date",
+    "emptySubtitle": "Book a table at your favourite store",
+    "emptyTitle": "No reservations yet",
+    "fillRequired": "Please fill all required fields",
+    "newReservation": "New Reservation",
+    "notes": "Notes",
+    "notesPlaceholder": "Any special requests...",
+    "partySize": "Party Size",
+    "store": "Store",
+    "submitFailed": "Failed to create reservation",
+    "time": "Time",
+    "title": "Reservations",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "seated": "Seated",
+      "completed": "Completed",
+      "noShow": "No Show"
+    }
+  },
+  "notifications": {
+    "markAllAsRead": "Mark All as Read",
+    "markingAll": "Marking All",
+    "noNotifications": "No Notifications",
+    "noNotificationsDesc": "You're all caught up!",
+    "retentionNote": "Notifications are automatically cleared after 30 days",
+    "filters": {
+      "all": "All",
+      "order": "Order",
+      "reward": "Reward",
+      "wallet": "Wallet",
+      "loyalty": "Loyalty",
+      "promo": "Promo",
+      "info": "Info"
+    },
+    "dateGroup": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "earlier": "Earlier"
+    }
+  },
+  "menu": {
+    "addPrice": "Add Price",
+    "addQuantity": "Add Quantity",
+    "all": "All",
+    "allergenWarning": "Allergen Warning",
+    "cartItemCount": "Cart Item Count",
+    "clearSearch": "Clear Search",
+    "loadError": "Load Error",
+    "loadErrorToast": "Load Error Toast",
+    "noItemsAvailable": "No Items Available",
+    "noSearchResults": "No Search Results",
+    "options": "Options",
+    "popular": "Popular",
+    "required": "Required",
+    "search": "Search",
+    "searchPlaceholder": "search...",
+    "specialInstructions": "Special Instructions",
+    "specialInstructionsPlaceholder": "special instructions...",
+    "title": "Title",
+    "viewCart": "View Cart",
+    "cup": {
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "regular": "Regular"
+    }
+  },
+  "store": {
+    "closed": "Closed",
+    "open24Hours": "Open 24 Hours"
   }
 }

@@ -11,6 +11,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { AuthStepIndicator } from './AuthStepIndicator';
 import { AuthLangButton } from './AuthLangButton';
 import { useTranslation } from '@/hooks/useTranslation';
+import { getLocale } from '@/stores/localeStore';
 
 interface PhoneInputProps {
   onSubmit: (phone: string) => Promise<void>;
@@ -311,7 +312,7 @@ export function PhoneInput({ onSubmit }: PhoneInputProps) {
                   <div>
                     <div className="legal-updated-label">{t('common.lastUpdated')}</div>
                     <div className="legal-updated-date">
-                      {new Date(legalContent.updated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      {new Date(legalContent.updated_at).toLocaleDateString(getLocale(), { year: 'numeric', month: 'long', day: 'numeric' })}
                     </div>
                   </div>
                 </div>

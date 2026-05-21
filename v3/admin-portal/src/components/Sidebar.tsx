@@ -8,7 +8,7 @@ import {
   ChevronRight, Menu, X, Calendar, Award, Wallet,
   Tag, Gift, FileText, Bell, UserCircle, BarChart3,
   LayoutTemplate, Megaphone, Share2, ClipboardList, ShoppingBag, Grid3X3,
-  Star, Settings, Languages, TrendingUp,
+  Star, Settings, Languages, TrendingUp, Wrench,
 } from "lucide-react";
 import { adminLogout } from "@/lib/api";
 import { useBrand } from "./BrandProvider";
@@ -140,6 +140,7 @@ const navItems: NavItem[] = [
       { label: "Purchase Orders", href: "/inventory/purchase-orders" },
     ],
   },
+  { label: "Equipment", href: "/equipment", icon: Wrench },
   {
     label: "Staff", href: "/staff", icon: Users,
     children: [
@@ -163,6 +164,7 @@ export default function Sidebar() {
     Marketing: pathname.startsWith("/marketing") || pathname.startsWith("/rewards") || pathname.startsWith("/vouchers") || pathname.startsWith("/surveys") || pathname.startsWith("/promotions") || pathname.startsWith("/referrals") || pathname.startsWith("/checkins"),
     Content: pathname.startsWith("/content"),
     Inventory: pathname.startsWith("/inventory"),
+    Equipment: pathname.startsWith("/equipment"),
     Staff: pathname.startsWith("/staff"),
     "Customers List": pathname.startsWith("/customers"),
     Notifications: pathname.startsWith("/notifications"),

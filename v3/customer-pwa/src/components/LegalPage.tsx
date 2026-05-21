@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, Search, ChevronRight, ChevronDown, ChevronUp } fro
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
+import { getLocale } from '@/stores/localeStore';
 
 interface LegalSection {
   heading: string;
@@ -87,7 +88,7 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
 
   const title = content?.title || (key === 'terms' ? 'Terms of Service' : 'Privacy Policy');
   const updatedAt = content?.updated_at
-    ? new Date(content.updated_at).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' })
+    ? new Date(content.updated_at).toLocaleDateString(getLocale(), { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
 
   const filteredIdx = (i: number) => filtered.indexOf(sections[i]);

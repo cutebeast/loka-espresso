@@ -15,41 +15,106 @@ interface TimeSlotPickerProps {
   mode?: 'pickup' | 'delivery';
 }
 
-function parseStoreHours(openingHours: Record<string, string> | undefined, date: Date): { open: number; close: number } {
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayName = days[date.getDay()];
-  const hours = openingHours?.[dayName] || openingHours?.['weekday'] || '';
-  const match = hours.match(/(\d{1,2})(?::(\d{2}))?\s*(?:-|to)\s*(\d{1,2})(?::(\d{2}))?/i);
-  if (match) {
-    const openH = parseInt(match[1]);
-    const closeH = parseInt(match[3]);
-    return { open: openH, close: closeH || 22 };
-  }
-  return { open: 9, close: 22 }; // default
+interface OperatingHour {
+  day_of_week: number;
+  open_time?: string;
+  close_time?: string;
+  is_closed?: boolean;
+  is_24_hours?: boolean;
+  last_order_time?: string;
 }
 
-function generateTimeSlots(leadMinutes: number, baseDate: Date, openingHours?: Record<string, string>, count: number = 8): string[] {
+function parseTimeString(timeStr: string | undefined): { hour: number; minute: number } | null {
+  if (!timeStr) return null;
+  const m = timeStr.match(/(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  return { hour: parseInt(m[1]), minute: parseInt(m[2]) };
+}
+
+function getDayOperatingHours(
+  operatingHours: OperatingHour[] | undefined,
+  date: Date
+): { is24Hours: boolean; isClosed: boolean; openMinutes: number; closeMinutes: number; lastOrderMinutes: number | null } {
+  const dayOfWeek = date.getDay();
+  const h = operatingHours?.find(o => o.day_of_week === dayOfWeek);
+
+  if (!h) {
+    return { is24Hours: false, isClosed: false, openMinutes: 9 * 60, closeMinutes: 22 * 60, lastOrderMinutes: null };
+  }
+
+  if (h.is_closed) {
+    return { is24Hours: false, isClosed: true, openMinutes: 0, closeMinutes: 0, lastOrderMinutes: null };
+  }
+
+  if (h.is_24_hours) {
+    const lot = parseTimeString(h.last_order_time);
+    return {
+      is24Hours: true,
+      isClosed: false,
+      openMinutes: 0,
+      closeMinutes: 24 * 60,
+      lastOrderMinutes: lot ? lot.hour * 60 + lot.minute : null,
+    };
+  }
+
+  const open = parseTimeString(h.open_time);
+  const close = parseTimeString(h.close_time);
+  const lot = parseTimeString(h.last_order_time);
+
+  const openMinutes = open ? open.hour * 60 + open.minute : 9 * 60;
+  let closeMinutes = close ? close.hour * 60 + close.minute : 22 * 60;
+  // Handle overnight (e.g., 22:00 to 02:00)
+  if (closeMinutes <= openMinutes) {
+    closeMinutes += 24 * 60;
+  }
+
+  return {
+    is24Hours: false,
+    isClosed: false,
+    openMinutes,
+    closeMinutes,
+    lastOrderMinutes: lot ? lot.hour * 60 + lot.minute : null,
+  };
+}
+
+function generateTimeSlots(
+  leadMinutes: number,
+  baseDate: Date,
+  operatingHours?: OperatingHour[],
+  firstOrderMinutesAfterOpen: number = 30,
+  lastOrderMinutesBeforeClose: number = 45,
+  count: number = 8
+): string[] {
   const slots: string[] = [];
   const now = new Date();
   const start = new Date(baseDate.getTime());
-  const hours = parseStoreHours(openingHours, baseDate);
+  const hours = getDayOperatingHours(operatingHours, baseDate);
+
+  if (hours.isClosed) {
+    return [];
+  }
+
+  const firstOrderMinutes = hours.openMinutes + firstOrderMinutesAfterOpen;
+  const endMinutes = hours.lastOrderMinutes !== null
+    ? hours.lastOrderMinutes
+    : hours.closeMinutes - lastOrderMinutesBeforeClose;
 
   if (isSameDay(baseDate, now)) {
     start.setTime(now.getTime() + leadMinutes * 60 * 1000);
     start.setMinutes(Math.ceil(start.getMinutes() / 15) * 15, 0, 0);
-    // Don't start before opening + 30 min
-    const minStart = hours.open * 60 + 30;
-    if (start.getHours() * 60 + start.getMinutes() < minStart) {
-      start.setHours(hours.open, 30, 0, 0);
+    // Don't start before opening + buffer
+    if (start.getHours() * 60 + start.getMinutes() < firstOrderMinutes) {
+      start.setHours(Math.floor(firstOrderMinutes / 60), firstOrderMinutes % 60, 0, 0);
     }
   } else {
-    start.setHours(hours.open, 30, 0, 0); // 30 min after opening
+    start.setHours(Math.floor(firstOrderMinutes / 60), firstOrderMinutes % 60, 0, 0);
   }
 
-  const endMinutes = hours.close * 60 - 30; // 30 min before closing
   for (let i = 0; i < count * 4; i++) {
     const slot = new Date(start.getTime() + i * 15 * 60 * 1000);
-    if (slot.getHours() * 60 + slot.getMinutes() > endMinutes) break;
+    const slotMinutes = slot.getHours() * 60 + slot.getMinutes();
+    // For overnight, slotMinutes might wrap; compare using actual time
+    if (slotMinutes > endMinutes && endMinutes >= 0) break;
     slots.push(slot.toISOString());
     if (slots.length >= count) break;
   }
@@ -93,7 +158,13 @@ export default function TimeSlotPicker({ value, onChange, leadMinutes = 15, mode
   const selectedStore = useUIStore(s => s.selectedStore);
   const { t } = useTranslation();
 
-  const slots = useMemo(() => generateTimeSlots(leadMinutes, selectedDate, selectedStore?.opening_hours as Record<string, string> | undefined), [leadMinutes, selectedDate, selectedStore?.opening_hours]);
+  const slots = useMemo(() => generateTimeSlots(
+    leadMinutes,
+    selectedDate,
+    selectedStore?.operating_hours as OperatingHour[] | undefined,
+    selectedStore?.first_order_minutes_after_open ?? 30,
+    selectedStore?.last_order_minutes_before_close ?? 45
+  ), [leadMinutes, selectedDate, selectedStore?.operating_hours, selectedStore?.first_order_minutes_after_open, selectedStore?.last_order_minutes_before_close]);
 
   const hasSlots = slots.length > 0;
 

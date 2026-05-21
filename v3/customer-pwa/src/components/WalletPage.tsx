@@ -19,6 +19,7 @@ import api from '@/lib/api';
 import { formatPrice, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useConfigStore } from '@/stores/configStore';
+import { getLocale } from '@/stores/localeStore';
 
 const TOPUP_LABELS = ['wallet.labelStarter', 'wallet.labelPopular', 'wallet.labelValue', 'wallet.labelPremium'];
 
@@ -218,7 +219,7 @@ export default function WalletPage() {
                     <div className="topup-tx-info">
                       <p className="topup-tx-desc">{tx.description}</p>
                       <p className="topup-tx-date">
-                        {new Date(tx.created_at).toLocaleDateString('en-MY', {
+                        {new Date(tx.created_at).toLocaleDateString(getLocale(), {
                           day: 'numeric',
                           month: 'short',
                           hour: '2-digit',

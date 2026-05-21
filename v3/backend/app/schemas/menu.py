@@ -111,6 +111,7 @@ class MenuItemBase(BaseSchema):
     display_order: int = Field(default=0, ge=0)
     prep_time_minutes: int = Field(default=10, ge=0)
     calories: int | None = Field(None, ge=0)
+    minimum_tier_id: int | None = None
     tax_category_id: int | None = None
 
 
@@ -132,12 +133,14 @@ class MenuItemUpdate(BaseSchema):
     display_order: int | None = Field(None, ge=0)
     prep_time_minutes: int | None = Field(None, ge=0)
     calories: int | None = Field(None, ge=0)
+    minimum_tier_id: int | None = None
     dietary_tags: list[str] | None = None
     tax_category_id: int | None = None
     category_id: int | None = None
     modifier_groups: list[dict] | None = None
     allergen_ids: list[int] | None = None
     dietary_tag_ids: list[int] | None = None
+    recipes: list[dict] | None = None
 
 
 class MenuItemOut(MenuItemBase, TimestampedSchema):
@@ -164,6 +167,7 @@ class MenuItemPublicOut(BaseSchema):
     image_url: str | None
     prep_time_minutes: int
     calories: int | None
+    minimum_tier_id: int | None
     is_available: bool
     is_featured: bool
     is_popular: bool

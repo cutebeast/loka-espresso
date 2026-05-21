@@ -22,6 +22,10 @@ export default function ItemEditPage() {
   const [allergens,setAllergens] = useState<any[]>([]);
   const [dietaryTags,setDietaryTags] = useState<any[]>([]);
   const [taxCategories,setTaxCategories] = useState<any[]>([]);
+  const [loyaltyTiers,setLoyaltyTiers] = useState<any[]>([]);
+  const [stores,setStores] = useState<any[]>([]);
+  const [inventoryItems,setInventoryItems] = useState<any[]>([]);
+  const [recipeStoreId,setRecipeStoreId] = useState<string>("");
   const [uploading,setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -33,6 +37,8 @@ export default function ItemEditPage() {
     try{const d=await api.getRaw<any>("/admin/menu/allergens");setAllergens(raw(d));}catch{}
     try{const d=await api.getRaw<any>("/admin/dietary-tags?per_page=50");setDietaryTags(raw(d));}catch{}
     try{const d=await api.getRaw<any>("/admin/menu/tax-categories");setTaxCategories(raw(d));}catch{}
+    try{const d=await api.getRaw<any>("/admin/loyalty/tiers");setLoyaltyTiers(raw(d));}catch{}
+    try{const d=await api.getRaw<any>("/admin/stores?per_page=50");setStores(raw(d));}catch{}
   };
 
   const loadItem = async () => {
@@ -46,7 +52,10 @@ export default function ItemEditPage() {
         allergen_ids:(d.allergens||[]).map((a:any)=>a.id),
         dietary_tag_ids:(d.dietary_tags||[]).map((t:any)=>t.id||t.dietary_tag_id),
         is_available:d.is_available, is_featured:d.is_featured,
+        calories:d.calories??"", prep_time_minutes:d.prep_time_minutes??10,
+        minimum_tier_id:d.minimum_tier_id??"",
         modifier_groups:d.modifier_groups||[], image_url:d.image_url||"",
+        recipes:d.recipes||[],
       });
       // Load translations
       const x:Record<string,string>={};
@@ -83,6 +92,15 @@ export default function ItemEditPage() {
   const updateOpt = (gi:number, oi:number, p:any) => { const g=[...(form.modifier_groups||[])]; g[gi].options[oi]={...g[gi].options[oi],...p}; setForm({...form,modifier_groups:g}); };
   const removeOpt = (gi:number, oi:number) => { const g=[...(form.modifier_groups||[])]; g[gi].options=g[gi].options.filter((_:any,j:number)=>j!==oi); setForm({...form,modifier_groups:g}); };
 
+  const loadInventoryForStore = async (storeId:string) => {
+    if(!storeId)return;
+    try{const d=await api.getRaw<any>(`/admin/inventory/items?store_id=${storeId}&per_page=200`);setInventoryItems(Array.isArray(d)?d:(d.items||[]));}catch{setInventoryItems([]);}
+  };
+
+  const addRecipe = () => setForm({...form, recipes: [...(form.recipes||[]), {inventory_item_id:"",quantity_required:1,unit_of_measure:"unit",waste_factor:0.05,is_primary_component:false}]});
+  const updateRecipe = (i:number, p:any) => { const r=[...(form.recipes||[])]; r[i]={...r[i],...p}; setForm({...form,recipes:r}); };
+  const removeRecipe = (i:number) => setForm({...form, recipes: (form.recipes||[]).filter((_:any,j:number)=>j!==i)});
+
   const save = async () => {
     setSaving(true);
     try {
@@ -90,6 +108,9 @@ export default function ItemEditPage() {
       pl.base_price = Number(pl.base_price)||0;
       pl.category_id = Number(pl.category_id)||null;
       pl.tax_category_id = Number(pl.tax_category_id)||null;
+      pl.calories = pl.calories ? Number(pl.calories) : null;
+      pl.prep_time_minutes = Number(pl.prep_time_minutes) || 10;
+      pl.minimum_tier_id = pl.minimum_tier_id ? Number(pl.minimum_tier_id) : null;
       await api.patch(`/admin/menu/items/${id}`, pl);
       setMsg("Saved"); setTimeout(()=>setMsg(""),2000);
     } catch {} finally { setSaving(false); }
@@ -134,10 +155,48 @@ export default function ItemEditPage() {
             <div className="df-field" style={{gridColumn:"1/-1"}}><label className="form-label">Image</label><div style={{display:"flex",gap:8,alignItems:"center"}}><input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} style={{display:"none"}}/><button type="button" onClick={()=>fileRef.current?.click()} className="btn btn-sm btn-outline" disabled={uploading}><Upload size={14}/>{uploading?"Uploading...":"Upload Image"}</button>{form.image_url&&<span style={{fontSize:12,color:"var(--color-success)"}}>✓ {form.image_url.split("/").pop()}</span>}</div></div>
             <div className="df-field" style={{gridColumn:"1/-1"}}><label className="form-label">Allergens</label><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{allergens.map((a:any)=><Chip key={a.id} label={a.display_name} active={form.allergen_ids?.includes(a.id)} onClick={()=>toggleTag("allergen",a.id)}/>)}</div></div>
             <div className="df-field" style={{gridColumn:"1/-1"}}><label className="form-label">Dietary Tags</label><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{dietaryTags.map((t:any)=><Chip key={t.id} label={t.display_name} icon={t.icon} active={form.dietary_tag_ids?.includes(t.id)} onClick={()=>toggleTag("dietary",t.id)}/>)}</div></div>
+            <div className="df-field"><label className="form-label">Calories</label><input type="number" min="0" className="w-full border rounded px-3 py-2 text-sm" value={form.calories??""} onChange={e=>setForm({...form,calories:e.target.value})} placeholder="e.g. 250"/></div>
+            <div className="df-field"><label className="form-label">Prep Time (min)</label><input type="number" min="1" className="w-full border rounded px-3 py-2 text-sm" value={form.prep_time_minutes??""} onChange={e=>setForm({...form,prep_time_minutes:e.target.value})}/></div>
+            <div className="df-field">
+              <label className="form-label">Minimum Tier</label>
+              <select className="w-full border rounded px-3 py-2 text-sm" value={form.minimum_tier_id??""} onChange={e=>setForm({...form,minimum_tier_id:e.target.value})}>
+                <option value="">— No Restriction —</option>
+                {loyaltyTiers.map((t:any) => <option key={t.id} value={t.id}>{t.display_name}</option>)}
+              </select>
+            </div>
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={!!form.is_available} onChange={e=>setForm({...form,is_available:e.target.checked})}/>Available</label></div>
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={!!form.is_featured} onChange={e=>setForm({...form,is_featured:e.target.checked})}/>Featured</label></div>
             <div className="df-field" style={{gridColumn:"1/-1"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><label className="form-label" style={{margin:0}}>Add-ons / Modifiers</label><button type="button" onClick={addGroup} className="btn btn-sm btn-outline"><Plus size={14}/>Add</button></div>
               {(form.modifier_groups||[]).map((g:any,gi:number)=>(<div key={gi} style={{background:"var(--color-bg-muted)",borderRadius:"var(--radius-md)",padding:12,marginBottom:12,border:"1px solid var(--color-border-light)"}}><div style={{display:"flex",gap:8,marginBottom:8}}><input placeholder="Group name" value={g.group_name} onChange={e=>updateGroup(gi,{group_name:e.target.value})} style={{flex:1}}/><select value={g.selection_type} onChange={e=>updateGroup(gi,{selection_type:e.target.value})} style={{width:100}}><option value="single">Single</option><option value="multiple">Multiple</option></select><label style={{fontSize:12,display:"flex",alignItems:"center",gap:4}}><input type="checkbox" checked={g.is_required} onChange={e=>updateGroup(gi,{is_required:e.target.checked})}/>Req</label><button type="button" onClick={()=>removeGroup(gi)} className="btn btn-icon btn-ghost" style={{color:"var(--color-error)"}}><Trash2 size={14}/></button></div>{g.options.map((o:any,oi:number)=>(<div key={oi} style={{display:"flex",gap:6,marginBottom:4,paddingLeft:8}}><input placeholder="Option" value={o.option_name} onChange={e=>updateOpt(gi,oi,{option_name:e.target.value})} style={{flex:1}}/><span style={{fontSize:12,color:"var(--color-text-muted)"}}>+RM</span><input type="number" step="0.5" value={o.price_adjustment} onChange={e=>updateOpt(gi,oi,{price_adjustment:Number(e.target.value)})} style={{width:70}}/><button type="button" onClick={()=>removeOpt(gi,oi)} className="btn btn-ghost btn-sm" style={{color:"var(--color-error)"}}>✕</button></div>))}<button type="button" onClick={()=>addOpt(gi)} className="btn btn-ghost btn-sm" style={{fontSize:12,paddingLeft:8}}>+ Add Option</button></div>))}</div>
+            {/* Recipe / Inventory Bridge */}
+            <div className="df-field" style={{gridColumn:"1/-1"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <label className="form-label" style={{margin:0}}>Recipe / Inventory Components</label>
+                <button type="button" onClick={addRecipe} className="btn btn-sm btn-outline"><Plus size={14}/>Add Component</button>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
+                <select className="w-full border rounded px-3 py-2 text-sm" style={{maxWidth:220}} value={recipeStoreId} onChange={e=>{setRecipeStoreId(e.target.value);loadInventoryForStore(e.target.value);}}>
+                  <option value="">— Select Store —</option>
+                  {stores.map((s:any)=><option key={s.id} value={s.id}>{s.store_name}</option>)}
+                </select>
+                <span style={{fontSize:11,color:"var(--color-text-muted)"}}>Pick a store to load its inventory</span>
+              </div>
+              {(form.recipes||[]).map((rc:any,ri:number)=>(
+                <div key={ri} style={{background:"var(--color-bg-muted)",borderRadius:"var(--radius-md)",padding:12,marginBottom:10,border:"1px solid var(--color-border-light)"}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                    <select className="border rounded px-2 py-1 text-sm" style={{flex:1,minWidth:180}} value={rc.inventory_item_id||""} onChange={e=>updateRecipe(ri,{inventory_item_id:Number(e.target.value)})}>
+                      <option value="">— Inventory Item —</option>
+                      {inventoryItems.map((inv:any)=><option key={inv.id} value={inv.id}>{inv.item_name} ({inv.unit_of_measure})</option>)}
+                    </select>
+                    <input type="number" step="0.01" placeholder="Qty" className="border rounded px-2 py-1 text-sm" style={{width:70}} value={rc.quantity_required} onChange={e=>updateRecipe(ri,{quantity_required:Number(e.target.value)})} />
+                    <input placeholder="UOM" className="border rounded px-2 py-1 text-sm" style={{width:80}} value={rc.unit_of_measure||""} onChange={e=>updateRecipe(ri,{unit_of_measure:e.target.value})} />
+                    <input type="number" step="0.01" min="0" max="1" placeholder="Waste" className="border rounded px-2 py-1 text-sm" style={{width:70}} value={rc.waste_factor} onChange={e=>updateRecipe(ri,{waste_factor:Number(e.target.value)})} />
+                    <label style={{fontSize:12,display:"flex",alignItems:"center",gap:4}}><input type="checkbox" checked={rc.is_primary_component} onChange={e=>updateRecipe(ri,{is_primary_component:e.target.checked})}/>Primary</label>
+                    <button type="button" onClick={()=>removeRecipe(ri)} className="btn btn-icon btn-ghost" style={{color:"var(--color-error)"}}><Trash2 size={14}/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="df-actions" style={{marginTop:16}}><button type="button" onClick={()=>r.push("/menu/items")} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16}/>{saving?"Saving...":"Save Changes"}</button></div>
         </div>

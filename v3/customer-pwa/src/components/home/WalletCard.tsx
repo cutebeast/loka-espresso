@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ChevronRight, Wallet, Crown, Award, Gift, Ticket } from 'lucide-react';
 import { useFitText } from '@/hooks/useFitText';
+import { getLocale } from '@/stores/localeStore';
 
 interface WalletCardProps {
   isGuest: boolean;
@@ -18,14 +19,14 @@ interface WalletCardProps {
 }
 
 function formatRM(value: number): string {
-  return value.toLocaleString('en-MY', {
+  return value.toLocaleString(getLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
 
 function formatPoints(value: number): string {
-  return value.toLocaleString('en-MY');
+  return value.toLocaleString(getLocale());
 }
 
 export default function WalletCard({ isGuest, isAuthenticated, balance, points, tier, onTopUp, onRewards, onVouchers, onSignIn }: WalletCardProps) {

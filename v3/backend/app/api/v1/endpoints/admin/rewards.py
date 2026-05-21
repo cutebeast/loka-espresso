@@ -6,7 +6,8 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
-from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
+from app.services.translation import merge_translations, translate_single
 from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount
 from app.models.reward import CustomerReward, RewardCatalog
@@ -44,6 +45,7 @@ async def _get_reward_or_404(db, reward_id: int) -> RewardCatalog:
 async def list_rewards(
     db: DBDependency,
     admin: CurrentAdmin,
+    locale: OptionalLocale,
     is_active: bool | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -61,11 +63,12 @@ async def list_rewards(
 
     stmt = base_stmt.order_by(RewardCatalog.id.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
-    items = [RewardCatalogOut.model_validate(r) for r in result.scalars().all()]
+    item_dicts = [RewardCatalogOut.model_validate(r).model_dump() for r in result.scalars().all()]
+    await merge_translations(db, item_dicts, "reward_catalog", locale)
 
     return APIResponse(
         data=PaginatedResponse(
-            items=items,
+            items=item_dicts,
             total=total,
             page=page,
             per_page=per_page,
@@ -199,6 +202,7 @@ async def list_reward_redemptions(
 async def list_reward_catalog(
     customer: ActiveCustomer,
     db: DBDependency,
+    locale: OptionalLocale,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):

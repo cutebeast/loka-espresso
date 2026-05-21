@@ -21,7 +21,7 @@ export default function PurchaseOrdersPage() {
 
   const fetchData = useCallback(() => { setLoading(true);
     getPurchaseOrders({ status: statusFilter || undefined, store_id: storeId || undefined }).then(d => setItems(d)).catch(e => setError(e.message)).finally(() => setLoading(false));
-  }, []);
+  }, [statusFilter, storeId]);
 
   useEffect(() => {(async () => {
  fetchData(); 

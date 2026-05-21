@@ -6,7 +6,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
-from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
+from app.services.translation import translate_single
 from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.services.translation import auto_translate_record, delete_translations
@@ -219,7 +220,14 @@ async def get_loyalty_account(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
         )
-    return APIResponse(data=_serialize_account(account))
+    data = _serialize_account(account)
+    # Translate tier name if a tier is loaded
+    if account.current_tier_id:
+        tier_dict = {"id": account.current_tier_id, "display_name": data.tier_name or ""}
+        await translate_single(db, tier_dict, "loyalty_tiers", locale)
+        # Rebuild with translated tier name
+        data = data.model_copy(update={"tier_name": tier_dict.get("display_name", data.tier_name)})
+    return APIResponse(data=data)
 
 
 # ---------------------------------------------------------------------------
@@ -331,6 +339,7 @@ async def get_ledger_entry(
 async def get_my_loyalty_account(
     db: DBDependency,
     customer: ActiveCustomer,
+    locale: OptionalLocale,
 ):
     """Get current customer's loyalty account. Auto-creates if not found."""
     from sqlalchemy.orm import selectinload

@@ -5,7 +5,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
-from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
+from app.services.translation import merge_translations, translate_single
 from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount, LoyaltyTier
 from app.models.notification import (
@@ -394,6 +395,7 @@ async def get_notification(
 async def list_my_notifications(
     customer: ActiveCustomer,
     db: DBDependency,
+    locale: OptionalLocale,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
@@ -412,7 +414,8 @@ async def list_my_notifications(
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    items = [NotificationMessageOut.model_validate(n) for n in result.scalars().all()]
+    item_dicts = [NotificationMessageOut.model_validate(n).model_dump() for n in result.scalars().all()]
+    await merge_translations(db, item_dicts, "notification_messages", locale)
 
     return APIResponse(
         data=PaginatedResponse(

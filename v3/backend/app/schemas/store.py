@@ -13,6 +13,8 @@ class StoreOperatingHoursBase(BaseSchema):
     open_time: time
     close_time: time
     is_closed: bool = False
+    is_24_hours: bool = False
+    last_order_time: time | None = None
 
 
 class StoreOperatingHoursOut(StoreOperatingHoursBase, TimestampedSchema):
@@ -66,6 +68,8 @@ class StoreBase(BaseSchema):
     banner_image_url: str | None = Field(None, max_length=500)
     pickup_lead_minutes: int = Field(default=15, ge=0)
     delivery_radius_km: float = Field(default=10.0, ge=0)
+    first_order_minutes_after_open: int = Field(default=30, ge=0)
+    last_order_minutes_before_close: int = Field(default=45, ge=0)
     is_active: bool = True
     is_accepting_orders: bool = True
     position: int = Field(default=0, ge=0)
@@ -96,6 +100,8 @@ class StoreUpdate(BaseSchema):
     banner_image_url: str | None = Field(None, max_length=500)
     pickup_lead_minutes: int | None = Field(None, ge=0)
     delivery_radius_km: float | None = Field(None, ge=0)
+    first_order_minutes_after_open: int | None = Field(None, ge=0)
+    last_order_minutes_before_close: int | None = Field(None, ge=0)
     is_active: bool | None = None
     is_accepting_orders: bool | None = None
     position: int | None = Field(None, ge=0)
@@ -104,6 +110,7 @@ class StoreUpdate(BaseSchema):
 
 class StoreOut(StoreBase, TimestampedSchema):
     id: int
+    operating_hours: list[dict] | None = None
 
 
 class StorePublicOut(BaseSchema):
@@ -130,6 +137,8 @@ class StorePublicOut(BaseSchema):
     banner_image_url: str | None
     pickup_lead_minutes: int
     delivery_radius_km: float
+    first_order_minutes_after_open: int
+    last_order_minutes_before_close: int
     is_active: bool
     is_accepting_orders: bool
     operating_hours: list[StoreOperatingHoursOut] = []

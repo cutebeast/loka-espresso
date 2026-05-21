@@ -29,7 +29,7 @@
     "saving": "சேமிப்பு…",
     "apply": "விண்ணப்பிக்கவும்",
     "share": "பகிரவும்",
-    "processing": "செயலாக்கம்…",
+    "processing": "செயலாக்குகிறது...",
     "addToHomeScreen": "முகப்புத் திரையில் சேர்",
     "allCountries": "அனைத்து நாடுகளும்",
     "and": "மற்றும்",
@@ -64,7 +64,6 @@
     "currencySymbol": "RM",
     "pointsAbbr": "ptகள்",
     "stepCount": "படி {current} / {total}",
-    "processing": "செயலாக்குகிறது...",
     "promotion": "விளம்பரம்",
     "each": "ஒவ்வொன்றும்"
   },
@@ -269,7 +268,15 @@
     },
     "updatedAt": "புதுப்பிக்கப்பட்டது {time}",
     "orderNumber": "ஆணை #{number}",
-    "totalCount": "{count} மொத்தம்"
+    "totalCount": "{count} மொத்தம்",
+    "steps": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "outForDelivery": "On the way",
+      "completed": "Completed"
+    }
   },
   "profile": {
     "title": "சுயவிவரம்",
@@ -559,7 +566,13 @@
     "specialInstructions": "சிறப்பு அறிவுறுத்தல்கள்",
     "specialInstructionsPlaceholder": "சிறப்பு அறிவுறுத்தல்கள்...",
     "title": "தலைப்பு",
-    "viewCart": "கூடையைப் பார்"
+    "viewCart": "கூடையைப் பார்",
+    "cup": {
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "regular": "Regular"
+    }
   },
   "notifications": {
     "markAllAsRead": "அனைத்தையும் படித்ததாகக் குறியிடவும்",
@@ -573,7 +586,21 @@
       "justNow": "இப்போதுதான்",
       "minutes": "{minutes} நிமி. முன்பு"
     },
-    "title": "தலைப்பு"
+    "title": "தலைப்பு",
+    "filters": {
+      "all": "All",
+      "order": "Order",
+      "reward": "Reward",
+      "wallet": "Wallet",
+      "loyalty": "Loyalty",
+      "promo": "Promo",
+      "info": "Info"
+    },
+    "dateGroup": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "earlier": "Earlier"
+    }
   },
   "paymentMethods": {
     "active": "செயல்படும்",
@@ -792,5 +819,34 @@
     "results_other": "{count} முடிவுகள்",
     "searchPlaceholder": "பெயர் அல்லது பகுதி மூலம் தேடுங்கள்",
     "title": "உங்கள் லோகத்தைத் தேர்ந்தெடுக்கவும்"
+  },
+  "events": {
+    "title": "Events",
+    "upcoming": "Upcoming",
+    "attending": "attending",
+    "noEvents": "No upcoming events",
+    "checkBackSoon": "Check back soon for new events",
+    "rsvp": "RSVP",
+    "rsvpSuccess": "RSVP confirmed!",
+    "rsvpError": "Failed to RSVP",
+    "capacityFull": "Event is at full capacity",
+    "alreadyRsvpd": "You have already RSVP'd",
+    "rsvpd": "You're going!",
+    "noDescription": "No description available.",
+    "rsvpTag": "RSVP"
+  },
+  "reservations": {
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "seated": "Seated",
+      "completed": "Completed",
+      "noShow": "No Show"
+    }
+  },
+  "store": {
+    "closed": "Closed",
+    "open24Hours": "Open 24 Hours"
   }
 }

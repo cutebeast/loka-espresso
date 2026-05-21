@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Bell, Package, Gift, Wallet, Star, Info, Calendar, X } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { getLocale } from '@/stores/localeStore';
 import api from '@/lib/api';
 
 interface Notification {
@@ -55,7 +56,7 @@ function timeAgo(dateStr: string | undefined, t: (key: string, options?: Record<
   if (hrs < 24) return t('notifications.timeAgo.hours', { hours: hrs });
   const days = Math.floor(hrs / 24);
   if (days < 7) return t('notifications.timeAgo.days', { days });
-  return new Date(dateStr).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
+  return new Date(dateStr).toLocaleDateString(getLocale(), { day: 'numeric', month: 'short' });
 }
 
 function getDateGroup(dateStr?: string): string {

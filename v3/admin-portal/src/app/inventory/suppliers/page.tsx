@@ -20,7 +20,7 @@ export default function InventorySuppliersPage() {
     try { const d = await api.getRaw<any>("/admin/stores?per_page=50"); const list = d.items || []; setStores(list); if (!storeId && list.length > 0) setStoreId(String(list[0].id)); }
     catch {}
   };
-  const fetchData = useCallback(async () => { if (!storeId) return; setLoading(true);
+  const fetchData = useCallback(async () => { if (!storeId) { setLoading(false); return; } setLoading(true);
     try { const d = await api.getRaw<any>(`/admin/inventory/suppliers?store_id=${storeId}`); setItems(Array.isArray(d) ? d : (d.items||[])); }
     catch (e: any) { setError(e.message); } finally { setLoading(false); }
   }, [storeId]);
