@@ -39,7 +39,7 @@ async def list_terminals(
     q = q.order_by(PosTerminal.display_order.asc() if hasattr(PosTerminal, "display_order") else PosTerminal.name.asc())
     result = await db.execute(q)
     items = result.scalars().all()
-    return {"data": [PosTerminalOut.model_validate(t) for t in items]}
+    return APIResponse(data=[PosTerminalOut.model_validate(t) for t in items])
 
 
 @router.post("/terminals", response_model=APIResponse, status_code=status.HTTP_201_CREATED)
@@ -55,7 +55,7 @@ async def create_terminal(
     db.add(terminal)
     await db.commit()
     await db.refresh(terminal)
-    return {"data": PosTerminalOut.model_validate(terminal)}
+    return APIResponse(data=PosTerminalOut.model_validate(terminal))
 
 
 @router.patch("/terminals/{terminal_id}", response_model=APIResponse)
@@ -72,7 +72,7 @@ async def update_terminal(
         setattr(terminal, field, value)
     await db.commit()
     await db.refresh(terminal)
-    return {"data": PosTerminalOut.model_validate(terminal)}
+    return APIResponse(data=PosTerminalOut.model_validate(terminal))
 
 
 @router.delete("/terminals/{terminal_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -111,7 +111,7 @@ async def list_sessions(
     q = q.order_by(PosSession.opened_at.desc())
     result = await db.execute(q)
     items = result.scalars().all()
-    return {"data": [PosSessionOut.model_validate(s) for s in items]}
+    return APIResponse(data=[PosSessionOut.model_validate(s) for s in items])
 
 
 @router.post("/sessions", response_model=APIResponse, status_code=status.HTTP_201_CREATED)
@@ -134,7 +134,7 @@ async def open_session(
     db.add(session)
     await db.commit()
     await db.refresh(session)
-    return {"data": PosSessionOut.model_validate(session)}
+    return APIResponse(data=PosSessionOut.model_validate(session))
 
 
 @router.post("/sessions/{session_id}/close", response_model=APIResponse)
@@ -159,7 +159,7 @@ async def close_session(
 
     await db.commit()
     await db.refresh(session)
-    return {"data": PosSessionOut.model_validate(session)}
+    return APIResponse(data=PosSessionOut.model_validate(session))
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +183,7 @@ async def list_modifications(
     q = q.order_by(OrderModificationLog.created_at.desc()).limit(limit).offset(offset)
     result = await db.execute(q)
     items = result.scalars().all()
-    return {"data": [OrderModificationLogOut.model_validate(m) for m in items]}
+    return APIResponse(data=[OrderModificationLogOut.model_validate(m) for m in items])
 
 
 @router.post("/order-modifications", response_model=APIResponse, status_code=status.HTTP_201_CREATED)
@@ -196,4 +196,4 @@ async def create_modification(
     db.add(log)
     await db.commit()
     await db.refresh(log)
-    return {"data": OrderModificationLogOut.model_validate(log)}
+    return APIResponse(data=OrderModificationLogOut.model_validate(log))

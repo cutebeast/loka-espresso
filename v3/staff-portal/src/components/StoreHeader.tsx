@@ -1,6 +1,7 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { staffLogout } from "@/lib/api";
 import { Store, LogOut, Shield } from "lucide-react";
 
 export default function StoreHeader() {
@@ -11,14 +12,7 @@ export default function StoreHeader() {
   const staffName = typeof window !== "undefined" ? localStorage.getItem("staffName") || "" : "";
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("staffName");
-    localStorage.removeItem("staffEmail");
-    localStorage.removeItem("staffStoreId");
-    localStorage.removeItem("staffProfile");
-    localStorage.removeItem("staffId");
-    localStorage.removeItem("isAdmin");
+    staffLogout();
     router.replace("/login");
   };
 

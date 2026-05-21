@@ -72,3 +72,35 @@ class StaffShiftOut(StaffShiftBase, TimestampedSchema):
 
 class StaffProfileDetailOut(StaffProfileOut):
     shifts: list[StaffShiftOut] = []
+
+
+# ── Staff Auth Requests ──
+
+class StaffLoginRequest(BaseSchema):
+    email: str | None = None
+    password: str | None = None
+    display_name: str | None = None
+    store_id: int | None = None
+
+
+class StaffRefreshRequest(BaseSchema):
+    refresh_token: str
+
+
+class StaffAdminStoreRequest(BaseSchema):
+    token: str
+    store_id: int
+
+
+class StaffPinVerifyRequest(BaseSchema):
+    pin: str
+
+
+class StaffChangePasswordRequest(BaseSchema):
+    current_password: str
+    new_password: str
+
+
+class StaffChangePinRequest(BaseSchema):
+    current_pin: str
+    new_pin: str

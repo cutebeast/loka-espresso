@@ -22,12 +22,8 @@ api.interceptors.request.use((config) => {
 });
 
 // Store-scoped helper: extracts store_id from UI state for menu/category calls
-let _getStoreId: (() => number | null) = () => {
-  try {
-    const { useUIStore } = require('@/stores/uiStore');
-    return useUIStore.getState()?.selectedStore?.id ?? null;
-  } catch { return null; }
-};
+// The getter is set by the app shell once the store is initialized.
+let _getStoreId: (() => number | null) = () => null;
 export function setStoreIdGetter(fn: () => number | null) { _getStoreId = fn; }
 
 // URL mapping: old v1 endpoints → v3 endpoints

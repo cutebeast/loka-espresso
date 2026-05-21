@@ -38,8 +38,15 @@ async def list_categories(
     db: DBDependency,
     admin: CurrentAdmin,
     store_id: int = Query(...),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
 ):
     """List inventory categories for a store."""
+    total_result = await db.execute(
+        select(func.count(InventoryCategory.id))
+        .where(InventoryCategory.store_id == store_id, InventoryCategory.deleted_at.is_(None))
+    )
+    total = total_result.scalar() or 0
     result = await db.execute(
         select(InventoryCategory)
         .where(
@@ -47,10 +54,16 @@ async def list_categories(
             InventoryCategory.deleted_at.is_(None),
         )
         .order_by(InventoryCategory.display_order)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
     categories = result.scalars().all()
     return APIResponse(
-        data=[InventoryCategoryOut.model_validate(c) for c in categories]
+        data=PaginatedResponse(
+            items=[InventoryCategoryOut.model_validate(c) for c in categories],
+            total=total, page=page, per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
     )
 
 

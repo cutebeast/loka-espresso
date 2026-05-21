@@ -40,7 +40,7 @@ export default function ReportsPage() {
       });
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
-  }, []);
+  }, [selectedStore, dateFrom, dateTo, stores.length]);
 
   useEffect(() => { (async () => { await fetchData(); })(); }, [fetchData]);
 

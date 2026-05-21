@@ -375,13 +375,18 @@ async def stripe_webhook(
     request: Request,
 ):
     """Stripe webhook handler."""
+    sig_header = request.headers.get("Stripe-Signature")
+    if not sig_header:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Stripe-Signature header")
+
+    # TODO: Install stripe SDK and verify signature via stripe.webhook.construct_event()
+    # using settings.webhook_signing_secret when stripe package is available.
+
     try:
         payload = await request.json()
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
 
-    # Signature verification would happen here if stripe SDK were available.
-    # We accept the payload and process it.
     try:
         payment = await process_webhook_event(db, "stripe", payload)
     except PaymentError as exc:
@@ -396,6 +401,12 @@ async def grabpay_webhook(
     request: Request,
 ):
     """GrabPay webhook handler."""
+    sig_header = request.headers.get("X-GrabPay-Signature") or request.headers.get("Authorization")
+    if not sig_header:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing GrabPay signature header")
+
+    # TODO: Verify HMAC signature using settings.webhook_signing_secret
+
     try:
         payload = await request.json()
     except Exception as exc:

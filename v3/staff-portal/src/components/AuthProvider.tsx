@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import StoreHeader from "@/components/StoreHeader";
+import { staffLogout } from "@/lib/api";
 
 function parseJwtExp(token: string): number | null {
   try {
@@ -37,17 +38,6 @@ async function refreshToken(): Promise<boolean> {
     console.error("Token refresh failed:", e);
     return false;
   }
-}
-
-function clearSession() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("staffEmail");
-  localStorage.removeItem("staffName");
-  localStorage.removeItem("staffStoreId");
-  localStorage.removeItem("staffProfile");
-  localStorage.removeItem("staffId");
-  localStorage.removeItem("isAdmin");
 }
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -88,7 +78,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     const logoutIdle = () => {
-      clearSession();
+      staffLogout();
       router.replace("/login");
     };
 
@@ -122,7 +112,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
       if (!token || !storeId) {
         if (!cancelled) {
-          clearSession();
+          staffLogout();
           router.replace("/login");
         }
         return;
@@ -135,7 +125,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         const refreshed = await refreshToken();
         if (!refreshed) {
           if (!cancelled) {
-            clearSession();
+            staffLogout();
             router.replace("/login");
           }
           return;
@@ -160,14 +150,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             });
             if (cancelled) return;
             if (retry.status === 401 || retry.status === 403) {
-              clearSession();
+              staffLogout();
               router.replace("/login");
               return;
             }
             setChecked(true);
             return;
           }
-          clearSession();
+          staffLogout();
           router.replace("/login");
           return;
         }
@@ -176,7 +166,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           setForbidden(true);
           redirectTimer = setTimeout(() => {
             if (!cancelled) {
-              clearSession();
+              staffLogout();
               router.replace("/login");
             }
           }, 3000);

@@ -117,7 +117,7 @@ async def create_notification(
     notif = AdminNotification(**data.model_dump(), created_by=admin.id)
     db.add(notif)
     await db.commit()
-    await auto_translate_record(db, "notification_messages", notif.id, {"title": notif.title or "", "body": notif.body or ""})
+    await auto_translate_record(db, "admin_notifications", notif.id, {"title": notif.title or "", "body": notif.body or ""})
     await db.refresh(notif)
     return APIResponse(data=AdminNotificationOut.model_validate(notif))
 
@@ -154,7 +154,7 @@ async def update_notification(
         setattr(notif, field, value)
     notif.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    await auto_translate_record(db, "notification_messages", notif.id, {"title": notif.title or "", "body": notif.body or ""})
+    await auto_translate_record(db, "admin_notifications", notif.id, {"title": notif.title or "", "body": notif.body or ""})
     await db.refresh(notif)
     return APIResponse(data=AdminNotificationOut.model_validate(notif))
 
@@ -172,7 +172,7 @@ async def delete_notification(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
     await db.delete(notif)
     await db.commit()
-    await delete_translations(db, "notification_messages", notif_id)
+    await delete_translations(db, "admin_notifications", notif_id)
     return APIResponse(data={"id": notif_id, "deleted": True})
 
 
@@ -294,11 +294,26 @@ async def send_notification(
 async def list_templates(
     db: DBDependency,
     admin: CurrentAdmin,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
 ):
     """List all notification templates."""
-    result = await db.execute(select(NotificationTemplate).order_by(NotificationTemplate.id.desc()))
+    total_result = await db.execute(select(func.count(NotificationTemplate.id)))
+    total = total_result.scalar() or 0
+    result = await db.execute(
+        select(NotificationTemplate)
+        .order_by(NotificationTemplate.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
     templates = result.scalars().all()
-    return APIResponse(data=[NotificationTemplateOut.model_validate(t) for t in templates])
+    return APIResponse(
+        data=PaginatedResponse(
+            items=[NotificationTemplateOut.model_validate(t) for t in templates],
+            total=total, page=page, per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
 
 
 @admin_router.post("/templates", response_model=APIResponse[NotificationTemplateOut], status_code=status.HTTP_201_CREATED)
@@ -415,7 +430,7 @@ async def list_my_notifications(
     )
     result = await db.execute(stmt)
     item_dicts = [NotificationMessageOut.model_validate(n).model_dump() for n in result.scalars().all()]
-    await merge_translations(db, item_dicts, "notification_messages", locale)
+    await merge_translations(db, item_dicts, "admin_notifications", locale)
 
     return APIResponse(
         data=PaginatedResponse(

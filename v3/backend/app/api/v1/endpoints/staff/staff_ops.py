@@ -1,6 +1,7 @@
 """Staff-facing operational endpoints (POS, dashboard, clock-in, PIN verify)."""
 
 import json
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
@@ -17,7 +18,18 @@ from app.models.staff import StaffProfile, StaffTimeEvent, TipAllocation
 from app.models.platform import PlatformConfig
 from app.models.store import Store, DiningTable, StoreConfiguration, TableStatusSnapshot
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.staff import (
+    StaffLoginRequest,
+    StaffRefreshRequest,
+    StaffAdminStoreRequest,
+    StaffPinVerifyRequest,
+    StaffChangePasswordRequest,
+    StaffChangePinRequest,
+)
 from app.services.order import _deduct_stock_for_order
+from app.services.auth import _revoked_refresh_jtis
+from app.core.config import get_settings
+from app.core.rate_limiter import limiter
 
 router = APIRouter(tags=["staff — operations"])
 
@@ -28,7 +40,7 @@ router = APIRouter(tags=["staff — operations"])
 # ── Staff Auth (login, verify) ──
 
 @router.get("/staff/auth/names")
-async def staff_name_list(db: DBDependency, store_id: int | None = None):
+async def staff_name_list(db: DBDependency, admin: CurrentAdmin, store_id: int | None = None):
     """List staff display names for the login dropdown, optionally filtered by store."""
     q = select(StaffProfile.id, StaffProfile.display_name, Store.store_name).join(Store, StaffProfile.store_id == Store.id).where(StaffProfile.deleted_at.is_(None), StaffProfile.is_active.is_(True))
     if store_id:
@@ -39,17 +51,18 @@ async def staff_name_list(db: DBDependency, store_id: int | None = None):
 
 
 @router.post("/staff/auth/login")
-async def staff_login(db: DBDependency, data: dict):
+@limiter.limit("5/minute")
+async def staff_login(request, db: DBDependency, data: StaffLoginRequest):
     """Login: store selection → email+password/PIN or name+PIN."""
     import bcrypt, jwt, os
     from datetime import timedelta
 
     from app.core.config import get_settings
     secret = get_settings().jwt_secret
-    email = (data.get("email") or "").strip()
-    password = (data.get("password") or "").strip()
-    display_name = (data.get("display_name") or "").strip()
-    store_id = data.get("store_id")
+    email = (data.email or "").strip()
+    password = (data.password or "").strip()
+    display_name = (data.display_name or "").strip()
+    store_id = data.store_id
 
     # ── Mode 1: Name + PIN (staff, based on store selected) ──
     if display_name and store_id:
@@ -136,7 +149,7 @@ async def staff_login(db: DBDependency, data: dict):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Admin verified — if store_id provided, return staff token. Otherwise return admin token with store list.
-    store_id = data.get("store_id")
+    store_id = data.store_id
     if store_id:
         # Verify store exists
         store_check = await db.execute(select(Store).where(Store.id == int(store_id), Store.deleted_at.is_(None), Store.is_active.is_(True)))
@@ -165,14 +178,15 @@ async def staff_login(db: DBDependency, data: dict):
 # ── Admin Store Selection (after login) ──
 
 @router.post("/staff/auth/admin-store")
-async def admin_select_store(db: DBDependency, data: dict):
+@limiter.limit("5/minute")
+async def admin_select_store(request, db: DBDependency, data: StaffAdminStoreRequest):
     """Admin selects a store — returns a staff token scoped to that store."""
-    token = (data.get("token") or "").strip()
-    store_id = data.get("store_id")
+    token = (data.token or "").strip()
+    store_id = data.store_id
     if not token or not store_id:
         raise HTTPException(status_code=400, detail="Token and store_id required")
     import jwt, os
-    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    secret = get_settings().jwt_secret
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
         if payload.get("type") != "admin":
@@ -207,12 +221,14 @@ async def admin_select_store(db: DBDependency, data: dict):
 
 
 def _make_token(staff):
-    import jwt, os
+    import jwt
     from datetime import timedelta
-    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
-    payload = {"sub": str(staff.principal_id), "type": "staff", "staff_id": staff.id, "store_id": staff.store_id, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": datetime.now(timezone.utc) + timedelta(minutes=30)}
+    secret = get_settings().jwt_secret
+    now = datetime.now(timezone.utc)
+    payload = {"sub": str(staff.principal_id), "type": "staff", "staff_id": staff.id, "store_id": staff.store_id, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": now + timedelta(minutes=30)}
     access_token = jwt.encode(payload, secret, algorithm="HS256")
-    refresh_payload = {"sub": str(staff.principal_id), "type": "refresh", "staff_id": staff.id, "store_id": staff.store_id, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": datetime.now(timezone.utc) + timedelta(days=7)}
+    refresh_jti = str(uuid.uuid4())
+    refresh_payload = {"sub": str(staff.principal_id), "type": "refresh", "staff_id": staff.id, "store_id": staff.store_id, "jti": refresh_jti, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": now + timedelta(days=7)}
     refresh_token = jwt.encode(refresh_payload, secret, algorithm="HS256")
     return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": staff.email_address, "display_name": staff.display_name, "store_id": staff.store_id, "staff_id": staff.id}}
 
@@ -231,13 +247,14 @@ def _pin_allowed(pin_hash, attempted_pin):
 # ── Token Refresh ──
 
 @router.post("/staff/auth/refresh")
-async def staff_refresh_token(db: DBDependency, data: dict):
+@limiter.limit("10/minute")
+async def staff_refresh_token(request, db: DBDependency, data: StaffRefreshRequest):
     """Refresh staff access token using a refresh token."""
-    token = (data.get("refresh_token") or "").strip()
+    token = (data.refresh_token or "").strip()
     if not token:
         raise HTTPException(status_code=400, detail="refresh_token required")
-    import jwt, os
-    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    import jwt
+    secret = get_settings().jwt_secret
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
         if payload.get("type") != "refresh":
@@ -245,7 +262,11 @@ async def staff_refresh_token(db: DBDependency, data: dict):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
-    token_type = payload.get("type")
+    # Replay protection — check if refresh token has already been used
+    jti = payload.get("jti")
+    if jti and jti in _revoked_refresh_jtis:
+        raise HTTPException(status_code=401, detail="Refresh token has already been used")
+
     staff_id = payload.get("staff_id", 0)
     store_id = payload.get("store_id")
 
@@ -254,6 +275,9 @@ async def staff_refresh_token(db: DBDependency, data: dict):
         staff = result.scalar_one_or_none()
         if not staff or not staff.is_active:
             raise HTTPException(status_code=401, detail="Staff not found or inactive")
+        # Revoke this refresh token so it cannot be reused
+        if jti:
+            _revoked_refresh_jtis.add(jti)
         return _make_token(staff)
 
     # Admin refresh (staff_id == 0)
@@ -264,11 +288,15 @@ async def staff_refresh_token(db: DBDependency, data: dict):
         if not admin:
             raise HTTPException(status_code=401, detail="Admin not found")
         from datetime import timedelta
+        now = datetime.now(timezone.utc)
         new_payload = {"sub": str(admin.principal_id), "type": "staff", "staff_id": 0, "store_id": int(store_id or 0),
                        "admin_id": admin.id, "admin_name": admin.display_name,
                        "iss": "fnb-enterprise-v3", "aud": "fnb-app",
-                       "exp": datetime.now(timezone.utc) + timedelta(minutes=30)}
+                       "exp": now + timedelta(minutes=30)}
         access_token = jwt.encode(new_payload, secret, algorithm="HS256")
+        # Revoke this refresh token so it cannot be reused
+        if jti:
+            _revoked_refresh_jtis.add(jti)
         return {"tokens": {"access_token": access_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id or 0), "staff_id": 0}}
 
     raise HTTPException(status_code=401, detail="Invalid token")
@@ -283,7 +311,7 @@ async def staff_profile_me(db: DBDependency, request: Request):
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     import jwt, os
-    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    secret = get_settings().jwt_secret
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
     except jwt.InvalidTokenError:
@@ -445,10 +473,11 @@ async def staff_customer_search(db: DBDependency, admin: CurrentAdmin, q: str = 
 # ── PIN Verify ──
 
 @router.post("/staff/auth/verify-pin")
-async def staff_verify_pin(db: DBDependency, admin: CurrentAdmin, data: dict):
+@limiter.limit("10/minute")
+async def staff_verify_pin(request, db: DBDependency, admin: CurrentAdmin, data: StaffPinVerifyRequest):
     staff = await _get_staff_profile(db, admin)
 
-    pin = str(data.get("pin", "")).strip()
+    pin = str(data.pin or "").strip()
     if not pin or len(pin) < 4:
         raise HTTPException(status_code=400, detail="PIN must be at least 4 digits")
 
@@ -470,12 +499,13 @@ async def staff_verify_pin(db: DBDependency, admin: CurrentAdmin, data: dict):
 # ── Change Password / PIN ──
 
 @router.post("/staff/auth/change-password")
-async def staff_change_password(db: DBDependency, request: Request, data: dict):
+@limiter.limit("5/minute")
+async def staff_change_password(db: DBDependency, request: Request, data: StaffChangePasswordRequest):
     """Change staff password."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token: raise HTTPException(status_code=401, detail="Not authenticated")
     import jwt, os, bcrypt
-    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    secret = get_settings().jwt_secret
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
     except jwt.InvalidTokenError:
@@ -489,7 +519,7 @@ async def staff_change_password(db: DBDependency, request: Request, data: dict):
     staff = result.scalar_one_or_none()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
-    pw = (data.get("password") or "").strip()
+    pw = (data.new_password or "").strip()
     if len(pw) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     staff.password_hash = bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
@@ -498,12 +528,13 @@ async def staff_change_password(db: DBDependency, request: Request, data: dict):
 
 
 @router.post("/staff/auth/change-pin")
-async def staff_change_pin(db: DBDependency, request: Request, data: dict):
+@limiter.limit("5/minute")
+async def staff_change_pin(db: DBDependency, request: Request, data: StaffChangePinRequest):
     """Change staff PIN."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token: raise HTTPException(status_code=401, detail="Not authenticated")
     import jwt, os, bcrypt
-    secret = os.environ.get("JWT_SECRET") or "super-secret-jwt-key-for-development-only-12345"
+    secret = get_settings().jwt_secret
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
     except jwt.InvalidTokenError:
@@ -514,7 +545,7 @@ async def staff_change_pin(db: DBDependency, request: Request, data: dict):
     result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id))
     staff = result.scalar_one_or_none()
     if not staff: raise HTTPException(status_code=404, detail="Staff not found")
-    p = (data.get("pin") or "").strip()
+    p = (data.new_pin or "").strip()
     if len(p) < 4: raise HTTPException(status_code=400, detail="PIN must be at least 4 digits")
     staff.pin_hash = bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
     await db.commit()

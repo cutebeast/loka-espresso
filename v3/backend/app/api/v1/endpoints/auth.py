@@ -13,6 +13,7 @@ from app.schemas.auth import (
     TokenPair,
 )
 from app.schemas.customer import CustomerProfileOut
+from app.core.rate_limiter import limiter
 from app.services.auth import (
     AuthError,
     create_customer_tokens,
@@ -41,7 +42,8 @@ async def customer_register(db: DBDependency, data: CustomerRegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def customer_login(db: DBDependency, data: CustomerLoginRequest):
+@limiter.limit("5/minute")
+async def customer_login(request, db: DBDependency, data: CustomerLoginRequest):
     """Login with email or phone (OTP-based / passwordless).
     
     For development: directly returns tokens if customer exists.
@@ -81,7 +83,8 @@ async def customer_login(db: DBDependency, data: CustomerLoginRequest):
 
 
 @router.post("/refresh", response_model=TokenPair)
-async def customer_refresh(db: DBDependency, data: RefreshTokenRequest):
+@limiter.limit("10/minute")
+async def customer_refresh(request, db: DBDependency, data: RefreshTokenRequest):
     """Refresh access token."""
     try:
         tokens = await refresh_customer_tokens(db, data)

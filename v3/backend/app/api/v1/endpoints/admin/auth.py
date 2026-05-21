@@ -14,6 +14,7 @@ from app.services.auth import (
     login_admin,
     refresh_admin_tokens,
 )
+from app.core.rate_limiter import limiter
 from app.core.security import hash_password
 
 router = APIRouter(prefix="/admin/auth", tags=["admin — authentication"])
@@ -101,7 +102,8 @@ async def admin_register(db: DBDependency, admin: CurrentAdmin, data: AdminRegis
 
 
 @router.post("/login", response_model=AuthResponse)
-async def admin_login(db: DBDependency, data: AdminLoginRequest):
+@limiter.limit("5/minute")
+async def admin_login(request, db: DBDependency, data: AdminLoginRequest):
     """Admin portal login with email and password."""
     try:
         admin = await login_admin(db, data)
@@ -145,7 +147,8 @@ async def admin_login(db: DBDependency, data: AdminLoginRequest):
 
 
 @router.post("/refresh", response_model=TokenPair)
-async def admin_refresh(db: DBDependency, data: RefreshTokenRequest):
+@limiter.limit("10/minute")
+async def admin_refresh(request, db: DBDependency, data: RefreshTokenRequest):
     """Refresh admin access token."""
     try:
         return await refresh_admin_tokens(db, data)

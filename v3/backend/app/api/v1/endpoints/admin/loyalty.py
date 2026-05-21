@@ -69,11 +69,26 @@ def _serialize_account(account: LoyaltyAccount) -> LoyaltyAccountOut:
 async def list_loyalty_tiers(
     db: DBDependency,
     admin: CurrentAdmin,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
 ):
     """List all loyalty tiers."""
-    result = await db.execute(select(LoyaltyTier).order_by(LoyaltyTier.sort_order))
+    total_result = await db.execute(select(func.count(LoyaltyTier.id)))
+    total = total_result.scalar() or 0
+    result = await db.execute(
+        select(LoyaltyTier)
+        .order_by(LoyaltyTier.sort_order)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
     tiers = result.scalars().all()
-    return APIResponse(data=[LoyaltyTierOut.model_validate(t) for t in tiers])
+    return APIResponse(
+        data=PaginatedResponse(
+            items=[LoyaltyTierOut.model_validate(t) for t in tiers],
+            total=total, page=page, per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
 
 
 @loyalty_router.get("/tiers/{id}", response_model=APIResponse[LoyaltyTierOut])

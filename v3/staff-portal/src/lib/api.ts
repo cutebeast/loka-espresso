@@ -9,31 +9,65 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
-async function refreshToken(signal?: AbortSignal): Promise<boolean> {
-  try {
-    if (typeof window === "undefined") return false;
-    const refresh = localStorage.getItem("refreshToken");
-    if (!refresh) return false;
-    const res = await fetch(`${BASE_URL}/staff/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refresh }),
-      ...(signal ? { signal } : {}),
-    });
-    if (!res.ok) return false;
-    const json = await res.json();
-    const data = json.data || json;
-    if (data.tokens?.access_token) {
-      localStorage.setItem("token", data.tokens.access_token);
-      if (data.tokens.refresh_token) localStorage.setItem("refreshToken", data.tokens.refresh_token);
-      return true;
-    }
-    return false;
-  } catch (err) {
-    console.error("refreshToken failed:", err);
-    return false;
-  }
+/* ------------------------------------------------------------------ */
+/*  Auth helpers (extracted to avoid duplication)                     */
+/* ------------------------------------------------------------------ */
+
+function clearAuthStorage(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("token");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("staffEmail");
+  localStorage.removeItem("staffName");
+  localStorage.removeItem("staffStoreId");
+  localStorage.removeItem("staffProfile");
+  localStorage.removeItem("staffId");
+  localStorage.removeItem("isAdmin");
 }
+
+/* ------------------------------------------------------------------ */
+/*  Token refresh with mutex (prevents race conditions)               */
+/* ------------------------------------------------------------------ */
+
+let _refreshPromise: Promise<boolean> | null = null;
+
+async function refreshToken(signal?: AbortSignal): Promise<boolean> {
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    try {
+      if (typeof window === "undefined") return false;
+      const refresh = localStorage.getItem("refreshToken");
+      if (!refresh) return false;
+      const res = await fetch(`${BASE_URL}/staff/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refresh }),
+        ...(signal ? { signal } : {}),
+      });
+      if (!res.ok) return false;
+      const json = await res.json();
+      const data = json.data || json;
+      if (data.tokens?.access_token) {
+        localStorage.setItem("token", data.tokens.access_token);
+        if (data.tokens.refresh_token) localStorage.setItem("refreshToken", data.tokens.refresh_token);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("refreshToken failed:", err);
+      return false;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Request helpers                                                   */
+/* ------------------------------------------------------------------ */
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const makeRequest = async () => {
@@ -53,14 +87,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
         if (retry.ok) return retry;
       }
       if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("staffEmail");
-        localStorage.removeItem("staffName");
-        localStorage.removeItem("staffStoreId");
-        localStorage.removeItem("staffProfile");
-        localStorage.removeItem("staffId");
-        localStorage.removeItem("isAdmin");
+        clearAuthStorage();
         window.location.href = "/login";
       }
       throw new Error("Session expired. Please log in again.");
@@ -106,14 +133,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown): Prom
         if (retry.ok) return retry;
       }
       if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("staffEmail");
-        localStorage.removeItem("staffName");
-        localStorage.removeItem("staffStoreId");
-        localStorage.removeItem("staffProfile");
-        localStorage.removeItem("staffId");
-        localStorage.removeItem("isAdmin");
+        clearAuthStorage();
         window.location.href = "/login";
       }
       throw new Error("Session expired");
@@ -150,14 +170,7 @@ async function requestWithTimeout<T>(method: string, path: string, body?: unknow
           if (retry.ok) return retry;
         }
         if (typeof window !== "undefined") {
-          localStorage.removeItem("token");
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("staffEmail");
-          localStorage.removeItem("staffName");
-          localStorage.removeItem("staffStoreId");
-          localStorage.removeItem("staffProfile");
-          localStorage.removeItem("staffId");
-          localStorage.removeItem("isAdmin");
+          clearAuthStorage();
           window.location.href = "/login";
         }
         throw new Error("Session expired");
@@ -253,7 +266,7 @@ export async function staffLoginByName(name: string, pin: string, storeId: numbe
   const data = await api.post<{
     tokens?: { access_token?: string; refresh_token?: string };
     profile?: { email?: string; display_name?: string; store_id?: number; staff_id?: number; is_admin?: boolean };
-  }>("/staff/auth/login", { name, pin, store_id: storeId });
+  }>("/staff/auth/login", { display_name: name, password: pin, store_id: storeId });
   const token = data.tokens?.access_token;
   const refresh = data.tokens?.refresh_token;
   if (token) {
@@ -272,15 +285,7 @@ export async function staffLoginByName(name: string, pin: string, storeId: numbe
 }
 
 export function staffLogout() {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("token");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("staffEmail");
-  localStorage.removeItem("staffName");
-  localStorage.removeItem("staffStoreId");
-  localStorage.removeItem("staffProfile");
-  localStorage.removeItem("staffId");
-  localStorage.removeItem("isAdmin");
+  clearAuthStorage();
 }
 
 export function getToken(): string | null {

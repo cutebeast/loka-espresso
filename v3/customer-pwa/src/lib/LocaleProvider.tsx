@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import type { Locale } from '@/lib/i18n-types';
 import { isValidLocale, getDefaultLocale } from '@/lib/i18n-types';
+import { setGlobalLocale } from '@/stores/localeStore';
 
 const STORAGE_KEY = 'loka-locale';
 
@@ -52,8 +53,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const setLocale = useCallback((next: string) => {
     if (!isValidLocale(next)) return;
     set(next);
-    writeStoredLocale(next);
-    if (typeof document !== 'undefined') document.documentElement.lang = next;
+    setGlobalLocale(next);
   }, []);
 
   return <LocaleCtx.Provider value={{ locale, setLocale }}>{children}</LocaleCtx.Provider>;

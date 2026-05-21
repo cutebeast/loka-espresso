@@ -163,26 +163,12 @@ async def get_current_admin(
         ) from exc
 
     token_type = payload.get("type")
-    if token_type not in ("access", "staff"):
+    if token_type != "access":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    # Accept staff tokens by looking up admin account via principal_id
-    if token_type == "staff":
-        principal_id = int(payload.get("sub", 0))
-        result = await db.execute(
-            select(AdminAccount).where(
-                AdminAccount.principal_id == principal_id,
-                AdminAccount.is_active.is_(True),
-            )
-        )
-        admin = result.scalar_one_or_none()
-        if not admin:
-            raise HTTPException(status_code=401, detail="No admin access for this staff")
-        return admin
 
     admin_id = int(payload.get("sub", 0))
     if not admin_id:

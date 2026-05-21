@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
@@ -14,6 +15,7 @@ from app.core.middleware import (
     RequestLoggingMiddleware,
     SecurityHeadersMiddleware,
 )
+from app.core.rate_limiter import limiter, rate_limit_exceeded_handler
 
 settings = get_settings()
 
@@ -35,6 +37,8 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.is_development else None,
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Security middleware
 app.add_middleware(SecurityHeadersMiddleware)

@@ -143,18 +143,26 @@ class TaxCategoryOut(TimestampedSchema):
 async def list_categories(
     db: DBDependency,
     admin: CurrentAdmin,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
 ):
     """List menu categories for a store (excluding soft-deleted)."""
+    total_result = await db.execute(select(func.count(MenuCategory.id)).where(MenuCategory.deleted_at.is_(None)))
+    total = total_result.scalar() or 0
     result = await db.execute(
         select(MenuCategory)
-        .where(
-            MenuCategory.deleted_at.is_(None),
-        )
+        .where(MenuCategory.deleted_at.is_(None))
         .order_by(MenuCategory.display_order)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
     categories = result.scalars().all()
     return APIResponse(
-        data=[MenuCategoryOut.model_validate(c) for c in categories]
+        data=PaginatedResponse(
+            items=[MenuCategoryOut.model_validate(c) for c in categories],
+            total=total, page=page, per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
     )
 
 
@@ -638,16 +646,26 @@ async def delete_item(
 async def list_allergens(
     db: DBDependency,
     admin: CurrentAdmin,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
 ):
     """List all allergens (excluding soft-deleted)."""
+    total_result = await db.execute(select(func.count(Allergen.id)).where(Allergen.deleted_at.is_(None)))
+    total = total_result.scalar() or 0
     result = await db.execute(
         select(Allergen)
         .where(Allergen.deleted_at.is_(None))
         .order_by(Allergen.display_name)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
     allergens = result.scalars().all()
     return APIResponse(
-        data=[AllergenOut.model_validate(a) for a in allergens]
+        data=PaginatedResponse(
+            items=[AllergenOut.model_validate(a) for a in allergens],
+            total=total, page=page, per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
     )
 
 

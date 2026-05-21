@@ -1,10 +1,10 @@
 /**
  * Loka Espresso PWA Service Worker
- * Version: 0.1.0 (build 2026-05-21T02:15:42.322Z)
+ * Version: 0.1.0 (build 2026-05-21T20:53:05.596Z)
  * Build: 2026-04-23T20:22:55.000Z
  */
 
-const CACHE_VERSION = 'v0.1.0.1779329742';
+const CACHE_VERSION = 'v0.1.0.1779396785';
 const CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',
@@ -21,11 +21,16 @@ self.addEventListener('install', (event) => {
   
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
+      .then(async (cache) => {
         console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => {
+        const results = await Promise.allSettled(
+          STATIC_ASSETS.map(url => cache.add(url))
+        );
+        results.forEach((result, i) => {
+          if (result.status === 'rejected') {
+            console.warn(`[SW] Failed to cache ${STATIC_ASSETS[i]}:`, result.reason);
+          }
+        });
         console.log('[SW] Installed — waiting for user activation');
       })
       .catch((err) => {
