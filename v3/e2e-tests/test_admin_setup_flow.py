@@ -49,6 +49,10 @@ async def test_store_has_24h_flag(client: httpx.AsyncClient, admin_headers: dict
 @pytest.mark.asyncio
 async def test_update_store_operating_hours(client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int):
     """Admin can update store operating hours including 24h flag."""
+    # Capture original hours for teardown
+    r_orig = await client.get(f"{base_url}/admin/stores/{store_id}", headers=admin_headers)
+    original_hours = r_orig.json()["data"]["operating_hours"]
+
     hours = [
         {"day_of_week": i, "open_time": "08:00", "close_time": "22:00", "is_closed": False, "is_24_hours": False, "last_order_time": None}
         for i in range(7)
@@ -59,15 +63,23 @@ async def test_update_store_operating_hours(client: httpx.AsyncClient, admin_hea
     hours[6]["close_time"] = "23:59"
     hours[6]["last_order_time"] = "23:30"
 
-    # Use the dedicated operating-hours replacement endpoint
-    r = await client.put(f"{base_url}/admin/stores/{store_id}/operating-hours", headers=admin_headers, json=hours)
-    assert r.status_code == 200, f"Update failed: {r.text}"
+    try:
+        # Use the dedicated operating-hours replacement endpoint
+        r = await client.put(f"{base_url}/admin/stores/{store_id}/operating-hours", headers=admin_headers, json=hours)
+        assert r.status_code == 200, f"Update failed: {r.text}"
 
-    # Verify
-    r2 = await client.get(f"{base_url}/admin/stores/{store_id}", headers=admin_headers)
-    stored = r2.json()["data"]["operating_hours"]
-    sunday = next(h for h in stored if h["day_of_week"] == 6)
-    assert sunday["is_24_hours"] is True
+        # Verify
+        r2 = await client.get(f"{base_url}/admin/stores/{store_id}", headers=admin_headers)
+        stored = r2.json()["data"]["operating_hours"]
+        sunday = next(h for h in stored if h["day_of_week"] == 6)
+        assert sunday["is_24_hours"] is True
+    finally:
+        # Restore original hours
+        await client.put(
+            f"{base_url}/admin/stores/{store_id}/operating-hours",
+            headers=admin_headers,
+            json=original_hours,
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -79,9 +91,10 @@ async def test_list_menu_categories(client: httpx.AsyncClient, admin_headers: di
     """Menu categories exist and are listable."""
     r = await client.get(f"{base_url}/admin/menu/categories?per_page=50", headers=admin_headers)
     assert r.status_code == 200
-    items = r.json()["data"]
-    assert isinstance(items, list)
-    assert len(items) >= 1
+    data = r.json()["data"]
+    assert "items" in data
+    assert isinstance(data["items"], list)
+    assert len(data["items"]) >= 1
 
 
 @pytest.mark.asyncio
@@ -100,9 +113,10 @@ async def test_list_menu_items_with_recipes(client: httpx.AsyncClient, admin_hea
 async def test_list_allergens(client: httpx.AsyncClient, admin_headers: dict, base_url: str):
     r = await client.get(f"{base_url}/admin/menu/allergens?per_page=50", headers=admin_headers)
     assert r.status_code == 200
-    items = r.json()["data"]
-    assert isinstance(items, list)
-    assert len(items) >= 1
+    data = r.json()["data"]
+    assert "items" in data
+    assert isinstance(data["items"], list)
+    assert len(data["items"]) >= 1
 
 
 @pytest.mark.asyncio
@@ -298,8 +312,9 @@ async def test_list_notification_templates(client: httpx.AsyncClient, admin_head
     r = await client.get(f"{base_url}/admin/notifications/templates/list?per_page=50", headers=admin_headers)
     assert r.status_code == 200
     data = r.json()["data"]
-    assert isinstance(data, list)
-    assert len(data) >= 1
+    assert "items" in data
+    assert isinstance(data["items"], list)
+    assert len(data["items"]) >= 1
 
 
 @pytest.mark.asyncio

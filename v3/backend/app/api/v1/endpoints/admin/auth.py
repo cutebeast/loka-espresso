@@ -1,7 +1,7 @@
 """Admin authentication endpoints."""
 
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import delete, select
 
 from app.api.v1.deps import DBDependency, CurrentAdmin
@@ -103,7 +103,7 @@ async def admin_register(db: DBDependency, admin: CurrentAdmin, data: AdminRegis
 
 @router.post("/login", response_model=AuthResponse)
 @limiter.limit("5/minute")
-async def admin_login(request, db: DBDependency, data: AdminLoginRequest):
+async def admin_login(request: Request, db: DBDependency, data: AdminLoginRequest):
     """Admin portal login with email and password."""
     try:
         admin = await login_admin(db, data)
@@ -148,7 +148,7 @@ async def admin_login(request, db: DBDependency, data: AdminLoginRequest):
 
 @router.post("/refresh", response_model=TokenPair)
 @limiter.limit("10/minute")
-async def admin_refresh(request, db: DBDependency, data: RefreshTokenRequest):
+async def admin_refresh(request: Request, db: DBDependency, data: RefreshTokenRequest):
     """Refresh admin access token."""
     try:
         return await refresh_admin_tokens(db, data)

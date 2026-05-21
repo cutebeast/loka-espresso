@@ -25,8 +25,7 @@ async def test_staff_login_pin(client: httpx.AsyncClient, base_url: str):
     # Try with a known staff name and wrong PIN → should get 401
     payload = {"display_name": "Staff One", "store_id": 1, "password": "wrongpin"}
     r = await client.post(f"{base_url}/staff/auth/login", json=payload)
-    # Endpoint exists and validates credentials
-    assert r.status_code in (200, 401)
+    assert r.status_code == 401
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -66,8 +65,8 @@ async def test_staff_update_order_status(client: httpx.AsyncClient, admin_header
         pytest.skip("No orders available")
     order_id = items[0]["id"]
     # Try updating status to confirmed
-    r2 = await client.patch(f"{base_url}/admin/orders/{order_id}", headers=admin_headers, json={"status": "confirmed"})
-    assert r2.status_code in (200, 422)  # 422 if status transition is invalid
+    r2 = await client.patch(f"{base_url}/admin/orders/{order_id}/status", headers=admin_headers, json={"status": "confirmed"})
+    assert r2.status_code == 200
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -122,4 +121,4 @@ async def test_staff_create_maintenance_log(client: httpx.AsyncClient, admin_hea
         "status": "completed",
     }
     r2 = await client.post(f"{base_url}/admin/equipment/{eq_id}/maintenance-logs", headers=admin_headers, json=log)
-    assert r2.status_code in (201, 200)
+    assert r2.status_code == 201

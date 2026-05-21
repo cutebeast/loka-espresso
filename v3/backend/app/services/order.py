@@ -68,10 +68,14 @@ async def _deduct_stock_for_order(
     )
     inv_items = {inv.id: inv for inv in inv_result.scalars().all()}
 
+    # Filter recipe needs to only those inventory items present in this store.
+    # Recipes may be shared across stores with store-specific inventory mappings.
+    recipe_needs = {inv_id: qty for inv_id, qty in recipe_needs.items() if inv_id in inv_items}
+    if not recipe_needs:
+        return
+
     for inv_id, qty_needed in recipe_needs.items():
-        inv = inv_items.get(inv_id)
-        if inv is None:
-            raise OrderError(f"Inventory item {inv_id} not found for this store", 400)
+        inv = inv_items[inv_id]
         current = Decimal(str(inv.current_stock))
         if current < qty_needed:
             raise OrderError(f"Insufficient stock for {inv.item_name}: need {float(qty_needed):.3f}, have {float(current):.3f}", 400)
@@ -137,8 +141,9 @@ async def create_order_from_cart(
     config_map = {c.config_key: c.config_value for c in config_result.scalars().all()}
     delivery_fee = float(config_map.get("order.delivery_fee", 0) or 0)
     service_charge = float(config_map.get("order.service_charge", 0) or 0)
-    tax_rate = float(config_map.get("order.tax_rate", 0) or 0)
-    tax_amount = round(cart.subtotal * tax_rate, 2)
+    tax_rate = Decimal(str(config_map.get("order.tax_rate", 0) or 0))
+    subtotal = float(cart.subtotal)
+    tax_amount = float(round(cart.subtotal * tax_rate, 2))
 
     # Create order
     order = Order(
@@ -152,7 +157,7 @@ async def create_order_from_cart(
         status="pending",
         payment_status="initiated",
         item_count=cart.item_count,
-        items_subtotal=cart.subtotal,
+        items_subtotal=subtotal,
         modifier_subtotal=sum(float(i.modifier_total) * i.quantity for i in cart_items),
         delivery_fee=delivery_fee if data.fulfillment_type == "delivery" else 0,
         service_charge=service_charge,
@@ -161,7 +166,7 @@ async def create_order_from_cart(
         voucher_discount=0,
         reward_discount=0,
         tip_amount=data.tip_amount or 0,
-        total_amount=cart.subtotal + (delivery_fee if data.fulfillment_type == "delivery" else 0) + service_charge + tax_amount + (data.tip_amount or 0),
+        total_amount=subtotal + (delivery_fee if data.fulfillment_type == "delivery" else 0) + service_charge + tax_amount + (data.tip_amount or 0),
         total_amount_currency=store.currency_code,
         loyalty_points_earned=0,
         loyalty_points_redeemed=0,

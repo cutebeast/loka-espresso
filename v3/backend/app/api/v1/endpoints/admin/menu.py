@@ -139,7 +139,7 @@ class TaxCategoryOut(TimestampedSchema):
 # Menu Categories
 # ---------------------------------------------------------------------------
 
-@router.get("/categories", response_model=APIResponse[list[MenuCategoryOut]])
+@router.get("/categories", response_model=APIResponse[PaginatedResponse[MenuCategoryOut]])
 async def list_categories(
     db: DBDependency,
     admin: CurrentAdmin,
@@ -642,7 +642,7 @@ async def delete_item(
 # Allergens
 # ---------------------------------------------------------------------------
 
-@router.get("/allergens", response_model=APIResponse[list[AllergenOut]])
+@router.get("/allergens", response_model=APIResponse[PaginatedResponse[AllergenOut]])
 async def list_allergens(
     db: DBDependency,
     admin: CurrentAdmin,

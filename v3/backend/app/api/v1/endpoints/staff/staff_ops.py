@@ -52,7 +52,7 @@ async def staff_name_list(db: DBDependency, admin: CurrentAdmin, store_id: int |
 
 @router.post("/staff/auth/login")
 @limiter.limit("5/minute")
-async def staff_login(request, db: DBDependency, data: StaffLoginRequest):
+async def staff_login(request: Request, db: DBDependency, data: StaffLoginRequest):
     """Login: store selection → email+password/PIN or name+PIN."""
     import bcrypt, jwt, os
     from datetime import timedelta
@@ -179,7 +179,7 @@ async def staff_login(request, db: DBDependency, data: StaffLoginRequest):
 
 @router.post("/staff/auth/admin-store")
 @limiter.limit("5/minute")
-async def admin_select_store(request, db: DBDependency, data: StaffAdminStoreRequest):
+async def admin_select_store(request: Request, db: DBDependency, data: StaffAdminStoreRequest):
     """Admin selects a store — returns a staff token scoped to that store."""
     token = (data.token or "").strip()
     store_id = data.store_id
@@ -248,7 +248,7 @@ def _pin_allowed(pin_hash, attempted_pin):
 
 @router.post("/staff/auth/refresh")
 @limiter.limit("10/minute")
-async def staff_refresh_token(request, db: DBDependency, data: StaffRefreshRequest):
+async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRefreshRequest):
     """Refresh staff access token using a refresh token."""
     token = (data.refresh_token or "").strip()
     if not token:
@@ -474,7 +474,7 @@ async def staff_customer_search(db: DBDependency, admin: CurrentAdmin, q: str = 
 
 @router.post("/staff/auth/verify-pin")
 @limiter.limit("10/minute")
-async def staff_verify_pin(request, db: DBDependency, admin: CurrentAdmin, data: StaffPinVerifyRequest):
+async def staff_verify_pin(request: Request, db: DBDependency, admin: CurrentAdmin, data: StaffPinVerifyRequest):
     staff = await _get_staff_profile(db, admin)
 
     pin = str(data.pin or "").strip()

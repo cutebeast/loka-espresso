@@ -1,6 +1,6 @@
 """Authentication endpoints."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
 from app.api.v1.deps import DBDependency
@@ -43,7 +43,7 @@ async def customer_register(db: DBDependency, data: CustomerRegisterRequest):
 
 @router.post("/login", response_model=AuthResponse)
 @limiter.limit("5/minute")
-async def customer_login(request, db: DBDependency, data: CustomerLoginRequest):
+async def customer_login(request: Request, db: DBDependency, data: CustomerLoginRequest):
     """Login with email or phone (OTP-based / passwordless).
     
     For development: directly returns tokens if customer exists.
@@ -84,7 +84,7 @@ async def customer_login(request, db: DBDependency, data: CustomerLoginRequest):
 
 @router.post("/refresh", response_model=TokenPair)
 @limiter.limit("10/minute")
-async def customer_refresh(request, db: DBDependency, data: RefreshTokenRequest):
+async def customer_refresh(request: Request, db: DBDependency, data: RefreshTokenRequest):
     """Refresh access token."""
     try:
         tokens = await refresh_customer_tokens(db, data)

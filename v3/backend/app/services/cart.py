@@ -224,9 +224,13 @@ async def clear_cart(
     if cart is None:
         raise CartError("Cart not found", 404)
     
-    for item in cart.line_items:
+    # Delete line items via explicit query (async-safe)
+    li_result = await db.execute(
+        select(CartLineItem).where(CartLineItem.cart_id == cart.id)
+    )
+    for item in li_result.scalars().all():
         await db.delete(item)
-    
+
     cart.item_count = 0
     cart.subtotal = 0.0
     cart.last_activity_at = datetime.now(timezone.utc)

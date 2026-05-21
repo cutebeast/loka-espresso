@@ -290,7 +290,7 @@ async def send_notification(
 # Notification Templates
 # ---------------------------------------------------------------------------
 
-@admin_router.get("/templates/list", response_model=APIResponse[list[NotificationTemplateOut]])
+@admin_router.get("/templates/list", response_model=APIResponse[PaginatedResponse[NotificationTemplateOut]])
 async def list_templates(
     db: DBDependency,
     admin: CurrentAdmin,

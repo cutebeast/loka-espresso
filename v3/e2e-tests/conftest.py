@@ -32,7 +32,10 @@ def gen_admin_token() -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def gen_customer_token(customer_id: int) -> str:
+@pytest.fixture(scope="session")
+def customer_token() -> str:
+    """Generate a customer JWT for E2E tests."""
+    customer_id = 1
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(customer_id),
@@ -45,6 +48,11 @@ def gen_customer_token(customer_id: int) -> str:
         "jti": f"e2e-cust-{customer_id}-{now.timestamp()}",
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+@pytest.fixture(scope="session")
+def customer_headers(customer_token: str) -> dict:
+    return {"Authorization": f"Bearer {customer_token}", "Content-Type": "application/json"}
 
 
 # ---------------------------------------------------------------------------
