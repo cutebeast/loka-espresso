@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
 from app.api.v1.deps import DBDependency
+from app.core.config import get_settings
 from app.models.customer import Customer
 from app.schemas.auth import (
     AuthResponse,
@@ -20,6 +21,7 @@ from app.services.auth import (
     refresh_customer_tokens,
     register_customer,
 )
+from app.services.platform_config import PlatformConfigService
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -45,10 +47,25 @@ async def customer_register(db: DBDependency, data: CustomerRegisterRequest):
 @limiter.limit("5/minute")
 async def customer_login(request: Request, db: DBDependency, data: CustomerLoginRequest):
     """Login with email or phone (OTP-based / passwordless).
-    
-    For development: directly returns tokens if customer exists.
-    In production, this should trigger OTP verification.
+
+    Development: directly returns tokens if customer exists (OTP bypass).
+    Production: OTP verification is mandatory. If not yet implemented, the
+    endpoint returns 501 so deploy is blocked until OTP is wired up.
     """
+    settings = get_settings()
+
+    # ── Production guard: OTP verification must be implemented ──
+    if settings.is_production:
+        # Check if OTP bypass is explicitly disabled via platform config
+        bypass_enabled = await PlatformConfigService.get_bool(db, "otp.bypass_enabled", default=False)
+        if not bypass_enabled:
+            raise HTTPException(
+                status_code=501,
+                detail="OTP verification required in production. "
+                       "Set otp.bypass_enabled=true in platform_config for "
+                       "temporary bypass during staged rollout.",
+            )
+
     if data.email_address:
         result = await db.execute(
             select(Customer).where(

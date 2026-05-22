@@ -16,7 +16,7 @@ export default function NewCategoryPage() {
       const r: any = await api.post("/admin/menu/categories", form);
       const id = r?.id;
       if (id) router.push(`/menu/categories/${id}`);
-    } catch { /* ignore */ }
+    } catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
 

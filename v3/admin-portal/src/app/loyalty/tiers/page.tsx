@@ -10,7 +10,7 @@ export default function LoyaltyTiersPage() {
   const [loading, setLoading] = useState(true);
 
   const fetch = useCallback(async () => {
-    try { const d = await api.getRaw<any>("/admin/loyalty/tiers?per_page=50"); setItems(Array.isArray(d) ? d : (d.items||[])); } catch {}
+    try { const d = await api.getRaw<any>("/admin/loyalty/tiers?per_page=50"); setItems(Array.isArray(d) ? d : (d.items||[])); } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, []);
 

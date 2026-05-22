@@ -17,7 +17,7 @@ export default function TaxCategoryNewPage() {
       const result: any = await api.post("/admin/menu/tax-categories", payload);
       const id = result?.data?.id || result?.id;
       if (id) r.push(`/menu/tax-categories/${id}`);
-    } catch {} finally { setS(false); }
+    } catch (e) { console.error(e); } finally { setS(false); }
   };
 
   return (

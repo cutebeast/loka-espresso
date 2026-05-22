@@ -34,6 +34,44 @@ def verify_password(password: str, hash_: str) -> bool:
         return False
 
 
+def verify_password_staff(password: str, hash_: str) -> bool:
+    """Verify password against Argon2id (new) or bcrypt (legacy) hash.
+
+    Staff accounts were originally hashed with bcrypt; this bridge
+    allows verification of both formats during migration.
+    """
+    # Try Argon2id first
+    if hash_.startswith("$argon2id$"):
+        return verify_password(password, hash_)
+
+    # Fall back to bcrypt for legacy hashes
+    import bcrypt
+    try:
+        pw_bytes = password.encode()
+        hash_bytes = hash_.encode() if isinstance(hash_, str) else hash_
+        return bcrypt.checkpw(pw_bytes, hash_bytes)
+    except Exception:
+        return False
+
+
+def verify_and_rehash_staff(db, staff_profile, key: str, new_value: str) -> bool:
+    """Verify staff password/PIN, re-hashing with Argon2id on success.
+
+    Returns True if verification succeeded; hashes ALWAYS stored with
+    Argon2id going forward.
+    """
+    current_hash = getattr(staff_profile, key, None) or ""
+    if not current_hash:
+        return False
+
+    if verify_password_staff(new_value, current_hash):
+        # Re-hash with Argon2id if currently bcrypt
+        if not current_hash.startswith("$argon2id$"):
+            setattr(staff_profile, key, hash_password(new_value))
+        return True
+    return False
+
+
 def check_password_needs_rehash(hash_: str) -> bool:
     return pwd_hasher.check_needs_rehash(hash_)
 

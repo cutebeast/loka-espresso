@@ -46,7 +46,12 @@ async def test_translation_all_locales_stores(client: httpx.AsyncClient, base_ur
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 24-Hour Store Operations
+# Store Operations (covered in test_customer_flow)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Recipe / Stock Deduction (covered in test_admin_setup_flow)
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
@@ -75,26 +80,8 @@ async def test_store_detail_includes_operating_hours(client: httpx.AsyncClient, 
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Recipe / Stock Deduction
+# Recipe / Stock Deduction (covered in test_admin_setup_flow)
 # ═══════════════════════════════════════════════════════════════════════════
-
-@pytest.mark.asyncio
-async def test_menu_items_have_recipes(client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int):
-    """Menu items loaded via admin API include recipe components."""
-    r = await client.get(f"{base_url}/admin/menu/items?per_page=50", headers=admin_headers)
-    assert r.status_code == 200
-    items = r.json()["data"]["items"]
-    items_with_recipes = [i for i in items if i.get("recipes")]
-    assert len(items_with_recipes) >= 1, "No menu items have recipes — recipe bridge may be broken"
-
-
-@pytest.mark.asyncio
-async def test_inventory_has_items_for_store(client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int):
-    """Inventory items exist for the store."""
-    r = await client.get(f"{base_url}/admin/inventory/items?store_id={store_id}&per_page=50", headers=admin_headers)
-    assert r.status_code == 200
-    items = r.json()["data"]["items"]
-    assert len(items) >= 1
 
 
 # ═══════════════════════════════════════════════════════════════════════════

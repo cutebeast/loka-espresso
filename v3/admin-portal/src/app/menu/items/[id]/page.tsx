@@ -33,12 +33,12 @@ export default function ItemEditPage() {
 
   const loadRefs = async () => {
     const raw = (d:any) => Array.isArray(d)?d:(d?.items||[]);
-    try{const d=await api.getRaw<any>("/admin/menu/categories?per_page=50");setCategories(raw(d));}catch{}
-    try{const d=await api.getRaw<any>("/admin/menu/allergens");setAllergens(raw(d));}catch{}
-    try{const d=await api.getRaw<any>("/admin/menu/dietary-tags?per_page=50");setDietaryTags(raw(d));}catch{}
-    try{const d=await api.getRaw<any>("/admin/menu/tax-categories");setTaxCategories(raw(d));}catch{}
-    try{const d=await api.getRaw<any>("/admin/loyalty/tiers");setLoyaltyTiers(raw(d));}catch{}
-    try{const d=await api.getRaw<any>("/admin/stores?per_page=50");setStores(raw(d));}catch{}
+    try{const d=await api.getRaw<any>("/admin/menu/categories?per_page=50");setCategories(raw(d));}catch (e) { console.error(e); }
+    try{const d=await api.getRaw<any>("/admin/menu/allergens");setAllergens(raw(d));}catch (e) { console.error(e); }
+    try{const d=await api.getRaw<any>("/admin/menu/dietary-tags?per_page=50");setDietaryTags(raw(d));}catch (e) { console.error(e); }
+    try{const d=await api.getRaw<any>("/admin/menu/tax-categories");setTaxCategories(raw(d));}catch (e) { console.error(e); }
+    try{const d=await api.getRaw<any>("/admin/loyalty/tiers");setLoyaltyTiers(raw(d));}catch (e) { console.error(e); }
+    try{const d=await api.getRaw<any>("/admin/stores?per_page=50");setStores(raw(d));}catch (e) { console.error(e); }
   };
 
   const loadItem = async () => {
@@ -61,7 +61,7 @@ export default function ItemEditPage() {
       const x:Record<string,string>={};
       for(const lc of LOCALES){
         if(lc.code==="en")continue;
-        try{const rt=await api.getRaw<any>(`/admin/translations?table_name=menu_items&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}
+        try{const rt=await api.getRaw<any>(`/admin/translations?table_name=menu_items&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch (e) { console.error(e); }
       }
       const mg = (d.modifier_groups||[]).map((g:any)=>({id:g.id,name:g.group_name,options:(g.options||[]).map((o:any)=>({id:o.id,name:o.option_name}))}));
       setModTr({groups:mg});
@@ -94,7 +94,7 @@ export default function ItemEditPage() {
 
   const loadInventoryForStore = async (storeId:string) => {
     if(!storeId)return;
-    try{const d=await api.getRaw<any>(`/admin/inventory/items?store_id=${storeId}&per_page=200`);setInventoryItems(Array.isArray(d)?d:(d.items||[]));}catch{setInventoryItems([]);}
+    try{const d=await api.getRaw<any>(`/admin/inventory/items?store_id=${storeId}&per_page=200`);setInventoryItems(Array.isArray(d)?d:(d.items||[]));}catch(e){console.error(e);setInventoryItems([]);}
   };
 
   const addRecipe = () => setForm({...form, recipes: [...(form.recipes||[]), {inventory_item_id:"",quantity_required:1,unit_of_measure:"unit",waste_factor:0.05,is_primary_component:false}]});
@@ -117,12 +117,12 @@ export default function ItemEditPage() {
   };
 
   const upsertTr = async(field:string,locale:string,src:string,text:string)=>{
-    try{const rt=await api.getRaw<any>(`/admin/translations?table_name=menu_items&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`menu_items.${id}.${field}`,locale,namespace:"menu",translated_text:text,source_text:src,table_name:"menu_items",record_id:Number(id),column_name:field});}catch{}
+    try{const rt=await api.getRaw<any>(`/admin/translations?table_name=menu_items&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`menu_items.${id}.${field}`,locale,namespace:"menu",translated_text:text,source_text:src,table_name:"menu_items",record_id:Number(id),column_name:field});}catch (e) { console.error(e); }
   };
 
   const regenAll = async () => {
     setRegen(true); let c=0;
-    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch{}}
+    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch (e) { console.error(e); }}
     setMsg(`Regenerated ${c}`);setTimeout(()=>setMsg(""),2500);setRegen(false);
   };
 
@@ -202,7 +202,7 @@ export default function ItemEditPage() {
         </div>
       ):(
         <div className="card" style={{padding:24,maxWidth:700}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{margin:0}}>{LOCALES.find(l=>l.code===loc)?.flag} {LOCALES.find(l=>l.code===loc)?.label} Translation</h3><button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm"><RefreshCw size={14}/>{regen?"...":"Regenerate All"}</button></div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{margin:0}}>{LOCALES.find(l=>l.code===loc)?.flag} {LOCALES.find(l=>l.code===loc)?.label} Translation</h3><button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm" aria-label="Refresh"><RefreshCw size={14}/>{regen?"...":"Regenerate All"}</button></div>
           <div className="df-grid">{TR_FIELDS.map(f=>{const k=`${loc}:${f.key}`;const w=f.key==="long_description"?({gridColumn:"1/-1"}):{};return(<div className="df-field" key={f.key} style={w}><label style={{fontSize:11,fontWeight:600,color:"var(--color-text-muted)"}}>{f.label}<span style={{fontWeight:400,fontStyle:"italic",marginLeft:8}}>EN:{(form[f.key]||"").slice(0,40)}</span></label>{f.key==="long_description"?<textarea rows={3} value={tr[k]||""} onChange={e=>setTr(p=>({...p,[k]:e.target.value}))} style={{width:"100%",padding:"8px 10px",fontSize:13,border:tr[k]?"1px solid var(--color-border-light)":"2px solid #FCD34D",borderRadius:"var(--radius-sm)",background:tr[k]?"var(--color-bg-white)":"#FFFBEB"}}/>:<input value={tr[k]||""} onChange={e=>setTr(p=>({...p,[k]:e.target.value}))} style={{width:"100%",padding:"8px 10px",fontSize:13,border:tr[k]?"1px solid var(--color-border-light)":"2px solid #FCD34D",borderRadius:"var(--radius-sm)",background:tr[k]?"var(--color-bg-white)":"#FFFBEB"}}/>}</div>);})}</div>
           {/* Modifier Groups */}
           {modTr.groups.length > 0 && (<div style={{marginTop:16}}><h4 style={{fontSize:11,fontWeight:700,textTransform:"uppercase",color:"var(--color-text-muted)",borderBottom:"1px solid var(--color-border-light)",paddingBottom:4,marginBottom:10}}>Add-ons / Modifiers</h4>{modTr.groups.map((g:any)=>(<div key={g.id} style={{marginBottom:10,padding:8,background:"var(--color-bg-muted)",borderRadius:"var(--radius-sm)"}}><div className="df-grid"><div className="df-field"><label style={{fontSize:10,fontWeight:600,color:"var(--color-text-muted)"}}>Group: {g.name}</label><input value={tr[`${loc}:mod:group_${g.id}`]||""} onChange={e=>setTr(p=>({...p,[`${loc}:mod:group_${g.id}`]:e.target.value}))} style={{width:"100%",padding:"6px 8px",fontSize:12,border:"1px solid var(--color-border-light)",borderRadius:"var(--radius-sm)"}}/></div></div>{g.options.map((o:any)=>(<div className="df-grid" key={o.id} style={{marginTop:4}}><div className="df-field"><label style={{fontSize:10,color:"var(--color-text-muted)"}}>Option: {o.name}</label><input value={tr[`${loc}:mod:opt_${o.id}`]||""} onChange={e=>setTr(p=>({...p,[`${loc}:mod:opt_${o.id}`]:e.target.value}))} style={{width:"100%",padding:"6px 8px",fontSize:12,border:"1px solid var(--color-border-light)",borderRadius:"var(--radius-sm)"}}/></div></div>))}</div>))}</div>)}

@@ -32,6 +32,7 @@ from app.schemas.staff import (
 from app.services.order import _deduct_stock_for_order
 from app.core.config import get_settings
 from app.core.rate_limiter import limiter
+from app.core.security import hash_password, verify_password_staff
 
 router = APIRouter(tags=["staff — operations"])
 
@@ -81,7 +82,7 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
             raise HTTPException(status_code=401, detail="Staff not found or no PIN set")
         if not _pin_allowed(staff.pin_hash, password):
             raise HTTPException(status_code=401, detail="Default PIN not allowed for login. Use password or change PIN first.")
-        ok = bcrypt.checkpw(password.encode(), staff.pin_hash.encode() if isinstance(staff.pin_hash, str) else staff.pin_hash)
+        ok = verify_password_staff(password, staff.pin_hash if isinstance(staff.pin_hash, str) else staff.pin_hash.decode())
         if not ok:
             raise HTTPException(status_code=401, detail="Invalid PIN")
         return _make_token(staff)
@@ -104,7 +105,7 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
         # Try password first, then PIN
         if staff.password_hash:
             try:
-                pw_ok = bcrypt.checkpw(password.encode(), staff.password_hash.encode() if isinstance(staff.password_hash, str) else staff.password_hash)
+                pw_ok = verify_password_staff(password, staff.password_hash if isinstance(staff.password_hash, str) else staff.password_hash.decode())
             except Exception:
                 pw_ok = False
             if pw_ok:
@@ -114,7 +115,7 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
             if not _pin_allowed(staff.pin_hash, password):
                 raise HTTPException(status_code=401, detail="Default PIN not allowed. Use password or change PIN first.")
             try:
-                pin_ok = bcrypt.checkpw(password.encode(), staff.pin_hash.encode() if isinstance(staff.pin_hash, str) else staff.pin_hash)
+                pin_ok = verify_password_staff(password, staff.pin_hash if isinstance(staff.pin_hash, str) else staff.pin_hash.decode())
             except Exception:
                 pin_ok = False
             if pin_ok:
@@ -181,7 +182,7 @@ async def admin_select_store(request: Request, db: DBDependency, data: StaffAdmi
         raise HTTPException(status_code=400, detail="Token and store_id required")
     secret = get_settings().jwt_secret
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+        payload = jwt.decode(token, secret, algorithms=["HS256"], audience="fnb-app")
         if payload.get("type") != "admin":
             raise HTTPException(status_code=401, detail="Not an admin token")
     except jwt.InvalidTokenError:
@@ -242,8 +243,7 @@ def _pin_allowed(pin_hash, attempted_pin):
     if not pin_hash:
         return False
     try:
-        import bcrypt
-        return not bcrypt.checkpw(b"000000", pin_hash.encode() if isinstance(pin_hash, str) else pin_hash)
+        return not verify_password_staff("000000", pin_hash if isinstance(pin_hash, str) else pin_hash.decode())
     except Exception:
         return False
 
@@ -259,7 +259,7 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
         raise HTTPException(status_code=400, detail="refresh_token required")
     secret = get_settings().jwt_secret
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+        payload = jwt.decode(token, secret, algorithms=["HS256"], audience="fnb-app")
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
     except jwt.InvalidTokenError:
@@ -338,7 +338,7 @@ async def staff_profile_me(db: DBDependency, request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     secret = get_settings().jwt_secret
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+        payload = jwt.decode(token, secret, algorithms=["HS256"], audience="fnb-app")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -510,7 +510,7 @@ async def staff_verify_pin(request: Request, db: DBDependency, staff: CurrentSta
         return APIResponse(data={"valid": False, "message": "No PIN set"})
 
     try:
-        valid = bcrypt.checkpw(pin.encode(), staff.pin_hash.encode() if isinstance(staff.pin_hash, str) else staff.pin_hash)
+        valid = verify_password_staff(pin, staff.pin_hash if isinstance(staff.pin_hash, str) else staff.pin_hash.decode())
     except Exception:
         valid = False
 
@@ -530,7 +530,7 @@ async def staff_change_password(request: Request, db: DBDependency, data: StaffC
     if not token: raise HTTPException(status_code=401, detail="Not authenticated")
     secret = get_settings().jwt_secret
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+        payload = jwt.decode(token, secret, algorithms=["HS256"], audience="fnb-app")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
     if payload.get("type") == "admin":
@@ -545,7 +545,7 @@ async def staff_change_password(request: Request, db: DBDependency, data: StaffC
     pw = (data.new_password or "").strip()
     if len(pw) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
-    staff.password_hash = bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
+    staff.password_hash = hash_password(pw)
     await db.commit()
     return APIResponse(data={"updated": True})
 
@@ -558,7 +558,7 @@ async def staff_change_pin(request: Request, db: DBDependency, data: StaffChange
     if not token: raise HTTPException(status_code=401, detail="Not authenticated")
     secret = get_settings().jwt_secret
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
+        payload = jwt.decode(token, secret, algorithms=["HS256"], audience="fnb-app")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
     if payload.get("type") == "admin":
@@ -569,7 +569,7 @@ async def staff_change_pin(request: Request, db: DBDependency, data: StaffChange
     if not staff: raise HTTPException(status_code=404, detail="Staff not found")
     p = (data.new_pin or "").strip()
     if len(p) < 4: raise HTTPException(status_code=400, detail="PIN must be at least 4 digits")
-    staff.pin_hash = bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
+    staff.pin_hash = hash_password(p)
     await db.commit()
     return APIResponse(data={"updated": True})
 

@@ -65,7 +65,7 @@ async def _deduct_stock_for_order(
         select(InventoryItem).where(
             InventoryItem.id.in_(list(recipe_needs.keys())),
             InventoryItem.store_id == order.store_id,
-        )
+        ).with_for_update()
     )
     inv_items = {inv.id: inv for inv in inv_result.scalars().all()}
 

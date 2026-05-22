@@ -30,15 +30,15 @@ export default function CampaignEditPage() {
       setForm({ campaign_name: d.campaign_name || "", campaign_key: d.campaign_key || "", campaign_type: d.campaign_type || "promotional", channel: d.channel || "push_notification", status: d.status || "draft", audience_segment: d.audience_segment || "", body_content: d.body_content || "", scheduled_at: d.scheduled_at?.slice(0, 16) || "" });
       const x: Record<string, string> = {};
       for (const lc of LOCALES) { if (lc.code === "en") continue;
-        try { const rt = await api.getRaw<any>(`/admin/translations?table_name=marketing_campaigns&record_id=${id}&locale=${lc.code}&per_page=50`); if (rt?.items) for (const t of rt.items) { const f = t.translation_key.split(".").pop() || ""; x[`${lc.code}:${f}`] = t.translated_text || ""; } } catch {}
+        try { const rt = await api.getRaw<any>(`/admin/translations?table_name=marketing_campaigns&record_id=${id}&locale=${lc.code}&per_page=50`); if (rt?.items) for (const t of rt.items) { const f = t.translation_key.split(".").pop() || ""; x[`${lc.code}:${f}`] = t.translated_text || ""; } } catch (e) { console.error(e); }
       }
       setTr(x);
-    } catch {} finally { setLoading(false); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
-  const handleSave = async () => { setSaving(true); try {       await api.put(`/admin/marketing/campaigns/${id}`, form); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); } catch {} finally { setSaving(false); } };
+  const handleSave = async () => { setSaving(true); try {       await api.put(`/admin/marketing/campaigns/${id}`, form); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); } catch (e) { console.error(e); } finally { setSaving(false); } };
 
-  const handleSend = async () => { if (!confirm("Send this campaign now?")) return; try { await sendCampaign(Number(id)); setMsg("Campaign sent!"); setTimeout(() => setMsg(""), 2000); } catch {} };
+  const handleSend = async () => { if (!confirm("Send this campaign now?")) return; try { await sendCampaign(Number(id)); setMsg("Campaign sent!"); setTimeout(() => setMsg(""), 2000); } catch (e) { console.error(e); } };
 
   const upsertTr = async (field: string, locale: string, src: string, text: string) => {
     const all = await api.getRaw<any>(`/admin/translations?table_name=marketing_campaigns&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);
@@ -47,7 +47,7 @@ export default function CampaignEditPage() {
   };
 
   const regenAll = async (locale: string) => { setRegen("all"); const results: { field: string; text: string }[] = [];
-    for (const f of TR_FIELDS) { const src = (form[f.key] || "").trim(); if (!src) continue; try { const r: any = await api.post("/admin/translations/translate", { text: src, target_locale: locale, source_locale: "en" }); if (r?.translated_text) { results.push({ field: f.key, text: r.translated_text }); setTr(prev => ({ ...prev, [`${locale}:${f.key}`]: r.translated_text })); } } catch {} }
+    for (const f of TR_FIELDS) { const src = (form[f.key] || "").trim(); if (!src) continue; try { const r: any = await api.post("/admin/translations/translate", { text: src, target_locale: locale, source_locale: "en" }); if (r?.translated_text) { results.push({ field: f.key, text: r.translated_text }); setTr(prev => ({ ...prev, [`${locale}:${f.key}`]: r.translated_text })); } } catch (e) { console.error(e); } }
     for (const r of results) { await upsertTr(r.field, locale, (form[r.field] || "").trim(), r.text); }
     setMsg(results.length > 0 ? `Regenerated ${results.length} ${locale.toUpperCase()} translations & saved` : "No translatable content"); setTimeout(() => setMsg(""), 2500); setRegen("");
   };

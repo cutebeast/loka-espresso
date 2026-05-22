@@ -142,6 +142,9 @@ export async function placeOrder(params: {
     store_id: params.storeId,
     order_type: params.orderType,
     payment_method: params.paymentMethod,
+    status: (params.paymentMethod === 'wallet' || params.paymentMethod === 'gateway')
+      ? 'awaiting_payment'
+      : 'pending',
   };
 
   if (checkoutToken) {
@@ -190,6 +193,10 @@ export async function placeOrder(params: {
         payment_method: 'wallet',
       });
       const paymentId = intentRes.data?.id || intentRes.data?.payment_id;
+      if (!paymentId) {
+        // No payment ID returned — cancel the order
+        throw new Error('Payment intent creation failed — no payment ID returned');
+      }
       const confirmRes = await api.post(`/payments/${paymentId}/confirm`, {});
       newOrder.payment_status = confirmRes.data?.status || 'paid';
       newOrder.points_earned = confirmRes.data?.points_earned ?? newOrder.points_earned;
@@ -199,14 +206,12 @@ export async function placeOrder(params: {
       }
     }
   } catch (error) {
+    // Rollback: cancel the order since payment failed
     if (newOrder?.id) {
       try {
-        const paymentId = (newOrder as any).payment_id;
-        if (paymentId) {
-          await api.post(`/payments/${paymentId}/cancel`, {});
-        }
-      } catch {
-        console.error('Best-effort order cancel rollback failed');
+        await api.post(`/orders/${newOrder.id}/cancel`, { reason: 'payment_failed' });
+      } catch (cancelErr) {
+        console.error('Order cancel rollback failed:', cancelErr);
       }
     }
     throw error;

@@ -15,7 +15,7 @@ export default function NewAllergenPage() {
       const x: any = await api.post("/admin/menu/allergens", f);
       const id = x?.data?.id || x?.id;
       if (id) r.push(`/menu/allergens/${id}`);
-    } catch {} finally { setS(false); }
+    } catch (e) { console.error(e); } finally { setS(false); }
   };
 
   return (

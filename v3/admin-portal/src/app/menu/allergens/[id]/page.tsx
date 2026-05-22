@@ -40,10 +40,10 @@ export default function AllergenEditPage() {
         try {
           const rt = await api.getRaw<any>(`/admin/translations?table_name=allergens&record_id=${id}&locale=${lc.code}&per_page=10`);
           if (rt?.items) for (const t of rt.items) { const fk = t.translation_key.split(".").pop() || ""; x[`${lc.code}:${fk}`] = t.translated_text || ""; }
-        } catch { }
+        } catch (e) { console.error(e); }
       }
       setTr(x);
-    } catch { } finally { setLoading(false); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [id]);
 
   useEffect(() => { (async () => { load(); })(); }, [load]);
@@ -54,7 +54,7 @@ export default function AllergenEditPage() {
       await api.patch(`/admin/menu/allergens/${id}`, form);
       setMsg("Saved");
       setTimeout(() => setMsg(""), 2000);
-    } catch { }
+    } catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
 
@@ -77,7 +77,7 @@ export default function AllergenEditPage() {
           await upsert(f.key, loc, src, rt.translated_text);
           c++;
         }
-      } catch { }
+      } catch (e) { console.error(e); }
     }
     setMsg(`Regenerated ${c}`);
     setTimeout(() => setMsg(""), 2500);
@@ -134,7 +134,7 @@ export default function AllergenEditPage() {
         <div className="card" style={{ padding: 24, maxWidth: 600 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <h3 style={{ margin: 0 }}>{L.find(l => l.code === loc)?.flag} {L.find(l => l.code === loc)?.label} Translation</h3>
-            <button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm"><RefreshCw size={14} /> {regen ? "..." : "Regenerate All"}</button>
+            <button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm" aria-label="Refresh"><RefreshCw size={14} /> {regen ? "..." : "Regenerate All"}</button>
           </div>
           <div className="df-grid">
             {F.map(f => {

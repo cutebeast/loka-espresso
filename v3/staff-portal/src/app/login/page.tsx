@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Store, Lock, Mail, User, ChevronDown, ChevronUp } from "lucide-react";
+import { api, staffLogin, staffLoginByName } from "@/lib/api";
 
 interface StoreInfo { id: number; store_name: string; }
 
@@ -86,27 +87,23 @@ export default function LoginPage() {
 
   useEffect(() => {
     let mounted = true;
-    fetch("/api/v1/stores")
-      .then(async r => {
-        if (!r.ok) throw new Error("Failed to load stores");
-        const d = await r.json();
-        const list = d.data?.items || d.items || [];
-        if (mounted) setStores(list.filter((s: any) => s.is_active !== false));
+    api.get<{ items: StoreInfo[] }>("/stores")
+      .then((d: { items: StoreInfo[] }) => {
+        const list = d?.items || [];
+        if (mounted) setStores(list.filter((s: StoreInfo) => (s as any).is_active !== false));
       })
-      .catch((err) => { console.error("Store fetch failed:", err); if (mounted) setStores([]); });
+      .catch((err: unknown) => { console.error("Store fetch failed:", err); if (mounted) setStores([]); });
     return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
     if (!selectedStore || mode !== "name") return;
     let mounted = true;
-    fetch(`/api/v1/staff/auth/names?store_id=${selectedStore}`)
-      .then(async r => {
-        if (!r.ok) throw new Error("Failed to load staff list");
-        const d = await r.json();
-        if (mounted) setNameList(d.data || []);
+    api.get<{ id: number; display_name: string }[]>(`/staff/auth/names?store_id=${selectedStore}`)
+      .then((d: any) => {
+        if (mounted) setNameList(Array.isArray(d) ? d : []);
       })
-      .catch((err) => { console.error("Staff names fetch failed:", err); if (mounted) setNameList([]); });
+      .catch((err: unknown) => { console.error("Staff names fetch failed:", err); if (mounted) setNameList([]); });
     return () => { mounted = false; };
   }, [selectedStore, mode]);
 
@@ -115,45 +112,15 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const payload: any = {};
       if (!selectedStore) { setError("Please select a store"); setLoading(false); return; }
 
       if (mode === "name") {
         if (!selectedName) { setError("Please select your name"); setLoading(false); return; }
-        payload.display_name = selectedName;
-        payload.store_id = Number(selectedStore);
-        payload.password = pin;
+        await staffLoginByName(selectedName, pin, Number(selectedStore));
       } else {
-        payload.email = email;
-        payload.password = pin || password;
-        payload.store_id = Number(selectedStore);
-      }
-
-      const r = await fetch("/api/v1/staff/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      let d: any;
-      try { d = await r.json(); } catch (e) { console.error("Login response parse failed:", e); throw new Error("Server error. Please try again."); }
-      if (!r.ok) throw new Error(d.detail || "Login failed");
-      const token = d.tokens?.access_token;
-      const refresh = d.tokens?.refresh_token;
-      if (!token) throw new Error("Invalid response from server");
-      try {
-        localStorage.setItem("token", token);
-        if (refresh) localStorage.setItem("refreshToken", refresh);
-        if (d.profile) {
-          localStorage.setItem("staffProfile", JSON.stringify(d.profile));
-          if (d.profile.email) localStorage.setItem("staffEmail", d.profile.email);
-          if (d.profile.display_name) localStorage.setItem("staffName", d.profile.display_name);
-          if (d.profile.store_id) localStorage.setItem("staffStoreId", String(d.profile.store_id));
-          if (d.profile.staff_id) localStorage.setItem("staffId", String(d.profile.staff_id));
-          if (d.profile.is_admin) localStorage.setItem("isAdmin", "true");
-        }
-      } catch (err) {
-        console.error("localStorage failed:", err);
-        throw new Error("Browser storage blocked. Please disable private mode.");
+        if (!email) { setError("Please enter your email"); setLoading(false); return; }
+        if (!password && !pin) { setError("Please enter your password or PIN"); setLoading(false); return; }
+        await staffLogin(email, password || pin);
       }
       router.replace("/");
     } catch (err: any) {

@@ -24,7 +24,7 @@ export default function PromotionsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this promotion?")) return;
-    try { await api.del(`/admin/promo-banners/${id}`); fetchBanners(); } catch { /* ignore */ }
+    try { await api.del(`/admin/promo-banners/${id}`); fetchBanners(); } catch (e) { console.error(e); }
   };
 
   const actionBadge = (t: string) => {

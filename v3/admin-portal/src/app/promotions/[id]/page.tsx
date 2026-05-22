@@ -61,10 +61,10 @@ export default function PromotionEditPage() {
 
   const handleUpload = async () => {
     const f = fileRef.current?.files?.[0]; if (!f) return; setUploading(true);
-    try { const fd = new FormData(); fd.append("file", f); const j = await api.upload("/upload/image", fd); const url = j.url || j.filename || ""; setForm({ ...form, image_url: url }); setImg(url); } catch {} finally { setUploading(false); }
+    try { const fd = new FormData(); fd.append("file", f); const j = await api.upload("/upload/image", fd); const url = j.url || j.filename || ""; setForm({ ...form, image_url: url }); setImg(url); } catch (e) { console.error(e); } finally { setUploading(false); }
   };
 
-  const handleSave = async () => { setSaving(true); try { const p: Record<string, unknown> = { ...form, voucher_id: Number(form.voucher_id), survey_id: form.survey_id ? Number(form.survey_id) : null, start_date: form.start_date || null, end_date: form.end_date || null }; await api.patch(`/admin/promo-banners/${id}`, p); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); } catch {} finally { setSaving(false); } };
+  const handleSave = async () => { setSaving(true); try { const p: Record<string, unknown> = { ...form, voucher_id: Number(form.voucher_id), survey_id: form.survey_id ? Number(form.survey_id) : null, start_date: form.start_date || null, end_date: form.end_date || null }; await api.patch(`/admin/promo-banners/${id}`, p); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); } catch (e) { console.error(e); } finally { setSaving(false); } };
 
   const upsertTr = async (field: string, locale: string, src: string, text: string) => {
     const all = await api.getRaw<{ items: { id: number; translation_key?: string; translated_text?: string }[] }>(`/admin/translations?table_name=promo_banners&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);
@@ -73,7 +73,7 @@ export default function PromotionEditPage() {
   };
 
   const regenAll = async (locale: string) => { setRegen("all"); const results: { field: string; text: string }[] = [];
-    for (const f of TR_FIELDS) { const src = (form[f.key] || "").trim(); if (!src) continue; try { const r = await api.post<{ translated_text?: string }>("/admin/translations/translate", { text: src, target_locale: locale, source_locale: "en" }); if (r?.translated_text) { results.push({ field: f.key, text: r.translated_text }); setTr(prev => ({ ...prev, [`${locale}:${f.key}`]: r.translated_text! })); } } catch {} }
+    for (const f of TR_FIELDS) { const src = (form[f.key] || "").trim(); if (!src) continue; try { const r = await api.post<{ translated_text?: string }>("/admin/translations/translate", { text: src, target_locale: locale, source_locale: "en" }); if (r?.translated_text) { results.push({ field: f.key, text: r.translated_text }); setTr(prev => ({ ...prev, [`${locale}:${f.key}`]: r.translated_text! })); } } catch (e) { console.error(e); } }
     for (const r of results) { await upsertTr(r.field, locale, (form[r.field] || "").trim(), r.text); }
     setMsg(results.length > 0 ? `Regenerated ${results.length} ${locale.toUpperCase()} translations & saved` : "No translatable content"); setTimeout(() => setMsg(""), 2500); setRegen("");
   };

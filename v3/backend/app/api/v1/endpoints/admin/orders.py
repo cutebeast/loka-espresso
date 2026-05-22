@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 from app.api.v1.deps import CurrentAdmin, DBDependency, get_staff_store_id_from_request
 from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
+from app.models.platform import AuditLog
 from app.models.store import Store, DiningTable
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.reward import CustomerReward, RewardCatalog
@@ -377,7 +378,7 @@ async def apply_order_voucher(
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot apply voucher to a completed/cancelled order")
 
-    # Load voucher
+    # Load voucher — lock row to prevent concurrent use
     result = await db.execute(
         select(CustomerVoucher, VoucherDefinition)
         .join(VoucherDefinition, CustomerVoucher.voucher_definition_id == VoucherDefinition.id, isouter=True)
@@ -386,6 +387,7 @@ async def apply_order_voucher(
             CustomerVoucher.customer_id == order.customer_id,
             CustomerVoucher.status == "active",
         )
+        .with_for_update()
     )
     row = result.first()
     if not row:
@@ -443,6 +445,15 @@ async def apply_order_voucher(
     )
     db.add(adj)
 
+    # Audit log
+    db.add(AuditLog(
+        actor_id=admin.id,
+        action="voucher.apply_to_order",
+        target_type="order",
+        target_id=order_id,
+        details={"voucher_code": voucher_code, "discount": discount, "customer_id": order.customer_id},
+    ))
+
     await db.commit()
     await db.refresh(order)
 
@@ -476,7 +487,7 @@ async def apply_order_reward(
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot apply reward to a completed/cancelled order")
 
-    # Load reward
+    # Load reward — lock row to prevent concurrent use
     result = await db.execute(
         select(CustomerReward, RewardCatalog)
         .join(RewardCatalog, CustomerReward.reward_catalog_id == RewardCatalog.id, isouter=True)
@@ -485,6 +496,7 @@ async def apply_order_reward(
             CustomerReward.customer_id == order.customer_id,
             CustomerReward.status.in_(["active", "reserved"]),
         )
+        .with_for_update()
     )
     row = result.first()
     if not row:
@@ -525,6 +537,15 @@ async def apply_order_reward(
         approved_by=admin.id,
     )
     db.add(adj)
+
+    # Audit log
+    db.add(AuditLog(
+        actor_id=admin.id,
+        action="reward.apply_to_order",
+        target_type="order",
+        target_id=order_id,
+        details={"reward_id": reward_id, "discount": discount, "customer_id": order.customer_id},
+    ))
 
     await db.commit()
     await db.refresh(order)
@@ -618,6 +639,15 @@ async def pay_with_wallet(
     if amount >= remaining_total:
         order.payment_status = "captured"
     order.updated_at = now
+
+    # Audit log
+    db.add(AuditLog(
+        actor_id=admin.id,
+        action="wallet.pay_for_order",
+        target_type="order",
+        target_id=order_id,
+        details={"amount": amount, "remaining_balance": new_balance, "customer_id": order.customer_id},
+    ))
 
     await db.commit()
     await db.refresh(order)

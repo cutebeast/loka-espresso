@@ -74,7 +74,7 @@ export default function WalletPage() {
 
   const getTopUpAmount = (): number | null => {
     if (selectedAmount) return selectedAmount;
-    const custom = parseInt(customAmount, 10);
+    const custom = parseFloat(customAmount);
     if (!isNaN(custom) && custom >= config.topup_min_amount) return custom;
     return null;
   };

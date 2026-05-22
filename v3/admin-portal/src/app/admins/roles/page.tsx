@@ -67,7 +67,7 @@ export default function RolesPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this role? All assignments will be removed.")) return;
-    try { await api.del(`/admin/auth/roles/${id}`); fetch(); setMsg("Role deleted"); setTimeout(() => setMsg(""), 2000); } catch {}
+    try { await api.del(`/admin/auth/roles/${id}`); fetch(); setMsg("Role deleted"); setTimeout(() => setMsg(""), 2000); } catch (e) { console.error(e); }
   };
 
   const loadRolePerms = async (roleId: number) => {
@@ -75,7 +75,7 @@ export default function RolesPage() {
     try {
       const d = await api.getRaw<any>(`/admin/auth/roles/${roleId}/permissions`);
       setRolePerms(d?.permission_ids || d?.data?.permission_ids || []);
-    } catch { setRolePerms([]); }
+    } catch (e) { console.error(e); setRolePerms([]); }
   };
 
   const togglePerm = (permId: number) => {
@@ -87,7 +87,7 @@ export default function RolesPage() {
     try {
       await api.put(`/admin/auth/roles/${assigningRole}/permissions`, { permission_ids: rolePerms });
       setAssigningRole(null); setMsg("Permissions saved"); setTimeout(() => setMsg(""), 2000);
-    } catch {}
+    } catch (e) { console.error(e); }
   };
 
   const startEdit = (r: Role) => {

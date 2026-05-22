@@ -15,7 +15,7 @@ export default function SystemPagesPage() {
   useEffect(()=>{(async () => {
 fetch();
 })();},[fetch]);
-  const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/system-pages/${id}`);fetch();}catch{}; };
+  const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/system-pages/${id}`);fetch();}catch (e) { console.error(e); }; };
   return (
     <div style={{padding:32}}>
       <div className="page-header"><div><h1 className="page-title">System Pages</h1><p className="page-subtitle">{items.length} pages</p></div><button onClick={()=>router.push("/content/system/new")} className="btn btn-primary btn-sm"><Plus size={16}/> Add Page</button></div>

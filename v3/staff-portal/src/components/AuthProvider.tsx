@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import StoreHeader from "@/components/StoreHeader";
-import { staffLogout } from "@/lib/api";
+import { staffLogout, refreshToken as apiRefreshToken } from "@/lib/api";
 
 function parseJwtExp(token: string): number | null {
   try {
@@ -13,30 +13,6 @@ function parseJwtExp(token: string): number | null {
   } catch (e) {
     console.error("Failed to parse JWT:", e);
     return null;
-  }
-}
-
-async function refreshToken(): Promise<boolean> {
-  try {
-    const refresh = localStorage.getItem("refreshToken");
-    if (!refresh) return false;
-    const res = await fetch("/api/v1/staff/auth/refresh", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refresh }),
-    });
-    if (!res.ok) return false;
-    const json = await res.json();
-    const data = json.data || json;
-    if (data.tokens?.access_token) {
-      localStorage.setItem("token", data.tokens.access_token);
-      if (data.tokens.refresh_token) localStorage.setItem("refreshToken", data.tokens.refresh_token);
-      return true;
-    }
-    return false;
-  } catch (e) {
-    console.error("Token refresh failed:", e);
-    return false;
   }
 }
 
@@ -122,7 +98,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       const exp = parseJwtExp(token);
       if (exp && Date.now() >= exp - 30000) {
         // Token expired (or within 30s of expiry) — try refresh
-        const refreshed = await refreshToken();
+        const refreshed = await apiRefreshToken();
         if (!refreshed) {
           if (!cancelled) {
             staffLogout();
@@ -143,7 +119,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
         if (res.status === 401) {
           // Try refresh once more
-          const refreshed = await refreshToken();
+          const refreshed = await apiRefreshToken();
           if (refreshed) {
             const retry = await fetch("/api/v1/staff/auth/me", {
               headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },

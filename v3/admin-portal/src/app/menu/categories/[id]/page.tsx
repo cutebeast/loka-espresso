@@ -32,14 +32,14 @@ export default function CategoryEditPage() {
         if (r?.items) for (const t of r.items) { const f = t.translation_key.split(".").pop()||""; tr[`${loc.code}:${f}`] = t.translated_text||""; }
       }
       setTranslations(tr);
-    } catch {}
+    } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
   const save = async () => {
     setSaving(true);
     try { await api.patch(`/admin/menu/categories/${catId}`, form); setMsg("Saved"); setTimeout(()=>setMsg(""),2000); }
-    catch {}
+    catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
 
@@ -58,7 +58,7 @@ export default function CategoryEditPage() {
       try {
         const r:any = await api.post("/admin/translations/translate", { text: src, target_locale: activeLocale, source_locale: "en" });
         if (r?.translated_text) { setTranslations(p=>({...p,[`${activeLocale}:${f.key}`]:r.translated_text})); await upsertTr(f.key,activeLocale,src,r.translated_text); count++; }
-      } catch {}
+      } catch (e) { console.error(e); }
     }
     setMsg(`Regenerated ${count} ${activeLocale.toUpperCase()} translations`);
     setTimeout(()=>setMsg(""),2500);
@@ -106,7 +106,7 @@ export default function CategoryEditPage() {
         <div className="card" style={{padding:24,maxWidth:600}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
             <h3 style={{margin:0}}>{LOCALES.find(l=>l.code===activeLocale)?.flag} {LOCALES.find(l=>l.code===activeLocale)?.label} Translation</h3>
-            <button onClick={regenerateAll} disabled={regenerating} className="btn btn-primary btn-sm"><RefreshCw size={14}/>{regenerating?"...":"Regenerate"}</button>
+            <button onClick={regenerateAll} disabled={regenerating} className="btn btn-primary btn-sm" aria-label="Refresh"><RefreshCw size={14}/>{regenerating?"...":"Regenerate"}</button>
           </div>
           <div className="df-grid">
             {TR_FIELDS.map(f=>{

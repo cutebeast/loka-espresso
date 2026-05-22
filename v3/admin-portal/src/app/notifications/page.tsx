@@ -43,8 +43,8 @@ export default function NotificationsPage() {
   }, [fetchData, applyData]);
 
   const sendNow = async (id: number) => { if (!confirm("Send now?")) return; try { await api.post(`/admin/notifications/${id}/send`, {}); applyData(await fetchData(page), page); } catch (e: any) { setError(e.message); } };
-  const toggleArchive = async (id: number) => { try { await api.patch(`/admin/notifications/${id}/archive`, {}); applyData(await fetchData(page), page); } catch {}; };
-  const handleDelete = async (id: number) => { try { await api.del(`/admin/notifications/${id}`); setConfirmDelete(null); applyData(await fetchData(page), page); } catch {}; };
+  const toggleArchive = async (id: number) => { try { await api.patch(`/admin/notifications/${id}/archive`, {}); applyData(await fetchData(page), page); } catch (e) { console.error(e); }; };
+  const handleDelete = async (id: number) => { try { await api.del(`/admin/notifications/${id}`); setConfirmDelete(null); applyData(await fetchData(page), page); } catch (e) { console.error(e); }; };
 
   const statusBadge = (s: string, scheduled?: string) => {
     if (scheduled && s === "draft") return <span className="badge badge-sm badge-yellow"><Clock size={10} /> Scheduled</span>;

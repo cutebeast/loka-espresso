@@ -4,11 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Star, Wallet, Gift, Coffee, ShoppingBag, Users, Ticket, Circle } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
+import { useConfigStore } from '@/stores/configStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
 import { useTranslation } from '@/hooks/useTranslation';
 import { t } from '@/lib/i18n';
 import { getLocale } from '@/stores/localeStore';
+import { formatPrice } from '@/lib/tokens';
 import type { LoyaltyHistoryEntry, Transaction } from '@/lib/api';
 
 type Tab = 'loyalty' | 'wallet';
@@ -139,12 +141,12 @@ export default function HistoryPage() {
           ) : (
             <>
               <div className="history-summary-stat">
-                <div className="history-summary-value">+RM {walletIn.toFixed(0)}</div>
+                <div className="history-summary-value">+{formatPrice(walletIn)}</div>
                 <div className="history-summary-lbl">{t('history.topUps')}</div>
               </div>
               <div className="history-summary-divider" />
               <div className="history-summary-stat">
-                <div className="history-summary-value">−RM {walletOut.toFixed(0)}</div>
+                <div className="history-summary-value">−{formatPrice(walletOut)}</div>
                 <div className="history-summary-lbl">{t('history.spent')}</div>
               </div>
               <div className="history-summary-divider" />
@@ -152,7 +154,7 @@ export default function HistoryPage() {
           )}
           <div className="history-summary-stat">
             <div className="history-summary-value">
-              {activeTab === 'loyalty' ? points.toLocaleString() : `RM ${balance.toFixed(0)}`}
+              {activeTab === 'loyalty' ? points.toLocaleString() : formatPrice(balance)}
             </div>
             <div className="history-summary-lbl">{t('history.balance')}</div>
           </div>
@@ -200,7 +202,7 @@ export default function HistoryPage() {
                         <div className={`history-tx-amount ${isPositive ? 'credit' : 'debit'}`}>
                           {activeTab === 'loyalty'
                             ? `${isPositive ? '+' : '−'}${Math.abs((item as LoyaltyHistoryEntry).points || 0).toLocaleString()} pts`
-                            : `${isPositive ? '+' : '−'}RM ${Math.abs((item as Transaction).amount || 0).toFixed(2)}`}
+                            : `${isPositive ? '+' : '−'}${formatPrice(Math.abs((item as Transaction).amount || 0))}`}
                         </div>
                       </div>
                     </div>

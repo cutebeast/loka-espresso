@@ -43,7 +43,7 @@ export default function EquipmentPage() {
       params.set("per_page", "100");
       const d = await api.getRaw<any>(`/admin/equipment?${params.toString()}`);
       setItems(d?.items || []);
-    } catch {}
+    } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [storeFilter, statusFilter]);
 
@@ -54,7 +54,7 @@ export default function EquipmentPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this equipment record?")) return;
-    try { await api.del(`/admin/equipment/${id}`); fetchData(); } catch {}
+    try { await api.del(`/admin/equipment/${id}`); fetchData(); } catch (e) { console.error(e); }
   };
 
   return (

@@ -29,7 +29,7 @@ export default function ReservationsPage() {
   useEffect(() => { fetch(); }, [status, date, storeId]);
 
   const updateStatus = async (id: number, s: string) => { if (!confirm(`${s} this reservation?`)) return;
-    try { await api.patch(`/admin/reservations/${id}/status`, { status: s }); fetch(); } catch {}; };
+    try { await api.patch(`/admin/reservations/${id}/status`, { status: s }); fetch(); } catch (e) { console.error(e); }; };
 
   const sb = (s: string) => {
     const m: Record<string, string> = { requested: "badge-yellow", confirmed: "badge-blue", seated: "badge-green", completed: "badge-green", cancelled: "badge-red", no_show: "badge-gray" };

@@ -40,11 +40,11 @@ export default function SurveyEditPage() {
       const x:Record<string,string>={};
       for(const lc of LOCALES){
         if(lc.code==="en")continue;
-        try{const rt=await api.getRaw<any>(`/admin/translations?table_name=survey_definitions&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}
-        try{const qt=await api.getRaw<any>(`/admin/translations?table_name=survey_questions&locale=${lc.code}&per_page=100`);if(qt?.items)for(const t of qt.items){const c=t.column_name;if(c==="question_text")x[`${lc.code}:q:${t.record_id}`]=t.translated_text||"";else if(c.startsWith("option_")){const oi=parseInt(c.split("_")[1]);x[`${lc.code}:qopt:${t.record_id}_${oi}`]=t.translated_text||"";}}}catch{}
+        try{const rt=await api.getRaw<any>(`/admin/translations?table_name=survey_definitions&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch (e) { console.error(e); }
+        try{const qt=await api.getRaw<any>(`/admin/translations?table_name=survey_questions&locale=${lc.code}&per_page=100`);if(qt?.items)for(const t of qt.items){const c=t.column_name;if(c==="question_text")x[`${lc.code}:q:${t.record_id}`]=t.translated_text||"";else if(c.startsWith("option_")){const oi=parseInt(c.split("_")[1]);x[`${lc.code}:qopt:${t.record_id}_${oi}`]=t.translated_text||"";}}}catch (e) { console.error(e); }
       }
       setTr(x);
-    } catch {} finally { setLoading(false); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [id]);
 
   useEffect(()=>{(async () => {
@@ -74,18 +74,18 @@ load();
       const qs = (d.questions||[]).map((q:any)=>({id:q.id,text:q.question_text,options:q.answer_options?.choices||q.options||[]}));
       setQTr({questions:qs});
       setMsg("Saved"); setTimeout(()=>setMsg(""),2000);
-    } catch {} finally { setSaving(false); }
+    } catch (e) { console.error(e); } finally { setSaving(false); }
   };
 
   const upsertTr = async(field:string,locale:string,src:string,text:string,tableName:string="survey_definitions",recordId:number=Number(id))=>{
-    try{const rt=await api.getRaw<any>(`/admin/translations?table_name=${tableName}&record_id=${recordId}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`${tableName}.${recordId}.${field}`,locale,namespace:"survey",translated_text:text,source_text:src,table_name:tableName,record_id:recordId,column_name:field});}catch{}
+    try{const rt=await api.getRaw<any>(`/admin/translations?table_name=${tableName}&record_id=${recordId}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`${tableName}.${recordId}.${field}`,locale,namespace:"survey",translated_text:text,source_text:src,table_name:tableName,record_id:recordId,column_name:field});}catch (e) { console.error(e); }
   };
 
   const regenAll = async () => { setRegen(true); let c=0;
-    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch{}}
+    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch (e) { console.error(e); }}
     for(const q of qTr.questions){
-      const src=(q.text||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:q:${q.id}`]:rt.translated_text}));await upsertTr("question_text",loc,src,rt.translated_text,"survey_questions",q.id);c++;}}catch{}
-      for(let oi=0;oi<(q.options||[]).length;oi++){const opt=q.options[oi].trim();if(!opt)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:opt,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:qopt:${q.id}_${oi}`]:rt.translated_text}));await upsertTr(`option_${oi}`,loc,opt,rt.translated_text,"survey_questions",q.id);c++;}}catch{}}
+      const src=(q.text||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:q:${q.id}`]:rt.translated_text}));await upsertTr("question_text",loc,src,rt.translated_text,"survey_questions",q.id);c++;}}catch (e) { console.error(e); }
+      for(let oi=0;oi<(q.options||[]).length;oi++){const opt=q.options[oi].trim();if(!opt)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:opt,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:qopt:${q.id}_${oi}`]:rt.translated_text}));await upsertTr(`option_${oi}`,loc,opt,rt.translated_text,"survey_questions",q.id);c++;}}catch (e) { console.error(e); }}
     }
     setMsg(`Regenerated ${c} fields & options`);setTimeout(()=>setMsg(""),2500);setRegen(false);
   };
@@ -143,7 +143,7 @@ load();
         </div>
       ):(
         <div className="card" style={{padding:24,maxWidth:700}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{margin:0}}>{LOCALES.find(l=>l.code===loc)?.flag} {LOCALES.find(l=>l.code===loc)?.label} Translation</h3><button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm"><RefreshCw size={14}/>{regen?"...":"Regenerate All"}</button></div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{margin:0}}>{LOCALES.find(l=>l.code===loc)?.flag} {LOCALES.find(l=>l.code===loc)?.label} Translation</h3><button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm" aria-label="Refresh"><RefreshCw size={14}/>{regen?"...":"Regenerate All"}</button></div>
           <div className="df-grid">{TR_FIELDS.map(f=>{const k=`${loc}:${f.key}`;const isTA=f.key==="description";return(<div className="df-field" key={f.key} style={isTA?{gridColumn:"1/-1"}:{}}><label style={{fontSize:11,fontWeight:600,color:"var(--color-text-muted)"}}>{f.label}<span style={{fontWeight:400,fontStyle:"italic",marginLeft:8}}>EN:{(form[f.key]||"").slice(0,40)}</span></label>{isTA?<textarea rows={3} value={tr[k]||""} onChange={e=>setTr(p=>({...p,[k]:e.target.value}))} style={{width:"100%",padding:"8px 10px",fontSize:13,border:tr[k]?"1px solid var(--color-border-light)":"2px solid #FCD34D",borderRadius:"var(--radius-sm)",background:tr[k]?"var(--color-bg-white)":"#FFFBEB"}}/>:<input value={tr[k]||""} onChange={e=>setTr(p=>({...p,[k]:e.target.value}))} style={{width:"100%",padding:"8px 10px",fontSize:13,border:tr[k]?"1px solid var(--color-border-light)":"2px solid #FCD34D",borderRadius:"var(--radius-sm)",background:tr[k]?"var(--color-bg-white)":"#FFFBEB"}}/>}</div>);})}</div>
           {/* Questions section */}
           {qTr.questions.length>0&&(<div style={{marginTop:16}}><h4 style={{fontSize:11,fontWeight:700,textTransform:"uppercase",color:"var(--color-text-muted)",borderBottom:"1px solid var(--color-border-light)",paddingBottom:4,marginBottom:10}}>Questions</h4><div className="df-grid">{qTr.questions.map((q:any)=>(<div key={q.id}><div className="df-field"><label style={{fontSize:10,fontWeight:600,color:"var(--color-text-muted)"}}>Q: {q.text.slice(0,50)}</label><input value={tr[`${loc}:q:${q.id}`]||""} onChange={e=>setTr(p=>({...p,[`${loc}:q:${q.id}`]:e.target.value}))} style={{width:"100%",padding:"8px 10px",fontSize:13,border:tr[`${loc}:q:${q.id}`]?"1px solid var(--color-border-light)":"2px solid #FCD34D",borderRadius:"var(--radius-sm)",background:tr[`${loc}:q:${q.id}`]?"var(--color-bg-white)":"#FFFBEB"}}/></div>{(q.options||[]).length>0&&(<div style={{paddingLeft:12,marginTop:4}}>{q.options.map((opt:string,oi:number)=>(<div className="df-field" key={oi}><label style={{fontSize:9,color:"var(--color-text-muted)"}}>→ Option {oi+1}: {opt}</label><input value={tr[`${loc}:qopt:${q.id}_${oi}`]||""} onChange={e=>setTr(p=>({...p,[`${loc}:qopt:${q.id}_${oi}`]:e.target.value}))} style={{width:"100%",padding:"6px 8px",fontSize:12,border:tr[`${loc}:qopt:${q.id}_${oi}`]?"1px solid var(--color-border-light)":"2px solid #FCD34D",borderRadius:"var(--radius-sm)",background:tr[`${loc}:qopt:${q.id}_${oi}`]?"var(--color-bg-white)":"#FFFBEB"}}/></div>))}</div>)}</div>))}</div></div>)}

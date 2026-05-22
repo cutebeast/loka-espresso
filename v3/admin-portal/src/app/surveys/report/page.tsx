@@ -104,7 +104,7 @@ export default function SurveyReportPage() {
                 const a = document.createElement("a");
                 a.href = url; a.download = `survey-${selectedId}-responses.json`; a.click();
                 URL.revokeObjectURL(url);
-              } catch { /* ignore */ }
+              } catch (e) { console.error(e); }
             }}
           >
             <Download size={14} /> Export JSON

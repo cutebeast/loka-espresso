@@ -127,18 +127,18 @@ export default function TableCard({
           </button>
         ) : (
           <>
-            <button type="button" onClick={() => onDownloadQr(table)} className="tp-btn-download" title="Download QR">
+            <button type="button" onClick={() => onDownloadQr(table)} className="tp-btn-download" aria-label="Download QR" title="Download QR">
               <Download size={14} />
             </button>
-            <button type="button" onClick={() => onRegenerateQr(table)} className="tp-btn-regen" title="Regenerate QR">
+            <button type="button" onClick={() => onRegenerateQr(table)} className="tp-btn-regen" aria-label="Regenerate QR" title="Regenerate QR">
               <RefreshCw size={14} />
             </button>
           </>
         )}
-        <button type="button" onClick={() => onToggle(table)} className="tp-btn-toggle" title={table.is_active ? "Deactivate" : "Activate"}>
+        <button type="button" onClick={() => onToggle(table)} className="tp-btn-toggle" aria-label={table.is_active ? "Deactivate" : "Activate"} title={table.is_active ? "Deactivate" : "Activate"}>
           {table.is_active ? <ToggleRight size={18} className="text-green-600" /> : <ToggleLeft size={18} className="text-gray-400" />}
         </button>
-        <button type="button" onClick={() => onEdit(table)} className="tp-btn-edit" title="Edit">
+        <button type="button" onClick={() => onEdit(table)} className="tp-btn-edit" aria-label="Edit table" title="Edit">
           <Edit2 size={14} />
         </button>
         {confirmDelete === table.id ? (
@@ -151,7 +151,7 @@ export default function TableCard({
             </button>
           </>
         ) : (
-          <button type="button" onClick={() => onConfirmDelete(table.id)} className="tp-btn-delete" title="Delete">
+          <button type="button" onClick={() => onConfirmDelete(table.id)} className="tp-btn-delete" aria-label="Delete table" title="Delete">
             <Trash2 size={14} />
           </button>
         )}

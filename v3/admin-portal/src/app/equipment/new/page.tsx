@@ -31,7 +31,7 @@ export default function NewEquipmentPage() {
       const r: any = await api.post("/admin/equipment", payload);
       const id = r?.id;
       if (id) router.push(`/equipment/${id}`);
-    } catch {}
+    } catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
 

@@ -43,7 +43,7 @@ export default function RewardsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this reward?")) return;
-    try { await api.del(`/admin/rewards/${id}`); const d = await fetchData(page); setItems(d.items || []); setTotalPages(d.total_pages || 1); } catch { /* ignore */ }
+    try { await api.del(`/admin/rewards/${id}`); const d = await fetchData(page); setItems(d.items || []); setTotalPages(d.total_pages || 1); } catch (e) { console.error(e); }
   };
 
   const typeLabel = (t: string) => {

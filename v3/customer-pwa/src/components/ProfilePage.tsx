@@ -23,8 +23,9 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useConfigStore } from '@/stores/configStore';
 import { GuestGate } from '@/components/auth/GuestGate';
-import { resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { resolveAssetUrl, LOKA, formatPrice } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import type { Order } from '@/lib/api';
@@ -44,12 +45,18 @@ export default function ProfilePage() {
   const { points, tier } = useWalletStore();
   const { setPage } = useUIStore();
   const { t } = useTranslation();
+  const configTiers = useConfigStore((s) => s.tiers);
 
   const [showLogout, setShowLogout] = useState(false);
   const [recentOrders, setRecentOrders] = useState<OrderPreview[]>([]);
 
-  /* Tier progress */
-  const tierThresholds: Record<string, number> = { Bronze: 0, Silver: 1000, Gold: 3000, Platinum: 5000 };
+  /* Tier progress — use configStore tiers, fall back to sensible defaults */
+  const tierThresholds: Record<string, number> = configTiers?.length
+    ? configTiers.reduce((acc: Record<string, number>, t) => {
+        acc[t.name] = t.min_points;
+        return acc;
+      }, {} as Record<string, number>)
+    : { Bronze: 0, Silver: 1000, Gold: 3000, Platinum: 5000 };
   const tiers = Object.keys(tierThresholds);
   const currentTierIdx = tiers.indexOf(tier || 'Bronze');
   const nextTier = tiers[currentTierIdx + 1] || 'Platinum';
@@ -169,7 +176,7 @@ export default function ProfilePage() {
                     <div className="profile-order-date">{order.date}</div>
                   </div>
                   <div className="profile-order-right">
-                    <div className="profile-order-amount">RM {order.total.toFixed(2)}</div>
+                    <div className="profile-order-amount">{formatPrice(order.total)}</div>
                     <div className={`profile-order-status ${statusClass(order.status)}`}>
                       {order.status}
                     </div>

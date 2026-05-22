@@ -18,7 +18,7 @@ export default function InventorySuppliersPage() {
 
   const fetchStores = async () => {
     try { const d = await api.getRaw<any>("/admin/stores?per_page=50"); const list = d.items || []; setStores(list); if (!storeId && list.length > 0) setStoreId(String(list[0].id)); }
-    catch {}
+    catch (e) { console.error(e); }
   };
   const fetchData = useCallback(async () => { if (!storeId) { setLoading(false); return; } setLoading(true);
     try { const d = await api.getRaw<any>(`/admin/inventory/suppliers?store_id=${storeId}`); setItems(Array.isArray(d) ? d : (d.items||[])); }
@@ -31,7 +31,7 @@ export default function InventorySuppliersPage() {
  fetchData(); 
 })();}, [fetchData]);
 
-  const handleDelete = async (id: number) => { if (!confirm("Delete?")) return; try { await api.del(`/admin/inventory/suppliers/${id}`); setConfirmDelete(null); fetchData(); } catch {}; };
+  const handleDelete = async (id: number) => { if (!confirm("Delete?")) return; try { await api.del(`/admin/inventory/suppliers/${id}`); setConfirmDelete(null); fetchData(); } catch (e) { console.error(e); }; };
 
   return (
     <div style={{ padding: 32 }}>

@@ -44,7 +44,7 @@ export default function EquipmentEditPage() {
       const d = await api.getRaw<any>(`/admin/equipment/${id}`);
       setForm(d);
       setLogs(d.maintenance_logs || []);
-    } catch {}
+    } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
@@ -60,7 +60,7 @@ export default function EquipmentEditPage() {
       delete payload.maintenance_logs;
       await api.patch(`/admin/equipment/${id}`, payload);
       setMsg("Saved"); setTimeout(() => setMsg(""), 2000);
-    } catch {}
+    } catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
 
@@ -73,7 +73,7 @@ export default function EquipmentEditPage() {
       setLogForm({ maintenance_type: "preventive", status: "scheduled", description: "", performed_by: "", cost: "", started_at: "", completed_at: "", notes: "" });
       loadEquipment();
       setMsg("Maintenance log added"); setTimeout(() => setMsg(""), 2000);
-    } catch {}
+    } catch (e) { console.error(e); }
   };
 
   const handleDeleteLog = async (logId: number) => {
@@ -81,7 +81,7 @@ export default function EquipmentEditPage() {
     try {
       await api.del(`/admin/equipment/${id}/maintenance-logs/${logId}`);
       loadEquipment();
-    } catch {}
+    } catch (e) { console.error(e); }
   };
 
   const inputClass = "w-full border rounded px-3 py-2 text-sm";

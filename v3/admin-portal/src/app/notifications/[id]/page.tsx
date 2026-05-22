@@ -32,9 +32,9 @@ export default function NotificationEditPage() {
       const d = await api.getRaw<any>(`/admin/notifications/${id}`);
       setForm({ title:d.title||"", body:d.body||"", notification_type:d.notification_type||"general", audience_segment:d.audience_segment||"all_users", image_url:d.image_url||"", action_url:d.action_url||"", scheduled_at:d.scheduled_at?.slice(0,16)||"", status:d.status||"draft" });
       const x: Record<string,string>={};
-      for(const lc of LOCALES){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/admin/translations?table_name=notification_messages&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}}
+      for(const lc of LOCALES){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/admin/translations?table_name=notification_messages&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch (e) { console.error(e); }}
       setTr(x);
-    } catch {} finally { setLoading(false); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const applyTemplate = () => {
@@ -43,19 +43,19 @@ export default function NotificationEditPage() {
   };
 
   const handleSave = async () => { setSaving(true);
-    try { await api.put(`/admin/notifications/${id}`, form); setMsg("Saved"); setTimeout(()=>setMsg(""), 2000); } catch {} finally { setSaving(false); }
+    try { await api.put(`/admin/notifications/${id}`, form); setMsg("Saved"); setTimeout(()=>setMsg(""), 2000); } catch (e) { console.error(e); } finally { setSaving(false); }
   };
 
   const handleSend = async () => { if (!confirm("Send now?")) return;
-    try { await api.post(`/admin/notifications/${id}/send`, {}); setMsg("Sent!"); setTimeout(()=>setMsg(""), 2000); } catch {}
+    try { await api.post(`/admin/notifications/${id}/send`, {}); setMsg("Sent!"); setTimeout(()=>setMsg(""), 2000); } catch (e) { console.error(e); }
   };
 
   const upsertTr = async(field:string,locale:string,src:string,text:string)=>{
-    try{const rt=await api.getRaw<any>(`/admin/translations?table_name=notification_messages&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`notification_messages.${id}.${field}`,locale,namespace:"notification",translated_text:text,source_text:src,table_name:"notification_messages",record_id:Number(id),column_name:field});}catch{}
+    try{const rt=await api.getRaw<any>(`/admin/translations?table_name=notification_messages&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`notification_messages.${id}.${field}`,locale,namespace:"notification",translated_text:text,source_text:src,table_name:"notification_messages",record_id:Number(id),column_name:field});}catch (e) { console.error(e); }
   };
 
   const regenAll = async () => { setRegen(true); let c=0;
-    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch{}}
+    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch (e) { console.error(e); }}
     setMsg(`Regenerated ${c} fields`);setTimeout(()=>setMsg(""),2500);setRegen(false);
   };
 
@@ -115,7 +115,7 @@ export default function NotificationEditPage() {
         <div className="card" style={{ padding: 24, maxWidth: 700 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <h3 style={{ margin: 0 }}>{LOCALES.find(l=>l.code===loc)?.flag} {LOCALES.find(l=>l.code===loc)?.label} Translation</h3>
-            <button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm"><RefreshCw size={14}/>{regen?"...":"Regenerate All"}</button>
+            <button onClick={regenAll} disabled={regen} className="btn btn-primary btn-sm" aria-label="Refresh"><RefreshCw size={14}/>{regen?"...":"Regenerate All"}</button>
           </div>
           <div className="df-grid">
             {TR_FIELDS.map(f => { const k = `${loc}:${f.key}`; const isTA = f.key === "body";

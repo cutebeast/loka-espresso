@@ -20,7 +20,7 @@ export default function TemplatesPage() {
 fetch();
 })();},[fetch]);
 
-  const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/notifications/templates/${id}`);setConfirmDelete(null);fetch();}catch{}; };
+  const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/notifications/templates/${id}`);setConfirmDelete(null);fetch();}catch (e) { console.error(e); }; };
 
   const typeBadge = (t: string) => <span className="badge badge-sm badge-outline">{t}</span>;
 

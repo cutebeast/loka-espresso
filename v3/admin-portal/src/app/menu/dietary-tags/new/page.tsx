@@ -19,7 +19,7 @@ export default function NewDietaryTagPage() {
       const x: any = await api.post("/admin/menu/dietary-tags", f);
       const id = x?.data?.id || x?.id;
       if (id) r.push(`/menu/dietary-tags/${id}`);
-    } catch {} finally { setSaving(false); }
+    } catch (e) { console.error(e); } finally { setSaving(false); }
   };
 
   return (

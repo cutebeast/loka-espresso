@@ -142,10 +142,10 @@ export default function StoreEditPage() {
               allTr[`${loc.code}:${field}`] = t.translated_text || "";
             }
           }
-        } catch { /* ignore */ }
+        } catch (e) { console.error(e); }
       }
       setTranslations(allTr);
-    } catch { /* ignore */ }
+    } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
@@ -162,7 +162,7 @@ export default function StoreEditPage() {
       await api.patch(`/admin/stores/${storeId}`, payload);
       setMsg("Saved");
       setTimeout(() => setMsg(""), 2000);
-    } catch { /* ignore */ }
+    } catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
 
@@ -182,7 +182,7 @@ export default function StoreEditPage() {
         // Save to DB — create or update
         await upsertTranslation(field, locale, sourceText, translated);
       }
-    } catch { /* ignore */ }
+    } catch (e) { console.error(e); }
     finally { setRegenerating(""); }
   };
 
@@ -202,7 +202,7 @@ export default function StoreEditPage() {
           results.push({ field: field.key, text: translated });
           setTranslations(prev => ({ ...prev, [`${locale}:${field.key}`]: translated }));
         }
-      } catch { /* ignore */ }
+      } catch (e) { console.error(e); }
     }
     // Step 2: Save all in one batch
     if (results.length > 0) {

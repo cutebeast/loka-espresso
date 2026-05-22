@@ -18,7 +18,7 @@ export default function SurveysPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this survey?")) return;
-    try { await api.del(`/admin/surveys/${id}`); fetchData(); } catch { /* ignore */ }
+    try { await api.del(`/admin/surveys/${id}`); fetchData(); } catch (e) { console.error(e); }
   };
 
   return (

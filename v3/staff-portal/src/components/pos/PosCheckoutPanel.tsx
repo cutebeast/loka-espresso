@@ -85,7 +85,7 @@ export default function PosCheckoutPanel({
             <User size={16} />
             <span style={{ fontWeight: 600 }}>{customer.display_name}</span>
             {walletData && (
-              <span className="badge badge-sm badge-outline">Wallet: RM {walletData.balance.toFixed(2)}</span>
+              <span className="badge badge-sm badge-outline">Wallet: RM {(Number(walletData?.balance ?? 0)).toFixed(2)}</span>
             )}
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => { onSetCustomer(null); onSetWalletData(null); }}>

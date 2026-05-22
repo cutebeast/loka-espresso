@@ -26,7 +26,8 @@ export default function ReservationSettingsPage() {
       }
       setMsg("Settings saved");
       setTimeout(() => setMsg(""), 2000);
-    } catch {
+    } catch (e) {
+      console.error(e);
       setMsg("Failed to save settings");
       setTimeout(() => setMsg(""), 2000);
     } finally { setSaving(false); }

@@ -7,7 +7,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
+from app.core.security import hash_password
 from app.models.iam import IAMPrincipal, IAMRole, RoleAssignment
+from app.models.platform import AuditLog
 from app.models.staff import StaffProfile, StaffShift, ShiftTemplate
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.staff import (
@@ -72,8 +74,6 @@ async def create_staff(
     data: StaffCreateRequest,
 ):
     """Create a new staff profile with credentials."""
-    import bcrypt
-
     email = (data.email or "").strip()
     password = (data.password or "").strip()
     pin = (data.pin or "000000").strip()
@@ -86,8 +86,8 @@ async def create_staff(
     db.add(principal)
     await db.flush()
 
-    pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode() if password else None
-    pin_hash = bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
+    pw_hash = hash_password(password) if password else None
+    pin_hash = hash_password(pin)
 
     profile = StaffProfile(
         principal_id=principal.id,
@@ -104,13 +104,21 @@ async def create_staff(
     await db.commit()
     await db.refresh(profile)
 
+    # Audit log
+    db.add(AuditLog(
+        actor_id=admin.id,
+        action="staff.create",
+        target_type="staff",
+        target_id=profile.id,
+        details={"display_name": display_name, "email": email, "store_id": data.store_id},
+    ))
+    await db.commit()
+
     return APIResponse(data={
         "id": profile.id,
         "display_name": profile.display_name,
         "email": email,
-        "password": password,
-        "pin": pin,
-        "message": "Staff created — share credentials with user",
+        "message": "Staff created successfully",
     })
 
 

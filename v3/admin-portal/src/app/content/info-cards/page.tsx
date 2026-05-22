@@ -17,7 +17,7 @@ export default function InfoCardsPage() {
 fetch();
 })();},[fetch]);
 
-  const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/info-cards/${id}`);fetch();}catch{}; };
+  const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/info-cards/${id}`);fetch();}catch (e) { console.error(e); }; };
 
   return (
     <div style={{padding:32}}>

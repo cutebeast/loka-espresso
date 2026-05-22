@@ -27,14 +27,14 @@ export default function PurchaseOrdersPage() {
  fetchData(); 
 })();}, [fetchData]);
   useEffect(() => { (async () => {
-    try { const d = await api.getRaw<any>("/admin/inventory/suppliers"); setSuppliers(Array.isArray(d) ? d : (d.items || [])); } catch {}
-    try { const d = await api.getRaw<any>("/admin/stores?per_page=50"); setStores(d.items || []); } catch {}
+    try { const d = await api.getRaw<any>("/admin/inventory/suppliers"); setSuppliers(Array.isArray(d) ? d : (d.items || [])); } catch (e) { console.error(e); }
+    try { const d = await api.getRaw<any>("/admin/stores?per_page=50"); setStores(d.items || []); } catch (e) { console.error(e); }
   })(); }, []);
 
   const loadItems = async (sid: string) => {
     setStoreId(sid); setForm(f => ({ ...f, store_id: sid }));
     if (!sid) return;
-    try { const d = await api.getRaw<any>(`/admin/inventory/items?store_id=${sid}&per_page=100`); setInvItems(Array.isArray(d) ? d : (d.items || [])); } catch {}
+    try { const d = await api.getRaw<any>(`/admin/inventory/items?store_id=${sid}&per_page=100`); setInvItems(Array.isArray(d) ? d : (d.items || [])); } catch (e) { console.error(e); }
   };
 
   const resetForm = () => { setForm({ supplier_id: "", store_id: storeId, expected_delivery: "", lines: [{ inventory_item_id: "", quantity_ordered: "", unit_cost: "" }] }); setShowForm(false); };
@@ -50,8 +50,8 @@ export default function PurchaseOrdersPage() {
     } catch (err: any) { setError(err.message); }
   };
 
-  const handleReceive = async (id: number) => { if (!confirm("Confirm receipt of this PO?")) return; try { await receivePurchaseOrder(id); fetchData(); } catch {}; };
-  const handleCancel = async (id: number) => { if (!confirm("Cancel this PO?")) return; try { await cancelPurchaseOrder(id); fetchData(); } catch {}; };
+  const handleReceive = async (id: number) => { if (!confirm("Confirm receipt of this PO?")) return; try { await receivePurchaseOrder(id); fetchData(); } catch (e) { console.error(e); }; };
+  const handleCancel = async (id: number) => { if (!confirm("Cancel this PO?")) return; try { await cancelPurchaseOrder(id); fetchData(); } catch (e) { console.error(e); }; };
 
   const sb = (s: string) => {
     const m: Record<string, string> = { draft: "badge-yellow", submitted: "badge-blue", ordered: "badge-blue", partially_received: "badge-orange", received: "badge-green", cancelled: "badge-red" };

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Gift, Ticket, Clock, QrCode, Shield } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import type { UserReward, UserVoucher } from '@/lib/api';
-import { LOKA, resolveAssetUrl } from '@/lib/tokens';
+import { LOKA, resolveAssetUrl, formatPrice } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getLocale } from '@/stores/localeStore';
 
@@ -139,7 +139,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                       ? `${voucher.discount_value}% OFF`
                       : voucher.discount_type === 'free_item'
                         ? t('myRewards.freeItem')
-                        : `RM ${Number(voucher.discount_value).toFixed(2)} OFF`}
+                        : `${formatPrice(Number(voucher.discount_value))} OFF`}
                   </div>
                   {days != null && (
                     <span className={`myrv-countdown ${getCountdownClass(days)}`}>
@@ -190,10 +190,10 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                 ? `${selectedVoucher.discount_value}% OFF`
                 : selectedVoucher.discount_type === 'free_item'
                   ? t('myRewards.freeItem')
-                  : `RM ${Number(selectedVoucher.discount_value).toFixed(2)} OFF`}
+                  : `${formatPrice(Number(selectedVoucher.discount_value))} OFF`}
             </div>
             <div className="myrv-sheet-sub">
-              {selectedVoucher.source || t('myRewards.promoVoucher')} · {t('myRewards.minSpend', { amount: Number(selectedVoucher.min_spend || 0).toFixed(2) })}
+              {selectedVoucher.source || t('myRewards.promoVoucher')} · {t('myRewards.minSpend', { amount: formatPrice(Number(selectedVoucher.min_spend || 0)) })}
             </div>
             <div className="myrv-sheet-info">
               <div className="myrv-sheet-info-icon">

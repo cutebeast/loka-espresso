@@ -50,7 +50,7 @@ export default function NewItemPage() {
 
   const loadInventoryForStore = async (storeId:string) => {
     if(!storeId)return;
-    try{const d=await api.getRaw<any>(`/admin/inventory/items?store_id=${storeId}&per_page=200`);setInventoryItems(Array.isArray(d)?d:(d.items||[]));}catch{setInventoryItems([]);}
+    try{const d=await api.getRaw<any>(`/admin/inventory/items?store_id=${storeId}&per_page=200`);setInventoryItems(Array.isArray(d)?d:(d.items||[]));}catch(e){console.error(e);setInventoryItems([]);}
   };
 
   const addRecipe = () => setForm({...form, recipes: [...(form.recipes||[]), {inventory_item_id:"",quantity_required:1,unit_of_measure:"unit",waste_factor:0.05,is_primary_component:false}]});
@@ -59,7 +59,7 @@ export default function NewItemPage() {
 
   const handleUpload = async () => {
     const f = fileRef.current?.files?.[0]; if(!f)return; setUploading(true);
-    try { const fd=new FormData(); fd.append("file",f); const j=await api.upload("/upload/image",fd); setForm({...form,image_url:j.url||j.filename}); if(fileRef.current)fileRef.current.value=""; } catch{} finally {setUploading(false);}
+    try { const fd=new FormData(); fd.append("file",f); const j=await api.upload("/upload/image",fd); setForm({...form,image_url:j.url||j.filename}); if(fileRef.current)fileRef.current.value=""; } catch (e) { console.error(e); } finally {setUploading(false);}
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,7 +76,7 @@ export default function NewItemPage() {
       const r:any = await api.post("/admin/menu/items", p);
       const id = r?.data?.id || r?.id;
       if(id) router.push(`/menu/items/${id}`);
-    } catch{} finally { setSaving(false); }
+    } catch (e) { console.error(e); } finally { setSaving(false); }
   };
 
   const Chip = ({label,icon,active,onClick}:{label:string;icon?:string;active:boolean;onClick:()=>void}) => (

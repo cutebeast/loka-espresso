@@ -53,7 +53,7 @@ export default function NewStaffPage() {
           <div><strong>PIN:</strong> {created.pin}</div>
         </div>
         <div className="df-actions" style={{ marginTop: 16 }}>
-          <button onClick={handleCopy} className="btn btn-primary"><Copy size={14} /> {copied ? "Copied!" : "Copy Credentials"}</button>
+          <button onClick={handleCopy} className="btn btn-primary" aria-label="Copy"><Copy size={14} /> {copied ? "Copied!" : "Copy Credentials"}</button>
           <button onClick={() => router.push("/staff")} className="btn btn-ghost"><Check size={14} /> Done</button>
         </div>
       </div>

@@ -31,7 +31,7 @@ function clearAuthStorage(): void {
 
 let _refreshPromise: Promise<boolean> | null = null;
 
-async function refreshToken(): Promise<boolean> {
+export async function refreshToken(): Promise<boolean> {
   if (_refreshPromise) return _refreshPromise;
 
   _refreshPromise = (async () => {
