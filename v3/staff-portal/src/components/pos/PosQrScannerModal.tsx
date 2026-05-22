@@ -15,7 +15,7 @@ export default function PosQrScannerModal({ open, mode, scannerError, onClose }:
       {scannerError ? (
         <div style={{ padding: 20, textAlign: "center" }}>
           <div style={{ fontSize: 14, color: "var(--color-error)", fontWeight: 600, marginBottom: 12 }}>{scannerError}</div>
-          <button className="btn btn-primary" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
         </div>
       ) : (
         <>

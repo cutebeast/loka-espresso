@@ -17,11 +17,11 @@ export default function EditStaffPage() {
     try {
       const d = await api.getRaw<any>(`/admin/staff/${id}`);
       setForm({ display_name: d.display_name || "", employee_id: d.employee_id || "", role: d.role || "server", phone_number: d.phone_number || "", is_active: d.is_active });
-    } catch {} finally { setLoading(false); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const save = async () => { setSaving(true);
-    try { await api.patch(`/admin/staff/${id}`, form); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); } catch {} finally { setSaving(false); }
+    try { await api.patch(`/admin/staff/${id}`, form); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); } catch (e) { console.error(e); } finally { setSaving(false); }
   };
 
   if (loading) return <div style={{ padding: 32 }}>Loading...</div>;

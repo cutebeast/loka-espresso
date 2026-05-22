@@ -96,7 +96,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                 <div key={reward.id} className="myrv-owned-card" onClick={() => setSelectedReward(reward)}>
                   <div className="myrv-item-thumb">
                     {reward.reward_image_url ? (
-                      <img src={resolveAssetUrl(reward.reward_image_url) ?? undefined} alt="" loading="lazy" />
+                      <img src={resolveAssetUrl(reward.reward_image_url) ?? undefined} alt={reward.reward_name || 'Reward image'} loading="lazy" />
                     ) : (
                       <Gift size={24} />
                     )}

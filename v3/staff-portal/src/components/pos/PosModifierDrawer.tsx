@@ -66,9 +66,9 @@ export default function PosModifierDrawer({
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 14, fontWeight: 600 }}>Qty</span>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <button className="btn btn-sm btn-ghost" onClick={() => onQtyChange(-1)} style={{ width: 36, padding: 0 }}>-</button>
+              <button type="button" className="btn btn-sm btn-ghost" onClick={() => onQtyChange(-1)} style={{ width: 36, padding: 0 }} aria-label="Decrease quantity">-</button>
               <span style={{ minWidth: 32, textAlign: "center", fontWeight: 700, fontSize: 16 }}>{qty}</span>
-              <button className="btn btn-sm btn-ghost" onClick={() => onQtyChange(1)} style={{ width: 36, padding: 0 }}>+</button>
+              <button type="button" className="btn btn-sm btn-ghost" onClick={() => onQtyChange(1)} style={{ width: 36, padding: 0 }} aria-label="Increase quantity">+</button>
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -79,8 +79,8 @@ export default function PosModifierDrawer({
           </div>
         </div>
         <div className="modal-footer">
-          <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-primary" onClick={onAdd} disabled={requiredMissing}>
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn btn-primary" onClick={onAdd} disabled={requiredMissing}>
             Add to Cart
           </button>
         </div>

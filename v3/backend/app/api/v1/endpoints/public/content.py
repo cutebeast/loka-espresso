@@ -313,7 +313,7 @@ async def get_config_bootstrap(
         config = {row.config_key: row.config_value for row in config_rows}
 
     # Default currency
-    currency = config.get("currency", "MYR")
+    currency = config.get("currency", "USD")
     delivery_fee = config.get("base_delivery_fee", "0")
     min_order = config.get("minimum_order_amount", "0")
 
@@ -332,7 +332,7 @@ async def get_config_bootstrap(
 
     return APIResponse(data={
         "currency": currency,
-        "currency_symbol": "RM" if currency == "MYR" else "$",
+        "currency_symbol": "RM" if currency == "MYR" else ("$" if currency == "USD" else currency),
         "delivery_fee": float(delivery_fee) if delivery_fee else 0,
         "minimum_order_amount": float(min_order) if min_order else 0,
         "loyalty_tiers": [

@@ -251,7 +251,7 @@ TRANSLATABLE_ENTITIES: dict[str, list[str]] = {
     "splash_screens": ["title", "subtitle"],
     "marketing_campaigns": ["campaign_name", "body_content"],
     "notification_templates": ["title", "body"],
-    "notification_messages": ["title", "body"],
+    "admin_notifications": ["title", "body"],
 }
 
 # Map DB table names to UI namespace (used in admin Translations page filter)

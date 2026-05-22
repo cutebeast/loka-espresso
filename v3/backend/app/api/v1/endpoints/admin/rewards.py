@@ -11,6 +11,7 @@ from app.services.translation import merge_translations, translate_single
 from app.models.customer import Customer
 from app.models.loyalty import LoyaltyAccount
 from app.models.reward import CustomerReward, RewardCatalog
+from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.loyalty import (
     CustomerRewardOut,
@@ -294,11 +295,17 @@ async def redeem_reward(
     # Deduct points
     loyalty_account.points_balance -= reward.points_cost
 
+    # Resolve default store
+    store_result = await db.execute(
+        select(Store.id).where(Store.deleted_at.is_(None), Store.is_active.is_(True)).limit(1)
+    )
+    default_store_id = store_result.scalar_one_or_none()
+
     # Create customer reward
     customer_reward = CustomerReward(
         customer_id=customer.id,
         reward_catalog_id=reward.id,
-        store_id=1,  # Default store (rewards are global, but redemption must record a store)
+        store_id=default_store_id,  # resolved from first active store
         redemption_code=uuid4().hex[:12].upper(),
         status="active",
         points_spent=reward.points_cost,

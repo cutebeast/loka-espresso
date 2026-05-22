@@ -83,9 +83,15 @@ async def register_customer(
     await db.flush()  # Get customer.id
     
     # Auto-create wallet for new customer
+    from app.models.platform import PlatformConfig
+    currency_result = await db.execute(
+        select(PlatformConfig.config_value).where(PlatformConfig.config_key == "currency.default")
+    )
+    currency_row = currency_result.scalar_one_or_none()
+    default_currency = str(currency_row) if currency_row else "USD"
     wallet = Wallet(
         customer_id=customer.id,
-        currency_code="MYR",
+        currency_code=default_currency,
     )
     db.add(wallet)
     

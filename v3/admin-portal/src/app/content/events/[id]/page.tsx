@@ -26,7 +26,7 @@ export default function EventEditPage() {
       const x:Record<string,string>={};
       for(const lc of LOCALES){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/admin/translations?table_name=event_cards&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}}
       setTr(x);
-    }catch{}finally{setLoading(false);}
+    }catch(e){console.error(e);}finally{setLoading(false);}
   }, [id]);
 
   useEffect(()=>{(async () => {

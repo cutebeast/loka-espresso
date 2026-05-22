@@ -18,7 +18,8 @@ export default function VoucherRevealBlock({ code, onCopy }: VoucherRevealBlockP
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
       onCopy?.(code);
-      setTimeout(() => setCopied(false), 2000);
+      const t = setTimeout(() => setCopied(false), 2000);
+      return () => clearTimeout(t);
     });
   };
 

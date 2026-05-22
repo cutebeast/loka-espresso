@@ -127,13 +127,25 @@ async def _get_campaign_or_404(db, campaign_id: int) -> MarketingCampaign:
     return campaign
 
 
-@admin_router.get("/analytics", response_model=APIResponse[list[dict]])
-async def list_analytics(db: DBDependency, admin: CurrentAdmin):
+@admin_router.get("/analytics", response_model=APIResponse[PaginatedResponse[dict]])
+async def list_analytics(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+):
     """Get campaign analytics for all campaigns."""
+    total_result = await db.execute(
+        select(func.count(CampaignAnalytics.id))
+        .join(MarketingCampaign, CampaignAnalytics.campaign_id == MarketingCampaign.id)
+    )
+    total = total_result.scalar() or 0
     result = await db.execute(
         select(CampaignAnalytics, MarketingCampaign.campaign_name)
         .join(MarketingCampaign, CampaignAnalytics.campaign_id == MarketingCampaign.id)
         .order_by(CampaignAnalytics.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
     items = []
     for a, name in result.all():
@@ -150,7 +162,15 @@ async def list_analytics(db: DBDependency, admin: CurrentAdmin):
             "conversion_revenue": float(a.conversion_revenue or 0),
             "unsubscribes": a.unsubscribes,
         })
-    return APIResponse(data=items)
+    return APIResponse(
+        data=PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
 
 
 @admin_router.get("/campaigns", response_model=APIResponse[PaginatedResponse[MarketingCampaignOut]])

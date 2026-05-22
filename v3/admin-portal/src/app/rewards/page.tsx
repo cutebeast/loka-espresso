@@ -55,7 +55,7 @@ export default function RewardsPage() {
     <div style={{ padding: 32 }}>
       <div className="page-header">
         <div><h1 className="page-title">Rewards</h1><p className="page-subtitle">Loyalty point redemption catalog</p></div>
-        <button onClick={() => router.push("/rewards/new")} className="btn btn-primary btn-sm"><Plus size={16} /> Add Reward</button>
+        <button type="button" onClick={() => router.push("/rewards/new")} className="btn btn-primary btn-sm"><Plus size={16} /> Add Reward</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
       <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} rewards</span></div>
@@ -73,8 +73,8 @@ export default function RewardsPage() {
                 <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <button onClick={() => router.push(`/rewards/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><Edit2 size={14} /></button>
-                    <button onClick={() => handleDelete(item.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                    <button type="button" onClick={() => router.push(`/rewards/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><Edit2 size={14} /></button>
+                    <button type="button" onClick={() => handleDelete(item.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
                   </div>
                 </td>
               </tr>
@@ -83,9 +83,9 @@ export default function RewardsPage() {
       </table></div>
       {totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "center", marginTop: 16 }}>
-          <button className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={async () => { const d = await fetchData(page - 1); setItems(d.items || []); setTotalPages(d.total_pages || 1); setPage(page - 1); }}><ChevronLeft size={14} /> Prev</button>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={async () => { const d = await fetchData(page - 1); setItems(d.items || []); setTotalPages(d.total_pages || 1); setPage(page - 1); }}><ChevronLeft size={14} /> Prev</button>
           <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Page {page} of {totalPages}</span>
-          <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={async () => { const d = await fetchData(page + 1); setItems(d.items || []); setTotalPages(d.total_pages || 1); setPage(page + 1); }}>Next <ChevronRight size={14} /></button>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={async () => { const d = await fetchData(page + 1); setItems(d.items || []); setTotalPages(d.total_pages || 1); setPage(page + 1); }}>Next <ChevronRight size={14} /></button>
         </div>
       )}
     </div>

@@ -159,7 +159,7 @@ export default function ProfilePage() {
                 <div key={order.id} className="profile-order-item" onClick={() => setPage('order-detail', { orderId: order.id })}>
                   <div className="profile-order-thumb">
                     {order.imageUrl ? (
-                      <img src={order.imageUrl} alt="" loading="lazy" />
+                      <img src={order.imageUrl} alt="Order item" loading="lazy" />
                     ) : (
                       <ShoppingBag size={22} color={LOKA.border} />
                     )}

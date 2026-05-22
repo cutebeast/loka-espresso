@@ -95,7 +95,8 @@ export default function CheckoutPage() {
   const saveDraft = () => {
     setCheckoutDraft({ orderMode, selectedStore, deliveryAddress, pickupTime, paymentMethod, notes: orderNote, discountType, discountCode, recipientName, recipientPhone, deliveryInstructions: deliveryInstr });
     setDraftSaved(true);
-    setTimeout(() => setDraftSaved(false), 1500);
+    const t = setTimeout(() => setDraftSaved(false), 1500);
+    return () => clearTimeout(t);
   };
 
   const handlePlaceOrder = async () => {

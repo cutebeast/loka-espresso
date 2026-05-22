@@ -110,7 +110,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           .then(d => {
             if (cancelled) return;
             const items = d.data || [];
-            const fv = items.find((i: any) => i.config_key === "branding.admin_favicon_url");
+            const fv = items.find((i: { config_key: string; config_value?: string }) => i.config_key === "branding.admin_favicon_url");
             if (fv?.config_value) setFavicon(fv.config_value);
           })
           .catch((err) => { console.error("Favicon fetch failed:", err); });

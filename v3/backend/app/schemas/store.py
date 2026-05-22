@@ -63,7 +63,7 @@ class StoreBase(BaseSchema):
     phone_number: str = Field(..., max_length=20)
     email_address: str | None = Field(None, max_length=255)
     timezone: str = Field(default="Asia/Kuala_Lumpur", max_length=50)
-    currency_code: str = Field(default="MYR", max_length=3)
+    currency_code: str = Field(default="USD", max_length=3)
     logo_url: str | None = Field(None, max_length=500)
     banner_image_url: str | None = Field(None, max_length=500)
     pickup_lead_minutes: int = Field(default=15, ge=0)

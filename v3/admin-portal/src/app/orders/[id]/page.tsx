@@ -56,7 +56,7 @@ export default function OrderDetailPage() {
   return (
     <div style={{ padding: 32 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-        <button onClick={() => r.push("/orders")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
+        <button type="button" onClick={() => r.push("/orders")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
         <div><h1 className="page-title" style={{ margin: 0 }}>{order.order_number}</h1><p className="page-subtitle" style={{ marginTop: 2 }}>{order.customer_name || "Unknown"} · {dt(order.created_at)}</p></div>
         <div style={{ marginLeft: "auto" }}>{sb(order.status)}</div>
       </div>
@@ -66,7 +66,7 @@ export default function OrderDetailPage() {
       {next.length > 0 && (
         <div className="card" style={{ padding: 16, marginBottom: 16, display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap" }}>
           <label style={{ fontSize: 12, fontWeight: 600 }}>Update Status:</label>
-          {next.map(s => <button key={s} onClick={() => update(s)} disabled={updating} className="btn btn-sm btn-primary" style={{ fontSize: 12 }}>{s.replace(/_/g, " ")}</button>)}
+          {next.map(s => <button type="button" key={s} onClick={() => update(s)} disabled={updating} className="btn btn-sm btn-primary" style={{ fontSize: 12 }}>{s.replace(/_/g, " ")}</button>)}
           <input value={reason} onChange={e => setReason(e.target.value)} placeholder="Reason (optional)" style={{ padding: "6px 10px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", minWidth: 160 }} />
         </div>
       )}

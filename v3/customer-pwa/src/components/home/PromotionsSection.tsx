@@ -23,7 +23,7 @@ const ProductCard = memo(function ProductCard({
     <div className="product-card">
       <div className="product-img">
         {imgSrc ? (
-          <img src={imgSrc} alt="" className="card-bg-img" loading="lazy" />
+          <img src={imgSrc} alt="Promotion" className="card-bg-img" loading="lazy" />
         ) : (
         <div className="home-img-fallback">
             <Coffee size={24} strokeWidth={1.5} color={LOKA.border} />

@@ -48,7 +48,8 @@ export async function detectIPLocation(): Promise<IPLocation | null> {
   } catch {
     // Backend unavailable — try direct ip-api
     try {
-      const res = await fetch('https://ip-api.com/json/?fields=status,lat,lon', {
+      const fallbackGeoUrl = process.env.NEXT_PUBLIC_GEOIP_API_URL || 'https://ip-api.com/json/?fields=status,lat,lon';
+      const res = await fetch(fallbackGeoUrl, {
         signal: AbortSignal.timeout(5000),
       });
       const data = await res.json();

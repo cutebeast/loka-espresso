@@ -27,7 +27,7 @@ export default function GalleryUpload({ imageUrls, videoUrl, onImagesChange, onV
         newUrls.push(j.url || j.filename);
       }
       onImagesChange([...imageUrls, ...newUrls]);
-    } catch {} finally { setUploading(false); if (imgRef.current) imgRef.current.value = ""; }
+    } catch (e) { console.error(e); } finally { setUploading(false); if (imgRef.current) imgRef.current.value = ""; }
   };
 
   const handleVideo = async () => {
@@ -37,7 +37,7 @@ export default function GalleryUpload({ imageUrls, videoUrl, onImagesChange, onV
       const fd = new FormData(); fd.append("file", file);
       const j = await api.upload("/upload/image", fd);
       onVideoChange(j.url || j.filename);
-    } catch {} finally { setUploading(false); if (vidRef.current) vidRef.current.value = ""; }
+    } catch (e) { console.error(e); } finally { setUploading(false); if (vidRef.current) vidRef.current.value = ""; }
   };
 
   const removeImage = (idx: number) => { const u = [...imageUrls]; u.splice(idx, 1); onImagesChange(u); };

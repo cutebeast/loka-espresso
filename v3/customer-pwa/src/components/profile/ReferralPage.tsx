@@ -80,7 +80,8 @@ export default function ReferralPage() {
     try {
       await navigator.clipboard.writeText(referralLink);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const t = setTimeout(() => setCopied(false), 2000);
+      return () => clearTimeout(t);
     } catch { showToast(t('toast.codeCopyFailed'), 'error'); }
   };
 

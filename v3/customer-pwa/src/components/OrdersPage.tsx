@@ -216,7 +216,7 @@ export default function OrdersPage() {
               return (
                 <div key={order.id} className="orders-past-card" onClick={() => openDetail(order)}>
                   <div className="orders-past-thumb">
-                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt="" loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={20} color={LOKA.primary} />}
+                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt={firstItem.name || 'Order item'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={20} color={LOKA.primary} />}
                   </div>
                   <div className="orders-past-info">
                     <div className="orders-past-number">{t('orders.orderNumber', { number: order.order_number })}</div>

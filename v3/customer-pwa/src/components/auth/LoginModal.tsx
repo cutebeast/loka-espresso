@@ -66,8 +66,8 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
     }
   }, [isOpen]);
 
-  useEffect(() => { if (isOpen && step === 'phone') setTimeout(() => phoneInputRef.current?.focus(), 400); }, [isOpen, step]);
-  useEffect(() => { if (isOpen && step === 'otp') setTimeout(() => otpRefs.current[0]?.focus(), 400); }, [isOpen, step]);
+  useEffect(() => { if (isOpen && step === 'phone') { const t = setTimeout(() => phoneInputRef.current?.focus(), 400); return () => clearTimeout(t); } }, [isOpen, step]);
+  useEffect(() => { if (isOpen && step === 'otp') { const t = setTimeout(() => otpRefs.current[0]?.focus(), 400); return () => clearTimeout(t); } }, [isOpen, step]);
 
   useEffect(() => {
     if (resendTimer <= 0) return;

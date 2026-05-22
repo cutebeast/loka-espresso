@@ -25,8 +25,9 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
 
   useEffect(() => {
     api.get('/splash')
-      .then((res: any) => {
-        const d = res?.data || res;
+      .then((res: unknown) => {
+        const axiosRes = res as { data?: SplashData };
+        const d = axiosRes?.data || (res as SplashData);
         if (d?.image_url) {
           setSplashData({
             image_url: resolveAssetUrl(d.image_url) || d.image_url,

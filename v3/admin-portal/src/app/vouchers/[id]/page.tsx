@@ -95,10 +95,10 @@ export default function VoucherEditPage() {
               allTr[`${loc.code}:${field}`] = t.translated_text || "";
             }
           }
-        } catch { /* ignore */ }
+        } catch (e) { console.error(e); }
       }
       setTranslations(allTr);
-    } catch { /* ignore */ }
+    } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
@@ -119,7 +119,7 @@ export default function VoucherEditPage() {
       await api.put(`/admin/vouchers/${voucherId}`, payload);
       setMsg("Saved");
       setTimeout(() => setMsg(""), 2000);
-    } catch { /* ignore */ }
+    } catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
 
@@ -159,7 +159,7 @@ export default function VoucherEditPage() {
           results.push({ field: field.key, text: translated });
           setTranslations(prev => ({ ...prev, [`${locale}:${field.key}`]: translated }));
         }
-      } catch { /* ignore */ }
+      } catch (e) { console.error(e); }
     }
     for (const r of results) {
       await upsertTranslation(r.field, locale, (form[r.field] || "").trim(), r.text);
@@ -189,7 +189,7 @@ export default function VoucherEditPage() {
   return (
     <div style={{ padding: 32 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-        <button onClick={() => router.push("/vouchers")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
+        <button type="button" onClick={() => router.push("/vouchers")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>{voucher.display_title}</h1>
           <p className="page-subtitle" style={{ marginTop: 2 }}>Edit voucher details & translations</p>

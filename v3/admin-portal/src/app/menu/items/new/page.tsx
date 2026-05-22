@@ -71,7 +71,7 @@ export default function NewItemPage() {
       p.category_id = Number(p.category_id) || null;
       p.tax_category_id = Number(p.tax_category_id) || null;
       p.calories = p.calories ? Number(p.calories) : null;
-      p.prep_time_minutes = Number(p.prep_time_minutes) || 10;
+      p.prep_time_minutes = Number(p.prep_time_minutes) ?? 10;
       p.minimum_tier_id = p.minimum_tier_id ? Number(p.minimum_tier_id) : null;
       const r:any = await api.post("/admin/menu/items", p);
       const id = r?.data?.id || r?.id;

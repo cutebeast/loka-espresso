@@ -74,9 +74,9 @@ export default function ItemEditPage() {
           if(grt?.items) for(const t of grt.items){const rid=t.translation_key.split(".").pop()||"";x[`${lc.code}:mod:group_${t.record_id}`]=t.translated_text||"";}
           const ort = await api.getRaw<any>(`/admin/translations?table_name=menu_modifier_options&locale=${lc.code}&per_page=100`);
           if(ort?.items) for(const t of ort.items){x[`${lc.code}:mod:opt_${t.record_id}`]=t.translated_text||"";}
-        }catch{}
+        }catch(e){console.error(e);}
       }
-    } catch {} finally { setLoading(false); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const toggleTag = (type:"allergen"|"dietary", aid:number) => {
@@ -105,15 +105,15 @@ export default function ItemEditPage() {
     setSaving(true);
     try {
       const pl:any = {...form};
-      pl.base_price = Number(pl.base_price)||0;
-      pl.category_id = Number(pl.category_id)||null;
-      pl.tax_category_id = Number(pl.tax_category_id)||null;
+      pl.base_price = Number(pl.base_price) || 0;
+      pl.category_id = Number(pl.category_id) || null;
+      pl.tax_category_id = Number(pl.tax_category_id) || null;
       pl.calories = pl.calories ? Number(pl.calories) : null;
-      pl.prep_time_minutes = Number(pl.prep_time_minutes) || 10;
+      pl.prep_time_minutes = Number(pl.prep_time_minutes) ?? 10;
       pl.minimum_tier_id = pl.minimum_tier_id ? Number(pl.minimum_tier_id) : null;
       await api.patch(`/admin/menu/items/${id}`, pl);
       setMsg("Saved"); setTimeout(()=>setMsg(""),2000);
-    } catch {} finally { setSaving(false); }
+    } catch (e) { console.error(e); } finally { setSaving(false); }
   };
 
   const upsertTr = async(field:string,locale:string,src:string,text:string)=>{
@@ -128,7 +128,7 @@ export default function ItemEditPage() {
 
   const saveAllTr = async () => {setSavingTr(true);for(const f of TR_FIELDS){const t=tr[`${loc}:${f.key}`]||"";if(t)await upsertTr(f.key,loc,(form[f.key]||"").trim(),t);}setMsg("Translations saved");setTimeout(()=>setMsg(""),2000);setSavingTr(false);};
 
-  const handleUpload = async () => {const f=fileRef.current?.files?.[0];if(!f)return;setUploading(true);try{const fd=new FormData();fd.append("file",f);const j=await api.upload("/upload/image",fd);setForm({...form,image_url:j.url||j.filename});if(fileRef.current)fileRef.current.value="";}catch{}finally{setUploading(false);}};
+  const handleUpload = async () => {const f=fileRef.current?.files?.[0];if(!f)return;setUploading(true);try{const fd=new FormData();fd.append("file",f);const j=await api.upload("/upload/image",fd);setForm({...form,image_url:j.url||j.filename});if(fileRef.current)fileRef.current.value="";}catch(e){console.error(e);}finally{setUploading(false);}};
 
   const Chip = ({label,icon,active,onClick}:{label:string;icon?:string;active:boolean;onClick:()=>void}) => (
     <button type="button" onClick={onClick} style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:"var(--radius-full)",fontSize:12,fontWeight:500,cursor:"pointer",border:active?"2px solid var(--color-primary)":"1px solid var(--color-border-light)",background:active?"rgba(59,74,26,0.08)":"var(--color-bg-white)",color:active?"var(--color-primary)":"var(--color-text-muted)"}}>{icon&&<span>{icon}</span>}{label}</button>

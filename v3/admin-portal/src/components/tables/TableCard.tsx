@@ -122,36 +122,36 @@ export default function TableCard({
       {/* Actions */}
       <div className="tp-49">
         {!hasQr ? (
-          <button onClick={() => onGenerateQr(table)} className="tp-btn-qr">
+          <button type="button" onClick={() => onGenerateQr(table)} className="tp-btn-qr">
             <QrCode size={14} /> Generate QR
           </button>
         ) : (
           <>
-            <button onClick={() => onDownloadQr(table)} className="tp-btn-download" title="Download QR">
+            <button type="button" onClick={() => onDownloadQr(table)} className="tp-btn-download" title="Download QR">
               <Download size={14} />
             </button>
-            <button onClick={() => onRegenerateQr(table)} className="tp-btn-regen" title="Regenerate QR">
+            <button type="button" onClick={() => onRegenerateQr(table)} className="tp-btn-regen" title="Regenerate QR">
               <RefreshCw size={14} />
             </button>
           </>
         )}
-        <button onClick={() => onToggle(table)} className="tp-btn-toggle" title={table.is_active ? "Deactivate" : "Activate"}>
+        <button type="button" onClick={() => onToggle(table)} className="tp-btn-toggle" title={table.is_active ? "Deactivate" : "Activate"}>
           {table.is_active ? <ToggleRight size={18} className="text-green-600" /> : <ToggleLeft size={18} className="text-gray-400" />}
         </button>
-        <button onClick={() => onEdit(table)} className="tp-btn-edit" title="Edit">
+        <button type="button" onClick={() => onEdit(table)} className="tp-btn-edit" title="Edit">
           <Edit2 size={14} />
         </button>
         {confirmDelete === table.id ? (
           <>
-            <button onClick={() => { onDelete(table); onConfirmDelete(null); }} className="tp-btn-delete-confirm">
+            <button type="button" onClick={() => { onDelete(table); onConfirmDelete(null); }} className="tp-btn-delete-confirm">
               Confirm
             </button>
-            <button onClick={() => onConfirmDelete(null)} className="tp-btn-delete-cancel">
+            <button type="button" onClick={() => onConfirmDelete(null)} className="tp-btn-delete-cancel">
               Cancel
             </button>
           </>
         ) : (
-          <button onClick={() => onConfirmDelete(table.id)} className="tp-btn-delete" title="Delete">
+          <button type="button" onClick={() => onConfirmDelete(table.id)} className="tp-btn-delete" title="Delete">
             <Trash2 size={14} />
           </button>
         )}

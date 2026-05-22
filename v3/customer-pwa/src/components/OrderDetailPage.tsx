@@ -245,7 +245,7 @@ export default function OrderDetailPage() {
             return (
               <div key={i} className="od-item-row">
                 <div className="od-item-thumb">
-                  {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt="" loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={18} color={LOKA.primary} />}
+                  {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.name || 'Menu item'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={18} color={LOKA.primary} />}
                 </div>
                 <div className="od-item-details">
                   <div className="od-item-name">{item.name}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</div>

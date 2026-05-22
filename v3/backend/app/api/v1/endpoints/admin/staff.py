@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.iam import IAMPrincipal, IAMRole, RoleAssignment
@@ -110,25 +111,46 @@ async def create_staff(
 
 
 
-@router.get("/roles", response_model=APIResponse[list[dict]])
-async def list_staff_roles(db: DBDependency, admin: CurrentAdmin):
+@router.get("/roles", response_model=APIResponse[PaginatedResponse[dict]])
+async def list_staff_roles(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+):
     """List all staff profiles with their IAM role assignments."""
     from app.models.iam import RoleAssignment
     from sqlalchemy.orm import joinedload
+
+    total_result = await db.execute(
+        select(func.count(StaffProfile.id)).where(StaffProfile.deleted_at.is_(None))
+    )
+    total = total_result.scalar() or 0
+
     result = await db.execute(
         select(StaffProfile)
         .options(joinedload(StaffProfile.store))
         .where(StaffProfile.deleted_at.is_(None))
         .order_by(StaffProfile.id)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
-    items = []
-    for sp in result.scalars().all():
+    staff_list = result.unique().scalars().all()
+
+    # Batch-load roles for all staff in one query
+    principal_ids = [sp.principal_id for sp in staff_list]
+    role_map: dict[int, list[dict]] = {}
+    if principal_ids:
         role_result = await db.execute(
-            select(IAMRole.display_name, IAMRole.id)
-            .join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
-            .where(RoleAssignment.assignee_id == sp.principal_id)
+            select(RoleAssignment.assignee_id, IAMRole.id, IAMRole.display_name)
+            .join(IAMRole, RoleAssignment.role_id == IAMRole.id)
+            .where(RoleAssignment.assignee_id.in_(principal_ids))
         )
-        roles = [{"id": r[1], "name": r[0]} for r in role_result.all()]
+        for assignee_id, rid, rname in role_result.all():
+            role_map.setdefault(assignee_id, []).append({"id": rid, "name": rname})
+
+    items = []
+    for sp in staff_list:
         items.append({
             "id": sp.id, "principal_id": sp.principal_id,
             "display_name": sp.display_name,
@@ -138,9 +160,17 @@ async def list_staff_roles(db: DBDependency, admin: CurrentAdmin):
             "store_name": sp.store.store_name if sp.store else None,
             "has_pin": bool(sp.pin_hash),
             "is_active": sp.is_active,
-            "roles": roles,
+            "roles": role_map.get(sp.principal_id, []),
         })
-    return APIResponse(data=items)
+    return APIResponse(
+        data=PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
 
 
 @router.get("/{staff_id}", response_model=APIResponse[StaffProfileDetailOut])
@@ -236,7 +266,11 @@ async def list_all_shifts(
 ):
     """List shifts flat, filterable by store_id and optionally staff_id."""
     count_stmt = select(func.count(StaffShift.id))
-    base_stmt = select(StaffShift)
+    base_stmt = select(StaffShift).options(
+        selectinload(StaffShift.store),
+        selectinload(StaffShift.staff),
+        selectinload(StaffShift.template),
+    )
     if store_id:
         count_stmt = count_stmt.where(StaffShift.store_id == store_id)
         base_stmt = base_stmt.where(StaffShift.store_id == store_id)
@@ -247,19 +281,15 @@ async def list_all_shifts(
     stmt = base_stmt.order_by(StaffShift.shift_date.desc()).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
     items = []
-    for s in result.scalars().all():
-        staff_result = await db.execute(select(StaffProfile.display_name).where(StaffProfile.id == s.staff_id))
-        staff_name = staff_result.scalar_one_or_none() or "Unknown"
+    for s in result.unique().scalars().all():
+        staff_name = s.staff.display_name if s.staff else "Unknown"
         template_name = "—"
         start_time = None
         end_time = None
-        if s.shift_template_id:
-            tpl_result = await db.execute(select(ShiftTemplate).where(ShiftTemplate.id == s.shift_template_id))
-            tpl = tpl_result.scalar_one_or_none()
-            if tpl:
-                template_name = tpl.name
-                start_time = str(tpl.start_time)
-                end_time = str(tpl.end_time)
+        if s.template:
+            template_name = s.template.name
+            start_time = str(s.template.start_time)
+            end_time = str(s.template.end_time)
         if not start_time and s.planned_start:
             start_time = s.planned_start.strftime("%H:%M")
         if not end_time and s.planned_end:
@@ -429,12 +459,36 @@ async def update_staff_shift(
     await db.refresh(shift)
     return APIResponse(data=StaffShiftOut.model_validate(shift))
 
-@router.get("/shift-templates", response_model=APIResponse[list[dict]])
-async def list_shift_templates(db: DBDependency, admin: CurrentAdmin, store_id: int = Query(...)):
+@router.get("/shift-templates", response_model=APIResponse[PaginatedResponse[dict]])
+async def list_shift_templates(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    store_id: int = Query(...),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+):
     from app.models.staff import ShiftTemplate
-    result = await db.execute(select(ShiftTemplate).where(ShiftTemplate.store_id == store_id).order_by(ShiftTemplate.name))
+    total_result = await db.execute(
+        select(func.count(ShiftTemplate.id)).where(ShiftTemplate.store_id == store_id)
+    )
+    total = total_result.scalar() or 0
+    result = await db.execute(
+        select(ShiftTemplate)
+        .where(ShiftTemplate.store_id == store_id)
+        .order_by(ShiftTemplate.name)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
     items = [{"id": t.id, "store_id": t.store_id, "name": t.name, "start_time": str(t.start_time), "end_time": str(t.end_time)} for t in result.scalars().all()]
-    return APIResponse(data=items)
+    return APIResponse(
+        data=PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
 
 @router.post("/shift-templates", response_model=APIResponse[dict], status_code=201)
 async def create_shift_template(db: DBDependency, admin: CurrentAdmin, data: dict):

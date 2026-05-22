@@ -65,8 +65,8 @@ export default function RewardEditPage() {
         reward_name: d.reward_name || "",
         reward_key: d.reward_key || "",
         reward_type: d.reward_type || "free_item",
-        points_cost: d.points_cost || 0,
-        minimum_order_value: d.minimum_order_value || 0,
+        points_cost: d.points_cost ?? 0,
+        minimum_order_value: d.minimum_order_value ?? 0,
         validity_days: d.validity_days ?? 30,
         description: d.description || "",
         short_description: d.short_description || "",
@@ -76,7 +76,7 @@ export default function RewardEditPage() {
         image_url: d.image_url || "",
         image_gallery_urls: d.image_gallery_urls||[],
         gallery_video_url: d.gallery_video_url||"",
-        position: d.position || 0,
+        position: d.position ?? 0,
         customer_segments: d.customer_segments||[],
         is_active: d.is_active,
       });
@@ -96,10 +96,10 @@ export default function RewardEditPage() {
               allTr[`${loc.code}:${field}`] = t.translated_text || "";
             }
           }
-        } catch { /* ignore */ }
+        } catch (e) { console.error(e); }
       }
       setTranslations(allTr);
-    } catch { /* ignore */ }
+    } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
@@ -113,7 +113,7 @@ export default function RewardEditPage() {
       await api.put(`/admin/rewards/${rewardId}`, payload);
       setMsg("Saved");
       setTimeout(() => setMsg(""), 2000);
-    } catch { /* ignore */ }
+    } catch (e) { console.error(e); }
     finally { setSaving(false); }
   };
 
@@ -126,7 +126,7 @@ export default function RewardEditPage() {
       const url = j.url || j.filename || "";
       setForm({ ...form, image_url: url }); setImagePreview(url);
       if (fileRef.current) fileRef.current.value = "";
-    } catch { /* ignore */ } finally { setUploading(false); }
+    } catch (e) { console.error(e); } finally { setUploading(false); }
   };
 
   const upsertTranslation = async (field: string, locale: string, sourceText: string, translatedText: string) => {
@@ -165,7 +165,7 @@ export default function RewardEditPage() {
           results.push({ field: field.key, text: translated });
           setTranslations(prev => ({ ...prev, [`${locale}:${field.key}`]: translated }));
         }
-      } catch { /* ignore */ }
+      } catch (e) { console.error(e); }
     }
     for (const r of results) {
       await upsertTranslation(r.field, locale, (form[r.field] || "").trim(), r.text);
@@ -195,7 +195,7 @@ export default function RewardEditPage() {
   return (
     <div style={{ padding: 32 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-        <button onClick={() => router.push("/rewards")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
+        <button type="button" onClick={() => router.push("/rewards")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>{reward.reward_name}</h1>
           <p className="page-subtitle" style={{ marginTop: 2 }}>Edit reward details & translations</p>
@@ -206,7 +206,7 @@ export default function RewardEditPage() {
       {/* Language Tabs */}
       <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "2px solid var(--color-border-light)", paddingBottom: 0 }}>
         {LOCALES.map(loc => (
-          <button key={loc.code} onClick={() => setActiveLocale(loc.code)}
+          <button type="button" key={loc.code} onClick={() => setActiveLocale(loc.code)}
             style={{
               padding: "10px 20px", fontSize: 13,
               fontWeight: activeLocale === loc.code ? 700 : 400,
@@ -308,7 +308,7 @@ export default function RewardEditPage() {
           </div>
            <div className="df-actions" style={{ marginTop: 20 }}>
              <button type="button" onClick={() => router.push("/rewards")} className="btn btn-ghost">Cancel</button>
-             <button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button>
+             <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button>
            </div>
         </div>
       )}
@@ -320,7 +320,7 @@ export default function RewardEditPage() {
             <h3 style={{ margin: 0, fontSize: 16 }}>
               {LOCALES.find(l => l.code === activeLocale)?.flag} {LOCALES.find(l => l.code === activeLocale)?.label} Translation
             </h3>
-            <button onClick={() => handleRegenerateAll(activeLocale)} disabled={!!regenerating} className="btn btn-primary btn-sm" style={{ fontSize: 12, padding: "8px 16px" }}>
+            <button type="button" onClick={() => handleRegenerateAll(activeLocale)} disabled={!!regenerating} className="btn btn-primary btn-sm" style={{ fontSize: 12, padding: "8px 16px" }}>
               <RefreshCw size={14} /> {regenerating === "all" ? "Generating..." : "Regenerate All"}
             </button>
           </div>
@@ -346,7 +346,7 @@ export default function RewardEditPage() {
             })}
           </div>
           <div style={{ marginTop: 20 }}>
-            <button onClick={() => handleSaveTranslations(activeLocale)} disabled={saving} className="btn btn-primary" style={{ fontSize: 13, padding: "10px 24px" }}>
+            <button type="button" onClick={() => handleSaveTranslations(activeLocale)} disabled={saving} className="btn btn-primary" style={{ fontSize: 13, padding: "10px 24px" }}>
               <Save size={16} /> Save All Translations
             </button>
           </div>

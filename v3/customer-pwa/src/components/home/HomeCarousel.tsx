@@ -16,7 +16,7 @@ const InfoCard = memo(function InfoCard({
   const cardImage = resolveAssetUrl(card.image_url);
   return (
     <div className="homepage-info-card" onClick={onClick}>
-      {cardImage && <img src={cardImage} alt="" className="card-bg-img" loading="lazy" />}
+      {cardImage && <img src={cardImage} alt="Featured card" className="card-bg-img" loading="lazy" />}
       <div className="homepage-info-content">
         <span className="homepage-info-badge">{card.content_type === 'product' ? t('home.badgeProduct') : t('home.badgeExperience')}</span>
         <div className="homepage-info-title">{card.title}</div>
@@ -40,7 +40,7 @@ const PromoCard = memo(function PromoCard({
   const bannerImage = resolveAssetUrl(banner.image_url);
   return (
     <div className="homepage-promo-card" onClick={onClick}>
-      {bannerImage && <img src={bannerImage} alt="" className="card-bg-img" loading="lazy" />}
+      {bannerImage && <img src={bannerImage} alt="Featured banner" className="card-bg-img" loading="lazy" />}
       <div className="homepage-promo-content">
         <div className="homepage-promo-title">{banner.title}</div>
         {banner.short_description && <div className="homepage-promo-sub">{banner.short_description}</div>}

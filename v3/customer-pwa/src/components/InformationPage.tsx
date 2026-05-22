@@ -250,7 +250,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
                   {img && !brokenImages.has(card.id) ? (
                     <img
                       src={img}
-                      alt=""
+                      alt={card.title || 'Information card'}
                       loading="lazy"
                       onError={() => { setBrokenImages(prev => new Set(prev).add(card.id)); }}
                     />

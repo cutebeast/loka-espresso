@@ -40,10 +40,11 @@ export default function OfflineBanner() {
   }, [clearTimer]);
 
   useEffect(() => {
+    let bannerTimer: ReturnType<typeof setTimeout> | null = null;
     const handleOnline = () => {
       setIsOnline(true);
       clearTimer();
-      setTimeout(() => setShowBanner(false), 2000);
+      bannerTimer = setTimeout(() => setShowBanner(false), 2000);
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -62,6 +63,7 @@ export default function OfflineBanner() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       clearTimer();
+      if (bannerTimer) clearTimeout(bannerTimer);
     };
   }, [startCountdown, clearTimer]);
 

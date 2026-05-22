@@ -678,7 +678,7 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: PO
         service_charge=service_charge,
         tax_amount=tax_amount,
         total_amount=total,
-        total_amount_currency=store.currency_code or "MYR",
+        total_amount_currency=store.currency_code,
     )
 
     change = 0.0
@@ -702,7 +702,7 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: PO
                 provider="cash",
                 payment_method_type=payment_data.method,
                 amount=total,
-                currency_code=store.currency_code or "MYR",
+                currency_code=store.currency_code,
                 status="captured",
                 net_amount=total,
             )

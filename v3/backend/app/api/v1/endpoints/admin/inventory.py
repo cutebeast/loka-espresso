@@ -302,24 +302,38 @@ async def delete_item(
 # Suppliers
 # ---------------------------------------------------------------------------
 
-@router.get("/suppliers", response_model=APIResponse[list[SupplierOut]])
+@router.get("/suppliers", response_model=APIResponse[PaginatedResponse[SupplierOut]])
 async def list_suppliers(
     db: DBDependency,
     admin: CurrentAdmin,
     store_id: int | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
 ):
     """List suppliers for a store."""
+    count_stmt = select(func.count(Supplier.id)).where(Supplier.deleted_at.is_(None))
     stmt = (
         select(Supplier)
         .where(Supplier.deleted_at.is_(None))
         .order_by(Supplier.supplier_name)
     )
     if store_id is not None:
+        count_stmt = count_stmt.where(Supplier.store_id == store_id)
         stmt = stmt.where(Supplier.store_id == store_id)
-    result = await db.execute(stmt)
+
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar() or 0
+
+    result = await db.execute(stmt.offset((page - 1) * per_page).limit(per_page))
     suppliers = result.scalars().all()
     return APIResponse(
-        data=[SupplierOut.model_validate(s) for s in suppliers]
+        data=PaginatedResponse(
+            items=[SupplierOut.model_validate(s) for s in suppliers],
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
     )
 
 

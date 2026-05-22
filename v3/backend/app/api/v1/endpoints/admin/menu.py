@@ -752,22 +752,34 @@ async def delete_allergen(
 # Tax Categories
 # ---------------------------------------------------------------------------
 
-@router.get("/tax-categories", response_model=APIResponse[list[TaxCategoryOut]])
+@router.get("/tax-categories", response_model=APIResponse[PaginatedResponse[TaxCategoryOut]])
 async def list_tax_categories(
     db: DBDependency,
     admin: CurrentAdmin,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
 ):
     """List tax categories for a store (excluding soft-deleted)."""
+    total_result = await db.execute(
+        select(func.count(TaxCategory.id)).where(TaxCategory.deleted_at.is_(None))
+    )
+    total = total_result.scalar() or 0
     result = await db.execute(
         select(TaxCategory)
-        .where(
-            TaxCategory.deleted_at.is_(None),
-        )
+        .where(TaxCategory.deleted_at.is_(None))
         .order_by(TaxCategory.category_name)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
     tax_categories = result.scalars().all()
     return APIResponse(
-        data=[TaxCategoryOut.model_validate(t) for t in tax_categories]
+        data=PaginatedResponse(
+            items=[TaxCategoryOut.model_validate(t) for t in tax_categories],
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
     )
 
 

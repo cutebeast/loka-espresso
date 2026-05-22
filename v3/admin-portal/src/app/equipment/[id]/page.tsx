@@ -48,12 +48,12 @@ export default function EquipmentEditPage() {
     finally { setLoading(false); }
   };
 
-  const update = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const update = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }));
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload: any = { ...form };
+      const payload: Record<string, unknown> = { ...form };
       delete payload.id;
       delete payload.created_at;
       delete payload.updated_at;

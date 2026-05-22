@@ -205,7 +205,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
           <div className="promotions-carousel">
             {promotions.map(promo => (
               <div key={promo.id} className="promotions-promo-card" onClick={() => handleSelectPromo(promo)}>
-                {promo.image_url && <img src={resolveAssetUrl(promo.image_url) || ''} alt="" className="promotions-card-bg-img" loading="lazy" />}
+                {promo.image_url && <img src={resolveAssetUrl(promo.image_url) || ''} alt={promo.title || 'Promotion'} className="promotions-card-bg-img" loading="lazy" />}
                 <div className="promotions-promo-content">
                   <div className="promotions-promo-title">{promo.title}</div>
                   {promo.short_description && <div className="promotions-promo-sub">{promo.short_description}</div>}
@@ -240,7 +240,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
             return (
               <div key={promo.id} className="promotions-list-card" onClick={() => handleSelectPromo(promo)}>
                 <div className="promotions-card-thumb">
-                  {img ? <img src={img} alt="" loading="lazy" /> : <Gift size={24} color={LOKA.border} />}
+                  {img ? <img src={img} alt={promo.title || 'Promotion'} loading="lazy" /> : <Gift size={24} color={LOKA.border} />}
                 </div>
                 <div className="promotions-card-body">
                   <div className="promotions-card-title">{promo.title}</div>

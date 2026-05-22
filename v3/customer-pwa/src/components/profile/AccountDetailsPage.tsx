@@ -56,7 +56,8 @@ export default function AccountDetailsPage() {
       });
       setUser(res.data);
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 2000);
+      const t = setTimeout(() => setShowSuccess(false), 2000);
+      return () => clearTimeout(t);
     } catch {
       showToast(t('toast.profileFailed'), 'error');
     } finally {

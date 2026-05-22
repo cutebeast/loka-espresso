@@ -25,23 +25,23 @@ export default function PosSuccessScreen({ mode, result, total, change, paymentM
       {change > 0 && <p style={{ fontSize: 13, opacity: 0.7 }}>Change: RM {change.toFixed(2)}</p>}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-        <button className="btn btn-primary" style={{ padding: "14px", fontSize: 16 }} onClick={onNewOrder}>
+        <button type="button" className="btn btn-primary" style={{ padding: "14px", fontSize: 16 }} onClick={onNewOrder}>
           <ShoppingCart size={18} /> New Order
         </button>
         {mode === "checkout" && (
           <>
-            <button className="btn btn-outline" onClick={() => FEATURE_FLAGS.printer ? undefined : showFeatureToast("Printer")} title="Printer integration pending">
+            <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.printer ? undefined : showFeatureToast("Printer")} title="Printer integration pending">
               <Printer size={16} /> Print Receipt
             </button>
             {paymentMethod === "cash" && (
-              <button className="btn btn-outline" onClick={() => FEATURE_FLAGS.cashDrawer ? undefined : showFeatureToast("Cash Drawer")} title="Cash drawer integration pending">
+              <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.cashDrawer ? undefined : showFeatureToast("Cash Drawer")} title="Cash drawer integration pending">
                 <Archive size={16} /> Open Cash Drawer
               </button>
             )}
           </>
         )}
         {mode === "new_order" && (
-          <button className="btn btn-outline" onClick={() => FEATURE_FLAGS.kitchenTicketPrinter ? undefined : showFeatureToast("Kitchen Ticket Printer")} title="Kitchen ticket printing pending">
+          <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.kitchenTicketPrinter ? undefined : showFeatureToast("Kitchen Ticket Printer")} title="Kitchen ticket printing pending">
             <Receipt size={16} /> Print Kitchen Ticket
           </button>
         )}

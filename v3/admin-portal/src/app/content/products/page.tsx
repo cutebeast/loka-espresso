@@ -15,7 +15,7 @@ export default function ProductsPage() {
   useEffect(()=>{(async () => {
 fetch();
 })();},[fetch]);
-  const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/product-cards/${id}`);fetch();}catch{}; };
+  const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/product-cards/${id}`);fetch();}catch(e){console.error(e);}; };
   return (
     <div style={{padding:32}}>
       <div className="page-header"><div><h1 className="page-title">Products</h1><p className="page-subtitle">{items.length} products</p></div><button onClick={()=>router.push("/content/products/new")} className="btn btn-primary btn-sm"><Plus size={16}/> Add Product</button></div>

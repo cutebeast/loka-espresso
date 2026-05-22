@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
 from app.services.translation import merge_translations, translate_single
@@ -208,20 +209,20 @@ async def list_my_vouchers(
 
     stmt = (
         select(CustomerVoucher)
+        .options(selectinload(CustomerVoucher.voucher_definition))
         .where(CustomerVoucher.customer_id == customer.id)
         .order_by(CustomerVoucher.id.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    vouchers = result.scalars().all()
+    vouchers = result.unique().scalars().all()
 
     items = []
     vd_ids = []
     for v in vouchers:
         item = CustomerVoucherOut.model_validate(v).model_dump()
-        vd_result = await db.execute(select(VoucherDefinition).where(VoucherDefinition.id == v.voucher_definition_id))
-        vd = vd_result.scalar_one_or_none()
+        vd = v.voucher_definition
         item["discount_type"] = vd.voucher_type if vd else None
         item["discount_value"] = float(vd.discount_value) if vd else None
         item["min_spend"] = float(vd.minimum_order_value) if vd else None

@@ -12,6 +12,7 @@ from app.models.order import Order
 from app.models.wallet import Wallet, WalletLedgerEntry
 from app.models.reward import CustomerReward
 from app.models.voucher import CustomerVoucher, VoucherDefinition
+from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse
 
 router = APIRouter(prefix="/admin/customers", tags=["admin — customers"])
@@ -375,10 +376,15 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
         "discount_value": str(vd.discount_value or 0),
         "minimum_order_value": str(vd.minimum_order_value or 0),
     }
+    store_result = await db.execute(
+        select(Store.id).where(Store.deleted_at.is_(None), Store.is_active.is_(True)).limit(1)
+    )
+    default_store_id = store_result.scalar_one_or_none()
+
     cv = CustomerVoucher(
         customer_id=customer_id,
         voucher_definition_id=voucher_id,
-        store_id=1,  # admin-awarded vouchers default to store 1
+        store_id=default_store_id,  # resolved from first active store
         source="admin_awarded",
         source_id=admin.id,
         voucher_code=f"ADMIN-{secrets.token_hex(4).upper()}",

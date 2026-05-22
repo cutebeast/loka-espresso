@@ -126,8 +126,9 @@ CREATE TABLE dining_tables (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at TIMESTAMPTZ,
-    UNIQUE (store_id, table_number)
 );
+
+CREATE UNIQUE INDEX uq_dining_tables_active_store_table_number ON dining_tables(store_id, table_number) WHERE deleted_at IS NULL;
 
 CREATE TABLE table_status_snapshot (
     table_id INTEGER PRIMARY KEY REFERENCES dining_tables(id) ON DELETE CASCADE,
@@ -435,7 +436,7 @@ CREATE TABLE inventory_items (
     reorder_quantity NUMERIC(10,4) NOT NULL DEFAULT 0 CHECK (reorder_quantity >= 0),
     par_level NUMERIC(10,4) NOT NULL DEFAULT 0 CHECK (par_level >= 0),
     unit_cost NUMERIC(10,4) CHECK (unit_cost >= 0),
-    supplier_id INTEGER,
+    supplier_id INTEGER REFERENCES suppliers(id),
     storage_location VARCHAR(50),
     shelf_life_days INTEGER CHECK (shelf_life_days > 0),
     is_active BOOLEAN NOT NULL DEFAULT true,

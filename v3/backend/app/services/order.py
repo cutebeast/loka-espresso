@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from decimal import Decimal
 
@@ -242,7 +243,10 @@ async def get_customer_orders(
     per_page: int = 20,
 ):
     """List orders for a customer."""
-    stmt = select(Order).where(
+    stmt = select(Order).options(
+        selectinload(Order.line_items),
+        selectinload(Order.store),
+    ).where(
         Order.customer_id == customer_id,
         Order.deleted_at.is_(None),
     ).order_by(Order.created_at.desc())

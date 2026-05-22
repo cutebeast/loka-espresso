@@ -26,7 +26,7 @@ export default function ProductEditPage() {
       const x:Record<string,string>={};
       for(const lc of LOCALES){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/admin/translations?table_name=product_cards&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}}
       setTr(x);
-    }catch{}finally{setLoading(false);}
+    }catch(e){console.error(e);}finally{setLoading(false);}
   }, [id]);
 
   useEffect(()=>{(async () => {
@@ -37,7 +37,7 @@ load();
     try{const fd=new FormData();fd.append("file",f);const j=await api.upload("/upload/image",fd);const url=j.url||j.filename||"";setForm({...form,image_url:url});setImg(url);}catch{}finally{setUploading(false)}; };
 
   const save = async () => { setSaving(true);
-    try{const pl={...form,price:Number(form.price)||0};await api.patch(`/admin/product-cards/${id}`,pl);setMsg("Saved");setTimeout(()=>setMsg(""),2000);}catch{}finally{setSaving(false)}; };
+    try{const pl={...form,price:Number(form.price) || 0};await api.patch(`/admin/product-cards/${id}`,pl);setMsg("Saved");setTimeout(()=>setMsg(""),2000);}catch{}finally{setSaving(false)}; };
 
   const upsertTr = async(field:string,locale:string,src:string,text:string)=>{
     try{const rt=await api.getRaw<any>(`/admin/translations?table_name=product_cards&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`product_cards.${id}.${field}`,locale,namespace:"content",translated_text:text,source_text:src,table_name:"product_cards",record_id:Number(id),column_name:field});}catch{}

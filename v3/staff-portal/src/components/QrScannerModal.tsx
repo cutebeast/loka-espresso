@@ -25,7 +25,7 @@ export default function QrScannerModal({ open, onClose, onScan, title = "Scan QR
     if (!open) {
       setError("");
       if (scannerRef.current) {
-        scannerRef.current.stop().catch((err: any) => console.error("QR scanner stop failed:", err));
+        scannerRef.current.stop().catch((err: Error) => console.error("QR scanner stop failed:", err));
         scannerRef.current = null;
       }
       return;
@@ -51,9 +51,9 @@ export default function QrScannerModal({ open, onClose, onScan, title = "Scan QR
           },
           (err) => console.warn("QR scan error:", err)
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("QR scanner failed:", err);
-        const msg = err?.message || String(err);
+        const msg = (err as Error)?.message || String(err);
         if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("notallowed") || msg.toLowerCase().includes("denied")) {
           setError("Camera permission denied. Please allow camera access in your browser settings, then try again.");
         } else if (msg.toLowerCase().includes("notfound") || msg.toLowerCase().includes("no camera")) {
@@ -68,7 +68,7 @@ export default function QrScannerModal({ open, onClose, onScan, title = "Scan QR
 
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.stop().catch((err: any) => console.error("QR scanner cleanup failed:", err));
+        scannerRef.current.stop().catch((err: Error) => console.error("QR scanner cleanup failed:", err));
         scannerRef.current = null;
       }
     };
@@ -79,7 +79,7 @@ export default function QrScannerModal({ open, onClose, onScan, title = "Scan QR
       {error ? (
         <div style={{ padding: 20, textAlign: "center" }}>
           <div style={{ fontSize: 14, color: "var(--color-error)", fontWeight: 600, marginBottom: 12 }}>{error}</div>
-          <button className="btn btn-primary" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
         </div>
       ) : (
         <>

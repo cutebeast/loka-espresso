@@ -31,7 +31,7 @@ export default function StaffRolesPage() {
 
   const fetch = useCallback(() => {
     setLoading(true);
-    api.get<any>("/admin/auth/roles").then(d => {
+    api.get<Role[] | { items: Role[] }>("/admin/auth/roles").then(d => {
       const all = Array.isArray(d) ? d : (d.items || []);
       setRoles(all.filter((r: Role) => STAFF_ROLE_KEYS.includes(r.role_key)));
     }).catch(() => {}).finally(() => setLoading(false));
@@ -39,7 +39,7 @@ export default function StaffRolesPage() {
 
   useEffect(() => {
     fetch();
-    api.get<any>("/admin/auth/permissions").then(d => {
+    api.get<Permission[] | { items: Permission[] }>("/admin/auth/permissions").then(d => {
       const all = Array.isArray(d) ? d : (d.items || []);
       // Only staff portal permissions (28-37)
       setPermissions(all.filter((p: Permission) => STAFF_PERM_GROUPS.some(g => g.resources.includes(p.resource))));
@@ -58,13 +58,13 @@ export default function StaffRolesPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this role? All assignments will be removed.")) return;
-    try { await api.del(`/admin/auth/roles/${id}`); fetch(); } catch {}
+    try { await api.del(`/admin/auth/roles/${id}`); fetch(); } catch (e) { console.error(e); }
   };
 
   const loadRolePerms = async (roleId: number) => {
     setAssigningRole(roleId);
-    try { const d = await api.getRaw<any>(`/admin/auth/roles/${roleId}/permissions`); setRolePerms(d?.permission_ids || d?.data?.permission_ids || []); }
-    catch { setRolePerms([]); }
+    try { const d = await api.getRaw<{ permission_ids?: number[]; data?: { permission_ids?: number[] } }>(`/admin/auth/roles/${roleId}/permissions`); setRolePerms(d?.permission_ids || d?.data?.permission_ids || []); }
+    catch (e) { console.error(e); setRolePerms([]); }
   };
 
   const togglePerm = (permId: number) => { setRolePerms(prev => prev.includes(permId) ? prev.filter(p => p !== permId) : [...prev, permId]); };
@@ -72,12 +72,12 @@ export default function StaffRolesPage() {
   const savePerms = async () => {
     if (!assigningRole) return;
     try { await api.put(`/admin/auth/roles/${assigningRole}/permissions`, { permission_ids: rolePerms }); setAssigningRole(null); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); }
-    catch {}
+    catch (e) { console.error(e); }
   };
 
   return (
     <div style={{ padding: 24 }}>
-      <div className="page-header"><div><h1 className="page-title">Staff Roles</h1><p className="page-subtitle">{roles.length} roles · controls staff.loyaltysystem.uk access</p></div><button onClick={() => { setShowForm(true); setForm({ display_name: "", description: "", role_key: "" }); }} className="btn btn-primary btn-sm"><Plus size={14} /> Create Role</button></div>
+      <div className="page-header"><div><h1 className="page-title">Staff Roles</h1><p className="page-subtitle">{roles.length} roles · controls staff.loyaltysystem.uk access</p></div><button type="button" onClick={() => { setShowForm(true); setForm({ display_name: "", description: "", role_key: "" }); }} className="btn btn-primary btn-sm"><Plus size={14} /> Create Role</button></div>
       {msg && <div className={`alert ${msg.includes("Failed") ? "alert-error" : "alert-success"}`} style={{ marginBottom: 12 }}>{msg}</div>}
 
       {(showForm || editingId) && (
@@ -117,7 +117,7 @@ export default function StaffRolesPage() {
               );
             })}
           </div>
-          <div className="df-actions" style={{ marginTop: 16 }}><button onClick={() => setAssigningRole(null)} className="btn btn-ghost">Cancel</button><button onClick={savePerms} className="btn btn-primary"><Save size={14} /> Save Permissions</button></div>
+          <div className="df-actions" style={{ marginTop: 16 }}><button type="button" onClick={() => setAssigningRole(null)} className="btn btn-ghost">Cancel</button><button type="button" onClick={savePerms} className="btn btn-primary"><Save size={14} /> Save Permissions</button></div>
         </div>
       )}
 
@@ -132,9 +132,9 @@ export default function StaffRolesPage() {
               <td style={{ fontSize: 12, opacity: 0.7 }}>{r.description || "—"}</td>
               <td style={{ whiteSpace: "nowrap" }}>
                 <div style={{ display: "flex", gap: 4 }}>
-                  <button onClick={() => { setForm({ display_name: r.display_name, description: r.description || "", role_key: r.role_key }); setEditingId(r.id); }} className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>Edit</button>
-                  <button onClick={() => loadRolePerms(r.id)} className="btn btn-outline btn-sm" style={{ fontSize: 11 }}>Perms</button>
-                  <button onClick={() => handleDelete(r.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)", fontSize: 11 }}><Trash2 size={12} /></button>
+                  <button type="button" onClick={() => { setForm({ display_name: r.display_name, description: r.description || "", role_key: r.role_key }); setEditingId(r.id); }} className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>Edit</button>
+                  <button type="button" onClick={() => loadRolePerms(r.id)} className="btn btn-outline btn-sm" style={{ fontSize: 11 }}>Perms</button>
+                  <button type="button" onClick={() => handleDelete(r.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)", fontSize: 11 }}><Trash2 size={12} /></button>
                 </div>
               </td>
             </tr>

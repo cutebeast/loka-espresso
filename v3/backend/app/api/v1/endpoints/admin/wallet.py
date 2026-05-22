@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
 from app.models.wallet import Wallet, WalletLedgerEntry
@@ -26,6 +27,15 @@ async def _get_wallet_or_404(db, wallet_id: int) -> Wallet:
 async def _get_customer_wallet(db, customer_id: int) -> Wallet | None:
     result = await db.execute(select(Wallet).where(Wallet.customer_id == customer_id))
     return result.scalar_one_or_none()
+
+
+async def _get_default_currency(db) -> str:
+    from app.models.platform import PlatformConfig
+    result = await db.execute(
+        select(PlatformConfig.config_value).where(PlatformConfig.config_key == "currency.default")
+    )
+    row = result.scalar_one_or_none()
+    return str(row) if row else "USD"
 
 
 def _compute_wallet_stats(ledger_entries: list[WalletLedgerEntry]) -> dict:
@@ -83,18 +93,18 @@ async def list_wallets(
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
 
-    stmt = base_stmt.order_by(Wallet.id.desc()).offset((page - 1) * per_page).limit(per_page)
+    stmt = (
+        base_stmt.order_by(Wallet.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .options(selectinload(Wallet.ledger_entries))
+    )
     result = await db.execute(stmt)
-    wallets = result.scalars().all()
+    wallets = result.unique().scalars().all()
 
     items = []
     for wallet in wallets:
-        # Fetch ledger for stats
-        ledger_result = await db.execute(
-            select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id)
-        )
-        ledger = ledger_result.scalars().all()
-        items.append(_wallet_to_out(wallet, ledger))
+        items.append(_wallet_to_out(wallet, wallet.ledger_entries))
 
     return APIResponse(
         data=PaginatedResponse(
@@ -223,7 +233,7 @@ async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: dict):
 
     wallet = await _get_customer_wallet(db, customer_id)
     if not wallet:
-        wallet = Wallet(customer_id=customer_id, currency_code="MYR")
+        wallet = Wallet(customer_id=customer_id, currency_code=await _get_default_currency(db))
         db.add(wallet); await db.flush()
 
     r = await db.execute(
@@ -291,7 +301,7 @@ async def get_my_wallet(
         # Auto-create wallet for existing customers
         wallet = Wallet(
             customer_id=customer.id,
-            currency_code="MYR",
+            currency_code=await _get_default_currency(db),
         )
         db.add(wallet)
         await db.commit()
@@ -359,7 +369,7 @@ async def request_topup(
     if wallet is None:
         wallet = Wallet(
             customer_id=customer.id,
-            currency_code="MYR",
+            currency_code=await _get_default_currency(db),
         )
         db.add(wallet)
         await db.commit()

@@ -24,7 +24,7 @@ export default function StaffTimeEventsPage() {
  fetchData(); 
 })();}, [fetchData]);
 
-  const handleVerify = async (id: number) => { try { await verifyTimeEvent(id); fetchData(); } catch {}; };
+  const handleVerify = async (id: number) => { try { await verifyTimeEvent(id); fetchData(); } catch (e) { console.error(e); }; };
 
   const typeBadge = (t: string) => {
     const m: Record<string, string> = { clock_in: "badge-green", clock_out: "badge-red", start_break: "badge-yellow", end_break: "badge-blue" };

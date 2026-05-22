@@ -15,7 +15,7 @@ export default function EventsPage() {
   const fetch = useCallback(() => { api.get<{items:Card[]}>("/admin/event-cards?per_page=100").then(d => setItems(Array.isArray(d)?d:(d.items||[]))).catch(e=>setError(e.message)).finally(()=>setLoading(false)); }, []);
   useEffect(()=>{fetch();},[fetch]);
 
-  const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/event-cards/${id}`);fetch();}catch{}; };
+  const handleDelete = async (id: number) => { if(!confirm("Delete?"))return; try{await api.del(`/admin/event-cards/${id}`);fetch();}catch(e){console.error(e);}; };
   return (
     <div style={{padding:32}}>
       <div className="page-header"><div><h1 className="page-title">Events</h1><p className="page-subtitle">{items.length} events</p></div><button onClick={()=>router.push("/content/events/new")} className="btn btn-primary btn-sm"><Plus size={16}/> Add Event</button></div>

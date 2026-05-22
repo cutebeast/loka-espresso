@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, HTTPException, Query, status
 from sqlalchemy import select, text
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import ActiveCustomer, DBDependency
 from app.models.cart import CustomerCart, CartLineItem
@@ -99,13 +100,21 @@ async def cancel_order(
 ):
     """Customer-initiated order cancellation."""
     result = await db.execute(
-        select(Order).where(
+        select(Order)
+        .options(
+            selectinload(Order.line_items),
+            selectinload(Order.status_logs),
+            selectinload(Order.adjustments),
+            selectinload(Order.fulfillment),
+            selectinload(Order.store),
+        )
+        .where(
             Order.id == order_id,
             Order.customer_id == customer.id,
             Order.deleted_at.is_(None),
         )
     )
-    order = result.scalar_one_or_none()
+    order = result.unique().scalar_one_or_none()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
@@ -219,10 +228,8 @@ async def list_orders(
     items = []
     for order in orders:
         order_out = _build_order_out(order, db)
-        store_result = await db.execute(select(Store.store_name, Store.address_line_1).where(Store.id == order.store_id))
-        store_row = store_result.first()
-        order_out.store_name = store_row[0] if store_row else None
-        order_out.store_address = store_row[1] if store_row else None
+        order_out.store_name = order.store.store_name if order.store else None
+        order_out.store_address = order.store.address_line_1 if order.store else None
         order_out.payment_method = payment_map.get(order.id)
         items.append(order_out)
     
@@ -254,42 +261,27 @@ async def get_order(customer: ActiveCustomer, db: DBDependency, order_id: int):
     order_out = _build_order_out(order, db)
 
     # Add store info
-    store_result = await db.execute(select(Store.store_name, Store.address_line_1).where(Store.id == order.store_id))
-    store_row = store_result.first()
-    order_out.store_name = store_row[0] if store_row else None
-    order_out.store_address = store_row[1] if store_row else None
-    
-    # Fetch line items
-    li_result = await db.execute(
-        select(OrderLineItem).where(OrderLineItem.order_id == order.id)
-    )
+    order_out.store_name = order.store.store_name if order.store else None
+    order_out.store_address = order.store.address_line_1 if order.store else None
+
+    # Build line items from eager-loaded relationship
     line_items = []
-    for li in li_result.scalars().all():
+    for li in order.line_items:
         li_out = OrderLineItemOut.model_validate(li)
         li_out.name = li.item_snapshot.get("item_name") if li.item_snapshot else None
         li_out.image_url = li.item_snapshot.get("image_url") if li.item_snapshot else None
         line_items.append(li_out)
     order_out.line_items = line_items
-    
-    # Fetch status logs
-    sl_result = await db.execute(
-        select(OrderStatusLog).where(OrderStatusLog.order_id == order.id)
-    )
-    order_out.status_log = [OrderStatusLogOut.model_validate(i) for i in sl_result.scalars().all()]
-    
-    # Fetch adjustments
-    adj_result = await db.execute(
-        select(OrderAdjustment).where(OrderAdjustment.order_id == order.id)
-    )
-    order_out.adjustments = [OrderAdjustmentOut.model_validate(i) for i in adj_result.scalars().all()]
-    
-    # Fetch fulfillment
-    ff_result = await db.execute(
-        select(OrderFulfillment).where(OrderFulfillment.order_id == order.id)
-    )
-    fulfillment = ff_result.scalar_one_or_none()
-    if fulfillment:
-        order_out.fulfillment = OrderFulfillmentOut.model_validate(fulfillment)
+
+    # Build status logs from eager-loaded relationship
+    order_out.status_log = [OrderStatusLogOut.model_validate(i) for i in order.status_logs]
+
+    # Build adjustments from eager-loaded relationship
+    order_out.adjustments = [OrderAdjustmentOut.model_validate(i) for i in order.adjustments]
+
+    # Build fulfillment from eager-loaded relationship
+    if order.fulfillment:
+        order_out.fulfillment = OrderFulfillmentOut.model_validate(order.fulfillment)
     
     # Fetch payment method from payments table
     payment_result = await db.execute(
