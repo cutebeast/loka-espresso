@@ -227,6 +227,7 @@ async def get_loyalty_account(
     db: DBDependency,
     admin: CurrentAdmin,
     id: int,
+    locale: str = Query("en"),
 ):
     """Get a loyalty account by ID."""
     result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.id == id))

@@ -179,3 +179,13 @@ CREATE TRIGGER trg_equipment_updated_at BEFORE UPDATE ON equipment
     FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 CREATE TRIGGER trg_equipment_maintenance_logs_updated_at BEFORE UPDATE ON equipment_maintenance_logs
     FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+
+-- ============================================================
+-- Missing updated_at triggers (I15 fix)
+-- ============================================================
+CREATE TRIGGER trg_iam_principals_updated_at BEFORE UPDATE ON iam_principals
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_reservations_updated_at BEFORE UPDATE ON reservations
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_staff_shifts_updated_at BEFORE UPDATE ON staff_shifts
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();

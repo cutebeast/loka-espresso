@@ -434,7 +434,7 @@ async def list_my_notifications(
 
     return APIResponse(
         data=PaginatedResponse(
-            items=items,
+            items=item_dicts,
             total=total,
             page=page,
             per_page=per_page,

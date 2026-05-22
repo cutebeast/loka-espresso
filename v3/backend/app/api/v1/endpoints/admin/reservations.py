@@ -113,18 +113,6 @@ async def list_reservations(
             total_pages=(total + per_page - 1) // per_page,
         )
     )
-    result = await db.execute(stmt)
-    items = [ReservationOut.model_validate(r) for r in result.scalars().all()]
-
-    return APIResponse(
-        data=PaginatedResponse(
-            items=items,
-            total=total,
-            page=page,
-            per_page=per_page,
-            total_pages=(total + per_page - 1) // per_page,
-        )
-    )
 
 
 @reservations_router.post(

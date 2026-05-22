@@ -1,5 +1,9 @@
 """Payment endpoints."""
 
+import hmac
+import hashlib
+import json
+
 from fastapi import APIRouter, Body, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
@@ -364,6 +368,36 @@ async def list_payments(
     )
 
 
+def _verify_stripe_signature(payload_bytes: bytes, sig_header: str, secret: str) -> bool:
+    if not secret:
+        return True  # Dev fallback
+    try:
+        timestamp = None
+        signatures = []
+        for item in sig_header.split(","):
+            if item.startswith("t="):
+                timestamp = item[2:]
+            elif item.startswith("v1="):
+                signatures.append(item[3:])
+        if not timestamp or not signatures:
+            return False
+        signed_payload = f"{timestamp}.{payload_bytes.decode('utf-8')}".encode("utf-8")
+        expected = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
+        return any(hmac.compare_digest(expected, sig) for sig in signatures)
+    except Exception:
+        return False
+
+
+def _verify_grabpay_signature(payload_bytes: bytes, sig_header: str, secret: str) -> bool:
+    if not secret:
+        return True  # Dev fallback
+    try:
+        expected = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected, sig_header)
+    except Exception:
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Webhooks (unprotected)
 # ---------------------------------------------------------------------------
@@ -375,15 +409,19 @@ async def stripe_webhook(
     request: Request,
 ):
     """Stripe webhook handler."""
+    from app.core.config import get_settings
+    settings = get_settings()
+
     sig_header = request.headers.get("Stripe-Signature")
     if not sig_header:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Stripe-Signature header")
 
-    # TODO: Install stripe SDK and verify signature via stripe.webhook.construct_event()
-    # using settings.webhook_signing_secret when stripe package is available.
+    payload_bytes = await request.body()
+    if not _verify_stripe_signature(payload_bytes, sig_header, settings.webhook_signing_secret):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature")
 
     try:
-        payload = await request.json()
+        payload = json.loads(payload_bytes)
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
 
@@ -401,14 +439,19 @@ async def grabpay_webhook(
     request: Request,
 ):
     """GrabPay webhook handler."""
+    from app.core.config import get_settings
+    settings = get_settings()
+
     sig_header = request.headers.get("X-GrabPay-Signature") or request.headers.get("Authorization")
     if not sig_header:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing GrabPay signature header")
 
-    # TODO: Verify HMAC signature using settings.webhook_signing_secret
+    payload_bytes = await request.body()
+    if not _verify_grabpay_signature(payload_bytes, sig_header, settings.webhook_signing_secret):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid GrabPay signature")
 
     try:
-        payload = await request.json()
+        payload = json.loads(payload_bytes)
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
 

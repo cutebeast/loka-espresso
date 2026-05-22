@@ -132,11 +132,8 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
     if not admin or not admin.password_hash:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    import argon2
-    ph = argon2.PasswordHasher()
-    try:
-        ph.verify(admin.password_hash, password)
-    except Exception:
+    from app.core.security import verify_password
+    if not verify_password(password, admin.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Admin verified — if store_id provided, return staff token. Otherwise return admin token with store list.
@@ -147,13 +144,13 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
         if not store_check.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Store not found")
         now = datetime.now(timezone.utc)
-        payload = {"sub": str(admin.principal_id), "type": "staff", "staff_id": 0, "store_id": int(store_id),
+        payload = {"sub": str(admin.id), "type": "staff", "staff_id": 0, "store_id": int(store_id),
                    "admin_id": admin.id, "admin_name": admin.display_name,
                    "iat": now, "jti": uuid.uuid4().hex,
                    "iss": "fnb-enterprise-v3", "aud": "fnb-app",
                    "exp": now + timedelta(minutes=30)}
         access_token = jwt.encode(payload, secret, algorithm="HS256")
-        refresh_payload = {"sub": str(admin.principal_id), "type": "refresh", "staff_id": 0, "store_id": int(store_id),
+        refresh_payload = {"sub": str(admin.id), "type": "refresh", "staff_id": 0, "store_id": int(store_id),
                            "admin_id": admin.id, "iat": now, "jti": uuid.uuid4().hex,
                            "iss": "fnb-enterprise-v3", "aud": "fnb-app",
                            "exp": now + timedelta(days=7)}
@@ -215,7 +212,7 @@ async def admin_select_store(request: Request, db: DBDependency, data: StaffAdmi
 
     from datetime import timedelta
     now = datetime.now(timezone.utc)
-    payload = {"sub": str(admin.principal_id), "type": "staff", "staff_id": 0, "store_id": int(store_id),
+    payload = {"sub": str(admin.id), "type": "staff", "staff_id": 0, "store_id": int(store_id),
                "admin_id": admin.id, "admin_name": admin.display_name,
                "iat": now, "jti": uuid.uuid4().hex,
                "iss": "fnb-enterprise-v3", "aud": "fnb-app",
@@ -305,7 +302,7 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
             raise HTTPException(status_code=401, detail="Admin not found")
         from datetime import timedelta
         now = datetime.now(timezone.utc)
-        new_payload = {"sub": str(admin.principal_id), "type": "staff", "staff_id": 0, "store_id": int(store_id or 0),
+        new_payload = {"sub": str(admin.id), "type": "staff", "staff_id": 0, "store_id": int(store_id or 0),
                        "admin_id": admin.id, "admin_name": admin.display_name,
                        "iat": now, "jti": uuid.uuid4().hex,
                        "iss": "fnb-enterprise-v3", "aud": "fnb-app",
@@ -504,8 +501,7 @@ async def staff_customer_search(db: DBDependency, admin: CurrentAdmin, q: str = 
 
 @router.post("/staff/auth/verify-pin")
 @limiter.limit("10/minute")
-async def staff_verify_pin(request: Request, db: DBDependency, admin: CurrentAdmin, data: StaffPinVerifyRequest):
-    staff = await _get_staff_profile(db, admin)
+async def staff_verify_pin(request: Request, db: DBDependency, staff: CurrentStaff, data: StaffPinVerifyRequest):
 
     pin = str(data.pin or "").strip()
     if not pin or len(pin) < 4:

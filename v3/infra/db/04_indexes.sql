@@ -54,7 +54,7 @@ CREATE UNIQUE INDEX idx_customer_consents_unique ON customer_consents(customer_i
 
 CREATE INDEX idx_customer_addresses_customer ON customer_addresses(customer_id);
 CREATE UNIQUE INDEX idx_customer_addresses_default ON customer_addresses(customer_id) WHERE is_default = true AND deleted_at IS NULL;
-CREATE INDEX idx_customer_addresses_geo ON customer_addresses USING GIST (point(longitude, latitude));
+CREATE INDEX idx_customer_addresses_geo ON customer_addresses USING GIST (point(longitude::float, latitude::float));
 CREATE INDEX idx_customer_addresses_country ON customer_addresses(country_code);
 
 CREATE INDEX idx_customer_devices_customer ON customer_devices(customer_id);
@@ -68,7 +68,7 @@ CREATE UNIQUE INDEX idx_stores_code ON stores(store_code) WHERE deleted_at IS NU
 CREATE UNIQUE INDEX idx_stores_slug ON stores(slug) WHERE deleted_at IS NULL;
 CREATE INDEX idx_stores_brand ON stores(brand_name);
 CREATE INDEX idx_stores_active ON stores(is_active);
-CREATE INDEX idx_stores_geo ON stores USING GIST (point(longitude, latitude));
+CREATE INDEX idx_stores_geo ON stores USING GIST (point(longitude::float, latitude::float));
 CREATE INDEX idx_stores_country ON stores(country_code);
 
 CREATE INDEX idx_store_hours_store_day ON store_operating_hours(store_id, day_of_week);

@@ -13,7 +13,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models.customer import Customer, CustomerDevice
-from app.models.iam import AdminAccount
+from app.models.iam import AdminAccount, TokenBlacklist
 from app.models.wallet import Wallet
 from app.models.loyalty import LoyaltyAccount
 from app.schemas.auth import (
@@ -22,12 +22,9 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     TokenPair,
 )
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 settings = get_settings()
-
-# In-memory revoked refresh token JTI set (cleared on restart)
-# For production, replace with Redis SET or DB table.
-_revoked_refresh_jtis: set[str] = set()
 
 
 class AuthError(Exception):
@@ -183,8 +180,12 @@ async def refresh_customer_tokens(
     
     # Check if this refresh token has already been used (replay protection)
     jti = payload.get("jti")
-    if jti and jti in _revoked_refresh_jtis:
-        raise AuthError("Refresh token has already been used", 401)
+    if jti:
+        blacklist_result = await db.execute(
+            select(TokenBlacklist).where(TokenBlacklist.jti == jti)
+        )
+        if blacklist_result.scalar_one_or_none():
+            raise AuthError("Refresh token has already been used", 401)
     
     customer_id = int(payload.get("sub", 0))
     result = await db.execute(
@@ -197,7 +198,19 @@ async def refresh_customer_tokens(
     
     # Revoke this refresh token so it cannot be reused
     if jti:
-        _revoked_refresh_jtis.add(jti)
+        exp_ts = payload.get("exp")
+        expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else datetime.now(timezone.utc) + timedelta(days=7)
+        stmt = pg_insert(TokenBlacklist).values(
+            jti=jti,
+            token_type="refresh",
+            principal_id=None,
+            expires_at=expires_at,
+            reason="refresh_token_reuse",
+        ).on_conflict_do_nothing(index_elements=["jti"])
+        result = await db.execute(stmt)
+        await db.commit()
+        if result.rowcount == 0:
+            raise AuthError("Refresh token has already been used", 401)
     
     return await create_customer_tokens(customer)
 
@@ -274,8 +287,12 @@ async def refresh_admin_tokens(
     
     # Replay protection
     jti = payload.get("jti")
-    if jti and jti in _revoked_refresh_jtis:
-        raise AuthError("Refresh token has already been used", 401)
+    if jti:
+        blacklist_result = await db.execute(
+            select(TokenBlacklist).where(TokenBlacklist.jti == jti)
+        )
+        if blacklist_result.scalar_one_or_none():
+            raise AuthError("Refresh token has already been used", 401)
     
     admin_id = int(payload.get("sub", 0))
     result = await db.execute(
@@ -288,6 +305,18 @@ async def refresh_admin_tokens(
     
     # Revoke old refresh token
     if jti:
-        _revoked_refresh_jtis.add(jti)
+        exp_ts = payload.get("exp")
+        expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else datetime.now(timezone.utc) + timedelta(days=7)
+        stmt = pg_insert(TokenBlacklist).values(
+            jti=jti,
+            token_type="refresh",
+            principal_id=admin.principal_id,
+            expires_at=expires_at,
+            reason="refresh_token_reuse",
+        ).on_conflict_do_nothing(index_elements=["jti"])
+        result = await db.execute(stmt)
+        await db.commit()
+        if result.rowcount == 0:
+            raise AuthError("Refresh token has already been used", 401)
     
     return await create_admin_tokens(admin)

@@ -223,7 +223,7 @@ async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         import jwt
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"], options={"verify_aud": False})
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm], options={"verify_aud": False})
         if payload.get("type") not in ("staff", "admin"):
             raise HTTPException(status_code=401, detail="Invalid token type")
         staff_id = payload.get("staff_id")

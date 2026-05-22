@@ -111,6 +111,13 @@ INSERT INTO stores (
 -- 5. Store Operating Hours (KLCC)
 -- ============================================================
 INSERT INTO store_operating_hours (store_id, day_of_week, open_time, close_time, is_closed, is_24_hours, last_order_time) VALUES
+(1, 0, '08:00', '22:00', false, false, '21:30'),
+(1, 1, '08:00', '22:00', false, false, '21:30'),
+(1, 2, '08:00', '22:00', false, false, '21:30'),
+(1, 3, '08:00', '22:00', false, false, '21:30'),
+(1, 4, '08:00', '22:00', false, false, '21:30'),
+(1, 5, '08:00', '23:00', false, false, '22:30'),
+(1, 6, '08:00', '23:00', false, false, '22:30'),
 (2, 0, '07:00', '22:00', false, false, '21:30'),
 (2, 1, '07:00', '22:00', false, false, '21:30'),
 (2, 2, '07:00', '22:00', false, false, '21:30'),

@@ -1,15 +1,17 @@
 """Admin and public wallet endpoints."""
 
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
 from app.models.wallet import Wallet, WalletLedgerEntry
 from app.schemas.base import APIResponse, PaginatedResponse
-from app.schemas.wallet import TopUpRequest, WalletLedgerEntryOut, WalletOut
+from app.schemas.wallet import AdminTopupRequest, TopUpRequest, WalletLedgerEntryOut, WalletOut
 
 admin_router = APIRouter(prefix="/admin/wallets", tags=["admin — wallets"])
 wallet_alias_router = APIRouter(prefix="/admin/wallet", tags=["admin — wallets"])
@@ -35,7 +37,17 @@ async def _get_default_currency(db) -> str:
         select(PlatformConfig.config_value).where(PlatformConfig.config_key == "currency.default")
     )
     row = result.scalar_one_or_none()
-    return str(row) if row else "USD"
+    if row is None:
+        return "USD"
+    if isinstance(row, str):
+        try:
+            parsed = json.loads(row)
+            if isinstance(parsed, str):
+                return parsed
+        except Exception:
+            pass
+        return row
+    return str(row)
 
 
 def _compute_wallet_stats(ledger_entries: list[WalletLedgerEntry]) -> dict:
@@ -168,15 +180,6 @@ async def list_wallet_ledger(
     )
 
 
-class _WalletAdjustRequest:
-    amount: float
-    entry_type: str
-    description: str | None = None
-
-
-from pydantic import BaseModel, Field
-
-
 class WalletAdjustRequest(BaseModel):
     amount: float = Field(..., gt=0)
     entry_type: str = Field(..., pattern=r"^(credit|debit|adjustment)$")
@@ -224,12 +227,13 @@ async def adjust_wallet(
 
 
 @admin_router.post("/topup", response_model=APIResponse[dict])
-async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: dict):
+async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: AdminTopupRequest):
     """Admin wallet top-up by customer_id."""
-    customer_id = int(data.get("user_id") or data.get("customer_id", 0))
-    amount = float(data.get("amount", 0))
-    reason = data.get("reason") or data.get("description") or "Admin top-up"
-    if amount <= 0: raise HTTPException(400, "Amount must be positive")
+    customer_id = data.customer_id
+    amount = data.amount
+    reason = data.reason or "Admin top-up"
+    if amount <= 0:
+        raise HTTPException(400, "Amount must be positive")
 
     wallet = await _get_customer_wallet(db, customer_id)
     if not wallet:
@@ -252,7 +256,7 @@ async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: dict):
 
 
 @wallet_alias_router.post("/topup", response_model=APIResponse[dict])
-async def admin_topup_alias(db: DBDependency, admin: CurrentAdmin, data: dict):
+async def admin_topup_alias(db: DBDependency, admin: CurrentAdmin, data: AdminTopupRequest):
     """Alias for /admin/wallets/topup (matches frontend url)."""
     return await admin_topup(db, admin, data)
 

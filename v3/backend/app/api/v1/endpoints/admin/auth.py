@@ -69,18 +69,18 @@ async def admin_register(db: DBDependency, admin: CurrentAdmin, data: AdminRegis
     await db.flush()
     await db.refresh(new_admin)
 
-    # Assign role if specified
+    # Assign role if specified (role_id takes precedence; fallback to role_key lookup)
     if data.role_id:
         from app.models.iam import RoleAssignment
-        ra = RoleAssignment(assignee_id=new_admin.id, role_id=data.role_id)
+        ra = RoleAssignment(assignee_id=new_admin.id, role_id=data.role_id, effective_from=datetime.now(timezone.utc), is_active=True)
         db.add(ra)
-
-    # Assign role
-    role_result = await db.execute(select(IAMRole.id).where(IAMRole.role_key == data.role_key))
-    role_id = role_result.scalar_one_or_none()
-    if role_id:
-        assignment = RoleAssignment(assignee_id=new_admin.id, role_id=role_id, effective_from=datetime.now(timezone.utc), is_active=True)
-        db.add(assignment)
+    elif data.role_key:
+        role_result = await db.execute(select(IAMRole.id).where(IAMRole.role_key == data.role_key))
+        role_id = role_result.scalar_one_or_none()
+        if role_id:
+            from app.models.iam import RoleAssignment
+            assignment = RoleAssignment(assignee_id=new_admin.id, role_id=role_id, effective_from=datetime.now(timezone.utc), is_active=True)
+            db.add(assignment)
 
     # Assign stores
     for store_id in data.store_ids:

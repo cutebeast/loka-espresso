@@ -1093,7 +1093,7 @@ CREATE TABLE event_cards (
 CREATE TABLE event_rsvps (
     id SERIAL PRIMARY KEY,
     event_id INTEGER NOT NULL REFERENCES event_cards(id) ON DELETE CASCADE,
-    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    customer_id BIGINT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

@@ -291,13 +291,14 @@ async def process_order_payment(
     if amount <= 0 and not discount_amount:
         amount = float(order.total_amount or 0)
 
-    # Apply discount if provided
+    # Apply discount if provided (compute from original amount to avoid compounding)
+    computed_discount = discount_amount
     if discount_amount > 0:
         if discount_type == "percentage":
-            discount_amount = round(amount * discount_amount / 100, 2)
-        order.discount_amount = float(order.discount_amount or 0) + discount_amount
+            computed_discount = round(amount * discount_amount / 100, 2)
+        order.discount_amount = float(order.discount_amount or 0) + computed_discount
 
-    net_amount = round(amount - discount_amount, 2)
+    net_amount = round(amount - computed_discount, 2)
     change = round(max(0, amount_tendered - net_amount), 2)
 
     # Determine provider based on payment method

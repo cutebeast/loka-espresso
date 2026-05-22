@@ -79,7 +79,7 @@ async def create_category(
 ):
     """Create a new inventory category."""
     category_data = data.model_dump(by_alias=True)
-    category_data["slug"] = _slugify(data.name)
+    category_data["slug"] = _slugify(data.category_name)
     category = InventoryCategory(**category_data)
     db.add(category)
     await db.commit()

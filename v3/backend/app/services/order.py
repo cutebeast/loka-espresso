@@ -254,13 +254,14 @@ async def get_customer_orders(
     if status:
         stmt = stmt.where(Order.status == status)
     
+    from sqlalchemy import func
     count_result = await db.execute(
-        select(Order.id).where(
+        select(func.count(Order.id)).where(
             Order.customer_id == customer_id,
             Order.deleted_at.is_(None),
         )
     )
-    total = len(count_result.scalars().all())
+    total = count_result.scalar() or 0
     
     stmt = stmt.offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)

@@ -48,3 +48,10 @@ class TopUpRequest(BaseSchema):
     amount: float = Field(..., gt=0)
     payment_method_id: int
     return_url: str | None = Field(None, max_length=500)
+
+
+class AdminTopupRequest(BaseSchema):
+    customer_id: int = Field(..., gt=0)
+    amount: float = Field(..., gt=0)
+    reason: str | None = Field(None, max_length=255)
+    payment_method_id: int | None = None
