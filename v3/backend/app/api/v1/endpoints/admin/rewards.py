@@ -148,7 +148,6 @@ async def delete_reward(
 
     reward.is_active = False
     reward.deleted_at = datetime.now(timezone.utc)
-    reward.is_active = False
     await db.commit()
     await delete_translations(db, "reward_catalog", reward.id)
     return APIResponse(data={"id": reward.id, "deleted": True})

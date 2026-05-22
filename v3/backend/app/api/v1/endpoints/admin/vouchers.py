@@ -146,7 +146,6 @@ async def delete_voucher(
 
     voucher.is_active = False
     voucher.deleted_at = datetime.now(timezone.utc)
-    voucher.is_active = False
     await db.commit()
     await delete_translations(db, "voucher_definitions", voucher.id)
     return APIResponse(data={"id": voucher.id, "deleted": True})

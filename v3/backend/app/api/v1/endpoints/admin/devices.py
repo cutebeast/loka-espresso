@@ -147,7 +147,6 @@ async def deregister_device(
 
     device.is_active = False
     device.deleted_at = datetime.now(timezone.utc)
-    device.is_active = False
     device.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return None

@@ -1,6 +1,8 @@
 """Staff-facing operational endpoints (POS, dashboard, clock-in, PIN verify)."""
 
 import json
+import jwt
+import os
 import uuid
 from datetime import datetime, timezone, timedelta
 
@@ -177,7 +179,6 @@ async def admin_select_store(request: Request, db: DBDependency, data: StaffAdmi
     store_id = data.store_id
     if not token or not store_id:
         raise HTTPException(status_code=400, detail="Token and store_id required")
-    import jwt, os
     secret = get_settings().jwt_secret
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
@@ -225,7 +226,6 @@ async def admin_select_store(request: Request, db: DBDependency, data: StaffAdmi
 
 
 def _make_token(staff):
-    import jwt
     from datetime import timedelta
     secret = get_settings().jwt_secret
     now = datetime.now(timezone.utc)
@@ -257,7 +257,6 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
     token = (data.refresh_token or "").strip()
     if not token:
         raise HTTPException(status_code=400, detail="refresh_token required")
-    import jwt
     secret = get_settings().jwt_secret
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
@@ -337,7 +336,6 @@ async def staff_profile_me(db: DBDependency, request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    import jwt, os
     secret = get_settings().jwt_secret
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
@@ -530,7 +528,6 @@ async def staff_change_password(request: Request, db: DBDependency, data: StaffC
     """Change staff password."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token: raise HTTPException(status_code=401, detail="Not authenticated")
-    import jwt, os, bcrypt
     secret = get_settings().jwt_secret
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
@@ -559,7 +556,6 @@ async def staff_change_pin(request: Request, db: DBDependency, data: StaffChange
     """Change staff PIN."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token: raise HTTPException(status_code=401, detail="Not authenticated")
-    import jwt, os, bcrypt
     secret = get_settings().jwt_secret
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})

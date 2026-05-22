@@ -306,7 +306,6 @@ async def delete_survey(
 
     survey.deleted_at = datetime.now(timezone.utc)
     survey.is_active = False
-    survey.is_active = False
     # Clean up question translations before soft-deleting
     qs = await db.execute(
         select(SurveyQuestion).where(SurveyQuestion.survey_id == survey_id)

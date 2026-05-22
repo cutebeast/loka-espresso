@@ -295,7 +295,6 @@ async def delete_store(
 
     store.is_active = False
     store.deleted_at = datetime.now(timezone.utc)
-    store.is_active = False
     await db.commit()
     await delete_translations(db, "stores", store_id)
     return APIResponse(data={"id": store.id, "deleted": True})
@@ -558,7 +557,6 @@ async def delete_table(
 
     table.is_active = False
     table.deleted_at = datetime.now(timezone.utc)
-    table.is_active = False
     await db.commit()
     return APIResponse(data={"id": table.id, "deleted": True})
 

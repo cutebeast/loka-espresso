@@ -4,7 +4,7 @@
  * Build: 2026-04-23T20:22:55.000Z
  */
 
-const CACHE_VERSION = 'v0.1.0.1779396785';
+const CACHE_VERSION = `v${Date.now()}`;
 const CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',
