@@ -51,6 +51,7 @@ from app.api.v1.endpoints.admin import checkins as admin_checkins
 from app.api.v1.endpoints.public import menu as public_menu
 from app.api.v1.endpoints.public import rsvp as public_rsvp
 from app.api.v1.endpoints.public import store as public_store
+from app.api.v1.endpoints.public import ui_translations as public_ui_translations
 from app.api.v1.endpoints.staff import staff_ops as staff_operations
 from app.api.v1.endpoints.admin import scan as admin_scan
 from app.api.v1.endpoints.admin import pos as admin_pos
@@ -103,6 +104,7 @@ api_router.include_router(admin_notifications.public_router, tags=["notification
 api_router.include_router(public_store.router, tags=["public — stores"])
 api_router.include_router(public_menu.router, tags=["public — menu"])
 api_router.include_router(public_content.router, tags=["public — content"])
+api_router.include_router(public_ui_translations.router, prefix="/public/translations", tags=["public — translations"])
 api_router.include_router(staff_operations.router, tags=["staff — operations"])
 api_router.include_router(public_rsvp.router, tags=["public — events"])
 
@@ -196,8 +198,9 @@ api_router.include_router(
     tags=["loyalty"],
 )
 
-# Translations
+# Translations (primary path + admin alias for frontend compatibility)
 api_router.include_router(translation_endpoints.router, prefix="/translations", tags=["translations"])
+api_router.include_router(translation_endpoints.router, prefix="/admin/translations", tags=["admin — translations"])
 
 # Customer (auth required)
 api_router.include_router(customer_profile.router, tags=["customer"])

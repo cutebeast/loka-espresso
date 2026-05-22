@@ -6,9 +6,11 @@
  * - Interpolation:    t('hello_name', { name: 'Ali' })
  * - Pluralization:    t('item_count', { count: 3 }) → looks up item_count_one / item_count_other
  * - Fallback chain:   if key missing in active locale, falls back to English
+ * - Dynamic loading:  fetches translations from the backend on startup;
+ *                     falls back to bundled en.json when offline.
  */
 
-import { getLocale } from '@/stores/localeStore';
+import { getLocale, setGlobalLocale } from '@/stores/localeStore';
 import enDict from '@/locales/en.json';
 import msDict from '@/locales/ms.json';
 import zhDict from '@/locales/zh.json';
@@ -21,8 +23,8 @@ import { AVAILABLE_LOCALES, DEFAULT_LOCALE, isValidLocale, getDefaultLocale, get
 export type { Locale };
 export { AVAILABLE_LOCALES, DEFAULT_LOCALE, isValidLocale, getDefaultLocale, getSupportedLocales };
 
-// Statically import all dictionaries — available immediately, no async loading
-const dictionaries: Record<Locale, Record<string, unknown>> = {
+// ── Static fallback dictionaries (always available, bundled at build time) ──
+const staticDictionaries: Record<Locale, Record<string, unknown>> = {
   en: enDict as Record<string, unknown>,
   ms: msDict as Record<string, unknown>,
   zh: zhDict as Record<string, unknown>,
@@ -30,12 +32,91 @@ const dictionaries: Record<Locale, Record<string, unknown>> = {
   tr: trDict as Record<string, unknown>,
 };
 
-// No-op for backwards compatibility with code that calls loadLocale
-export async function loadLocale(_locale: Locale): Promise<void> {
-  // Dictionaries are already loaded statically
+// ── Dynamic overlay (populated from backend API at runtime) ──
+const dynamicOverlays: Record<string, Record<string, string>> = {};
+
+// Cache: locale -> { data, timestamp }
+const dynamicCache: Record<string, { data: Record<string, string>; ts: number }> = {};
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const LS_CACHE_KEY = 'loka_i18n_cache';
+
+// Load cache from localStorage on module init (SSR-safe)
+if (typeof window !== 'undefined') {
+  try {
+    const raw = localStorage.getItem(LS_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      for (const [locale, entry] of Object.entries(parsed)) {
+        const e = entry as { data: Record<string, string>; ts: number };
+        if (Date.now() - e.ts < CACHE_TTL_MS) {
+          dynamicCache[locale] = e;
+          dynamicOverlays[locale] = e.data;
+        }
+      }
+    }
+  } catch (e) { console.error(e); }
 }
 
-/** Get a nested value from a dictionary by dot-notation key. */
+/** Fetch dynamic translations from the backend for a given locale. */
+export async function fetchDynamicTranslations(locale: string): Promise<boolean> {
+  if (locale === 'en') {
+    // English is the source of truth — no dynamic fetch needed
+    return true;
+  }
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+    const res = await fetch(`${baseUrl}/public/translations/ui?locale=${locale}&namespace=pwa-ui`);
+    if (!res.ok) return false;
+    const json = await res.json();
+    const data: Record<string, string> = json.data || {};
+    if (Object.keys(data).length === 0) return false;
+
+    dynamicOverlays[locale] = data;
+    dynamicCache[locale] = { data, ts: Date.now() };
+
+    // Persist to localStorage (SSR-safe)
+    if (typeof window !== 'undefined') {
+      try {
+        const toStore: Record<string, { data: Record<string, string>; ts: number }> = {};
+        for (const [loc, entry] of Object.entries(dynamicCache)) {
+          toStore[loc] = entry;
+        }
+        localStorage.setItem(LS_CACHE_KEY, JSON.stringify(toStore));
+      } catch (e) { console.error(e); }
+    }
+
+    return true;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
+}
+
+/** Fetch translations and update the locale atomically. */
+export async function switchLocale(locale: Locale): Promise<void> {
+  setGlobalLocale(locale);
+  if (locale !== 'en') {
+    await fetchDynamicTranslations(locale);
+  }
+}
+
+/**
+ * Load dynamic translations on app startup.
+ * Call this once from AppShell or layout after auth is established.
+ */
+export async function initTranslations(): Promise<void> {
+  const locale = getLocale() as Locale;
+  if (locale !== 'en') {
+    await fetchDynamicTranslations(locale);
+  }
+}
+
+// No-op for backwards compatibility with code that calls loadLocale
+export async function loadLocale(_locale: Locale): Promise<void> {
+  // Dictionaries are already loaded statically; dynamic overlay handles non-en
+}
+
+/** Get a nested value from a flat key -> value map by dot-notation key. */
 function getNestedValue(dict: Record<string, unknown> | undefined, key: string): string | undefined {
   if (!dict) return undefined;
   const parts = key.split('.');
@@ -48,6 +129,13 @@ function getNestedValue(dict: Record<string, unknown> | undefined, key: string):
     }
   }
   return typeof current === 'string' ? current : undefined;
+}
+
+/** Look up a key in the flat dynamic overlay (dot-notation keys). */
+function getFromOverlay(locale: string, key: string): string | undefined {
+  const overlay = dynamicOverlays[locale];
+  if (!overlay) return undefined;
+  return overlay[key];
 }
 
 /** Simple plural rule: _one for count === 1, _other for everything else. */
@@ -67,29 +155,49 @@ function interpolate(template: string, vars: Record<string, string | number>): s
 /**
  * Translate a key.
  *
+ * Lookup order:
+ *   1. Dynamic overlay (backend DB) for active locale
+ *   2. Static dictionary for active locale
+ *   3. Static dictionary for English (fallback)
+ *   4. Raw key string (last resort)
+ *
  * @param key       Dot-notation key, e.g. 'cart.empty.title'
  * @param options   Optional vars for interpolation, or { count } for pluralization
- * @returns         Translated string (falls back to English, then to the raw key)
+ * @returns         Translated string
  */
 export function t(key: string, options?: Record<string, string | number>): string {
   const activeLocale = getLocale() as Locale;
-  const dict = dictionaries[activeLocale];
-  const fallbackDict = dictionaries[DEFAULT_LOCALE];
+  const staticDict = staticDictionaries[activeLocale];
+  const fallbackDict = staticDictionaries[DEFAULT_LOCALE];
 
-  // Pluralization: if options.count is provided, try plural key first
+  // Helper: try all sources in priority order
+  const lookup = (k: string): string | undefined => {
+    // 1. Dynamic overlay (DB translations)
+    if (activeLocale !== 'en') {
+      const overlayVal = getFromOverlay(activeLocale, k);
+      if (overlayVal) return overlayVal;
+    }
+    // 2. Static dictionary for active locale
+    const staticVal = getNestedValue(staticDict, k);
+    if (staticVal) return staticVal;
+    // 3. English fallback
+    return getNestedValue(fallbackDict, k);
+  };
+
+  // Pluralization
   if (options && typeof options.count === 'number') {
     const pKey = pluralKey(key, options.count);
-    const pluralValue = getNestedValue(dict, pKey) ?? getNestedValue(fallbackDict, pKey);
+    const pluralValue = lookup(pKey);
     if (pluralValue) return interpolate(pluralValue, options);
   }
 
   // Standard lookup
-  const value = getNestedValue(dict, key) ?? getNestedValue(fallbackDict, key);
+  const value = lookup(key);
   if (value) {
     return options ? interpolate(value, options) : value;
   }
 
-  // Key missing in both active and fallback — return the key itself as last resort
+  // Key missing everywhere — return the key itself as last resort
   if (process.env.NODE_ENV === 'development') {
     console.warn(`[i18n] Missing translation key: "${key}" (locale: ${activeLocale})`);
   }

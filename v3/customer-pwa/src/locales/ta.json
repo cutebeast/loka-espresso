@@ -65,7 +65,9 @@
     "pointsAbbr": "ptகள்",
     "stepCount": "படி {current} / {total}",
     "promotion": "விளம்பரம்",
-    "each": "ஒவ்வொன்றும்"
+    "each": "ஒவ்வொன்றும்",
+    "yourCode": "Your code",
+    "payOnline": "Pay Online"
   },
   "nav": {
     "home": "முகப்பு",
@@ -241,7 +243,8 @@
     "notesPlaceholderDineIn": "எ.கா. நட்ஸ் ஒவ்வாமை",
     "dineInTableTitle": "அட்டை {table} · {store}",
     "dineInOrder": "உள்ளே அமர்ந்து உண்ண ஆர்டர்",
-    "changeTable": "மாற்றம்"
+    "changeTable": "மாற்றம்",
+    "payOnline": "Pay Online"
   },
   "orders": {
     "title": "ஆணைகள்",
@@ -318,7 +321,8 @@
     "version": "பதிப்பு",
     "attribution": "லோகா எஸ்பிரெசோவின் அன்புடன் தயாரிக்கப்பட்டது",
     "privacyPolicy": "தனியுரிமைக் கொள்கை",
-    "termsOfService": "சேவை விதிமுறைகள்"
+    "termsOfService": "சேவை விதிமுறைகள்",
+    "aboutFallback": "Born from a passion for authentic Turkish coffee culture, LOKA Espresso brings the warmth of centuries-old coffee traditions to every cup. Our beans are sourced from the finest regions — roasted in small batches to honour the craft."
   },
   "toast": {
     "loginFailed": "உள்நுழையத் தவறிவிட்டது. மீண்டும் முயற்சிக்கவும்.",
@@ -757,7 +761,8 @@
     "ongoing": "நடைபெறுகிறது",
     "ended": "முடிந்தது",
     "dayLeft": "1 நாள் மீதமுள்ளது",
-    "daysLeft": "{count} நாட்கள் மீதமுள்ளன"
+    "daysLeft": "{count} நாட்கள் மீதமுள்ளன",
+    "vouchersLeft_other": "{count} vouchers left"
   },
   "errorBoundary": {
     "message": "எதிர்பாராத பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.",
@@ -818,7 +823,8 @@
     "results_one": "{count} முடிவு",
     "results_other": "{count} முடிவுகள்",
     "searchPlaceholder": "பெயர் அல்லது பகுதி மூலம் தேடுங்கள்",
-    "title": "உங்கள் லோகத்தைத் தேர்ந்தெடுக்கவும்"
+    "title": "உங்கள் லோகத்தைத் தேர்ந்தெடுக்கவும்",
+    "distanceAway": "away"
   },
   "events": {
     "title": "Events",
@@ -843,10 +849,38 @@
       "seated": "Seated",
       "completed": "Completed",
       "noShow": "No Show"
-    }
+    },
+    "bookNow": "Book Now",
+    "confirm": "Confirm Booking",
+    "date": "Date",
+    "emptySubtitle": "Book a table at your favourite store",
+    "emptyTitle": "No reservations yet",
+    "fillRequired": "Please fill all required fields",
+    "newReservation": "New Reservation",
+    "notes": "Notes",
+    "notesPlaceholder": "Any special requests...",
+    "partySize": "Party Size",
+    "store": "Store",
+    "submitFailed": "Failed to create reservation",
+    "time": "Time",
+    "title": "Reservations"
   },
   "store": {
     "closed": "Closed",
     "open24Hours": "Open 24 Hours"
+  },
+  "surveys": {
+    "title": "Surveys",
+    "emptyTitle": "No surveys available",
+    "emptySubtitle": "Check back later for new surveys",
+    "tapToParticipate": "Tap to participate",
+    "typeAnswer": "Type your answer...",
+    "submit": "Submit",
+    "thankYou": "Thank You!",
+    "responseSubmitted": "Your response has been submitted.",
+    "backToSurveys": "Back to Surveys"
+  },
+  "voucher": {
+    "showToBarista": "Show this code to the barista"
   }
 }

@@ -65,7 +65,9 @@
     "pointsAbbr": "puan",
     "stepCount": "Adım {current} / {total}",
     "promotion": "Promosyon",
-    "each": "her biri"
+    "each": "her biri",
+    "yourCode": "Your code",
+    "payOnline": "Pay Online"
   },
   "nav": {
     "home": "Ev",
@@ -241,7 +243,8 @@
     "notesPlaceholderDineIn": "örn. fındık alerjisi",
     "dineInTableTitle": "Tablo {table} - {store}",
     "dineInOrder": "Dine-in sipariş",
-    "changeTable": "Değişim"
+    "changeTable": "Değişim",
+    "payOnline": "Pay Online"
   },
   "orders": {
     "title": "Siparişler",
@@ -318,7 +321,8 @@
     "version": "Versiyon",
     "attribution": "LOKA Espresso tarafından özenle üretilmiştir",
     "privacyPolicy": "Gizlilik Politikası",
-    "termsOfService": "Hizmet Koşulları"
+    "termsOfService": "Hizmet Koşulları",
+    "aboutFallback": "Born from a passion for authentic Turkish coffee culture, LOKA Espresso brings the warmth of centuries-old coffee traditions to every cup. Our beans are sourced from the finest regions — roasted in small batches to honour the craft."
   },
   "toast": {
     "loginFailed": "Giriş yapılamadı. Lütfen tekrar deneyin.",
@@ -757,7 +761,8 @@
     "ongoing": "Devam ediyor",
     "ended": "Bitti",
     "dayLeft": "1 gün kaldı",
-    "daysLeft": "{count} gün kaldı"
+    "daysLeft": "{count} gün kaldı",
+    "vouchersLeft_other": "{count} vouchers left"
   },
   "errorBoundary": {
     "message": "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
@@ -818,7 +823,8 @@
     "results_one": "{count} sonuç",
     "results_other": "{count} sonuçları",
     "searchPlaceholder": "İsme veya bölgeye göre arama",
-    "title": "Lokanızı seçin"
+    "title": "Lokanızı seçin",
+    "distanceAway": "away"
   },
   "events": {
     "title": "Events",
@@ -843,10 +849,38 @@
       "seated": "Seated",
       "completed": "Completed",
       "noShow": "No Show"
-    }
+    },
+    "bookNow": "Book Now",
+    "confirm": "Confirm Booking",
+    "date": "Date",
+    "emptySubtitle": "Book a table at your favourite store",
+    "emptyTitle": "No reservations yet",
+    "fillRequired": "Please fill all required fields",
+    "newReservation": "New Reservation",
+    "notes": "Notes",
+    "notesPlaceholder": "Any special requests...",
+    "partySize": "Party Size",
+    "store": "Store",
+    "submitFailed": "Failed to create reservation",
+    "time": "Time",
+    "title": "Reservations"
   },
   "store": {
     "closed": "Closed",
     "open24Hours": "Open 24 Hours"
+  },
+  "surveys": {
+    "title": "Surveys",
+    "emptyTitle": "No surveys available",
+    "emptySubtitle": "Check back later for new surveys",
+    "tapToParticipate": "Tap to participate",
+    "typeAnswer": "Type your answer...",
+    "submit": "Submit",
+    "thankYou": "Thank You!",
+    "responseSubmitted": "Your response has been submitted.",
+    "backToSurveys": "Back to Surveys"
+  },
+  "voucher": {
+    "showToBarista": "Show this code to the barista"
   }
 }

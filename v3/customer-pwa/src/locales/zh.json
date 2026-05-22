@@ -65,7 +65,9 @@
     "pointsAbbr": "分",
     "stepCount": "第{current}步，共{total}步",
     "promotion": "促销",
-    "each": "每件"
+    "each": "每件",
+    "yourCode": "Your code",
+    "payOnline": "Pay Online"
   },
   "nav": {
     "home": "首页",
@@ -241,7 +243,8 @@
     "notesPlaceholderDineIn": "例如：对坚果过敏",
     "dineInTableTitle": "表格 {table}- {store}",
     "dineInOrder": "堂食订单",
-    "changeTable": "改变"
+    "changeTable": "改变",
+    "payOnline": "Pay Online"
   },
   "orders": {
     "title": "订单",
@@ -318,7 +321,8 @@
     "version": "版本",
     "attribution": "洛卡咖啡馆精心制作",
     "privacyPolicy": "隐私政策",
-    "termsOfService": "服务条款"
+    "termsOfService": "服务条款",
+    "aboutFallback": "Born from a passion for authentic Turkish coffee culture, LOKA Espresso brings the warmth of centuries-old coffee traditions to every cup. Our beans are sourced from the finest regions — roasted in small batches to honour the craft."
   },
   "toast": {
     "loginFailed": "登录失败。请重试。",
@@ -757,7 +761,8 @@
     "ongoing": "进行中",
     "ended": "已结束",
     "dayLeft": "剩余1天",
-    "daysLeft": "剩余{count}天"
+    "daysLeft": "剩余{count}天",
+    "vouchersLeft_other": "{count} vouchers left"
   },
   "errorBoundary": {
     "message": "出现意外错误。请重试。",
@@ -818,7 +823,8 @@
     "results_one": "{count} result",
     "results_other": "{count}结果",
     "searchPlaceholder": "按名称或区域搜索",
-    "title": "选择您的洛卡"
+    "title": "选择您的洛卡",
+    "distanceAway": "away"
   },
   "events": {
     "title": "Events",
@@ -843,10 +849,38 @@
       "seated": "Seated",
       "completed": "Completed",
       "noShow": "No Show"
-    }
+    },
+    "bookNow": "Book Now",
+    "confirm": "Confirm Booking",
+    "date": "Date",
+    "emptySubtitle": "Book a table at your favourite store",
+    "emptyTitle": "No reservations yet",
+    "fillRequired": "Please fill all required fields",
+    "newReservation": "New Reservation",
+    "notes": "Notes",
+    "notesPlaceholder": "Any special requests...",
+    "partySize": "Party Size",
+    "store": "Store",
+    "submitFailed": "Failed to create reservation",
+    "time": "Time",
+    "title": "Reservations"
   },
   "store": {
     "closed": "Closed",
     "open24Hours": "Open 24 Hours"
+  },
+  "surveys": {
+    "title": "Surveys",
+    "emptyTitle": "No surveys available",
+    "emptySubtitle": "Check back later for new surveys",
+    "tapToParticipate": "Tap to participate",
+    "typeAnswer": "Type your answer...",
+    "submit": "Submit",
+    "thankYou": "Thank You!",
+    "responseSubmitted": "Your response has been submitted.",
+    "backToSurveys": "Back to Surveys"
+  },
+  "voucher": {
+    "showToBarista": "Show this code to the barista"
   }
 }
