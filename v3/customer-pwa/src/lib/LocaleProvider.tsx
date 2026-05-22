@@ -1,42 +1,14 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { Locale } from '@/lib/i18n-types';
 import { isValidLocale, getDefaultLocale } from '@/lib/i18n-types';
-import { setGlobalLocale } from '@/stores/localeStore';
-
-const STORAGE_KEY = 'loka-locale';
-
-function readStoredLocale(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const v = parsed?.state?.locale ?? parsed?.locale ?? null;
-    return typeof v === 'string' && isValidLocale(v) ? v : null;
-  } catch { return null; }
-}
-
-function writeStoredLocale(locale: string) {
-  if (typeof window === 'undefined') return;
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ state: { locale } })); } catch {}
-}
-
-function detectBrowser(): Locale {
-  if (typeof window === 'undefined') return 'en';
-  try {
-    const lang = navigator.language?.toLowerCase() ?? '';
-    if (lang.startsWith('ms') || lang.startsWith('id')) return 'ms';
-    if (lang.startsWith('zh')) return 'zh';
-    if (lang.startsWith('ta')) return 'ta';
-    if (lang.startsWith('tr')) return 'tr';
-  } catch {}
-  return 'en';
-}
+import { setGlobalLocale, getLocale, readStoredLocale, detectBrowserLocale } from '@/stores/localeStore';
 
 function resolveInitial(): string {
-  return readStoredLocale() ?? detectBrowser();
+  const moduleLocale = getLocale();
+  if (moduleLocale !== 'en') return moduleLocale;
+  return readStoredLocale() ?? detectBrowserLocale();
 }
 
 // ── Context ──
@@ -49,6 +21,12 @@ const LocaleCtx = createContext<Ctx>({ locale: 'en', setLocale: () => {} });
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, set] = useState<string>(resolveInitial);
+
+  useEffect(() => {
+    if (getLocale() !== locale) {
+      setGlobalLocale(locale);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setLocale = useCallback((next: string) => {
     if (!isValidLocale(next)) return;

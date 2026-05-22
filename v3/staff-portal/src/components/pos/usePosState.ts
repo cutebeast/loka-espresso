@@ -424,11 +424,14 @@ export function usePosState() {
     router.replace("/pos");
   };
 
-  const scannerRef = useRef<unknown>(null);
+  const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
+  const scannerMountedRef = useRef(true);
+  const scannerStartingRef = useRef(false);
   useEffect(() => {
     return () => {
+      scannerMountedRef.current = false;
       if (scannerRef.current) {
-        (scannerRef.current as { stop: () => Promise<void> }).stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
+        scannerRef.current.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
         scannerRef.current = null;
       }
     };
@@ -436,10 +439,13 @@ export function usePosState() {
   const [scannerError, setScannerError] = useState("");
 
   const startScanner = async () => {
+    if (scannerRef.current || scannerStartingRef.current) return;
+    scannerStartingRef.current = true;
     setScannerError("");
     setShowQrScanner(true);
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
+      if (!scannerMountedRef.current) return;
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
       await scanner.start(
@@ -489,6 +495,7 @@ export function usePosState() {
         () => {}
       );
     } catch (e: unknown) {
+      if (!scannerMountedRef.current) return;
       console.error("Scanner start failed:", e);
       const msg = (e as { message?: string })?.message || String(e);
       if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("notallowed") || msg.toLowerCase().includes("denied")) {
@@ -498,12 +505,14 @@ export function usePosState() {
       } else {
         setScannerError("Could not start camera. " + msg);
       }
+    } finally {
+      scannerStartingRef.current = false;
     }
   };
 
   const stopScanner = () => {
     if (scannerRef.current) {
-      (scannerRef.current as { stop: () => Promise<void> }).stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
+      scannerRef.current.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
       scannerRef.current = null;
     }
     setShowQrScanner(false);

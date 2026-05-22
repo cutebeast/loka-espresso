@@ -23,12 +23,13 @@ function openDB(): Promise<IDBDatabase> {
 
 export const idbStorage = {
   getItem: async (name: string): Promise<string | null> => {
+    let db: IDBDatabase | undefined;
     try {
-      const db = await openDB();
+      db = await openDB();
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       const request = store.get(name);
-      return new Promise((resolve, reject) => {
+      return await new Promise((resolve, reject) => {
         request.onsuccess = () => {
           const result = request.result;
           resolve(result === undefined ? null : result);
@@ -41,15 +42,18 @@ export const idbStorage = {
         return localStorage.getItem(name);
       }
       return null;
+    } finally {
+      db?.close();
     }
   },
   setItem: async (name: string, value: string): Promise<void> => {
+    let db: IDBDatabase | undefined;
     try {
-      const db = await openDB();
+      db = await openDB();
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       store.put(value, name);
-      return new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
@@ -58,15 +62,18 @@ export const idbStorage = {
       if (typeof window !== 'undefined') {
         localStorage.setItem(name, value);
       }
+    } finally {
+      db?.close();
     }
   },
   removeItem: async (name: string): Promise<void> => {
+    let db: IDBDatabase | undefined;
     try {
-      const db = await openDB();
+      db = await openDB();
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       store.delete(name);
-      return new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
@@ -74,6 +81,8 @@ export const idbStorage = {
       if (typeof window !== 'undefined') {
         localStorage.removeItem(name);
       }
+    } finally {
+      db?.close();
     }
   },
 };

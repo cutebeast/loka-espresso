@@ -88,7 +88,7 @@ export default function RewardEditPage() {
         if (loc.code === "en") continue;
         try {
           const tr = await api.getRaw<{ items: { translation_key: string; translated_text: string; locale: string }[] }>(
-            `/translations?table_name=reward_catalog&record_id=${rewardId}&locale=${loc.code}&per_page=50`
+            `/admin/translations?table_name=reward_catalog&record_id=${rewardId}&locale=${loc.code}&per_page=50`
           );
           if (tr?.items) {
             for (const t of tr.items) {
@@ -131,13 +131,13 @@ export default function RewardEditPage() {
 
   const upsertTranslation = async (field: string, locale: string, sourceText: string, translatedText: string) => {
     const allTr = await api.getRaw<{ items: { id: number; translation_key: string }[] }>(
-      `/translations?table_name=reward_catalog&record_id=${rewardId}&column_name=${field}&locale=${locale}&per_page=1`
+      `/admin/translations?table_name=reward_catalog&record_id=${rewardId}&column_name=${field}&locale=${locale}&per_page=1`
     );
     const existing = allTr?.items?.[0];
     if (existing) {
-      await api.put(`/translations/${existing.id}`, { translated_text: translatedText });
+      await api.put(`/admin/translations/${existing.id}`, { translated_text: translatedText });
     } else {
-      await api.post("/translations", {
+      await api.post("/admin/translations", {
         translation_key: `reward_catalog.${rewardId}.${field}`,
         locale: locale,
         namespace: "reward",
@@ -157,7 +157,7 @@ export default function RewardEditPage() {
       const sourceText = (form[field.key] || "").trim();
       if (!sourceText) continue;
       try {
-        const r: any = await api.post("/translations/translate", {
+        const r: any = await api.post("/admin/translations/translate", {
           text: sourceText, target_locale: locale, source_locale: "en",
         });
         const translated = r?.translated_text;

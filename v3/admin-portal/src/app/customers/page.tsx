@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useDebounce } from "@/hooks/useDebounce";
 import { Search, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 
 interface CustomerSummary {
@@ -19,20 +20,21 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
 
   const fetchData = useCallback(async () => { setError("");
     try {
       const qs = new URLSearchParams({ page: String(page), per_page: "20" });
-      if (search) qs.set("search", search);
+      if (debouncedSearch) qs.set("search", debouncedSearch);
       const r = await api.getRaw<any>(`/admin/customers?${qs.toString()}`);
       setItems(r.items || []);
       setTotal(r.total || 0);
       setTotalPages(r.total_pages || 1);
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
-  }, [page, search]);
+  }, [page, debouncedSearch]);
 
   useEffect(() => {(async () => {
  fetchData(); 

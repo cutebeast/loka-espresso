@@ -68,10 +68,19 @@ ALTER TABLE loyalty_points_ledger
 
 -- ============================================================
 -- Notification → Campaign deferred FK
+-- NOTE: notification_messages.campaign_id inline FK already present;
+-- this deferred block removed to avoid duplicate.
 -- ============================================================
-ALTER TABLE notification_messages
-    ADD CONSTRAINT fk_notification_campaign
-    FOREIGN KEY (campaign_id) REFERENCES marketing_campaigns(id) ON DELETE SET NULL;
+-- ALTER TABLE notification_messages
+--     ADD CONSTRAINT fk_notification_campaign
+--     FOREIGN KEY (campaign_id) REFERENCES marketing_campaigns(id) ON DELETE SET NULL;
+
+-- ============================================================
+-- Content → Survey deferred FK
+-- ============================================================
+ALTER TABLE promo_banners
+    ADD CONSTRAINT fk_promo_banners_survey
+    FOREIGN KEY (survey_id) REFERENCES survey_definitions(id) ON DELETE SET NULL;
 
 -- ============================================================
 -- Additional CHECK constraints that reference other tables

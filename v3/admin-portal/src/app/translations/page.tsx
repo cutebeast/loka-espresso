@@ -17,7 +17,7 @@ export default function TranslationPage() {
 
   useEffect(() => {
     Promise.all(
-      LOCALES.map(loc => api.getRaw<{ items: Translation[] }>(`/translations?per_page=500&locale=${loc}`))
+      LOCALES.map(loc => api.getRaw<{ items: Translation[] }>(`/admin/translations?per_page=500&locale=${loc}`))
     ).then(results => {
       const all: Translation[] = [];
       results.forEach(r => { if (r?.items) all.push(...r.items); });

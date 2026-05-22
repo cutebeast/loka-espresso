@@ -134,7 +134,7 @@ export default function StoreEditPage() {
         if (loc.code === "en") continue;
         try {
           const tr = await api.getRaw<{ items: { translation_key: string; translated_text: string; locale: string }[] }>(
-            `/translations?table_name=stores&record_id=${storeId}&locale=${loc.code}&per_page=100`
+            `/admin/translations?table_name=stores&record_id=${storeId}&locale=${loc.code}&per_page=100`
           );
           if (tr?.items) {
             for (const t of tr.items) {
@@ -173,7 +173,7 @@ export default function StoreEditPage() {
     const key = `${locale}:${field}`;
     setRegenerating(key);
     try {
-      const r: any = await api.post("/translations/translate", {
+      const r: any = await api.post("/admin/translations/translate", {
         text: sourceText, source_locale: "en", target_locale: locale,
       });
       const translated = r?.translated_text;
@@ -194,7 +194,7 @@ export default function StoreEditPage() {
       const sourceText = (form[field.key] || "").trim();
       if (!sourceText) continue;
       try {
-        const r: any = await api.post("/translations/translate", {
+        const r: any = await api.post("/admin/translations/translate", {
           text: sourceText, target_locale: locale, source_locale: "en",
         });
         const translated = r?.translated_text;
@@ -220,13 +220,13 @@ export default function StoreEditPage() {
   const upsertTranslation = async (field: string, locale: string, sourceText: string, translatedText: string) => {
     // Use record_id filter to find the exact translation for this store
     const allTr = await api.getRaw<{ items: { id: number; translation_key: string }[] }>(
-      `/translations?table_name=stores&record_id=${storeId}&column_name=${field}&locale=${locale}&per_page=1`
+      `/admin/translations?table_name=stores&record_id=${storeId}&column_name=${field}&locale=${locale}&per_page=1`
     );
     const existing = allTr?.items?.[0];
     if (existing) {
-      await api.put(`/translations/${existing.id}`, { translated_text: translatedText });
+      await api.put(`/admin/translations/${existing.id}`, { translated_text: translatedText });
     } else {
-      await api.post("/translations", {
+      await api.post("/admin/translations", {
         translation_key: `stores.${storeId}.${field}`,
         locale: locale,
         namespace: "store",

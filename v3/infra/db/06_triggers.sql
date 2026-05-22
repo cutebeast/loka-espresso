@@ -76,8 +76,9 @@ CREATE TRIGGER trg_marketing_campaigns_updated_at BEFORE UPDATE ON marketing_cam
     FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 CREATE TRIGGER trg_campaign_analytics_updated_at BEFORE UPDATE ON campaign_analytics
     FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-CREATE TRIGGER trg_content_blocks_updated_at BEFORE UPDATE ON content_blocks
-    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+-- NOTE: content_blocks table was intentionally removed.
+-- CREATE TRIGGER trg_content_blocks_updated_at BEFORE UPDATE ON content_blocks
+--     FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 CREATE TRIGGER trg_splash_screens_updated_at BEFORE UPDATE ON splash_screens
     FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 CREATE TRIGGER trg_survey_definitions_updated_at BEFORE UPDATE ON survey_definitions
@@ -160,3 +161,21 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_menu_items_search_vector BEFORE INSERT OR UPDATE ON menu_items
     FOR EACH ROW EXECUTE FUNCTION trigger_menu_item_search_vector();
+
+-- ============================================================
+-- New tables (I2 fix)
+-- ============================================================
+CREATE TRIGGER trg_promo_banners_updated_at BEFORE UPDATE ON promo_banners
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_information_cards_updated_at BEFORE UPDATE ON information_cards
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_product_cards_updated_at BEFORE UPDATE ON product_cards
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_event_cards_updated_at BEFORE UPDATE ON event_cards
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_system_pages_updated_at BEFORE UPDATE ON system_pages
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_equipment_updated_at BEFORE UPDATE ON equipment
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_equipment_maintenance_logs_updated_at BEFORE UPDATE ON equipment_maintenance_logs
+    FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();

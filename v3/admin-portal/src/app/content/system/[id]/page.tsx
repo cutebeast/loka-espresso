@@ -20,7 +20,7 @@ export default function SystemPageEditPage() {
       const d = await api.getRaw<any>(`/admin/system-pages/${id}`);
       setForm({page_key:d.page_key||"",title:d.title||"",body_text:d.body_text||"",is_active:d.is_active});
       const x:Record<string,string>={};
-      for(const lc of LOCALES){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/translations?table_name=system_pages&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}}
+      for(const lc of LOCALES){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/admin/translations?table_name=system_pages&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}}
       setTr(x);
     }catch{}finally{setLoading(false);}
   }, [id]);
@@ -33,11 +33,11 @@ load();
     try{await api.patch(`/admin/system-pages/${id}`,form);setMsg("Saved");setTimeout(()=>setMsg(""),2000);}catch{}finally{setSaving(false)}; };
 
   const upsertTr = async(field:string,locale:string,src:string,text:string)=>{
-    try{const rt=await api.getRaw<any>(`/translations?table_name=system_pages&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/translations/${ex.id}`,{translated_text:text});else await api.post("/translations",{translation_key:`system_pages.${id}.${field}`,locale,namespace:"content",translated_text:text,source_text:src,table_name:"system_pages",record_id:Number(id),column_name:field});}catch{}
+    try{const rt=await api.getRaw<any>(`/admin/translations?table_name=system_pages&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`system_pages.${id}.${field}`,locale,namespace:"content",translated_text:text,source_text:src,table_name:"system_pages",record_id:Number(id),column_name:field});}catch{}
   };
 
   const regenAll = async () => { setRegen(true); let c=0;
-    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch{}}
+    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch{}}
     setMsg(`Regenerated ${c}`);setTimeout(()=>setMsg(""),2500);setRegen(false);
   };
 

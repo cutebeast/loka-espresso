@@ -16,4 +16,5 @@ COPY --from=builder /app/next.config.* ./
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 USER nextjs
 EXPOSE 3012
+ENV HOSTNAME="0.0.0.0"
 CMD ["npm", "start"]

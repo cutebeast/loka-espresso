@@ -38,7 +38,7 @@ export default function AllergenEditPage() {
       for (const lc of L) {
         if (lc.code === "en") continue;
         try {
-          const rt = await api.getRaw<any>(`/translations?table_name=allergens&record_id=${id}&locale=${lc.code}&per_page=10`);
+          const rt = await api.getRaw<any>(`/admin/translations?table_name=allergens&record_id=${id}&locale=${lc.code}&per_page=10`);
           if (rt?.items) for (const t of rt.items) { const fk = t.translation_key.split(".").pop() || ""; x[`${lc.code}:${fk}`] = t.translated_text || ""; }
         } catch { }
       }
@@ -59,10 +59,10 @@ export default function AllergenEditPage() {
   };
 
   const upsert = async (field: string, locale: string, src: string, text: string) => {
-    const rt = await api.getRaw<any>(`/translations?table_name=allergens&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);
+    const rt = await api.getRaw<any>(`/admin/translations?table_name=allergens&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);
     const ex = rt?.items?.[0];
-    if (ex) await api.put(`/translations/${ex.id}`, { translated_text: text });
-    else await api.post("/translations", { translation_key: `allergens.${id}.${field}`, locale, namespace: "menu", translated_text: text, source_text: src, table_name: "allergens", record_id: Number(id), column_name: field });
+    if (ex) await api.put(`/admin/translations/${ex.id}`, { translated_text: text });
+    else await api.post("/admin/translations", { translation_key: `allergens.${id}.${field}`, locale, namespace: "menu", translated_text: text, source_text: src, table_name: "allergens", record_id: Number(id), column_name: field });
   };
 
   const regenAll = async () => {
@@ -71,7 +71,7 @@ export default function AllergenEditPage() {
       const src = (form[f.key] || "").trim();
       if (!src) continue;
       try {
-        const rt: any = await api.post("/translations/translate", { text: src, target_locale: loc, source_locale: "en" });
+        const rt: any = await api.post("/admin/translations/translate", { text: src, target_locale: loc, source_locale: "en" });
         if (rt?.translated_text) {
           setTr(p => ({ ...p, [`${loc}:${f.key}`]: rt.translated_text }));
           await upsert(f.key, loc, src, rt.translated_text);

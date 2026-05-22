@@ -26,7 +26,8 @@ export default function NewEquipmentPage() {
     setSaving(true);
     try {
       const payload = { ...form };
-      payload.store_id = Number(payload.store_id) || null;
+      const n = Number(payload.store_id);
+      payload.store_id = Number.isNaN(n) ? null : n;
       const r: any = await api.post("/admin/equipment", payload);
       const id = r?.data?.id || r?.id;
       if (id) router.push(`/equipment/${id}`);

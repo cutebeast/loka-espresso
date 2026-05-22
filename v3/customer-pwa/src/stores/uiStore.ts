@@ -30,6 +30,8 @@ export interface CheckoutDraft {
   notes?: string;
   voucherCode?: string;
   rewardCode?: string;
+  discountType?: 'voucher' | 'reward' | null;
+  discountCode?: string;
   recipientName?: string;
   recipientPhone?: string;
   deliveryInstructions?: string;

@@ -51,8 +51,8 @@ export default function CheckoutPage() {
   const [recipientName, setRecipientName] = useState(checkoutDraft.recipientName || '');
   const [recipientPhone, setRecipientPhone] = useState(checkoutDraft.recipientPhone || '');
   const [deliveryInstr, setDeliveryInstr] = useState(checkoutDraft.deliveryInstructions || '');
-  const [discountType, setDiscountType] = useState<'voucher' | 'reward' | null>(null);
-  const [discountCode, setDiscountCode] = useState('');
+  const [discountType, setDiscountType] = useState<'voucher' | 'reward' | null>(checkoutDraft.discountType ?? null);
+  const [discountCode, setDiscountCode] = useState(checkoutDraft.discountCode || '');
   const [discountValue, setDiscountValue] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash' | 'gateway'>(
     checkoutDraft.paymentMethod || (orderMode === 'dine_in' ? 'pay_at_store' : 'wallet')
@@ -66,6 +66,14 @@ export default function CheckoutPage() {
 
   useEffect(() => { refreshWallet(); }, [refreshWallet]);
   useEffect(() => { if (user && !checkoutDraft.recipientName && !recipientName) { setRecipientName(user.name || ''); setRecipientPhone(user.phone || ''); } }, [user]);
+  // Migrate legacy drafts that stored voucher/reward without discountType
+  useEffect(() => {
+    if (!discountType && !discountCode) {
+      if (checkoutDraft.voucherCode) { setDiscountType('voucher'); setDiscountCode(checkoutDraft.voucherCode); }
+      else if (checkoutDraft.rewardCode) { setDiscountType('reward'); setDiscountCode(checkoutDraft.rewardCode); }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? (selectedStore?.delivery_fee ?? config.delivery_fee) : 0;
@@ -85,7 +93,7 @@ export default function CheckoutPage() {
   })();
 
   const saveDraft = () => {
-    setCheckoutDraft({ orderMode, selectedStore, deliveryAddress, pickupTime, paymentMethod, notes: orderNote, voucherCode: discountCode, rewardCode: discountCode, recipientName, recipientPhone, deliveryInstructions: deliveryInstr });
+    setCheckoutDraft({ orderMode, selectedStore, deliveryAddress, pickupTime, paymentMethod, notes: orderNote, discountType, discountCode, recipientName, recipientPhone, deliveryInstructions: deliveryInstr });
     setDraftSaved(true);
     setTimeout(() => setDraftSaved(false), 1500);
   };

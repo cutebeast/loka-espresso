@@ -16,7 +16,7 @@ export default function NewDietaryTagPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
     try {
-      const x: any = await api.post("/admin/dietary-tags", f);
+      const x: any = await api.post("/admin/menu/dietary-tags", f);
       const id = x?.data?.id || x?.id;
       if (id) r.push(`/menu/dietary-tags/${id}`);
     } catch {} finally { setSaving(false); }

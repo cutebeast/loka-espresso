@@ -28,7 +28,7 @@ export default function CategoryEditPage() {
       const tr: Record<string,string> = {};
       for (const loc of LOCALES) {
         if (loc.code === "en") continue;
-        const r = await api.getRaw<{items:{translation_key:string;translated_text:string}[]}>(`/translations?table_name=menu_categories&record_id=${catId}&locale=${loc.code}&per_page=10`);
+        const r = await api.getRaw<{items:{translation_key:string;translated_text:string}[]}>(`/admin/translations?table_name=menu_categories&record_id=${catId}&locale=${loc.code}&per_page=10`);
         if (r?.items) for (const t of r.items) { const f = t.translation_key.split(".").pop()||""; tr[`${loc.code}:${f}`] = t.translated_text||""; }
       }
       setTranslations(tr);
@@ -44,10 +44,10 @@ export default function CategoryEditPage() {
   };
 
   const upsertTr = async (field: string, locale: string, src: string, text: string) => {
-    const r = await api.getRaw<{items:{id:number}[]}>(`/translations?table_name=menu_categories&record_id=${catId}&column_name=${field}&locale=${locale}&per_page=1`);
+    const r = await api.getRaw<{items:{id:number}[]}>(`/admin/translations?table_name=menu_categories&record_id=${catId}&column_name=${field}&locale=${locale}&per_page=1`);
     const ex = r?.items?.[0];
-    if (ex) await api.put(`/translations/${ex.id}`, { translated_text: text });
-    else await api.post("/translations", { translation_key: `menu_categories.${catId}.${field}`, locale, namespace: "menu", translated_text: text, source_text: src, table_name: "menu_categories", record_id: Number(catId), column_name: field });
+    if (ex) await api.put(`/admin/translations/${ex.id}`, { translated_text: text });
+    else await api.post("/admin/translations", { translation_key: `menu_categories.${catId}.${field}`, locale, namespace: "menu", translated_text: text, source_text: src, table_name: "menu_categories", record_id: Number(catId), column_name: field });
   };
 
   const regenerateAll = async () => {
@@ -56,7 +56,7 @@ export default function CategoryEditPage() {
     for (const f of TR_FIELDS) {
       const src = (form[f.key] || "").trim(); if (!src) continue;
       try {
-        const r:any = await api.post("/translations/translate", { text: src, target_locale: activeLocale, source_locale: "en" });
+        const r:any = await api.post("/admin/translations/translate", { text: src, target_locale: activeLocale, source_locale: "en" });
         if (r?.translated_text) { setTranslations(p=>({...p,[`${activeLocale}:${f.key}`]:r.translated_text})); await upsertTr(f.key,activeLocale,src,r.translated_text); count++; }
       } catch {}
     }

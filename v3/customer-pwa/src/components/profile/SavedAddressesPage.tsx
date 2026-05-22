@@ -9,6 +9,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import { LOKA } from '@/lib/tokens';
+import { haversineKm } from '@/lib/geolocation';
 
 interface Address {
   id: number; label: string; address: string; apartment?: string;
@@ -21,12 +22,6 @@ const ICONS: Record<string, typeof Home> = { Home, Office: Building2, Other: Hel
 const STATES = ['Johor','Kedah','Kelantan','Kuala Lumpur','Labuan','Melaka','Negeri Sembilan',
   'Pahang','Perak','Perlis','Pulau Pinang','Putrajaya','Sabah','Sarawak','Selangor','Terengganu'];
 
-function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  return R * 2 * Math.atan2(Math.sqrt(Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2), Math.sqrt(1 - (Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2)));
-}
 
 export default function SavedAddressesPage() {
   const { setPage, showToast, selectedStore } = useUIStore();
@@ -114,7 +109,7 @@ export default function SavedAddressesPage() {
 
   const getDistance = (addr: Address): string | null => {
     if (!addr.lat || !addr.lng || !selectedStore?.lat || !selectedStore?.lng) return null;
-    const km = haversineDistance(addr.lat, addr.lng, selectedStore.lat, selectedStore.lng);
+    const km = haversineKm(addr.lat, addr.lng, selectedStore.lat, selectedStore.lng);
     const min = Math.round((km / 30) * 60);
     const distance = km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km';
     return t('savedAddresses.distance', { distance, minutes: min });

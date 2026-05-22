@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { useDebounce } from "@/hooks/useDebounce";
 import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Order { id: number; order_number: string; status: string; order_type: string; total_amount: number; customer_name?: string; created_at: string; }
@@ -19,6 +20,7 @@ export default function OrdersPage() {
   const [status, setStatus] = useState("");
   const [orderType, setOrderType] = useState("");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -39,12 +41,12 @@ export default function OrdersPage() {
       if (storeId) params.set("store_id", storeId);
       if (status) params.set("status", status);
       if (orderType) params.set("order_type", orderType);
-      if (search) params.set("search", search);
+      if (debouncedSearch) params.set("search", debouncedSearch);
       const d = await api.getRaw<any>(`/admin/orders?${params}`);
       setItems(d.items || []); setTotal(d.total || 0); setTotalPages(d.total_pages || 1); setPage(p);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [storeId, status, orderType, search]);
+  }, [storeId, status, orderType, debouncedSearch]);
 
   useEffect(() => {(async () => {
  fetchOrders(1); 

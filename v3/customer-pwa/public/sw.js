@@ -231,6 +231,7 @@ async function queueOrder(orderPayload) {
       payload: orderPayload,
       timestamp: Date.now(),
       retryCount: 0,
+      nextRetryAt: 0,
     };
     const request = store.add(record);
     request.onsuccess = () => {
@@ -313,13 +314,58 @@ self.addEventListener('sync', (event) => {
   }
 });
 
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 2000;
+
+async function updateOrderRetry(id, retryCount, nextRetryAt) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.get(id);
+    request.onsuccess = () => {
+      const record = request.result;
+      if (!record) {
+        db.close();
+        resolve();
+        return;
+      }
+      record.retryCount = retryCount;
+      record.nextRetryAt = nextRetryAt;
+      const putRequest = store.put(record);
+      putRequest.onsuccess = () => {
+        db.close();
+        resolve();
+      };
+      putRequest.onerror = () => {
+        db.close();
+        reject(putRequest.error);
+      };
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
+
 async function replayOrders() {
   const pendingOrders = await getPendingOrders();
   if (pendingOrders.length === 0) return;
 
   const API_BASE = self.location.origin + '/api/v1';
+  const now = Date.now();
 
   for (const record of pendingOrders) {
+    if (record.nextRetryAt && record.nextRetryAt > now) continue;
+
+    const retryCount = record.retryCount || 0;
+    if (retryCount >= MAX_RETRIES) {
+      console.warn('[SW] Max retries reached for order', record.id, '— removing');
+      await removeOrder(record.id);
+      continue;
+    }
+
     try {
       const response = await fetch(`${API_BASE}/orders`, {
         method: 'POST',
@@ -333,12 +379,18 @@ async function replayOrders() {
       if (response.ok || response.status === 409) {
         await removeOrder(record.id);
       } else if (response.status >= 500) {
+        const nextRetry = retryCount + 1;
+        const delay = BASE_DELAY_MS * Math.pow(2, retryCount);
+        await updateOrderRetry(record.id, nextRetry, now + delay);
         break;
       } else {
         await removeOrder(record.id);
       }
     } catch (err) {
       console.error('[SW] Replay failed for order', record.id, err);
+      const nextRetry = retryCount + 1;
+      const delay = BASE_DELAY_MS * Math.pow(2, retryCount);
+      await updateOrderRetry(record.id, nextRetry, now + delay);
       continue;
     }
   }

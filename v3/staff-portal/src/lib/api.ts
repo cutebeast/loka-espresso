@@ -31,7 +31,7 @@ function clearAuthStorage(): void {
 
 let _refreshPromise: Promise<boolean> | null = null;
 
-async function refreshToken(signal?: AbortSignal): Promise<boolean> {
+async function refreshToken(): Promise<boolean> {
   if (_refreshPromise) return _refreshPromise;
 
   _refreshPromise = (async () => {
@@ -43,7 +43,6 @@ async function refreshToken(signal?: AbortSignal): Promise<boolean> {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refresh }),
-        ...(signal ? { signal } : {}),
       });
       if (!res.ok) return false;
       const json = await res.json();
@@ -159,7 +158,7 @@ async function requestWithTimeout<T>(method: string, path: string, body?: unknow
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
       if (res.status === 401) {
-        const refreshed = await refreshToken(controller.signal);
+        const refreshed = await refreshToken();
         if (refreshed) {
           const retry = await fetch(`${BASE_URL}${path}`, {
             method,
@@ -226,13 +225,33 @@ export const api = {
     return (json?.data ?? json) as T;
   },
   fetchRaw: async (method: string, path: string, body?: unknown) => {
-    const token = localStorage.getItem("token");
-    const res = await fetch(`${BASE_URL}${path}`, {
-      method,
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    return res;
+    const makeRequest = async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const res = await fetch(`${BASE_URL}${path}`, {
+        method,
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+      if (res.status === 401) {
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          const freshToken = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+          const retry = await fetch(`${BASE_URL}${path}`, {
+            method,
+            headers: { ...(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+            ...(body ? { body: JSON.stringify(body) } : {}),
+          });
+          if (retry.ok) return retry;
+        }
+        if (typeof window !== "undefined") {
+          clearAuthStorage();
+          window.location.href = "/login";
+        }
+        throw new Error("Session expired");
+      }
+      return res;
+    };
+    return makeRequest();
   },
 };
 

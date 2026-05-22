@@ -15,6 +15,7 @@ import { usePageRouter, SUB_PAGES } from '@/hooks/usePageRouter';
 import { useNotifications } from '@/hooks/useNotifications';
 import { resolveAppUrl } from '@/lib/tokens';
 import { getBrowserLocation } from '@/lib/geolocation';
+import { registerCartSyncListeners } from '@/lib/cartSync';
 import OfflineBanner from '@/components/shared/OfflineBanner';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -111,6 +112,11 @@ export default function AppShell() {
     getBrowserLocation().then((loc) => {
       if (loc) setUserLocation(loc);
     });
+  }, []);
+
+  // Register cart sync online/offline listeners with cleanup
+  useEffect(() => {
+    return registerCartSyncListeners();
   }, []);
 
   // Version check

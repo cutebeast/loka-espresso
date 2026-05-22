@@ -35,7 +35,7 @@ export default function ItemEditPage() {
     const raw = (d:any) => Array.isArray(d)?d:(d?.items||[]);
     try{const d=await api.getRaw<any>("/admin/menu/categories?per_page=50");setCategories(raw(d));}catch{}
     try{const d=await api.getRaw<any>("/admin/menu/allergens");setAllergens(raw(d));}catch{}
-    try{const d=await api.getRaw<any>("/admin/dietary-tags?per_page=50");setDietaryTags(raw(d));}catch{}
+    try{const d=await api.getRaw<any>("/admin/menu/dietary-tags?per_page=50");setDietaryTags(raw(d));}catch{}
     try{const d=await api.getRaw<any>("/admin/menu/tax-categories");setTaxCategories(raw(d));}catch{}
     try{const d=await api.getRaw<any>("/admin/loyalty/tiers");setLoyaltyTiers(raw(d));}catch{}
     try{const d=await api.getRaw<any>("/admin/stores?per_page=50");setStores(raw(d));}catch{}
@@ -61,7 +61,7 @@ export default function ItemEditPage() {
       const x:Record<string,string>={};
       for(const lc of LOCALES){
         if(lc.code==="en")continue;
-        try{const rt=await api.getRaw<any>(`/translations?table_name=menu_items&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}
+        try{const rt=await api.getRaw<any>(`/admin/translations?table_name=menu_items&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}
       }
       const mg = (d.modifier_groups||[]).map((g:any)=>({id:g.id,name:g.group_name,options:(g.options||[]).map((o:any)=>({id:o.id,name:o.option_name}))}));
       setModTr({groups:mg});
@@ -70,9 +70,9 @@ export default function ItemEditPage() {
       for(const lc of LOCALES){
         if(lc.code==="en")continue;
         try{
-          const grt = await api.getRaw<any>(`/translations?table_name=menu_modifier_groups&locale=${lc.code}&per_page=100`);
+          const grt = await api.getRaw<any>(`/admin/translations?table_name=menu_modifier_groups&locale=${lc.code}&per_page=100`);
           if(grt?.items) for(const t of grt.items){const rid=t.translation_key.split(".").pop()||"";x[`${lc.code}:mod:group_${t.record_id}`]=t.translated_text||"";}
-          const ort = await api.getRaw<any>(`/translations?table_name=menu_modifier_options&locale=${lc.code}&per_page=100`);
+          const ort = await api.getRaw<any>(`/admin/translations?table_name=menu_modifier_options&locale=${lc.code}&per_page=100`);
           if(ort?.items) for(const t of ort.items){x[`${lc.code}:mod:opt_${t.record_id}`]=t.translated_text||"";}
         }catch{}
       }
@@ -117,12 +117,12 @@ export default function ItemEditPage() {
   };
 
   const upsertTr = async(field:string,locale:string,src:string,text:string)=>{
-    try{const rt=await api.getRaw<any>(`/translations?table_name=menu_items&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/translations/${ex.id}`,{translated_text:text});else await api.post("/translations",{translation_key:`menu_items.${id}.${field}`,locale,namespace:"menu",translated_text:text,source_text:src,table_name:"menu_items",record_id:Number(id),column_name:field});}catch{}
+    try{const rt=await api.getRaw<any>(`/admin/translations?table_name=menu_items&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`menu_items.${id}.${field}`,locale,namespace:"menu",translated_text:text,source_text:src,table_name:"menu_items",record_id:Number(id),column_name:field});}catch{}
   };
 
   const regenAll = async () => {
     setRegen(true); let c=0;
-    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch{}}
+    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch{}}
     setMsg(`Regenerated ${c}`);setTimeout(()=>setMsg(""),2500);setRegen(false);
   };
 

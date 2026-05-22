@@ -10,7 +10,7 @@ export default function DietaryTagsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getRaw<{ items: any[] }>("/admin/dietary-tags?per_page=50").then(d => setItems(d.items || [])).catch(() => {}).finally(() => setLoading(false));
+    api.getRaw<{ items: any[] }>("/admin/menu/dietary-tags?per_page=50").then(d => setItems(d.items || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   return (
@@ -31,7 +31,7 @@ export default function DietaryTagsPage() {
                 <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
                 <td>
                   <button onClick={() => router.push(`/menu/dietary-tags/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}><Edit2 size={14} /></button>
-                  <button onClick={async () => { if (confirm("Delete?")) { await api.del(`/admin/dietary-tags/${item.id}`); const d = await api.getRaw<{ items: any[] }>("/admin/dietary-tags?per_page=50"); setItems(d.items || []); } }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                  <button onClick={async () => { if (confirm("Delete?")) { await api.del(`/admin/menu/dietary-tags/${item.id}`); const d = await api.getRaw<{ items: any[] }>("/admin/menu/dietary-tags?per_page=50"); setItems(d.items || []); } }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
                 </td>
               </tr>
             ))}

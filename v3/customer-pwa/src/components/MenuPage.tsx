@@ -10,6 +10,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import api from '@/lib/api';
 import type { MenuItem } from '@/lib/api';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
+import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 
 export default function MenuPage() {
@@ -38,6 +39,7 @@ export default function MenuPage() {
 
   const [selectedDietaryTag, setSelectedDietaryTag] = useState<string | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
+  const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
 
   const sectionRefs = useRef<Map<number, HTMLElement | null>>(new Map());
   const navRef = useRef<HTMLDivElement>(null);
@@ -104,7 +106,26 @@ export default function MenuPage() {
   }, [categories, menuItems]);
 
   const openItem = useCallback((item: MenuItem) => {
+    if ((item.customization_count ?? 0) > 0) {
+      setCustomizeItem(item);
+      return;
+    }
     addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, base_price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id, customization_count: item.customization_count ?? 0 });
+  }, [addItem, selectedStore?.id]);
+
+  const handleCustomizeAdd = useCallback((item: MenuItem, quantity: number, selectedOptions: { id: number; name: string; price_adjustment: number }[], totalPrice: number) => {
+    addItem({
+      menu_item_id: item.id,
+      name: item.name,
+      price: totalPrice,
+      base_price: item.base_price,
+      quantity,
+      customizations: { options: selectedOptions.map(o => ({ id: o.id, name: o.name, price_adjustment: o.price_adjustment })) },
+      store_id: selectedStore?.id,
+      customization_option_ids: selectedOptions.map(o => o.id),
+      customization_count: selectedOptions.length,
+    });
+    setCustomizeItem(null);
   }, [addItem, selectedStore?.id]);
 
   const debouncedSearch = useDebounce(searchQuery, 150);
@@ -335,9 +356,17 @@ export default function MenuPage() {
         )}
       </div>
 
+      {customizeItem && (
+        <ItemCustomizeSheet
+          item={customizeItem}
+          isOpen={customizeItem !== null}
+          onClose={() => setCustomizeItem(null)}
+          onAdd={handleCustomizeAdd}
+          customizations={customizeItem.customization_options || []}
+        />
+      )}
+
       <FloatingCartBar />
-
-
     </div>
   );
 }

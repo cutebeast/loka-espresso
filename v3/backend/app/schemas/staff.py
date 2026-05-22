@@ -104,3 +104,24 @@ class StaffChangePasswordRequest(BaseSchema):
 class StaffChangePinRequest(BaseSchema):
     current_pin: str
     new_pin: str
+
+
+class POSLineItem(BaseSchema):
+    menu_item_id: int
+    quantity: int = 1
+    special_instructions: str | None = None
+    modifier_ids: list[int] | None = None
+
+
+class POSPayment(BaseSchema):
+    amount_tendered: float | None = None
+    method: str = "cash"
+
+
+class POSOrderCreateRequest(BaseSchema):
+    store_id: int | None = None
+    customer_id: int | None = None
+    dining_table_id: int | None = None
+    order_type: str = "dine_in"
+    line_items: list[POSLineItem]
+    payment: POSPayment | None = None

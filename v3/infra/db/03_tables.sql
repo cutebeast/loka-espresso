@@ -669,7 +669,7 @@ CREATE TABLE order_fulfillment (
     driver_phone VARCHAR(20),
     driver_vehicle_type VARCHAR(20),
     pickup_code VARCHAR(10),
-    assigned_staff_id BIGINT REFERENCES staff_profiles(id) ON DELETE SET NULL,
+    assigned_staff_id BIGINT,
     assigned_at TIMESTAMPTZ,
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
@@ -825,7 +825,7 @@ CREATE TABLE loyalty_points_ledger (
     points_delta INTEGER NOT NULL,
     running_balance INTEGER NOT NULL,
     order_id BIGINT REFERENCES orders(id) ON DELETE SET NULL,
-    reward_catalog_id INTEGER REFERENCES reward_catalog(id) ON DELETE SET NULL,
+    reward_catalog_id INTEGER,
     description TEXT,
     expires_at TIMESTAMPTZ,
     created_by BIGINT REFERENCES admin_accounts(id) ON DELETE SET NULL,
@@ -1005,6 +1005,117 @@ CREATE TABLE splash_screens (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE promo_banners (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    short_description VARCHAR(500),
+    long_description TEXT,
+    image_url VARCHAR(500),
+    action_type VARCHAR(20),
+    action_url VARCHAR(500),
+    voucher_id INTEGER REFERENCES voucher_definitions(id) ON DELETE SET NULL,
+    survey_id INTEGER,
+    start_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    position INTEGER NOT NULL DEFAULT 0,
+    image_gallery_urls JSONB,
+    gallery_video_url VARCHAR(500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE information_cards (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE,
+    short_description VARCHAR(500),
+    long_description TEXT,
+    icon VARCHAR(50),
+    image_url VARCHAR(500),
+    content_type VARCHAR(20) NOT NULL DEFAULT 'information',
+    action_url VARCHAR(500),
+    action_type VARCHAR(20),
+    action_label VARCHAR(100),
+    position INTEGER NOT NULL DEFAULT 0,
+    start_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    image_gallery_urls JSONB,
+    gallery_video_url VARCHAR(500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE product_cards (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE,
+    short_description VARCHAR(500),
+    long_description TEXT,
+    image_url VARCHAR(500),
+    price NUMERIC(10,2),
+    action_url VARCHAR(500),
+    action_label VARCHAR(100),
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    position INTEGER NOT NULL DEFAULT 0,
+    image_gallery_urls JSONB,
+    gallery_video_url VARCHAR(500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE event_cards (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE,
+    short_description VARCHAR(500),
+    long_description TEXT,
+    image_url VARCHAR(500),
+    action_url VARCHAR(500),
+    action_label VARCHAR(100),
+    start_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    position INTEGER NOT NULL DEFAULT 0,
+    location VARCHAR(255),
+    event_datetime TIMESTAMPTZ,
+    rsvp_enabled BOOLEAN NOT NULL DEFAULT false,
+    rsvp_max_capacity INTEGER,
+    rsvp_count INTEGER NOT NULL DEFAULT 0,
+    image_gallery_urls JSONB,
+    gallery_video_url VARCHAR(500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE event_rsvps (
+    id SERIAL PRIMARY KEY,
+    event_id INTEGER NOT NULL REFERENCES event_cards(id) ON DELETE CASCADE,
+    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE system_pages (
+    id SERIAL PRIMARY KEY,
+    page_key VARCHAR(50) NOT NULL UNIQUE,
+    title VARCHAR(255) NOT NULL,
+    body_text TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE content_sections (
+    id SERIAL PRIMARY KEY,
+    content_type VARCHAR(30) NOT NULL,
+    content_id INTEGER NOT NULL,
+    section_title VARCHAR(255),
+    section_body TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 -- ============================================================
 -- 4.15 SURVEY & VOICE OF CUSTOMER
@@ -1309,4 +1420,46 @@ CREATE TABLE system_health_metrics (
     bucket_start TIMESTAMPTZ NOT NULL,
     bucket_duration_minutes INTEGER NOT NULL DEFAULT 5 CHECK (bucket_duration_minutes IN (1,5,15,60,1440)),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ============================================================
+-- 4.19 EQUIPMENT & MAINTENANCE
+-- ============================================================
+
+CREATE TABLE equipment (
+    id SERIAL PRIMARY KEY,
+    store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    equipment_type VARCHAR(50) NOT NULL DEFAULT 'general',
+    serial_number VARCHAR(100),
+    manufacturer VARCHAR(100),
+    model VARCHAR(100),
+    location VARCHAR(100),
+    purchase_date DATE,
+    warranty_expiry DATE,
+    status VARCHAR(20) NOT NULL DEFAULT 'operational',
+    last_maintenance_date DATE,
+    next_maintenance_date DATE,
+    notes TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ck_equipment_status CHECK (status IN ('operational','maintenance','retired','broken'))
+);
+
+CREATE TABLE equipment_maintenance_logs (
+    id BIGSERIAL PRIMARY KEY,
+    equipment_id INTEGER NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+    maintenance_type VARCHAR(20) NOT NULL DEFAULT 'preventive',
+    status VARCHAR(20) NOT NULL DEFAULT 'scheduled',
+    description TEXT,
+    performed_by VARCHAR(100),
+    cost NUMERIC(10,2),
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ck_equipment_maintenance_log_maintenance_type CHECK (maintenance_type IN ('preventive','corrective','inspection','repair','replacement')),
+    CONSTRAINT ck_equipment_maintenance_log_status CHECK (status IN ('scheduled','in_progress','completed','cancelled'))
 );

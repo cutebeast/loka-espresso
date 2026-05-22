@@ -40,8 +40,8 @@ export default function SurveyEditPage() {
       const x:Record<string,string>={};
       for(const lc of LOCALES){
         if(lc.code==="en")continue;
-        try{const rt=await api.getRaw<any>(`/translations?table_name=survey_definitions&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}
-        try{const qt=await api.getRaw<any>(`/translations?table_name=survey_questions&locale=${lc.code}&per_page=100`);if(qt?.items)for(const t of qt.items){const c=t.column_name;if(c==="question_text")x[`${lc.code}:q:${t.record_id}`]=t.translated_text||"";else if(c.startsWith("option_")){const oi=parseInt(c.split("_")[1]);x[`${lc.code}:qopt:${t.record_id}_${oi}`]=t.translated_text||"";}}}catch{}
+        try{const rt=await api.getRaw<any>(`/admin/translations?table_name=survey_definitions&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch{}
+        try{const qt=await api.getRaw<any>(`/admin/translations?table_name=survey_questions&locale=${lc.code}&per_page=100`);if(qt?.items)for(const t of qt.items){const c=t.column_name;if(c==="question_text")x[`${lc.code}:q:${t.record_id}`]=t.translated_text||"";else if(c.startsWith("option_")){const oi=parseInt(c.split("_")[1]);x[`${lc.code}:qopt:${t.record_id}_${oi}`]=t.translated_text||"";}}}catch{}
       }
       setTr(x);
     } catch {} finally { setLoading(false); }
@@ -78,14 +78,14 @@ load();
   };
 
   const upsertTr = async(field:string,locale:string,src:string,text:string,tableName:string="survey_definitions",recordId:number=Number(id))=>{
-    try{const rt=await api.getRaw<any>(`/translations?table_name=${tableName}&record_id=${recordId}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/translations/${ex.id}`,{translated_text:text});else await api.post("/translations",{translation_key:`${tableName}.${recordId}.${field}`,locale,namespace:"survey",translated_text:text,source_text:src,table_name:tableName,record_id:recordId,column_name:field});}catch{}
+    try{const rt=await api.getRaw<any>(`/admin/translations?table_name=${tableName}&record_id=${recordId}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`${tableName}.${recordId}.${field}`,locale,namespace:"survey",translated_text:text,source_text:src,table_name:tableName,record_id:recordId,column_name:field});}catch{}
   };
 
   const regenAll = async () => { setRegen(true); let c=0;
-    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch{}}
+    for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch{}}
     for(const q of qTr.questions){
-      const src=(q.text||"").trim();if(!src)continue;try{const rt:any=await api.post("/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:q:${q.id}`]:rt.translated_text}));await upsertTr("question_text",loc,src,rt.translated_text,"survey_questions",q.id);c++;}}catch{}
-      for(let oi=0;oi<(q.options||[]).length;oi++){const opt=q.options[oi].trim();if(!opt)continue;try{const rt:any=await api.post("/translations/translate",{text:opt,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:qopt:${q.id}_${oi}`]:rt.translated_text}));await upsertTr(`option_${oi}`,loc,opt,rt.translated_text,"survey_questions",q.id);c++;}}catch{}}
+      const src=(q.text||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:q:${q.id}`]:rt.translated_text}));await upsertTr("question_text",loc,src,rt.translated_text,"survey_questions",q.id);c++;}}catch{}
+      for(let oi=0;oi<(q.options||[]).length;oi++){const opt=q.options[oi].trim();if(!opt)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:opt,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:qopt:${q.id}_${oi}`]:rt.translated_text}));await upsertTr(`option_${oi}`,loc,opt,rt.translated_text,"survey_questions",q.id);c++;}}catch{}}
     }
     setMsg(`Regenerated ${c} fields & options`);setTimeout(()=>setMsg(""),2500);setRegen(false);
   };

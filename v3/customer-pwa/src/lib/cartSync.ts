@@ -225,9 +225,10 @@ export async function placeOrder(params: {
   return newOrder;
 }
 
-if (typeof window !== 'undefined') {
+export function registerCartSyncListeners(): () => void {
+  if (typeof window === 'undefined') return () => {};
   let _wasOffline = !navigator.onLine;
-  window.addEventListener('online', () => {
+  const onOnline = () => {
     if (_wasOffline) {
       _wasOffline = false;
       const items = useCartStore.getState().items;
@@ -235,6 +236,12 @@ if (typeof window !== 'undefined') {
         syncCartToServer(items).catch((err) => console.error('[CartSync] Background sync failed:', err));
       }
     }
-  });
-  window.addEventListener('offline', () => { _wasOffline = true; });
+  };
+  const onOffline = () => { _wasOffline = true; };
+  window.addEventListener('online', onOnline);
+  window.addEventListener('offline', onOffline);
+  return () => {
+    window.removeEventListener('online', onOnline);
+    window.removeEventListener('offline', onOffline);
+  };
 }

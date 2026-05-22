@@ -86,7 +86,7 @@ export default function TierEditPage() {
         complimentary_upgrades: !!bc.complimentary_upgrades,
       });
       const x:Record<string,string>={};
-      for(const lc of L){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/translations?table_name=loyalty_tiers&record_id=${id}&locale=${lc.code}&per_page=10`);if(rt?.items)for(const t of rt.items){const fk=t.translation_key.split(".").pop()||"";x[`${lc.code}:${fk}`]=t.translated_text||"";}}catch{}}
+      for(const lc of L){if(lc.code==="en")continue;try{const rt=await api.getRaw<any>(`/admin/translations?table_name=loyalty_tiers&record_id=${id}&locale=${lc.code}&per_page=10`);if(rt?.items)for(const t of rt.items){const fk=t.translation_key.split(".").pop()||"";x[`${lc.code}:${fk}`]=t.translated_text||"";}}catch{}}
       setTr(x);
     } catch {} finally { setLoading(false); }
   }, [id]);
@@ -120,9 +120,9 @@ export default function TierEditPage() {
     finally { setSaving(false); }
   };
 
-  const upsert = async(field:string,locale:string,src:string,text:string)=>{const rt=await api.getRaw<any>(`/translations?table_name=loyalty_tiers&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/translations/${ex.id}`,{translated_text:text});else await api.post("/translations",{translation_key:`loyalty_tiers.${id}.${field}`,locale,namespace:"loyalty",translated_text:text,source_text:src,table_name:"loyalty_tiers",record_id:Number(id),column_name:field});};
+  const upsert = async(field:string,locale:string,src:string,text:string)=>{const rt=await api.getRaw<any>(`/admin/translations?table_name=loyalty_tiers&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`loyalty_tiers.${id}.${field}`,locale,namespace:"loyalty",translated_text:text,source_text:src,table_name:"loyalty_tiers",record_id:Number(id),column_name:field});};
 
-  const regenAll = async () => { setRegen(true); let c=0; for(const f of F){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsert(f.key,loc,src,rt.translated_text);c++;}}catch{}}setMsg(`Regenerated ${c}`);setTimeout(()=>setMsg(""),2500);setRegen(false); };
+  const regenAll = async () => { setRegen(true); let c=0; for(const f of F){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsert(f.key,loc,src,rt.translated_text);c++;}}catch{}}setMsg(`Regenerated ${c}`);setTimeout(()=>setMsg(""),2500);setRegen(false); };
 
   const saveAll = async () => { for(const f of F){const t=tr[`${loc}:${f.key}`]||"";if(t)await upsert(f.key,loc,(form[f.key]||"").trim(),t);}setMsg("Saved");setTimeout(()=>setMsg(""),2000); };
 

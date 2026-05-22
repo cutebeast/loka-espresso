@@ -53,7 +53,7 @@ export default function PromotionEditPage() {
       setImg(d.image_url || "");
       const x: Record<string, string> = {};
       for (const lc of LOCALES) { if (lc.code === "en") continue;
-        try { const rt = await api.getRaw<any>(`/translations?table_name=promo_banners&record_id=${id}&locale=${lc.code}&per_page=50`); if (rt?.items) for (const t of rt.items) { const f = t.translation_key.split(".").pop() || ""; x[`${lc.code}:${f}`] = t.translated_text || ""; } } catch {}
+        try { const rt = await api.getRaw<any>(`/admin/translations?table_name=promo_banners&record_id=${id}&locale=${lc.code}&per_page=50`); if (rt?.items) for (const t of rt.items) { const f = t.translation_key.split(".").pop() || ""; x[`${lc.code}:${f}`] = t.translated_text || ""; } } catch {}
       }
       setTr(x);
     } catch {} finally { setLoading(false); }
@@ -67,13 +67,13 @@ export default function PromotionEditPage() {
   const handleSave = async () => { setSaving(true); try { const p: any = { ...form, voucher_id: Number(form.voucher_id), survey_id: form.survey_id ? Number(form.survey_id) : null, start_date: form.start_date || null, end_date: form.end_date || null }; await api.patch(`/admin/promo-banners/${id}`, p); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); } catch {} finally { setSaving(false); } };
 
   const upsertTr = async (field: string, locale: string, src: string, text: string) => {
-    const all = await api.getRaw<any>(`/translations?table_name=promo_banners&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);
-    if (all?.items?.[0]) { await api.put(`/translations/${all.items[0].id}`, { translated_text: text }); }
-    else { await api.post("/translations", { translation_key: `promo_banners.${id}.${field}`, locale, namespace: "promo", translated_text: text, source_text: src, table_name: "promo_banners", record_id: Number(id), column_name: field }); }
+    const all = await api.getRaw<any>(`/admin/translations?table_name=promo_banners&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);
+    if (all?.items?.[0]) { await api.put(`/admin/translations/${all.items[0].id}`, { translated_text: text }); }
+    else { await api.post("/admin/translations", { translation_key: `promo_banners.${id}.${field}`, locale, namespace: "promo", translated_text: text, source_text: src, table_name: "promo_banners", record_id: Number(id), column_name: field }); }
   };
 
   const regenAll = async (locale: string) => { setRegen("all"); const results: { field: string; text: string }[] = [];
-    for (const f of TR_FIELDS) { const src = (form[f.key] || "").trim(); if (!src) continue; try { const r: any = await api.post("/translations/translate", { text: src, target_locale: locale, source_locale: "en" }); if (r?.translated_text) { results.push({ field: f.key, text: r.translated_text }); setTr(prev => ({ ...prev, [`${locale}:${f.key}`]: r.translated_text })); } } catch {} }
+    for (const f of TR_FIELDS) { const src = (form[f.key] || "").trim(); if (!src) continue; try { const r: any = await api.post("/admin/translations/translate", { text: src, target_locale: locale, source_locale: "en" }); if (r?.translated_text) { results.push({ field: f.key, text: r.translated_text }); setTr(prev => ({ ...prev, [`${locale}:${f.key}`]: r.translated_text })); } } catch {} }
     for (const r of results) { await upsertTr(r.field, locale, (form[r.field] || "").trim(), r.text); }
     setMsg(results.length > 0 ? `Regenerated ${results.length} ${locale.toUpperCase()} translations & saved` : "No translatable content"); setTimeout(() => setMsg(""), 2500); setRegen("");
   };
