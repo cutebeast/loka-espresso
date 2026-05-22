@@ -16,6 +16,20 @@ interface CartState {
   getItemCount: () => number;
 }
 
+function stableStringify(obj: unknown): string {
+  return JSON.stringify(obj, (_key, value) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return Object.keys(value)
+        .sort()
+        .reduce<Record<string, unknown>>((sorted, k) => {
+          sorted[k] = (value as Record<string, unknown>)[k];
+          return sorted;
+        }, {});
+    }
+    return value;
+  });
+}
+
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
@@ -28,7 +42,7 @@ export const useCartStore = create<CartState>()(
             if (c.customization_option_ids && Array.isArray(c.customization_option_ids)) {
               return JSON.stringify([...c.customization_option_ids].sort());
             }
-            return JSON.stringify(c.customizations ?? null);
+            return stableStringify(c.customizations ?? null);
           };
           const itemKey = `${item.menu_item_id}:${optIds(item)}`;
           const existingIdx = state.items.findIndex(

@@ -29,6 +29,7 @@ const kanbanColumns: { status: OrderStatus; label: string; color: string }[] = [
   { status: "confirmed", label: "Confirmed", color: "#2563EB" },
   { status: "preparing", label: "Preparing", color: "#9B6625" },
   { status: "ready_for_pickup", label: "Ready", color: "#16A34A" },
+  { status: "delivered", label: "Delivered", color: "#6B7280" },
 ];
 
 export default function KitchenPage() {

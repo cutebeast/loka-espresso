@@ -19,6 +19,23 @@ import httpx
 # Staff Auth
 # ═══════════════════════════════════════════════════════════════════════════
 
+# Seeded admin credentials that work via the staff/auth/login admin fallback.
+STAFF_ADMIN_EMAIL = "admin@lokaespresso.my"
+STAFF_ADMIN_PASSWORD = "admin123"
+
+
+@pytest.mark.asyncio
+async def test_staff_login_success(client: httpx.AsyncClient, base_url: str):
+    """Admin can log in via the staff endpoint with correct credentials."""
+    payload = {"email": STAFF_ADMIN_EMAIL, "password": STAFF_ADMIN_PASSWORD, "store_id": 1}
+    r = await client.post(f"{base_url}/staff/auth/login", json=payload)
+    assert r.status_code == 200, f"Staff login failed: {r.text}"
+    data = r.json()
+    assert "tokens" in data
+    assert "access_token" in data["tokens"]
+    assert data["profile"]["store_id"] == 1
+
+
 @pytest.mark.asyncio
 async def test_staff_login_pin(client: httpx.AsyncClient, base_url: str):
     """Staff login endpoint responds to name+PIN auth format."""
@@ -122,3 +139,8 @@ async def test_staff_create_maintenance_log(client: httpx.AsyncClient, admin_hea
     }
     r2 = await client.post(f"{base_url}/admin/equipment/{eq_id}/maintenance-logs", headers=admin_headers, json=log)
     assert r2.status_code == 201
+    log_id = r2.json()["data"]["id"]
+
+    # Cleanup: delete the maintenance log so the test is isolated
+    r_del = await client.delete(f"{base_url}/admin/equipment/{eq_id}/maintenance-logs/{log_id}", headers=admin_headers)
+    assert r_del.status_code == 200

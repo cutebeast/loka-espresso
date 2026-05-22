@@ -33,21 +33,20 @@ def gen_admin_token() -> str:
 
 
 @pytest.fixture(scope="session")
-def customer_token() -> str:
-    """Generate a customer JWT for E2E tests."""
-    customer_id = 1
-    now = datetime.now(timezone.utc)
+def customer_token(base_url: str) -> str:
+    """Dynamically register a test customer and return a real access token."""
+    import httpx
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     payload = {
-        "sub": str(customer_id),
-        "type": "access",
-        "customer_id": customer_id,
-        "iat": now,
-        "exp": now + timedelta(hours=2),
-        "iss": "fnb-enterprise-v3",
-        "aud": "fnb-app",
-        "jti": f"e2e-cust-{customer_id}-{now.timestamp()}",
+        "email_address": f"e2e-session-{ts}@example.com",
+        "display_name": f"E2E Session Customer {ts}",
+        "device_fingerprint": f"e2e-session-{ts}",
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    with httpx.Client(timeout=30.0) as c:
+        r = c.post(f"{base_url}/auth/register", json=payload)
+    if r.status_code != 201:
+        raise RuntimeError(f"Failed to bootstrap session customer: {r.status_code} {r.text}")
+    return r.json()["tokens"]["access_token"]
 
 
 @pytest.fixture(scope="session")

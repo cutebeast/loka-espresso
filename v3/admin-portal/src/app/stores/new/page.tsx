@@ -42,7 +42,7 @@ export default function NewStorePage() {
       });
       payload.operating_hours = hours;
       const r: any = await api.post("/admin/stores", payload);
-      const id = r?.data?.id || r?.id;
+      const id = r?.id;
       if (id) { router.push(`/stores/${id}`); }
       else { setMsg("Created but no redirect ID"); }
     } catch (e: any) { setMsg("Error: " + (e.message || "Failed")); }

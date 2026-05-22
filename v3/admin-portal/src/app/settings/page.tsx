@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { Save } from "lucide-react";
 
 interface ConfigItem {
-  id: number; config_key: string; config_value: string;
+  id: number; config_key: string; config_value: string | null;
   value_type: string; is_sensitive: boolean; is_editable: boolean;
 }
 
@@ -19,7 +19,7 @@ const SECTIONS: { title: string; description: string; prefix: string }[] = [
 ];
 
 function ConfigRow({ item, onSave, saving }: { item: ConfigItem; onSave: (item: ConfigItem, newValue: string) => void; saving: string | null }) {
-  const [editValue, setEditValue] = useState(item.config_value);
+  const [editValue, setEditValue] = useState(item.config_value ?? "");
 
   return (
     <tr>
@@ -38,7 +38,7 @@ function ConfigRow({ item, onSave, saving }: { item: ConfigItem; onSave: (item: 
                 step={item.value_type === "decimal" ? "0.1" : "1"}
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}
-                onBlur={e => { if (e.target.value !== item.config_value) onSave(item, e.target.value); }}
+                onBlur={e => { if (e.target.value !== (item.config_value ?? "")) onSave(item, e.target.value); }}
                 onKeyDown={e => { if (e.key === "Enter") onSave(item, (e.target as HTMLInputElement).value); }}
                 style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: 13, width: item.value_type === "boolean" ? 80 : 200 }}
               />

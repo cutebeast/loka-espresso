@@ -87,7 +87,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       }
       if (typeof window !== "undefined") {
         clearAuthStorage();
-        window.location.href = "/login";
+        window.location.replace("/login");
       }
       throw new Error("Session expired. Please log in again.");
     }

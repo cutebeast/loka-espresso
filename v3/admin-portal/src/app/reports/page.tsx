@@ -32,8 +32,8 @@ export default function ReportsPage() {
       if (dateTo) qs.set("date_to", dateTo);
       const metrics = await api.get<any>(`/admin/dashboard/metrics${qs.toString() ? "?" + qs.toString() : ""}`);
       setData({
-        revenue: metrics.revenue_today || metrics.total_revenue || 0,
-        orders: metrics.orders_today || metrics.total_orders || 0,
+        revenue: metrics.revenue_today ?? metrics.total_revenue ?? 0,
+        orders: metrics.orders_today ?? metrics.total_orders ?? 0,
         avgOrder: (metrics.revenue_today && metrics.orders_today) ? metrics.revenue_today / metrics.orders_today : 0,
         customers: metrics.new_customers || 0,
         stores: metrics.active_stores || stores.length,

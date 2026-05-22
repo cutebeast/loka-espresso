@@ -101,12 +101,15 @@ export const api = {
     return (json?.data ?? json) as T;
   },
   fetchRaw: async (method: string, path: string, body?: unknown): Promise<Response> => {
-    const token = localStorage.getItem("token");
-    const doFetch = () => fetch(`${BASE_URL}${path}`, {
-      method,
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    if (typeof window === "undefined") throw new Error("fetchRaw cannot be used during SSR");
+    const doFetch = () => {
+      const token = localStorage.getItem("token");
+      return fetch(`${BASE_URL}${path}`, {
+        method,
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+    };
     let res = await doFetch();
     if (res.status === 401) {
       const refreshed = await refreshToken();

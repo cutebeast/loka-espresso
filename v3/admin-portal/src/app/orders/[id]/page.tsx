@@ -85,7 +85,7 @@ export default function OrderDetailPage() {
         <thead><tr><th>Item</th><th style={{ textAlign: "center" }}>Qty</th><th style={{ textAlign: "right" }}>Unit Price</th><th style={{ textAlign: "right" }}>Total</th></tr></thead>
         <tbody>
           {(order.line_items || []).map((li: any, i: number) => (
-            <tr key={i}>
+            <tr key={li.id ?? i}>
               <td style={{ fontWeight: 600 }}>{li.item_name || "—"}</td>
               <td style={{ textAlign: "center" }}>{li.quantity}</td>
               <td style={{ textAlign: "right" }}>{fmt(li.unit_price)}</td>
@@ -101,7 +101,7 @@ export default function OrderDetailPage() {
           <thead><tr><th>Type</th><th style={{ textAlign: "right" }}>Amount</th><th>Reason</th><th>Date</th></tr></thead>
           <tbody>
             {(order.adjustments || []).map((adj: any, i: number) => (
-              <tr key={i}>
+              <tr key={adj.id ?? i}>
                 <td style={{ textTransform: "capitalize" }}>{adj.adjustment_type?.replace(/_/g, " ")}</td>
                 <td style={{ textAlign: "right", color: Number(adj.amount_delta || 0) < 0 ? "var(--color-error)" : "var(--color-success)", fontWeight: 600 }}>{fmt(adj.amount_delta)}</td>
                 <td style={{ fontSize: 12 }}>{adj.reason || "—"}</td>
@@ -116,7 +116,7 @@ export default function OrderDetailPage() {
         <h4 style={{ marginBottom: 8 }}>Status Log</h4>
         <div className="table-container"><table className="data-table">
           <thead><tr><th>Status</th><th>Date</th><th>Reason</th></tr></thead>
-          <tbody>{order.status_log.map((sl: any, i: number) => (<tr key={i}><td>{sb(sl.status)}</td><td style={{ fontSize: 12 }}>{dt(sl.changed_at)}</td><td style={{ fontSize: 12 }}>{sl.reason || "—"}</td></tr>))}</tbody>
+          <tbody>{order.status_log.map((sl: any, i: number) => (<tr key={sl.id ?? i}><td>{sb(sl.status)}</td><td style={{ fontSize: 12 }}>{dt(sl.changed_at)}</td><td style={{ fontSize: 12 }}>{sl.reason || "—"}</td></tr>))}</tbody>
         </table></div>
       </>)}
     </div>

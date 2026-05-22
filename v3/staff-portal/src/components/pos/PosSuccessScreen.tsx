@@ -30,18 +30,18 @@ export default function PosSuccessScreen({ mode, result, total, change, paymentM
         </button>
         {mode === "checkout" && (
           <>
-            <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.printer ? undefined : showFeatureToast("Printer")} title="Printer integration pending">
+            <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.printer ? window.print() : showFeatureToast("Printer")} title="Printer integration pending">
               <Printer size={16} /> Print Receipt
             </button>
             {paymentMethod === "cash" && (
-              <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.cashDrawer ? undefined : showFeatureToast("Cash Drawer")} title="Cash drawer integration pending">
+              <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.cashDrawer ? console.log("Cash drawer: open") : showFeatureToast("Cash Drawer")} title="Cash drawer integration pending">
                 <Archive size={16} /> Open Cash Drawer
               </button>
             )}
           </>
         )}
         {mode === "new_order" && (
-          <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.kitchenTicketPrinter ? undefined : showFeatureToast("Kitchen Ticket Printer")} title="Kitchen ticket printing pending">
+          <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.kitchenTicketPrinter ? window.print() : showFeatureToast("Kitchen Ticket Printer")} title="Kitchen ticket printing pending">
             <Receipt size={16} /> Print Kitchen Ticket
           </button>
         )}

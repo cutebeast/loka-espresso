@@ -432,6 +432,8 @@ function mapV3Response(url: string, data: any): any {
       ...unwrapped,
       balance: unwrapped.balance ?? unwrapped.current_balance ?? 0,
       currency: unwrapped.currency_code || unwrapped.currency || 'MYR',
+      rewards: unwrapped.rewards ?? unwrapped.data?.rewards ?? [],
+      vouchers: unwrapped.vouchers ?? unwrapped.data?.vouchers ?? [],
     };
   }
 

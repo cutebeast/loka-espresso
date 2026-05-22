@@ -38,6 +38,15 @@ export function haversineKm(
  * Detect user's approximate location via IP.
  * Uses our own backend endpoint which tries local MaxMind DB then ip-api fallback.
  */
+function createTimeoutSignal(ms: number): AbortSignal {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return AbortSignal.timeout(ms);
+  }
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), ms);
+  return ctrl.signal;
+}
+
 export async function detectIPLocation(): Promise<IPLocation | null> {
   try {
     const { default: api } = await import('@/lib/api');
@@ -50,7 +59,7 @@ export async function detectIPLocation(): Promise<IPLocation | null> {
     try {
       const fallbackGeoUrl = process.env.NEXT_PUBLIC_GEOIP_API_URL || 'https://ip-api.com/json/?fields=status,lat,lon';
       const res = await fetch(fallbackGeoUrl, {
-        signal: AbortSignal.timeout(5000),
+        signal: createTimeoutSignal(5000),
       });
       const data = await res.json();
       if (data?.status === 'success' && data.lat && data.lon) {

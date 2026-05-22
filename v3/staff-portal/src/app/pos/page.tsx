@@ -279,7 +279,7 @@ export default function PosPage() {
           />
 
           {pos.cart.map((c) => (
-            <div key={`${c.menu_item_id}-${c.modifiers_label}`} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "6px 0", borderBottom: "1px solid var(--color-border-light)" }}>
+            <div key={`${c.menu_item_id}-${JSON.stringify(c.modifier_ids)}`} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "6px 0", borderBottom: "1px solid var(--color-border-light)" }}>
               <span style={{ flex: 1, fontSize: 14 }}>
                 <span style={{ fontWeight: 600 }}>{c.name}</span>
                 {c.modifiers_label && <span style={{ fontSize: 12, color: "var(--color-text-muted)", display: "block", marginTop: 2 }}>{c.modifiers_label}</span>}

@@ -471,6 +471,9 @@ export function usePosState() {
               }
               setShowQrScanner(false);
               scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
+            } else {
+              setScannerError("Invalid QR code. Please scan a valid customer QR.");
+              scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
             }
             return;
           }
@@ -489,6 +492,9 @@ export function usePosState() {
           if (tableNum) {
             setTableId(tableNum.id);
             setShowQrScanner(false);
+            scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
+          } else {
+            setScannerError("Invalid QR code. Please scan a valid table QR.");
             scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
           }
         },
