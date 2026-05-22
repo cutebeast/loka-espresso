@@ -145,3 +145,27 @@ class OrderListParams(BaseSchema):
     date_to: datetime | None = None
     page: int = Field(1, ge=1)
     per_page: int = Field(20, ge=1, le=100)
+
+
+class UpdateOrderStatusRequest(BaseSchema):
+    status: str
+
+
+class ProcessOrderPaymentRequest(BaseSchema):
+    payment_method: str = "cash"
+    amount_tendered: float = Field(0, ge=0)
+    amount: float | None = Field(None, ge=0)
+    discount_amount: float = Field(0, ge=0)
+    discount_type: str | None = None
+
+
+class ApplyOrderVoucherRequest(BaseSchema):
+    voucher_code: str
+
+
+class ApplyOrderRewardRequest(BaseSchema):
+    reward_id: int = Field(..., gt=0)
+
+
+class PayWithWalletRequest(BaseSchema):
+    amount: float = Field(..., gt=0)

@@ -11,15 +11,28 @@ from app.models.loyalty import LoyaltyAccount
 from app.models.reward import CustomerReward, RewardCatalog
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.wallet import Wallet, WalletLedgerEntry
-from app.schemas.base import APIResponse
+from app.schemas.base import APIResponse, BaseSchema
 
 router = APIRouter(prefix="/admin/scan", tags=["admin — scan"])
 
 
+class ScanCustomerQRRequest(BaseSchema):
+    code: str
+
+
+class ScanRewardCodeRequest(BaseSchema):
+    store_id: int | None = None
+
+
+class ScanVoucherCodeRequest(BaseSchema):
+    store_id: int | None = None
+
+
+
 @router.post("/customer", response_model=APIResponse[dict])
-async def scan_customer_qr(admin: CurrentAdmin, db: DBDependency, data: dict):
+async def scan_customer_qr(admin: CurrentAdmin, db: DBDependency, data: ScanCustomerQRRequest):
     """Scan customer QR code (format: loka:customer:{id})."""
-    code = (data.get("code") or "").strip()
+    code = (data.code or "").strip()
     if not code:
         raise HTTPException(status_code=400, detail="code is required")
     if not code.startswith("loka:customer:"):
@@ -86,7 +99,7 @@ async def scan_customer_qr(admin: CurrentAdmin, db: DBDependency, data: dict):
 
 
 @router.post("/reward/{code}", response_model=APIResponse[dict])
-async def scan_reward_code(admin: CurrentAdmin, db: DBDependency, code: str, data: dict):
+async def scan_reward_code(admin: CurrentAdmin, db: DBDependency, code: str, data: ScanRewardCodeRequest):
     """Scan reward redemption code (e.g. RWD-{id}-{token})."""
     now = datetime.now(timezone.utc)
 
@@ -110,8 +123,8 @@ async def scan_reward_code(admin: CurrentAdmin, db: DBDependency, code: str, dat
 
     cr.status = "used"
     cr.used_at = now
-    if data.get("store_id"):
-        cr.store_id = int(data["store_id"])
+    if data.store_id:
+        cr.store_id = data.store_id
 
     rc_result = await db.execute(select(RewardCatalog).where(RewardCatalog.id == cr.reward_catalog_id))
     rc = rc_result.scalar_one_or_none()
@@ -133,7 +146,7 @@ async def scan_reward_code(admin: CurrentAdmin, db: DBDependency, code: str, dat
 
 
 @router.post("/voucher/{code}", response_model=APIResponse[dict])
-async def scan_voucher_code(admin: CurrentAdmin, db: DBDependency, code: str, data: dict):
+async def scan_voucher_code(admin: CurrentAdmin, db: DBDependency, code: str, data: ScanVoucherCodeRequest):
     """Scan voucher per-instance code (e.g. WELCOME10-A3F2B1)."""
     now = datetime.now(timezone.utc)
 
@@ -158,8 +171,8 @@ async def scan_voucher_code(admin: CurrentAdmin, db: DBDependency, code: str, da
 
     cv.status = "used"
     cv.used_at = now
-    if data.get("store_id"):
-        cv.store_id = int(data["store_id"])
+    if data.store_id:
+        cv.store_id = data.store_id
 
     vd_result = await db.execute(select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id))
     vd = vd_result.scalar_one_or_none()

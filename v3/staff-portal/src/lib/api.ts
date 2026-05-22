@@ -133,7 +133,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown): Prom
       }
       if (typeof window !== "undefined") {
         clearAuthStorage();
-        window.location.href = "/login";
+        window.location.replace("/login");
       }
       throw new Error("Session expired");
     }
@@ -170,7 +170,7 @@ async function requestWithTimeout<T>(method: string, path: string, body?: unknow
         }
         if (typeof window !== "undefined") {
           clearAuthStorage();
-          window.location.href = "/login";
+          window.location.replace("/login");
         }
         throw new Error("Session expired");
       }
@@ -245,7 +245,7 @@ export const api = {
         }
         if (typeof window !== "undefined") {
           clearAuthStorage();
-          window.location.href = "/login";
+          window.location.replace("/login");
         }
         throw new Error("Session expired");
       }

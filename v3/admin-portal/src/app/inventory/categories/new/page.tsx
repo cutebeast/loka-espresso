@@ -22,7 +22,7 @@ export default function NewCategoryPage() {
     try {
       if (!form.slug) form.slug = form.category_name.toLowerCase().replace(/[^a-z0-9]/g, "-");
       const r: any = await api.post("/admin/inventory/categories", { ...form, store_id: Number(storeId) });
-      const id = r?.data?.id || r?.id;
+      const id = r?.id;
       if (id) router.push(`/inventory/categories/${id}`);
       else router.push("/inventory/categories");
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }

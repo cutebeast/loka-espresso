@@ -14,6 +14,15 @@ from app.models.reward import CustomerReward
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.customer import (
+    AdjustPointsRequest,
+    AwardVoucherRequest,
+    CustomerCreate,
+    CustomerUpdate,
+    SetTierRequest,
+    UseRewardRequest,
+    UseVoucherRequest,
+)
 
 router = APIRouter(prefix="/admin/customers", tags=["admin — customers"])
 
@@ -234,7 +243,7 @@ async def update_customer(
     admin: CurrentAdmin,
     db: DBDependency,
     customer_id: int,
-    data: dict,
+    data: CustomerUpdate,
 ):
     """Update customer profile."""
     result = await db.execute(
@@ -244,10 +253,18 @@ async def update_customer(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    allowed = ["display_name", "phone_number", "email_address", "date_of_birth", "is_active", "preferred_language"]
-    for key in allowed:
-        if key in data:
-            setattr(customer, key, data[key])
+    if data.display_name is not None:
+        customer.display_name = data.display_name
+    if data.phone_number is not None:
+        customer.phone_number = data.phone_number
+    if data.email_address is not None:
+        customer.email_address = data.email_address
+    if data.date_of_birth is not None:
+        customer.date_of_birth = data.date_of_birth
+    if data.is_active is not None:
+        customer.is_active = data.is_active
+    if data.preferred_language is not None:
+        customer.preferred_language = data.preferred_language
 
     customer.updated_at = datetime.now(timezone.utc)
     await db.commit()
@@ -267,21 +284,21 @@ async def update_customer(
 async def create_customer(
     admin: CurrentAdmin,
     db: DBDependency,
-    data: dict,
+    data: CustomerCreate,
 ):
     """Create a new customer (admin-initiated)."""
-    phone = (data.get("phone_number") or "").strip()
-    email = (data.get("email_address") or "").strip()
+    phone = (data.phone_number or "").strip()
+    email = (data.email_address or "").strip()
     if not phone and not email:
         raise HTTPException(status_code=400, detail="At least phone_number or email_address is required")
 
     customer = Customer(
         phone_number=phone or None,
         email_address=email or None,
-        display_name=data.get("display_name"),
-        given_name=data.get("given_name"),
-        family_name=data.get("family_name"),
-        preferred_language=data.get("preferred_language", "en"),
+        display_name=data.display_name,
+        given_name=data.given_name,
+        family_name=data.family_name,
+        preferred_language=data.preferred_language,
     )
     db.add(customer)
     await db.commit()
@@ -310,10 +327,10 @@ async def delete_customer(
 
 
 @router.post("/{customer_id}/adjust-points", response_model=APIResponse[dict])
-async def adjust_points(admin: CurrentAdmin, db: DBDependency, customer_id: int, data: dict):
+async def adjust_points(admin: CurrentAdmin, db: DBDependency, customer_id: int, data: AdjustPointsRequest):
     """Award or deduct loyalty points."""
-    points = int(data.get("points", 0))
-    reason = data.get("reason", "Admin adjustment")
+    points = data.points
+    reason = data.reason
     if points == 0:
         raise HTTPException(400, "Points value required (positive to award, negative to deduct)")
 
@@ -354,10 +371,10 @@ async def adjust_points(admin: CurrentAdmin, db: DBDependency, customer_id: int,
 
 
 @router.post("/{customer_id}/award-voucher", response_model=APIResponse[dict])
-async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, data: dict):
+async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, data: AwardVoucherRequest):
     """Award a voucher to a customer."""
-    voucher_id = int(data.get("voucher_id", 0))
-    reason = data.get("reason", "Admin awarded")
+    voucher_id = data.voucher_id
+    reason = data.reason
     if not voucher_id:
         raise HTTPException(400, "voucher_id required")
 
@@ -399,7 +416,7 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
 
 
 @router.post("/{customer_id}/use-reward/{reward_id}", response_model=APIResponse[dict])
-async def use_reward(admin: CurrentAdmin, db: DBDependency, customer_id: int, reward_id: int, data: dict):
+async def use_reward(admin: CurrentAdmin, db: DBDependency, customer_id: int, reward_id: int, data: UseRewardRequest):
     """Mark a customer's reward as used in-store."""
     result = await db.execute(
         select(CustomerReward).where(
@@ -426,15 +443,15 @@ async def use_reward(admin: CurrentAdmin, db: DBDependency, customer_id: int, re
 
     cr.status = "used"
     cr.used_at = now
-    if data.get("store_id"):
-        cr.store_id = int(data["store_id"])
+    if data.store_id is not None:
+        cr.store_id = data.store_id
 
     await db.commit()
     return APIResponse(data={"message": "Reward marked as used", "success": True})
 
 
 @router.post("/{customer_id}/use-voucher/{voucher_id}", response_model=APIResponse[dict])
-async def use_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, voucher_id: int, data: dict):
+async def use_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, voucher_id: int, data: UseVoucherRequest):
     """Mark a customer's voucher as used in-store."""
     result = await db.execute(
         select(CustomerVoucher).where(
@@ -461,18 +478,18 @@ async def use_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, v
 
     cv.status = "used"
     cv.used_at = now
-    if data.get("store_id"):
-        cv.store_id = int(data["store_id"])
+    if data.store_id is not None:
+        cv.store_id = data.store_id
 
     await db.commit()
     return APIResponse(data={"message": "Voucher marked as used", "success": True})
 
 
 @router.post("/{customer_id}/set-tier", response_model=APIResponse[dict])
-async def set_tier(admin: CurrentAdmin, db: DBDependency, customer_id: int, data: dict):
+async def set_tier(admin: CurrentAdmin, db: DBDependency, customer_id: int, data: SetTierRequest):
     """Override customer tier."""
-    tier_key = data.get("tier", "").lower()
-    reason = data.get("reason", "Admin override")
+    tier_key = data.tier.lower()
+    reason = data.reason
 
     rl = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id))
     la = rl.scalar_one_or_none()

@@ -1,6 +1,6 @@
 """Staff domain schemas."""
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from app.schemas.base import BaseSchema, TimestampedSchema
 
@@ -125,3 +125,35 @@ class POSOrderCreateRequest(BaseSchema):
     order_type: str = "dine_in"
     line_items: list[POSLineItem]
     payment: POSPayment | None = None
+
+
+class StaffCreateRequest(BaseSchema):
+    email: str | None = None
+    password: str | None = None
+    pin: str = "000000"
+    display_name: str
+    store_id: int
+    phone_number: str | None = None
+    role: str = "server"
+
+
+class ShiftFlatCreate(BaseSchema):
+    staff_id: int
+    store_id: int
+    shift_date: date
+    shift_template_id: int | None = None
+    planned_start: datetime
+    planned_end: datetime
+    status: str = "scheduled"
+    notes: str | None = None
+
+
+class ShiftTemplateCreate(BaseSchema):
+    store_id: int
+    name: str
+    start_time: time
+    end_time: time
+
+
+class StaffRolesUpdateRequest(BaseSchema):
+    role_ids: list[int] = []

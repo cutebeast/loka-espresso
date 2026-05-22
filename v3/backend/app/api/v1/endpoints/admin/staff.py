@@ -11,6 +11,10 @@ from app.models.iam import IAMPrincipal, IAMRole, RoleAssignment
 from app.models.staff import StaffProfile, StaffShift, ShiftTemplate
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.staff import (
+    StaffCreateRequest,
+    ShiftFlatCreate,
+    ShiftTemplateCreate,
+    StaffRolesUpdateRequest,
     StaffProfileCreate,
     StaffProfileDetailOut,
     StaffProfileOut,
@@ -65,15 +69,15 @@ async def list_staff(
 async def create_staff(
     db: DBDependency,
     admin: CurrentAdmin,
-    data: dict,
+    data: StaffCreateRequest,
 ):
     """Create a new staff profile with credentials."""
     import bcrypt
 
-    email = (data.get("email") or "").strip()
-    password = (data.get("password") or "").strip()
-    pin = (data.get("pin") or "000000").strip()
-    display_name = (data.get("display_name") or "").strip()
+    email = (data.email or "").strip()
+    password = (data.password or "").strip()
+    pin = (data.pin or "000000").strip()
+    display_name = data.display_name.strip()
 
     if not display_name:
         raise HTTPException(status_code=400, detail="Display name required")
@@ -87,13 +91,13 @@ async def create_staff(
 
     profile = StaffProfile(
         principal_id=principal.id,
-        store_id=data.get("store_id"),
+        store_id=data.store_id,
         display_name=display_name,
         email_address=email or None,
         password_hash=pw_hash,
         pin_hash=pin_hash,
-        phone_number=data.get("phone_number"),
-        role=data.get("role", "server"),
+        phone_number=data.phone_number,
+        role=data.role,
         is_active=True,
     )
     db.add(profile)
@@ -310,28 +314,21 @@ async def list_all_shifts(
 
 
 @router.post("/shifts", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
-async def create_shift_flat(db: DBDependency, admin: CurrentAdmin, data: dict):
+async def create_shift_flat(db: DBDependency, admin: CurrentAdmin, data: ShiftFlatCreate):
     """Create a shift (staff_id in body, for admin frontend)."""
-    sid = int(data.get("staff_id", 0))
+    sid = data.staff_id
     if not sid:
         raise HTTPException(status_code=400, detail="staff_id required")
     profile_result = await db.execute(select(StaffProfile).where(StaffProfile.id == sid, StaffProfile.deleted_at.is_(None)))
     if profile_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Staff not found")
-    from datetime import datetime, date
-    shift_date_raw = data.get("shift_date")
-    shift_date = date.fromisoformat(shift_date_raw) if isinstance(shift_date_raw, str) else shift_date_raw
-    planned_start_raw = data.get("planned_start")
-    planned_end_raw = data.get("planned_end")
-    planned_start = datetime.fromisoformat(planned_start_raw) if isinstance(planned_start_raw, str) else planned_start_raw
-    planned_end = datetime.fromisoformat(planned_end_raw) if isinstance(planned_end_raw, str) else planned_end_raw
     shift = StaffShift(
-        store_id=int(data.get("store_id", 0)), staff_id=sid,
-        shift_template_id=data.get("shift_template_id"),
-        shift_date=shift_date,
-        planned_start=planned_start,
-        planned_end=planned_end,
-        status=data.get("status", "scheduled"), notes=data.get("notes"),
+        store_id=data.store_id, staff_id=sid,
+        shift_template_id=data.shift_template_id,
+        shift_date=data.shift_date,
+        planned_start=data.planned_start,
+        planned_end=data.planned_end,
+        status=data.status, notes=data.notes,
     )
     db.add(shift); await db.commit(); await db.refresh(shift)
     return APIResponse(data={"id": shift.id, "message": "Shift created"})
@@ -491,9 +488,9 @@ async def list_shift_templates(
     )
 
 @router.post("/shift-templates", response_model=APIResponse[dict], status_code=201)
-async def create_shift_template(db: DBDependency, admin: CurrentAdmin, data: dict):
+async def create_shift_template(db: DBDependency, admin: CurrentAdmin, data: ShiftTemplateCreate):
     from app.models.staff import ShiftTemplate
-    t = ShiftTemplate(store_id=data["store_id"], name=data["name"], start_time=data["start_time"], end_time=data["end_time"])
+    t = ShiftTemplate(store_id=data.store_id, name=data.name, start_time=data.start_time, end_time=data.end_time)
     db.add(t); await db.commit(); await db.refresh(t)
     return APIResponse(data={"id": t.id, "name": t.name})
 
@@ -501,7 +498,7 @@ async def create_shift_template(db: DBDependency, admin: CurrentAdmin, data: dic
 # ── Staff Role Management ── 
 
 @router.post("/{staff_id}/roles", response_model=APIResponse[dict])
-async def update_staff_roles(db: DBDependency, admin: CurrentAdmin, staff_id: int, data: dict):
+async def update_staff_roles(db: DBDependency, admin: CurrentAdmin, staff_id: int, data: StaffRolesUpdateRequest):
     """Replace role assignments for a staff member."""
     result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.deleted_at.is_(None)))
     sp = result.scalar_one_or_none()
@@ -516,7 +513,7 @@ async def update_staff_roles(db: DBDependency, admin: CurrentAdmin, staff_id: in
         ra.is_active = False
 
     # Add new
-    for rid in data.get("role_ids", []):
+    for rid in data.role_ids:
         db.add(RoleAssignment(assignee_id=sp.principal_id, role_id=rid, effective_from=datetime.now(timezone.utc), is_active=True))
     await db.commit()
     return APIResponse(data={"staff_id": staff_id, "updated": True})

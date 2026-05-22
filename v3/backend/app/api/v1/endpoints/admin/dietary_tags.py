@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.menu import DietaryTag, MenuItemDietaryTag
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.menu import DietaryTagCreate, DietaryTagUpdate
 from app.services.translation import auto_translate_record, delete_translations
 
 router = APIRouter(prefix="/admin/dietary-tags", tags=["admin — dietary tags"])
@@ -29,8 +30,8 @@ async def get_tag(db: DBDependency, admin: CurrentAdmin, id: int):
 
 
 @router.post("", response_model=APIResponse[dict])
-async def create_tag(db: DBDependency, admin: CurrentAdmin, data: dict):
-    tag = DietaryTag(tag_key=data["tag_key"], display_name=data["display_name"], icon=data.get("icon"))
+async def create_tag(db: DBDependency, admin: CurrentAdmin, data: DietaryTagCreate):
+    tag = DietaryTag(**data.model_dump(exclude_unset=True))
     db.add(tag)
     await db.commit()
     await db.refresh(tag)
@@ -39,15 +40,15 @@ async def create_tag(db: DBDependency, admin: CurrentAdmin, data: dict):
 
 
 @router.patch("/{id}", response_model=APIResponse[dict])
-async def update_tag(db: DBDependency, admin: CurrentAdmin, id: int, data: dict):
+async def update_tag(db: DBDependency, admin: CurrentAdmin, id: int, data: DietaryTagUpdate):
     result = await db.execute(select(DietaryTag).where(DietaryTag.id == id))
     tag = result.scalar_one_or_none()
     if not tag: raise HTTPException(404, "Tag not found")
-    for k in ["tag_key", "display_name", "icon"]:
-        if k in data: setattr(tag, k, data[k])
-    if "is_active" in data: tag.is_active = data["is_active"]
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(tag, field, value)
     await db.commit()
-    await auto_translate_record(db, "dietary_tags", id, {"display_name": data.get("display_name", "")})
+    await auto_translate_record(db, "dietary_tags", id, {"display_name": data.display_name or ""})
     return APIResponse(data={"id": tag.id, "display_name": tag.display_name, "message": "Updated"})
 
 

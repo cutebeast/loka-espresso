@@ -40,6 +40,21 @@ class AdminRegisterRequest(BaseSchema):
     store_ids: list[int] = []
 
 
+class CreateRoleRequest(BaseSchema):
+    display_name: str
+    role_key: str | None = None
+    description: str | None = None
+
+
+class UpdateRoleRequest(BaseSchema):
+    display_name: str | None = None
+    description: str | None = None
+
+
+class SetRolePermissionsRequest(BaseSchema):
+    permission_ids: list[int] = []
+
+
 @router.post("/register", response_model=AdminMeOut, status_code=status.HTTP_201_CREATED)
 async def admin_register(db: DBDependency, admin: CurrentAdmin, data: AdminRegisterRequest):
     """Create a new admin account. Requires existing admin authentication."""
@@ -233,15 +248,15 @@ async def list_roles(db: DBDependency, admin: CurrentAdmin):
 
 
 @router.post("/roles", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
-async def create_role(db: DBDependency, admin: CurrentAdmin, data: dict):
+async def create_role(db: DBDependency, admin: CurrentAdmin, data: CreateRoleRequest):
     """Create a new IAM role."""
-    result = await db.execute(select(IAMRole).where(IAMRole.role_key == data.get("role_key", "").lower().replace(" ", "_")))
+    result = await db.execute(select(IAMRole).where(IAMRole.role_key == (data.role_key or "").lower().replace(" ", "_")))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Role key already exists")
     role = IAMRole(
-        display_name=data["display_name"],
-        role_key=data.get("role_key", data["display_name"].lower().replace(" ", "_")),
-        description=data.get("description", ""),
+        display_name=data.display_name,
+        role_key=data.role_key or data.display_name.lower().replace(" ", "_"),
+        description=data.description or "",
     )
     db.add(role)
     await db.commit()
@@ -250,15 +265,16 @@ async def create_role(db: DBDependency, admin: CurrentAdmin, data: dict):
 
 
 @router.put("/roles/{role_id}", response_model=APIResponse[dict])
-async def update_role(db: DBDependency, admin: CurrentAdmin, role_id: int, data: dict):
+async def update_role(db: DBDependency, admin: CurrentAdmin, role_id: int, data: UpdateRoleRequest):
     """Update an IAM role."""
     result = await db.execute(select(IAMRole).where(IAMRole.id == role_id))
     role = result.scalar_one_or_none()
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
-    for field in ["display_name", "description"]:
-        if field in data:
-            setattr(role, field, data[field])
+    if data.display_name is not None:
+        role.display_name = data.display_name
+    if data.description is not None:
+        role.description = data.description
     await db.commit()
     return APIResponse(data={"id": role.id, "updated": True})
 
@@ -297,7 +313,7 @@ async def get_role_permissions(db: DBDependency, admin: CurrentAdmin, role_id: i
 
 
 @router.put("/roles/{role_id}/permissions", response_model=APIResponse[dict])
-async def set_role_permissions(db: DBDependency, admin: CurrentAdmin, role_id: int, data: dict):
+async def set_role_permissions(db: DBDependency, admin: CurrentAdmin, role_id: int, data: SetRolePermissionsRequest):
     """Set permissions for a role (replaces all)."""
     from app.models.iam import IAMPermission, RolePermission
     # Verify role exists
@@ -307,7 +323,7 @@ async def set_role_permissions(db: DBDependency, admin: CurrentAdmin, role_id: i
     # Remove existing
     await db.execute(delete(RolePermission).where(RolePermission.role_id == role_id))
     # Add new
-    for pid in data.get("permission_ids", []):
+    for pid in data.permission_ids:
         perm = await db.execute(select(IAMPermission).where(IAMPermission.id == pid))
         if perm.scalar_one_or_none():
             db.add(RolePermission(role_id=role_id, permission_id=pid))

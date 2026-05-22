@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.info_card import EventCard
-from app.schemas.content import EventCardOut
+from app.schemas.content import EventCardCreate, EventCardOut, EventCardUpdate
 from app.services.translation import auto_translate_record, delete_translations
 from app.schemas.base import APIResponse, PaginatedResponse
 
@@ -43,37 +43,27 @@ async def get_item(db: DBDependency, admin: CurrentAdmin, id: int):
     return APIResponse(data=d)
 
 @router.post("", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
-async def create_item(db: DBDependency, admin: CurrentAdmin, data: dict):
-    date_fields = ['start_date', 'end_date', 'event_datetime']
-    kwargs = {k: data.get(k) for k in ['title', 'slug', 'short_description', 'long_description', 'image_url', 'action_url', 'action_label', 'is_active', 'position', 'location', 'rsvp_enabled', 'rsvp_max_capacity', 'image_gallery_urls', 'gallery_video_url'] if k in data}
-    for f in date_fields:
-        if f in data and data[f]:
-            try:
-                from datetime import datetime as dt
-                kwargs[f] = dt.fromisoformat(data[f].replace('Z', '+00:00'))
-            except: pass
-    if "slug" in kwargs and not kwargs["slug"]:
-        kwargs["slug"] = (data.get("title","") or "").lower().replace(" ","-")[:50]
-    item = EventCard(**kwargs)
+async def create_item(db: DBDependency, admin: CurrentAdmin, data: EventCardCreate):
+    create_data = data.model_dump(exclude_unset=True)
+    if not create_data.get("slug") and data.title:
+        create_data["slug"] = data.title.lower().replace(" ", "-")[:50]
+    item = EventCard(**create_data)
     db.add(item); await db.commit(); await db.refresh(item)
-    await auto_translate_record(db, "event_cards", item.id, {"title": data.get("title",""), "short_description": data.get("short_description",""), "long_description": data.get("long_description","")})
+    await auto_translate_record(db, "event_cards", item.id, {"title": data.title or "", "short_description": data.short_description or "", "long_description": data.long_description or ""})
     return APIResponse(data={"id": item.id, "message": "Created"})
 
 
 @router.patch("/{id}", response_model=APIResponse[dict])
-async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: dict):
+async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: EventCardUpdate):
     result = await db.execute(select(EventCard).where(EventCard.id == id))
     item = result.scalar_one_or_none()
     if not item: raise HTTPException(404, "Not found")
-    for k in ['title', 'slug', 'short_description', 'long_description', 'image_url', 'action_url', 'action_label', 'is_active', 'position', 'location', 'rsvp_enabled', 'rsvp_max_capacity', 'image_gallery_urls', 'gallery_video_url']:
-        if k in data: setattr(item, k, data[k])
-    for f in ['start_date', 'end_date', 'event_datetime']:
-        if f in data and data[f]:
-            try: from datetime import datetime as dt; setattr(item, f, dt.fromisoformat(data[f].replace('Z', '+00:00')))
-            except: pass
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()
-    await auto_translate_record(db, "event_cards", id, {"title": data.get("title",""), "short_description": data.get("short_description",""), "long_description": data.get("long_description","")})
+    await auto_translate_record(db, "event_cards", id, {"title": data.title or "", "short_description": data.short_description or "", "long_description": data.long_description or ""})
     return APIResponse(data={"id": item.id, "message": "Updated"})
 
 

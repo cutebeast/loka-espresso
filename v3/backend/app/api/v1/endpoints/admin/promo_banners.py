@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.info_card import PromoBanner
-from app.schemas.content import PromoBannerOut
+from app.schemas.content import PromoBannerCreate, PromoBannerOut, PromoBannerUpdate
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.services.translation import auto_translate_record, delete_translations
 
@@ -32,11 +32,8 @@ async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1,
 
 
 @router.post("", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
-async def create_item(db: DBDependency, admin: CurrentAdmin, data: dict):
-    kwargs = {k: data.get(k) for k in ['title', 'short_description', 'long_description', 'image_url', 'action_type', 'action_url', 'voucher_id', 'survey_id', 'start_date', 'end_date', 'is_active', 'position', 'image_gallery_urls', 'gallery_video_url'] if k in data}
-    if "slug" in kwargs and not kwargs["slug"]:
-        kwargs["slug"] = (data.get("title","") or "").lower().replace(" ","-")[:50]
-    item = PromoBanner(**kwargs)
+async def create_item(db: DBDependency, admin: CurrentAdmin, data: PromoBannerCreate):
+    item = PromoBanner(**data.model_dump(exclude_unset=True))
     db.add(item); await db.commit();
     await auto_translate_record(db, "promo_banners", item.id, {"title": item.title or "", "short_description": item.short_description or ""})
     await db.refresh(item)
@@ -56,12 +53,13 @@ async def get_item(db: DBDependency, admin: CurrentAdmin, id: int):
     return APIResponse(data=d)
 
 @router.patch("/{id}", response_model=APIResponse[dict])
-async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: dict):
+async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: PromoBannerUpdate):
     result = await db.execute(select(PromoBanner).where(PromoBanner.id == id))
     item = result.scalar_one_or_none()
     if not item: raise HTTPException(404, "Not found")
-    for k in ['title', 'short_description', 'long_description', 'image_url', 'action_type', 'action_url', 'voucher_id', 'survey_id', 'start_date', 'end_date', 'is_active', 'position', 'image_gallery_urls', 'gallery_video_url']:
-        if k in data: setattr(item, k, data[k])
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()
     await auto_translate_record(db, "promo_banners", item.id, {"title": item.title or "", "short_description": item.short_description or ""})

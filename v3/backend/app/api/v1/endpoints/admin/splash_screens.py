@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.info_card import SplashScreen
 from app.schemas.base import APIResponse, PaginatedResponse
+from app.schemas.content import SplashScreenCreate, SplashScreenUpdate
 from app.services.translation import auto_translate_record, delete_translations
 
 router = APIRouter(prefix="/admin/content/splash-screens", tags=["admin — splash screens"])
@@ -40,35 +41,21 @@ async def get_item(db: DBDependency, admin: CurrentAdmin, id: int):
     return APIResponse(data=d)
 
 @router.post("", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
-async def create_item(db: DBDependency, admin: CurrentAdmin, data: dict):
-    kwargs = {
-        'screen_name': data.get('screen_name') or '',
-        'title': data.get('title') or '',
-        'subtitle': data.get('subtitle') or '',
-        'image_url': data.get('image_url') or '',
-        'cta_text': data.get('cta_text') or '',
-        'cta_url': data.get('cta_url') or '',
-        'is_active': data.get('is_active', True),
-        'show_frequency': data.get('show_frequency', 'once_per_session'),
-        'dismissible': data.get('dismissible', True),
-        'active_from': data.get('active_from'),
-        'active_until': data.get('active_until'),
-        'image_gallery_urls': data.get('image_gallery_urls'),
-        'gallery_video_url': data.get('gallery_video_url'),
-    }
-    item = SplashScreen(**kwargs)
+async def create_item(db: DBDependency, admin: CurrentAdmin, data: SplashScreenCreate):
+    item = SplashScreen(**data.model_dump(exclude_unset=True))
     db.add(item); await db.commit();
-    await auto_translate_record(db, "splash_screens", item.id, {"title": data.get("title",""), "subtitle": data.get("subtitle","")})
+    await auto_translate_record(db, "splash_screens", item.id, {"title": data.title or "", "subtitle": data.subtitle or ""})
     await db.refresh(item)
     return APIResponse(data={"id": item.id, "message": "Created"})
 
 @router.patch("/{id}", response_model=APIResponse[dict])
-async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: dict):
+async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: SplashScreenUpdate):
     result = await db.execute(select(SplashScreen).where(SplashScreen.id == id))
     item = result.scalar_one_or_none()
     if not item: raise HTTPException(404, "Not found")
-    for k in ['screen_name', 'title', 'subtitle', 'image_url', 'cta_text', 'cta_url', 'show_frequency', 'dismissible', 'active_from', 'active_until', 'is_active', 'image_gallery_urls', 'gallery_video_url']:
-        if k in data: setattr(item, k, data[k])
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()
     await auto_translate_record(db, "splash_screens", item.id, {"title": item.title or "", "subtitle": item.subtitle or ""})

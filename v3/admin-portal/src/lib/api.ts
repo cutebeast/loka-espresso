@@ -37,7 +37,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
         if (retry.ok) return retry;
       }
       localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("adminEmail");
-      if (typeof window !== "undefined") window.location.href = "/login";
+      if (typeof window !== "undefined") window.location.replace("/login");
       throw new Error("Session expired");
     }
     return res;
@@ -67,7 +67,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown): Prom
         if (retry.ok) return retry;
       }
       localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("adminEmail");
-      if (typeof window !== "undefined") window.location.href = "/login";
+      if (typeof window !== "undefined") window.location.replace("/login");
       throw new Error("Session expired");
     }
     return res;

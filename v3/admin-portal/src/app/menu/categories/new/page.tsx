@@ -14,7 +14,7 @@ export default function NewCategoryPage() {
     try {
       if (!form.slug) form.slug = form.category_name.toLowerCase().replace(/[^a-z0-9]/g, "-");
       const r: any = await api.post("/admin/menu/categories", form);
-      const id = r?.data?.id || r?.id;
+      const id = r?.id;
       if (id) router.push(`/menu/categories/${id}`);
     } catch { /* ignore */ }
     finally { setSaving(false); }

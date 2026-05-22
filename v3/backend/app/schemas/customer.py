@@ -140,3 +140,44 @@ class CustomerMeOut(BaseSchema):
     devices: list[CustomerDeviceOut]
     consents: list[CustomerConsentOut]
     referral_code: str | None = None
+
+
+class CustomerUpdate(BaseSchema):
+    display_name: str | None = Field(None, max_length=100)
+    phone_number: str | None = Field(None, max_length=20)
+    email_address: str | None = Field(None, max_length=255)
+    date_of_birth: date | None = None
+    is_active: bool | None = None
+    preferred_language: str | None = Field(None, max_length=10)
+
+
+class CustomerCreate(BaseSchema):
+    phone_number: str | None = Field(None, max_length=20)
+    email_address: str | None = Field(None, max_length=255)
+    display_name: str | None = Field(None, max_length=100)
+    given_name: str | None = Field(None, max_length=50)
+    family_name: str | None = Field(None, max_length=50)
+    preferred_language: str = Field(default="en", max_length=10)
+
+
+class AdjustPointsRequest(BaseSchema):
+    points: int
+    reason: str = "Admin adjustment"
+
+
+class AwardVoucherRequest(BaseSchema):
+    voucher_id: int = Field(..., gt=0)
+    reason: str = "Admin awarded"
+
+
+class UseRewardRequest(BaseSchema):
+    store_id: int | None = None
+
+
+class UseVoucherRequest(BaseSchema):
+    store_id: int | None = None
+
+
+class SetTierRequest(BaseSchema):
+    tier: str
+    reason: str = "Admin override"

@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.info_card import ContentSection
 from app.schemas.base import APIResponse
+from app.schemas.content import ContentSectionCreate, ContentSectionUpdate, ContentSectionBatchSaveRequest
 
 router = APIRouter(prefix="/admin/content-sections", tags=["admin — content sections"])
 
@@ -32,54 +33,46 @@ async def list_sections(
 
 
 @router.post("", response_model=APIResponse[dict])
-async def create_section(db: DBDependency, admin: CurrentAdmin, data: dict):
-    content_type = data["content_type"]
-    content_id = data["content_id"]
-    section = ContentSection(
-        content_type=content_type, content_id=content_id,
-        section_title=data.get("section_title"), section_body=data.get("section_body"),
-        sort_order=data.get("sort_order", 0), is_active=data.get("is_active", True),
-    )
+async def create_section(db: DBDependency, admin: CurrentAdmin, data: ContentSectionCreate):
+    section = ContentSection(**data.model_dump(exclude_unset=True))
     db.add(section); await db.commit(); await db.refresh(section)
     return APIResponse(data={"id": section.id, "message": "Created"})
 
 
 @router.patch("/{id}", response_model=APIResponse[dict])
-async def update_section(db: DBDependency, admin: CurrentAdmin, id: int, data: dict):
+async def update_section(db: DBDependency, admin: CurrentAdmin, id: int, data: ContentSectionUpdate):
     result = await db.execute(select(ContentSection).where(ContentSection.id == id))
     s = result.scalar_one_or_none()
     if not s: raise HTTPException(404, "Not found")
-    for k in ["section_title", "section_body", "sort_order", "is_active"]:
-        if k in data: setattr(s, k, data[k])
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(s, field, value)
     await db.commit()
     return APIResponse(data={"id": s.id, "message": "Updated"})
 
 
 @router.put("/batch", response_model=APIResponse[dict])
-async def save_sections(db: DBDependency, admin: CurrentAdmin, data: dict):
+async def save_sections(db: DBDependency, admin: CurrentAdmin, data: ContentSectionBatchSaveRequest):
     """Replace all sections for a content item (batch save)."""
-    content_type = data["content_type"]
-    content_id = data["content_id"]
-    
     # Delete existing
     existing = await db.execute(
         select(ContentSection).where(
-            ContentSection.content_type == content_type,
-            ContentSection.content_id == content_id,
+            ContentSection.content_type == data.content_type,
+            ContentSection.content_id == data.content_id,
         )
     )
     for s in existing.scalars().all():
         await db.delete(s)
     
     # Insert new
-    sections = data.get("sections", [])
+    sections = data.sections
     for i, s in enumerate(sections):
-        if not s.get("section_title") and not s.get("section_body"):
+        if not s.section_title and not s.section_body:
             continue
         section = ContentSection(
-            content_type=content_type, content_id=content_id,
-            section_title=s.get("section_title"), section_body=s.get("section_body"),
-            sort_order=i, is_active=s.get("is_active", True),
+            content_type=data.content_type, content_id=data.content_id,
+            section_title=s.section_title, section_body=s.section_body,
+            sort_order=i, is_active=s.is_active,
         )
         db.add(section)
     

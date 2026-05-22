@@ -78,7 +78,7 @@ export default function NewTierPage() {
         complimentary_upgrades: !!benefits.complimentary_upgrades,
       };
       const r: any = await api.post("/admin/loyalty/tiers", payload);
-      const id = r?.data?.id || r?.id;
+      const id = r?.id;
       if (id) router.push(`/loyalty/tiers/${id}`);
       else router.push("/loyalty/tiers");
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }

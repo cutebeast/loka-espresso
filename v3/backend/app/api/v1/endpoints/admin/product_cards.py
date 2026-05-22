@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.info_card import ProductCard
-from app.schemas.content import ProductCardOut
+from app.schemas.content import ProductCardCreate, ProductCardOut, ProductCardUpdate
 from app.services.translation import auto_translate_record, delete_translations
 from app.schemas.base import APIResponse, PaginatedResponse
 
@@ -43,26 +43,27 @@ async def get_item(db: DBDependency, admin: CurrentAdmin, id: int):
     return APIResponse(data=d)
 
 @router.post("", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
-async def create_item(db: DBDependency, admin: CurrentAdmin, data: dict):
-    kwargs = {k: data.get(k) for k in ['title', 'slug', 'short_description', 'long_description', 'image_url', 'price', 'action_url', 'action_label', 'is_active', 'position', 'image_gallery_urls', 'gallery_video_url'] if k in data}
-    if "slug" in kwargs and not kwargs["slug"]:
-        kwargs["slug"] = (data.get("title","") or "").lower().replace(" ","-")[:50]
-    item = ProductCard(**kwargs)
+async def create_item(db: DBDependency, admin: CurrentAdmin, data: ProductCardCreate):
+    create_data = data.model_dump(exclude_unset=True)
+    if not create_data.get("slug") and data.title:
+        create_data["slug"] = data.title.lower().replace(" ", "-")[:50]
+    item = ProductCard(**create_data)
     db.add(item); await db.commit(); await db.refresh(item)
-    await auto_translate_record(db, "product_cards", item.id, {"title": data.get("title",""), "short_description": data.get("short_description",""), "long_description": data.get("long_description","")})
+    await auto_translate_record(db, "product_cards", item.id, {"title": data.title or "", "short_description": data.short_description or "", "long_description": data.long_description or ""})
     return APIResponse(data={"id": item.id, "message": "Created"})
 
 
 @router.patch("/{id}", response_model=APIResponse[dict])
-async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: dict):
+async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: ProductCardUpdate):
     result = await db.execute(select(ProductCard).where(ProductCard.id == id))
     item = result.scalar_one_or_none()
     if not item: raise HTTPException(404, "Not found")
-    for k in ['title', 'slug', 'short_description', 'long_description', 'image_url', 'price', 'action_url', 'action_label', 'is_active', 'position', 'image_gallery_urls', 'gallery_video_url']:
-        if k in data: setattr(item, k, data[k])
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()
-    await auto_translate_record(db, "product_cards", id, {"title": data.get("title",""), "short_description": data.get("short_description",""), "long_description": data.get("long_description","")})
+    await auto_translate_record(db, "product_cards", id, {"title": data.title or "", "short_description": data.short_description or "", "long_description": data.long_description or ""})
     return APIResponse(data={"id": item.id, "message": "Updated"})
 
 

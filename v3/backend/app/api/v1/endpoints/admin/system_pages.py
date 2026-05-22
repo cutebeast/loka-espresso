@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.info_card import SystemPage
-from app.schemas.content import SystemPageOut
+from app.schemas.content import SystemPageCreate, SystemPageOut, SystemPageUpdate
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.services.translation import auto_translate_record, delete_translations
 
@@ -41,23 +41,21 @@ async def get_item(db: DBDependency, admin: CurrentAdmin, id: int):
     return APIResponse(data=d)
 
 @router.post("", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
-async def create_item(db: DBDependency, admin: CurrentAdmin, data: dict):
-    kwargs = {k: data.get(k) for k in ['page_key', 'title', 'body_text', 'is_active'] if k in data}
-    if "slug" in kwargs and not kwargs["slug"]:
-        kwargs["slug"] = (data.get("title","") or "").lower().replace(" ","-")[:50]
-    item = SystemPage(**kwargs)
+async def create_item(db: DBDependency, admin: CurrentAdmin, data: SystemPageCreate):
+    item = SystemPage(**data.model_dump(exclude_unset=True))
     db.add(item); await db.commit();
-    await auto_translate_record(db, "system_pages", item.id, {"title": data.get("title",""), "body_text": data.get("body_text","")})
+    await auto_translate_record(db, "system_pages", item.id, {"title": data.title or "", "body_text": data.body_text or ""})
     await db.refresh(item)
     return APIResponse(data={"id": item.id, "message": "Created"})
 
 @router.patch("/{id}", response_model=APIResponse[dict])
-async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: dict):
+async def update_item(db: DBDependency, admin: CurrentAdmin, id: int, data: SystemPageUpdate):
     result = await db.execute(select(SystemPage).where(SystemPage.id == id))
     item = result.scalar_one_or_none()
     if not item: raise HTTPException(404, "Not found")
-    for k in ['page_key', 'title', 'body_text', 'is_active']:
-        if k in data: setattr(item, k, data[k])
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(item, field, value)
     setattr(item, "updated_at", datetime.now(timezone.utc))
     await db.commit()
     await auto_translate_record(db, "system_pages", item.id, {"title": item.title or "", "body_text": item.body_text or ""})

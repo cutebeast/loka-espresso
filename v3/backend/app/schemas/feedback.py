@@ -31,3 +31,12 @@ class FeedbackStatsOut(BaseSchema):
     average_rating: float = 0
     total_reviews: int = 0
     rating_distribution: dict[int, int] = Field(default_factory=lambda: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0})
+
+
+class FeedbackCreate(BaseSchema):
+    title: str | None = None
+    subject: str | None = None
+    body: str | None = None
+    message: str | None = None
+    rating: int = 5
+    store_id: int | None = None

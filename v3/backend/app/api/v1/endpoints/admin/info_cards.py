@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.info_card import InformationCard
-from app.schemas.content import InfoCardOut
+from app.schemas.content import InfoCardCreate, InfoCardOut, InfoCardUpdate
 from app.services.translation import auto_translate_record, delete_translations
 from app.schemas.base import APIResponse, PaginatedResponse
 
@@ -48,35 +48,27 @@ async def get_card(db: DBDependency, admin: CurrentAdmin, id: int):
     return APIResponse(data=d)
 
 @router.post("", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
-async def create_card(db: DBDependency, admin: CurrentAdmin, data: dict):
-    card = InformationCard(
-        title=data["title"], slug=data.get("slug") or data["title"].lower().replace(" ", "-"),
-        short_description=data.get("short_description"), long_description=data.get("long_description"),
-        icon=data.get("icon"), image_url=data.get("image_url"),
-        content_type=data.get("content_type", "information"),
-        action_url=data.get("action_url"),
-        action_type=data.get("action_type"), action_label=data.get("action_label"),
-        position=data.get("position", 0), is_active=data.get("is_active", True),
-        start_date=data.get("start_date"), end_date=data.get("end_date"),
-        image_gallery_urls=data.get("image_gallery_urls"),
-        gallery_video_url=data.get("gallery_video_url"),
-    )
+async def create_card(db: DBDependency, admin: CurrentAdmin, data: InfoCardCreate):
+    create_data = data.model_dump(exclude_unset=True)
+    if not create_data.get("slug") and data.title:
+        create_data["slug"] = data.title.lower().replace(" ", "-")
+    card = InformationCard(**create_data)
     db.add(card); await db.commit(); await db.refresh(card)
-    await auto_translate_record(db, "information_cards", card.id, {"title": data.get("title",""), "short_description": data.get("short_description",""), "long_description": data.get("long_description","")})
+    await auto_translate_record(db, "information_cards", card.id, {"title": data.title or "", "short_description": data.short_description or "", "long_description": data.long_description or ""})
     return APIResponse(data={"id": card.id, "title": card.title, "slug": card.slug, "message": "Created"})
 
 
 @router.patch("/{id}", response_model=APIResponse[dict])
-async def update_card(db: DBDependency, admin: CurrentAdmin, id: int, data: dict):
+async def update_card(db: DBDependency, admin: CurrentAdmin, id: int, data: InfoCardUpdate):
     result = await db.execute(select(InformationCard).where(InformationCard.id == id))
     card = result.scalar_one_or_none()
     if not card: raise HTTPException(404, "Not found")
-    for k in ["title","slug","short_description","long_description","icon","image_url","content_type","action_url","action_type","action_label","position","is_active","start_date","end_date","image_gallery_urls","gallery_video_url"]:
-        if k in data:
-            setattr(card, k, data[k])
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(card, field, value)
     card.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    await auto_translate_record(db, "information_cards", id, {"title": data.get("title",""), "short_description": data.get("short_description",""), "long_description": data.get("long_description","")})
+    await auto_translate_record(db, "information_cards", id, {"title": data.title or "", "short_description": data.short_description or "", "long_description": data.long_description or ""})
     return APIResponse(data={"id": card.id, "message": "Updated"})
 
 

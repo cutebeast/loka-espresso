@@ -10,7 +10,7 @@ from app.models.customer import Customer
 from app.models.feedback import FeedbackEntry
 from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse
-from app.schemas.feedback import FeedbackEntryOut, FeedbackReplyRequest, FeedbackStatsOut
+from app.schemas.feedback import FeedbackCreate, FeedbackEntryOut, FeedbackReplyRequest, FeedbackStatsOut
 
 router = APIRouter(prefix="/admin/feedback", tags=["admin — feedback"])
 public_router = APIRouter(tags=["feedback"])
@@ -171,14 +171,13 @@ async def reply_feedback(
 @public_router.post("/feedback", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
 async def submit_feedback(
     db: DBDependency,
-    data: dict,
+    data: FeedbackCreate,
     customer: ActiveCustomer,
 ):
     """Submit customer feedback."""
-    title = data.get("title") or data.get("subject") or "Feedback"
-    body = data.get("body") or data.get("message") or ""
-    rating = data.get("rating", 5)
-    store_id = data.get("store_id")
+    title = data.title or data.subject or "Feedback"
+    body = data.body or data.message or ""
+    rating = data.rating
 
     # Validate rating
     if not isinstance(rating, int) or rating < 1 or rating > 5:
@@ -186,7 +185,7 @@ async def submit_feedback(
 
     entry = FeedbackEntry(
         customer_id=customer.id,
-        store_id=store_id,
+        store_id=data.store_id,
         title=title,
         body=body,
         rating=rating,

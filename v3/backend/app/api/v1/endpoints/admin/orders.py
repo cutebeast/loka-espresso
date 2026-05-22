@@ -15,11 +15,16 @@ from app.models.reward import CustomerReward, RewardCatalog
 from app.models.wallet import Wallet, WalletLedgerEntry
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.order import (
+    ApplyOrderRewardRequest,
+    ApplyOrderVoucherRequest,
     OrderAdjustmentOut,
     OrderFulfillmentOut,
     OrderLineItemOut,
     OrderOut,
     OrderStatusLogOut,
+    PayWithWalletRequest,
+    ProcessOrderPaymentRequest,
+    UpdateOrderStatusRequest,
 )
 
 router = APIRouter(prefix="/admin/orders", tags=["admin — orders"])
@@ -217,10 +222,10 @@ async def update_order_status(
     admin: CurrentAdmin,
     db: DBDependency,
     order_id: int,
-    data: dict,
+    data: UpdateOrderStatusRequest,
 ):
     """Update order status (admin)."""
-    status_value = data.get("status")
+    status_value = data.status
     if not status_value:
         raise HTTPException(status_code=400, detail="status is required")
     if status_value not in ORDER_STATUSES:
@@ -270,7 +275,7 @@ async def process_order_payment(
     admin: CurrentAdmin,
     db: DBDependency,
     order_id: int,
-    data: dict,
+    data: ProcessOrderPaymentRequest,
 ):
     """Process POS payment for an order (cash/card/qr)."""
     from app.models.payment import Payment
@@ -282,11 +287,11 @@ async def process_order_payment(
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    payment_method = data.get("payment_method", "cash")
-    amount_tendered = float(data.get("amount_tendered", 0) or 0)
-    amount = float(data.get("amount") or order.total_amount or 0)
-    discount_amount = float(data.get("discount_amount", 0) or 0)
-    discount_type = data.get("discount_type")
+    payment_method = data.payment_method
+    amount_tendered = data.amount_tendered
+    amount = data.amount if data.amount is not None else float(order.total_amount or 0)
+    discount_amount = data.discount_amount
+    discount_type = data.discount_type
 
     if amount <= 0 and not discount_amount:
         amount = float(order.total_amount or 0)
@@ -356,10 +361,10 @@ async def apply_order_voucher(
     admin: CurrentAdmin,
     db: DBDependency,
     order_id: int,
-    data: dict,
+    data: ApplyOrderVoucherRequest,
 ):
     """Apply a customer voucher to an existing order."""
-    voucher_code = data.get("voucher_code", "").strip()
+    voucher_code = data.voucher_code.strip()
     if not voucher_code:
         raise HTTPException(status_code=400, detail="voucher_code is required")
 
@@ -457,12 +462,10 @@ async def apply_order_reward(
     admin: CurrentAdmin,
     db: DBDependency,
     order_id: int,
-    data: dict,
+    data: ApplyOrderRewardRequest,
 ):
     """Apply a customer reward to an existing order."""
-    reward_id = data.get("reward_id")
-    if not reward_id:
-        raise HTTPException(status_code=400, detail="reward_id is required")
+    reward_id = data.reward_id
 
     # Load order
     result = await db.execute(select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)))
@@ -478,7 +481,7 @@ async def apply_order_reward(
         select(CustomerReward, RewardCatalog)
         .join(RewardCatalog, CustomerReward.reward_catalog_id == RewardCatalog.id, isouter=True)
         .where(
-            CustomerReward.id == int(reward_id),
+            CustomerReward.id == reward_id,
             CustomerReward.customer_id == order.customer_id,
             CustomerReward.status.in_(["active", "reserved"]),
         )
@@ -542,12 +545,10 @@ async def pay_with_wallet(
     admin: CurrentAdmin,
     db: DBDependency,
     order_id: int,
-    data: dict,
+    data: PayWithWalletRequest,
 ):
     """Pay for an order using the customer's wallet credit."""
-    amount = float(data.get("amount", 0) or 0)
-    if amount <= 0:
-        raise HTTPException(status_code=400, detail="amount must be greater than 0")
+    amount = data.amount
 
     # Load order
     result = await db.execute(select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)))

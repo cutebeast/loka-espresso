@@ -27,7 +27,7 @@ export default function NewItemPage() {
   const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setSaving(true);
     try {
       const r: any = await api.post("/admin/inventory/items", { ...form, store_id: Number(storeId), category_id: form.category_id ? Number(form.category_id) : null, supplier_id: form.supplier_id ? Number(form.supplier_id) : null, current_stock: Number(form.current_stock), reorder_level: Number(form.reorder_level), unit_cost: Number(form.unit_cost) });
-      const id = r?.data?.id || r?.id;
+      const id = r?.id;
       if (id) router.push(`/inventory/items/${id}`);
       else router.push("/inventory/items");
     } catch (e: any) { setError(e.message); } finally { setSaving(false); }

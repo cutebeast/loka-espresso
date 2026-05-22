@@ -251,5 +251,28 @@ class ContentSectionBase(BaseSchema):
     sort_order: int = Field(default=0, ge=0)
     is_active: bool = True
 
+class ContentSectionCreate(ContentSectionBase):
+    pass
+
+
+class ContentSectionUpdate(BaseSchema):
+    section_title: str | None = Field(None, max_length=255)
+    section_body: str | None = None
+    sort_order: int | None = Field(None, ge=0)
+    is_active: bool | None = None
+
+
 class ContentSectionOut(ContentSectionBase, TimestampedSchema):
     id: int
+
+
+class ContentSectionItem(BaseSchema):
+    section_title: str | None = Field(None, max_length=255)
+    section_body: str | None = None
+    is_active: bool = True
+
+
+class ContentSectionBatchSaveRequest(BaseSchema):
+    content_type: str = Field(..., max_length=30)
+    content_id: int
+    sections: list[ContentSectionItem] = []
