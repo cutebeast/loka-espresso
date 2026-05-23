@@ -27,8 +27,7 @@ export default function LoyaltySettingsPage() {
   const save = async (key: string, value: string) => {
     setSaving(key);
     try {
-      const qs = new URLSearchParams({ key, value });
-      await api.put(`/admin/config?${qs.toString()}`);
+      await api.put("/admin/config", { key, value });
       setMsg(`${key} updated`);
       setTimeout(() => setMsg(""), 2000);
     } catch (e: any) { setMsg(e.message); }

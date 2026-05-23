@@ -34,7 +34,7 @@ export default function PosPage() {
       }
       return { ...prev, [groupId]: [modId] };
     });
-  }, [pos.setSelectedModifiers]);
+  }, [pos]);
 
   // ── Success Screen ──
   if (pos.state === "done" && pos.result) {

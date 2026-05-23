@@ -23,6 +23,8 @@ function clearAuthStorage(): void {
   localStorage.removeItem("staffProfile");
   localStorage.removeItem("staffId");
   localStorage.removeItem("isAdmin");
+  localStorage.removeItem("pos_active_cart");
+  localStorage.removeItem("pos_held_orders");
 }
 
 /* ------------------------------------------------------------------ */

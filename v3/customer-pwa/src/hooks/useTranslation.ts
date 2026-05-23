@@ -14,7 +14,7 @@ export function useTranslation() {
 
   const t = useCallback(
     (key: string, options?: Record<string, string | number>) => translate(key, options),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [locale, version],
   );
 

@@ -79,7 +79,7 @@ export default function ProfilePage() {
         })));
       })
       .catch((err) => { console.error('[Profile] Recent orders fetch failed:', err); setRecentOrders([]); });
-  }, []);
+  }, [t]);
 
   const handleLogout = async () => {
     logout();

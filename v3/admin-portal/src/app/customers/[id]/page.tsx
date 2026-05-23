@@ -186,7 +186,7 @@ export default function CustomerDetailPage() {
   useEffect(() => { fetchTab(tab); }, [tab, fetchTab]);
 
   const handleSave = async () => { setSaving(true); setMsg("");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     try { await api.patch(`/admin/customers/${id}`, form); setMsg("Saved"); setEdit(false); load(); } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -215,7 +215,7 @@ export default function CustomerDetailPage() {
       }
       setMsg(res?.message || "Done");
       if (action !== "approve") fetchTab(tab);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     } catch (e: any) { setMsg(e.message); }
     finally { setActionLoading(""); }
   };

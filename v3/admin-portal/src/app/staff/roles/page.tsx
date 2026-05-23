@@ -85,7 +85,7 @@ export default function StaffRolesPage() {
       {(showForm || editingId) && (
         <div className="card" style={{ padding: 20, marginBottom: 16, maxWidth: 440 }}>
           <h3>{editingId ? "Edit Role" : "New Staff Role"}</h3>
-          <form onSubmit={e => { e.preventDefault(); editingId ? handleUpdate(editingId) : handleCreate(e); }}>
+          <form onSubmit={e => { e.preventDefault(); if (editingId) { handleUpdate(editingId); } else { handleCreate(e); } }}>
             <div className="df-grid">
               <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="form-label">Name</label><input required className="w-full border rounded px-3 py-2 text-sm" value={form.display_name} onChange={e => setForm({ ...form, display_name: e.target.value })} /></div>
               <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="form-label">Key</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.role_key} onChange={e => setForm({ ...form, role_key: e.target.value.replace(/\s/g, "_").toLowerCase() })} /></div>

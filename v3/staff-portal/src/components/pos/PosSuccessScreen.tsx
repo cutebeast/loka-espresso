@@ -51,7 +51,7 @@ export default function PosSuccessScreen({ mode, result, total, change, paymentM
               <Printer size={16} /> Print Receipt
             </button>
             {paymentMethod === "cash" && (
-              <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.cashDrawer ? console.log("Cash drawer: open") : showFeatureToast("Cash Drawer")} title="Cash drawer integration pending">
+              <button type="button" className="btn btn-outline" onClick={() => FEATURE_FLAGS.cashDrawer ? console.warn("Cash drawer: open") : showFeatureToast("Cash Drawer")} title="Cash drawer integration pending">
                 <Archive size={16} /> Open Cash Drawer
               </button>
             )}

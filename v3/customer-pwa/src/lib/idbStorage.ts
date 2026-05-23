@@ -75,8 +75,10 @@ export const idbStorage = {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       store.put(value, name);
-    }).catch(() => {
-      try { localStorage.setItem(name, value); } catch { /* storage full */ }
+    }).catch((err) => {
+      try { localStorage.setItem(name, value); } catch {
+        console.error('idbStorage: failed to persist key', name, '— both IndexedDB and localStorage unavailable', err);
+      }
     });
   },
   removeItem: (name: string): void => {

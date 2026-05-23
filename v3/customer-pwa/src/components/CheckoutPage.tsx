@@ -66,7 +66,7 @@ export default function CheckoutPage() {
   const [draftSaved, setDraftSaved] = useState(false);
 
   useEffect(() => { refreshWallet(); }, [refreshWallet]);
-  useEffect(() => { if (user && !checkoutDraft.recipientName && !recipientName) { setRecipientName(user.name || ''); setRecipientPhone(user.phone || ''); } }, [user]);
+  useEffect(() => { if (user && !checkoutDraft.recipientName && !recipientName) { setRecipientName(user.name || ''); setRecipientPhone(user.phone || ''); }   }, [user, checkoutDraft.recipientName, recipientName]);
   // Migrate legacy drafts that stored voucher/reward without discountType
   const migratedDraft = useRef(false);
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function CheckoutPage() {
     } else {
       migratedDraft.current = true;
     }
-  }, [checkoutDraft.voucherCode, checkoutDraft.rewardCode]);
+  }, [checkoutDraft.voucherCode, checkoutDraft.rewardCode, discountCode, discountType]);
 
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? (selectedStore?.delivery_fee ?? config.delivery_fee) : 0;

@@ -31,7 +31,7 @@ export default function SettingsPage() {
         else setAboutText(t('settings.aboutFallback'));
       })
       .catch((err) => { console.error('[Settings] About fetch failed:', err); setAboutText(t('settings.aboutFallback')); });
-  }, []);
+  }, [t]);
 
   return (
     <div className="settings-screen">

@@ -106,11 +106,6 @@ export function usePosState() {
         }
         setTables(Array.isArray(tablesData) ? (tablesData as Table[]).filter((t) => t.is_active !== false) : []);
 
-        const held = localStorage.getItem("pos_held_orders");
-        if (held) {
-          try { cartHook.setHeldOrders(JSON.parse(held)); } catch (e) { console.error("Failed to parse held orders:", e); cartHook.setHeldOrders([]); }
-        }
-
         if (checkoutOrderId) {
           await checkoutHook.loadCheckoutOrder(checkoutOrderId);
         }
@@ -123,6 +118,7 @@ export function usePosState() {
     load();
     return () => {
       mounted = false;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- ref set asynchronously, must capture in cleanup
       const timer = searchTimerRef.current;
       if (timer) clearTimeout(timer);
     };
@@ -205,7 +201,6 @@ export function usePosState() {
     const held = cartHook.holdOrder();
     if (held) {
       setMsg("Order parked successfully");
-      cartHook.newOrder();
     }
   };
 

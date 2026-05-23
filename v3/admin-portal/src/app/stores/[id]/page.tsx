@@ -229,7 +229,7 @@ export default function StoreEditPage() {
     setMsg("Translation saved");
     setTimeout(() => setMsg(""), 2000);
   };
-  handleSaveTranslation; // keep reference for TS
+  void handleSaveTranslation;
 
   if (loading) return <div style={{ padding: 32 }}><p>Loading...</p></div>;
   if (!store) return <div style={{ padding: 32 }}><p>Store not found</p></div>;

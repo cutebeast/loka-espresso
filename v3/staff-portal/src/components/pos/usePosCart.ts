@@ -130,7 +130,7 @@ export function usePosCart(_storeId: number, crewName: string) {
     });
     newOrder();
     return held;
-  }, [cart, tableId, selectedCustomer, orderType, orderNotes, crewName]);
+  }, [cart, tableId, selectedCustomer, orderType, orderNotes, crewName, newOrder]);
 
   const recallOrder = useCallback((held: HeldOrder) => {
     setCart(held.cart);

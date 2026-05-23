@@ -141,7 +141,7 @@ INSERT INTO admin_accounts (
     is_active
 ) VALUES (
     1,
-    'admin@loyaltysystem.uk',
+    'admin@lokaespresso.my',
     'System Administrator',
     '$argon2id$v=19$m=65536,t=3,p=4$k9JKDH0HXNBko+oVT+cKLw$Rh9YgM4rsyQ4ir2RGTMUG536h8Ihkmdk2Ncida5VyyE',
     'argon2id',

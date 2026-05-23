@@ -227,7 +227,7 @@ export default function MenuPage() {
               key={cat.id ?? 'all'}
               className={`menu-cat-tab ${activeCategoryId === cat.id ? 'active' : ''}`}
               onClick={() => scrollToCategory(cat.id)}
-              aria-selected={activeCategoryId === cat.id}
+              aria-pressed={activeCategoryId === cat.id}
             >
               {cat.name}
             </button>

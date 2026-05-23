@@ -40,6 +40,7 @@ export function useVersionCheck() {
         showToast(t('notifications.newCount', { count: items.length }), 'info');
       }
       return items;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('[PWA] Notification check failed:', err?.response?.status || err?.message || err);
       return [];

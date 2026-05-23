@@ -15,7 +15,7 @@ from app.services.auth import (
     refresh_admin_tokens,
 )
 from app.core.rate_limiter import limiter
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 
 router = APIRouter(prefix="/admin/auth", tags=["admin — authentication"])
 
@@ -370,6 +370,24 @@ async def set_role_permissions(db: DBDependency, admin: CurrentAdmin, role_id: i
             db.add(RolePermission(role_id=role_id, permission_id=pid))
     await db.commit()
     return APIResponse(data={"role_id": role_id, "updated": True})
+
+
+class ChangePasswordRequest(BaseSchema):
+    current_password: str
+    password: str
+
+
+@router.post("/change-password", response_model=APIResponse[dict])
+async def change_admin_password(db: DBDependency, admin: CurrentAdmin, data: ChangePasswordRequest):
+    """Change the current admin's password."""
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if not verify_password(data.current_password, admin.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    admin.password_hash = hash_password(data.password)
+    admin.password_algorithm = "argon2id"
+    await db.commit()
+    return APIResponse(data={"updated": True})
 
 
 @router.delete("/users/{user_id}", response_model=APIResponse[dict])

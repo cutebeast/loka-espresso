@@ -98,7 +98,6 @@ export function usePaginatedFetch<T>(
   const [error, setError] = useState("");
   const cancelledRef = useRef(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetch = useCallback(async (p?: number, pp?: number) => {
     const pageNum = p ?? pagination.page;
     const perPageNum = pp ?? pagination.perPage;
@@ -123,7 +122,7 @@ export function usePaginatedFetch<T>(
   useEffect(() => {
     fetch(pagination.page, pagination.perPage);
     return () => { cancelledRef.current = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [pagination.page, pagination.perPage, fetch, ..._deps]);
 
   return {

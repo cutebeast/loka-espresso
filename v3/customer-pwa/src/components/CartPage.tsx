@@ -63,7 +63,7 @@ export default function CartPage() {
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
   const [editOptions, setEditOptions] = useState<ApiCustomOption[]>([]);
   const [editLoading, setEditLoading] = useState(false);
-  const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
   const total = subtotal + deliveryFee;

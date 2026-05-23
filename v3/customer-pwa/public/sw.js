@@ -1,10 +1,10 @@
 /**
  * Loka Espresso PWA Service Worker
- * Version: 0.1.0 (build 2026-05-21T20:53:05.596Z)
+ * Version: 0.1.0 (build 2026-05-23T23:22:05.474Z)
  * Build: 2026-04-23T20:22:55.000Z
  */
 
-const CACHE_VERSION = 'v3-2026-05-22';
+const CACHE_VERSION = 'v0.1.0.1779578525';
 const CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',
@@ -256,6 +256,7 @@ async function queueOrder(orderPayload, authToken) {
     const store = tx.objectStore(STORE_NAME);
     const record = {
       payload: orderPayload,
+      authToken: authToken || null,
       timestamp: Date.now(),
       retryCount: 0,
       nextRetryAt: 0,
@@ -396,6 +397,9 @@ async function replayOrders() {
         'Content-Type': 'application/json',
         'Idempotency-Key': `sw-sync-${record.id}`,
       };
+      if (record.authToken) {
+        headers['Authorization'] = `Bearer ${record.authToken}`;
+      }
       const response = await fetch(`${API_BASE}/orders`, {
         method: 'POST',
         headers,

@@ -33,6 +33,7 @@ import HomePage from './HomePage';
 import MenuPage from './MenuPage';
 import CartPage from './CartPage';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pageImporters: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
   orders: () => import('./OrdersPage'),
   profile: () => import('./ProfilePage'),
@@ -58,8 +59,10 @@ const pageImporters: Record<string, () => Promise<{ default: React.ComponentType
   events: () => import('./EventsPage'),
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const dynamicCache: Record<string, React.ComponentType<any>> = {};
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getPageComponent(key: string): React.ComponentType<any> | null {
   return dynamicCache[key] || null;
 }
@@ -150,14 +153,14 @@ export default function AppShell() {
         });
       return () => controller.abort();
     }
-  }, [showStoreModal, showStorePicker, stores.length, setStores, showToast]);
+  }, [showStoreModal, showStorePicker, stores.length, setStores, showToast, t]);
 
   // Prefetch user location at startup for instant distance display
   useEffect(() => {
     getBrowserLocation().then((loc) => {
       if (loc) setUserLocation(loc);
     });
-  }, []);
+  }, [setUserLocation]);
 
   // Register cart sync online/offline listeners with cleanup
   useEffect(() => {

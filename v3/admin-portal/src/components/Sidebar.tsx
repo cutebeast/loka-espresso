@@ -98,6 +98,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Admin Listing", href: "/admins" },
       { label: "Admin Roles", href: "/admins/roles" },
+      { label: "My Profile", href: "/profile" },
     ],
   },
   { label: "Translations", href: "/translations", icon: Languages },

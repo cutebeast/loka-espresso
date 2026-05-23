@@ -53,7 +53,7 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
     } finally {
       setLoading(false);
     }
-  }, [key]);
+  }, [key, t]);
 
   useEffect(() => {
     loadContent();

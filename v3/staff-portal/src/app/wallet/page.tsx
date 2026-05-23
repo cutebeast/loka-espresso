@@ -130,14 +130,14 @@ export default function WalletPage() {
 
   const attemptCountRef = useRef(0);
 
-  const verifyPin = useCallback(async (): Promise<boolean> => {
+  const verifyPin = useCallback(async (pinToVerify: string): Promise<boolean> => {
     try {
       const delay = Math.min(3000, attemptCountRef.current * 1000);
       if (delay > 0) await new Promise((r) => setTimeout(r, delay));
-      const d = await api.post<{ valid?: boolean; data?: { valid?: boolean } }>("/staff/auth/verify-pin", { pin });
+      const d = await api.post<{ valid?: boolean; data?: { valid?: boolean } }>("/staff/auth/verify-pin", { pin: pinToVerify });
       return (d?.valid || d?.data?.valid) === true;
     } catch (e) { console.error("PIN verification failed:", e); return false; }
-  }, [pin]);
+  }, []);
 
   const handleTopUp = async () => {
     const amt = parseFloat(amount);
@@ -145,7 +145,7 @@ export default function WalletPage() {
     if (amt > MAX_TOPUP) { setError(`Maximum top-up is RM ${MAX_TOPUP.toLocaleString()}`); return; }
     setToppingUp(true);
     try {
-      const valid = await verifyPin();
+      const valid = await verifyPin(pin);
       if (!valid) { attemptCountRef.current++; setError("Invalid PIN"); setToppingUp(false); return; }
       attemptCountRef.current = 0;
       const res = await topUpWallet({
@@ -177,7 +177,7 @@ export default function WalletPage() {
 
   const executeRedeem = async () => {
     if (!pendingRedeem || !selectedCustomer) return;
-    const valid = await verifyPin();
+    const valid = await verifyPin(redeemPin);
     if (!valid) { attemptCountRef.current++; setError("Invalid PIN"); return; }
     attemptCountRef.current = 0;
     setShowRedeemPin(false);

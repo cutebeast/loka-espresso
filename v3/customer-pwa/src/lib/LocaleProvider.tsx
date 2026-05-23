@@ -25,7 +25,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     if (getLocale() !== locale) {
       setGlobalLocale(locale);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   const setLocale = useCallback((next: string) => {
     if (!isValidLocale(next)) return;

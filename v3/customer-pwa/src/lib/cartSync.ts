@@ -23,21 +23,26 @@ function createIdempotencyKey(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+let _syncLock = false;
+
 export async function syncCartToServer(items: CartItem[]): Promise<void> {
   if (typeof window === 'undefined') return;
+  if (_syncLock) return;
   const token = localStorage.getItem('token');
   if (!token) return;
 
-  let serverItems: ServerCartItem[] = [];
+  _syncLock = true;
   try {
-    const res = await api.get('/cart');
-    if (res.status === 200) {
-      const data = res.data;
-      serverItems = Array.isArray(data) ? data : (data?.items ?? []);
+    let serverItems: ServerCartItem[] = [];
+    try {
+      const res = await api.get('/cart');
+      if (res.status === 200) {
+        const data = res.data;
+        serverItems = Array.isArray(data) ? data : (data?.items ?? []);
+      }
+    } catch {
+      console.error('Failed to read server cart for sync');
     }
-  } catch {
-    console.error('Failed to read server cart for sync');
-  }
 
   function cartItemKey(item: { menu_item_id: number; customization_option_ids?: number[] }): string {
     const optKey = item.customization_option_ids && item.customization_option_ids.length > 0
@@ -94,6 +99,9 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
     } catch (err) {
       console.error('Failed to sync cart item:', err);
     }
+  }
+  } finally {
+    _syncLock = false;
   }
 }
 

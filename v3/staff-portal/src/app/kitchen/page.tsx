@@ -92,8 +92,11 @@ export default function KitchenPage() {
       audioCtxRef.current = new (window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
     } catch (e) { console.error("Failed to create AudioContext:", e); }
     return () => {
-      if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
-      if (audioCtxRef.current) { audioCtxRef.current.close().catch((err) => console.error("AudioContext close failed:", err)); audioCtxRef.current = null; }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- ref set asynchronously, must capture in cleanup
+      const timer = audioTimerRef.current;
+      if (timer) clearTimeout(timer);
+      const ctx = audioCtxRef.current;
+      if (ctx) { ctx.close().catch((err) => console.error("AudioContext close failed:", err)); audioCtxRef.current = null; }
     };
   }, []);
 

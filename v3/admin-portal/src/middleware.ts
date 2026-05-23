@@ -23,7 +23,9 @@ export function middleware(_request: NextRequest) {
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' https: data: blob:; " +
     "font-src 'self'; " +
-    "connect-src 'self' http://localhost:13800 https:; " +
+    "connect-src 'self' " +
+    (process.env.NODE_ENV === "development" ? "http://localhost:13800 " : "") +
+    "https:; " +
     "frame-ancestors 'none'; " +
     "base-uri 'self'; " +
     "form-action 'self'"
