@@ -788,7 +788,9 @@
     "fullViewFallback": "全屏查看"
   },
   "legal": {
-    "tableOfContents": "目录"
+    "tableOfContents": "目录",
+    "unableToLoadTerms": "暂时无法加载服务条款。",
+    "unableToLoadPrivacy": "暂时无法加载隐私政策。"
   },
   "myCard": {
     "brand": "洛卡咖啡",

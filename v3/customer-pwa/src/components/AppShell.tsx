@@ -141,9 +141,14 @@ export default function AppShell() {
   // Load stores when modal opens
   useEffect(() => {
     if ((showStoreModal || showStorePicker) && stores.length === 0) {
-      api.get('/content/stores')
+      const controller = new AbortController();
+      api.get('/content/stores', { signal: controller.signal })
         .then((res) => setStores(res.data))
-        .catch((err) => { console.error('[AppShell] Store list fetch failed:', err); showToast(t('toast.storesLoadFailed'), 'error'); });
+        .catch((err) => {
+          if ((err as { name?: string })?.name === 'CanceledError') return;
+          console.error('[AppShell] Store list fetch failed:', err); showToast(t('toast.storesLoadFailed'), 'error');
+        });
+      return () => controller.abort();
     }
   }, [showStoreModal, showStorePicker, stores.length, setStores, showToast]);
 

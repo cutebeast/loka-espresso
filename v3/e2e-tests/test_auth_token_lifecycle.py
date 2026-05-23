@@ -17,9 +17,6 @@ from datetime import datetime, timezone, timedelta
 
 from conftest import ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET
 
-pytestmark = [pytest.mark.customer, pytest.mark.staff, pytest.mark.admin]
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # Customer token lifecycle
 # ═══════════════════════════════════════════════════════════════════════════
@@ -115,7 +112,7 @@ async def test_admin_token_refresh(client: httpx.AsyncClient, base_url: str):
     # Refresh
     try:
         r2 = await client.post(f"{base_url}/admin/auth/refresh", json={"refresh_token": refresh_token})
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Admin token refresh endpoint not available")
     assert r2.status_code == 200, f"Admin refresh failed: {r2.text}"
     new_tokens = r2.json()

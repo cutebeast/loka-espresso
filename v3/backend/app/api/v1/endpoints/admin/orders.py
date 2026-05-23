@@ -309,6 +309,8 @@ async def process_order_payment(
     discount_amount = data.discount_amount
     discount_type = data.discount_type
 
+    if amount < 0:
+        raise HTTPException(status_code=400, detail="Payment amount cannot be negative")
     if amount <= 0 and not discount_amount:
         amount = float(order.total_amount or 0)
 

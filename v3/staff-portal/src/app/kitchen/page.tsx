@@ -62,7 +62,7 @@ export default function KitchenPage() {
       if (soundOn && list.length > prevCountRef.current && audioCtxRef.current) {
         try {
           const ctx = audioCtxRef.current;
-          if (ctx.state === "suspended") ctx.resume();
+          if (ctx.state === "suspended") await ctx.resume();
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.connect(gain); gain.connect(ctx.destination);

@@ -813,7 +813,9 @@
     "fullViewFallback": "Full view"
   },
   "legal": {
-    "tableOfContents": "Table of Contents"
+    "tableOfContents": "Table of Contents",
+    "unableToLoadTerms": "Unable to load Terms of Service right now.",
+    "unableToLoadPrivacy": "Unable to load Privacy Policy right now."
   },
   "myCard": {
     "brand": "LOKA Espresso",

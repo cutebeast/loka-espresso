@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import ActiveCustomer, DBDependency
 from app.models.cart import CustomerCart, CartLineItem
+from app.models.menu import MenuItem
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.payment import Payment
 from app.models.store import Store
@@ -184,8 +185,22 @@ async def reorder(
     from sqlalchemy import delete
     await db.execute(delete(CartLineItem).where(CartLineItem.cart_id == cart.id))
 
-    # Add order items to cart
+    # Check menu item availability
+    menu_item_ids = [li.menu_item_id for li in line_items]
+    mi_result = await db.execute(
+        select(MenuItem).where(
+            MenuItem.id.in_(menu_item_ids),
+            MenuItem.is_available.is_(True),
+            MenuItem.deleted_at.is_(None),
+        )
+    )
+    available_ids = {mi.id for mi in mi_result.scalars().all()}
+
+    # Add order items to cart (only available)
+    added = 0
     for li in line_items:
+        if li.menu_item_id not in available_ids:
+            continue
         unit_price = float(li.unit_price)
         modifier_total = float(li.modifier_total or 0)
         qty = li.quantity
@@ -202,6 +217,7 @@ async def reorder(
             special_instructions=li.special_instructions,
         )
         db.add(cart_item)
+        added += 1
 
     await db.flush()
     # Recalculate cart totals
@@ -212,8 +228,8 @@ async def reorder(
     return APIResponse(data={
         "cart_id": cart.id,
         "store_id": order.store_id,
-        "items_added": len(line_items),
-        "message": "Cart rebuilt from order",
+        "items_added": added,
+        "message": f"Cart rebuilt from order ({added} of {len(line_items)} items available)",
     })
 
 

@@ -49,7 +49,7 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
         setExpanded(new Set(res.data.sections.map((_item: LegalSection, i: number) => i)));
       }
     } catch {
-      setError(`Unable to load ${key === 'terms' ? 'Terms of Service' : 'Privacy Policy'} right now.`);
+      setError(key === 'terms' ? t('legal.unableToLoadTerms') : t('legal.unableToLoadPrivacy'));
     } finally {
       setLoading(false);
     }

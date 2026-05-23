@@ -149,16 +149,6 @@ export async function placeOrder(params: {
       : 'pending',
   };
 
-  if (params.voucherCode) {
-    orderPayload.voucher_code = params.voucherCode;
-  }
-  if (params.rewardRedemptionCode) {
-    const rewardId = parseInt(params.rewardRedemptionCode, 10);
-    if (!isNaN(rewardId) && rewardId > 0) {
-      orderPayload.reward_id = rewardId;
-    }
-  }
-
   if (checkoutToken) {
     orderPayload.checkout_token = checkoutToken;
   }

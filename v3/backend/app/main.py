@@ -48,8 +48,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"] if not settings.is_production else ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["*"] if not settings.is_production else [
+        "Authorization", "Content-Type", "Accept", "Origin",
+        "X-Requested-With", "X-Request-ID", "X-Forwarded-For",
+    ],
 )
 app.add_middleware(RequestLoggingMiddleware)
 

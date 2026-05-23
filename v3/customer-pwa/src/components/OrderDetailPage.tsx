@@ -63,6 +63,14 @@ export default function OrderDetailPage() {
     try {
       const res = await api.post(`/orders/${order.id}/reorder`);
       clearCart();
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          const { items } = useCartStore.getState();
+          if (items.length === 0) { resolve(); return; }
+          setTimeout(check, 50);
+        };
+        check();
+      });
       const storeId = res.data?.store_id || order.store_id;
       const cartRes = await api.get('/cart/items', { params: { store_id: storeId } });
       const items = cartRes.data ?? [];

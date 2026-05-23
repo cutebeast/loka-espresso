@@ -61,15 +61,10 @@ class Settings(BaseSettings):
 
     @field_validator("jwt_secret")
     @classmethod
-    def _validate_jwt_secret(cls, v: str) -> str:
+    def _validate_jwt_secret(cls, v: str, info) -> str:
+        """Validate JWT secret: minimum 32-byte length and no default in production."""
         if len(v.encode()) < 32:
             raise ValueError("JWT_SECRET must be at least 32 bytes")
-        return v
-
-    @field_validator("jwt_secret")
-    @classmethod
-    def _reject_default_secret_in_production(cls, v: str, info) -> str:
-        # Check environment from the values being validated
         env = info.data.get("environment", "") if info.data else ""
         if env == "production" and v == "super-secret-jwt-key-for-development-only-12345":
             raise ValueError("Cannot use default JWT_SECRET in production. Set JWT_SECRET env var.")
@@ -95,7 +90,7 @@ class Settings(BaseSettings):
     argon2_parallelism: int = 4
 
     # CORS
-    cors_origins: str = "http://localhost:13801,http://localhost:13802,http://localhost:13803"
+    cors_origins: str = "http://localhost:13830,http://localhost:13810,http://localhost:13820"
 
     @property
     def cors_origins_list(self) -> List[str]:

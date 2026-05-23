@@ -64,6 +64,7 @@ async def test_customer_auth_flow(client: httpx.AsyncClient, base_url: str, clea
     r = await client.post(f"{base_url}/auth/register", json=payload)
     assert r.status_code == 201, f"Registration failed: {r.text}"
     data = r.json()
+    cleanup_registry["customers"].append({"id": data["user_id"]})
     assert "tokens" in data
     assert data["user_type"] == "customer"
 
@@ -77,7 +78,6 @@ async def test_customer_auth_flow(client: httpx.AsyncClient, base_url: str, clea
     data2 = r2.json()
     assert data2["user_type"] == "customer"
     assert "tokens" in data2
-    cleanup_registry["customers"].append({"id": data["user_id"]})
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -222,6 +222,7 @@ async def test_customer_order_flow(client: httpx.AsyncClient, base_url: str, sto
     r_order = await client.post(f"{base_url}/orders", headers=headers, json=order_payload)
     assert r_order.status_code == 201, f"Order creation failed: {r_order.text}"
     order = r_order.json()["data"]
+    cleanup_registry["orders"].append({"id": order["id"]})
     assert order["customer_id"] == customer_id
     assert order["status"] == "pending"
     assert "order_number" in order

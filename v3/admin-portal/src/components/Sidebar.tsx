@@ -9,6 +9,7 @@ import {
   FileText, Bell, UserCircle, BarChart3,
   LayoutTemplate, ShoppingBag, Grid3X3,
   Star, Settings, Languages, TrendingUp, Wrench,
+  Shield,
 } from "lucide-react";
 import { adminLogout } from "@/lib/api";
 import { useBrand } from "./BrandProvider";
@@ -93,7 +94,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    label: "Admin User", href: "/admins", icon: UserCircle,
+    label: "Admin User", href: "/admins", icon: Shield,
     children: [
       { label: "Admin Listing", href: "/admins" },
       { label: "Admin Roles", href: "/admins/roles" },
@@ -177,7 +178,7 @@ export default function Sidebar() {
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(computeOpenMenus);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => { setOpenMenus(prev => ({ ...computeOpenMenus(), ...prev })); }, [pathname, computeOpenMenus]);
+  useEffect(() => { setOpenMenus(prev => ({ ...prev, ...computeOpenMenus() })); }, [pathname, computeOpenMenus]);
 
   const toggleMenu = (label: string) => setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
   const handleLogout = () => { adminLogout(); router.push(ROUTES.LOGIN); };

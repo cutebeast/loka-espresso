@@ -51,6 +51,10 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
+        // Delete old page-specific caches to prevent serving stale HTML
+        cacheNames
+          .filter((k) => k.startsWith('pages-') && k !== CACHE_NAME)
+          .forEach((k) => caches.delete(k));
         return Promise.all(
           cacheNames
             .filter((name) => name.startsWith('loka-pwa-') && name !== CACHE_NAME)
@@ -130,6 +134,10 @@ async function cacheFirst(request) {
 }
 
 // Network First strategy for pages
+// Tradeoff: Network-first ensures fresh content on first load but can serve
+// stale HTML from cache when offline. The activate handler clears old page
+// caches on SW update to mitigate stale deployments. For truly dynamic pages,
+// consider adding a cache-busting query parameter or using stale-while-revalidate.
 async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
   
@@ -178,7 +186,14 @@ self.addEventListener('push', (event) => {
     try {
       data = event.data.json();
     } catch {
-      try { data = JSON.parse(event.data.text()); } catch { /* use empty fallback */ }
+      event.waitUntil(
+        (async () => {
+          try {
+            const text = await event.data.text();
+            data = JSON.parse(text);
+          } catch { /* use empty fallback */ }
+        })()
+      );
     }
   }
   
@@ -204,7 +219,7 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((windowClients) => {
         for (const client of windowClients) {
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
+          if (client.url.startsWith(self.registration.scope) && 'focus' in client) {
             client.navigate(targetUrl);
             return client.focus();
           }

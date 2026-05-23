@@ -24,15 +24,15 @@ pytestmark = [pytest.mark.staff]
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
-async def test_staff_login_success(client: httpx.AsyncClient, base_url: str):
+async def test_staff_login_success(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Admin can log in via the staff endpoint with correct credentials."""
-    payload = {"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD, "store_id": 1}
+    payload = {"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD, "store_id": store_id}
     r = await client.post(f"{base_url}/staff/auth/login", json=payload)
     assert r.status_code == 200, f"Staff login failed: {r.text}"
     data = r.json()
     assert "tokens" in data
     assert "access_token" in data["tokens"]
-    assert data["profile"]["store_id"] == 1
+    assert data["profile"]["store_id"] == store_id
 
 
 @pytest.mark.asyncio
@@ -55,10 +55,10 @@ async def test_staff_login_pin_success(client: httpx.AsyncClient, base_url: str)
 
 
 @pytest.mark.asyncio
-async def test_staff_login_pin(client: httpx.AsyncClient, base_url: str):
+async def test_staff_login_pin(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Staff login endpoint responds to name+PIN auth format."""
     # Try with a known staff name and wrong PIN → should get 401
-    payload = {"display_name": "Staff One", "store_id": 1, "password": "wrongpin"}
+    payload = {"display_name": "Staff One", "store_id": store_id, "password": "wrongpin"}
     r = await client.post(f"{base_url}/staff/auth/login", json=payload)
     assert r.status_code == 401
 
@@ -180,12 +180,12 @@ async def test_staff_create_maintenance_log(client: httpx.AsyncClient, admin_hea
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
-async def test_staff_token_access_staff_endpoints(client: httpx.AsyncClient, base_url: str):
+async def test_staff_token_access_staff_endpoints(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Staff obtains token via staff auth and accesses staff endpoints."""
     r = await client.post(f"{base_url}/staff/auth/login", json={
         "email": ADMIN_EMAIL,
         "password": ADMIN_PASSWORD,
-        "store_id": 1,
+        "store_id": store_id,
     })
     assert r.status_code == 200
     staff_token = r.json()["tokens"]["access_token"]
@@ -195,7 +195,7 @@ async def test_staff_token_access_staff_endpoints(client: httpx.AsyncClient, bas
     assert r2.status_code == 200
     profile = r2.json()["data"]
     assert "display_name" in profile
-    assert profile["store_id"] == 1
+    assert profile["store_id"] == store_id
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -203,12 +203,12 @@ async def test_staff_token_access_staff_endpoints(client: httpx.AsyncClient, bas
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
-async def test_staff_pin_verify_correct(client: httpx.AsyncClient, base_url: str):
+async def test_staff_pin_verify_correct(client: httpx.AsyncClient, base_url: str, store_id: int):
     """POST /staff/auth/verify-pin returns valid=true for correct PIN."""
     r = await client.post(f"{base_url}/staff/auth/login", json={
         "email": ADMIN_EMAIL,
         "password": ADMIN_PASSWORD,
-        "store_id": 1,
+        "store_id": store_id,
     })
     assert r.status_code == 200
     token = r.json()["tokens"]["access_token"]
@@ -227,12 +227,12 @@ async def test_staff_pin_verify_correct(client: httpx.AsyncClient, base_url: str
 
 
 @pytest.mark.asyncio
-async def test_staff_pin_verify_wrong(client: httpx.AsyncClient, base_url: str):
+async def test_staff_pin_verify_wrong(client: httpx.AsyncClient, base_url: str, store_id: int):
     """POST /staff/auth/verify-pin returns valid=false for incorrect PIN."""
     r = await client.post(f"{base_url}/staff/auth/login", json={
         "email": ADMIN_EMAIL,
         "password": ADMIN_PASSWORD,
-        "store_id": 1,
+        "store_id": store_id,
     })
     assert r.status_code == 200
     token = r.json()["tokens"]["access_token"]

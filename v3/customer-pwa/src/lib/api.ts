@@ -744,12 +744,12 @@ api.interceptors.response.use(
       try {
         if (!_refreshPromise) {
           currentPromise = axios.post(`${API_BASE}/auth/refresh`, {
-            refresh_token: typeof localStorage !== 'undefined' ? (localStorage.getItem('refreshToken') || '') : '',
+            refresh_token: typeof window !== 'undefined' ? (localStorage.getItem('refreshToken') || '') : '',
           }).then((res) => {
             const data = res.data;
             const t = (data?.data?.tokens) || data?.tokens || data;
             if (t?.access_token) {
-              if (typeof localStorage !== 'undefined') {
+              if (typeof window !== 'undefined') {
                 localStorage.setItem('token', t.access_token);
                 if (t.refresh_token) {
                   localStorage.setItem('refreshToken', t.refresh_token);

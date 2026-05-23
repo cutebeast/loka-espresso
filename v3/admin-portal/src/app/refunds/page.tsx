@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 
@@ -12,19 +12,22 @@ export default function RefundsPage() {
   const [error, setError] = useState("");
   const [stores, setStores] = useState<Store[]>([]);
   const [storeId, setStoreId] = useState("");
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch((e) => { console.error('stores:', e); });
+    mountedRef.current = true;
+    api.get<Store[]>("/admin/stores?per_page=50").then(d => { if (mountedRef.current) setStores(Array.isArray(d) ? d : []); }).catch((e) => { console.error('stores:', e); });
+    return () => { mountedRef.current = false; };
   }, []);
 
-  const fetch = () => {
+  const fetch = useCallback(() => {
     setLoading(true);
     const qs = new URLSearchParams({ per_page: "100" });
     if (storeId) qs.set("store_id", storeId);
     api.get<any>(`/admin/refunds?${qs}`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(e => setError(e.message)).finally(() => setLoading(false));
-  };
+  }, [storeId]);
 
-  useEffect(() => { fetch(); }, [storeId]);
+  useEffect(() => { fetch(); }, [fetch]);
 
   const sb = (s: string) => {
     const m: Record<string, string> = { pending: "badge-yellow", completed: "badge-green", failed: "badge-red", cancelled: "badge-gray" };

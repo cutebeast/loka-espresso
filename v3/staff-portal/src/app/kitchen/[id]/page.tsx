@@ -88,8 +88,7 @@ export default function KitchenDetailPage() {
     );
   }
 
-  const flow = STATUS_FLOW[order.status] || STATUS_FLOW.pending;
-  if (!flow) return null;
+  const flow = STATUS_FLOW[order.status] || STATUS_FLOW.pending!;
 
   return (
     <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>

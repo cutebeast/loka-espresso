@@ -74,19 +74,26 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
           ...(body ? { body: JSON.stringify(body) } : {}),
           signal,
         });
-          if (retry.ok) {
-            const ct = retry.headers.get("content-type");
-            if (ct && ct.includes("application/json")) {
-              const json = await retry.json();
-              if (json && typeof json === "object" && "data" in json) {
-                const data = json.data;
-                if (data && typeof data === "object" && "items" in data) return data as T;
-                return data as T;
-              }
-              return json as T;
+        if (retry.ok) {
+          const ct = retry.headers.get("content-type");
+          if (ct && ct.includes("application/json")) {
+            const json = await retry.json();
+            if (json && typeof json === "object" && "data" in json) {
+              const data = json.data;
+              if (data && typeof data === "object" && "items" in data) return data as T;
+              return data as T;
             }
-            throw new Error("Unexpected non-JSON response");
+            return json as T;
           }
+          throw new Error("Unexpected non-JSON response");
+        }
+        if (retry.status === 401) {
+          clearSession();
+          if (typeof window !== "undefined") window.location.replace("/login");
+          throw new Error("Session expired");
+        }
+        const text = await retry.text();
+        throw new Error(text || `Request failed: ${retry.status}`);
       } finally { clear(); }
     }
     clearSession();
@@ -140,6 +147,13 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, timeo
           }
           return await retry.text() as unknown as T;
         }
+        if (retry.status === 401) {
+          clearSession();
+          if (typeof window !== "undefined") window.location.replace("/login");
+          throw new Error("Session expired");
+        }
+        const text = await retry.text();
+        throw new Error(text || `Request failed: ${retry.status}`);
       } finally { clear(); }
     }
     clearSession();
@@ -235,11 +249,11 @@ export async function adminLogin(email: string, password: string) {
   return data;
 }
 export function adminLogout() { clearSession(); }
-export function isLoggedIn(): boolean { return !!localStorage.getItem(STORAGE_KEYS.TOKEN); }
+export function isLoggedIn(): boolean { if (typeof window === "undefined") return false; return !!localStorage.getItem(STORAGE_KEYS.TOKEN); }
 
 export interface Reservation { id: number; store_id: number; customer_id: number | null; dining_table_id?: number; party_size: number; reservation_date: string; reservation_time: string; duration_minutes?: number; status: string; }
 
-export interface LoyaltyAccount { [key: string]: any; id: number; customer_id: number; customer_name?: string | null; tier_id: number | null; tier_name?: string | null; tier?: any; current_points: number; lifetime_points: number; lifetime_points_earned?: number; lifetime_points_redeemed?: number; points_balance?: number; points_to_next_tier?: number | null; tier_multiplier?: number; current_tier_id?: number | null; last_activity_at?: string | null; last_activity?: any; last_tier_change_at?: string | null; }
+export interface LoyaltyAccount { id: number; customer_id: number; customer_name?: string | null; tier_id: number | null; tier_name?: string | null; tier?: any; current_points: number; lifetime_points: number; lifetime_points_earned?: number; lifetime_points_redeemed?: number; points_balance?: number; points_to_next_tier?: number | null; tier_multiplier?: number; current_tier_id?: number | null; last_activity_at?: string | null; last_activity?: any; last_tier_change_at?: string | null; }
 export function getLoyaltyAccounts() { return api.get<LoyaltyAccount[]>("/admin/loyalty/accounts"); }
 
 export interface LoyaltyLedgerEntry { id: number; loyalty_account_id: number; customer_id: number; customer_name?: string | null; event_type: string; points_delta: number; running_balance: number; created_at: string; }

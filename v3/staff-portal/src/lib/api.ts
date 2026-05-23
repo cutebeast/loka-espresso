@@ -68,6 +68,13 @@ export async function refreshToken(): Promise<boolean> {
 /*  Request helpers                                                   */
 /* ------------------------------------------------------------------ */
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  total_pages: number;
+}
+
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   // Reset idle timer on API activity
   if (typeof window !== "undefined") {
@@ -81,11 +88,13 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     if (res.status === 401) {
+      if (signal?.aborted) throw new Error("Request aborted");
       const refreshed = await refreshToken();
       if (refreshed) {
         const retry = await fetch(`${BASE_URL}${path}`, {
           method,
           headers: getAuthHeaders(),
+          signal,
           ...(body ? { body: JSON.stringify(body) } : {}),
         });
         if (retry.ok) return retry;
@@ -109,14 +118,18 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
     const json = await res.json();
     if (json && typeof json === "object" && "data" in json) {
       const data = json.data;
-      if (data && typeof data === "object" && Array.isArray(data.items)) {
-        return data.items as T;
+      if (data && typeof data === "object" && Array.isArray((data as Record<string, unknown>).items)) {
+        return { items: data.items, total: data.total, page: data.page, total_pages: data.total_pages } as unknown as T;
       }
       return data as T;
     }
     return json as T;
   }
   throw new Error("Expected JSON response but received non-JSON");
+}
+
+async function requestPaginated<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<PaginatedResponse<T>> {
+  return request<PaginatedResponse<T>>(method, path, body, signal);
 }
 
 async function requestRaw<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -163,7 +176,9 @@ async function requestRaw<T>(method: string, path: string, body?: unknown): Prom
 export const api = {
   get: <T>(path: string, signal?: AbortSignal) => request<T>("GET", path, undefined, signal),
   getRaw: <T>(path: string) => requestRaw<T>("GET", path),
+  getPaginated: <T>(path: string, signal?: AbortSignal) => requestPaginated<T>("GET", path, undefined, signal),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
+  postPaginated: <T>(path: string, body?: unknown) => requestPaginated<T>("POST", path, body),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
   put: <T>(path: string, body?: unknown) => request<T>("PUT", path, body),
   del: <T>(path: string) => request<T>("DELETE", path),
@@ -193,9 +208,10 @@ export const api = {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
-      if (res.status === 401) {
-        const refreshed = await refreshToken();
-        if (refreshed) {
+    if (res.status === 401) {
+      if (signal?.aborted) throw new Error("Request aborted");
+      const refreshed = await refreshToken();
+      if (refreshed) {
         const retry = await fetch(`${BASE_URL}${path}`, {
           method,
           headers: getAuthHeaders(),
@@ -643,11 +659,13 @@ export function topUpWallet(payload: {
 }
 
 export function markRewardUsed(customerId: number, rewardId: number, notes?: string) {
-  return api.post<{ message: string; success: boolean }>(`/admin/customers/${customerId}/use-reward/${rewardId}`, { store_id: null, notes: notes || "Used in-store" });
+  const storeId = typeof window !== "undefined" ? localStorage.getItem("staffStoreId") : null;
+  return api.post<{ message: string; success: boolean }>(`/admin/customers/${customerId}/use-reward/${rewardId}`, { store_id: storeId ? Number(storeId) : null, notes: notes || "Used in-store" });
 }
 
 export function markVoucherUsed(customerId: number, voucherId: number, notes?: string) {
-  return api.post<{ message: string; success: boolean }>(`/admin/customers/${customerId}/use-voucher/${voucherId}`, { store_id: null, notes: notes || "Used in-store" });
+  const storeId = typeof window !== "undefined" ? localStorage.getItem("staffStoreId") : null;
+  return api.post<{ message: string; success: boolean }>(`/admin/customers/${customerId}/use-voucher/${voucherId}`, { store_id: storeId ? Number(storeId) : null, notes: notes || "Used in-store" });
 }
 
 export function scanCustomerCode(code: string) {

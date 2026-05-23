@@ -33,10 +33,11 @@ function getDateGroup(dateStr: string): string {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const txDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const diff = Math.floor((today.getTime() - txDay.getTime()) / 86400000);
-  if (diff === 0) return t('common.today');
-  if (diff <= 7) return t('common.thisWeek');
-  if (diff <= 30) return t('common.thisMonth');
-  return t('common.earlier');
+  if (diff === 0) return 'today';
+  if (diff === 1) return 'yesterday';
+  if (diff <= 7) return 'thisWeek';
+  if (diff <= 30) return 'thisMonth';
+  return 'earlier';
 }
 
 function categoryLabel(type: string): string {
@@ -56,26 +57,31 @@ export default function HistoryPage() {
   const [walletHistory, setWalletHistory] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
       if (activeTab === 'loyalty') {
-        const res = await api.get('/loyalty/history', { params: { page_size: 50 } });
+        const res = await api.get('/loyalty/history', { params: { page_size: 50 }, signal });
         setLoyaltyHistory(Array.isArray(res.data) ? res.data : []);
       } else {
-        const res = await api.get('/wallet/transactions', { params: { page_size: 50 } });
+        const res = await api.get('/wallet/transactions', { params: { page_size: 50 }, signal });
         const txs = Array.isArray(res.data) ? res.data : [];
         setWalletHistory(txs);
         setWalletTransactions(txs);
       }
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       showToast(t('toast.loadHistoryFailed'), 'error');
     } finally {
       setLoading(false);
     }
   }, [activeTab, showToast, setWalletTransactions, t]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => { controller.abort(); };
+  }, [fetchData]);
 
   /* Group by date */
   const groupByDate = <T extends { created_at?: string }>(items: T[]) => {
@@ -90,7 +96,7 @@ export default function HistoryPage() {
 
   const loyaltyGroups = groupByDate(loyaltyHistory);
   const walletGroups = groupByDate(walletHistory);
-  const groupOrder = [t('common.today'), t('common.thisWeek'), t('common.thisMonth'), t('common.earlier')];
+  const groupOrder = ['today', 'yesterday', 'thisWeek', 'thisMonth', 'earlier'];
 
   /* Summary stats */
   const loyaltyEarned = loyaltyHistory.filter(t => (t.points || 0) > 0).reduce((s, t) => s + (t.points || 0), 0);
@@ -177,7 +183,7 @@ export default function HistoryPage() {
             if (!items?.length) return null;
             return (
               <div key={group}>
-                <div className="history-date-group">{t('common.' + group.toLowerCase().replace(' ', ''))}</div>
+                <div className="history-date-group">{t('common.' + group)}</div>
                 {items.map((item, idx) => {
                   const isPositive = activeTab === 'loyalty' ? ((item as LoyaltyHistoryEntry).points || 0) > 0 : (item as Transaction).amount > 0;
                   const type = (item.type || '').toLowerCase();

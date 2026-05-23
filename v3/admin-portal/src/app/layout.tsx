@@ -70,7 +70,37 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       el.href = faviconUrl;
       document.head.appendChild(el);
     }
+    return () => {
+      const existing = document.querySelector("link[rel='icon']");
+      if (existing) existing.remove();
+    };
   }, [faviconUrl]);
+
+  // ── Idle timeout (30 min) ──
+  useEffect(() => {
+    if (isLogin) return;
+    const IDLE_MS = 30 * 60 * 1000;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const logoutIdle = () => {
+      clearSession();
+      router.replace(ROUTES.LOGIN);
+    };
+
+    const resetIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(logoutIdle, IDLE_MS);
+    };
+
+    const events = ["mousemove", "keydown", "click", "touchstart"];
+    events.forEach((e) => window.addEventListener(e, resetIdleTimer, { passive: true }));
+    resetIdleTimer();
+
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, resetIdleTimer));
+      if (idleTimer) clearTimeout(idleTimer);
+    };
+  }, [isLogin, router]);
 
   useEffect(() => {
     if (isLogin) { setChecked(true); return; }

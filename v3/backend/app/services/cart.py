@@ -1,6 +1,7 @@
 """Cart service layer."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +38,7 @@ async def get_or_create_cart(
             customer_id=customer_id,
             store_id=store_id,
             item_count=0,
-            subtotal=0.0,
+            subtotal=Decimal("0"),
         )
         db.add(cart)
         await db.flush()
@@ -58,7 +59,7 @@ async def _get_menu_item_price(
     if item is None:
         raise CartError("Menu item not found", 404)
     
-    unit_price = float(item.base_price)
+    unit_price = Decimal(str(item.base_price))
     
     # Add variant price adjustment
     if menu_variant_id:
@@ -67,10 +68,10 @@ async def _get_menu_item_price(
         )
         variant = variant_result.scalar_one_or_none()
         if variant:
-            unit_price += float(variant.price_adjustment)
+            unit_price += Decimal(str(variant.price_adjustment))
     
     # Calculate modifier total
-    modifier_total = 0.0
+    modifier_total = Decimal("0")
     for mod in selected_modifiers:
         if hasattr(mod, 'selected_option_ids'):
             option_ids = mod.selected_option_ids or []
@@ -84,7 +85,7 @@ async def _get_menu_item_price(
             )
             opt = opt_result.scalar_one_or_none()
             if opt:
-                modifier_total += float(opt.price_adjustment)
+                modifier_total += Decimal(str(opt.price_adjustment))
     
     return unit_price, modifier_total
 
@@ -245,7 +246,7 @@ async def clear_cart(
         await db.delete(item)
 
     cart.item_count = 0
-    cart.subtotal = 0.0
+    cart.subtotal = Decimal("0")
     cart.last_activity_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(cart)
@@ -259,5 +260,5 @@ async def _recalc_cart(db: AsyncSession, cart: CustomerCart) -> None:
     )
     items = result.scalars().all()
     cart.item_count = sum(i.quantity for i in items)
-    cart.subtotal = sum(float(i.line_total) for i in items)
+    cart.subtotal = sum((Decimal(str(i.line_total)) for i in items), Decimal("0"))
     cart.last_activity_at = datetime.now(timezone.utc)

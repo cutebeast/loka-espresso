@@ -29,7 +29,7 @@ export default function StoresPage() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { (async () => { await fetchData(); })(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this store?")) return;

@@ -28,6 +28,15 @@ const STATUS_MAP: Record<string, { label: string; variant: "green" | "yellow" | 
   cancelled_by_guest: { label: "Cancelled", variant: "red" },
 };
 
+const STATUS_COLORS: Record<string, string> = {
+  green: "badge-green",
+  yellow: "badge-yellow",
+  red: "badge-red",
+  blue: "badge-blue",
+  gray: "badge-gray",
+  orange: "badge-orange",
+};
+
 interface StatusBadgeProps {
   status: OrderStatus | ReservationStatus | string;
   className?: string;
@@ -36,17 +45,9 @@ interface StatusBadgeProps {
 export default function StatusBadge({ status, className = "" }: StatusBadgeProps) {
   const safeStatus = status == null ? "" : String(status);
   const mapped = STATUS_MAP[safeStatus] || { label: safeStatus.replace(/_/g, " "), variant: "gray" as const };
-  const colors: Record<string, string> = {
-    green: "badge-green",
-    yellow: "badge-yellow",
-    red: "badge-red",
-    blue: "badge-blue",
-    gray: "badge-gray",
-    orange: "badge-orange",
-  };
 
   return (
-    <span className={`badge badge-sm ${colors[mapped.variant]} ${className}`}>
+    <span className={`badge badge-sm ${STATUS_COLORS[mapped.variant]} ${className}`}>
       {mapped.label}
     </span>
   );

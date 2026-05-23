@@ -87,10 +87,10 @@ async def test_cannot_cancel_preparing_order(
     assert r_check.status_code == 200
     assert r_check.json()["data"]["status"] == "preparing"
 
-    # Customer attempts to cancel → should be rejected
+    # Customer attempts to cancel → should be rejected (order in preparing state)
     r_cancel = await client.post(f"{base_url}/orders/{order_id}/cancel", headers=cust_headers)
-    assert r_cancel.status_code in (400, 409), \
-        f"Expected 400/409 for cancel during preparing, got {r_cancel.status_code}: {r_cancel.text}"
+    assert r_cancel.status_code == 409, \
+        f"Expected 409 Conflict for cancel during preparing, got {r_cancel.status_code}: {r_cancel.text}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -166,10 +166,10 @@ async def test_cannot_cancel_delivered_order(
     assert r_check.status_code == 200
     assert r_check.json()["data"]["status"] == "delivered"
 
-    # Customer attempts to cancel → should be rejected
+    # Customer attempts to cancel → should be rejected (already delivered)
     r_cancel = await client.post(f"{base_url}/orders/{order_id}/cancel", headers=cust_headers)
-    assert r_cancel.status_code in (400, 409), \
-        f"Expected 400/409 for cancel after delivery, got {r_cancel.status_code}: {r_cancel.text}"
+    assert r_cancel.status_code == 409, \
+        f"Expected 409 Conflict for cancel after delivery, got {r_cancel.status_code}: {r_cancel.text}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

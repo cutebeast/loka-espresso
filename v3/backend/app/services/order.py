@@ -100,8 +100,8 @@ async def _deduct_stock_for_order(
             store_id=order.store_id,
             inventory_item_id=inv_id,
             movement_type="out",
-            quantity_delta=-float(qty_needed),
-            stock_after=float(new_stock),
+            quantity_delta=-Decimal(str(qty_needed)),
+            stock_after=Decimal(str(new_stock)),
             reserved_delta=0,
             reserved_after=float(inv.reserved_stock),
             reason=f"Order {order.order_number} stock deduction",
@@ -132,9 +132,13 @@ async def create_order_from_cart(
     if cart.item_count == 0:
         raise OrderError("Cart is empty", 400)
     
-    # Fetch store for currency
-    store_result = await db.execute(select(Store).where(Store.id == cart.store_id))
-    store = store_result.scalar_one()
+    # Fetch store with active check
+    store_result = await db.execute(
+        select(Store).where(Store.id == cart.store_id, Store.is_active.is_(True), Store.deleted_at.is_(None))
+    )
+    store = store_result.scalar_one_or_none()
+    if store is None:
+        raise OrderError("Store is not active or does not exist", 400)
     
     # Fetch line items
     items_result = await db.execute(
@@ -149,12 +153,17 @@ async def create_order_from_cart(
             StoreConfiguration.config_key.in_(["order.delivery_fee", "order.service_charge", "order.tax_rate"]),
         )
     )
-    config_map = {c.config_key: c.config_value for c in config_result.scalars().all()}
-    delivery_fee = float(config_map.get("order.delivery_fee", 0) or 0)
-    service_charge = float(config_map.get("order.service_charge", 0) or 0)
-    tax_rate = Decimal(str(config_map.get("order.tax_rate", 0) or 0))
-    subtotal = float(cart.subtotal)
-    tax_amount = float(round(Decimal(str(cart.subtotal)) * tax_rate, 2))
+    config_map = {c.config_key: Decimal(str(c.config_value or 0)) for c in config_result.scalars().all()}
+    delivery_fee = config_map.get("order.delivery_fee", Decimal(0))
+    service_charge = config_map.get("order.service_charge", Decimal(0))
+    tax_rate = config_map.get("order.tax_rate", Decimal(0))
+    subtotal = Decimal(str(cart.subtotal))
+    tax_amount = round(subtotal * tax_rate, 2)
+
+    modifier_sub = sum(Decimal(str(i.modifier_total)) * i.quantity for i in cart_items)
+    is_delivery = data.fulfillment_type in ("standard_delivery", "express_delivery", "third_party_delivery")
+    tip = Decimal(str(data.tip_amount or 0))
+    total = subtotal + modifier_sub + (delivery_fee if is_delivery else Decimal(0)) + service_charge + tax_amount + tip
 
     # Create order
     order = Order(
@@ -168,16 +177,16 @@ async def create_order_from_cart(
         status="pending",
         payment_status="initiated",
         item_count=cart.item_count,
-        items_subtotal=subtotal,
-        modifier_subtotal=sum(float(i.modifier_total) * i.quantity for i in cart_items),
-        delivery_fee=delivery_fee if data.fulfillment_type in ("standard_delivery", "express_delivery", "third_party_delivery") else 0,
-        service_charge=service_charge,
-        tax_amount=tax_amount,
+        items_subtotal=float(subtotal),
+        modifier_subtotal=float(modifier_sub),
+        delivery_fee=float(delivery_fee) if is_delivery else 0,
+        service_charge=float(service_charge),
+        tax_amount=float(tax_amount),
         discount_amount=0,
         voucher_discount=0,
         reward_discount=0,
-        tip_amount=data.tip_amount or 0,
-        total_amount=subtotal + (delivery_fee if data.fulfillment_type in ("standard_delivery", "express_delivery", "third_party_delivery") else 0) + service_charge + tax_amount + (data.tip_amount or 0),
+        tip_amount=float(tip),
+        total_amount=float(total),
         total_amount_currency=store.currency_code,
         loyalty_points_earned=0,
         loyalty_points_redeemed=0,

@@ -33,11 +33,11 @@ def get_locale_from_request(request: Request) -> str:
     locale = request.query_params.get("locale")
     if locale:
         locale = locale.strip()
-        if locale in SUPPORTED_LOCALES:
+        if locale in SUPPORTED_LOCALE_PREFIXES:
             return locale
         if "-" in locale:
             prefix = locale.split("-")[0]
-            if prefix in SUPPORTED_LOCALES:
+            if prefix in SUPPORTED_LOCALE_PREFIXES:
                 return locale
     # 2. Check Accept-Language header
     accept_lang = request.headers.get("accept-language", "")
@@ -45,11 +45,11 @@ def get_locale_from_request(request: Request) -> str:
         for part in accept_lang.replace(";", ",").split(","):
             part = part.strip()
             lower_part = part.lower()
-            if lower_part in SUPPORTED_LOCALES:
+            if lower_part in SUPPORTED_LOCALE_PREFIXES:
                 return lower_part
             if "-" in lower_part:
                 prefix = lower_part.split("-")[0]
-                if prefix in SUPPORTED_LOCALES:
+                if prefix in SUPPORTED_LOCALE_PREFIXES:
                     return lower_part
     return SOURCE_LOCALE
 

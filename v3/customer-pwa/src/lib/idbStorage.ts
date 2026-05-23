@@ -1,8 +1,3 @@
-/**
- * IndexedDB storage adapter for Zustand persist middleware.
- * Provides more reliable offline storage than localStorage.
- */
-
 const DB_NAME = 'loka-pwa-db';
 const DB_VERSION = 1;
 const STORE_NAME = 'zustand';
@@ -36,57 +31,63 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-export const idbStorage = {
-  getItem: async (name: string): Promise<string | null> => {
-    try {
-      const db = await openDB();
+function loadAllFromDB(): Promise<Map<string, string>> {
+  return openDB().then((db) => {
+    return new Promise<Map<string, string>>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
-      const request = store.get(name);
-      return await new Promise((resolve, reject) => {
-        request.onsuccess = () => {
-          const result = request.result;
-          resolve(result === undefined ? null : result);
-        };
-        request.onerror = () => reject(request.error);
-      });
-    } catch {
-      if (typeof window !== 'undefined') {
-        return localStorage.getItem(name);
-      }
-      return null;
-    }
+      const memory = new Map<string, string>();
+      const cursorReq = store.openCursor();
+      cursorReq.onsuccess = () => {
+        const cursor = cursorReq.result;
+        if (cursor) {
+          memory.set(String(cursor.key), String(cursor.value));
+          cursor.continue();
+        } else {
+          resolve(memory);
+        }
+      };
+      cursorReq.onerror = () => reject(cursorReq.error);
+    });
+  }).catch(() => new Map<string, string>());
+}
+
+const memoryCache = new Map<string, string>();
+
+let _initPromise: Promise<void> | null = null;
+
+export const idbStorageReady: Promise<boolean> = (() => {
+  _initPromise = loadAllFromDB().then((loaded) => {
+    loaded.forEach((value, key) => { memoryCache.set(key, value); });
+  }).catch(() => {});
+  return _initPromise.then(() => true);
+})();
+
+export const idbStorage = {
+  getItem: (name: string): string | null => {
+    const v = memoryCache.get(name);
+    return v === undefined ? null : v;
   },
-  setItem: async (name: string, value: string): Promise<void> => {
-    try {
-      const db = await openDB();
+  setItem: (name: string, value: string): void => {
+    memoryCache.set(name, value);
+    if (typeof window === 'undefined') return;
+    openDB().then((db) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       store.put(value, name);
-      await new Promise<void>((resolve, reject) => {
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-    } catch {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(name, value);
-      }
-    }
+    }).catch(() => {
+      try { localStorage.setItem(name, value); } catch { /* storage full */ }
+    });
   },
-  removeItem: async (name: string): Promise<void> => {
-    try {
-      const db = await openDB();
+  removeItem: (name: string): void => {
+    memoryCache.delete(name);
+    if (typeof window === 'undefined') return;
+    openDB().then((db) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       store.delete(name);
-      await new Promise<void>((resolve, reject) => {
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-    } catch {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(name);
-      }
-    }
+    }).catch(() => {
+      try { localStorage.removeItem(name); } catch { /* swallow */ }
+    });
   },
 };

@@ -7,6 +7,7 @@ from app.api.v1.deps import ActiveCustomer, DBDependency
 from app.models.customer import Customer, CustomerAddress, CustomerDevice
 from app.schemas.base import APIResponse
 from app.schemas.customer import (
+    AvatarUpdateRequest,
     CustomerAddressCreate,
     CustomerAddressOut,
     CustomerAddressUpdate,
@@ -81,14 +82,12 @@ async def update_me_put(
 async def update_avatar(
     customer: ActiveCustomer,
     db: DBDependency,
-    data: dict,
+    data: AvatarUpdateRequest,
 ):
     """Update customer avatar URL."""
-    avatar_url = data.get("avatar_url") or data.get("image_url")
-    if avatar_url:
-        customer.avatar_url = avatar_url
-        await db.commit()
-        await db.refresh(customer)
+    customer.avatar_url = data.avatar_url
+    await db.commit()
+    await db.refresh(customer)
     return APIResponse(data=CustomerProfileOut.model_validate(customer))
 
 

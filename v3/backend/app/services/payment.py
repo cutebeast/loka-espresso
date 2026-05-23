@@ -1,5 +1,6 @@
 """Payment service layer."""
 
+from decimal import Decimal
 import logging
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -85,13 +86,15 @@ async def create_payment_intent(
     """Create a payment intent for an order."""
     # Verify order exists and belongs to customer
     order_result = await db.execute(
-        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None))
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
     )
     order = order_result.scalar_one_or_none()
     if order is None:
         raise PaymentError("Order not found", 404)
     if order.customer_id != customer_id:
         raise PaymentError("Order does not belong to customer", 403)
+
+    order_amount = Decimal(str(order.total_amount))
 
     # Create payment record
     payment = Payment(
@@ -101,14 +104,14 @@ async def create_payment_intent(
         provider_transaction_id=None,
         idempotency_key=_generate_idempotency_key(),
         payment_method_type=payment_method_type,
-        amount=float(order.total_amount),
+        amount=order_amount,
         currency_code=order.total_amount_currency,
         status="initiated",
-        captured_amount=0,
-        refunded_amount=0,
+        captured_amount=Decimal(0),
+        refunded_amount=Decimal(0),
         refund_count=0,
-        fee_amount=0,
-        net_amount=0,
+        fee_amount=Decimal(0),
+        net_amount=Decimal(0),
         extra_metadata={"return_url": return_url, "simulated": True},
     )
     db.add(payment)
@@ -144,7 +147,9 @@ async def create_payment_intent(
 
 async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
     """Confirm a payment (simulate provider confirmation)."""
-    result = await db.execute(select(Payment).where(Payment.id == payment_id))
+    result = await db.execute(
+        select(Payment).where(Payment.id == payment_id).with_for_update()
+    )
     payment = result.scalar_one_or_none()
     if payment is None:
         raise PaymentError("Payment not found", 404)
@@ -169,7 +174,9 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
 
 async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
     """Capture an authorized payment."""
-    result = await db.execute(select(Payment).where(Payment.id == payment_id))
+    result = await db.execute(
+        select(Payment).where(Payment.id == payment_id).with_for_update()
+    )
     payment = result.scalar_one_or_none()
     if payment is None:
         raise PaymentError("Payment not found", 404)
@@ -179,13 +186,13 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
 
     old_status = payment.status
     payment.status = "captured"
-    payment.captured_amount = float(payment.amount)
+    payment.captured_amount = payment.amount
 
     # Simulate fee calculation (e.g., 2.9% + 0.30 for card payments)
     if payment.provider in ("stripe", "adyen", "braintree", "paypal"):
-        fee = round(payment.captured_amount * 0.029 + 0.30, 4)
+        fee = round(payment.captured_amount * Decimal("0.029") + Decimal("0.30"), 4)
     else:
-        fee = 0
+        fee = Decimal(0)
     payment.fee_amount = fee
     payment.net_amount = round(payment.captured_amount - fee, 4)
 
@@ -236,7 +243,9 @@ async def refund_payment(
     approved_by: int | None,
 ) -> Refund:
     """Request a refund for a captured payment."""
-    result = await db.execute(select(Payment).where(Payment.id == payment_id))
+    result = await db.execute(
+        select(Payment).where(Payment.id == payment_id).with_for_update()
+    )
     payment = result.scalar_one_or_none()
     if payment is None:
         raise PaymentError("Payment not found", 404)
@@ -244,7 +253,7 @@ async def refund_payment(
     if payment.status not in ("captured", "partially_refunded"):
         raise PaymentError(f"Cannot refund payment with status {payment.status}", 400)
 
-    max_refund = round(float(payment.captured_amount) - float(payment.refunded_amount), 4)
+    max_refund = round(payment.captured_amount - payment.refunded_amount, 4)
     if amount > max_refund:
         raise PaymentError(f"Refund amount exceeds available balance ({max_refund})", 400)
 
@@ -262,7 +271,7 @@ async def refund_payment(
     await db.flush()
     await db.refresh(refund)
 
-    payment.refunded_amount = round(float(payment.refunded_amount) + amount, 4)
+    payment.refunded_amount = round(payment.refunded_amount + Decimal(str(amount)), 4)
     payment.refund_count += 1
 
     if payment.refunded_amount >= payment.captured_amount:
@@ -318,7 +327,7 @@ async def process_webhook_event(
             payment.failure_message = payload.get("data", {}).get("last_payment_error", {}).get("message")
         elif event_type in ("payment_intent.succeeded", "charge.succeeded"):
             new_status = "captured"
-            payment.captured_amount = float(payment.amount)
+            payment.captured_amount = payment.amount
         elif event_type == "payment_intent.canceled":
             new_status = "voided"
         elif event_type == "charge.refunded":
@@ -326,7 +335,7 @@ async def process_webhook_event(
     elif provider == "grabpay":
         if event_type in ("payment.success", "session.completed"):
             new_status = "captured"
-            payment.captured_amount = float(payment.amount)
+            payment.captured_amount = payment.amount
         elif event_type in ("payment.failed", "session.failed"):
             new_status = "failed"
         elif event_type in ("payment.cancelled", "session.cancelled"):

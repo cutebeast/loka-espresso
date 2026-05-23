@@ -65,9 +65,9 @@ async def test_staff_login_smoke(client: httpx.AsyncClient, base_url: str):
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
-async def test_get_public_menu(client: httpx.AsyncClient, base_url: str):
+async def test_get_public_menu(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Public menu endpoint returns items."""
-    r = await client.get(f"{base_url}/menu/stores/1")
+    r = await client.get(f"{base_url}/menu/stores/{store_id}")
     assert r.status_code == 200
     data = r.json()["data"]
     assert "items" in data

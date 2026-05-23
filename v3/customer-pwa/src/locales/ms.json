@@ -286,6 +286,9 @@
     "recentOrders": "Pesanan Terkini",
     "myRewards": "Ganjaran Saya",
     "myVouchers": "Voucher Saya",
+    "reservations": "Tempahan",
+    "promotions": "Promosi",
+    "events": "Acara",
     "referral": "Rujukan",
     "paymentMethods": "Kaedah Pembayaran",
     "savedAddresses": "Alamat yang disimpan",
@@ -517,7 +520,23 @@
     "sendMessage": "Hantar mesej",
     "subject": "Subjek",
     "title": "Bantuan & Sokongan",
-    "yourName": "Nama Anda"
+    "yourName": "Nama Anda",
+    "faq": {
+      "q1": "Bagaimana saya memperoleh mata?",
+      "q2": "Bagaimana saya menebus ganjaran?",
+      "q3": "Bagaimana saya menggunakan baucar?",
+      "q4": "Apakah pilihan penghantaran?",
+      "a1": "Anda memperoleh mata dengan setiap pembelian. Jumlahnya berbeza mengikut tahap kesetiaan anda.",
+      "a2": "Pergi ke bahagian Ganjaran, pilih ganjaran, dan ketik Tebus.",
+      "a3": "Masukkan kod baucar anda semasa pembayaran atau tunjukkan kepada barista di kedai.",
+      "a4": "Kami menawarkan makan di tempat, bawa pulang, dan penghantaran. Ketersediaan penghantaran bergantung pada lokasi anda."
+    },
+    "subjects": {
+      "feedback": "Maklum Balas",
+      "order": "Isu Pesanan",
+      "rewards": "Ganjaran",
+      "technical": "Sokongan Teknikal"
+    }
   },
   "home": {
     "add": "Tambah",
@@ -604,7 +623,7 @@
     },
     "dateGroup": {
       "today": "Today",
-      "yesterday": "Yesterday",
+      "yesterday": "Semalam",
       "earlier": "Earlier"
     }
   },
@@ -788,7 +807,9 @@
     "fullViewFallback": "Paparan penuh"
   },
   "legal": {
-    "tableOfContents": "Senarai Kandungan"
+    "tableOfContents": "Senarai Kandungan",
+    "unableToLoadTerms": "Tidak dapat memuatkan Terma Perkhidmatan buat masa ini.",
+    "unableToLoadPrivacy": "Tidak dapat memuatkan Dasar Privasi buat masa ini."
   },
   "myCard": {
     "brand": "LOKA Espresso",

@@ -82,6 +82,8 @@ api_router.include_router(admin_dashboard.router, tags=["admin — dashboard"])
 
 # Wallets
 api_router.include_router(admin_wallet.admin_router, tags=["admin — wallets"])
+# Alias router: frontend code uses /admin/wallet (singular) in some URLs,
+# so we mount the same handlers under both prefixes for compatibility.
 api_router.include_router(admin_wallet.wallet_alias_router, tags=["admin — wallets"])
 api_router.include_router(admin_wallet.public_router, tags=["wallet"])
 

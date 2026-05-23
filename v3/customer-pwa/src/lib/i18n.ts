@@ -11,13 +11,7 @@
  */
 
 import { getLocale, setGlobalLocale } from '@/stores/localeStore';
-// All 5 locale files are statically imported for PWA offline support (~100KB+ total).
-// TODO: Consider dynamic imports with fallback bundled en.json for better initial load performance.
 import enDict from '@/locales/en.json';
-import msDict from '@/locales/ms.json';
-import zhDict from '@/locales/zh.json';
-import taDict from '@/locales/ta.json';
-import trDict from '@/locales/tr.json';
 import type { Locale } from '@/lib/i18n-types';
 import { AVAILABLE_LOCALES, DEFAULT_LOCALE, isValidLocale, getDefaultLocale, getSupportedLocales } from '@/lib/i18n-types';
 import { API_BASE } from '@/lib/api';
@@ -26,14 +20,33 @@ import { API_BASE } from '@/lib/api';
 export type { Locale };
 export { AVAILABLE_LOCALES, DEFAULT_LOCALE, isValidLocale, getDefaultLocale, getSupportedLocales };
 
-// ── Static fallback dictionaries (always available, bundled at build time) ──
-const staticDictionaries: Record<Locale, Record<string, unknown>> = {
-  en: enDict as Record<string, unknown>,
-  ms: msDict as Record<string, unknown>,
-  zh: zhDict as Record<string, unknown>,
-  ta: taDict as Record<string, unknown>,
-  tr: trDict as Record<string, unknown>,
+// ── Dynamic locale loaders (non-en locales loaded on demand via code splitting) ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const localeLoaders: Record<string, () => Promise<{ default: Record<string, any> }>> = {
+  ms: () => import('@/locales/ms.json'),
+  zh: () => import('@/locales/zh.json'),
+  ta: () => import('@/locales/ta.json'),
+  tr: () => import('@/locales/tr.json'),
 };
+
+// ── Mutable static dictionaries — en always bundled, others loaded dynamically ──
+const staticDictionaries: Record<string, Record<string, unknown>> = {
+  en: enDict as Record<string, unknown>,
+};
+
+const staticLoaded = new Set<string>(['en']);
+
+// ── React re-render subscription (notifies useTranslation when a locale loads) ──
+const subscribers = new Set<() => void>();
+
+function notifySubscribers() {
+  subscribers.forEach(fn => fn());
+}
+
+export function subscribeI18n(fn: () => void): () => void {
+  subscribers.add(fn);
+  return () => { subscribers.delete(fn); };
+}
 
 // ── Dynamic overlay (populated from backend API at runtime) ──
 const dynamicOverlays: Record<string, Record<string, string>> = {};
@@ -98,7 +111,10 @@ export async function fetchDynamicTranslations(locale: string): Promise<boolean>
 export async function switchLocale(locale: Locale): Promise<void> {
   setGlobalLocale(locale);
   if (locale !== 'en') {
-    await fetchDynamicTranslations(locale);
+    await Promise.all([
+      fetchDynamicTranslations(locale),
+      loadStaticLocale(locale),
+    ]);
   }
 }
 
@@ -109,13 +125,30 @@ export async function switchLocale(locale: Locale): Promise<void> {
 export async function initTranslations(): Promise<void> {
   const locale = getLocale() as Locale;
   if (locale !== 'en') {
-    await fetchDynamicTranslations(locale);
+    await Promise.all([
+      fetchDynamicTranslations(locale),
+      loadStaticLocale(locale),
+    ]);
   }
 }
 
 // No-op for backwards compatibility with code that calls loadLocale
 export async function loadLocale(_locale: Locale): Promise<void> {
-  // Dictionaries are already loaded statically; dynamic overlay handles non-en
+  // Dictionaries are loaded via loadStaticLocale; dynamic overlay handles non-en
+}
+
+export async function loadStaticLocale(locale: string): Promise<void> {
+  if (locale === 'en' || staticLoaded.has(locale)) return;
+  const loader = localeLoaders[locale];
+  if (!loader) return;
+  try {
+    const mod = await loader();
+    staticDictionaries[locale] = mod.default as Record<string, unknown>;
+    staticLoaded.add(locale);
+    notifySubscribers();
+  } catch (e) {
+    console.error(`[i18n] Failed to load static locale "${locale}":`, e);
+  }
 }
 
 /** Get a nested value from a flat key -> value map by dot-notation key. */

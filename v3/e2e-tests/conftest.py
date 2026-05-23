@@ -1,6 +1,7 @@
 """Shared fixtures for FNB v3 E2E API test suite."""
 
-import jwt
+import os
+import jwt as pyjwt
 import logging
 import pytest
 import pytest_asyncio
@@ -10,13 +11,13 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "http://localhost:13800/api/v1"
-JWT_SECRET = "super-secret-jwt-key-for-development-only-12345"
+BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:13800/api/v1")
+JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-for-development-only-12345")
 JWT_ALGORITHM = "HS256"
 
 # Seeded admin credentials (from scripts/seed_v3.py)
-ADMIN_EMAIL = "admin@lokaespresso.my"
-ADMIN_PASSWORD = "admin123"
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@lokaespresso.my")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
 
 # ---------------------------------------------------------------------------
@@ -47,13 +48,13 @@ def _login_and_get_token(base_url: str, email: str, password: str, timeout: floa
 def _is_token_expired(token: str) -> bool:
     """Check if a JWT token is expired (or expiring within 60 seconds)."""
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM], options={"verify_exp": True})
+        payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM], options={"verify_exp": True})
         exp = payload.get("exp")
         if exp is None:
             return True
         now = datetime.now(timezone.utc).timestamp()
         return now >= exp - 60
-    except Exception:
+    except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError, pyjwt.DecodeError):
         return True
 
 
@@ -110,6 +111,60 @@ def store_id() -> int:
 def store_id_2() -> int:
     """Second active store for tests."""
     return 2
+
+
+@pytest.fixture(scope="session")
+def discovered_admin_id(base_url: str, _admin_token_session: str) -> str:
+    """Dynamically discover the admin ID via /admin/auth/me or JWT decode."""
+    # Try the auth/me endpoint first
+    try:
+        with httpx.Client(timeout=10.0) as c:
+            r = c.get(
+                f"{base_url}/admin/auth/me",
+                headers={"Authorization": f"Bearer {_admin_token_session}"},
+            )
+        if r.status_code == 200:
+            data = r.json()
+            profile = data.get("data", data)
+            admin_id = profile.get("id") or profile.get("admin_id") or profile.get("sub")
+            if admin_id is not None:
+                return str(admin_id)
+    except Exception as e:
+        logger.warning("discovered_admin_id: /admin/auth/me failed — %s", e)
+
+    # Fallback: decode the JWT to get the sub claim
+    try:
+        payload = pyjwt.decode(
+            _admin_token_session, JWT_SECRET, algorithms=[JWT_ALGORITHM],
+            options={"verify_exp": False},
+        )
+        sub = payload.get("sub")
+        if sub is not None:
+            return str(sub)
+    except Exception as e:
+        logger.warning("discovered_admin_id: JWT decode failed — %s", e)
+
+    # Final fallback: return the hardcoded value
+    return "2"
+
+
+@pytest.fixture(scope="session")
+def discovered_store_id(base_url: str) -> int:
+    """Dynamically discover the first store ID via /admin/stores."""
+    try:
+        with httpx.Client(timeout=10.0) as c:
+            r = c.get(f"{base_url}/stores")
+        if r.status_code == 200:
+            data = r.json()
+            inner = data.get("data", data)
+            items = inner.get("items", inner if isinstance(inner, list) else [])
+            if items and len(items) > 0:
+                return int(items[0]["id"])
+    except Exception as e:
+        logger.warning("discovered_store_id: /admin/stores failed — %s", e)
+
+    # Fallback
+    return 1
 
 
 # ---------------------------------------------------------------------------

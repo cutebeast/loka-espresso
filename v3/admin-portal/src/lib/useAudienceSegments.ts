@@ -21,8 +21,10 @@ export function useAudienceSegments() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     api.getRaw<any>("/admin/loyalty/tiers?per_page=10&is_active=true")
       .then(d => {
+        if (cancelled) return;
         const tiers = (d?.items || []) as { tier_key: string; display_name: string }[];
         const tSegments: Segment[] = tiers.map(t => ({ value: `tier:${t.tier_key}`, label: `${t.display_name} Members` }));
         setAllSegments([
@@ -34,7 +36,8 @@ export function useAudienceSegments() {
         ]);
         setError(null);
       })
-      .catch((e: any) => { setError(e?.message || "Failed to load segments"); });
+      .catch((e: any) => { if (!cancelled) setError(e?.message || "Failed to load segments"); });
+    return () => { cancelled = true; };
   }, []);
 
   return { allSegments, error };

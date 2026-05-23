@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { CartItem } from '@/lib/api';
-import { idbStorage } from '@/lib/idbStorage';
+import { idbStorage, idbStorageReady } from '@/lib/idbStorage';
 
 interface CartState {
   items: CartItem[];
@@ -14,6 +14,7 @@ interface CartState {
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
+  _hydrated: boolean;
 }
 
 function stableStringify(obj: unknown): string {
@@ -35,6 +36,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       orderNote: '',
+      _hydrated: false,
       setOrderNote: (note) => set({ orderNote: note }),
       addItem: (item) =>
         set((state) => {
@@ -78,6 +80,15 @@ export const useCartStore = create<CartState>()(
     {
       name: 'loka-cart',
       storage: createJSONStorage(() => idbStorage),
+      onRehydrateStorage: () => {
+        return (_state, error) => {
+          if (!error) {
+            idbStorageReady.then(() => {
+              useCartStore.setState({ _hydrated: true });
+            });
+          }
+        };
+      },
     }
   )
 );

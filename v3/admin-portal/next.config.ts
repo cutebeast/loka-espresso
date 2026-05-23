@@ -6,7 +6,9 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "admin.loyaltysystem.uk" },
       { protocol: "https", hostname: "app.loyaltysystem.uk" },
       { protocol: "https", hostname: "staff.loyaltysystem.uk" },
-      { protocol: "http", hostname: "localhost" },
+      ...(process.env.NODE_ENV === "development"
+        ? [{ protocol: "http" as const, hostname: "localhost" }]
+        : []),
     ],
   },
 };

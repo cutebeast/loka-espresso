@@ -181,3 +181,8 @@ class UseVoucherRequest(BaseSchema):
 class SetTierRequest(BaseSchema):
     tier: str
     reason: str = "Admin override"
+
+
+class AvatarUpdateRequest(BaseSchema):
+    """Request to update the customer's avatar image URL."""
+    avatar_url: str = Field(..., max_length=500)

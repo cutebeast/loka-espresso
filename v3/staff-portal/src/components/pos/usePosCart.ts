@@ -39,12 +39,12 @@ export function usePosCart(_storeId: number, crewName: string) {
     setCart((prev) => {
       const existing = prev.find(
         (c) => c.menu_item_id === item.id &&
-        JSON.stringify([...c.modifier_ids].sort((a, b) => a - b)) === JSON.stringify(modifierIds)
+        [...c.modifier_ids].sort((a, b) => a - b).join(',') === modifierIds.join(',')
       );
       if (existing) {
         return prev.map((c) =>
           c.menu_item_id === item.id &&
-          JSON.stringify([...c.modifier_ids].sort((a, b) => a - b)) === JSON.stringify(modifierIds)
+          [...c.modifier_ids].sort((a, b) => a - b).join(',') === modifierIds.join(',')
             ? { ...c, qty: c.qty + qty }
             : c
         );
@@ -88,14 +88,14 @@ export function usePosCart(_storeId: number, crewName: string) {
   const removeFromCart = useCallback((menu_item_id: number, modifier_ids: number[]) => {
     const sorted = [...modifier_ids].sort((a, b) => a - b);
     setCart((prev) => prev.filter(
-      (c) => !(c.menu_item_id === menu_item_id && JSON.stringify([...c.modifier_ids].sort((a, b) => a - b)) === JSON.stringify(sorted))
+      (c) => !(c.menu_item_id === menu_item_id && [...c.modifier_ids].sort((a, b) => a - b).join(',') === sorted.join(','))
     ));
   }, []);
 
   const updateQty = useCallback((menu_item_id: number, modifier_ids: number[], delta: number) => {
     const sorted = [...modifier_ids].sort((a, b) => a - b);
     setCart((prev) => prev.map((c) => {
-      if (c.menu_item_id !== menu_item_id || JSON.stringify([...c.modifier_ids].sort((a, b) => a - b)) !== JSON.stringify(sorted))
+      if (c.menu_item_id !== menu_item_id || [...c.modifier_ids].sort((a, b) => a - b).join(',') !== sorted.join(','))
         return c;
       const newQty = Math.max(0, c.qty + delta);
       return newQty === 0 ? null : { ...c, qty: newQty };

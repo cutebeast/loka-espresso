@@ -232,13 +232,13 @@ export default function CartPage() {
                 className="cart-item-card"
               >
                 <div className="cart-item-thumb">
-                  {item.image_url && !brokenImages.has(item.menu_item_id) ? (
+                  {item.image_url && !brokenImages.has(`${item.menu_item_id}-${item.customization_option_ids?.join(',') || '0'}`) ? (
                     <img
                       src={resolveAssetUrl(item.image_url) || ''}
                       alt={item.name}
                       loading="lazy"
                       onError={() => {
-                        setBrokenImages(prev => new Set(prev).add(item.menu_item_id));
+                        setBrokenImages(prev => new Set(prev).add(`${item.menu_item_id}-${item.customization_option_ids?.join(',') || '0'}`));
                       }}
                     />
                   ) : (

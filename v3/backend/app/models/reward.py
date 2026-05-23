@@ -17,6 +17,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from decimal import Decimal
+
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 from app.models.enums import RewardRedemptionType
 
@@ -34,9 +36,9 @@ class RewardCatalog(Base, SoftDeleteMixin, TimestampMixin):
     menu_item_id: Mapped[int | None] = mapped_column(
         ForeignKey("menu_items.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    discount_value: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
-    discount_max_amount: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
-    minimum_order_value: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    discount_value: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    discount_max_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    minimum_order_value: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     maximum_redemptions: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_redemptions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -71,7 +73,7 @@ class RewardCatalog(Base, SoftDeleteMixin, TimestampMixin):
         CheckConstraint("points_cost > 0", name="ck_reward_catalog_points_cost"),
         CheckConstraint("discount_value >= 0", name="ck_reward_catalog_discount_value"),
         CheckConstraint("minimum_order_value >= 0", name="ck_reward_catalog_minimum_order_value"),
-        CheckConstraint("maximum_redemptions > 0", name="ck_reward_catalog_maximum_redemptions"),
+        CheckConstraint("maximum_redemptions IS NULL OR maximum_redemptions > 0", name="ck_reward_catalog_maximum_redemptions"),
         CheckConstraint("total_redemptions >= 0", name="ck_reward_catalog_total_redemptions"),
         CheckConstraint("validity_days > 0", name="ck_reward_catalog_validity_days"),
     )

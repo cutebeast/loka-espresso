@@ -1,6 +1,7 @@
 """Cart & Checkout models."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import List
 
 from sqlalchemy import (
@@ -31,7 +32,7 @@ class CustomerCart(Base, TimestampMixin):
         ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
     )
     item_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    subtotal: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     last_activity_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -65,10 +66,10 @@ class CartLineItem(Base):
         ForeignKey("menu_variants.id", ondelete="SET NULL"), nullable=True, index=True
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
-    unit_price: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
-    line_total: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    line_total: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
     selected_modifiers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    modifier_total: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    modifier_total: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     special_instructions: Mapped[str | None] = mapped_column(String(255), nullable=True)
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

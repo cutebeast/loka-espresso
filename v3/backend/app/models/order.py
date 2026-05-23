@@ -1,6 +1,7 @@
 """Order Management models."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import List
 
 from sqlalchemy import (
@@ -51,16 +52,16 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     payment_status: Mapped[str] = mapped_column(PaymentStatus, nullable=False, default="initiated")
     fulfillment_type: Mapped[str] = mapped_column(FulfillmentType, nullable=False)
     item_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    items_subtotal: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    modifier_subtotal: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    delivery_fee: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    service_charge: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    tax_amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    discount_amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    voucher_discount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    reward_discount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    tip_amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    total_amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    items_subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    modifier_subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    delivery_fee: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    service_charge: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    tax_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    voucher_discount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    reward_discount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    tip_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     total_amount_currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="USD")
     loyalty_points_earned: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     loyalty_points_redeemed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -152,6 +153,7 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
             name="ck_orders_cancelled_by",
         ),
         Index("idx_orders_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NULL")),
+        Index("idx_orders_device_fingerprint", "device_fingerprint", postgresql_where=text("device_fingerprint IS NOT NULL")),
     )
 
 

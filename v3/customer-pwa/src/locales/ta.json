@@ -788,7 +788,9 @@
     "fullViewFallback": "முழு காட்சி"
   },
   "legal": {
-    "tableOfContents": "உள்ளடக்கப் பட்டியல்"
+    "tableOfContents": "உள்ளடக்கப் பட்டியல்",
+    "unableToLoadTerms": "சேவை விதிமுறைகளை இப்போது ஏற்ற முடியவில்லை.",
+    "unableToLoadPrivacy": "தனியுரிமைக் கொள்கையை இப்போது ஏற்ற முடியவில்லை."
   },
   "myCard": {
     "brand": "லோகா எஸ்பிரெசோ",

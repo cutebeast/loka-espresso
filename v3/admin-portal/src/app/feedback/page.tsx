@@ -214,7 +214,7 @@ export default function FeedbackPage() {
       {replyModal && (
         <>
           <div className="drawer-overlay" onClick={() => setReplyModal(null)} />
-          <div className="drawer" style={{ width: 500 }}>
+          <div className="drawer">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700 }}>{replyModal.admin_reply ? "Edit" : "Reply to"} Feedback</h3>
               <button onClick={() => setReplyModal(null)} className="btn btn-icon btn-ghost"><X size={18} /></button>

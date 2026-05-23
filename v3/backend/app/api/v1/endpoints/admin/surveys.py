@@ -152,6 +152,7 @@ async def create_survey(
     db: DBDependency,
     admin: CurrentAdmin,
     data: SurveyDefinitionCreate,
+    locale: OptionalLocale,
 ):
     """Create a new survey with optional questions (max 5)."""
     if len(data.questions) > MAX_QUESTIONS_PER_SURVEY:

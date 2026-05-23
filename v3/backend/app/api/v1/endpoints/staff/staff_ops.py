@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.v1.deps import CurrentAdmin, CurrentStaff, DBDependency
 from app.models.customer import Customer
@@ -377,7 +378,16 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
 
 @router.get("/staff/auth/me")
 async def staff_profile_me(db: DBDependency, request: Request):
-    """Get the current user's profile with IAM roles."""
+    """Get the current user's profile with IAM roles.
+
+    NOTE — Manual token extraction instead of FastAPI dependency:
+    This endpoint serves both StaffProfile tokens (type='staff') and AdminAccount
+    tokens (type='admin') that enter through the staff portal.  FastAPI's
+    dependency system evaluates from the parameter list and a single CurrentStaff
+    dependency would reject admin tokens before we can branch on the payload type.
+    Manual decode lets us handle both token types in one endpoint without
+    duplicating routes.
+    """
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -656,6 +666,18 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: PO
     if not line_items_data:
         raise HTTPException(status_code=400, detail="At least one line item required")
 
+    # Validate customer if provided
+    if customer_id:
+        cust_r = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_active.is_(True), Customer.deleted_at.is_(None)))
+        if not cust_r.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail=f"Customer {customer_id} not found or inactive")
+
+    # Validate dining table if provided
+    if dining_table_id:
+        table_r = await db.execute(select(DiningTable).where(DiningTable.id == dining_table_id, DiningTable.store_id == store_id, DiningTable.deleted_at.is_(None)))
+        if not table_r.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail=f"Dining table {dining_table_id} not found for store {store_id}")
+
     # Resolve prices and build line items
     subtotal = 0.0
     line_items = []
@@ -763,7 +785,7 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: PO
         # Update table status if dine-in
         if dining_table_id and order_type == "dine_in":
             existing = await db.execute(
-                select(TableStatusSnapshot).where(TableStatusSnapshot.table_id == dining_table_id)
+                select(TableStatusSnapshot).where(TableStatusSnapshot.table_id == dining_table_id).with_for_update()
             )
             snap = existing.scalar_one_or_none()
             if snap:
@@ -771,7 +793,7 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: PO
                 snap.current_order_id = order.id
 
         await db.commit()
-    except Exception:
+    except (IntegrityError, HTTPException):
         await db.rollback()
         raise
 

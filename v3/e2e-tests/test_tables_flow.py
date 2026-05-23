@@ -27,7 +27,7 @@ async def test_list_tables(
             f"{base_url}/admin/stores/{store_id}/tables",
             headers=admin_headers,
         )
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Tables list endpoint not available")
 
     if r.status_code in (404, 405):
@@ -61,7 +61,7 @@ async def test_generate_qr(
             f"{base_url}/admin/stores/{store_id}/tables",
             headers=admin_headers,
         )
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Tables list endpoint not available")
 
     if r.status_code != 200:
@@ -79,7 +79,7 @@ async def test_generate_qr(
             f"{base_url}/admin/stores/{store_id}/tables/{table_id}/generate-qr",
             headers=admin_headers,
         )
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Generate QR endpoint not available")
 
     if r2.status_code in (404, 405):
@@ -106,7 +106,7 @@ async def test_update_table_status(
             f"{base_url}/admin/stores/{store_id}/tables",
             headers=admin_headers,
         )
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Tables list endpoint not available")
 
     if r.status_code != 200:
@@ -135,7 +135,7 @@ async def test_update_table_status(
             headers=admin_headers,
             json={"current_status": "occupied"},
         )
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Table update endpoint not available")
 
     if r2.status_code in (404, 405):

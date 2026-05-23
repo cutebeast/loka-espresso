@@ -1,5 +1,7 @@
 """Authentication endpoints."""
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
@@ -24,6 +26,8 @@ from app.services.auth import (
 from app.services.platform_config import PlatformConfigService
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+logger = logging.getLogger("auth")
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -52,8 +56,6 @@ async def customer_login(request: Request, db: DBDependency, data: CustomerLogin
     Production: OTP verification is mandatory. If not yet implemented, the
     endpoint returns 501 so deploy is blocked until OTP is wired up.
     """
-    import logging
-    logger = logging.getLogger("auth")
     settings = get_settings()
 
     # ── Production guard: OTP verification must be implemented ──
@@ -116,12 +118,17 @@ async def customer_refresh(request: Request, db: DBDependency, data: RefreshToke
 
 
 @router.post("/logout")
-async def customer_logout():
-    """Logout endpoint — client-side token invalidation.
+async def customer_logout(db: DBDependency, data: RefreshTokenRequest | None = None):
+    """Logout endpoint — blacklists refresh token for server-side revocation.
     
-    In a stateless JWT setup, logout is handled entirely on the client
-    by discarding tokens. Server-side token blacklisting can be added
-    here for production (Redis/DB token revocation list).
+    In a stateless JWT setup, logout is primarily client-side token
+    discard. Server-side blacklisting provides defense-in-depth for
+    refresh tokens while they remain valid (up to 7 days).
     """
-    # Future: add refresh_token to a revocation list
+    if data and data.refresh_token:
+        try:
+            from app.services.auth import _blacklist_refresh_token
+            await _blacklist_refresh_token(db, data.refresh_token)
+        except Exception as e:
+            logger.warning("Failed to blacklist refresh token: %s", str(e))
     return {"success": True, "message": "Logged out successfully"}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { adminLogin } from "@/lib/api";
+import { adminLogin, isLoggedIn } from "@/lib/api";
 import { Store, Lock, Mail } from "lucide-react";
 import { useBrand } from "@/components/BrandProvider";
 import { ROUTES } from "@/lib/constants";
@@ -21,6 +21,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await adminLogin(email, password);
+      if (!isLoggedIn()) {
+        setError("Login failed — no token received. Please try again.");
+        return;
+      }
       router.push(ROUTES.HOME);
     } catch (err: any) {
       setError(err.message || "Invalid email or password");

@@ -5,7 +5,7 @@ Verifies store-scoped access controls prevent unauthorized data access.
 
 import pytest
 import httpx
-import jwt
+import jwt as pyjwt
 from datetime import datetime, timezone, timedelta
 
 from conftest import JWT_SECRET
@@ -25,7 +25,7 @@ def _make_staff_token(admin_id: str, store_id: int, expiry_hours: int = 1) -> st
         "iss": "fnb-enterprise-v3",
         "aud": "fnb-app",
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    return pyjwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
 
 def _make_admin_token(admin_id: str, expiry_hours: int = 1) -> str:
@@ -39,7 +39,7 @@ def _make_admin_token(admin_id: str, expiry_hours: int = 1) -> str:
         "iss": "fnb-enterprise-v3",
         "aud": "fnb-app",
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    return pyjwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -94,10 +94,10 @@ async def test_admin_customers_filter_by_store(
 
 @pytest.mark.asyncio
 async def test_staff_store2_cannot_access_store1_orders(
-    client: httpx.AsyncClient, base_url: str, store_id: int, store_id_2: int
+    client: httpx.AsyncClient, base_url: str, store_id: int, store_id_2: int, discovered_admin_id: str
 ):
     """Staff token with store_id=2 cannot access orders from store_id=1."""
-    token_s2 = _make_staff_token("2", store_id_2)
+    token_s2 = _make_staff_token(discovered_admin_id, store_id_2)  # "2" depends on seed admin data
     headers_s2 = {"Authorization": f"Bearer {token_s2}", "Content-Type": "application/json"}
 
     r = await client.get(f"{base_url}/admin/orders?store_id={store_id}&per_page=1", headers=headers_s2)
@@ -107,10 +107,10 @@ async def test_staff_store2_cannot_access_store1_orders(
 
 @pytest.mark.asyncio
 async def test_staff_own_store_orders_allowed(
-    client: httpx.AsyncClient, base_url: str, store_id: int
+    client: httpx.AsyncClient, base_url: str, store_id: int, discovered_admin_id: str
 ):
     """Staff token with store_id=1 CAN access orders from store_id=1."""
-    token_s1 = _make_staff_token("2", store_id)
+    token_s1 = _make_staff_token(discovered_admin_id, store_id)  # "2" depends on seed admin data
     headers_s1 = {"Authorization": f"Bearer {token_s1}", "Content-Type": "application/json"}
 
     r = await client.get(f"{base_url}/admin/orders?store_id={store_id}&per_page=5", headers=headers_s1)
@@ -121,10 +121,10 @@ async def test_staff_own_store_orders_allowed(
 
 @pytest.mark.asyncio
 async def test_staff_store2_wrong_scope_on_reservations(
-    client: httpx.AsyncClient, base_url: str, store_id: int, store_id_2: int
+    client: httpx.AsyncClient, base_url: str, store_id: int, store_id_2: int, discovered_admin_id: str
 ):
     """Staff token with store_id=2 cannot access reservations from store_id=1."""
-    token_s2 = _make_staff_token("2", store_id_2)
+    token_s2 = _make_staff_token(discovered_admin_id, store_id_2)  # "2" depends on seed admin data
     headers_s2 = {"Authorization": f"Bearer {token_s2}", "Content-Type": "application/json"}
 
     r = await client.get(f"{base_url}/admin/reservations?store_id={store_id}&per_page=1", headers=headers_s2)

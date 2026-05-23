@@ -280,7 +280,6 @@
 .border-transparent { border-color: transparent; }
 .border-white { border-color: #ffffff; }
 .border-gray-100 { border-color: #f3f4f6; }
-.border-gray-100 { border-color: #f3f4f6; }
 .border-gray-200 { border-color: #e5e7eb; }
 .border-gray-300 { border-color: #d1d5dc; }
 .border-yellow-400 { border-color: #facc15; }
@@ -416,8 +415,6 @@
 /* ── Divide ── */
 .divide-y > * + * { border-top-width: 1px; border-top-style: solid; }
 .divide-gray-100 > * + * { border-color: #f3f4f6; }
-.space-y-2 > * + * { margin-top: 0.5rem; }
-.pt-3 { padding-top: 0.75rem; }
 
 /* ── Misc ── */
 .list-none { list-style: none; }

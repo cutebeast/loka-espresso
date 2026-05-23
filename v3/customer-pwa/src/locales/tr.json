@@ -788,7 +788,9 @@
     "fullViewFallback": "Tam görünüm"
   },
   "legal": {
-    "tableOfContents": "İçindekiler"
+    "tableOfContents": "İçindekiler",
+    "unableToLoadTerms": "Hizmet Şartları şu anda yüklenemiyor.",
+    "unableToLoadPrivacy": "Gizlilik Politikası şu anda yüklenemiyor."
   },
   "myCard": {
     "brand": "LOKA Espresso",

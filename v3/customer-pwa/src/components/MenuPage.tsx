@@ -43,27 +43,24 @@ export default function MenuPage() {
   const navRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const loadMenu = useCallback(async () => {
+  const loadMenu = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setLoadError(false);
     try {
-      // v3: /menu/categories and /menu/items both map to /menu/stores/{store_id}
-      // which returns { items: [...], categories: [...] }
-      const res = await api.get(`/menu/categories`);
+      const res = await api.get(`/menu/categories`, { signal });
       const data = res.data;
       if (data && typeof data === 'object' && data.categories) {
-        // Response already mapped to { items, categories } by api.ts
         setCategories(Array.isArray(data.categories) ? data.categories : []);
         setMenuItems(Array.isArray(data.items) ? data.items : []);
       } else if (Array.isArray(data)) {
-        // Fallback: flat array (legacy)
         setCategories([]);
         setMenuItems(data);
       } else {
         setCategories([]);
         setMenuItems([]);
       }
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setCategories([]);
       setMenuItems([]);
       setLoadError(true);
@@ -74,7 +71,9 @@ export default function MenuPage() {
   }, [setCategories, setMenuItems, showToast, t]);
 
   useEffect(() => {
-    loadMenu();
+    const controller = new AbortController();
+    loadMenu(controller.signal);
+    return () => { controller.abort(); };
   }, [loadMenu]);
 
   /* intersection observer for active category */
@@ -273,7 +272,7 @@ export default function MenuPage() {
               </button>
             )}
             {loadError && (
-              <button className="btn btn-primary btn-pill mt-2" onClick={loadMenu}>
+              <button className="btn btn-primary btn-pill mt-2" onClick={() => { const ctrl = new AbortController(); loadMenu(ctrl.signal); }}>
                 {t('common.retry')}
               </button>
             )}

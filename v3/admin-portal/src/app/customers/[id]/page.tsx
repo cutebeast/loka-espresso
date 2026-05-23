@@ -120,7 +120,10 @@ interface ActionResponse {
 const emptyPaginated = <T,>(): PaginatedResponse<T> => ({ items: [], total: 0, page: 1, total_pages: 0 });
 
 export default function CustomerDetailPage() {
-  const p = useParams(); const r = useRouter(); const id = Number(p.id);
+  const p = useParams(); const r = useRouter();
+  const paramId = Array.isArray(p.id) ? p.id[0] : p.id;
+  const id = Number(paramId);
+  const isValidId = !isNaN(id) && id > 0;
   const [c, setC] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -148,15 +151,16 @@ export default function CustomerDetailPage() {
   const [rewardsVouchers, setRewardsVouchers] = useState<RewardsAndVouchers>({ rewards: [], vouchers: [] });
 
   const load = useCallback(async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!isValidId) return;
     try { setC(await api.get<CustomerDetail>(`/admin/customers/${id}`)); } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [id]);
+  }, [id, isValidId]);
 
   useEffect(() => {
+    if (!isValidId) { setError("Invalid customer ID"); setLoading(false); return; }
     load();
     api.get<VoucherOption[]>("/admin/vouchers?is_active=true&per_page=100").then(d => setVouchers(Array.isArray(d)?d:((d as unknown as {items: VoucherOption[]}).items||[]))).catch((e) => { console.error('vouchers preload:', e); });
-  }, [id, load]);
+  }, [id, load, isValidId]);
 
   useEffect(() => {
     if (c) { setForm({ display_name: c.display_name || "", phone_number: c.phone_number || "", email_address: c.email_address || "", date_of_birth: c.date_of_birth || "", is_active: c.is_active || true }); }

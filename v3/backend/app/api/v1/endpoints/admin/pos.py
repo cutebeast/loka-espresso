@@ -192,7 +192,7 @@ async def create_modification(
     db: DBDependency,
     admin: CurrentAdmin,
 ):
-    log = OrderModificationLog(**payload.model_dump(), staff_id=admin.id if hasattr(admin, "id") else None)
+    log = OrderModificationLog(**payload.model_dump(), staff_id=admin.id)
     db.add(log)
     await db.commit()
     await db.refresh(log)

@@ -16,9 +16,6 @@ from datetime import date, datetime, timezone, timedelta
 
 from conftest import JWT_SECRET
 
-pytestmark = [pytest.mark.customer, pytest.mark.staff, pytest.mark.admin]
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # Customer create reservation
 # ═══════════════════════════════════════════════════════════════════════════
@@ -55,7 +52,7 @@ async def test_customer_create_reservation(
             "duration_minutes": 90,
             "special_requests": "Window seat please",
         })
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Customer reservation endpoint not available")
 
     if r.status_code in (404, 405):
@@ -101,7 +98,7 @@ async def test_customer_cancel_own_reservation(
             "reservation_date": str(tomorrow),
             "reservation_time": "20:00:00",
         })
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Customer reservation endpoint not available")
 
     if r.status_code in (404, 405):
@@ -116,7 +113,7 @@ async def test_customer_cancel_own_reservation(
     # Cancel the reservation
     try:
         r2 = await client.delete(f"{base_url}/reservations/{reservation_id}", headers=headers)
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Customer reservation cancel endpoint not available")
 
     if r2.status_code in (404, 405):
@@ -181,7 +178,7 @@ async def test_staff_confirm_reservation(
                 "reservation_time": "18:30:00",
             },
         )
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Admin reservations create endpoint not available")
 
     if r.status_code in (404, 405):
@@ -200,7 +197,7 @@ async def test_staff_confirm_reservation(
             headers=admin_headers,
             json={"status": "confirmed", "dining_table_id": table_id},
         )
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Reservation status update endpoint not available")
 
     if r2.status_code in (404, 405):
@@ -226,7 +223,7 @@ async def test_staff_confirm_reservation(
 @pytest.mark.staff
 @pytest.mark.asyncio
 async def test_reservation_store_scoping(
-    client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int, store_id_2: int
+    client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int, store_id_2: int, discovered_admin_id: str
 ):
     """Staff from store B cannot see store A's reservations.
 
@@ -237,7 +234,7 @@ async def test_reservation_store_scoping(
     now = datetime.now(timezone.utc)
     token_s2 = pyjwt.encode(
         {
-            "sub": "2",
+            "sub": discovered_admin_id,
             "type": "staff",
             "staff_id": 0,
             "store_id": store_id_2,
@@ -264,7 +261,7 @@ async def test_reservation_store_scoping(
             f"{base_url}/admin/reservations?store_id={store_id}&per_page=1",
             headers=headers_s2,
         )
-    except Exception:
+    except httpx.ConnectError:
         pytest.skip("Reservations endpoint not available")
 
     # Should be rejected (403/401) or return empty

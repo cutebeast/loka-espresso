@@ -18,6 +18,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from decimal import Decimal
+
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 from app.models.enums import VoucherScope, VoucherType
 
@@ -37,10 +39,10 @@ class VoucherDefinition(Base, SoftDeleteMixin, TimestampMixin):
     )
     display_title: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    discount_value: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
-    discount_max_amount: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
-    minimum_order_value: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False, default=0)
-    maximum_discount: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    discount_max_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    minimum_order_value: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
+    maximum_discount: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     max_global_uses: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_uses_per_customer: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     global_use_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -78,8 +80,8 @@ class VoucherDefinition(Base, SoftDeleteMixin, TimestampMixin):
         ),
         CheckConstraint("discount_value >= 0", name="ck_voucher_definitions_discount_value"),
         CheckConstraint("minimum_order_value >= 0", name="ck_voucher_definitions_minimum_order_value"),
-        CheckConstraint("max_global_uses > 0", name="ck_voucher_definitions_max_global_uses"),
-        CheckConstraint("max_uses_per_customer > 0", name="ck_voucher_definitions_max_uses_per_customer"),
+        CheckConstraint("max_global_uses IS NULL OR max_global_uses > 0", name="ck_voucher_definitions_max_global_uses"),
+        CheckConstraint("max_uses_per_customer IS NULL OR max_uses_per_customer > 0", name="ck_voucher_definitions_max_uses_per_customer"),
         CheckConstraint("global_use_count >= 0", name="ck_voucher_definitions_global_use_count"),
         CheckConstraint("valid_until > valid_from", name="ck_voucher_definitions_valid_until"),
     )

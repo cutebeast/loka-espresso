@@ -11,6 +11,7 @@ import { OTPInput } from '@/components/auth/OTPInput';
 import { ProfileSetup } from '@/components/auth/ProfileSetup';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useTranslation } from '@/hooks/useTranslation';
+import { usePhoneAuth } from '@/hooks/usePhoneAuth';
 
 type AuthStep = 'splash' | 'phone' | 'otp' | 'profile' | 'done';
 
@@ -33,30 +34,21 @@ interface AuthFlowProps {
   onAuthDone: () => void;
 }
 
-async function fetchAndSetUser() {
-  try {
-    const me = await api.get('/me');
-    useAuthStore.getState().setUser(me.data);
-  } catch { /* user will be set on next load */ }
-}
-
 export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
   const { t } = useTranslation();
-  const { isAuthenticated, setIsNewUser, setPhone } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const { showToast } = useUIStore();
   const reducedMotion = useReducedMotion();
+  const {
+    phoneNumber,
+    handleSendOtp,
+    handleVerifyOtp,
+    handleProfileSetup,
+    getApiErrorMessage,
+  } = usePhoneAuth();
 
   const [authStep, setAuthStep] = useState<AuthStep>('splash');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [loadingAuth, setLoadingAuth] = useState(false);
-
-  const getApiErrorMessage = useCallback((error: unknown, fallback: string) => {
-    const detail = (error as { response?: { data?: { detail?: unknown; message?: string } } })?.response?.data?.detail;
-    if (typeof detail === 'string' && detail.trim()) return detail;
-    const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    if (typeof message === 'string' && message.trim()) return message;
-    return fallback;
-  }, []);
 
   const handleSplashFinish = useCallback(() => {
     if (isAuthenticated) { onAuthDone(); setAuthStep('done'); }
@@ -64,41 +56,25 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
   }, [isAuthenticated, onAuthDone]);
 
   const handlePhoneSubmit = useCallback(async (phoneValue: string) => {
-    setPhoneNumber(phoneValue);
-    setPhone(phoneValue);
-    // v3 doesn't have send-otp endpoint — skip directly to OTP entry
-    // In production this should call /auth/send-otp
+    await handleSendOtp(phoneValue);
     setAuthStep('otp');
-  }, [setPhone]);
+  }, [handleSendOtp]);
 
   const handleOTPSubmit = useCallback(async (code: string) => {
     setLoadingAuth(true);
     try {
-      // Login with phone_number and OTP code verified on server
-      const res = await api.post('/auth/login', { phone_number: phoneNumber, otp_code: code });
-      const tokens = res.data?.tokens;
-      if (tokens?.access_token) {
-        localStorage.setItem('token', tokens.access_token);
-        if (tokens.refresh_token) localStorage.setItem('refreshToken', tokens.refresh_token);
+      const success = await handleVerifyOtp(code);
+      if (success) {
+        onAuthDone();
+        setAuthStep('done');
       }
-      await fetchAndSetUser();
-      setIsNewUser(false);
-      onAuthDone();
-      setAuthStep('done');
     } catch (err: unknown) {
-      if ((err as { response?: { status?: number } })?.response?.status === 404) {
-        // Account not found — new user, go to profile setup
-        setIsNewUser(true);
-        setAuthStep('profile');
-      } else {
-        const message = getApiErrorMessage(err, t('toast.verificationFailed'));
-        showToast(message, 'error', t('toast.verificationFailedTitle'));
-        throw err;
-      }
+      const message = getApiErrorMessage(err, t('toast.verificationFailed'));
+      showToast(message, 'error', t('toast.verificationFailedTitle'));
     } finally {
       setLoadingAuth(false);
     }
-  }, [getApiErrorMessage, phoneNumber, setIsNewUser, showToast, onAuthDone]);
+  }, [handleVerifyOtp, onAuthDone, getApiErrorMessage, showToast, t]);
 
   const handleResendOTP = useCallback(async () => {
     try {
@@ -112,38 +88,28 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
   const handleProfileSubmit = useCallback(async (data: { name: string; email?: string }) => {
     setLoadingAuth(true);
     try {
-      const res = await api.post('/auth/register', {
-        phone_number: phoneNumber,
-        display_name: data.name,
-        email_address: data.email || undefined,
-      });
-      const tokens = res.data?.tokens;
-      if (tokens?.access_token) {
-        localStorage.setItem('token', tokens.access_token);
-        if (tokens.refresh_token) localStorage.setItem('refreshToken', tokens.refresh_token);
+      const success = await handleProfileSetup(data.name, data.email);
+      if (success) {
+        onAuthDone();
+        setAuthStep('done');
+        showToast(t('toast.profileSaved'), 'success');
       }
-      await fetchAndSetUser();
-      setIsNewUser(false);
-      onAuthDone();
-      setAuthStep('done');
-      showToast(t('toast.profileSaved'), 'success');
     } catch (err: unknown) {
       const msg = getApiErrorMessage(err, t('toast.profileFailed'));
       showToast(msg, 'error');
     } finally {
       setLoadingAuth(false);
     }
-  }, [phoneNumber, setIsNewUser, showToast, onAuthDone, getApiErrorMessage, t]);
+  }, [handleProfileSetup, onAuthDone, getApiErrorMessage, showToast, t]);
 
   const handleProfileSkip = useCallback(async () => {
-    // Can't skip if account doesn't exist — require at least name
     showToast(t('auth.nameRequired'), 'warning');
   }, [showToast, t]);
 
   if (authStep === 'splash') return <SplashScreen onFinish={handleSplashFinish} />;
 
   return (
-    <div className="flex-1 flex flex-col bg-white h-full">
+    <div className="flex-1 flex flex-col bg-white h-full" style={{ position: 'relative' }}>
       <div className="flex-1 overflow-y-auto scroll-container">
         <AnimatePresence mode="wait">
           {authStep === 'phone' && (

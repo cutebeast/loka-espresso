@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ShoppingCart, Printer, Archive, Receipt, CheckCircle } from "lucide-react";
 import { PaymentMethod } from "./usePosState";
 import { FEATURE_FLAGS, showFeatureToast } from "@/lib/featureFlags";
@@ -14,6 +15,18 @@ interface PosSuccessScreenProps {
 }
 
 export default function PosSuccessScreen({ mode, result, total, change, paymentMethod, onNewOrder }: PosSuccessScreenProps) {
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { message } = (e as CustomEvent<{ message: string }>).detail;
+      setToast(message);
+      setTimeout(() => setToast(null), 3000);
+    };
+    window.addEventListener("pos:toast", handler);
+    return () => window.removeEventListener("pos:toast", handler);
+  }, []);
+
   return (
     <div style={{ padding: 24, maxWidth: 500, margin: "0 auto", textAlign: "center" }}>
       <div style={{ fontSize: 56, marginBottom: 16, color: "var(--color-success)" }}><CheckCircle size={56} /></div>
@@ -23,6 +36,10 @@ export default function PosSuccessScreen({ mode, result, total, change, paymentM
         {mode === "checkout" ? `${paymentMethod.toUpperCase()}` : "Kitchen notified"} · Total: RM {(result.total ?? total).toFixed(2)}
       </p>
       {change > 0 && <p style={{ fontSize: 13, opacity: 0.7 }}>Change: RM {change.toFixed(2)}</p>}
+
+      {toast && (
+        <div className="alert alert-info" style={{ marginBottom: 16, textAlign: "center" }}>{toast}</div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
         <button type="button" className="btn btn-primary" style={{ padding: "14px", fontSize: 16 }} onClick={onNewOrder}>

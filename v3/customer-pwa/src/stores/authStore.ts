@@ -31,8 +31,10 @@ export const useAuthStore = create<AuthState>()(
     setPhone: (phone) => set({ phone }),
     setAuthDone: (authDone) => set({ authDone }),
     logout: () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+      }
       useCartStore.getState().clearCart();
       useUIStore.getState().resetAll();
       useWalletStore.getState().resetAll();
@@ -40,8 +42,10 @@ export const useAuthStore = create<AuthState>()(
       set({ user: null, isAuthenticated: false, isNewUser: false, phone: '', authDone: false });
     },
     resetAllExceptCart: () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+      }
       useUIStore.getState().setIsGuest(false);
       useWalletStore.getState().resetAll();
       useOrderStore.getState().resetAll();

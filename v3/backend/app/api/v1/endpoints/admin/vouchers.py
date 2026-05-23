@@ -44,7 +44,6 @@ async def _get_voucher_or_404(db, voucher_id: int) -> VoucherDefinition:
 async def list_vouchers(
     db: DBDependency,
     admin: CurrentAdmin,
-    store_id: int | None = Query(None),
     is_active: bool | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -53,9 +52,6 @@ async def list_vouchers(
     base_stmt = select(VoucherDefinition).where(VoucherDefinition.deleted_at.is_(None))
     count_stmt = select(func.count(VoucherDefinition.id)).where(VoucherDefinition.deleted_at.is_(None))
 
-    if store_id is not None:
-        base_stmt = base_stmt.where(VoucherDefinition.store_id == store_id)
-        count_stmt = count_stmt.where(VoucherDefinition.store_id == store_id)
     if is_active is not None:
         base_stmt = base_stmt.where(VoucherDefinition.is_active.is_(is_active))
         count_stmt = count_stmt.where(VoucherDefinition.is_active.is_(is_active))

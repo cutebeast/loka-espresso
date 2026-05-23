@@ -25,9 +25,12 @@ export default function StaffPage() {
   const fetchData = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const d = await api.get<Staff[] | { items: Staff[] }>(`/admin/staff/roles`);
+      const qs = new URLSearchParams();
+      if (storeId) qs.set("store_id", storeId);
+      const path = `/admin/staff/roles${qs.toString() ? "?" + qs.toString() : ""}`;
+      const d = await api.get<Staff[] | { items: Staff[] }>(path);
       const all = Array.isArray(d) ? d : (d.items || []);
-      setItems(storeId ? all.filter((s: Staff) => String(s.store_id) === storeId) : all);
+      setItems(all);
     } catch (e: any) { setError(e.message || "Failed to load staff"); } finally { setLoading(false); }
   }, [storeId]);
 

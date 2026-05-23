@@ -52,7 +52,7 @@ export default function GalleryUpload({ imageUrls, videoUrl, onImagesChange, onV
     } catch (e) { if (!controller.signal.aborted) console.error(e); } finally { setUploading(false); if (vidRef.current) vidRef.current.value = ""; }
   };
 
-  const removeImage = (idx: number) => { const u = [...imageUrls]; u.splice(idx, 1); onImagesChange(u); };
+  const removeImageUrl = (url: string) => { onImagesChange(imageUrls.filter(u => u !== url)); };
 
   return (
     <>
@@ -64,10 +64,10 @@ export default function GalleryUpload({ imageUrls, videoUrl, onImagesChange, onV
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", display: "flex", alignItems: "center" }}>Multiple images</span>
         </div>
         {imageUrls.length > 0 && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {imageUrls.map((url, idx) => (
-            <div key={idx} style={{ position: "relative", width: 80, height: 80, borderRadius: 6, overflow: "hidden", border: "1px solid var(--color-border-light)" }}>
+          {imageUrls.map((url) => (
+            <div key={url} style={{ position: "relative", width: 80, height: 80, borderRadius: 6, overflow: "hidden", border: "1px solid var(--color-border-light)" }}>
               <img src={url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              <button type="button" onClick={() => removeImage(idx)} style={{ position: "absolute", top: 2, right: 2, width: 18, height: 18, borderRadius: 9, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", cursor: "pointer", fontSize: 10, lineHeight: 1 }}>✕</button>
+              <button type="button" onClick={() => removeImageUrl(url)} style={{ position: "absolute", top: 2, right: 2, width: 18, height: 18, borderRadius: 9, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", cursor: "pointer", fontSize: 10, lineHeight: 1 }} aria-label="Remove image">✕</button>
             </div>
           ))}
         </div>}

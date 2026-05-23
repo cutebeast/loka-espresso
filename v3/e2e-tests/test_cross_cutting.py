@@ -48,14 +48,6 @@ async def test_translation_all_locales_stores(client: httpx.AsyncClient, base_ur
         assert len(stores) >= 1
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Store Operations (covered in test_customer_flow)
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Recipe / Stock Deduction (covered in test_admin_setup_flow)
-# ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.public
 @pytest.mark.asyncio
@@ -100,10 +92,6 @@ async def test_store_detail_includes_operating_hours(client: httpx.AsyncClient, 
         assert "is_24_hours" in h
         assert "last_order_time" in h
 
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Recipe / Stock Deduction (covered in test_admin_setup_flow)
-# ═══════════════════════════════════════════════════════════════════════════
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Store, Lock, Mail, User, ChevronDown, ChevronUp } from "lucide-react";
 import { api, staffLogin, staffLoginByName } from "@/lib/api";
+import type { PaginatedResponse } from "@/lib/api";
 
 interface StoreInfo { id: number; store_name: string; is_active?: boolean; }
 
@@ -88,8 +89,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     let mounted = true;
-    api.get<{ items: StoreInfo[] }>("/public/stores")
-      .then((d: { items: StoreInfo[] }) => {
+    api.get<PaginatedResponse<StoreInfo>>("/public/stores")
+      .then((d) => {
         const list = d?.items || [];
         if (mounted) setStores(list.filter((s: StoreInfo) => s.is_active !== false));
       })

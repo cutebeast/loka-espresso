@@ -68,7 +68,7 @@ export default function OrdersPage() {
     if (hasActive) pollingRef.current = setInterval(() => {
       if (!useAuthStore.getState().isAuthenticated) return;
       if (document.visibilityState === 'visible') { fetchOrders(); setLastUpdated(new Date()); }
-    }, (config.order_polling_interval_seconds || 30) * 1000);
+    }, (useConfigStore.getState().config.order_polling_interval_seconds || 30) * 1000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, [hasActive, fetchOrders]);
 

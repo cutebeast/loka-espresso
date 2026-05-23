@@ -4,6 +4,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
+import bcrypt
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -45,7 +46,6 @@ def verify_password_staff(password: str, hash_: str) -> bool:
         return verify_password(password, hash_)
 
     # Fall back to bcrypt for legacy hashes
-    import bcrypt
     try:
         pw_bytes = password.encode()
         hash_bytes = hash_.encode() if isinstance(hash_, str) else hash_

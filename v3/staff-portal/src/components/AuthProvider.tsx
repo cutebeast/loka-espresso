@@ -31,7 +31,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     let injectedLink: HTMLLinkElement | null = null;
     fetch("/api/v1/staff/config/branding")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error('branding fetch failed'); return r.json(); })
       .then((d) => {
         const items = d.data || {};
         const fv = items["branding.staff_favicon_url"];
@@ -43,7 +43,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             document.head.appendChild(link);
             injectedLink = link;
           }
-          link.type = "image/svg+xml";
+          const ext = fv.split("?").at(0)?.split(".").pop()?.toLowerCase();
+          link.type = ext === "png" ? "image/png" : ext === "ico" ? "image/x-icon" : "image/svg+xml";
           link.href = fv;
         }
       })

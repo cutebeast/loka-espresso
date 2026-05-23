@@ -90,14 +90,14 @@ export default function PwaTranslationsTab() {
     existing: Translation | undefined
   ) => {
     if (existing) {
-      await api.put(`/translations/${existing.id}`, {
+      await api.put(`/admin/translations/${existing.id}`, {
         translated_text,
         translation_key: existing.translation_key,
         locale: existing.locale,
         namespace: existing.namespace,
       });
     } else {
-      await api.post("/translations", {
+      await api.post("/admin/translations", {
         translation_key: key,
         locale,
         namespace: "pwa-ui",
@@ -147,7 +147,7 @@ export default function PwaTranslationsTab() {
       const results = await Promise.allSettled(
         batch.map(async ({ key, source }) => {
           const existing = keyMap.get(key)!;
-          const r = await api.post<{ translated_text?: string }>("/translations/translate", {
+          const r = await api.post<{ translated_text?: string }>("/admin/translations/translate", {
             text: source,
             source_locale: "en",
             target_locale: locale,

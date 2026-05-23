@@ -1,6 +1,7 @@
 """Wallet & Ledger models."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import List
 
 from sqlalchemy import (
@@ -10,6 +11,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Numeric,
     String,
     Text,
@@ -52,8 +54,8 @@ class WalletLedgerEntry(Base):
         ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False
     )
     entry_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
-    running_balance: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    running_balance: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     reference_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     reference_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
@@ -70,4 +72,5 @@ class WalletLedgerEntry(Base):
             "entry_type IN ('credit','debit','hold','release','adjustment')",
             name="ck_wallet_ledger_entries_entry_type",
         ),
+        Index("idx_wallet_ledger_entries_created_at", "created_at"),
     )

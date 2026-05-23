@@ -1,5 +1,6 @@
 """Customer Management models."""
 
+from decimal import Decimal
 from datetime import date, datetime, timezone
 from typing import List
 
@@ -42,9 +43,9 @@ class Customer(Base, SoftDeleteMixin):
         ForeignKey("customers.id", ondelete="SET NULL"), nullable=True
     )
     referral_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    referral_earnings_total: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    referral_earnings_total: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     customer_segment: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    lifetime_value: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    lifetime_value: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     order_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_order_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -110,7 +111,7 @@ class Customer(Base, SoftDeleteMixin):
     __table_args__ = (
         # Regex CHECK constraints add overhead during batch imports — consider
         # deferring validation to application layer for high-volume CSV / ETL loads.
-        CheckConstraint("phone_number ~ '^[+0-9]{7,20}$'", name="ck_customers_phone_number"),
+        CheckConstraint("phone_number ~ '^\+?[0-9]{7,20}$'", name="ck_customers_phone_number"),
         CheckConstraint("preferred_language ~ '^[a-z]{2}(-[A-Z]{2})?$'", name="ck_customers_preferred_language"),
         CheckConstraint("referral_count >= 0", name="ck_customers_referral_count"),
         CheckConstraint("referral_earnings_total >= 0", name="ck_customers_referral_earnings_total"),

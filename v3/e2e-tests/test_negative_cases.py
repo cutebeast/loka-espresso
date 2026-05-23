@@ -12,6 +12,7 @@ Covers:
 import pytest
 import httpx
 import uuid
+import jwt as pyjwt
 from datetime import datetime, timezone, timedelta
 
 from conftest import ADMIN_EMAIL, JWT_SECRET
@@ -40,12 +41,11 @@ async def test_access_admin_endpoint_with_invalid_token(client: httpx.AsyncClien
 
 @pytest.mark.admin
 @pytest.mark.asyncio
-async def test_access_admin_endpoint_with_expired_token(base_url: str):
+async def test_access_admin_endpoint_with_expired_token(base_url: str, discovered_admin_id: str):
     """Accessing admin endpoint with a valid admin ID but expired token returns 401."""
-    import jwt as pyjwt
     expired = pyjwt.encode(
         {
-            "sub": "2",          # valid seeded admin ID
+            "sub": discovered_admin_id,
             "type": "access",
             "iat": datetime.now(timezone.utc) - timedelta(hours=3),
             "exp": datetime.now(timezone.utc) - timedelta(hours=1),
@@ -67,7 +67,6 @@ async def test_access_admin_endpoint_with_expired_token(base_url: str):
 @pytest.mark.asyncio
 async def test_access_admin_endpoint_with_unknown_admin_id_token(base_url: str):
     """Accessing admin endpoint with a non-existent admin ID returns 401."""
-    import jwt as pyjwt
     unknown = pyjwt.encode(
         {
             "sub": "99999",      # non-existent admin ID

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
 import { BarChart3, TrendingUp } from "lucide-react";
 
@@ -17,11 +17,14 @@ export default function ReportsPage() {
   const [data, setData] = useState({ revenue: 0, orders: 0, avgOrder: 0, customers: 0, stores: 0 });
   const [analytics, setAnalytics] = useState<any[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    api.get<{ items: Store[] }>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : (d.items || []))).catch((e) => { console.error('stores:', e); });
+    mountedRef.current = true;
+    api.get<{ items: Store[] }>("/admin/stores?per_page=50").then(d => { if (mountedRef.current) setStores(Array.isArray(d) ? d : (d.items || [])); }).catch((e) => { console.error('stores:', e); });
     setAnalyticsLoading(true);
-    api.get<any>("/admin/marketing/analytics").then(d => setAnalytics(Array.isArray(d) ? d : [])).catch((e) => { console.error('analytics:', e); }).finally(() => setAnalyticsLoading(false));
+    api.get<any>("/admin/marketing/analytics").then(d => { if (mountedRef.current) setAnalytics(Array.isArray(d) ? d : []); }).catch((e) => { console.error('analytics:', e); }).finally(() => { if (mountedRef.current) setAnalyticsLoading(false); });
+    return () => { mountedRef.current = false; };
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -40,7 +43,7 @@ export default function ReportsPage() {
       });
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
-  }, [selectedStore, dateFrom, dateTo, stores.length]);
+  }, [selectedStore, dateFrom, dateTo]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

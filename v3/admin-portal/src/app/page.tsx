@@ -26,12 +26,15 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     api.get<{ items: Store[] }>("/admin/stores?per_page=50")
-      .then(d => setStores(d.items || (Array.isArray(d) ? d : [])))
-      .catch((err: any) => { console.error("Failed to load stores:", err); });
+      .then(d => { if (!cancelled) setStores(d.items || (Array.isArray(d) ? d : [])); })
+      .catch((err: any) => { if (!cancelled) console.error("Failed to load stores:", err); });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError("");
     const qs = new URLSearchParams();
@@ -39,9 +42,10 @@ export default function DashboardPage() {
     if (fromDate) qs.set("from_date", fromDate);
     if (toDate) qs.set("to_date", toDate);
     api.get<DashboardData>(`/admin/dashboard/metrics?${qs}`)
-      .then(setData)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
+      .then(d => { if (!cancelled) setData(d); })
+      .catch(e => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [selectedStore, fromDate, toDate]);
 
   const formatRM = (v: number) => `RM ${(v || 0).toFixed(2)}`;

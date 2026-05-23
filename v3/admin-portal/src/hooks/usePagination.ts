@@ -99,13 +99,14 @@ export function usePaginatedFetch<T>(
   const cancelledRef = useRef(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const fetch = useCallback(async (p?: number) => {
+  const fetch = useCallback(async (p?: number, pp?: number) => {
     const pageNum = p ?? pagination.page;
+    const perPageNum = pp ?? pagination.perPage;
     setLoading(true);
     setError("");
     cancelledRef.current = false;
     try {
-      const result = await fetchFn({ page: pageNum, per_page: pagination.perPage });
+      const result = await fetchFn({ page: pageNum, per_page: perPageNum });
       if (!cancelledRef.current) {
         setData(result);
         pagination.setPage(result.page || pageNum);
@@ -120,10 +121,10 @@ export function usePaginatedFetch<T>(
   }, [fetchFn]);
 
   useEffect(() => {
-    fetch(pagination.page);
+    fetch(pagination.page, pagination.perPage);
     return () => { cancelledRef.current = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.page]);
+  }, [pagination.page, pagination.perPage, fetch, ..._deps]);
 
   return {
     data: data.items,
@@ -138,6 +139,6 @@ export function usePaginatedFetch<T>(
     prevPage: pagination.prevPage,
     hasNext: pagination.hasNext,
     hasPrev: pagination.hasPrev,
-    refresh: () => fetch(pagination.page),
+    refresh: () => fetch(pagination.page, pagination.perPage),
   };
 }

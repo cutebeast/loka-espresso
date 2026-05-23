@@ -118,8 +118,8 @@ export default function OrderCard({ order, onClick, onQuickAction, compact = fal
       </div>
 
       <div className="space-y-2 mb-3">
-        {visibleItems.map((item) => (
-          <div key={item.id} className="flex items-center justify-between text-sm">
+        {visibleItems.map((item, idx) => (
+          <div key={`${item.menu_item_id || item.id || item.name}-${idx}`} className="flex items-center justify-between text-sm">
             <span className="text-gray-700">
               <span className="font-medium">{item.quantity}x</span> {item.name}
               {item.modifiers_label && <span className="text-gray-400 text-xs ml-1">({item.modifiers_label})</span>}

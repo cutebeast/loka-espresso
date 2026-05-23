@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
-from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency, get_staff_store_id_from_request
+from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency, get_staff_store_id_from_request, _get_admin_store_ids, _get_admin_role_keys
 from app.models.customer import Customer
 from app.models.store import DiningTable, Reservation, Store
 from app.schemas.base import APIResponse, PaginatedResponse
@@ -61,6 +61,17 @@ async def list_reservations(
         if store_id is not None and store_id != staff_store_id:
             raise HTTPException(status_code=403, detail="Access denied for this store")
         store_id = staff_store_id
+    else:
+        # Admin token: enforce store scoping for non-HQ admins
+        admin_store_ids = await _get_admin_store_ids(db, admin.id)
+        admin_roles = await _get_admin_role_keys(db, admin.id)
+        is_hq = bool(admin_roles & {"system_admin", "regional_manager", "readonly_analyst"})
+        if not is_hq and admin_store_ids:
+            if store_id is not None:
+                if store_id not in admin_store_ids:
+                    raise HTTPException(status_code=403, detail="Access denied for this store")
+            else:
+                store_id = admin_store_ids
 
     base_stmt = select(Reservation)
     count_stmt = select(func.count(Reservation.id))

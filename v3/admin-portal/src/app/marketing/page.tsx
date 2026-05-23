@@ -4,6 +4,6 @@ import { useRouter } from "next/navigation";
 
 export default function MarketingIndex() {
   const router = useRouter();
-  useEffect(() => { router.replace("/rewards"); }, [router]);
+  useEffect(() => { router.replace("/marketing/campaigns"); }, [router]);
   return null;
 }

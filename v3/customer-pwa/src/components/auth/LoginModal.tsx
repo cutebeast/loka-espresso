@@ -7,15 +7,11 @@ import { haptic } from '@/lib/haptics';
 import { BottomSheet } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
-import { useWalletStore } from '@/stores/walletStore';
-import { normalizePhone, formatPhoneForDisplay } from '@/lib/phone';
+import { formatPhoneForDisplay } from '@/lib/phone';
 import { DEFAULT_COUNTRY, ALL_COUNTRIES, searchCountries, flagUrl } from '@/lib/countries';
 import type { Country } from '@/lib/countries';
-import api from '@/lib/api';
-import type { UserProfile } from '@/lib/api';
 import { useTranslation } from '@/hooks/useTranslation';
-
-type Step = 'phone' | 'otp' | 'profile';
+import { usePhoneAuth } from '@/hooks/usePhoneAuth';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -25,14 +21,21 @@ interface LoginModalProps {
 
 export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
   const { t } = useTranslation();
-  const { setUser, setIsNewUser, setPhone: setStorePhone, setAuthDone } = useAuthStore();
-  const { showToast, setIsGuest } = useUIStore();
-  const { refreshWallet } = useWalletStore();
+  const { showToast } = useUIStore();
+  const {
+    phoneNumber,
+    setCountryCode,
+    handleSendOtp,
+    handleVerifyOtp,
+    handleProfileSetup,
+    finishAuth,
+    step, setStep,
+    error,
+    loading,
+    reset,
+  } = usePhoneAuth();
 
-  const [step, setStep] = useState<Step>('phone');
   const [phoneValue, setPhoneValue] = useState('');
-  const [phoneError, setPhoneError] = useState('');
-  const [phoneLoading, setPhoneLoading] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country>(DEFAULT_COUNTRY);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
@@ -41,31 +44,35 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
   const [otpError, setOtpError] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
-  const [phoneNumber, setPhoneNumber] = useState('');
 
   const [profileName, setProfileName] = useState('');
   const [profileError, setProfileError] = useState('');
-  const [profileLoading, setProfileLoading] = useState(false);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const phoneInputRef = useRef<HTMLInputElement>(null);
   const submittingOtpRef = useRef(false);
 
-  const filteredCountries = useMemo(() => {
-    if (!countrySearch.trim()) return ALL_COUNTRIES;
-    return searchCountries(countrySearch);
-  }, [countrySearch]);
+  useEffect(() => {
+    if (isOpen) {
+      reset();
+      setPhoneValue('');
+      setSelectedCountry(DEFAULT_COUNTRY);
+      setOtp(['', '', '', '', '', '']);
+      setOtpError('');
+      setOtpLoading(false);
+      setResendTimer(0);
+      setProfileName('');
+      setProfileError('');
+      setCountrySearch('');
+      setCountryCode(DEFAULT_COUNTRY.dialCode);
+    }
+  }, [isOpen, reset, setCountryCode]);
 
   useEffect(() => {
     if (isOpen) {
-      setStep('phone'); setPhoneValue(''); setPhoneError(''); setPhoneLoading(false);
-      setSelectedCountry(DEFAULT_COUNTRY);
-      setOtp(['', '', '', '', '', '']); setOtpError(''); setOtpLoading(false);
-      setResendTimer(0); setPhoneNumber('');
-      setProfileName(''); setProfileError(''); setProfileLoading(false);
-      setCountrySearch('');
+      setCountryCode(selectedCountry.dialCode);
     }
-  }, [isOpen]);
+  }, [isOpen, selectedCountry.dialCode, setCountryCode]);
 
   useEffect(() => { if (isOpen && step === 'phone') { const t = setTimeout(() => phoneInputRef.current?.focus(), 400); return () => clearTimeout(t); } }, [isOpen, step]);
   useEffect(() => { if (isOpen && step === 'otp') { const t = setTimeout(() => otpRefs.current[0]?.focus(), 400); return () => clearTimeout(t); } }, [isOpen, step]);
@@ -76,33 +83,14 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
-  const apiError = useCallback((err: unknown, fallback: string) => {
-    const detail = (err as { response?: { data?: { detail?: unknown; message?: string } } })?.response?.data?.detail;
-    if (typeof detail === 'string' && detail.trim()) return detail;
-    const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    if (typeof msg === 'string' && msg.trim()) return msg;
-    return fallback;
-  }, []);
-
   const selectCountry = useCallback((c: Country) => { setSelectedCountry(c); setShowCountryPicker(false); setCountrySearch(''); }, []);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPhoneValue(formatPhoneForDisplay(e.target.value, selectedCountry.dialCode));
-    setPhoneError('');
   };
 
-  const handleSendOtp = async () => {
-    const digits = phoneValue.replace(/\D/g, '');
-    if (digits.length < 7) { setPhoneError(t('auth.phoneInvalid')); return; }
-    setPhoneLoading(true); setPhoneError('');
-    try {
-      const normalized = normalizePhone(phoneValue, selectedCountry.dialCode);
-      setPhoneNumber(normalized); setStorePhone(normalized);
-      // v3 doesn't have send-otp — skip to OTP entry
-      setResendTimer(0);
-      setStep('otp');
-    } catch (err) { showToast(apiError(err, t('auth.sendOtpFailed')), 'error'); }
-    finally { setPhoneLoading(false); }
+  const handleSendOtpHandler = async () => {
+    await handleSendOtp(phoneValue, selectedCountry.dialCode);
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -124,46 +112,28 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
     setOtp(newOtp); otpRefs.current[Math.min(pasted.length - 1, 5)]?.focus();
   };
 
-  const verifyOtp = async (code: string) => {
-    const res = await api.post('/auth/login', { phone_number: phoneNumber, otp_code: code });
-      const tokens = res.data?.tokens || (res.data as { data?: { tokens?: { access_token?: string; refresh_token?: string } } })?.data?.tokens;
-    if (tokens?.access_token) {
-      localStorage.setItem('token', tokens.access_token);
-      if (tokens.refresh_token) localStorage.setItem('refreshToken', tokens.refresh_token);
-    }
-    const me = await api.get('/me');
-    setUser(me.data as UserProfile);
-    return res.data;
-  };
-
-  const finishAuth = useCallback(() => {
-    setIsGuest(false); setAuthDone(true); refreshWallet(); onAuthDone?.(); onClose();
-  }, [setIsGuest, setAuthDone, refreshWallet, onAuthDone, onClose]);
-
-  const handleVerifyOtp = async () => {
+  const handleVerifyOtpHandler = async () => {
     if (submittingOtpRef.current) return;
     const code = otp.join('');
     if (code.length !== 6) { setOtpError(t('auth.otpIncomplete')); return; }
     submittingOtpRef.current = true;
     setOtpLoading(true); setOtpError('');
     try {
-      await verifyOtp(code);
-      haptic('success');
-      finishAuth();
-    } catch (err: unknown) {
-      if ((err as { response?: { status?: number } })?.response?.status === 404) {
-        // New user
-        setIsNewUser(true);
-        setStep('profile');
-      } else {
-        showToast(apiError(err, t('auth.otpInvalidError')), 'error');
-        setOtp(['', '', '', '', '', '']); otpRefs.current[0]?.focus();
+      const success = await handleVerifyOtp(code);
+      if (success) {
+        haptic('success');
+        finishAuth();
+        onAuthDone?.();
+        onClose();
       }
+    } catch (err: unknown) {
+      showToast((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('auth.otpInvalidError'), 'error');
+      setOtp(['', '', '', '', '', '']); otpRefs.current[0]?.focus();
     } finally { setOtpLoading(false); submittingOtpRef.current = false; }
   };
 
-  const handleVerifyOtpRef = useRef(handleVerifyOtp);
-  useEffect(() => { handleVerifyOtpRef.current = handleVerifyOtp; });
+  const handleVerifyOtpRef = useRef(handleVerifyOtpHandler);
+  useEffect(() => { handleVerifyOtpRef.current = handleVerifyOtpHandler; });
 
   useEffect(() => {
     if (step !== 'otp' || !otp.every((d) => d) || otpLoading || submittingOtpRef.current) return;
@@ -180,23 +150,17 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileName.trim()) { setProfileError(t('auth.nameRequired')); return; }
-    setProfileLoading(true); setProfileError('');
+    setProfileError('');
     try {
-      const res = await api.post('/auth/register', {
-        phone_number: phoneNumber,
-        display_name: profileName.trim(),
-      });
-      const tokens = res.data?.tokens;
-      if (tokens?.access_token) {
-        localStorage.setItem('token', tokens.access_token);
-        if (tokens.refresh_token) localStorage.setItem('refreshToken', tokens.refresh_token);
+      const success = await handleProfileSetup(profileName.trim());
+      if (success) {
+        finishAuth();
+        onAuthDone?.();
+        onClose();
       }
-      const me = await api.get('/me'); setUser(me.data as UserProfile);
-      setIsNewUser(false);
-      finishAuth();
     } catch (err: unknown) {
-      showToast(apiError(err, t('auth.saveProfileFailed')), 'error');
-    } finally { setProfileLoading(false); }
+      showToast((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('auth.saveProfileFailed'), 'error');
+    }
   };
 
   const handleClose = () => { if (!useAuthStore.getState().isAuthenticated) useUIStore.getState().setIsGuest(true); onClose(); };
@@ -210,6 +174,10 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
   const stepProgressClass = step === 'phone' ? 'p1' : step === 'otp' ? 'p2' : 'p3';
   const stepLabelText = step === 'phone' ? t('auth.step1Label') : step === 'otp' ? t('auth.step2Label') : t('auth.step3Label');
   const flag = flagUrl(selectedCountry.code);
+  const filteredCountries = useMemo(() => {
+    if (!countrySearch.trim()) return ALL_COUNTRIES;
+    return searchCountries(countrySearch);
+  }, [countrySearch]);
 
   return (
     <>
@@ -236,7 +204,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
 
         {/* ── Phone Step ── */}
         {step === 'phone' && (
-          <form onSubmit={(e) => { e.preventDefault(); handleSendOtp(); }} className="flex flex-col gap-4">
+          <form onSubmit={(e) => { e.preventDefault(); handleSendOtpHandler(); }} className="flex flex-col gap-4">
             <div className="phone-wrapper">
               <button type="button" className="country-selector" onClick={() => setShowCountryPicker(true)}>
                 <img className="country-selector-flag" src={flag} alt={selectedCountry.name} width="24" height="16" />
@@ -245,12 +213,12 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
               </button>
               <span className="phone-divider" />
               <input ref={phoneInputRef} type="tel" value={phoneValue} onChange={handlePhoneChange}
-                placeholder="12 345 6789" inputMode="tel" autoComplete="tel-national" className="phone-input" aria-invalid={!!phoneError} aria-describedby={phoneError ? "phone-error" : undefined} />
+                placeholder="12 345 6789" inputMode="tel" autoComplete="tel-national" className="phone-input" aria-invalid={!!error} aria-describedby={error ? "phone-error" : undefined} />
             </div>
-            {phoneError && <p id="phone-error" className="text-sm text-danger font-bold">{phoneError}</p>}
-            <button type="submit" disabled={phoneLoading || phoneValue.replace(/\D/g, '').length < 7}
+            {error && <p id="phone-error" className="text-sm text-danger font-bold">{error}</p>}
+            <button type="submit" disabled={loading || phoneValue.replace(/\D/g, '').length < 7}
               className="btn btn-primary w-full h-12 rounded-xl text-base font-semibold mt-2">
-              {phoneLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : t('auth.sendCode')}
+              {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : t('auth.sendCode')}
             </button>
             <button type="button" className="guest-link"
               onClick={() => { useUIStore.getState().setIsGuest(true); onClose(); }}>
@@ -280,9 +248,10 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
               </button>
             </p>
             {otpError && <p id="otp-error" className="text-sm text-danger font-bold text-center">{otpError}</p>}
+            {error && <p className="text-sm text-danger font-bold text-center">{error}</p>}
             <button type="button" className="text-sm text-text-secondary text-center underline"
               onClick={() => setStep('phone')}>{t('auth.changePhoneNumber')}</button>
-            <button onClick={handleVerifyOtp} disabled={otpLoading || otp.some((d) => !d)}
+            <button onClick={handleVerifyOtpHandler} disabled={otpLoading || otp.some((d) => !d)}
               className="btn btn-primary w-full h-12 rounded-xl text-base font-semibold mt-1">
               {otpLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : t('auth.verify')}
             </button>
@@ -311,9 +280,10 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
                 className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none text-base text-text-primary placeholder-text-muted transition-colors" aria-invalid={!!profileError} aria-describedby={profileError ? "profile-error" : undefined} />
             </div>
             {profileError && <p id="profile-error" className="text-sm text-danger font-bold">{profileError}</p>}
-            <button type="submit" disabled={profileLoading || !profileName.trim()}
+            {error && <p className="text-sm text-danger font-bold">{error}</p>}
+            <button type="submit" disabled={loading || !profileName.trim()}
               className="btn btn-primary w-full h-12 rounded-xl text-base font-semibold mt-2">
-              {profileLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : t('auth.getStarted')}
+              {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : t('auth.getStarted')}
             </button>
           </form>
         )}

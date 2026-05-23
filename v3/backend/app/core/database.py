@@ -1,4 +1,12 @@
-"""Async SQLAlchemy database setup."""
+"""Async SQLAlchemy database setup.
+
+WARNING — Manual Commit Required
+---------------------------------
+This application uses ``autoflush=False`` and ``autocommit=False``.
+Every endpoint that mutates data **MUST** explicitly call ``await db.commit()``
+before returning.  Failure to commit results in silently discarded writes.
+The ``get_db`` dependency only rolls back on exceptions — it never commits.
+"""
 
 from typing import AsyncGenerator
 

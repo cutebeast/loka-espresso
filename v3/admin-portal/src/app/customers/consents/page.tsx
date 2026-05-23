@@ -13,10 +13,8 @@ export default function CustomerConsentsPage() {
   const fetchData = useCallback(() => { setLoading(true);
     getCustomerConsents({ consent_type: consentTypeFilter || undefined, status: statusFilter || undefined })
       .then(data => setItems(data)).catch(err => setError(err.message)).finally(() => setLoading(false));
-  }, []);
-  useEffect(() => {(async () => {
- fetchData(); 
-})();}, [fetchData]);
+  }, [consentTypeFilter, statusFilter]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const statusBadge = (s: string) => <span className={`badge badge-sm ${s === "granted" ? "badge-green" : s === "revoked" ? "badge-red" : "badge-gray"}`}>{s}</span>;
 

@@ -27,6 +27,7 @@ export default function ProfilePage() {
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [msg, setMsg] = useState("");
+  const [isError, setIsError] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -44,34 +45,38 @@ export default function ProfilePage() {
   const storeId = profile?.store_id;
 
   const handlePasswordChange = async () => {
-    if (!currentPw) { setMsg("Current password is required"); return; }
-    if (!newPw || newPw.length < 6) { setMsg("Password must be at least 6 characters"); return; }
+    if (!currentPw) { setMsg("Current password is required"); setIsError(true); return; }
+    if (!newPw || newPw.length < 6) { setMsg("Password must be at least 6 characters"); setIsError(true); return; }
     setSaving(true);
     try {
       await api.post("/staff/auth/change-password", { current_password: currentPw, password: newPw });
       setMsg("Password updated");
+      setIsError(false);
       setShowPw(false);
       setCurrentPw("");
       setNewPw("");
     } catch (e: unknown) {
       console.error("Password change failed:", e);
       setMsg(e instanceof Error ? e.message : "Failed");
+      setIsError(true);
     } finally { setSaving(false); }
   };
 
   const handlePinChange = async () => {
-    if (!currentPin || currentPin.length < 4) { setMsg("Current PIN is required"); return; }
-    if (!newPin || newPin.length < 4) { setMsg("PIN must be at least 4 digits"); return; }
+    if (!currentPin || currentPin.length < 4) { setMsg("Current PIN is required"); setIsError(true); return; }
+    if (!newPin || newPin.length < 4) { setMsg("PIN must be at least 4 digits"); setIsError(true); return; }
     setSaving(true);
     try {
       await api.post("/staff/auth/change-pin", { current_pin: currentPin, pin: newPin });
       setMsg("PIN updated");
+      setIsError(false);
       setShowPin(false);
       setCurrentPin("");
       setNewPin("");
     } catch (e: unknown) {
       console.error("PIN change failed:", e);
       setMsg(e instanceof Error ? e.message : "Failed");
+      setIsError(true);
     } finally { setSaving(false); }
   };
 
@@ -90,7 +95,7 @@ export default function ProfilePage() {
 
       {msg && (
         <Alert
-          variant={msg.includes("Failed") || msg.includes("required") ? "error" : "success"}
+          variant={isError ? "error" : "success"}
           onDismiss={() => setMsg("")}
           autoDismiss={msg.includes("Failed") ? undefined : 3000}
         >
