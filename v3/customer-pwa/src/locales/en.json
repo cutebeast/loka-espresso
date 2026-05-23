@@ -499,7 +499,7 @@
     "profilePhotoAlt": "Profile Photo Alt",
     "saveChanges": "Save Changes",
     "saveSuccess": "Save Success",
-    "title": "Title",
+    "title": "Profile",
     "uploadPhoto": "Upload Photo"
   },
   "helpSupport": {
@@ -569,7 +569,7 @@
     "searchPlaceholder": "search...",
     "specialInstructions": "Special Instructions",
     "specialInstructionsPlaceholder": "special instructions...",
-    "title": "Title",
+    "title": "Menu",
     "viewCart": "View Cart",
     "cup": {
       "small": "Small",
@@ -583,6 +583,8 @@
     "markingAll": "Marking All",
     "noNotifications": "No Notifications",
     "noNotificationsDesc": "You're all caught up!",
+    "newCount_one": "{count} new notification",
+    "newCount_other": "{count} new notifications",
     "retentionNote": "Notifications are automatically cleared after 30 days",
     "filters": {
       "all": "All",
@@ -599,12 +601,12 @@
       "earlier": "Earlier"
     },
     "timeAgo": {
-      "days": "{days} hari lalu",
-      "hours": "{hours} jam lalu",
-      "justNow": "Baru sahaja",
-      "minutes": "{minutes} minit lalu"
+      "days": "{days} days ago",
+      "hours": "{hours} hours ago",
+      "justNow": "Just now",
+      "minutes": "{minutes} minutes ago"
     },
-    "title": "Tajuk"
+    "title": "Notifications"
   },
   "paymentMethods": {
     "active": "Active",
@@ -618,7 +620,7 @@
     "noMethodsDesc": "No Methods",
     "savedCards": "Saved Cards",
     "setAsDefault": "Set As Default",
-    "title": "Title",
+    "title": "Payment Methods",
     "topUpWallet": "Top Up Wallet",
     "walletBalance": "Wallet Balance"
   },
@@ -641,7 +643,7 @@
     "shareText": "Share Text",
     "shareTitle": "Share",
     "silverTier": "Silver Tier",
-    "title": "Title",
+    "title": "Referrals",
     "unknown": "Unknown",
     "yourCode": "Your Code",
     "countReferrals_one": "{count} referral",
@@ -668,7 +670,7 @@
     "postcodePlaceholder": "postcode...",
     "saveAddress": "Save Address",
     "state": "State",
-    "title": "Title",
+    "title": "Saved Addresses",
     "unit": "Unit",
     "unitPlaceholder": "unit..."
   },

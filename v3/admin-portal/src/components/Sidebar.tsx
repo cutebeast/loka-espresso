@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { adminLogout } from "@/lib/api";
 import { useBrand } from "./BrandProvider";
+import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
 
 type NavItem = {
   type?: "section";
@@ -157,7 +158,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { brandName } = useBrand();
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+  const computeOpenMenus = useCallback(() => ({
     Stores: pathname.startsWith("/stores"),
     Menu: pathname.startsWith("/menu"),
     Loyalty: pathname.startsWith("/loyalty"),
@@ -166,17 +167,31 @@ export default function Sidebar() {
     Inventory: pathname.startsWith("/inventory"),
     Equipment: pathname.startsWith("/equipment"),
     Staff: pathname.startsWith("/staff"),
+    Reservations: pathname.startsWith("/reservations"),
     "Customers List": pathname.startsWith("/customers"),
     Notifications: pathname.startsWith("/notifications"),
     "Admin User": pathname.startsWith("/admins"),
     Settings: pathname.startsWith("/settings"),
-  });
+  }), [pathname]);
+
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(computeOpenMenus);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  useEffect(() => { setOpenMenus(prev => ({ ...computeOpenMenus(), ...prev })); }, [pathname, computeOpenMenus]);
+
   const toggleMenu = (label: string) => setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
-  const handleLogout = () => { adminLogout(); router.push("/login"); };
+  const handleLogout = () => { adminLogout(); router.push(ROUTES.LOGIN); };
   const isActive = (href: string) => pathname === href;
-  const [adminEmail, setAdminEmail] = useState(() => typeof window !== "undefined" ? localStorage.getItem("adminEmail") || "admin@loyaltysystem.uk" : "admin@loyaltysystem.uk");
+
+  const [adminEmail, setAdminEmail] = useState("");
+  useEffect(() => {
+    const read = () => {
+      setAdminEmail(typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.ADMIN_EMAIL) || "" : "");
+    };
+    read();
+    window.addEventListener("storage", read);
+    return () => window.removeEventListener("storage", read);
+  }, []);
 
   return (
     <>

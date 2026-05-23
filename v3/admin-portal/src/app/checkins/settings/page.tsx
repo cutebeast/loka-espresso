@@ -8,11 +8,11 @@ export default function CheckinSettingsPage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    api.get<any[]>("/admin/config")
+    api.get<any[]>("/admin/config?prefix=checkin")
       .then(d => {
         const m: Record<string, string> = {};
         (Array.isArray(d) ? d : []).forEach((c: any) => {
-          if (c.config_key.startsWith("checkin.")) m[c.config_key] = c.config_value;
+          m[c.config_key] = c.config_value;
         });
         setConfig(m);
       })

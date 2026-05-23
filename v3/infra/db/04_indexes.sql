@@ -377,3 +377,14 @@ CREATE INDEX idx_reservations_customer ON reservations(customer_id);
 CREATE INDEX idx_reservations_date ON reservations(reservation_date);
 CREATE INDEX idx_reservations_table ON reservations(dining_table_id);
 CREATE INDEX idx_reservations_status ON reservations(status);
+
+-- ============================================================
+-- Missing composite indexes (added during audit remediation)
+-- ============================================================
+CREATE INDEX idx_wallet_ledger_wallet_created ON wallet_ledger_entries(wallet_id, created_at DESC);
+CREATE INDEX idx_loyalty_ledger_account_created ON loyalty_points_ledger(loyalty_account_id, created_at DESC);
+CREATE INDEX idx_customer_vouchers_customer_status ON customer_vouchers(customer_id, status);
+CREATE INDEX idx_order_lines_order_item ON order_line_items(order_id, menu_item_id);
+CREATE INDEX idx_payments_order_status ON payments(order_id, status);
+CREATE INDEX idx_menu_items_store_available ON menu_items(store_id, is_available) WHERE deleted_at IS NULL;
+CREATE INDEX idx_inventory_items_store_supplier ON inventory_items(store_id, supplier_id);

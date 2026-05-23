@@ -84,6 +84,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [nameList, setNameList] = useState<{ id: number; display_name: string }[]>([]);
   const [selectedName, setSelectedName] = useState("");
+  const [attemptCount, setAttemptCount] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -114,16 +115,25 @@ export default function LoginPage() {
     try {
       if (!selectedStore) { setError("Please select a store"); setLoading(false); return; }
 
+      const delay = Math.min(3000, attemptCount * 1000);
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+
       if (mode === "name") {
         if (!selectedName) { setError("Please select your name"); setLoading(false); return; }
+        // staffLoginByName sends pin as the `password` field in the API payload — the backend
+        // expects PIN-based auth under `password` for name-based login
         await staffLoginByName(selectedName, pin, Number(selectedStore));
       } else {
         if (!email) { setError("Please enter your email"); setLoading(false); return; }
         if (!password && !pin) { setError("Please enter your password or PIN"); setLoading(false); return; }
         await staffLogin(email, password || pin);
       }
-      router.replace("/");
+      setAttemptCount(0);
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect") || "/";
+      router.replace(redirect);
     } catch (err: any) {
+      setAttemptCount((c) => c + 1);
       setError(err.message || "Login failed");
     } finally {
       setLoading(false);

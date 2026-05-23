@@ -29,14 +29,14 @@ export default function PromotionsPage() {
 
   const actionBadge = (t: string) => {
     const m: Record<string, string> = { read_claim: "badge-green", survey_claim: "badge-blue", url_claim: "badge-yellow" };
-    return <span className={`badge badge-sm ${m[t] || "badge-gray"}`}>{(ACTION_TYPES.find(a => a.value === t) || {} as any).label || t || "—"}</span>;
+    return <span className={`badge badge-sm ${m[t] || "badge-gray"}`}>{ACTION_TYPES.find(a => a.value === t)?.label || t || "—"}</span>;
   };
 
   return (
     <div style={{ padding: 32 }}>
       <div className="page-header">
         <div><h1 className="page-title">Promotions</h1><p className="page-subtitle">Gatekeeper banners — reward vouchers via actions</p></div>
-        <button onClick={() => router.push("/promotions/new")} className="btn btn-primary btn-sm"><Plus size={16} /> Add Promotion</button>
+        <button type="button" onClick={() => router.push("/promotions/new")} className="btn btn-primary btn-sm"><Plus size={16} /> Add Promotion</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
       <div style={{ background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", padding: 12, marginBottom: 16, fontSize: 13, color: "var(--color-text-muted)" }}>
@@ -56,8 +56,8 @@ export default function PromotionsPage() {
                 <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${b.is_active ? "badge-green" : "badge-gray"}`}>{b.is_active ? "Active" : "Inactive"}</span></td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <button onClick={() => router.push(`/promotions/${b.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><Edit2 size={14} /></button>
-                    <button onClick={() => handleDelete(b.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                    <button type="button" onClick={() => router.push(`/promotions/${b.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }} aria-label="Edit promotion"><Edit2 size={14} /></button>
+                    <button type="button" onClick={() => handleDelete(b.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }} aria-label="Delete promotion"><Trash2 size={14} /></button>
                   </div>
                 </td>
               </tr>

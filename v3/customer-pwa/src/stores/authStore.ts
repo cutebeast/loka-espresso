@@ -1,5 +1,9 @@
 import { create } from 'zustand';
 import type { UserProfile } from '@/lib/api';
+import { useCartStore } from '@/stores/cartStore';
+import { useUIStore } from '@/stores/uiStore';
+import { useWalletStore } from '@/stores/walletStore';
+import { useOrderStore } from '@/stores/orderStore';
 
 interface AuthState {
   user: UserProfile | null;
@@ -26,25 +30,18 @@ export const useAuthStore = create<AuthState>()(
     setIsNewUser: (isNewUser) => set({ isNewUser }),
     setPhone: (phone) => set({ phone }),
     setAuthDone: (authDone) => set({ authDone }),
-    logout: async () => {
+    logout: () => {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
-      const { useCartStore } = await import('@/stores/cartStore');
-      const { useUIStore } = await import('@/stores/uiStore');
-      const { useWalletStore } = await import('@/stores/walletStore');
-      const { useOrderStore } = await import('@/stores/orderStore');
       useCartStore.getState().clearCart();
       useUIStore.getState().resetAll();
       useWalletStore.getState().resetAll();
       useOrderStore.getState().resetAll();
       set({ user: null, isAuthenticated: false, isNewUser: false, phone: '', authDone: false });
     },
-    resetAllExceptCart: async () => {
+    resetAllExceptCart: () => {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
-      const { useUIStore } = await import('@/stores/uiStore');
-      const { useWalletStore } = await import('@/stores/walletStore');
-      const { useOrderStore } = await import('@/stores/orderStore');
       useUIStore.getState().setIsGuest(false);
       useWalletStore.getState().resetAll();
       useOrderStore.getState().resetAll();

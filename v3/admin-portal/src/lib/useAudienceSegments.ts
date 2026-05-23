@@ -20,6 +20,7 @@ export function useAudienceSegments() {
     { value: "loyal_customers", label: "Loyal Customers" },
     { value: "inactive_users", label: "Inactive Users" },
   ]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.getRaw<any>("/admin/loyalty/tiers?per_page=10&is_active=true")
@@ -33,9 +34,10 @@ export function useAudienceSegments() {
           { value: "inactive_users", label: "Inactive Users" },
           ...tSegments,
         ]);
+        setError(null);
       })
-      .catch(() => {}); // keep base segments on error
+      .catch((e: any) => { setError(e?.message || "Failed to load segments"); });
   }, []);
 
-  return { allSegments };
+  return { allSegments, error };
 }

@@ -19,6 +19,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - fnb_v3_network
 
   redis:
     image: redis:7-alpine
@@ -28,17 +30,19 @@ services:
       - "13335:6379"
     volumes:
       - fnb_v3_redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_dev_password}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - fnb_v3_network
 
   backend:
     build:
       context: ../../backend
-      dockerfile: ../docker/Dockerfile.backend
+      dockerfile: ../infra/docker/Dockerfile.backend
     container_name: fnb-v3-backend
     restart: unless-stopped
     ports:
@@ -56,6 +60,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - fnb_v3_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:13800/health"]
       interval: 10s
@@ -65,7 +71,7 @@ services:
   admin-portal:
     build:
       context: ../../admin-portal
-      dockerfile: ../docker/Dockerfile.admin
+      dockerfile: ../infra/docker/Dockerfile.admin
     container_name: fnb-v3-admin
     restart: unless-stopped
     ports:
@@ -74,8 +80,10 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:13800/api/v1
     depends_on:
       - backend
+    networks:
+      - fnb_v3_network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3012/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -83,7 +91,7 @@ services:
   customer-pwa:
     build:
       context: ../../customer-pwa
-      dockerfile: ../docker/Dockerfile.customer
+      dockerfile: ../infra/docker/Dockerfile.customer
     container_name: fnb-v3-customer
     restart: unless-stopped
     ports:
@@ -92,8 +100,10 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:13800/api/v1
     depends_on:
       - backend
+    networks:
+      - fnb_v3_network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3012/"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -101,7 +111,7 @@ services:
   staff-portal:
     build:
       context: ../../staff-portal
-      dockerfile: ../docker/Dockerfile.staff
+      dockerfile: ../infra/docker/Dockerfile.staff
     container_name: fnb-v3-staff
     restart: unless-stopped
     ports:
@@ -110,11 +120,17 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:13800/api/v1
     depends_on:
       - backend
+    networks:
+      - fnb_v3_network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
       interval: 15s
       timeout: 5s
       retries: 5
+
+networks:
+  fnb_v3_network:
+    driver: bridge
 
 volumes:
   fnb_v3_db_data:

@@ -9,7 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import List
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     jwt_refresh_expire_days: int = 7
     jwt_secret_previous: str | None = None
 
+    @field_validator("jwt_algorithm")
+    @classmethod
+    def _validate_jwt_algorithm(cls, v: str) -> str:
+        allowed = {"HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "PS256", "PS384", "PS512"}
+        if v not in allowed:
+            raise ValueError(f"Unsupported JWT algorithm: {v}. Must be one of {allowed}")
+        return v
+
     @field_validator("jwt_secret")
     @classmethod
     def _validate_jwt_secret(cls, v: str) -> str:
@@ -74,6 +82,12 @@ class Settings(BaseSettings):
         if env == "production" and "fnb_user:fnb_pass" in v:
             raise ValueError("Cannot use default database credentials in production. Set DATABASE_URL env var.")
         return v
+
+    @model_validator(mode="after")
+    def _set_database_url_sync(self) -> "Settings":
+        if self.database_url_sync is None:
+            self.database_url_sync = self.database_url.replace("postgresql+asyncpg://", "postgresql://")
+        return self
 
     # Argon2
     argon2_time_cost: int = 3

@@ -73,6 +73,7 @@ export function Carousel({
             <button
               key={i}
               onClick={() => goTo(i)}
+              aria-label={`Go to slide ${i + 1}`}
               className={`h-1.5 rounded-full transition-all ${
                 i === current ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
               }`}

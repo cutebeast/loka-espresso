@@ -24,7 +24,12 @@ self.addEventListener('install', (event) => {
       .then(async (cache) => {
         console.log('[SW] Caching static assets');
         const results = await Promise.allSettled(
-          STATIC_ASSETS.map(url => cache.add(url))
+          STATIC_ASSETS.map(url =>
+            fetch(url, { cache: 'no-cache' }).then((res) => {
+              if (res.ok) return cache.put(url, res);
+              throw new Error(`HTTP ${res.status}`);
+            })
+          )
         );
         results.forEach((result, i) => {
           if (result.status === 'rejected') {
@@ -168,7 +173,14 @@ async function updateCache(request, cache) {
 
 // Push notification handler
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : {};
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch {
+      try { data = JSON.parse(event.data.text()); } catch { /* use empty fallback */ }
+    }
+  }
   
   event.waitUntil(
     self.registration.showNotification(data.title || 'Loka Espresso', {
@@ -222,13 +234,14 @@ function openDB() {
   });
 }
 
-async function queueOrder(orderPayload) {
+async function queueOrder(orderPayload, authToken) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     const record = {
       payload: orderPayload,
+      authToken: authToken || null,
       timestamp: Date.now(),
       retryCount: 0,
       nextRetryAt: 0,
@@ -284,11 +297,9 @@ self.addEventListener('message', (event) => {
   const data = event.data;
   
   if (data && data.type === 'QUEUE_ORDER') {
-    event.waitUntil(
-      queueOrder(data.payload)
-        .then(() => self.registration.sync.register('orders'))
-        .catch((err) => console.error('[SW] Failed to queue order:', err))
-    );
+    queueOrder(data.payload, data.authToken)
+      .then(() => self.registration.sync.register('orders'))
+      .catch((err) => console.error('[SW] Failed to queue order:', err));
     return;
   }
 
@@ -353,7 +364,7 @@ async function replayOrders() {
   const pendingOrders = await getPendingOrders();
   if (pendingOrders.length === 0) return;
 
-  const API_BASE = self.location.origin + '/api/v1';
+  const API_BASE = '/api/v1';
   const now = Date.now();
 
   for (const record of pendingOrders) {
@@ -367,12 +378,16 @@ async function replayOrders() {
     }
 
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': `sw-sync-${record.id}`,
+      };
+      if (record.authToken) {
+        headers['Authorization'] = `Bearer ${record.authToken}`;
+      }
       const response = await fetch(`${API_BASE}/orders`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': `sw-sync-${record.id}-${Date.now()}`,
-        },
+        headers,
         body: JSON.stringify(record.payload),
       });
 

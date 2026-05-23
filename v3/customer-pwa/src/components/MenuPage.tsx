@@ -225,6 +225,7 @@ export default function MenuPage() {
               key={cat.id ?? 'all'}
               className={`menu-cat-tab ${activeCategoryId === cat.id ? 'active' : ''}`}
               onClick={() => scrollToCategory(cat.id)}
+              aria-selected={activeCategoryId === cat.id}
             >
               {cat.name}
             </button>
@@ -294,7 +295,7 @@ export default function MenuPage() {
                     >
                       <div className="menu-product-img">
                         {imgSrc && !brokenImages.has(item.id) ? (
-                          <img src={imgSrc} alt={item.name} loading="lazy" className="menu-product-img-bg" onError={() => { setBrokenImages(prev => new Set(prev).add(item.id)); }} />
+                          <img src={imgSrc} alt={item.name} loading="lazy" width="160" height="160" className="menu-product-img-bg" onError={() => { setBrokenImages(prev => new Set(prev).add(item.id)); }} />
                         ) : (
                           <div className="menu-img-fallback">
                             <Coffee size={28} color={LOKA.border} strokeWidth={1.5} />

@@ -123,7 +123,8 @@ export async function autoDetectStore(
  * Returns null if permission denied or not available.
  */
 export async function getBrowserLocation(): Promise<IPLocation | null> {
-  return new Promise((resolve) => {
+  const TIMEOUT_MS = 15000;
+  const locationPromise = new Promise<IPLocation | null>((resolve) => {
     if (!navigator.geolocation) {
       resolve(null);
       return;
@@ -134,6 +135,10 @@ export async function getBrowserLocation(): Promise<IPLocation | null> {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   });
+  const timeoutPromise = new Promise<IPLocation | null>((resolve) => {
+    setTimeout(() => resolve(null), TIMEOUT_MS);
+  });
+  return Promise.race([locationPromise, timeoutPromise]);
 }
 
 /**

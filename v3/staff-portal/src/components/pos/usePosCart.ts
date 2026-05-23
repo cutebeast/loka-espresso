@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { MenuItem, CartItem, Customer } from "@/lib/api";
 
 export interface HeldOrder {
@@ -102,6 +102,15 @@ export function usePosCart(storeId: number, crewName: string) {
     }).filter(Boolean) as CartItem[]);
   }, []);
 
+  const newOrder = useCallback(() => {
+    setCart([]);
+    setSelectedCustomer(null);
+    setTableId(null);
+    setOrderType("dine_in");
+    setOrderNotes("");
+    try { localStorage.removeItem("pos_active_cart"); } catch {}
+  }, []);
+
   const holdOrder = useCallback(() => {
     if (cart.length === 0) return;
     const held: HeldOrder = {
@@ -119,6 +128,7 @@ export function usePosCart(storeId: number, crewName: string) {
       localStorage.setItem("pos_held_orders", JSON.stringify(updated));
       return updated;
     });
+    newOrder();
     return held;
   }, [cart, tableId, selectedCustomer, orderType, orderNotes, crewName]);
 
@@ -128,18 +138,58 @@ export function usePosCart(storeId: number, crewName: string) {
     setSelectedCustomer(held.customer);
     setOrderType(held.orderType);
     setOrderNotes(held.notes);
+    setHeldOrders((prev) => {
+      const updated = prev.filter((h) => h.id !== held.id);
+      localStorage.setItem("pos_held_orders", JSON.stringify(updated));
+      return updated;
+    });
     setShowHeld(false);
   }, []);
 
-  const newOrder = useCallback(() => {
-    setCart([]);
-    setSelectedCustomer(null);
-    setTableId(null);
-    setOrderType("dine_in");
-    setOrderNotes("");
+  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  // Load held orders from localStorage on mount and clean expired ones
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("pos_held_orders");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          const now = Date.now();
+          const valid = parsed.filter((h: HeldOrder) => now - h.createdAt < 2 * 60 * 60 * 1000);
+          if (valid.length !== parsed.length) {
+            localStorage.setItem("pos_held_orders", JSON.stringify(valid));
+          }
+          if (valid.length > 0) setHeldOrders(valid);
+        }
+      }
+    } catch { /* ignore corrupted storage */ }
   }, []);
 
-  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  // Persist active cart to localStorage for crash recovery
+  useEffect(() => {
+    try {
+      const saveData = { cart, tableId, selectedCustomer, orderType, orderNotes, crewName };
+      localStorage.setItem("pos_active_cart", JSON.stringify(saveData));
+    } catch { /* ignore storage errors */ }
+  }, [cart, tableId, selectedCustomer, orderType, orderNotes, crewName]);
+
+  // Restore active cart from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("pos_active_cart");
+      if (stored) {
+        const data = JSON.parse(stored);
+        if (data?.cart && Array.isArray(data.cart) && data.cart.length > 0) {
+          setCart(data.cart);
+          if (data.tableId != null) setTableId(data.tableId);
+          if (data.selectedCustomer) setSelectedCustomer(data.selectedCustomer);
+          if (data.orderType) setOrderType(data.orderType);
+          if (data.orderNotes) setOrderNotes(data.orderNotes);
+        }
+      }
+    } catch { /* ignore corrupted storage */ }
+  }, []);
 
   return {
     cart, setCart,

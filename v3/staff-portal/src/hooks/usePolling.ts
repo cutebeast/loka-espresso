@@ -40,9 +40,18 @@ export function usePolling(
     if (!enabled) return;
 
     let active = true;
+    let hidden = false;
+
+    const onVisibilityChange = () => {
+      hidden = document.hidden;
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     const run = async () => {
-      if (!active) return;
+      if (!active || hidden) {
+        if (active) timeoutRef.current = setTimeout(run, 1000);
+        return;
+      }
       await poll();
       if (active) {
         timeoutRef.current = setTimeout(run, interval);
@@ -53,6 +62,7 @@ export function usePolling(
 
     return () => {
       active = false;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;

@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 
 interface ModalProps {
   open: boolean;
@@ -13,6 +13,7 @@ interface ModalProps {
 }
 
 export default function Modal({ open, onClose, title, children, footer, size = "md" }: ModalProps) {
+  const modalId = useId();
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -38,10 +39,10 @@ export default function Modal({ open, onClose, title, children, footer, size = "
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? "modal-title" : undefined}>
+      <div className="modal" style={{ maxWidth }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? `modal-title-${modalId}` : undefined}>
         {(title) && (
           <div className="modal-header">
-            {title && <h3 className="modal-title" id="modal-title">{title}</h3>}
+            {title && <h3 className="modal-title" id={`modal-title-${modalId}`}>{title}</h3>}
             <button type="button" className="modal-close" onClick={onClose} aria-label="Close"><X size={18} /></button>
           </div>
         )}

@@ -12,7 +12,6 @@ interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> 
 export default function OptimizedImage({ resolve, fallback, onError, src, alt, ...props }: OptimizedImageProps) {
   const [error, setError] = useState(false);
   const resolvedSrc: string | undefined = resolve && typeof src === 'string' ? (resolveAssetUrl(src) ?? undefined) : (typeof src === 'string' ? src : undefined);
-  const resolvedAlt = alt || '';
 
   if (error && fallback) return <>{fallback}</>;
 

@@ -48,16 +48,19 @@ async def customer_register(db: DBDependency, data: CustomerRegisterRequest):
 async def customer_login(request: Request, db: DBDependency, data: CustomerLoginRequest):
     """Login with email or phone (OTP-based / passwordless).
 
-    Development: directly returns tokens if customer exists (OTP bypass).
+    Development: logs warning that OTP is bypassed.
     Production: OTP verification is mandatory. If not yet implemented, the
     endpoint returns 501 so deploy is blocked until OTP is wired up.
     """
+    import logging
+    logger = logging.getLogger("auth")
     settings = get_settings()
 
     # ── Production guard: OTP verification must be implemented ──
     if settings.is_production:
         # Check if OTP bypass is explicitly disabled via platform config
-        bypass_enabled = await PlatformConfigService.get_bool(db, "otp.bypass_enabled", default=False)
+        config_svc = PlatformConfigService(db)
+        bypass_enabled = await config_svc.get_bool("otp.bypass_enabled", default=False)
         if not bypass_enabled:
             raise HTTPException(
                 status_code=501,
@@ -65,6 +68,8 @@ async def customer_login(request: Request, db: DBDependency, data: CustomerLogin
                        "Set otp.bypass_enabled=true in platform_config for "
                        "temporary bypass during staged rollout.",
             )
+    else:
+        logger.warning("OTP verification BYPASSED in non-production environment")
 
     if data.email_address:
         result = await db.execute(

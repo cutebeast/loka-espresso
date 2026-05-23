@@ -51,9 +51,9 @@ export default function PosCheckoutPanel({
   onSetError, onSetMsg, onScanCustomer,
   onApplyVoucher, onApplyReward, onWalletPayment, onCheckout,
 }: PosCheckoutPanelProps) {
-  const originalTotal = (order.total_amount || order.total || 0) + (order.voucher_discount || 0) + (order.reward_discount || 0) + (order.discount_amount || 0);
-  const voucherDisc = order.voucher_discount || 0;
-  const rewardDisc = order.reward_discount || 0;
+  const voucherDisc = Number((order as any).voucher_discount ?? 0);
+  const rewardDisc = Number((order as any).reward_discount ?? 0);
+  const originalTotal = (order.total_amount || order.total || 0);
   const orderBase = order.total_amount || order.total || 0;
   const manualDisc = discountType === "percentage" ? orderBase * (discountAmount / 100) : discountAmount;
   const walletPaid = discountsApplied.wallet || 0;
@@ -100,8 +100,8 @@ export default function PosCheckoutPanel({
           <table className="data-table">
             <thead><tr><th>Item</th><th style={{ textAlign: "center" }}>Qty</th><th style={{ textAlign: "right" }}>Price</th></tr></thead>
             <tbody>
-              {(order.line_items || order.items || []).map((li: any) => (
-                <tr key={`${li.menu_item_id || li.id || li.item_name}-${li.modifiers_label || "none"}`}>
+              {(order.line_items || order.items || []).map((li: any, idx: number) => (
+                <tr key={`${li.menu_item_id || li.id || li.item_name}-${li.modifiers_label || "none"}-${idx}`}>
                   <td>{li.item_name || li.name}</td>
                   <td style={{ textAlign: "center" }}>{li.quantity}</td>
                   <td style={{ textAlign: "right" }}>RM {Number(li.unit_price || li.price || 0).toFixed(2)}</td>
@@ -139,7 +139,13 @@ export default function PosCheckoutPanel({
       </div>
 
       {customer && walletData && (
-        <button className="btn btn-outline w-full" style={{ marginBottom: 16 }} onClick={() => onSetShowDiscounts(true)}>
+        <button
+          className="btn btn-outline w-full"
+          style={{ marginBottom: 16 }}
+          onClick={() => onSetShowDiscounts(true)}
+          aria-expanded={showDiscounts}
+          aria-haspopup="true"
+        >
           <Gift size={16} /> Apply Discounts & Wallet
         </button>
       )}
@@ -180,6 +186,7 @@ export default function PosCheckoutPanel({
           <div>
             <div style={{ fontSize: 32, fontWeight: 700, textAlign: "center", marginBottom: 12 }}>RM {checkoutTotal.toFixed(2)}</div>
             <NumericKeypad
+              value={amountTendered}
               onPress={(key) => onSetAmountTendered((prev: string) => prev + key)}
               onBackspace={() => onSetAmountTendered((prev: string) => prev.slice(0, -1))}
               onClear={() => onSetAmountTendered("")}

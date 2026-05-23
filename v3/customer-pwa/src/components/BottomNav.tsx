@@ -44,7 +44,7 @@ export default function BottomNav({ page, onNavigate }: BottomNavProps) {
             key={id}
             onClick={() => onNavigate(id)}
             className={`nav-item${isActive ? ' active' : ''}`}
-            aria-label={label}
+            aria-label={badgeCount > 0 ? `${label}, ${badgeCount} items in cart` : label}
             aria-current={isActive ? 'page' : undefined}
           >
             {isActive && (
@@ -57,7 +57,7 @@ export default function BottomNav({ page, onNavigate }: BottomNavProps) {
             <span className="nav-icon-wrap">
               <Icon size={22} strokeWidth={isActive ? 2.4 : 1.8} />
               {badgeCount > 0 && (
-                <span className={`nav-badge${badgeCount > 0 ? ' pulse' : ''}`}>
+                <span className="nav-badge pulse">
                   {badgeCount > 9 ? '9+' : badgeCount}
                 </span>
               )}

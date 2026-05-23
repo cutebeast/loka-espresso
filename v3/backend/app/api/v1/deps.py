@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import decode_token
+import jwt as pyjwt
 from app.models.customer import Customer
 from app.models.iam import AdminAccount, IAMRole, RoleAssignment, StoreAssignment
 from app.models.staff import StaffProfile
@@ -19,24 +20,37 @@ settings = get_settings()
 security_scheme = HTTPBearer(auto_error=False)
 
 SUPPORTED_LOCALES = {"ms", "zh", "ta", "tr"}
+SUPPORTED_LOCALE_PREFIXES = {locale.split("-")[0] if "-" in locale else locale for locale in SUPPORTED_LOCALES} | SUPPORTED_LOCALES
 SOURCE_LOCALE = "en"
 
 
 def get_locale_from_request(request: Request) -> str:
     """Extract locale from query param or Accept-Language header.
-    Falls back to 'en'. Only allows supported locales."""
+    Falls back to 'en'. Only allows supported locales.
+    Supports regional variants (e.g. zh-CN, zh-TW) by preserving the full code
+    when the prefix matches a supported locale."""
     # 1. Check query param
     locale = request.query_params.get("locale")
-    if locale and locale in SUPPORTED_LOCALES:
-        return locale
+    if locale:
+        locale = locale.strip()
+        if locale in SUPPORTED_LOCALES:
+            return locale
+        if "-" in locale:
+            prefix = locale.split("-")[0]
+            if prefix in SUPPORTED_LOCALES:
+                return locale
     # 2. Check Accept-Language header
     accept_lang = request.headers.get("accept-language", "")
     if accept_lang:
-        # Parse simple locale codes like "ms", "zh", "ta", "tr"
         for part in accept_lang.replace(";", ",").split(","):
-            part = part.strip().split("-")[0].lower()
-            if part in SUPPORTED_LOCALES:
-                return part
+            part = part.strip()
+            lower_part = part.lower()
+            if lower_part in SUPPORTED_LOCALES:
+                return lower_part
+            if "-" in lower_part:
+                prefix = lower_part.split("-")[0]
+                if prefix in SUPPORTED_LOCALES:
+                    return lower_part
     return SOURCE_LOCALE
 
 
@@ -217,13 +231,11 @@ CurrentAdmin = Annotated[AdminAccount, Depends(get_current_admin)]
 
 async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
     """Extract staff JWT from header and return StaffProfile."""
-    import jwt, os
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        import jwt
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm], audience="fnb-app")
+        payload = decode_token(token)
         if payload.get("type") not in ("staff", "admin"):
             raise HTTPException(status_code=401, detail="Invalid token type")
         staff_id = payload.get("staff_id")
@@ -243,7 +255,7 @@ async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
         if not staff or not staff.is_active:
             raise HTTPException(status_code=401, detail="Staff not found or inactive")
         return staff
-    except jwt.InvalidTokenError:
+    except pyjwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 

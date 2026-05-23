@@ -9,6 +9,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -130,4 +131,5 @@ class CustomerVoucher(Base):
             name="ck_customer_vouchers_status",
         ),
         CheckConstraint("use_count >= 0", name="ck_customer_vouchers_use_count"),
+        Index("idx_customer_vouchers_voucher_code", "voucher_code"),
     )

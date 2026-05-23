@@ -1,9 +1,10 @@
 """Admin customer management endpoints."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.customer import Customer, CustomerAddress, CustomerConsent, CustomerDevice
@@ -12,6 +13,7 @@ from app.models.order import Order
 from app.models.wallet import Wallet, WalletLedgerEntry
 from app.models.reward import CustomerReward
 from app.models.voucher import CustomerVoucher, VoucherDefinition
+from app.models.platform import AuditLog
 from app.models.store import Store
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.customer import (
@@ -117,20 +119,14 @@ async def get_customer_detail(admin: CurrentAdmin, db: DBDependency, customer_id
     wallet = w_result.scalar_one_or_none()
     wallet_balance = 0.0
     if wallet:
-        from app.models.wallet import WalletLedgerEntry
-        lr = await db.execute(
-            select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id)
+        balance_result = await db.execute(
+            select(func.sum(case(
+                (WalletLedgerEntry.entry_type.in_(["credit", "release", "adjustment"]), WalletLedgerEntry.amount),
+                (WalletLedgerEntry.entry_type.in_(["debit", "hold"]), -WalletLedgerEntry.amount),
+                else_=0,
+            ))).where(WalletLedgerEntry.wallet_id == wallet.id)
         )
-        total_credited = 0.0
-        total_debited = 0.0
-        for entry in lr.scalars().all():
-            if entry.entry_type in ("credit", "release"):
-                total_credited += float(entry.amount)
-            elif entry.entry_type in ("debit", "hold"):
-                total_debited += float(entry.amount)
-            elif entry.entry_type == "adjustment":
-                total_credited += float(entry.amount)
-        wallet_balance = total_credited - total_debited
+        wallet_balance = float(balance_result.scalar() or 0)
 
     # Addresses
     addr_result = await db.execute(
@@ -339,8 +335,8 @@ async def adjust_points(admin: CurrentAdmin, db: DBDependency, customer_id: int,
     customer = rc.scalar_one_or_none()
     if not customer: raise HTTPException(404, "Customer not found")
 
-    # Get or create loyalty account
-    rl = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id))
+    # Get or create loyalty account (lock row to prevent race conditions)
+    rl = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id).with_for_update())
     la = rl.scalar_one_or_none()
     if not la:
         la = LoyaltyAccount(customer_id=customer_id, current_tier_id=None, points_balance=0, lifetime_points_earned=0)
@@ -365,6 +361,11 @@ async def adjust_points(admin: CurrentAdmin, db: DBDependency, customer_id: int,
         loyalty_account_id=la.id, customer_id=customer_id,
         event_type=entry_type, points_delta=points,
         running_balance=la.points_balance, description=reason,
+    ))
+    db.add(AuditLog(
+        actor_id=admin.id, action="points_adjustment", target_type="customer",
+        target_id=customer_id,
+        details={"points_delta": points, "reason": reason, "new_balance": la.points_balance},
     ))
     await db.commit()
     return APIResponse(data={"message": f"{points} points", "new_balance": la.points_balance})
@@ -401,13 +402,13 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
     cv = CustomerVoucher(
         customer_id=customer_id,
         voucher_definition_id=voucher_id,
-        store_id=default_store_id,  # resolved from first active store
+        store_id=default_store_id,
         source="admin_awarded",
         source_id=admin.id,
         voucher_code=f"ADMIN-{secrets.token_hex(4).upper()}",
         status="active",
         voucher_snapshot=snapshot,
-        expires_at=vd.valid_until or (datetime.now(timezone.utc) + __import__('datetime').timedelta(days=vd.validity_days or 30)),
+        expires_at=vd.valid_until or (datetime.now(timezone.utc) + timedelta(days=vd.validity_days or 30)),
     )
     db.add(cv)
     await db.commit()
@@ -422,7 +423,7 @@ async def use_reward(admin: CurrentAdmin, db: DBDependency, customer_id: int, re
         select(CustomerReward).where(
             CustomerReward.id == reward_id,
             CustomerReward.customer_id == customer_id,
-        )
+        ).with_for_update()
     )
     cr = result.scalar_one_or_none()
     if not cr:
@@ -446,6 +447,11 @@ async def use_reward(admin: CurrentAdmin, db: DBDependency, customer_id: int, re
     if data.store_id is not None:
         cr.store_id = data.store_id
 
+    db.add(AuditLog(
+        actor_id=admin.id, action="reward_used", target_type="customer_reward",
+        target_id=reward_id,
+        details={"customer_id": customer_id, "store_id": data.store_id, "redemption_code": cr.redemption_code},
+    ))
     await db.commit()
     return APIResponse(data={"message": "Reward marked as used", "success": True})
 
@@ -457,7 +463,7 @@ async def use_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, v
         select(CustomerVoucher).where(
             CustomerVoucher.id == voucher_id,
             CustomerVoucher.customer_id == customer_id,
-        )
+        ).with_for_update()
     )
     cv = result.scalar_one_or_none()
     if not cv:
@@ -481,6 +487,11 @@ async def use_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, v
     if data.store_id is not None:
         cv.store_id = data.store_id
 
+    db.add(AuditLog(
+        actor_id=admin.id, action="voucher_used", target_type="customer_voucher",
+        target_id=voucher_id,
+        details={"customer_id": customer_id, "store_id": data.store_id, "voucher_code": cv.voucher_code},
+    ))
     await db.commit()
     return APIResponse(data={"message": "Voucher marked as used", "success": True})
 
@@ -491,7 +502,7 @@ async def set_tier(admin: CurrentAdmin, db: DBDependency, customer_id: int, data
     tier_key = data.tier.lower()
     reason = data.reason
 
-    rl = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id))
+    rl = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id).with_for_update())
     la = rl.scalar_one_or_none()
     if not la:
         la = LoyaltyAccount(customer_id=customer_id, current_tier_id=None, points_balance=0, lifetime_points_earned=0)
@@ -510,9 +521,15 @@ async def set_tier(admin: CurrentAdmin, db: DBDependency, customer_id: int, data
         la.points_balance += delta
         db.add(LoyaltyPointsLedger(
             loyalty_account_id=la.id, customer_id=customer_id,
-            event_type="tier_upgrade", points_delta=delta,
+            event_type="tier_bonus", points_delta=delta,
             running_balance=la.points_balance, description=f"{reason}: {tier.display_name}",
         ))
+    # Audit log
+    db.add(AuditLog(
+        actor_id=admin.id, action="set_customer_tier", target_type="customer",
+        target_id=customer_id,
+        details={"tier": tier_key, "reason": reason},
+    ))
     await db.commit()
     return APIResponse(data={"message": f"Tier set to {tier.display_name}", "tier": tier_key})
 
@@ -593,10 +610,14 @@ async def customer_wallet_items(admin: CurrentAdmin, db: DBDependency, customer_
             "expires_at": r.expires_at.isoformat() if r.expires_at else None,
         })
 
-    rv = await db.execute(select(CustomerVoucher).where(CustomerVoucher.customer_id == customer_id, CustomerVoucher.status == "active"))
+    rv = await db.execute(
+        select(CustomerVoucher)
+        .options(selectinload(CustomerVoucher.voucher_definition))
+        .where(CustomerVoucher.customer_id == customer_id, CustomerVoucher.status == "active")
+    )
     vouchers = []
     for v in rv.scalars().all():
-        vd = await db.get(VoucherDefinition, v.voucher_definition_id)
+        vd = v.voucher_definition
         vouchers.append({
             "id": v.id,
             "voucher_id": v.voucher_definition_id,
@@ -613,16 +634,13 @@ async def customer_wallet_items(admin: CurrentAdmin, db: DBDependency, customer_
     wallet = w_result.scalar_one_or_none()
     wallet_balance = 0.0
     if wallet:
-        lr = await db.execute(select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id))
-        total_credited = 0.0
-        total_debited = 0.0
-        for entry in lr.scalars().all():
-            if entry.entry_type in ("credit", "release"):
-                total_credited += float(entry.amount)
-            elif entry.entry_type in ("debit", "hold"):
-                total_debited += float(entry.amount)
-            elif entry.entry_type == "adjustment":
-                total_credited += float(entry.amount)
-        wallet_balance = total_credited - total_debited
+        balance_result = await db.execute(
+            select(func.sum(case(
+                (WalletLedgerEntry.entry_type.in_(["credit", "release", "adjustment"]), WalletLedgerEntry.amount),
+                (WalletLedgerEntry.entry_type.in_(["debit", "hold"]), -WalletLedgerEntry.amount),
+                else_=0,
+            ))).where(WalletLedgerEntry.wallet_id == wallet.id)
+        )
+        wallet_balance = float(balance_result.scalar() or 0)
 
     return APIResponse(data={"balance": wallet_balance, "rewards": rewards, "vouchers": vouchers})

@@ -80,7 +80,7 @@ class OrderFulfillmentOut(BaseSchema):
 
 class OrderCreate(BaseSchema):
     store_id: int
-    cart_id: int
+    cart_id: int  # Ownership (customer_id matching) is validated in the service layer (create_order_from_cart), not at schema level
     order_type: Literal["dine_in", "takeaway", "delivery", "drive_thru"]
     fulfillment_type: Literal["dine_in_service", "counter_pickup", "curbside_pickup", "standard_delivery", "express_delivery", "third_party_delivery"] = "counter_pickup"
     dining_table_id: int | None = None

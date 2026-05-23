@@ -1,6 +1,7 @@
 """Payment Processing models."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import List
 
 from sqlalchemy import (
@@ -38,14 +39,14 @@ class Payment(Base, TimestampMixin):
     provider_reference_encrypted: Mapped[bytes | None] = mapped_column(BYTEA, nullable=True)
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     payment_method_type: Mapped[str] = mapped_column(PaymentMethodType, nullable=False)
-    amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     currency_code: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="USD")
     status: Mapped[str] = mapped_column(PaymentStatus, nullable=False, default="initiated")
-    captured_amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    refunded_amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    captured_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    refunded_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     refund_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    fee_amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
-    net_amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    fee_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    net_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     failure_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     failure_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(
@@ -65,7 +66,7 @@ class Payment(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint(
-            "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet')",
+            "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet','grabpay','gcash','alipay','wechat_pay')",
             name="ck_payments_provider",
         ),
         CheckConstraint(
@@ -81,7 +82,7 @@ class Payment(Base, TimestampMixin):
     )
 
 
-class PaymentEvent(Base):
+class PaymentEvent(Base, TimestampMixin):
     __tablename__ = "payment_events"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -90,13 +91,8 @@ class PaymentEvent(Base):
     )
     from_status: Mapped[str | None] = mapped_column(PaymentStatus, nullable=True)
     to_status: Mapped[str] = mapped_column(PaymentStatus, nullable=False)
-    amount: Mapped[float | None] = mapped_column(Numeric(12, 4), nullable=True)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     provider_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-    )
 
     payment: Mapped["Payment"] = relationship("Payment", back_populates="events")
 
@@ -149,11 +145,11 @@ class PaymentMethod(Base, TimestampMixin, SoftDeleteMixin):
         ),
         CheckConstraint("card_last_four ~ '^[0-9]{4}$'", name="ck_payment_methods_card_last_four"),
         CheckConstraint("card_expiry_month BETWEEN 1 AND 12", name="ck_payment_methods_card_expiry_month"),
-        CheckConstraint("card_expiry_year BETWEEN 2024 AND 2100", name="ck_payment_methods_card_expiry_year"),
+        CheckConstraint("card_expiry_year BETWEEN extract(year from now()) AND 2100", name="ck_payment_methods_card_expiry_year"),
     )
 
 
-class Refund(Base):
+class Refund(Base, TimestampMixin):
     __tablename__ = "refunds"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -163,7 +159,7 @@ class Refund(Base):
     order_id: Mapped[int] = mapped_column(
         ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
     )
-    amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     reason_category: Mapped[str] = mapped_column(String(50), nullable=False)
     approved_by: Mapped[int | None] = mapped_column(
@@ -171,11 +167,6 @@ class Refund(Base):
     )
     provider_refund_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-    )
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { usePagination } from "@/hooks/usePagination";
 import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Voucher {
@@ -18,8 +19,7 @@ export default function VouchersPage() {
   const [items, setItems] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const pagination = usePagination({ defaultPage: 1, defaultPerPage: PAGE_SIZE });
 
   const fetchData = useCallback(async (p: number = 1) => {
     return api.getRaw<{ items: Voucher[]; total: number; total_pages: number }>(
@@ -33,17 +33,24 @@ export default function VouchersPage() {
       .then((d) => {
         if (cancelled) return;
         setItems(d.items || []);
-        setTotalPages(d.total_pages || 1);
-        setPage(1);
+        pagination.setTotalPages(d.total_pages || 1);
+        pagination.setPage(1);
+        pagination.setTotal(d.total || 0);
       })
       .catch((e: any) => { if (!cancelled) setError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [fetchData]);
+  }, [fetchData, pagination.setTotalPages, pagination.setPage, pagination.setTotal]);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this voucher?")) return;
-    try { await api.del(`/admin/vouchers/${id}`); const d = await fetchData(page); setItems(d.items || []); setTotalPages(d.total_pages || 1); } catch (e: any) { console.error("Failed to delete voucher:", e); }
+    try {
+      await api.del(`/admin/vouchers/${id}`);
+      const d = await fetchData(pagination.page);
+      setItems(d.items || []);
+      pagination.setTotalPages(d.total_pages || 1);
+      pagination.setTotal(d.total || 0);
+    } catch (e: any) { console.error("Failed to delete voucher:", e); }
   };
 
   const discountLabel = (v: Voucher) => {
@@ -70,8 +77,8 @@ export default function VouchersPage() {
         <tbody>
           {loading ? <tr><td colSpan={8} className="data-table-empty">Loading...</td></tr>
             : items.map(item => (
-              <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/vouchers/${item.id}`))();}}} onClick={() => router.push(`/vouchers/${item.id}`)} style={{ cursor: "pointer" }}>
-                <td className="font-mono" style={{ fontSize: 12 }}>{item.voucher_code}</td>
+              <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();router.push(`/vouchers/${item.id}`);}}} onClick={() => router.push(`/vouchers/${item.id}`)} style={{ cursor: "pointer" }}>
+                <td style={{ fontSize: 12 }} className="font-mono">{item.voucher_code}</td>
                 <td style={{ fontWeight: 600 }}>{item.display_title}</td>
                 <td>{typeBadge(item.voucher_type)}</td>
                 <td style={{ fontWeight: 600, color: "var(--color-success)" }}>{discountLabel(item)}</td>
@@ -80,19 +87,19 @@ export default function VouchersPage() {
                 <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <button type="button" onClick={() => router.push(`/vouchers/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><Edit2 size={14} /></button>
-                    <button type="button" onClick={() => handleDelete(item.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                    <button type="button" onClick={() => router.push(`/vouchers/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }} aria-label="Edit voucher"><Edit2 size={14} /></button>
+                    <button type="button" onClick={() => handleDelete(item.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }} aria-label="Delete voucher"><Trash2 size={14} /></button>
                   </div>
                 </td>
               </tr>
             ))}
         </tbody>
       </table></div>
-      {totalPages > 1 && (
+      {pagination.totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "center", marginTop: 16 }}>
-          <button type="button" className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={async () => { const d = await fetchData(page - 1); setItems(d.items || []); setTotalPages(d.total_pages || 1); setPage(page - 1); }}><ChevronLeft size={14} /> Prev</button>
-          <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Page {page} of {totalPages}</span>
-          <button type="button" className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={async () => { const d = await fetchData(page + 1); setItems(d.items || []); setTotalPages(d.total_pages || 1); setPage(page + 1); }}>Next <ChevronRight size={14} /></button>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={!pagination.hasPrev} onClick={async () => { const d = await fetchData(pagination.page - 1); setItems(d.items || []); pagination.setTotalPages(d.total_pages || 1); pagination.setTotal(d.total || 0); pagination.prevPage(); }}><ChevronLeft size={14} /> Prev</button>
+          <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Page {pagination.page} of {pagination.totalPages}</span>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={!pagination.hasNext} onClick={async () => { const d = await fetchData(pagination.page + 1); setItems(d.items || []); pagination.setTotalPages(d.total_pages || 1); pagination.setTotal(d.total || 0); pagination.nextPage(); }}>Next <ChevronRight size={14} /></button>
         </div>
       )}
     </div>

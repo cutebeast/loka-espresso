@@ -19,12 +19,12 @@ export default function InventoryItemsPage() {
   const [categories, setCategories] = useState<InvCategory[]>([]);
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const l = d.items||[]; setStores(l); if (l.length>0) setStoreId(String(l[0].id)); }).catch(()=>{});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const l = d.items||[]; setStores(l); if (l.length>0) setStoreId(String(l[0].id)); }).catch((e: any) => setError(e.message || "Failed to load stores"));
   }, []);
 
   useEffect(() => {
     if (!storeId) return;
-    api.get<{ items: InvCategory[] }>(`/admin/inventory/categories?store_id=${storeId}&per_page=50`).then(d => setCategories(d.items||(Array.isArray(d)?d:[]))).catch(()=>{});
+    api.get<{ items: InvCategory[] }>(`/admin/inventory/categories?store_id=${storeId}&per_page=50`).then(d => setCategories(d.items||(Array.isArray(d)?d:[]))).catch((e: any) => console.error("Failed to load categories:", e));
   }, [storeId]);
 
   const fetchData = useCallback(() => {

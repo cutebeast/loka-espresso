@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useDebounce } from "@/hooks/useDebounce";
+import { usePagination } from "@/hooks/usePagination";
 import { Search, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 
 interface CustomerSummary {
@@ -16,49 +17,48 @@ interface CustomerSummary {
 export default function CustomersPage() {
   const router = useRouter();
   const [items, setItems] = useState<CustomerSummary[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
+  const pagination = usePagination({ defaultPage: 1, defaultPerPage: 20 });
 
-  const fetchData = useCallback(async () => { setError("");
+  const fetchData = useCallback(async () => {
+    setError("");
+    setLoading(true);
     try {
-      const qs = new URLSearchParams({ page: String(page), per_page: "20" });
+      const qs = new URLSearchParams({ page: String(pagination.page), per_page: "20" });
       if (debouncedSearch) qs.set("search", debouncedSearch);
       const r = await api.getRaw<any>(`/admin/customers?${qs.toString()}`);
       setItems(r.items || []);
-      setTotal(r.total || 0);
-      setTotalPages(r.total_pages || 1);
+      pagination.setTotal(r.total || 0);
+      pagination.setTotalPages(r.total_pages || 1);
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
-  }, [page, debouncedSearch]);
+  }, [pagination.page, debouncedSearch, pagination.setTotal, pagination.setTotalPages]);
 
-  useEffect(() => {(async () => {
- fetchData(); 
-})();}, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const formatDate = (s: string | null) => s ? new Date(s).toLocaleDateString() : "—";
+  const formatDate = (s: string | null) => s ? new Date(s).toLocaleDateString("en-MY") : "—";
 
   return (
     <div style={{ padding: 32 }}>
       <div className="page-header">
-        <div><h1 className="page-title">Customers</h1><p className="page-subtitle">{total} customers</p></div>
+        <div><h1 className="page-title">Customers</h1><p className="page-subtitle">{pagination.total} customers</p></div>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
       <div style={{ marginBottom: 16, maxWidth: 400 }}>
         <div style={{ position: "relative" }}>
+          <label htmlFor="customer-search" style={{ position: "absolute", left: -9999, width: 1, height: 1, overflow: "hidden" }}>Search customers</label>
           <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-text-muted)" }} />
-          <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+          <input id="customer-search" type="text" value={search} onChange={e => { setSearch(e.target.value); pagination.setPage(1); }}
             placeholder="Search by name, phone, or email..."
             style={{ width: "100%", padding: "8px 12px 8px 36px", fontSize: 13, border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)" }} />
         </div>
       </div>
 
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} of {total} customers</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} of {pagination.total} customers</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th style={{ textAlign: "center" }}>Orders</th><th style={{ textAlign: "right" }}>LTV</th><th>Joined</th><th style={{ width: 80 }}>Status</th><th style={{ width: 70 }}>Actions</th></tr></thead>
         <tbody>
@@ -67,7 +67,7 @@ export default function CustomersPage() {
           : items.map(c => (
             <tr key={c.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();router.push(`/customers/${c.id}`);}}} style={{ cursor: "pointer" }} onClick={() => router.push(`/customers/${c.id}`)}>
               <td style={{ fontWeight: 600 }}>{c.display_name || "—"}</td>
-              <td className="font-mono" style={{ fontSize: 11 }}>{c.phone_number || "—"}</td>
+              <td style={{ fontSize: 11 }} className="font-mono">{c.phone_number || "—"}</td>
               <td style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{c.email_address || "—"}</td>
               <td style={{ textAlign: "center" }}>{c.order_count}</td>
               <td style={{ textAlign: "right", fontWeight: 600 }}>RM {Number(c.lifetime_value).toFixed(2)}</td>
@@ -79,11 +79,11 @@ export default function CustomersPage() {
         </tbody>
       </table></div>
 
-      {totalPages > 1 && (
+      {pagination.totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "center", marginTop: 16 }}>
-          <button className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={() => setPage(p => p - 1)}><ChevronLeft size={14} /> Prev</button>
-          <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Page {page} of {totalPages}</span>
-          <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next <ChevronRight size={14} /></button>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={!pagination.hasPrev} onClick={() => pagination.prevPage()}><ChevronLeft size={14} /> Prev</button>
+          <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Page {pagination.page} of {pagination.totalPages}</span>
+          <button type="button" className="btn btn-sm btn-ghost" disabled={!pagination.hasNext} onClick={() => pagination.nextPage()}>Next <ChevronRight size={14} /></button>
         </div>
       )}
     </div>

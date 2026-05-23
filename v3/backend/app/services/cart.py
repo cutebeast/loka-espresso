@@ -72,7 +72,12 @@ async def _get_menu_item_price(
     # Calculate modifier total
     modifier_total = 0.0
     for mod in selected_modifiers:
-        option_ids = mod.get("selected_option_ids", [])
+        if hasattr(mod, 'selected_option_ids'):
+            option_ids = mod.selected_option_ids or []
+        elif isinstance(mod, dict):
+            option_ids = mod.get("selected_option_ids", [])
+        else:
+            option_ids = []
         for opt_id in option_ids:
             opt_result = await db.execute(
                 select(MenuModifierOption).where(MenuModifierOption.id == opt_id)
@@ -99,7 +104,10 @@ async def add_line_item(
     
     line_total = (unit_price + modifier_total) * data.quantity
     
-    # Check if same item+variant already exists
+    # Check if same item+variant+modifiers already exists
+    import hashlib, json
+    incoming_modifiers_raw = {m.modifier_group_id: m.selected_option_ids for m in data.selected_modifiers}
+    modifier_hash = hashlib.sha256(json.dumps(incoming_modifiers_raw, sort_keys=True).encode()).hexdigest()
     result = await db.execute(
         select(CartLineItem).where(
             CartLineItem.cart_id == cart.id,
@@ -107,8 +115,13 @@ async def add_line_item(
             CartLineItem.menu_variant_id == data.menu_variant_id,
         )
     )
-    existing = result.scalar_one_or_none()
-    
+    existing_items = result.scalars().all()
+    existing = None
+    for ei in existing_items:
+        ei_hash = hashlib.sha256(json.dumps(ei.selected_modifiers or {}, sort_keys=True).encode()).hexdigest()
+        if ei_hash == modifier_hash:
+            existing = ei
+            break
     if existing:
         existing.quantity += data.quantity
         existing.line_total = (existing.unit_price + existing.modifier_total) * existing.quantity

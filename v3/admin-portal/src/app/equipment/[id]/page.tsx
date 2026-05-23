@@ -33,11 +33,6 @@ export default function EquipmentEditPage() {
     performed_by: "", cost: "", started_at: "", completed_at: "", notes: "",
   });
 
-  useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(()=>{});
-    loadEquipment();
-  }, [id]);
-
   const loadEquipment = async () => {
     setLoading(true);
     try {
@@ -47,6 +42,11 @@ export default function EquipmentEditPage() {
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
+
+  useEffect(() => {
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(()=>{});
+    loadEquipment();
+  }, [id]);
 
   const update = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }));
 

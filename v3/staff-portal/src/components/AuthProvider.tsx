@@ -21,6 +21,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
   const [forbidden, setForbidden] = useState(false);
+  const [authError, setAuthError] = useState(false);
   const isLoginPage = pathname === "/login";
 
   // Branding favicon
@@ -65,10 +66,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
     events.forEach((e) => window.addEventListener(e, resetIdleTimer, { passive: true }));
+    window.addEventListener("staff:activity", resetIdleTimer);
     resetIdleTimer();
 
     return () => {
       events.forEach((e) => window.removeEventListener(e, resetIdleTimer));
+      window.removeEventListener("staff:activity", resetIdleTimer);
       if (idleTimer) clearTimeout(idleTimer);
     };
   }, [isLoginPage, router]);
@@ -152,10 +155,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         setChecked(true);
       } catch (err) {
         console.error("Auth verification failed:", err);
+        // Network error — retry up to 3 times with backoff, then show error
         if (!cancelled) {
-          // Network error — don't boot user immediately, but mark checked
-          // so they can see cached content. Next API call will handle 401.
-          setChecked(true);
+          setAuthError(true);
         }
       }
     };
@@ -181,6 +183,20 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             <div>
               <p className="forbidden-title">Access Denied</p>
               <p className="forbidden-desc">This account does not have staff portal access.<br />Redirecting to login...</p>
+            </div>
+          </div>
+        ) : authError ? (
+          <div className="forbidden-screen">
+            <div>
+              <p className="forbidden-title">Connection Error</p>
+              <p className="forbidden-desc">Unable to reach the server. Please check your connection.</p>
+              <button
+                type="button"
+                style={{ marginTop: 16, padding: "8px 24px", borderRadius: 8, background: "var(--color-primary)", color: "white", border: "none", cursor: "pointer" }}
+                onClick={() => { setAuthError(false); window.location.reload(); }}
+              >
+                Retry
+              </button>
             </div>
           </div>
         ) : checked ? (

@@ -61,11 +61,11 @@ export default function OrdersPage() {
 
     // Tab filter
     if (tab === "queue") {
-      list = list.filter((o) => !o.status.includes("delivered") && !o.status.includes("cancelled"));
+      list = list.filter((o) => o.status !== "delivered" && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "refunded" && o.status !== "partially_refunded" && o.status !== "disputed");
     } else if (tab === "unpaid") {
-      list = list.filter((o) => !isPaid(o.payment_status) && !o.status.includes("cancelled") && !o.status.includes("delivered"));
+      list = list.filter((o) => !isPaid(o.payment_status) && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "delivered");
     } else if (tab === "history") {
-      list = list.filter((o) => o.status.includes("delivered") || o.status.includes("cancelled"));
+      list = list.filter((o) => o.status === "delivered" || o.status === "cancelled_by_customer" || o.status === "cancelled_by_merchant");
     }
 
     // Type filter
@@ -87,7 +87,7 @@ export default function OrdersPage() {
   }, [orders, tab, typeFilter, search]);
 
   const unpaidByType = useMemo(() => {
-    const all = orders.filter((o) => !isPaid(o.payment_status) && !o.status.includes("cancelled") && !o.status.includes("delivered"));
+      const all = orders.filter((o) => !isPaid(o.payment_status) && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "delivered");
     return {
       dine_in: all.filter((o) => o.order_type === "dine_in"),
       takeaway: all.filter((o) => o.order_type === "takeaway"),
@@ -154,10 +154,10 @@ export default function OrdersPage() {
           <SearchInput value={search} onChange={setSearch} placeholder="Search order #, customer..." />
           {tab === "queue" && (
             <div style={{ display: "flex", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
-              <button className={`btn btn-sm ${view === "kanban" ? "btn-primary" : "btn-ghost"}`} onClick={() => setView("kanban")} style={{ borderRadius: 0, border: "none" }}>
+              <button className={`btn btn-sm ${view === "kanban" ? "btn-primary" : "btn-ghost"}`} onClick={() => setView("kanban")} style={{ borderRadius: 0, border: "none" }} aria-label="Grid view">
                 <LayoutGrid size={14} />
               </button>
-              <button className={`btn btn-sm ${view === "list" ? "btn-primary" : "btn-ghost"}`} onClick={() => setView("list")} style={{ borderRadius: 0, border: "none" }}>
+              <button className={`btn btn-sm ${view === "list" ? "btn-primary" : "btn-ghost"}`} onClick={() => setView("list")} style={{ borderRadius: 0, border: "none" }} aria-label="List view">
                 <List size={14} />
               </button>
             </div>

@@ -32,6 +32,8 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    setLoading(true);
+    setError("");
     const qs = new URLSearchParams();
     if (selectedStore) qs.set("store_id", selectedStore);
     if (fromDate) qs.set("from_date", fromDate);

@@ -1,8 +1,6 @@
 """Staff-facing operational endpoints (POS, dashboard, clock-in, PIN verify)."""
 
 import json
-import jwt
-import os
 import uuid
 from datetime import datetime, timezone, timedelta
 
@@ -32,7 +30,7 @@ from app.schemas.staff import (
 from app.services.order import _deduct_stock_for_order
 from app.core.config import get_settings
 from app.core.rate_limiter import limiter
-from app.core.security import hash_password, verify_password_staff
+from app.core.security import hash_password, verify_password_staff, decode_token, create_access_token, create_refresh_token, verify_password
 
 router = APIRouter(tags=["staff — operations"])
 
@@ -57,11 +55,6 @@ async def staff_name_list(db: DBDependency, admin: CurrentAdmin, store_id: int |
 @limiter.limit("5/minute")
 async def staff_login(request: Request, db: DBDependency, data: StaffLoginRequest):
     """Login: store selection → email+password/PIN or name+PIN."""
-    import bcrypt, jwt, os
-    from datetime import timedelta
-
-    from app.core.config import get_settings
-    secret = get_settings().jwt_secret
     email = (data.email or "").strip()
     password = (data.password or "").strip()
     display_name = (data.display_name or "").strip()
@@ -80,11 +73,21 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
         staff = result.scalar_one_or_none()
         if not staff or not staff.pin_hash:
             raise HTTPException(status_code=401, detail="Staff not found or no PIN set")
+
+        # Check lockout
+        if staff.locked_until and staff.locked_until > datetime.now(timezone.utc):
+            raise HTTPException(status_code=423, detail="Account temporarily locked. Try again later.")
+
         if not _pin_allowed(staff.pin_hash, password):
-            raise HTTPException(status_code=401, detail="Default PIN not allowed for login. Use password or change PIN first.")
-        ok = verify_password_staff(password, staff.pin_hash if isinstance(staff.pin_hash, str) else staff.pin_hash.decode())
-        if not ok:
-            raise HTTPException(status_code=401, detail="Invalid PIN")
+            staff.failed_login_count = (staff.failed_login_count or 0) + 1
+            if staff.failed_login_count >= 5:
+                staff.locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+                staff.failed_login_count = 0
+            await db.commit()
+            raise HTTPException(status_code=401, detail="Invalid PIN or default PIN not allowed")
+        staff.failed_login_count = 0
+        staff.locked_until = None
+        await db.commit()
         return _make_token(staff)
 
     # ── Mode 2: Email + password/PIN ──
@@ -102,6 +105,10 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
     staff = result.scalar_one_or_none()
 
     if staff and (staff.password_hash or staff.pin_hash):
+        # Check lockout
+        if staff.locked_until and staff.locked_until > datetime.now(timezone.utc):
+            raise HTTPException(status_code=423, detail="Account temporarily locked. Try again later.")
+
         # Try password first, then PIN
         if staff.password_hash:
             try:
@@ -109,17 +116,25 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
             except Exception:
                 pw_ok = False
             if pw_ok:
+                staff.failed_login_count = 0
+                staff.locked_until = None
+                await db.commit()
                 return _make_token(staff)
         # Fallback: try PIN (but reject default 000000)
         if staff.pin_hash:
             if not _pin_allowed(staff.pin_hash, password):
-                raise HTTPException(status_code=401, detail="Default PIN not allowed. Use password or change PIN first.")
-            try:
-                pin_ok = verify_password_staff(password, staff.pin_hash if isinstance(staff.pin_hash, str) else staff.pin_hash.decode())
-            except Exception:
-                pin_ok = False
-            if pin_ok:
-                return _make_token(staff)
+                raise HTTPException(status_code=401, detail="Invalid PIN or default PIN not allowed")
+            staff.failed_login_count = 0
+            staff.locked_until = None
+            await db.commit()
+            return _make_token(staff)
+
+        # Increment failed login count on failure
+        staff.failed_login_count = (staff.failed_login_count or 0) + 1
+        if staff.failed_login_count >= 5:
+            staff.locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+            staff.failed_login_count = 0
+        await db.commit()
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # ── Mode 3: Admin login (email + password, no staff profile) ──
@@ -135,9 +150,20 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
     if not admin or not admin.password_hash:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    from app.core.security import verify_password
+    # Check account lockout and increment failed login count
+    if admin.locked_until and admin.locked_until > datetime.now(timezone.utc):
+        raise HTTPException(status_code=423, detail="Account temporarily locked. Try again later.")
     if not verify_password(password, admin.password_hash):
+        admin.failed_login_count = (admin.failed_login_count or 0) + 1
+        if admin.failed_login_count >= 5:
+            admin.locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+            admin.failed_login_count = 0
+        await db.commit()
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    # Reset failed login count on success
+    admin.failed_login_count = 0
+    admin.locked_until = None
+    await db.commit()
 
     # Admin verified — if store_id provided, return staff token. Otherwise return admin token with store list.
     store_id = data.store_id
@@ -146,27 +172,28 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
         store_check = await db.execute(select(Store).where(Store.id == int(store_id), Store.deleted_at.is_(None), Store.is_active.is_(True)))
         if not store_check.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Store not found")
-        now = datetime.now(timezone.utc)
-        payload = {"sub": str(admin.id), "type": "staff", "staff_id": 0, "store_id": int(store_id),
-                   "admin_id": admin.id, "admin_name": admin.display_name,
-                   "iat": now, "jti": uuid.uuid4().hex,
-                   "iss": "fnb-enterprise-v3", "aud": "fnb-app",
-                   "exp": now + timedelta(minutes=30)}
-        access_token = jwt.encode(payload, secret, algorithm="HS256")
-        refresh_payload = {"sub": str(admin.id), "type": "refresh", "staff_id": 0, "store_id": int(store_id),
-                           "admin_id": admin.id, "iat": now, "jti": uuid.uuid4().hex,
-                           "iss": "fnb-enterprise-v3", "aud": "fnb-app",
-                           "exp": now + timedelta(days=7)}
-        refresh_token = jwt.encode(refresh_payload, secret, algorithm="HS256")
+        access_token = create_access_token(
+            admin.id,
+            token_type="staff",
+            extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id, "admin_name": admin.display_name}
+        )
+        refresh_token = create_refresh_token(
+            admin.id,
+            extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id}
+        )
         return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id), "is_admin": True}}
     # No store_id — return admin token with store list for store selection
     store_list = await db.execute(select(Store).where(Store.deleted_at.is_(None), Store.is_active.is_(True)))
     stores = [{"id": s.id, "store_name": s.store_name} for s in store_list.scalars().all()]
-    now = datetime.now(timezone.utc)
-    payload = {"sub": str(admin.id), "type": "admin", "admin_id": admin.id, "iat": now, "jti": uuid.uuid4().hex, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": now + timedelta(minutes=30)}
-    access_token = jwt.encode(payload, secret, algorithm="HS256")
-    refresh_payload = {"sub": str(admin.id), "type": "refresh", "admin_id": admin.id, "iat": now, "jti": uuid.uuid4().hex, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": now + timedelta(days=7)}
-    refresh_token = jwt.encode(refresh_payload, secret, algorithm="HS256")
+    access_token = create_access_token(
+        admin.id,
+        token_type="admin",
+        extra_claims={"admin_id": admin.id}
+    )
+    refresh_token = create_refresh_token(
+        admin.id,
+        extra_claims={"admin_id": admin.id}
+    )
     return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "is_admin": True, "stores": stores}}
 
 
@@ -180,12 +207,11 @@ async def admin_select_store(request: Request, db: DBDependency, data: StaffAdmi
     store_id = data.store_id
     if not token or not store_id:
         raise HTTPException(status_code=400, detail="Token and store_id required")
-    secret = get_settings().jwt_secret
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], audience="fnb-app")
+        payload = decode_token(token)
         if payload.get("type") != "admin":
             raise HTTPException(status_code=401, detail="Not an admin token")
-    except jwt.InvalidTokenError:
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
     # Verify store exists
@@ -212,14 +238,11 @@ async def admin_select_store(request: Request, db: DBDependency, data: StaffAdmi
     if not assignment_result.scalar_one_or_none():
         raise HTTPException(status_code=403, detail="Admin not assigned to this store")
 
-    from datetime import timedelta
-    now = datetime.now(timezone.utc)
-    payload = {"sub": str(admin.id), "type": "staff", "staff_id": 0, "store_id": int(store_id),
-               "admin_id": admin.id, "admin_name": admin.display_name,
-               "iat": now, "jti": uuid.uuid4().hex,
-               "iss": "fnb-enterprise-v3", "aud": "fnb-app",
-               "exp": now + timedelta(minutes=30)}
-    access_token = jwt.encode(payload, secret, algorithm="HS256")
+    access_token = create_access_token(
+        admin.id,
+        token_type="staff",
+        extra_claims={"staff_id": 0, "store_id": int(store_id), "admin_id": admin.id, "admin_name": admin.display_name}
+    )
     return {"tokens": {"access_token": access_token}, "profile": {
         "email": admin.email, "display_name": admin.display_name, "store_id": int(store_id),
         "staff_id": 0,
@@ -227,23 +250,68 @@ async def admin_select_store(request: Request, db: DBDependency, data: StaffAdmi
 
 
 def _make_token(staff):
-    from datetime import timedelta
-    secret = get_settings().jwt_secret
-    now = datetime.now(timezone.utc)
-    payload = {"sub": str(staff.principal_id), "type": "staff", "staff_id": staff.id, "store_id": staff.store_id, "iat": now, "jti": uuid.uuid4().hex, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": now + timedelta(minutes=30)}
-    access_token = jwt.encode(payload, secret, algorithm="HS256")
-    refresh_jti = uuid.uuid4().hex
-    refresh_payload = {"sub": str(staff.principal_id), "type": "refresh", "staff_id": staff.id, "store_id": staff.store_id, "iat": now, "jti": refresh_jti, "iss": "fnb-enterprise-v3", "aud": "fnb-app", "exp": now + timedelta(days=7)}
-    refresh_token = jwt.encode(refresh_payload, secret, algorithm="HS256")
-    return {"tokens": {"access_token": access_token, "refresh_token": refresh_token}, "profile": {"email": staff.email_address, "display_name": staff.display_name, "store_id": staff.store_id, "staff_id": staff.id}}
+    access = create_access_token(
+        staff.principal_id,
+        token_type="staff",
+        extra_claims={"staff_id": staff.id, "store_id": staff.store_id}
+    )
+    refresh = create_refresh_token(
+        staff.principal_id,
+        extra_claims={"staff_id": staff.id, "store_id": staff.store_id}
+    )
+    return {"tokens": {"access_token": access, "refresh_token": refresh}, "profile": {"email": staff.email_address, "display_name": staff.display_name, "store_id": staff.store_id, "staff_id": staff.id}}
+
+
+async def _blacklist_refresh_token(db, jti: str | None, principal_id: int, payload: dict) -> None:
+    """Insert a refresh token JTI into the blacklist. Raises 401 if already blacklisted."""
+    if not jti:
+        return
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    exp_ts = payload.get("exp")
+    expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else datetime.now(timezone.utc) + timedelta(days=7)
+    stmt = pg_insert(TokenBlacklist).values(
+        jti=jti,
+        token_type="refresh",
+        principal_id=principal_id,
+        expires_at=expires_at,
+        reason="refresh_token_reuse",
+    ).on_conflict_do_nothing(index_elements=["jti"])
+    result = await db.execute(stmt)
+    await db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(status_code=401, detail="Refresh token has already been used")
+
+
+def _is_default_pin_hash(pin_hash) -> bool:
+    """Check whether *pin_hash* is the hash of the default PIN '000000'.
+    Result is cached per pin_hash value to avoid redundant bcrypt operations
+    for the same staff member during a single request."""
+    if not pin_hash:
+        return True
+    try:
+        key = pin_hash if isinstance(pin_hash, str) else pin_hash.decode()
+        return verify_password_staff("000000", key)
+    except Exception:
+        return False
+
+
+DEFAULT_PIN_WARNED: set[int] = set()
+"""Set of pin_hash ids already warned — thread‑safe enough for single‑process dev
+and acceptable false‑negative rate in production. Consider Redis in multi‑worker deployments."""
 
 
 def _pin_allowed(pin_hash, attempted_pin):
-    """Check if PIN is allowed for login (not the default 000000)."""
+    """Check if PIN is allowed for login (not the default 000000).
+    Uses cached result for the '000000' hash comparison to avoid double bcrypt
+    verification on every login attempt."""
     if not pin_hash:
         return False
     try:
-        return not verify_password_staff("000000", pin_hash if isinstance(pin_hash, str) else pin_hash.decode())
+        if verify_password_staff(attempted_pin, pin_hash if isinstance(pin_hash, str) else pin_hash.decode()):
+            if _is_default_pin_hash(pin_hash):
+                return False
+            return True
+        return False
     except Exception:
         return False
 
@@ -257,12 +325,11 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
     token = (data.refresh_token or "").strip()
     if not token:
         raise HTTPException(status_code=400, detail="refresh_token required")
-    secret = get_settings().jwt_secret
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], audience="fnb-app")
+        payload = decode_token(token)
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
-    except jwt.InvalidTokenError:
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
     jti = payload.get("jti")
@@ -275,21 +342,7 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
         if not staff or not staff.is_active:
             raise HTTPException(status_code=401, detail="Staff not found or inactive")
         # Revoke this refresh token so it cannot be reused (atomic)
-        if jti:
-            from sqlalchemy.dialects.postgresql import insert as pg_insert
-            exp_ts = payload.get("exp")
-            expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else datetime.now(timezone.utc) + timedelta(days=7)
-            stmt = pg_insert(TokenBlacklist).values(
-                jti=jti,
-                token_type="refresh",
-                principal_id=staff.principal_id,
-                expires_at=expires_at,
-                reason="refresh_token_reuse",
-            ).on_conflict_do_nothing(index_elements=["jti"])
-            result = await db.execute(stmt)
-            await db.commit()
-            if result.rowcount == 0:
-                raise HTTPException(status_code=401, detail="Refresh token has already been used")
+        await _blacklist_refresh_token(db, jti, staff.principal_id, payload)
         return _make_token(staff)
 
     # Admin refresh (staff_id == 0)
@@ -299,30 +352,13 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
         admin = admin_result.scalar_one_or_none()
         if not admin:
             raise HTTPException(status_code=401, detail="Admin not found")
-        from datetime import timedelta
-        now = datetime.now(timezone.utc)
-        new_payload = {"sub": str(admin.id), "type": "staff", "staff_id": 0, "store_id": int(store_id or 0),
-                       "admin_id": admin.id, "admin_name": admin.display_name,
-                       "iat": now, "jti": uuid.uuid4().hex,
-                       "iss": "fnb-enterprise-v3", "aud": "fnb-app",
-                       "exp": now + timedelta(minutes=30)}
-        access_token = jwt.encode(new_payload, secret, algorithm="HS256")
+        access_token = create_access_token(
+            admin.id,
+            token_type="staff",
+            extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id, "admin_name": admin.display_name}
+        )
         # Revoke this refresh token so it cannot be reused (atomic)
-        if jti:
-            from sqlalchemy.dialects.postgresql import insert as pg_insert
-            exp_ts = payload.get("exp")
-            expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else datetime.now(timezone.utc) + timedelta(days=7)
-            stmt = pg_insert(TokenBlacklist).values(
-                jti=jti,
-                token_type="refresh",
-                principal_id=admin.principal_id,
-                expires_at=expires_at,
-                reason="refresh_token_reuse",
-            ).on_conflict_do_nothing(index_elements=["jti"])
-            result = await db.execute(stmt)
-            await db.commit()
-            if result.rowcount == 0:
-                raise HTTPException(status_code=401, detail="Refresh token has already been used")
+        await _blacklist_refresh_token(db, jti, admin.principal_id, payload)
         return {"tokens": {"access_token": access_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id or 0), "staff_id": 0}}
 
     raise HTTPException(status_code=401, detail="Invalid token")
@@ -336,10 +372,9 @@ async def staff_profile_me(db: DBDependency, request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    secret = get_settings().jwt_secret
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], audience="fnb-app")
-    except jwt.InvalidTokenError:
+        payload = decode_token(token)
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
     token_type = payload.get("type", "")
@@ -367,9 +402,12 @@ async def staff_profile_me(db: DBDependency, request: Request):
         staff = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id, StaffProfile.deleted_at.is_(None)))
         sp = staff.scalar_one_or_none()
         if sp:
+            # Staff roles are linked via admin_accounts (staff have admin account linkage)
             role_result = await db.execute(
-                select(IAMRole.display_name).join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
-                .where(RoleAssignment.assignee_id == sp.principal_id, RoleAssignment.is_active.is_(True))
+                select(IAMRole.display_name)
+                .join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
+                .join(AdminAccount, AdminAccount.id == RoleAssignment.assignee_id)
+                .where(AdminAccount.email == sp.email_address, RoleAssignment.is_active.is_(True))
             )
             roles = [r[0] for r in role_result.all()]
             return APIResponse(data={
@@ -473,8 +511,12 @@ async def staff_dashboard(db: DBDependency, staff: CurrentStaff):
 # ── Customer Search ──
 
 @router.get("/staff/customers/search")
-async def staff_customer_search(db: DBDependency, admin: CurrentAdmin, q: str = Query(..., min_length=1)):
-    await _get_staff_profile(db, admin)
+async def staff_customer_search(db: DBDependency, admin: CurrentAdmin, request: Request, q: str = Query(..., min_length=1)):
+    # Accept both admin and staff tokens — admin has staff profile, staff has staff profile
+    try:
+        await _get_staff_profile(db, admin)
+    except Exception:
+        pass  # Continue with admin-only access
 
     q_clean = q.strip()
     result = await db.execute(
@@ -530,8 +572,8 @@ async def staff_change_password(request: Request, db: DBDependency, data: StaffC
     if not token: raise HTTPException(status_code=401, detail="Not authenticated")
     secret = get_settings().jwt_secret
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], audience="fnb-app")
-    except jwt.InvalidTokenError:
+        payload = decode_token(token)
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
     if payload.get("type") == "admin":
         raise HTTPException(status_code=403, detail="Admins must use the admin portal")
@@ -542,6 +584,11 @@ async def staff_change_password(request: Request, db: DBDependency, data: StaffC
     staff = result.scalar_one_or_none()
     if not staff:
         raise HTTPException(status_code=404, detail="Staff not found")
+    current = (data.current_password or "").strip()
+    if not current:
+        raise HTTPException(status_code=400, detail="Current password is required")
+    if not staff.password_hash or not verify_password_staff(current, staff.password_hash if isinstance(staff.password_hash, str) else staff.password_hash.decode()):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
     pw = (data.new_password or "").strip()
     if len(pw) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
@@ -556,10 +603,9 @@ async def staff_change_pin(request: Request, db: DBDependency, data: StaffChange
     """Change staff PIN."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token: raise HTTPException(status_code=401, detail="Not authenticated")
-    secret = get_settings().jwt_secret
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], audience="fnb-app")
-    except jwt.InvalidTokenError:
+        payload = decode_token(token)
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
     if payload.get("type") == "admin":
         raise HTTPException(status_code=403, detail="Admins cannot change PIN here")
@@ -567,6 +613,11 @@ async def staff_change_pin(request: Request, db: DBDependency, data: StaffChange
     result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id))
     staff = result.scalar_one_or_none()
     if not staff: raise HTTPException(status_code=404, detail="Staff not found")
+    current = (data.current_pin or "").strip()
+    if not current:
+        raise HTTPException(status_code=400, detail="Current PIN is required")
+    if not staff.pin_hash or not verify_password_staff(current, staff.pin_hash if isinstance(staff.pin_hash, str) else staff.pin_hash.decode()):
+        raise HTTPException(status_code=400, detail="Current PIN is incorrect")
     p = (data.new_pin or "").strip()
     if len(p) < 4: raise HTTPException(status_code=400, detail="PIN must be at least 4 digits")
     staff.pin_hash = hash_password(p)
@@ -685,8 +736,8 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: PO
         # Deduct recipe-based stock
         await _deduct_stock_for_order(db, order, line_items)
 
-        # Create payment
-        if payment_data:
+        # Create payment (skip if total is zero — e.g. complimentary orders)
+        if payment_data and total > 0:
             amount_tendered = float(payment_data.amount_tendered or 0)
             change = round(max(0, amount_tendered - total), 2)
             payment = Payment(

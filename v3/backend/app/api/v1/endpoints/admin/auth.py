@@ -63,6 +63,39 @@ async def admin_register(db: DBDependency, admin: CurrentAdmin, data: AdminRegis
     if result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
+    # Authorization check: resolve requesting admin's roles
+    requester_role_result = await db.execute(
+        select(IAMRole.role_key)
+        .join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
+        .where(
+            RoleAssignment.assignee_id == admin.id,
+            RoleAssignment.is_active.is_(True),
+        )
+    )
+    requester_roles = {row[0] for row in requester_role_result.all()}
+
+    # Determine the target role key
+    role_id = None
+    target_role_key = data.role_key
+
+    # Assign role if specified (role_id takes precedence; fallback to role_key lookup)
+    if data.role_id:
+        role_result = await db.execute(select(IAMRole).where(IAMRole.id == data.role_id))
+        role_row = role_result.scalar_one_or_none()
+        if role_row:
+            role_id = role_row.id
+            target_role_key = role_row.role_key
+    elif data.role_key:
+        role_result = await db.execute(select(IAMRole.id, IAMRole.role_key).where(IAMRole.role_key == data.role_key))
+        role_row = role_result.first()
+        if role_row:
+            role_id = role_row[0]
+            target_role_key = role_row[1]
+
+    # Enforce: only system_admin can create system_admin accounts
+    if target_role_key == "system_admin" and "system_admin" not in requester_roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only system administrators can create system admin accounts")
+
     # Create principal
     from app.models.iam import IAMPrincipal
     principal = IAMPrincipal(principal_type="human", status="active")
@@ -84,18 +117,11 @@ async def admin_register(db: DBDependency, admin: CurrentAdmin, data: AdminRegis
     await db.flush()
     await db.refresh(new_admin)
 
-    # Assign role if specified (role_id takes precedence; fallback to role_key lookup)
-    if data.role_id:
+    # Assign the resolved role
+    if role_id:
         from app.models.iam import RoleAssignment
-        ra = RoleAssignment(assignee_id=new_admin.id, role_id=data.role_id, effective_from=datetime.now(timezone.utc), is_active=True)
+        ra = RoleAssignment(assignee_id=new_admin.id, role_id=role_id, effective_from=datetime.now(timezone.utc), is_active=True)
         db.add(ra)
-    elif data.role_key:
-        role_result = await db.execute(select(IAMRole.id).where(IAMRole.role_key == data.role_key))
-        role_id = role_result.scalar_one_or_none()
-        if role_id:
-            from app.models.iam import RoleAssignment
-            assignment = RoleAssignment(assignee_id=new_admin.id, role_id=role_id, effective_from=datetime.now(timezone.utc), is_active=True)
-            db.add(assignment)
 
     # Assign stores
     for store_id in data.store_ids:
@@ -212,29 +238,44 @@ async def list_admin_users(db: DBDependency, admin: CurrentAdmin):
     result = await db.execute(
         select(AdminAccount).where(AdminAccount.deleted_at.is_(None)).order_by(AdminAccount.id)
     )
+    admins = result.scalars().all()
+    if not admins:
+        return APIResponse(data=[])
+
+    admin_ids = [a.id for a in admins]
+
+    # Batch-resolve roles for all admins
+    role_result = await db.execute(
+        select(RoleAssignment.assignee_id, IAMRole.display_name)
+        .join(IAMRole, IAMRole.id == RoleAssignment.role_id)
+        .where(
+            RoleAssignment.assignee_id.in_(admin_ids),
+            RoleAssignment.is_active.is_(True),
+        )
+    )
+    roles_map: dict[int, list[str]] = {}
+    for assignee_id, role_name in role_result.all():
+        roles_map.setdefault(assignee_id, []).append(role_name)
+
+    # Batch-resolve store assignments for all admins
+    store_result = await db.execute(
+        select(StoreAssignment.assignee_id, StoreAssignment.store_id)
+        .where(StoreAssignment.assignee_id.in_(admin_ids))
+    )
+    stores_map: dict[int, list[int]] = {}
+    for assignee_id, store_id in store_result.all():
+        stores_map.setdefault(assignee_id, []).append(store_id)
+
     items = []
-    for a in result.scalars().all():
-        # Resolve roles
-        role_result = await db.execute(
-            select(IAMRole.display_name)
-            .join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
-            .where(RoleAssignment.assignee_id == a.id)
-        )
-        role_names = [r[0] for r in role_result.all()]
-        # Resolve store assignments
-        store_result = await db.execute(
-            select(StoreAssignment.store_id)
-            .where(StoreAssignment.assignee_id == a.id)
-        )
-        store_ids = [r[0] for r in store_result.all()]
+    for a in admins:
         items.append({
             "id": a.id, "email": a.email, "display_name": a.display_name,
             "phone_number": a.phone_number,
             "is_active": a.is_active,
             "last_login_at": a.last_login_at.isoformat() if a.last_login_at else None,
             "created_at": a.created_at.isoformat() if a.created_at else None,
-            "roles": role_names,
-            "store_ids": store_ids,
+            "roles": roles_map.get(a.id, []),
+            "store_ids": stores_map.get(a.id, []),
         })
     return APIResponse(data=items)
 

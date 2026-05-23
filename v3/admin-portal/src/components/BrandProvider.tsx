@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { STORAGE_KEYS, BRANDING } from "@/lib/constants";
 
 interface BrandConfig {
   brandName: string;
@@ -8,7 +9,7 @@ interface BrandConfig {
 }
 
 const BrandContext = createContext<BrandConfig>({
-  brandName: "LOKA Espresso",
+  brandName: BRANDING.DEFAULT_BRAND_NAME,
   faviconUrl: "",
 });
 
@@ -17,15 +18,18 @@ export function useBrand() {
 }
 
 export function BrandProvider({ children }: { children: React.ReactNode }) {
-  const [brandName, setBrandName] = useState("LOKA Espresso");
+  const [brandName, setBrandName] = useState(BRANDING.DEFAULT_BRAND_NAME);
   const [faviconUrl, setFaviconUrl] = useState("");
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
+    const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.TOKEN) : "";
     if (!token) return;
+
+    const controller = new AbortController();
 
     fetch("/api/v1/admin/config?prefix=branding", {
       headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
     })
       .then((r) => r.json())
       .then((d) => {
@@ -38,6 +42,8 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         // fallback already set
       });
+
+    return () => { controller.abort(); };
   }, []);
 
   return (

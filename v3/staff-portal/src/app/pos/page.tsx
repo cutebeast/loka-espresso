@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import {
   Search, QrCode, Plus, Minus, Trash2,
   Pause, Wallet, User, Send, ImageOff
@@ -17,6 +17,14 @@ import { usePosState } from "@/components/pos/usePosState";
 
 export default function PosPage() {
   const pos = usePosState();
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
 
   const handleToggleModifier = useCallback((groupId: number, modId: number, selectionType: string, maxSelections: number) => {
     pos.setSelectedModifiers((prev) => {
@@ -185,13 +193,13 @@ export default function PosPage() {
           onChange={(e) => {
             const val = e.target.value;
             pos.setMenuSearchInput(val);
-            if (pos.searchTimerRef.current) clearTimeout(pos.searchTimerRef.current);
-            pos.searchTimerRef.current = setTimeout(() => pos.setMenuSearch(val), 200);
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+            searchTimerRef.current = setTimeout(() => pos.setMenuSearch(val), 300);
           }}
           placeholder="Search menu items..."
         />
         {pos.menuSearchInput && (
-          <button className="btn btn-sm btn-ghost" onClick={() => { pos.setMenuSearchInput(""); pos.setMenuSearch(""); if (pos.searchTimerRef.current) clearTimeout(pos.searchTimerRef.current); }}>Clear</button>
+          <button className="btn btn-sm btn-ghost" onClick={() => { pos.setMenuSearchInput(""); pos.setMenuSearch(""); if (searchTimerRef.current) clearTimeout(searchTimerRef.current); }}>Clear</button>
         )}
       </div>
 
@@ -229,13 +237,13 @@ export default function PosPage() {
                   justifyContent: "center",
                   position: "relative",
                 }}>
-                  {item.image_url && /^(https?:|\/|data:image)/i.test(item.image_url) ? (
+                  {item.image_url && /^(https?:|\/|data:image)/i.test(item.image_url) && !brokenImages.has(item.id) ? (
                     <img
                       src={item.image_url}
                       alt={item.item_name}
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       loading="lazy"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      onError={() => { setBrokenImages((prev) => new Set(prev).add(item.id)); }}
                     />
                   ) : (
                     <ImageOff size={32} style={{ opacity: 0.25 }} />

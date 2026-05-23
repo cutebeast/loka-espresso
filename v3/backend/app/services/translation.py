@@ -14,10 +14,19 @@ from app.models.translation import Translation, TranslationCache
 SUPPORTED_LOCALES = ["ms", "zh", "ta", "tr"]
 SOURCE_LOCALE = "en"
 
-_cache_hits = 0
-_cache_misses = 0
+import threading
+
+_translation_stats = threading.local()
 
 logger = logging.getLogger(__name__)
+
+
+def _get_cache_stats_ctx():
+    """Return per-thread cache counters, initialising on first access."""
+    if not hasattr(_translation_stats, "hits"):
+        _translation_stats.hits = 0
+        _translation_stats.misses = 0
+    return _translation_stats
 
 # Config keys stored in platform_config table
 TRANSLATION_CONFIG_KEYS = [
@@ -176,7 +185,7 @@ async def auto_translate_text(
     """Auto-translate text with caching.
     Primary: DeepL → Fallback: DeepSeek LLM → Last resort: keep English.
     Returns (translated_text, was_cached)."""
-    global _cache_hits, _cache_misses
+    ctx = _get_cache_stats_ctx()
 
     cache_hash = _compute_hash(source_locale, target_locale, text)
     result = await db.execute(
@@ -184,10 +193,10 @@ async def auto_translate_text(
     )
     cached = result.scalar_one_or_none()
     if cached is not None:
-        _cache_hits += 1
+        ctx.hits += 1
         return cached.translated_text, True
 
-    _cache_misses += 1
+    ctx.misses += 1
 
     # Ensure creds are loaded from DB
     await _get_translation_creds(db)
@@ -468,8 +477,9 @@ async def translate_menu_response(
 
 
 async def get_cache_stats(db: AsyncSession) -> dict:
+    ctx = _get_cache_stats_ctx()
     total = (await db.execute(select(func.count(TranslationCache.id)))).scalar() or 0
-    return {"hit_count": _cache_hits, "miss_count": _cache_misses, "total_entries": total}
+    return {"hit_count": getattr(ctx, "hits", 0), "miss_count": getattr(ctx, "misses", 0), "total_entries": total}
 
 
 async def clear_old_cache(db: AsyncSession, days: int) -> int:

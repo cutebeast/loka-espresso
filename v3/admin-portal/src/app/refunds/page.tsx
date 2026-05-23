@@ -19,8 +19,9 @@ export default function RefundsPage() {
 
   const fetch = () => {
     setLoading(true);
-    const qs = storeId ? `?store_id=${storeId}&per_page=100` : "?per_page=100";
-    api.get<any>(`/admin/refunds${qs}`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(e => setError(e.message)).finally(() => setLoading(false));
+    const qs = new URLSearchParams({ per_page: "100" });
+    if (storeId) qs.set("store_id", storeId);
+    api.get<any>(`/admin/refunds?${qs}`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(e => setError(e.message)).finally(() => setLoading(false));
   };
 
   useEffect(() => { fetch(); }, [storeId]);

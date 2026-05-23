@@ -17,7 +17,9 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [showPw, setShowPw] = useState(false);
   const [showPin, setShowPin] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
+  const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
@@ -37,12 +39,14 @@ export default function ProfilePage() {
   const storeId = profile?.store_id;
 
   const handlePasswordChange = async () => {
+    if (!currentPw) { setMsg("Current password is required"); return; }
     if (!newPw || newPw.length < 6) { setMsg("Password must be at least 6 characters"); return; }
     setSaving(true);
     try {
-      await api.post("/staff/auth/change-password", { password: newPw });
+      await api.post("/staff/auth/change-password", { current_password: currentPw, password: newPw });
       setMsg("Password updated");
       setShowPw(false);
+      setCurrentPw("");
       setNewPw("");
     } catch (e: any) {
       console.error("Password change failed:", e);
@@ -51,12 +55,14 @@ export default function ProfilePage() {
   };
 
   const handlePinChange = async () => {
+    if (!currentPin || currentPin.length < 4) { setMsg("Current PIN is required"); return; }
     if (!newPin || newPin.length < 4) { setMsg("PIN must be at least 4 digits"); return; }
     setSaving(true);
     try {
-      await api.post("/staff/auth/change-pin", { pin: newPin });
+      await api.post("/staff/auth/change-pin", { current_pin: currentPin, pin: newPin });
       setMsg("PIN updated");
       setShowPin(false);
+      setCurrentPin("");
       setNewPin("");
     } catch (e: any) {
       console.error("PIN change failed:", e);
@@ -146,6 +152,13 @@ export default function ProfilePage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <input
                     type="password"
+                    value={currentPw}
+                    onChange={e => setCurrentPw(e.target.value)}
+                    placeholder="Current password"
+                    className="form-input"
+                  />
+                  <input
+                    type="password"
                     value={newPw}
                     onChange={e => setNewPw(e.target.value)}
                     placeholder="New password (min 6 chars)"
@@ -155,7 +168,7 @@ export default function ProfilePage() {
                     <button className="btn btn-primary btn-sm" onClick={handlePasswordChange} disabled={saving}>
                       {saving ? "Saving..." : "Save"}
                     </button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => { setShowPw(false); setNewPw(""); }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setShowPw(false); setCurrentPw(""); setNewPw(""); }}>
                       Cancel
                     </button>
                   </div>
@@ -171,6 +184,15 @@ export default function ProfilePage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <input
                     type="password"
+                    value={currentPin}
+                    onChange={e => setCurrentPin(e.target.value)}
+                    placeholder="Current PIN"
+                    maxLength={6}
+                    className="form-input"
+                    style={{ textAlign: "center" }}
+                  />
+                  <input
+                    type="password"
                     value={newPin}
                     onChange={e => setNewPin(e.target.value)}
                     placeholder="New PIN (min 4 digits)"
@@ -182,7 +204,7 @@ export default function ProfilePage() {
                     <button className="btn btn-primary btn-sm" onClick={handlePinChange} disabled={saving}>
                       {saving ? "Saving..." : "Save"}
                     </button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => { setShowPin(false); setNewPin(""); }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setShowPin(false); setCurrentPin(""); setNewPin(""); }}>
                       Cancel
                     </button>
                   </div>

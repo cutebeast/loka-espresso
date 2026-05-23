@@ -26,12 +26,10 @@ export default function Timer({ startTime, className = "" }: TimerProps) {
       setElapsed(0);
       return;
     }
-    const update = () => {
-      const now = Date.now();
-      setElapsed(Math.max(0, Math.floor((now - startMs) / 1000)));
-    };
-    update();
-    const interval = setInterval(update, 1000);
+    const interval = setInterval(() => {
+      setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
+    }, 1000);
+    setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
     return () => clearInterval(interval);
   }, [startTime]);
 

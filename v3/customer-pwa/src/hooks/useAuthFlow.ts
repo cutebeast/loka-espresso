@@ -93,24 +93,27 @@ export function useAuthFlow() {
   useEffect(() => {
     if (useUIStore.getState().isGuest) return;
     const abortCtrl = new AbortController();
+    let cancelled = false;
     const validate = async () => {
       setIsLoading(true);
       try {
         const token = localStorage.getItem('token');
         if (token) {
           const userRes = await api.get('/me', { signal: abortCtrl.signal });
-          setUser(userRes.data);
-          setAuthDone(true);
+          if (!cancelled) {
+            setUser(userRes.data);
+            setAuthDone(true);
+          }
         }
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;
         // Network error on mount — leave authDone=false, AuthFlow handles it
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     validate();
-    return () => abortCtrl.abort();
+    return () => { cancelled = true; abortCtrl.abort(); };
   }, [setUser, setAuthDone, setIsLoading]);
 
   const loadAppData = useCallback(async () => {
@@ -134,21 +137,30 @@ export function useAuthFlow() {
       if (storesRes.status === 'fulfilled') {
         const list: StoreType[] = storesRes.value.data;
         setStores(list);
-        if (!selectedStore && list.length > 0) {
-          const detected = await autoDetectStore(list);
-          setSelectedStore(detected);
-        }
       }
       refreshWallet();
       loadConfig();
     } catch {
       showToast('Failed to load app data', 'error');
     }
-  }, [setUser, setPoints, setTier, setBalance, setStores, setSelectedStore, selectedStore, showToast, refreshWallet, loadConfig]);
+  }, [setUser, setPoints, setTier, setBalance, setStores, showToast, refreshWallet, loadConfig]);
+
+  const detectAndSetStore = useCallback(async () => {
+    const stores = useUIStore.getState().stores;
+    const currentStore = useUIStore.getState().selectedStore;
+    if (stores.length > 0 && !currentStore) {
+      const detected = await autoDetectStore(stores);
+      setSelectedStore(detected);
+    }
+  }, [setSelectedStore]);
 
   useEffect(() => {
     if (isAuthenticated && authDone) loadAppData();
   }, [isAuthenticated, authDone, loadAppData]);
+
+  useEffect(() => {
+    if (isAuthenticated && authDone) detectAndSetStore();
+  }, [isAuthenticated, authDone, detectAndSetStore]);
 
   const handleAuthDone = useCallback(() => {
     setAuthDone(true);

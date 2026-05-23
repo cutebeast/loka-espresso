@@ -68,11 +68,16 @@ export async function refreshToken(): Promise<boolean> {
 /*  Request helpers                                                   */
 /* ------------------------------------------------------------------ */
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  // Reset idle timer on API activity
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("staff:activity"));
+  }
   const makeRequest = async () => {
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers: getAuthHeaders(),
+      signal,
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     if (res.status === 401) {
@@ -115,6 +120,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 async function requestRaw<T>(method: string, path: string, body?: unknown): Promise<T> {
+  // Reset idle timer on API activity
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("staff:activity"));
+  }
   const makeRequest = async () => {
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
@@ -141,9 +150,14 @@ async function requestRaw<T>(method: string, path: string, body?: unknown): Prom
   };
   const res = await makeRequest();
   if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
-  const json = await res.json();
-  if (json && typeof json === "object" && "data" in json) return json.data as T;
-  return json as T;
+  const contentType = res.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    const json = await res.json();
+    if (json && typeof json === "object" && "data" in json) return json.data as T;
+    return json as T;
+  }
+  const text = await res.text();
+  return text as unknown as T;
 }
 
 async function requestWithTimeout<T>(method: string, path: string, body?: unknown, timeoutMs = 30000): Promise<T> {
@@ -160,10 +174,11 @@ async function requestWithTimeout<T>(method: string, path: string, body?: unknow
       if (res.status === 401) {
         const refreshed = await refreshToken();
         if (refreshed) {
+          const retryController = new AbortController();
           const retry = await fetch(`${BASE_URL}${path}`, {
             method,
             headers: getAuthHeaders(),
-            signal: controller.signal,
+            signal: retryController.signal,
             ...(body ? { body: JSON.stringify(body) } : {}),
           });
           if (retry.ok) return retry;
@@ -200,7 +215,7 @@ async function requestWithTimeout<T>(method: string, path: string, body?: unknow
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>("GET", path),
+  get: <T>(path: string, signal?: AbortSignal) => request<T>("GET", path, undefined, signal),
   getRaw: <T>(path: string) => requestRaw<T>("GET", path),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
@@ -260,6 +275,7 @@ export const api = {
 /* ------------------------------------------------------------------ */
 
 export async function staffLogin(email: string, password: string) {
+  clearAuthStorage();
   const data = await api.post<{
     tokens?: { access_token?: string; refresh_token?: string };
     profile?: { email?: string; display_name?: string; store_id?: number; staff_id?: number; is_admin?: boolean };
@@ -282,6 +298,7 @@ export async function staffLogin(email: string, password: string) {
 }
 
 export async function staffLoginByName(name: string, pin: string, storeId: number) {
+  clearAuthStorage();
   const data = await api.post<{
     tokens?: { access_token?: string; refresh_token?: string };
     profile?: { email?: string; display_name?: string; store_id?: number; staff_id?: number; is_admin?: boolean };
@@ -677,11 +694,11 @@ export function topUpWallet(payload: {
   return api.post<{ message: string; new_balance: number }>("/admin/wallets/topup", payload);
 }
 
-export function useReward(customerId: number, rewardId: number, notes?: string) {
+export function markRewardUsed(customerId: number, rewardId: number, notes?: string) {
   return api.post<{ message: string; success: boolean }>(`/admin/customers/${customerId}/use-reward/${rewardId}`, { store_id: null, notes: notes || "Used in-store" });
 }
 
-export function useVoucher(customerId: number, voucherId: number, notes?: string) {
+export function markVoucherUsed(customerId: number, voucherId: number, notes?: string) {
   return api.post<{ message: string; success: boolean }>(`/admin/customers/${customerId}/use-voucher/${voucherId}`, { store_id: null, notes: notes || "Used in-store" });
 }
 

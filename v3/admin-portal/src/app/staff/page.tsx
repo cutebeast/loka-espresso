@@ -14,21 +14,23 @@ export default function StaffPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [storeId, setStoreId] = useState("");
 
-  const fetchStores = async () => {
+  const [error, setError] = useState("");
+
+  const fetchStores = useCallback(async () => {
     try { const d = await api.get<Store[] | { items: Store[] }>("/admin/stores?per_page=50"); const list = Array.isArray(d) ? d : (d.items || []); setStores(list); }
-    catch (e) { console.error(e); }
-  };
+    catch (e: any) { setError(e.message || "Failed to load stores"); }
+  }, []);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    setLoading(true); setError("");
     try {
-      const d = await api.get<Staff[] | { items: Staff[] }>(`/admin/staff/roles`); // Use the roles endpoint that includes store_name + roles
+      const d = await api.get<Staff[] | { items: Staff[] }>(`/admin/staff/roles`);
       const all = Array.isArray(d) ? d : (d.items || []);
       setItems(storeId ? all.filter((s: Staff) => String(s.store_id) === storeId) : all);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e: any) { setError(e.message || "Failed to load staff"); } finally { setLoading(false); }
   }, [storeId]);
 
-  useEffect(() => { fetchStores(); }, []);
+  useEffect(() => { fetchStores(); }, [fetchStores]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleDelete = async (id: number) => {
@@ -39,6 +41,7 @@ export default function StaffPage() {
   return (
     <div style={{ padding: 24 }}>
       <div className="page-header"><div><h1 className="page-title">Staff</h1><p className="page-subtitle">{items.length} members</p></div><button type="button" onClick={() => router.push("/staff/new")} className="btn btn-primary btn-sm"><Plus size={14} /> Add Staff</button></div>
+      {error && <div className="alert alert-error">{error}</div>}
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
         <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>

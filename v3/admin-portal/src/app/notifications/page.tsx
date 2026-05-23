@@ -58,9 +58,9 @@ export default function NotificationsPage() {
       <div className="page-header">
         <div><h1 className="page-title">Notifications</h1><p className="page-subtitle">Push notifications sent to PWA users · {total} total</p></div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => router.push("/notifications/templates")} className="btn btn-sm btn-outline">📋 Templates</button>
-          <button onClick={() => router.push("/notifications/report")} className="btn btn-sm btn-outline">📊 Report</button>
-          <button onClick={() => router.push("/notifications/new")} className="btn btn-primary btn-sm"><Plus size={16} /> New Notification</button>
+          <button type="button" onClick={() => router.push("/notifications/templates")} className="btn btn-sm btn-outline">📋 Templates</button>
+          <button type="button" onClick={() => router.push("/notifications/report")} className="btn btn-sm btn-outline">📊 Report</button>
+          <button type="button" onClick={() => router.push("/notifications/new")} className="btn btn-primary btn-sm"><Plus size={16} /> New Notification</button>
         </div>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
@@ -78,7 +78,7 @@ export default function NotificationsPage() {
           {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
           : items.length === 0 ? <tr><td colSpan={6} className="data-table-empty">No notifications.</td></tr>
           : items.map(n => (
-            <tr key={n.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/notifications/${n.id}`))();}}} onClick={() => router.push(`/notifications/${n.id}`)} style={{ cursor: "pointer" }}>
+            <tr key={n.id} className="clickable" role="button" tabIndex={0} aria-label={`Notification: ${n.title}`} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/notifications/${n.id}`))();}}} onClick={() => router.push(`/notifications/${n.id}`)} style={{ cursor: "pointer" }}>
               <td><div style={{ fontWeight: 600 }}>{n.title}</div>{n.body && <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{n.body.slice(0, 60)}</div>}</td>
               <td><span className="badge badge-sm badge-outline">{TYPE_LABELS[n.notification_type] || n.notification_type}</span></td>
               <td>{AUD_LABELS[n.audience_segment] || n.audience_segment}</td>

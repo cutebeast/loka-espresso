@@ -65,7 +65,7 @@ def _serialize_account(account: LoyaltyAccount) -> LoyaltyAccountOut:
 # Admin — Tiers
 # ---------------------------------------------------------------------------
 
-@loyalty_router.get("/tiers", response_model=APIResponse[list[LoyaltyTierOut]])
+@loyalty_router.get("/tiers", response_model=APIResponse[PaginatedResponse[LoyaltyTierOut]])
 async def list_loyalty_tiers(
     db: DBDependency,
     admin: CurrentAdmin,

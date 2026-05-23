@@ -125,7 +125,7 @@ CREATE TABLE dining_tables (
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at TIMESTAMPTZ,
+    deleted_at TIMESTAMPTZ
 );
 
 CREATE UNIQUE INDEX uq_dining_tables_active_store_table_number ON dining_tables(store_id, table_number) WHERE deleted_at IS NULL;
@@ -422,6 +422,21 @@ CREATE TABLE inventory_categories (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE suppliers (
+    id SERIAL PRIMARY KEY,
+    store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+    supplier_name VARCHAR(100) NOT NULL,
+    contact_person VARCHAR(100),
+    phone VARCHAR(20),
+    email VARCHAR(255),
+    address TEXT,
+    payment_terms VARCHAR(50),
+    lead_time_days INTEGER CHECK (lead_time_days > 0),
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE inventory_items (
     id SERIAL PRIMARY KEY,
     store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
@@ -444,21 +459,6 @@ CREATE TABLE inventory_items (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at TIMESTAMPTZ
-);
-
-CREATE TABLE suppliers (
-    id SERIAL PRIMARY KEY,
-    store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
-    supplier_name VARCHAR(100) NOT NULL,
-    contact_person VARCHAR(100),
-    phone VARCHAR(20),
-    email VARCHAR(255),
-    address TEXT,
-    payment_terms VARCHAR(50),
-    lead_time_days INTEGER CHECK (lead_time_days > 0),
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE inventory_movement_log (
@@ -662,7 +662,7 @@ CREATE TABLE order_fulfillment (
     estimated_delivery_at TIMESTAMPTZ,
     actual_ready_at TIMESTAMPTZ,
     actual_delivery_at TIMESTAMPTZ,
-    delivery_provider payment_provider,
+    delivery_provider VARCHAR(50),
     delivery_provider_order_id VARCHAR(100),
     tracking_url VARCHAR(500),
     tracking_number VARCHAR(100),
@@ -1312,7 +1312,7 @@ CREATE TABLE staff_shifts (
 CREATE TABLE tip_allocations (
     id BIGSERIAL PRIMARY KEY,
     order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    staff_id BIGINT NOT NULL REFERENCES staff_profiles(id) ON DELETE CASCADE,
+    staff_id BIGINT REFERENCES staff_profiles(id) ON DELETE SET NULL,
     tip_amount NUMERIC(10,4) NOT NULL CHECK (tip_amount >= 0),
     tip_percentage NUMERIC(5,4),
     allocation_type VARCHAR(20) NOT NULL CHECK (allocation_type IN ('even_split','percentage','fixed')),

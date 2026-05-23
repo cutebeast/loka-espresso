@@ -71,7 +71,7 @@ export default function CampaignSettingsPage() {
                 <div style={{ marginBottom: 12, padding: 10, background: "var(--color-bg-muted)", borderRadius: "var(--radius-sm)", fontSize: 12, color: "var(--color-text-muted)" }}>
                   <strong>ℹ️</strong> Twilio sends SMS and WhatsApp campaigns. Get keys from{" "}
                   <a href="https://console.twilio.com" target="_blank" rel="noopener" style={{ color: "var(--color-info)" }}>Twilio Console</a>.
-                  WhatsApp sender must be approved in Twilio's WhatsApp sandbox or business profile.
+                  WhatsApp sender must be approved in Twilio&rsquo;s WhatsApp sandbox or business profile.
                   Format: <code>whatsapp:+14155238886</code>
                 </div>
               )}

@@ -34,7 +34,7 @@ export default function ReportsPage() {
       setData({
         revenue: metrics.revenue_today ?? metrics.total_revenue ?? 0,
         orders: metrics.orders_today ?? metrics.total_orders ?? 0,
-        avgOrder: (metrics.revenue_today && metrics.orders_today) ? metrics.revenue_today / metrics.orders_today : 0,
+        avgOrder: (Number(metrics.revenue_today) > 0 && Number(metrics.orders_today) > 0) ? metrics.revenue_today / metrics.orders_today : 0,
         customers: metrics.new_customers || 0,
         stores: metrics.active_stores || stores.length,
       });
@@ -42,7 +42,7 @@ export default function ReportsPage() {
     finally { setLoading(false); }
   }, [selectedStore, dateFrom, dateTo, stores.length]);
 
-  useEffect(() => { (async () => { await fetchData(); })(); }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const fmt = (v: number) => `RM ${Number(v || 0).toFixed(2)}`;
 
@@ -58,7 +58,7 @@ export default function ReportsPage() {
           { key: "sales" as const, label: "Sales Reports", icon: BarChart3 },
           { key: "marketing" as const, label: "Marketing ROI", icon: TrendingUp },
         ].map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+          <button type="button" key={tab.key} onClick={() => setActiveTab(tab.key)}
             style={{
               padding: "10px 20px", fontSize: 13,
               fontWeight: activeTab === tab.key ? 700 : 400,
@@ -74,10 +74,10 @@ export default function ReportsPage() {
 
       {activeTab === "sales" && (
       <div style={{ display: "flex", gap: 12, marginBottom: 20, alignItems: "end" }}>
-        <div><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Store</label>
-          <select value={selectedStore} onChange={e => setSelectedStore(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 13 }}><option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
-        <div><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>From</label><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 10px", fontSize: 13 }} /></div>
-        <div><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>To</label><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 10px", fontSize: 13 }} /></div>
+        <div><label htmlFor="report-store-filter" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Store</label>
+          <select id="report-store-filter" value={selectedStore} onChange={e => setSelectedStore(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 13 }}><option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
+        <div><label htmlFor="report-date-from" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>From</label><input id="report-date-from" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 10px", fontSize: 13 }} /></div>
+        <div><label htmlFor="report-date-to" style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>To</label><input id="report-date-to" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "6px 10px", fontSize: 13 }} /></div>
       </div>
       )}
 

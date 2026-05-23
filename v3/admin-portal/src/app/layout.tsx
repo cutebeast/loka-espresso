@@ -3,11 +3,12 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
-import { BrandProvider } from "@/components/BrandProvider";
+import { BrandProvider, useBrand } from "@/components/BrandProvider";
+import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
 
-function isLoggedIn(): boolean {
+function isAdminLoggedIn(): boolean {
   if (typeof window === "undefined") return false;
-  return !!localStorage.getItem("token");
+  return !!localStorage.getItem(STORAGE_KEYS.TOKEN);
 }
 
 function parseJwtExp(token: string): number | null {
@@ -21,7 +22,7 @@ function parseJwtExp(token: string): number | null {
 async function refreshToken(): Promise<boolean> {
   try {
     if (typeof window === "undefined") return false;
-    const refresh = localStorage.getItem("refreshToken");
+    const refresh = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
     if (!refresh) return false;
     const res = await fetch("/api/v1/admin/auth/refresh", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -31,8 +32,8 @@ async function refreshToken(): Promise<boolean> {
     const json = await res.json();
     const data = json.data || json;
     if (data.tokens?.access_token) {
-      localStorage.setItem("token", data.tokens.access_token);
-      if (data.tokens.refresh_token) localStorage.setItem("refreshToken", data.tokens.refresh_token);
+      localStorage.setItem(STORAGE_KEYS.TOKEN, data.tokens.access_token);
+      if (data.tokens.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
       return true;
     }
     return false;
@@ -40,38 +41,52 @@ async function refreshToken(): Promise<boolean> {
 }
 
 function clearSession() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("adminEmail");
+  localStorage.removeItem(STORAGE_KEYS.TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+function LayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const isLogin = pathname === "/login";
+  const isLogin = pathname === ROUTES.LOGIN;
   const [checked, setChecked] = useState(false);
   const [forbidden, setForbidden] = useState(false);
-  const [favicon, setFavicon] = useState("");
+  const { faviconUrl } = useBrand();
+
+  useEffect(() => {
+    if (!faviconUrl) return;
+    const link = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
+    if (link) {
+      link.type = "image/svg+xml";
+      link.href = faviconUrl;
+    } else {
+      const el = document.createElement("link");
+      el.rel = "icon";
+      el.type = "image/svg+xml";
+      el.href = faviconUrl;
+      document.head.appendChild(el);
+    }
+  }, [faviconUrl]);
 
   useEffect(() => {
     if (isLogin) { setChecked(true); return; }
-    if (!isLoggedIn()) { clearSession(); router.replace("/login"); return; }
+    if (!isAdminLoggedIn()) { clearSession(); router.replace(ROUTES.LOGIN); return; }
 
     let cancelled = false;
     let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const verify = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) { if (!cancelled) { clearSession(); router.replace("/login"); } return; }
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+      if (!token) { if (!cancelled) { clearSession(); router.replace(ROUTES.LOGIN); } return; }
 
-      // Check client-side token expiry first
       const exp = parseJwtExp(token);
       if (exp && Date.now() >= exp - 30000) {
         const refreshed = await refreshToken();
-        if (!refreshed) { if (!cancelled) { clearSession(); router.replace("/login"); } return; }
+        if (!refreshed) { if (!cancelled) { clearSession(); router.replace(ROUTES.LOGIN); } return; }
       }
 
-      const currentToken = localStorage.getItem("token") || token;
+      const currentToken = localStorage.getItem(STORAGE_KEYS.TOKEN) || token;
 
       try {
         const res = await fetch("/api/v1/admin/auth/me", { headers: { Authorization: `Bearer ${currentToken}` } });
@@ -80,40 +95,37 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         if (res.status === 401) {
           const refreshed = await refreshToken();
           if (refreshed) {
-            const retry = await fetch("/api/v1/admin/auth/me", { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` } });
+            const retry = await fetch("/api/v1/admin/auth/me", { headers: { Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.TOKEN) || ""}` } });
             if (cancelled) return;
-            if (retry.status === 401 || retry.status === 403) {
+            if (retry.status === 401) {
               clearSession();
-              router.replace("/login");
+              router.replace(ROUTES.LOGIN);
+              return;
+            }
+            if (retry.status === 403) {
+              setForbidden(true);
+              redirectTimer = setTimeout(() => {
+                if (!cancelled) { clearSession(); router.replace(ROUTES.LOGIN); }
+              }, 2000);
               return;
             }
             setChecked(true);
             return;
           }
           clearSession();
-          router.replace("/login");
+          router.replace(ROUTES.LOGIN);
           return;
         }
 
         if (res.status === 403) {
           setForbidden(true);
           redirectTimer = setTimeout(() => {
-            if (!cancelled) { clearSession(); router.replace("/login"); }
+            if (!cancelled) { clearSession(); router.replace(ROUTES.LOGIN); }
           }, 2000);
           return;
         }
 
         setChecked(true);
-        // Load favicon after auth succeeds
-        fetch("/api/v1/admin/config?prefix=branding.admin_favicon", { headers: { Authorization: `Bearer ${currentToken}` } })
-          .then(r => r.json())
-          .then(d => {
-            if (cancelled) return;
-            const items = d.data || [];
-            const fv = items.find((i: { config_key: string; config_value?: string }) => i.config_key === "branding.admin_favicon_url");
-            if (fv?.config_value) setFavicon(fv.config_value);
-          })
-          .catch((err) => { console.error("Favicon fetch failed:", err); });
       } catch (err) {
         console.error("Auth verification failed:", err);
         if (!cancelled) setChecked(true);
@@ -125,24 +137,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, [pathname, router, isLogin]);
 
   return (
-    <html lang="en" style={{ height: "100%" }}>
-      <head>{favicon && <link rel="icon" type="image/svg+xml" href={favicon} />}</head>
-      <body style={{ height: "100%", display: "flex", margin: 0 }}>
-        <BrandProvider>
-          {!isLogin && !forbidden && <Sidebar />}
-          <main style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
-          {forbidden ? (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center" }}>
-              <div><p style={{ fontSize: 18, fontWeight: 700, color: "#991B1B" }}>Access Denied</p><p style={{ fontSize: 13, opacity: 0.6 }}>Staff accounts cannot access the admin portal.<br />Redirecting to login...</p></div>
-            </div>
-          ) : checked ? children : (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-              <div style={{ color: "var(--color-text-muted)" }}>Loading...</div>
-            </div>
-          )}
-          </main>
-        </BrandProvider>
-      </body>
-    </html>
+    <>
+      {!isLogin && !forbidden && <Sidebar />}
+      <main style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
+      {forbidden ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center" }}>
+          <div><p style={{ fontSize: 18, fontWeight: 700, color: "#991B1B" }}>Access Denied</p><p style={{ fontSize: 13, opacity: 0.6 }}>Staff accounts cannot access the admin portal.<br />Redirecting to login...</p></div>
+        </div>
+      ) : checked ? children : (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+          <div style={{ color: "var(--color-text-muted)" }}>Loading...</div>
+        </div>
+      )}
+      </main>
+    </>
+  );
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <BrandProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </BrandProvider>
   );
 }

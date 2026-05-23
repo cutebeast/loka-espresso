@@ -114,7 +114,7 @@ v3/
 `useIsAdmin`, `usePolling`, `useQrExpiry`, `useQrImages`
 
 ### Known Design Decisions
-- Auth is client-side only (middleware.ts is no-op — token is in localStorage)
+- Auth is client-side only (middleware.ts provides security headers only; token is in localStorage)
 - QR codes generated client-side via `qrcode` npm library
 - All CSS is pure (no framework) — variables in `styles/variables.css`
 - PageHeader component renders `BACK` text + arrow on all sub-pages
@@ -196,15 +196,18 @@ cd customer-pwa && npm run build
 
 ---
 
-## Quality Standards (from 5 rounds of audit)
+## Quality Standards (from 6 rounds of audit)
 
 ### All Clear
 - **No runtime crash risks**: All `.toFixed()`, `.charAt()`, `new Date()`, `JSON.parse()`, `parseFloat()` calls are properly guarded with `Number(… ?? 0)`, `|| "?"`, `isNaN()` checks, or try/catch
 - **No SSR crashes**: All `localStorage`/`window`/`document` access in api.ts and layout.tsx guarded by `typeof window !== "undefined"`
-- **No React key warnings**: Every `.map()` call has proper `key` prop
+- **No React key warnings**: Every `.map()` call has proper `key` prop (cart/checkout/order-detail keys fixed to use stable composite IDs)
 - **No state mutations**: All array operations use spread/copy patterns
 - **All useEffect cleanups present**: Timers, intervals, event listeners, abort controllers all properly cleaned up
 - **Auth token refresh**: Every API call through `api` module auto-refreshes on 401
+- **Error boundaries**: `error.tsx` at root-level + `orders/[id]`; `loading.tsx` skeletons on `orders/`, `orders/[id]`, `customers/[id]`, `menu/items/[id]`
+- **Staff middleware**: `src/middleware.ts` provides security headers (CSP, HSTS, X-Frame-Options, etc.)
+- **CSP hardened**: Customer PWA CSP removed `unsafe-eval`/`unsafe-inline` from script-src, added `frame-ancestors 'none'`
 
 ### Active Logging
 - All catch blocks log `console.error` with descriptive context strings
@@ -218,6 +221,4 @@ cd customer-pwa && npm run build
 - Admin portal buttons on all core pages have `type="button"`
 
 ### Remaining Known (Non-Blocking)
-- Admin portal `[id]/detail` pages (~130 silent catches for translation/reorder operations) — not user-facing
-- 2 dead component files (`Button.tsx` fixed but unused by any page, `SkeletonText.tsx` unused)
 - Admin portal login at `/login` returns 404 on SSR (Next.js 16 Turbopack issue with `"use client"` pages) — works after client hydration

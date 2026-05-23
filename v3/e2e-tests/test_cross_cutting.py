@@ -11,20 +11,22 @@ Covers:
 
 import pytest
 import httpx
+from datetime import datetime, timezone
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Translations
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.public
 @pytest.mark.asyncio
 async def test_translation_all_locales_menu(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Menu returns translated content for all supported locales."""
     locales = ["ms", "zh", "ta", "tr"]
     r = await client.get(f"{base_url}/menu/stores/{store_id}")
+    assert r.status_code == 200
     items = r.json()["data"]["items"]
-    if not items:
-        pytest.skip("No menu items")
+    assert len(items) > 0, "Seed data must include menu items"
     item_id = items[0]["id"]
 
     for loc in locales:
@@ -34,6 +36,7 @@ async def test_translation_all_locales_menu(client: httpx.AsyncClient, base_url:
         assert "item_name" in item
 
 
+@pytest.mark.public
 @pytest.mark.asyncio
 async def test_translation_all_locales_stores(client: httpx.AsyncClient, base_url: str):
     """Store list returns translated store names for all locales."""
@@ -41,7 +44,7 @@ async def test_translation_all_locales_stores(client: httpx.AsyncClient, base_ur
     for loc in locales:
         r = await client.get(f"{base_url}/stores", headers={"Accept-Language": loc})
         assert r.status_code == 200, f"Locale {loc} failed"
-        stores = r.json()["data"]
+        stores = r.json()["data"]["items"]
         assert len(stores) >= 1
 
 
@@ -54,16 +57,35 @@ async def test_translation_all_locales_stores(client: httpx.AsyncClient, base_ur
 # Recipe / Stock Deduction (covered in test_admin_setup_flow)
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.public
 @pytest.mark.asyncio
 async def test_24h_store_returns_open_status(client: httpx.AsyncClient, base_url: str):
-    """24h stores report as open during all hours."""
-    r = await client.get(f"{base_url}/stores?is_open=true")
+    """24h stores report as open during all hours regardless of time."""
+    r = await client.get(f"{base_url}/stores")
     assert r.status_code == 200
-    stores = r.json()["data"]
-    # At least one store should be open (the 24h one or regular hours)
-    assert len(stores) >= 1
+    stores = r.json()["data"]["items"]
+    # DB convention: 0=Monday, 6=Sunday (matches Python datetime.weekday())
+    db_dow = datetime.now(timezone.utc).date().weekday()
+    # Find stores that are 24h TODAY
+    stores_24h = []
+    for s in stores:
+        for h in s.get("operating_hours", []):
+            if h.get("day_of_week") == db_dow and h.get("is_24_hours"):
+                # Verify the 24h flag is internally consistent
+                assert h.get("open_time") in ("00:00", "00:00:00") or h.get("is_closed") == False, \
+                    f"24h store {s['id']} should have 00:00 open_time or not be closed"
+                stores_24h.append(s)
+                break
+    if not stores_24h:
+        pytest.skip("No 24h store in seed data for today")
+    r2 = await client.get(f"{base_url}/stores?is_open=true")
+    assert r2.status_code == 200
+    open_stores = {s["id"] for s in r2.json()["data"]["items"]}
+    for s in stores_24h:
+        assert s["id"] in open_stores, f"24h store {s['id']} should always report open"
 
 
+@pytest.mark.public
 @pytest.mark.asyncio
 async def test_store_detail_includes_operating_hours(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Store detail includes full operating hours array."""
@@ -88,6 +110,7 @@ async def test_store_detail_includes_operating_hours(client: httpx.AsyncClient, 
 # Loyalty & Wallet
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.public
 @pytest.mark.asyncio
 async def test_loyalty_tiers_exist(client: httpx.AsyncClient, base_url: str):
     """Loyalty tiers are returned in bootstrap."""
@@ -102,13 +125,13 @@ async def test_loyalty_tiers_exist(client: httpx.AsyncClient, base_url: str):
 # Equipment Maintenance
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.admin
 @pytest.mark.asyncio
 async def test_equipment_maintenance_log_lifecycle(client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int):
     """Equipment can have maintenance logs created and listed."""
     r = await client.get(f"{base_url}/admin/equipment?store_id={store_id}&per_page=1", headers=admin_headers)
     items = r.json()["data"]["items"]
-    if not items:
-        pytest.skip("No equipment")
+    assert len(items) > 0, "Seed data must include equipment"
     eq_id = items[0]["id"]
 
     # List existing logs

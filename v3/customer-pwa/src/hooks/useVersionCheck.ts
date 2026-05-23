@@ -3,12 +3,14 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const VERSION_CHECK_INTERVAL = 60000; // Check every 60 seconds
 const STORAGE_KEY = 'loka_pwa_version';
 
 export function useVersionCheck() {
   const { showToast } = useUIStore();
+  const { t } = useTranslation();
   const checkInProgress = useRef(false);
 
   const checkVersion = useCallback(async () => {
@@ -36,14 +38,14 @@ export function useVersionCheck() {
       const data = res.data;
       const items = Array.isArray(data) ? data : (data?.items ?? []);
       if (items.length > 0) {
-        showToast(`${items.length} new notification${items.length > 1 ? 's' : ''}`, 'info');
+        showToast(t('notifications.newCount', { count: items.length }), 'info');
       }
       return items;
     } catch (err: any) {
       console.error('[PWA] Notification check failed:', err?.response?.status || err?.message || err);
       return [];
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   useEffect(() => {
     // Check version immediately on mount

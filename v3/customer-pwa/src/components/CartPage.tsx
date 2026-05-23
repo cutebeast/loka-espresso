@@ -228,7 +228,7 @@ export default function CartPage() {
             const tags = getCustomizationTags(item.customizations);
             return (
               <div
-                key={`${item.menu_item_id}-${index}`}
+                key={`${item.menu_item_id}-${JSON.stringify((item.customization_option_ids ?? []).sort())}`}
                 className="cart-item-card"
               >
                 <div className="cart-item-thumb">
@@ -374,8 +374,8 @@ export default function CartPage() {
 
       {/* Clear Cart Confirmation Modal */}
       <div className={`profile-modal-overlay ${showClearConfirm ? 'show' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setShowClearConfirm(false); }}>
-        <div className="profile-modal-box">
-          <h3>{t('cart.clearConfirm')}</h3>
+        <div className="profile-modal-box" role="dialog" aria-modal="true" aria-labelledby="clear-cart-title">
+          <h3 id="clear-cart-title">{t('cart.clearConfirm')}</h3>
           <p>{t('cart.removeConfirm', { count: itemCount })}</p>
           <div className="profile-modal-btns">
             <button className="profile-modal-btn profile-modal-btn-cancel" onClick={() => setShowClearConfirm(false)}>{t('cart.keepItems')}</button>

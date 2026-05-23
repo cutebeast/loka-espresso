@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { ShoppingCart } from 'lucide-react';
+import { useMemo } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -12,8 +13,8 @@ export default function FloatingCartBar() {
   const items = useCartStore((s) => s.items);
   const { setPage } = useUIStore();
 
-  const count = items.reduce((sum, item) => sum + item.quantity, 0);
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const count = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
+  const total = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
 
   if (count === 0) return null;
 

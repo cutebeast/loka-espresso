@@ -74,8 +74,8 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
   const handleOTPSubmit = useCallback(async (code: string) => {
     setLoadingAuth(true);
     try {
-      // Try login first — v3 /auth/login accepts phone_number and returns tokens directly
-      const res = await api.post('/auth/login', { phone_number: phoneNumber });
+      // Login with phone_number and OTP code verified on server
+      const res = await api.post('/auth/login', { phone_number: phoneNumber, otp_code: code });
       const tokens = res.data?.tokens;
       if (tokens?.access_token) {
         localStorage.setItem('token', tokens.access_token);
@@ -101,9 +101,13 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
   }, [getApiErrorMessage, phoneNumber, setIsNewUser, showToast, onAuthDone]);
 
   const handleResendOTP = useCallback(async () => {
-    // v3 doesn't have resend-otp — noop
-    showToast(t('toast.otpResent'), 'success');
-  }, [showToast, t]);
+    try {
+      await api.post('/auth/resend-otp', { phone_number: phoneNumber });
+      showToast(t('toast.otpResent'), 'success');
+    } catch {
+      showToast(t('toast.otpResendFailed'), 'error');
+    }
+  }, [phoneNumber, showToast, t]);
 
   const handleProfileSubmit = useCallback(async (data: { name: string; email?: string }) => {
     setLoadingAuth(true);

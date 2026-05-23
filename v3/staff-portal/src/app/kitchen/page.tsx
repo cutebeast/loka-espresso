@@ -49,22 +49,20 @@ export default function KitchenPage() {
   const prevCountRef = useRef(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchSeqRef = useRef(0);
 
   const fetchOrders = useCallback(async () => {
     try {
-      setConnected(true);
       if (!storeId) { setLoading(false); setError("Store not selected"); return; }
       const data = await getOrders(storeId, undefined);
       const list = Array.isArray(data) ? data : [];
       setOrders(list);
+      setConnected(true);
       // Sound notification on new orders
-      if (soundOn && list.length > prevCountRef.current) {
+      if (soundOn && list.length > prevCountRef.current && audioCtxRef.current) {
         try {
-          let ctx = audioCtxRef.current;
-          if (!ctx || ctx.state === "closed") {
-            ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            audioCtxRef.current = ctx;
-          }
+          const ctx = audioCtxRef.current;
+          if (ctx.state === "suspended") ctx.resume();
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.connect(gain); gain.connect(ctx.destination);
@@ -72,8 +70,7 @@ export default function KitchenPage() {
           osc.type = "sine";
           gain.gain.value = 0.1;
           osc.start(); osc.stop(ctx.currentTime + 0.15);
-          if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
-          audioTimerRef.current = setTimeout(() => { ctx?.close().catch((err) => console.error("AudioContext close failed:", err)); audioCtxRef.current = null; }, 500);
+          osc.onended = () => { osc.disconnect(); gain.disconnect(); };
         } catch (err) { console.error("Audio notification failed:", err); }
       }
       prevCountRef.current = list.length;
@@ -90,6 +87,10 @@ export default function KitchenPage() {
   usePolling(fetchOrders, [storeId, soundOn], { interval: 10000 });
 
   useEffect(() => {
+    prevCountRef.current = 0;
+    try {
+      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    } catch (e) { console.error("Failed to create AudioContext:", e); }
     return () => {
       if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
       if (audioCtxRef.current) { audioCtxRef.current.close().catch((err) => console.error("AudioContext close failed:", err)); audioCtxRef.current = null; }
@@ -98,13 +99,16 @@ export default function KitchenPage() {
 
   const handleUpdateStatus = async (id: string | number, status: OrderStatus) => {
     setUpdatingId(id);
+    const seq = ++fetchSeqRef.current;
     try {
       await updateOrderStatus(id, status);
+      if (seq !== fetchSeqRef.current) return;
       await fetchOrders();
     } catch (err: any) {
+      if (seq !== fetchSeqRef.current) return;
       setError(err.message || "Failed to update order");
     } finally {
-      setUpdatingId(null);
+      if (seq === fetchSeqRef.current) setUpdatingId(null);
     }
   };
 
@@ -137,7 +141,7 @@ export default function KitchenPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  const activeOrders = filteredOrders.filter((o) => !o.status.includes("delivered") && !o.status.includes("cancelled"));
+  const activeOrders = filteredOrders.filter((o) => o.status !== "delivered" && o.status !== "out_for_delivery" && !o.status.includes("cancelled"));
 
   return (
     <div style={{ padding: 24, maxWidth: 1400, margin: "0 auto" }}>
@@ -179,7 +183,7 @@ export default function KitchenPage() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <SearchInput value={search} onChange={setSearch} placeholder="Search order #, customer, table..." />
-          <select className="form-input" style={{ width: 120 }} value={sort} onChange={(e) => setSort(e.target.value as any)}>
+          <select className="form-input" style={{ width: 120 }} value={sort} onChange={(e) => setSort(e.target.value as any)} aria-label="Sort order">
             <option value="oldest">Oldest First</option>
             <option value="newest">Newest First</option>
             <option value="value">Highest Value</option>

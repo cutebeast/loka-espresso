@@ -70,7 +70,7 @@ export function usePosState() {
   const customerHook = usePosCustomer();
   const checkoutHook = usePosCheckout(checkoutOrderId);
 
-  // Scanner with customer callback
+  // Scanner callbacks
   const handleCustomerScannerCb = useCallback((customer: Customer) => {
     if (mode === "checkout") {
       checkoutHook.loadCheckoutCustomerData(customer);
@@ -81,7 +81,12 @@ export function usePosState() {
     }
   }, [mode, checkoutHook, cartHook, customerHook]);
 
-  const scannerHook = usePosScanner(tables, handleCustomerScannerCb);
+  const handleTableScannerCb = useCallback((table: Table) => {
+    cartHook.setTableId(table.id);
+    setMsg(`Table ${table.table_number} selected`);
+  }, [cartHook]);
+
+  const scannerHook = usePosScanner(tables, handleCustomerScannerCb, handleTableScannerCb);
 
   // ── Init ──
   useEffect(() => {
@@ -98,7 +103,7 @@ export function usePosState() {
         const cats = Array.isArray(catsData) ? catsData : [];
         setCategories(cats);
         if (cats.length > 0) setActiveCat(cats[0].id);
-        setTables(Array.isArray(tablesData) ? tablesData : []);
+        setTables(Array.isArray(tablesData) ? (tablesData as Table[]).filter((t) => (t as any).is_active !== false) : []);
 
         const held = localStorage.getItem("pos_held_orders");
         if (held) {
@@ -115,7 +120,11 @@ export function usePosState() {
       }
     };
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+      const timer = searchTimerRef.current;
+      if (timer) clearTimeout(timer);
+    };
   }, [storeId, checkoutOrderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived ──
@@ -149,9 +158,13 @@ export function usePosState() {
   }, [customerHook, handleCustomerSelect]);
 
   // ── Order actions ──
+  const isProcessingRef = useRef(false);
+
   const handleSendToKitchen = async () => {
+    if (isProcessingRef.current) return;
     if (cartHook.cart.length === 0) { setError("Cart is empty"); return; }
     if (cartHook.orderType === "dine_in" && !cartHook.tableId) { setError("Please assign a table for dine-in orders"); return; }
+    isProcessingRef.current = true;
     setSaving(true);
     try {
       const res = await createPosOrder({
@@ -162,17 +175,19 @@ export function usePosState() {
           menu_item_id: c.menu_item_id,
           quantity: c.qty,
           modifier_ids: c.modifier_ids,
-          notes: c.modifiers_label,
+          notes: c.modifiers_label || undefined,
         })),
         order_notes: cartHook.orderNotes,
       });
       setResult(res);
       setState("done");
-    } catch (e: unknown) { setError((e as Error).message); } finally { setSaving(false); }
+    } catch (e: unknown) { setError((e as Error).message); } finally { isProcessingRef.current = false; setSaving(false); }
   };
 
   const handleCheckout = async () => {
+    if (isProcessingRef.current) return;
     if (!checkoutOrderId) return;
+    isProcessingRef.current = true;
     setSaving(true);
     try {
       const walletPaid = checkoutHook.checkoutDiscountsApplied.wallet || 0;
@@ -181,7 +196,7 @@ export function usePosState() {
       );
       setResult(res);
       setState("done");
-    } catch (e: unknown) { setError((e as Error).message); } finally { setSaving(false); }
+    } catch (e: unknown) { setError((e as Error).message); } finally { isProcessingRef.current = false; setSaving(false); }
   };
 
   const holdOrder = () => {

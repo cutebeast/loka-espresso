@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { adminLogin } from "@/lib/api";
 import { Store, Lock, Mail } from "lucide-react";
 import { useBrand } from "@/components/BrandProvider";
+import { ROUTES } from "@/lib/constants";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await adminLogin(email, password);
-      router.push("/");
+      router.push(ROUTES.HOME);
     } catch (err: any) {
       setError(err.message || "Invalid email or password");
     } finally {
@@ -45,7 +46,7 @@ export default function LoginPage() {
             <input
               type="email" required autoComplete="email"
               value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@loyaltysystem.uk"
+              placeholder="admin@example.com"
             />
           </div>
           <div className="login-field">

@@ -583,6 +583,8 @@
     "markingAll": "Menandakan Semua",
     "noNotifications": "Tiada Pemberitahuan",
     "noNotificationsDesc": "Anda telah mendapat semua!",
+    "newCount_one": "{count} pemberitahuan baru",
+    "newCount_other": "{count} pemberitahuan baru",
     "retentionNote": "Pemberitahuan dibersihkan secara automatik selepas 30 hari",
     "timeAgo": {
       "days": "{days} hari lalu",

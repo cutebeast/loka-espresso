@@ -9,10 +9,12 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
+    text,
 )
 from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -34,13 +36,13 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
     )
     store_id: Mapped[int] = mapped_column(
-        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("stores.id", ondelete="CASCADE"), nullable=False, index=True
     )
     dining_table_id: Mapped[int | None] = mapped_column(
-        ForeignKey("dining_tables.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("dining_tables.id", ondelete="SET NULL"), nullable=True, index=True
     )
     order_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     order_type: Mapped[str] = mapped_column(OrderType, nullable=False)
@@ -149,6 +151,7 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
             "cancelled_by IN ('customer','merchant','system')",
             name="ck_orders_cancelled_by",
         ),
+        Index("idx_orders_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NULL")),
     )
 
 

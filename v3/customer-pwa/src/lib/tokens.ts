@@ -7,6 +7,8 @@
  * Use these tokens only for truly dynamic values (conditional colors, etc.).
  */
 
+import { useConfigStore } from '@/stores/configStore';
+
 export const LOKA = {
   // Primary — Turkish Olive Grove
   primary: '#3B4A1A',
@@ -91,14 +93,14 @@ export const LOKA = {
   shadowWallet: '0 12px 24px -8px rgba(26, 35, 9, 0.35)',
 } as const;
 
-import { useConfigStore } from '@/stores/configStore';
-
-// ... (rest of file above line 94)
-
-/** Format a number using the configured currency symbol. */
+/** Format a number using the configured currency symbol.
+ *  NOTE: This reads config store via getState() directly.
+ *  Callers must subscribe to useConfigStore to re-render on currency changes. */
 export function formatPrice(val: number | string): string {
+  const n = Number(val);
+  if (!isFinite(n)) return '--';
   const symbol = useConfigStore.getState().config.currency_symbol || 'RM';
-  return `${symbol} ${Number(val).toFixed(2)}`;
+  return `${symbol} ${n.toFixed(2)}`;
 }
 
 const ADMIN_BASE = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin.loyaltysystem.uk';

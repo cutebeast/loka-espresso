@@ -102,11 +102,6 @@ export default function StoreEditPage() {
   // Translations: { "zh:store_name": "value", ... }
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (!storeId) return;
-    loadStore();
-  }, [storeId]);
-
   const loadStore = async () => {
     setLoading(true);
     try {
@@ -130,24 +125,33 @@ export default function StoreEditPage() {
 
       // Load translations for all locales — filtered by THIS store's record_id
       const allTr: Record<string, string> = {};
-      for (const loc of LOCALES) {
-        if (loc.code === "en") continue;
-        try {
-          const tr = await api.getRaw<{ items: { translation_key: string; translated_text: string; locale: string }[] }>(
-            `/admin/translations?table_name=stores&record_id=${storeId}&locale=${loc.code}&per_page=100`
-          );
-          if (tr?.items) {
-            for (const t of tr.items) {
-              const field = t.translation_key.split(".").pop() || "";
-              allTr[`${loc.code}:${field}`] = t.translated_text || "";
-            }
+      const results = await Promise.all(
+        LOCALES.filter(loc => loc.code !== "en").map(async (loc) => {
+          try {
+            const tr = await api.getRaw<{ items: { translation_key: string; translated_text: string; locale: string }[] }>(
+              `/admin/translations?table_name=stores&record_id=${storeId}&locale=${loc.code}&per_page=100`
+            );
+            return { loc: loc.code, tr };
+          } catch (e) { console.error(e); return { loc: loc.code, tr: null }; }
+        })
+      );
+      for (const { loc, tr } of results) {
+        if (tr?.items) {
+          for (const t of tr.items) {
+            const field = t.translation_key.split(".").pop() || "";
+            allTr[`${loc}:${field}`] = t.translated_text || "";
           }
-        } catch (e) { console.error(e); }
+        }
       }
       setTranslations(allTr);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
+
+  useEffect(() => {
+    if (!storeId) return;
+    loadStore();
+  }, [storeId]);
 
   const handleSave = async () => {
     setSaving(true);

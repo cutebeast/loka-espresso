@@ -11,6 +11,8 @@
  */
 
 import { getLocale, setGlobalLocale } from '@/stores/localeStore';
+// All 5 locale files are statically imported for PWA offline support (~100KB+ total).
+// TODO: Consider dynamic imports with fallback bundled en.json for better initial load performance.
 import enDict from '@/locales/en.json';
 import msDict from '@/locales/ms.json';
 import zhDict from '@/locales/zh.json';
@@ -18,6 +20,7 @@ import taDict from '@/locales/ta.json';
 import trDict from '@/locales/tr.json';
 import type { Locale } from '@/lib/i18n-types';
 import { AVAILABLE_LOCALES, DEFAULT_LOCALE, isValidLocale, getDefaultLocale, getSupportedLocales } from '@/lib/i18n-types';
+import { API_BASE } from '@/lib/api';
 
 // Re-export for backward compatibility with existing imports
 export type { Locale };
@@ -64,8 +67,7 @@ export async function fetchDynamicTranslations(locale: string): Promise<boolean>
     return true;
   }
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
-    const res = await fetch(`${baseUrl}/public/translations/ui?locale=${locale}&namespace=pwa-ui`);
+    const res = await fetch(`${API_BASE}/public/translations/ui?locale=${locale}&namespace=pwa-ui`);
     if (!res.ok) return false;
     const json = await res.json();
     const data: Record<string, string> = json.data || {};

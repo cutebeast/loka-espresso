@@ -1,12 +1,13 @@
 """Admin order management endpoints."""
 
+import uuid
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import select, func, text
 from sqlalchemy.orm import joinedload
 
-from app.api.v1.deps import CurrentAdmin, DBDependency, get_staff_store_id_from_request
+from app.api.v1.deps import CurrentAdmin, DBDependency, get_staff_store_id_from_request, require_store_admin, _get_admin_store_ids, _get_admin_role_keys
 from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.platform import AuditLog
@@ -27,6 +28,7 @@ from app.schemas.order import (
     ProcessOrderPaymentRequest,
     UpdateOrderStatusRequest,
 )
+from app.services.order import _build_order_out
 
 router = APIRouter(prefix="/admin/orders", tags=["admin — orders"])
 
@@ -35,12 +37,6 @@ ORDER_STATUSES = [
     "out_for_delivery", "delivered", "cancelled_by_customer",
     "cancelled_by_merchant", "refunded", "partially_refunded", "disputed",
 ]
-
-
-def _build_order_out(order: Order) -> OrderOut:
-    """Build OrderOut from Order model."""
-    order_dict = {c: getattr(order, c) for c in order.__table__.columns.keys()}
-    return OrderOut.model_validate(order_dict)
 
 
 @router.get("", response_model=APIResponse[PaginatedResponse[dict]])
@@ -65,6 +61,18 @@ async def list_orders(
         if store_id is not None and store_id != staff_store_id:
             raise HTTPException(status_code=403, detail="Access denied for this store")
         store_id = staff_store_id
+    else:
+        # Admin token: enforce store scoping for non-HQ admins
+        admin_store_ids = await _get_admin_store_ids(db, admin.id)
+        admin_roles = await _get_admin_role_keys(db, admin.id)
+        is_hq = bool(admin_roles & {"system_admin", "regional_manager", "readonly_analyst"})
+        if not is_hq and admin_store_ids:
+            if store_id is not None:
+                if store_id not in admin_store_ids:
+                    raise HTTPException(status_code=403, detail="Access denied for this store")
+            else:
+                # Non-HQ admin sees only their stores
+                pass  # store_id remains None, will be filtered below
 
     base_stmt = select(Order).options(
         joinedload(Order.customer),
@@ -83,8 +91,12 @@ async def list_orders(
         base_stmt = base_stmt.where(Order.payment_status == payment_status)
         count_stmt = count_stmt.where(Order.payment_status == payment_status)
     if store_id:
-        base_stmt = base_stmt.where(Order.store_id == store_id)
-        count_stmt = count_stmt.where(Order.store_id == store_id)
+        if isinstance(store_id, list):
+            base_stmt = base_stmt.where(Order.store_id.in_(store_id))
+            count_stmt = count_stmt.where(Order.store_id.in_(store_id))
+        else:
+            base_stmt = base_stmt.where(Order.store_id == store_id)
+            count_stmt = count_stmt.where(Order.store_id == store_id)
     if search:
         base_stmt = base_stmt.where(Order.order_number.ilike(f"%{search}%"))
         count_stmt = count_stmt.where(Order.order_number.ilike(f"%{search}%"))
@@ -178,6 +190,7 @@ async def get_order_detail(admin: CurrentAdmin, db: DBDependency, order_id: int)
     order = result.unique().scalar_one_or_none()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
+    await require_store_admin(db, admin, order.store_id)
 
     order_out = _build_order_out(order)
 
@@ -236,11 +249,13 @@ async def update_order_status(
         )
 
     result = await db.execute(
-        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None))
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
     )
     order = result.scalar_one_or_none()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    await require_store_admin(db, admin, order.store_id)
 
     from_status = order.status
 
@@ -282,11 +297,12 @@ async def process_order_payment(
     from app.models.payment import Payment
 
     result = await db.execute(
-        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None))
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
     )
     order = result.scalar_one_or_none()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
+    await require_store_admin(db, admin, order.store_id)
 
     payment_method = data.payment_method
     amount_tendered = data.amount_tendered
@@ -301,14 +317,15 @@ async def process_order_payment(
     computed_discount = discount_amount
     if discount_amount > 0:
         if discount_type == "percentage":
-            computed_discount = round(amount * discount_amount / 100, 2)
+            base_amount = float(order.items_subtotal or amount)  # discount on original subtotal, not already-discounted amount
+            computed_discount = round(base_amount * discount_amount / 100, 2)
         order.discount_amount = float(order.discount_amount or 0) + computed_discount
 
-    net_amount = round(amount - computed_discount, 2)
+    net_amount = max(0, round(amount - computed_discount, 2))
     change = round(max(0, amount_tendered - net_amount), 2)
 
     # Determine provider based on payment method
-    provider_map = {"cash": "cash", "card": "internal_wallet", "qr": "internal_wallet", "credit_card": "internal_wallet", "debit_card": "internal_wallet"}
+    provider_map = {"cash": "cash", "card": "stripe", "qr": "grabpay", "credit_card": "stripe", "debit_card": "stripe", "e_wallet": "grabpay"}
     provider = provider_map.get(payment_method, "cash")
 
     payment = Payment(
@@ -319,7 +336,7 @@ async def process_order_payment(
         currency_code=order.total_amount_currency,
         status="captured",
         net_amount=net_amount,
-        idempotency_key=f"pos-payment-{order.id}-{datetime.now(timezone.utc).timestamp()}",
+        idempotency_key=f"pos-payment-{order.id}-{uuid.uuid4().hex}",
     )
     db.add(payment)
 
@@ -374,11 +391,14 @@ async def apply_order_voucher(
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    await require_store_admin(db, admin, order.store_id)
 
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot apply voucher to a completed/cancelled order")
 
-    # Load voucher — lock row to prevent concurrent use
+    # Lock order row and load voucher to prevent concurrent modifications
+    result = await db.execute(select(Order).where(Order.id == order_id).with_for_update())
+    _ = result.scalar_one()
     result = await db.execute(
         select(CustomerVoucher, VoucherDefinition)
         .join(VoucherDefinition, CustomerVoucher.voucher_definition_id == VoucherDefinition.id, isouter=True)
@@ -483,11 +503,14 @@ async def apply_order_reward(
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    await require_store_admin(db, admin, order.store_id)
 
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot apply reward to a completed/cancelled order")
 
-    # Load reward — lock row to prevent concurrent use
+    # Lock order row and load reward to prevent concurrent modifications
+    result = await db.execute(select(Order).where(Order.id == order_id).with_for_update())
+    _ = result.scalar_one()
     result = await db.execute(
         select(CustomerReward, RewardCatalog)
         .join(RewardCatalog, CustomerReward.reward_catalog_id == RewardCatalog.id, isouter=True)
@@ -576,12 +599,13 @@ async def pay_with_wallet(
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    await require_store_admin(db, admin, order.store_id)
 
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot pay for a completed/cancelled order")
 
     # Load wallet
-    result = await db.execute(select(Wallet).where(Wallet.customer_id == order.customer_id))
+    result = await db.execute(select(Wallet).where(Wallet.customer_id == order.customer_id).with_for_update())
     wallet = result.scalar_one_or_none()
     if not wallet:
         raise HTTPException(status_code=404, detail="Customer has no wallet")
@@ -630,7 +654,7 @@ async def pay_with_wallet(
         currency_code=order.total_amount_currency,
         status="captured",
         net_amount=amount,
-        idempotency_key=f"wallet-payment-{order.id}-{now.timestamp()}",
+        idempotency_key=f"wallet-payment-{order.id}-{uuid.uuid4().hex}",
     )
     db.add(payment)
 

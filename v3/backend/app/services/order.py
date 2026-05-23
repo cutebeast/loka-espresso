@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, with_for_update
 
 from decimal import Decimal
 
@@ -25,6 +25,14 @@ class OrderError(Exception):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
+
+
+def _build_order_out(order: Order):
+    """Build OrderOut from Order model without lazy loading.
+    Shared utility used by admin and customer order endpoints."""
+    from app.schemas.order import OrderOut
+    order_dict = {c: getattr(order, c) for c in order.__table__.columns.keys()}
+    return OrderOut.model_validate(order_dict)
 
 
 def generate_order_number() -> str:
@@ -55,7 +63,9 @@ async def _deduct_stock_for_order(
         )
         recipes = recipe_result.scalars().all()
         for rc in recipes:
-            qty_needed = Decimal(str(rc.quantity_required)) * Decimal(li.quantity) * (Decimal(1) + Decimal(str(rc.waste_factor)))
+            if rc.quantity_required is None or li.quantity is None:
+                continue
+            qty_needed = Decimal(str(rc.quantity_required)) * Decimal(li.quantity) * (Decimal(1) + Decimal(str(rc.waste_factor or 0)))
             recipe_needs[rc.inventory_item_id] = recipe_needs.get(rc.inventory_item_id, Decimal(0)) + qty_needed
 
     if not recipe_needs:
@@ -108,12 +118,12 @@ async def create_order_from_cart(
     data: OrderCreate,
 ) -> Order:
     """Create an order from a customer's cart."""
-    # Fetch cart
+    # Fetch cart with row lock to prevent duplicate orders
     cart_result = await db.execute(
         select(CustomerCart).where(
             CustomerCart.id == data.cart_id,
             CustomerCart.customer_id == customer_id,
-        )
+        ).with_for_update()
     )
     cart = cart_result.scalar_one_or_none()
     if cart is None:
@@ -160,14 +170,14 @@ async def create_order_from_cart(
         item_count=cart.item_count,
         items_subtotal=subtotal,
         modifier_subtotal=sum(float(i.modifier_total) * i.quantity for i in cart_items),
-        delivery_fee=delivery_fee if data.fulfillment_type == "delivery" else 0,
+        delivery_fee=delivery_fee if data.fulfillment_type in ("standard_delivery", "express_delivery", "third_party_delivery") else 0,
         service_charge=service_charge,
         tax_amount=tax_amount,
         discount_amount=0,
         voucher_discount=0,
         reward_discount=0,
         tip_amount=data.tip_amount or 0,
-        total_amount=subtotal + (delivery_fee if data.fulfillment_type == "delivery" else 0) + service_charge + tax_amount + (data.tip_amount or 0),
+        total_amount=subtotal + (delivery_fee if data.fulfillment_type in ("standard_delivery", "express_delivery", "third_party_delivery") else 0) + service_charge + tax_amount + (data.tip_amount or 0),
         total_amount_currency=store.currency_code,
         loyalty_points_earned=0,
         loyalty_points_redeemed=0,
@@ -206,7 +216,7 @@ async def create_order_from_cart(
     db.add(status_log)
     
     # Create fulfillment record for delivery/pickup
-    if data.fulfillment_type in ("delivery", "pickup"):
+    if data.fulfillment_type in ("standard_delivery", "express_delivery", "third_party_delivery", "counter_pickup", "curbside_pickup"):
         fulfillment = OrderFulfillment(
             order_id=order.id,
             status="pending_assignment",
@@ -218,7 +228,7 @@ async def create_order_from_cart(
     if data.tip_amount and data.tip_amount > 0:
         tip = TipAllocation(
             order_id=order.id,
-            staff_id=0,  # pooled tip, unassigned until distributed
+            staff_id=None,  # pooled tip, unassigned until distributed
             tip_amount=float(data.tip_amount),
             allocation_type="fixed",
         )
@@ -239,30 +249,31 @@ async def get_customer_orders(
     db: AsyncSession,
     customer_id: int,
     status: str | None = None,
+    store_id: int | None = None,
     page: int = 1,
     per_page: int = 20,
 ):
     """List orders for a customer."""
+    from sqlalchemy import func
+
+    base_filters = [
+        Order.customer_id == customer_id,
+        Order.deleted_at.is_(None),
+    ]
+    if store_id is not None:
+        base_filters.append(Order.store_id == store_id)
+    if status:
+        base_filters.append(Order.status == status)
+
     stmt = select(Order).options(
         selectinload(Order.line_items),
         selectinload(Order.store),
-    ).where(
-        Order.customer_id == customer_id,
-        Order.deleted_at.is_(None),
-    ).order_by(Order.created_at.desc())
-    
-    if status:
-        stmt = stmt.where(Order.status == status)
-    
-    from sqlalchemy import func
-    count_result = await db.execute(
-        select(func.count(Order.id)).where(
-            Order.customer_id == customer_id,
-            Order.deleted_at.is_(None),
-        )
-    )
+    ).where(*base_filters).order_by(Order.created_at.desc())
+
+    count_stmt = select(func.count(Order.id)).where(*base_filters)
+    count_result = await db.execute(count_stmt)
     total = count_result.scalar() or 0
-    
+
     stmt = stmt.offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
     orders = result.scalars().all()

@@ -49,6 +49,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const phoneInputRef = useRef<HTMLInputElement>(null);
+  const submittingOtpRef = useRef(false);
 
   const filteredCountries = useMemo(() => {
     if (!countrySearch.trim()) return ALL_COUNTRIES;
@@ -124,9 +125,8 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
   };
 
   const verifyOtp = async (code: string) => {
-    // v3: try login with phone_number
-    const res = await api.post('/auth/login', { phone_number: phoneNumber });
-    const tokens = res.data?.tokens;
+    const res = await api.post('/auth/login', { phone_number: phoneNumber, otp_code: code });
+    const tokens = res.data?.tokens || (res.data as any)?.data?.tokens;
     if (tokens?.access_token) {
       localStorage.setItem('token', tokens.access_token);
       if (tokens.refresh_token) localStorage.setItem('refreshToken', tokens.refresh_token);
@@ -136,9 +136,15 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
     return res.data;
   };
 
+  const finishAuth = useCallback(() => {
+    setIsGuest(false); setAuthDone(true); refreshWallet(); onAuthDone?.(); onClose();
+  }, [setIsGuest, setAuthDone, refreshWallet, onAuthDone, onClose]);
+
   const handleVerifyOtp = async () => {
+    if (submittingOtpRef.current) return;
     const code = otp.join('');
     if (code.length !== 6) { setOtpError(t('auth.otpIncomplete')); return; }
+    submittingOtpRef.current = true;
     setOtpLoading(true); setOtpError('');
     try {
       await verifyOtp(code);
@@ -153,11 +159,11 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
         showToast(apiError(err, t('auth.otpInvalidError')), 'error');
         setOtp(['', '', '', '', '', '']); otpRefs.current[0]?.focus();
       }
-    } finally { setOtpLoading(false); }
+    } finally { setOtpLoading(false); submittingOtpRef.current = false; }
   };
 
   useEffect(() => {
-    if (step !== 'otp' || !otp.every((d) => d) || otpLoading) return;
+    if (step !== 'otp' || !otp.every((d) => d) || otpLoading || submittingOtpRef.current) return;
     const timer = setTimeout(() => handleVerifyOtp(), 600);
     return () => clearTimeout(timer);
   }, [otp.join('')]);
@@ -193,10 +199,6 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
   const handleProfileSkip = async () => {
     showToast(t('auth.nameRequired'), 'warning');
   };
-
-  const finishAuth = useCallback(() => {
-    setIsGuest(false); setAuthDone(true); refreshWallet(); onAuthDone?.(); onClose();
-  }, [setIsGuest, setAuthDone, refreshWallet, onAuthDone, onClose]);
 
   const handleClose = () => { if (!useAuthStore.getState().isAuthenticated) useUIStore.getState().setIsGuest(true); onClose(); };
 
@@ -338,7 +340,8 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
             {filteredCountries.map((country) => (
               <button key={country.code} type="button"
                 className={`country-item${country.code === selectedCountry.code ? ' country-item-selected' : ''}`}
-                onClick={() => selectCountry(country)}>
+                onClick={() => selectCountry(country)}
+                aria-label={country.name}>
                 <img className="country-item-flag" src={flagUrl(country.code, 'h20')} alt={country.name} width="26" height="20" loading="lazy" />
                 <span className="country-item-name">{country.name}</span>
                 <span className="country-item-code">{country.dialCode}</span>

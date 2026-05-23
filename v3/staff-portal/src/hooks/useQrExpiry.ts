@@ -20,8 +20,21 @@ export interface TableQrInfo {
 export function useQrExpiry(tables: TableQrInfo[]) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
+    const tick = () => setNow(Date.now());
+    const id = setInterval(tick, 1000);
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        clearInterval(id);
+      } else {
+        tick();
+        setInterval(tick, 1000);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
   const result: Record<number, { remaining: number; expired: boolean }> = {};
   for (const t of tables) {

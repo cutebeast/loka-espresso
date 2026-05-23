@@ -87,16 +87,18 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
 
   // Auto-close after 15 seconds
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleCloseRef = useRef(handleClose);
+  useEffect(() => { handleCloseRef.current = handleClose; });
   useEffect(() => {
     if (isOpen) {
       timerRef.current = setTimeout(() => {
-        handleClose();
+        handleCloseRef.current();
       }, 15000);
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isOpen, handleClose]);
+  }, [isOpen]);
 
   if (popups.length === 0) return null;
 

@@ -16,6 +16,8 @@ interface QRScannerProps {
 export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
   const { t } = useTranslation();
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const onScanRef = useRef(onScan);
+  useEffect(() => { onScanRef.current = onScan; });
   const [isLoading, setIsLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState(false);
   const [notSupported, setNotSupported] = useState(false);
@@ -44,7 +46,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
           haptic('success');
-          onScan(decodedText);
+          onScanRef.current(decodedText);
           stopScanner();
         },
         () => { /* ignore scan errors */ }
@@ -55,7 +57,7 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
       setHasPermission(false);
       setIsLoading(false);
     }
-  }, [isOpen, onScan, stopScanner]);
+  }, [isOpen, stopScanner]);
 
   const toggleFlash = useCallback(async () => {
     try {

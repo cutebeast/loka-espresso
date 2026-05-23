@@ -20,7 +20,8 @@ export default function Drawer({ open, onClose, title, children, footer, positio
   }, [open]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape" && open) onClose(); };
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);

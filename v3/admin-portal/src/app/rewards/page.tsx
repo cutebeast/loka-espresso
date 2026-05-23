@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import Image from "next/image";
 
 interface Reward {
   id: number; reward_name: string; reward_key: string; reward_type: string;
@@ -65,7 +66,7 @@ export default function RewardsPage() {
           {loading ? <tr><td colSpan={7} className="data-table-empty">Loading...</td></tr>
             : items.map(item => (
               <tr key={item.id} className="clickable" role="button" tabIndex={0} onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();(() => router.push(`/rewards/${item.id}`))();}}} onClick={() => router.push(`/rewards/${item.id}`)} style={{ cursor: "pointer" }}>
-                <td>{item.image_url ? <img src={item.image_url} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover" }} /> : <span style={{ fontSize: 16 }}>🎁</span>}</td>
+                <td>{item.image_url ? <Image src={item.image_url} alt={item.reward_name} width={32} height={32} style={{ borderRadius: 6, objectFit: "cover" }} /> : <span style={{ fontSize: 16 }}>🎁</span>}</td>
                 <td style={{ fontWeight: 600 }}>{item.reward_name}</td>
                 <td>{typeLabel(item.reward_type)}</td>
                 <td style={{ fontWeight: 600 }}>{item.points_cost.toLocaleString()} pts</td>

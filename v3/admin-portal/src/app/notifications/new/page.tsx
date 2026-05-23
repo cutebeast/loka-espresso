@@ -35,8 +35,8 @@ export default function NotificationNewPage() {
         <div style={{ marginBottom: 16, padding: 10, background: "var(--color-bg-muted)", borderRadius: "var(--radius-sm)" }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Quick fill from template:</div>
           <div style={{ marginBottom: 16, padding: 12, background: "var(--color-bg-muted)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>Apply Template:</label>
-            <select value={selTemplate} onChange={e => setSelTemplate(e.target.value)} style={{ flex: 1, padding: "6px 10px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+            <label htmlFor="apply-template" style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>Apply Template:</label>
+            <select id="apply-template" value={selTemplate} onChange={e => setSelTemplate(e.target.value)} style={{ flex: 1, padding: "6px 10px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
               <option value="">— Select a template —</option>
               {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>

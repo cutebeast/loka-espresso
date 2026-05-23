@@ -26,11 +26,12 @@ export default function HomePage() {
   const [loadingInfo, setLoadingInfo] = useState(true);
   const isLoading = loadingFeatured || loadingBanners || loadingInfo;
 
-  const loadFeatured = useCallback(async () => {
+  const loadFeatured = useCallback(async (signal?: AbortSignal) => {
     setLoadingFeatured(true);
     try {
       const res = await api.get(`/menu/items`, {
         params: { featured: true, available_only: true, limit: 10 },
+        signal,
       });
       // v3 returns { items: [...], categories: [...] } from /menu/stores/{store_id}
       let list: MenuItem[] = [];
@@ -42,6 +43,7 @@ export default function HomePage() {
       if (list.length === 0) {
         const all = await api.get(`/menu/items`, {
           params: { available_only: true, limit: 8 },
+          signal,
         });
         if (all.data && typeof all.data === 'object' && all.data.items) {
           list = Array.isArray(all.data.items) ? all.data.items : [];
@@ -58,10 +60,10 @@ export default function HomePage() {
     }
   }, []);
 
-  const loadBanners = useCallback(async () => {
+  const loadBanners = useCallback(async (signal?: AbortSignal) => {
     setLoadingBanners(true);
     try {
-      const res = await api.get('/promos/banners');
+      const res = await api.get('/promos/banners', { signal });
       const data = Array.isArray(res.data) ? res.data : [];
       const now = new Date();
       const active = data.filter((b: PromoBanner) => {
@@ -77,19 +79,19 @@ export default function HomePage() {
     }
   }, []);
 
-  const loadInfoCards = useCallback(async () => {
+  const loadInfoCards = useCallback(async (signal?: AbortSignal) => {
     setLoadingInfo(true);
     try {
       const [infoRes, prodRes] = await Promise.all([
-        api.get('/content/information?limit=3&content_type=information'),
-        api.get('/content/information?limit=3&content_type=product'),
+        api.get('/content/information?limit=3&content_type=information', { signal }),
+        api.get('/content/information?limit=3&content_type=product', { signal }),
       ]);
       setInfoCards(Array.isArray(infoRes.data) ? infoRes.data : []);
       setProductCards(Array.isArray(prodRes.data) ? prodRes.data : []);
     } catch {
       console.error('Failed to load info cards');
       try {
-        const res = await api.get('/promos/banners');
+        const res = await api.get('/promos/banners', { signal });
         const data = Array.isArray(res.data) ? res.data : [];
         const now = new Date();
         const detailBanners = data
@@ -118,13 +120,15 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    loadFeatured();
-    loadBanners();
-    loadInfoCards();
+    const ac = new AbortController();
+    loadFeatured(ac.signal);
+    loadBanners(ac.signal);
+    loadInfoCards(ac.signal);
+    return () => ac.abort();
   }, [loadFeatured, loadBanners, loadInfoCards]);
 
   const handleAddToCart = (item: MenuItem) => {
-    addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, base_price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id, customization_count: item.customization_count ?? 0 });
+    addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, base_price: item.base_price, quantity: 1, image_url: item.image_url ?? undefined, customizations: {}, store_id: selectedStore?.id, customization_count: item.customization_count ?? 0 });
   };
 
   const pageVariants = {

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Transaction, UserReward, UserVoucher } from '@/lib/api';
+import api from '@/lib/api';
 
 function normalizeNumber(value: unknown, fallback = 0): number {
   const parsed = Number(value);
@@ -56,7 +57,6 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   refreshWallet: async () => {
     set({ isLoading: true });
     try {
-      const { default: api } = await import('@/lib/api');
       const [walletRes, loyaltyRes] = await Promise.allSettled([
         api.get('/me/wallet'),
         api.get('/loyalty/balance'),

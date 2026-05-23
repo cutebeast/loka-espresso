@@ -583,6 +583,8 @@
     "markingAll": "Tümünü İşaretleme",
     "noNotifications": "Bildirim Yok",
     "noNotificationsDesc": "Tamamen yakaladınız!",
+    "newCount_one": "{count} yeni bildirim",
+    "newCount_other": "{count} yeni bildirim",
     "retentionNote": "Bildirimler 30 gün sonra otomatik olarak temizlenir",
     "timeAgo": {
       "days": "{days} g önce",

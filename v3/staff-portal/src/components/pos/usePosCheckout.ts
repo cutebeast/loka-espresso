@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { getOrderById, applyOrderVoucher, applyOrderReward, payWithWallet, getCustomerWallet, scanCustomerCode, updateOrderPayment } from "@/lib/api";
 import type { Customer, CustomerWallet, Order } from "@/lib/api";
 
 export function usePosCheckout(checkoutOrderId: string | null) {
+  const isPaymentProcessingRef = useRef(false);
+
   const [checkoutOrder, setCheckoutOrder] = useState<unknown>(null);
   const [checkoutCustomer, setCheckoutCustomer] = useState<Customer | null>(null);
   const [checkoutWalletData, setCheckoutWalletData] = useState<CustomerWallet | null>(null);
@@ -50,6 +52,7 @@ export function usePosCheckout(checkoutOrderId: string | null) {
 
   const handleApplyCheckoutVoucher = useCallback(async (voucherCode: string) => {
     if (!checkoutOrderId) throw new Error("No order selected");
+    if (applyingDiscount || isPaymentProcessingRef.current) throw new Error("Already applying a discount");
     setApplyingDiscount(true);
     try {
       const res = await applyOrderVoucher(checkoutOrderId, voucherCode);
@@ -58,10 +61,11 @@ export function usePosCheckout(checkoutOrderId: string | null) {
       setCheckoutOrder(updated);
       return res;
     } finally { setApplyingDiscount(false); }
-  }, [checkoutOrderId]);
+  }, [checkoutOrderId, applyingDiscount]);
 
   const handleApplyCheckoutReward = useCallback(async (rewardId: number) => {
     if (!checkoutOrderId) throw new Error("No order selected");
+    if (applyingDiscount || isPaymentProcessingRef.current) throw new Error("Already applying a discount");
     setApplyingDiscount(true);
     try {
       const res = await applyOrderReward(checkoutOrderId, rewardId);
@@ -70,7 +74,7 @@ export function usePosCheckout(checkoutOrderId: string | null) {
       setCheckoutOrder(updated);
       return res;
     } finally { setApplyingDiscount(false); }
-  }, [checkoutOrderId]);
+  }, [checkoutOrderId, applyingDiscount]);
 
   const handleCheckoutWalletPayment = useCallback(async (amount: number) => {
     if (!checkoutOrderId) throw new Error("No order selected");
@@ -93,19 +97,24 @@ export function usePosCheckout(checkoutOrderId: string | null) {
     walletPaid: number,
     amountTendered: string,
   ) => {
+    if (isPaymentProcessingRef.current) return null;
+    isPaymentProcessingRef.current = true;
+    try {
     const orderBase = (checkoutOrder as { total_amount?: number; total?: number })?.total_amount
       || (checkoutOrder as { total?: number })?.total || 0;
     const finalTotal = Math.max(0, orderBase - manualDisc - walletPaid);
+    const tenderedNum = parseFloat(amountTendered || "");
     await updateOrderPayment(orderId, {
       payment_method: paymentMethod,
-      amount_tendered: paymentMethod === "cash"
-        ? (parseFloat(amountTendered || String(finalTotal)) || finalTotal)
+      amount_tendered: paymentMethod === "cash" && !isNaN(tenderedNum) && tenderedNum > 0
+        ? tenderedNum
         : finalTotal,
       amount: finalTotal,
       discount_amount: manualDisc,
       discount_type: discountType,
     });
     return { order_id: orderId, order_number: (checkoutOrder as { order_number?: string })?.order_number, total: finalTotal };
+    } finally { isPaymentProcessingRef.current = false; }
   }, [checkoutOrder]);
 
   const fetchUnpaidOrders = useCallback(async (storeId: number, getOrdersFn: (storeId: number, status?: unknown) => Promise<Order[]>) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Smartphone } from 'lucide-react';
@@ -33,38 +33,70 @@ import HomePage from './HomePage';
 import MenuPage from './MenuPage';
 import CartPage from './CartPage';
 
-const OrdersPage = dynamic(() => import('./OrdersPage'), { ssr: false });
-const ProfilePage = dynamic(() => import('./ProfilePage'), { ssr: false });
-const CheckoutPage = dynamic(() => import('./CheckoutPage'), { ssr: false });
-const RewardsPage = dynamic(() => import('./RewardsPage'), { ssr: false });
-const HistoryPage = dynamic(() => import('./HistoryPage'), { ssr: false });
-const WalletPage = dynamic(() => import('./WalletPage'), { ssr: false });
-const QRScanner = dynamic(() => import('./QRScanner'), { ssr: false });
-const PromotionsPage = dynamic(() => import('./PromotionsPage'), { ssr: false });
-const InformationPage = dynamic(() => import('./InformationPage'), { ssr: false });
-const MyRewardsPage = dynamic(() => import('./MyRewardsPage'), { ssr: false });
-const AccountDetailsPage = dynamic(() => import('./profile/AccountDetailsPage'), { ssr: false });
-const PaymentMethodsPage = dynamic(() => import('./profile/PaymentMethodsPage'), { ssr: false });
-const SavedAddressesPage = dynamic(() => import('./profile/SavedAddressesPage'), { ssr: false });
-const NotificationsPage = dynamic(() => import('./profile/NotificationsPage'), { ssr: false });
-const HelpSupportPage = dynamic(() => import('./profile/HelpSupportPage'), { ssr: false });
-const LegalPage = dynamic(() => import('./LegalPage'), { ssr: false });
-const SettingsPage = dynamic(() => import('./profile/SettingsPage'), { ssr: false });
-const ReferralPage = dynamic(() => import('./profile/ReferralPage'), { ssr: false });
-const MyCardPage = dynamic(() => import('./MyCardPage'), { ssr: false });
-const OrderDetailPage = dynamic(() => import('./OrderDetailPage'), { ssr: false });
-const ReservationsPage = dynamic(() => import('./ReservationsPage'), { ssr: false });
-const EventsPage = dynamic(() => import('./EventsPage'), { ssr: false });
+const pageImporters: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
+  orders: () => import('./OrdersPage'),
+  profile: () => import('./ProfilePage'),
+  checkout: () => import('./CheckoutPage'),
+  rewards: () => import('./RewardsPage'),
+  history: () => import('./HistoryPage'),
+  wallet: () => import('./WalletPage'),
+  qrScanner: () => import('./QRScanner'),
+  promotions: () => import('./PromotionsPage'),
+  information: () => import('./InformationPage'),
+  'my-rewards': () => import('./MyRewardsPage'),
+  'account-details': () => import('./profile/AccountDetailsPage'),
+  'payment-methods': () => import('./profile/PaymentMethodsPage'),
+  'saved-addresses': () => import('./profile/SavedAddressesPage'),
+  notifications: () => import('./profile/NotificationsPage'),
+  'help-support': () => import('./profile/HelpSupportPage'),
+  legal: () => import('./LegalPage'),
+  settings: () => import('./profile/SettingsPage'),
+  referral: () => import('./profile/ReferralPage'),
+  'my-card': () => import('./MyCardPage'),
+  'order-detail': () => import('./OrderDetailPage'),
+  reservations: () => import('./ReservationsPage'),
+  events: () => import('./EventsPage'),
+};
+
+const dynamicCache: Record<string, React.ComponentType<any>> = {};
+
+function getPageComponent(key: string): React.ComponentType<any> | null {
+  return dynamicCache[key] || null;
+}
+
+// Pre-register all dynamic page components at module scope
+(function initDynamicCache() {
+  for (const [key, importer] of Object.entries(pageImporters)) {
+    dynamicCache[key] = dynamic(importer, { ssr: false });
+  }
+})();
+
+function LazyRenderer({ pageKey, ...props }: { pageKey: string; [key: string]: any }) {
+  const Comp = getPageComponent(pageKey);
+  // eslint-disable-next-line -- dynamic components are pre-cached at module scope
+  return Comp ? <Comp {...props} /> : null;
+}
 
 export default function AppShell() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const {
-    page, selectedStore, stores, toast, pageParams, isGuest, requestSignIn,
-    setPage, setSelectedStore, setStores, showToast,
-    showStorePicker, setShowStorePicker, triggerSignIn, userLocation, setUserLocation,
-  } = useUIStore();
+  const page = useUIStore((s) => s.page);
+  const selectedStore = useUIStore((s) => s.selectedStore);
+  const stores = useUIStore((s) => s.stores);
+  const toast = useUIStore((s) => s.toast);
+  const pageParams = useUIStore((s) => s.pageParams);
+  const isGuest = useUIStore((s) => s.isGuest);
+  const requestSignIn = useUIStore((s) => s.requestSignIn);
+  const setPage = useUIStore((s) => s.setPage);
+  const setSelectedStore = useUIStore((s) => s.setSelectedStore);
+  const setStores = useUIStore((s) => s.setStores);
+  const showToast = useUIStore((s) => s.showToast);
+  const showStorePicker = useUIStore((s) => s.showStorePicker);
+  const setShowStorePicker = useUIStore((s) => s.setShowStorePicker);
+  const triggerSignIn = useUIStore((s) => s.triggerSignIn);
+  const userLocation = useUIStore((s) => s.userLocation);
+  const setUserLocation = useUIStore((s) => s.setUserLocation);
 
   // Initialize store ID getter for menu URL mapping in api.ts
   useEffect(() => {
@@ -83,9 +115,17 @@ export default function AppShell() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const prevRequestSignIn = useRef(requestSignIn);
 
+  const onNotificationClick = useCallback(() => {
+    if (isGuest) triggerSignIn(); else setPage('notifications');
+  }, [isGuest, triggerSignIn, setPage]);
+  const onQRScanClick = useCallback(() => setShowQRScanner(true), []);
+  const onBackHome = useCallback(() => setPage('home'), [setPage]);
+  const onBackProfile = useCallback(() => setPage('profile'), [setPage]);
+
   // Handle auth expiration from API layer
   useEffect(() => {
     const handler = () => {
+      if (!useAuthStore.getState().isAuthenticated) return;
       logout();
     };
     window.addEventListener('auth:expired', handler);
@@ -149,7 +189,7 @@ export default function AppShell() {
     }
   }, [requestSignIn]);
 
-  const renderPage = () => {
+  const renderPage = useMemo(() => {
     switch (page) {
       case 'home': return (
           <HubLayout
@@ -159,8 +199,8 @@ export default function AppShell() {
             <HomeHeader
               userName={user?.name}
               unreadNotifications={unreadCount}
-              onNotificationClick={() => isGuest ? triggerSignIn() : setPage('notifications')}
-              onQRScanClick={() => setShowQRScanner(true)}
+              onNotificationClick={onNotificationClick}
+              onQRScanClick={onQRScanClick}
             />
           }
         >
@@ -174,45 +214,45 @@ export default function AppShell() {
       );
       case 'rewards': return (
         <HubLayout page={page} onNavigate={handleNavClick}>
-          <RewardsPage />
+          <LazyRenderer pageKey="rewards" />
         </HubLayout>
       );
       case 'orders': return (
         <HubLayout page={page} onNavigate={handleNavClick}>
-          <OrdersPage />
+          <LazyRenderer pageKey="orders" />
         </HubLayout>
       );
       case 'profile': return (
         <HubLayout page={page} onNavigate={handleNavClick}>
-          <ProfilePage />
+          <LazyRenderer pageKey="profile" />
         </HubLayout>
       );
       case 'cart': return <CartPage />;
-      case 'checkout': return <CheckoutPage />;
-      case 'wallet': return <WalletPage />;
-      case 'history': return <HistoryPage />;
+      case 'checkout': return <LazyRenderer pageKey="checkout" />;
+      case 'wallet': return <LazyRenderer pageKey="wallet" />;
+      case 'history': return <LazyRenderer pageKey="history" />;
       case 'promotions': return (
         <HubLayout page={page} onNavigate={handleNavClick}>
-          <PromotionsPage onBack={() => setPage('home')} preselectedId={pageParams.selectedPromoId as number | undefined} />
+          <LazyRenderer pageKey="promotions" onBack={onBackHome} preselectedId={pageParams.selectedPromoId as number | undefined} />
         </HubLayout>
       );
-      case 'information': return <InformationPage onBack={() => setPage('home')} preselectedId={pageParams.selectedInfoId as number | undefined} preselectedSlug={pageParams.selectedInfoSlug as string | undefined} contentType={pageParams.selectedInfoContentType as string | undefined} />;
-      case 'my-rewards': return <MyRewardsPage onBack={() => setPage('profile')} initialTab={pageParams.initialTab as 'rewards' | 'vouchers' | undefined} />;
-      case 'account-details': return <AccountDetailsPage />;
-      case 'payment-methods': return <PaymentMethodsPage />;
-      case 'saved-addresses': return <SavedAddressesPage />;
-      case 'notifications': return <NotificationsPage />;
-      case 'help-support': return <HelpSupportPage />;
-      case 'legal': return <LegalPage />;
-      case 'settings': return <SettingsPage />;
-      case 'referral': return <ReferralPage />;
-      case 'my-card': return <MyCardPage />;
-      case 'order-detail': return <OrderDetailPage />;
-      case 'reservations': return <ReservationsPage onBack={() => setPage('profile')} />;
-      case 'events': return <EventsPage onBack={() => setPage('profile')} />;
+      case 'information': return <LazyRenderer pageKey="information" onBack={onBackHome} preselectedId={pageParams.selectedInfoId as number | undefined} preselectedSlug={pageParams.selectedInfoSlug as string | undefined} contentType={pageParams.selectedInfoContentType as string | undefined} />;
+      case 'my-rewards': return <LazyRenderer pageKey="my-rewards" onBack={onBackProfile} initialTab={pageParams.initialTab as 'rewards' | 'vouchers' | undefined} />;
+      case 'account-details': return <LazyRenderer pageKey="account-details" />;
+      case 'payment-methods': return <LazyRenderer pageKey="payment-methods" />;
+      case 'saved-addresses': return <LazyRenderer pageKey="saved-addresses" />;
+      case 'notifications': return <LazyRenderer pageKey="notifications" />;
+      case 'help-support': return <LazyRenderer pageKey="help-support" />;
+      case 'legal': return <LazyRenderer pageKey="legal" />;
+      case 'settings': return <LazyRenderer pageKey="settings" />;
+      case 'referral': return <LazyRenderer pageKey="referral" />;
+      case 'my-card': return <LazyRenderer pageKey="my-card" />;
+      case 'order-detail': return <LazyRenderer pageKey="order-detail" />;
+      case 'reservations': return <LazyRenderer pageKey="reservations" onBack={onBackProfile} />;
+      case 'events': return <LazyRenderer pageKey="events" onBack={onBackProfile} />;
       default: return <HomePage />;
     }
-  };
+  }, [page, handleNavClick, user?.name, unreadCount, onNotificationClick, onQRScanClick, onBackHome, onBackProfile, pageParams]);
 
   return (
     <div className="app-container">
@@ -310,7 +350,7 @@ export default function AppShell() {
                 transition={reducedMotion ? { duration: 0 } : { duration: 0.2 }}
                 className="h-full"
               >
-                {renderPage()}
+                {renderPage}
               </motion.div>
             </AnimatePresence>
           </main>
@@ -333,38 +373,49 @@ export default function AppShell() {
           </AnimatePresence>
 
           {/* QR Scanner */}
-          <QRScanner
+          <LazyRenderer pageKey="qrScanner"
             isOpen={showQRScanner}
             onClose={() => setShowQRScanner(false)}
-            onScan={async (result) => {
+            onScan={async (result: string) => {
               setShowQRScanner(false);
               let storeSlug = '';
               let tableId = 0;
               let qrToken = '';
               let articleSlug = '';
-              try {
-                if (result.startsWith('http')) {
+              // Try URL-based parse first, JSON parse as fallback
+              if (result.startsWith('http')) {
+                try {
                   const url = new URL(result);
                   storeSlug = url.searchParams.get('store') || '';
                   tableId = parseInt(url.searchParams.get('table') || '0', 10);
                   qrToken = url.searchParams.get('t') || '';
                   articleSlug = url.searchParams.get('slug') || '';
-                } else if (result.startsWith('loka://')) {
+                } catch {
+                  showToast(t('toast.invalidQrFormat'), 'error');
+                  return;
+                }
+              } else if (result.startsWith('loka://')) {
+                try {
                   const url = new URL(result.replace('loka://', resolveAppUrl('/')));
                   storeSlug = url.searchParams.get('store') || '';
                   tableId = parseInt(url.searchParams.get('table') || '0', 10);
                   qrToken = url.searchParams.get('t') || '';
                   articleSlug = url.searchParams.get('slug') || '';
-                } else {
+                } catch {
+                  showToast(t('toast.invalidQrFormat'), 'error');
+                  return;
+                }
+              } else {
+                try {
                   const parsed = JSON.parse(result);
                   storeSlug = parsed.store_slug || parsed.storeSlug || '';
                   tableId = parsed.table_id || parsed.tableId || 0;
                   qrToken = parsed.t || parsed.qr_token || '';
                   articleSlug = parsed.slug || '';
+                } catch {
+                  showToast(t('toast.invalidQrFormat'), 'error');
+                  return;
                 }
-              } catch {
-                showToast(t('toast.invalidQrFormat'), 'error');
-                return;
               }
               if (articleSlug) {
                 setPage('information', { selectedInfoSlug: articleSlug });

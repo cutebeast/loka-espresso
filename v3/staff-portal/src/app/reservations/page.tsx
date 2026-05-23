@@ -76,6 +76,12 @@ export default function ReservationsPage() {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
+
   // Confirm modal state
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmRes, setConfirmRes] = useState<Reservation | null>(null);
@@ -126,7 +132,7 @@ export default function ReservationsPage() {
     setConfirmModalOpen(true);
     try {
       const tbls = await getTables(storeId);
-      setTables(Array.isArray(tbls) ? tbls.filter((t) => t.current_status === "available" || t.id === res.dining_table_id) : []);
+      setTables(Array.isArray(tbls) ? tbls.filter((t) => (t.current_status === "available" && res.party_size != null && !isNaN(res.party_size) && t.capacity >= res.party_size) || t.id === res.dining_table_id) : []);
     } catch (e) { console.error("Failed to load tables for reservation:", e); setTables([]); }
   };
 
@@ -239,7 +245,7 @@ export default function ReservationsPage() {
                         <div>
                           <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>{res.customer_name}</p>
                           {res.customer_phone && <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0 }}>{res.customer_phone}</p>}
-                          {res.special_requests && <p style={{ fontSize: 11, color: "var(--color-text-muted)", margin: "2px 0 0", fontStyle: "italic" }}>"{res.special_requests}"</p>}
+                          {res.special_requests && <p style={{ fontSize: 11, color: "var(--color-text-muted)", margin: "2px 0 0", fontStyle: "italic" }}>&ldquo;{res.special_requests}&rdquo;</p>}
                         </div>
                       </div>
                     </td>

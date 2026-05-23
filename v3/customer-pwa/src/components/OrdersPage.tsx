@@ -10,45 +10,43 @@ import api from '@/lib/api';
 import type { Order, CartItem } from '@/lib/api';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
-import { t } from '@/lib/i18n';
-import { getLocale } from '@/stores/localeStore';
 import { useConfigStore } from '@/stores/configStore';
-
-function getStatusBadge(status: string): { label: string; cls: string } {
-  const s = status?.toLowerCase();
-  if (s === 'delivered' || s === 'completed') return { label: t('orders.status.delivered'), cls: 'delivered' };
-  if (s === 'cancelled') return { label: t('orders.status.cancelled'), cls: 'cancelled' };
-  const key = `orders.status.${s}`;
-  const translated = t(key);
-  return { label: translated !== key ? translated : (status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || ''), cls: '' };
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  if (d.toDateString() === now.toDateString()) return `${t('common.today')}, ${d.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' })}`;
-  return d.toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
 
 const ACTIVE = ['pending', 'confirmed', 'preparing', 'in_progress', 'ready', 'out_for_delivery', 'driver_assigned'];
 const STEPS = ['orders.steps.pending', 'orders.steps.confirmed', 'orders.steps.preparing', 'orders.steps.ready', 'orders.steps.completed'];
 
-function activeStepIdx(status: string): number {
-  const s = status?.toLowerCase();
-  if (s === 'pending') return 0;
-  if (s === 'confirmed') return 1;
-  if (s === 'preparing' || s === 'in_progress') return 2;
-  if (s === 'ready') return 3;
-  if (s === 'completed' || s === 'delivered') return 4;
-  return 0;
-}
-
 export default function OrdersPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { orders, setOrders, setCurrentOrder, isLoading, setIsLoading } = useOrderStore();
   const { setPage, showToast } = useUIStore();
   const config = useConfigStore((s) => s.config);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const getStatusBadge = useCallback((status: string): { label: string; cls: string } => {
+    const s = status?.toLowerCase();
+    if (s === 'delivered' || s === 'completed') return { label: t('orders.status.delivered'), cls: 'delivered' };
+    if (s === 'cancelled') return { label: t('orders.status.cancelled'), cls: 'cancelled' };
+    const key = `orders.status.${s}`;
+    const translated = t(key);
+    return { label: translated !== key ? translated : (status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || ''), cls: '' };
+  }, [t]);
+
+  const formatDate = useCallback((dateStr: string): string => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) return `${t('common.today')}, ${d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
+    return d.toLocaleDateString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }, [t, locale]);
+
+  const activeStepIdx = useCallback((status: string): number => {
+    const s = status?.toLowerCase();
+    if (s === 'pending') return 0;
+    if (s === 'confirmed') return 1;
+    if (s === 'preparing' || s === 'in_progress') return 2;
+    if (s === 'ready') return 3;
+    if (s === 'completed' || s === 'delivered') return 4;
+    return 0;
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     if (!useAuthStore.getState().isAuthenticated) return;
@@ -68,6 +66,7 @@ export default function OrdersPage() {
   useEffect(() => {
     if (pollingRef.current) clearInterval(pollingRef.current);
     if (hasActive) pollingRef.current = setInterval(() => {
+      if (!useAuthStore.getState().isAuthenticated) return;
       if (document.visibilityState === 'visible') { fetchOrders(); setLastUpdated(new Date()); }
     }, (config.order_polling_interval_seconds || 30) * 1000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };

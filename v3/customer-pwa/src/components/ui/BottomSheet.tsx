@@ -52,7 +52,7 @@ export function BottomSheet({ isOpen, onClose, title, children, footer }: Bottom
             onClick={(e) => e.stopPropagation()}
           >
             {/* Handle — drags the sheet */}
-            <div className="sheet-handle" />
+            <div className="sheet-handle" aria-hidden="true" />
 
             {/* Header */}
             {title && (
@@ -65,7 +65,9 @@ export function BottomSheet({ isOpen, onClose, title, children, footer }: Bottom
             )}
 
             {/* Body */}
-            {children}
+            <motion.div dragListener={false}>
+              {children}
+            </motion.div>
 
             {/* Footer */}
             {footer && (

@@ -41,7 +41,8 @@ export default function PwaTranslationsTab() {
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState<number | null>(null);
   const [msg, setMsg] = useState("");
-  const [regenerating, setRegenerating] = useState(false);
+  const [regenerating, setRegenerating] = useState<string | false>(false);
+  const [translateProgress, setTranslateProgress] = useState("");
 
   // Fetch all PWA translations
   const fetchAll = useCallback(async () => {
@@ -50,7 +51,7 @@ export default function PwaTranslationsTab() {
       const results = await Promise.all(
         LOCALES.map((loc) =>
           api
-            .getRaw<{ items: Translation[] }>(`/translations?namespace=pwa-ui&locale=${loc}&per_page=500`)
+            .getRaw<{ items: Translation[] }>(`/translations?namespace=pwa-ui&locale=${loc}&per_page=2000`)
             .catch((e) => { console.error(`Failed to fetch ${loc}:`, e); return null; })
         )
       );
@@ -104,8 +105,6 @@ export default function PwaTranslationsTab() {
         translated_text,
         source_text: "",
         table_name: "pwa_ui",
-        record_id: 0,
-        column_name: "label",
       });
     }
   };
@@ -123,33 +122,52 @@ export default function PwaTranslationsTab() {
     finally { setSaving(null); }
   };
 
-  // Auto-translate all missing keys for a locale
+  // Auto-translate all missing keys for a locale with batching (concurrency limit of 5)
   const autoTranslate = async (locale: string) => {
-    setRegenerating(true);
+    setRegenerating(locale);
+    setTranslateProgress("");
     let count = 0;
+    const CONCURRENCY = 5;
+
+    const missingKeys: { key: string; source: string }[] = [];
     for (const key of [...keyMap.keys()]) {
       const existing = keyMap.get(key)!;
-      if (existing[locale]?.translated_text) continue; // Already has translation
-      // Get English source
+      if (existing[locale]?.translated_text) continue;
       const en = existing["en"] || items.find(t => t.translation_key === key && t.locale === "en");
       const source = en?.source_text || en?.translated_text || "";
       if (!source) continue;
-      try {
-        const r = await api.post<{ translated_text?: string }>("/translations/translate", {
-          text: source,
-          source_locale: "en",
-          target_locale: locale,
-        });
-        if (r?.translated_text) {
-          await upsertTranslation(key, locale, r.translated_text, existing[locale]);
-          count++;
-        }
-      } catch (e) { console.error(e); }
+      missingKeys.push({ key, source });
     }
+
+    let batchIndex = 0;
+    const total = missingKeys.length;
+    while (batchIndex < total) {
+      const batch = missingKeys.slice(batchIndex, batchIndex + CONCURRENCY);
+      batchIndex += CONCURRENCY;
+
+      const results = await Promise.allSettled(
+        batch.map(async ({ key, source }) => {
+          const existing = keyMap.get(key)!;
+          const r = await api.post<{ translated_text?: string }>("/translations/translate", {
+            text: source,
+            source_locale: "en",
+            target_locale: locale,
+          });
+          if (r?.translated_text) {
+            await upsertTranslation(key, locale, r.translated_text, existing[locale]);
+          }
+        })
+      );
+
+      count += results.filter(r => r.status === "fulfilled").length;
+      setTranslateProgress(`${Math.min(batchIndex, total)} / ${total}`);
+    }
+
     setMsg(`Auto-translated ${count} keys for ${locale}`);
     setTimeout(() => setMsg(""), 3000);
     fetchAll();
     setRegenerating(false);
+    setTranslateProgress("");
   };
 
   if (loading) {
@@ -219,17 +237,18 @@ export default function PwaTranslationsTab() {
               </h3>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {msg && <span style={{ fontSize: 12, color: "var(--color-success, #16a34a)" }}>{msg}</span>}
+                {translateProgress && <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{translateProgress}</span>}
                 {LOCALES.map((loc) => (
                   <button
                     key={loc}
                     type="button"
                     onClick={() => autoTranslate(loc)}
-                    disabled={regenerating}
+                    disabled={!!regenerating}
                     className="btn btn-sm btn-outline"
                     style={{ fontSize: 12 }}
                     aria-label={`Auto-translate to ${loc}`}
                   >
-                    {FLAGS[loc]} Auto {NAMES[loc]}
+                    {FLAGS[loc]} {regenerating === loc ? "..." : "Auto"} {NAMES[loc]}
                   </button>
                 ))}
               </div>
@@ -259,10 +278,11 @@ export default function PwaTranslationsTab() {
                         <tr key={key}>
                           <td style={{ fontSize: 11, fontFamily: "monospace", color: "var(--color-text-muted)" }}>{shortKey}</td>
                           <td style={{ fontSize: 12, color: "var(--color-text-primary)" }}>{enText}</td>
-                          {LOCALES.map((loc) => {
-                            const existing = row[loc];
-                            const value = existing?.translated_text || "";
-                            return (
+                            {LOCALES.map((loc) => {
+                             const existing = row[loc];
+                             const value = existing?.translated_text || "";
+                             // defaultValue is safe — React auto-escapes to prevent XSS
+                             return (
                               <td key={loc} style={{ padding: 4 }}>
                                 <input
                                   type="text"

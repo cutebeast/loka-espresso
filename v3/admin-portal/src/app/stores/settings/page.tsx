@@ -20,26 +20,32 @@ export default function StoreSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState("");
   const [msg, setMsg] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => { 
     api.get<ConfigItem[]>("/admin/config").then(d => {
       const map: Record<string, ConfigItem> = {};
       (Array.isArray(d) ? d : []).forEach((c: any) => { map[c.config_key] = c; });
       setConfigs(map);
-    }).catch(()=>{}).finally(() => setLoading(false));
+    }).catch((e: any) => {
+      setError(e.message || "Failed to load settings");
+    }).finally(() => setLoading(false));
   }, []);
 
   const save = async (key: string, value: string) => {
     setSaving(key);
+    setMsg("");
+    setError("");
     try {
       const qs = new URLSearchParams({ key, value });
       await api.put(`/admin/config?${qs.toString()}`);
       setMsg(`${key} updated`);
       setTimeout(() => setMsg(""), 2000);
-    } catch (e: any) { setMsg(e.message); }
+    } catch (e: any) { setError(e.message); }
     finally { setSaving(""); }
   };
 
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const get = (key: string) => configs[key];
 
   return (
@@ -47,7 +53,8 @@ export default function StoreSettingsPage() {
       <h1 className="page-title">Store Settings</h1>
       <p className="page-subtitle" style={{ marginBottom: 24 }}>Global defaults for all store locations</p>
       {msg && <div className="alert alert-success">{msg}</div>}
-      {loading ? <p>Loading...</p> : (
+      {error && <div className="alert alert-error">{error}</div>}
+      {loading ? <p>Loading...</p> : error && !Object.keys(configs).length ? <p>Failed to load settings</p> : (
         <div className="card" style={{ maxWidth: 600 }}>
           <table className="data-table">
             <thead><tr><th>Setting</th><th style={{ width: 200 }}>Value</th><th style={{ width: 80 }}></th></tr></thead>
@@ -64,13 +71,15 @@ export default function StoreSettingsPage() {
                         type={c.value_type === "integer" || c.value_type === "decimal" ? "number" : "text"}
                         step={c.value_type === "decimal" ? "0.1" : "1"}
                         defaultValue={c.config_value}
+                        data-key={key}
+                        onChange={e => setInputValues(prev => ({ ...prev, [key]: e.target.value }))}
                         onBlur={e => { if (e.target.value !== c.config_value) save(key, e.target.value); }}
                         onKeyDown={e => { if (e.key === "Enter") save(key, (e.target as HTMLInputElement).value); }}
                         style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: 13, width: "100%" }}
                       />
                     </td>
                     <td>
-                      {saving === key ? "..." : <button onClick={() => save(key, (document.querySelector(`input[data-key="${key}"]`) as HTMLInputElement)?.value || get(key)?.config_value || "")} className="btn btn-sm btn-primary"><Save size={12}/> Save</button>}
+                      {saving === key ? "..." : <button onClick={() => save(key, inputValues[key] ?? get(key)?.config_value ?? "")} className="btn btn-sm btn-primary"><Save size={12}/> Save</button>}
                     </td>
                   </tr>
                 );

@@ -10,6 +10,7 @@
   "theme_color": "#384B16",
   "orientation": "portrait",
   "lang": "en",
+  "_comment_lang": "Default language; the app handles per-user locale preferences via the language picker.",
   "dir": "ltr",
   "categories": [
     "food",

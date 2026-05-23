@@ -18,7 +18,8 @@ CREATE TYPE payment_status AS ENUM (
 );
 
 CREATE TYPE payment_provider AS ENUM (
-    'stripe', 'adyen', 'braintree', 'paypal', 'cash', 'store_credit', 'internal_wallet'
+    'stripe', 'adyen', 'braintree', 'paypal', 'cash', 'store_credit', 'internal_wallet',
+    'grabpay', 'gcash', 'alipay', 'wechat_pay'
 );
 
 CREATE TYPE payment_method_type AS ENUM (
@@ -37,9 +38,10 @@ CREATE TYPE fulfillment_status AS ENUM (
 );
 
 CREATE TYPE loyalty_event_type AS ENUM (
-    'earn_purchase', 'earn_bonus', 'earn_referral',
-    'redeem_reward', 'redeem_discount', 'adjust_manual',
-    'expire_points', 'tier_upgrade', 'tier_downgrade', 'welcome_bonus'
+    'order_earned', 'referral_bonus', 'birthday_bonus', 'welcome_bonus',
+    'tier_bonus', 'promo_bonus', 'social_share', 'review_submitted',
+    'manual_adjustment', 'reward_redemption', 'voucher_conversion',
+    'points_expired', 'return_deduction', 'account_merge'
 );
 
 CREATE TYPE reward_redemption_type AS ENUM (

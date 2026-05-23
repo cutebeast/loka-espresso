@@ -50,11 +50,6 @@ export default function VoucherEditPage() {
   const [form, setForm] = useState<Record<string, any>>({});
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (!voucherId) return;
-    loadVoucher();
-  }, [voucherId]);
-
   const loadVoucher = async () => {
     setLoading(true);
     try {
@@ -101,6 +96,11 @@ export default function VoucherEditPage() {
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
+
+  useEffect(() => {
+    if (!voucherId) return;
+    loadVoucher();
+  }, [voucherId]);
 
   const handleSave = async () => {
     setSaving(true);

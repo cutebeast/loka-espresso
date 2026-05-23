@@ -64,12 +64,12 @@ export default function ItemCustomizeSheet({
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    if (item) {
+    if (item && isOpen) {
       setQuantity(1);
       setSelectedOptions(initialSelections || []);
       setNotes('');
     }
-  }, [item]);
+  }, [item, isOpen]);
 
   const toggleOption = useCallback((opt: CustomizationOption) => {
     setSelectedOptions((prev) => {
@@ -127,6 +127,8 @@ export default function ItemCustomizeSheet({
           exit={{ opacity: 0 }}
           onClick={onClose}
           className="ics-overlay"
+          role="dialog"
+          aria-label={item?.name || 'Customize item'}
         >
           <motion.div
             initial={{ y: '100%' }}

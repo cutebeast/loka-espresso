@@ -29,6 +29,8 @@ export function HomeHeader({
 
   useEffect(() => {
     setGreeting(getGreeting(t));
+    const interval = setInterval(() => setGreeting(getGreeting(t)), 60000);
+    return () => clearInterval(interval);
   }, [t]);
 
   return (

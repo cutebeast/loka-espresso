@@ -1,6 +1,7 @@
 /**
  * Pre-build script: generates public/version.json with git info and build metadata.
  */
+/* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");

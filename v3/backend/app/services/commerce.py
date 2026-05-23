@@ -9,7 +9,14 @@ from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger, LoyaltyTier
 
 
 async def _recalculate_tier(db: AsyncSession, account: LoyaltyAccount):
-    """Auto-upgrade tier based on lifetime_points_earned. Never downgrades."""
+    """Auto-upgrade tier based on lifetime_points_earned.
+
+    The algorithm iterates tiers in descending sort_order and selects the first
+    (highest) tier whose lifetime-point threshold is met.  Because it only
+    promotes — it never removes a previously earned tier after it has been
+    assigned — a customer can never lose tier status even if subsequent
+    redemptions reduce their current balance.  This "sticky ceiling" behaviour
+    is intentional for loyalty UX."""
     result = await db.execute(
         select(LoyaltyTier).where(LoyaltyTier.is_active.is_(True)).order_by(LoyaltyTier.sort_order.desc())
     )

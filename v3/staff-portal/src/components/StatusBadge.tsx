@@ -34,7 +34,8 @@ interface StatusBadgeProps {
 }
 
 export default function StatusBadge({ status, className = "" }: StatusBadgeProps) {
-  const mapped = STATUS_MAP[status] || { label: status.replace(/_/g, " "), variant: "gray" as const };
+  const safeStatus = status == null ? "" : String(status);
+  const mapped = STATUS_MAP[safeStatus] || { label: safeStatus.replace(/_/g, " "), variant: "gray" as const };
   const colors: Record<string, string> = {
     green: "badge-green",
     yellow: "badge-yellow",

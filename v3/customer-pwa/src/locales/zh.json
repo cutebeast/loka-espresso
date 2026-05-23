@@ -583,6 +583,8 @@
     "markingAll": "全部标记",
     "noNotifications": "无通知",
     "noNotificationsDesc": "您已全部看完！",
+    "newCount_one": "{count} 条新通知",
+    "newCount_other": "{count} 条新通知",
     "retentionNote": "通知将在30天后自动清除",
     "timeAgo": {
       "days": "{days}天前",

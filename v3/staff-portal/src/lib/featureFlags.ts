@@ -10,9 +10,12 @@ export const FEATURE_FLAGS = {
 
 export function showFeatureToast(featureName: string) {
   if (typeof window !== "undefined") {
-    // Simple toast using a custom event that the app shell can listen for
+    // Dispatches a custom event that app-level toast listeners can consume.
+    // Listen for "pos:toast" events to display toast notifications in the UI.
     window.dispatchEvent(
       new CustomEvent("pos:toast", { detail: { message: `${featureName} coming soon`, type: "info" } })
     );
   }
 }
+
+// TODO: Add an app-level listener for "pos:toast" events to display toast notifications.

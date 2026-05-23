@@ -16,6 +16,13 @@ import pytest
 import httpx
 from datetime import datetime, timezone, timedelta, date
 
+pytestmark = [pytest.mark.admin]
+
+
+def assert_has_keys(d: dict, keys: set, path: str = "root"):
+    missing = keys - d.keys()
+    assert not missing, f"Missing keys at {path}: {missing}"
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Store Setup
@@ -241,14 +248,18 @@ async def test_list_staff_shifts(client: httpx.AsyncClient, admin_headers: dict,
     r = await client.get(f"{base_url}/admin/staff?store_id={store_id}&per_page=1", headers=admin_headers)
     assert r.status_code == 200
     staff_items = r.json()["data"]["items"]
-    if not staff_items:
-        pytest.skip("No staff available")
+    assert len(staff_items) > 0, "Seed data must include staff"
     staff_id = staff_items[0]["id"]
 
     r2 = await client.get(f"{base_url}/admin/staff/{staff_id}/shifts?per_page=50", headers=admin_headers)
     assert r2.status_code == 200
     data = r2.json()["data"]
     assert "items" in data
+    shifts = data["items"]
+    assert isinstance(shifts, list)
+    if shifts:
+        shift = shifts[0]
+        assert_has_keys(shift, {"id", "staff_id", "store_id", "date", "start_time", "end_time"})
 
 
 @pytest.mark.asyncio

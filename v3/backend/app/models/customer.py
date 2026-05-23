@@ -27,9 +27,9 @@ class Customer(Base, SoftDeleteMixin):
     __tablename__ = "customers"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True, unique=True)
     phone_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    email_address: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email_address: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     given_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -108,6 +108,8 @@ class Customer(Base, SoftDeleteMixin):
     )
 
     __table_args__ = (
+        # Regex CHECK constraints add overhead during batch imports — consider
+        # deferring validation to application layer for high-volume CSV / ETL loads.
         CheckConstraint("phone_number ~ '^[+0-9]{7,20}$'", name="ck_customers_phone_number"),
         CheckConstraint("preferred_language ~ '^[a-z]{2}(-[A-Z]{2})?$'", name="ck_customers_preferred_language"),
         CheckConstraint("referral_count >= 0", name="ck_customers_referral_count"),

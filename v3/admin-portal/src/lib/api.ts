@@ -1,48 +1,98 @@
+import { STORAGE_KEYS, API as API_CONST } from "./constants";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+
+function createAbortController(timeoutMs = API_CONST.DEFAULT_TIMEOUT_MS): { signal: AbortSignal; clear: () => void } {
+  if (typeof AbortController === "undefined") return { signal: undefined as unknown as AbortSignal, clear: () => {} };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new DOMException("Request timed out", "TimeoutError")), timeoutMs);
+  return { signal: controller.signal, clear: () => clearTimeout(timer) };
+}
 
 function getAuthHeaders(): HeadersInit {
   if (typeof window === "undefined") return { "Content-Type": "application/json" };
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
   return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 async function refreshToken(): Promise<boolean> {
   try {
     if (typeof window === "undefined") return false;
-    const refresh = localStorage.getItem("refreshToken");
+    const refresh = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
     if (!refresh) return false;
-    const res = await fetch(`${BASE_URL}/admin/auth/refresh`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refresh }),
-    });
-    if (!res.ok) return false;
-    const json = await res.json();
-    const data = json.data || json;
-    if (data.tokens?.access_token) {
-      localStorage.setItem("token", data.tokens.access_token);
-      if (data.tokens.refresh_token) localStorage.setItem("refreshToken", data.tokens.refresh_token);
-      return true;
-    }
-    return false;
+    const { signal, clear } = createAbortController();
+    try {
+      const res = await fetch(`${BASE_URL}/admin/auth/refresh`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, signal,
+        body: JSON.stringify({ refresh_token: refresh }),
+      });
+      if (!res.ok) return false;
+      const json = await res.json();
+      const data = json.data || json;
+      if (data.tokens?.access_token) {
+        localStorage.setItem(STORAGE_KEYS.TOKEN, data.tokens.access_token);
+        if (data.tokens.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
+        return true;
+      }
+      return false;
+    } finally { clear(); }
   } catch (e) { console.error("Token refresh failed:", e); return false; }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const makeRequest = async () => {
-    const res = await fetch(`${BASE_URL}${path}`, { method, headers: getAuthHeaders(), ...(body ? { body: JSON.stringify(body) } : {}) });
-    if (res.status === 401) {
-      const refreshed = await refreshToken();
-      if (refreshed) {
-        const retry = await fetch(`${BASE_URL}${path}`, { method, headers: getAuthHeaders(), ...(body ? { body: JSON.stringify(body) } : {}) });
-        if (retry.ok) return retry;
-      }
-      localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("adminEmail");
-      if (typeof window !== "undefined") window.location.replace("/login");
-      throw new Error("Session expired");
-    }
-    return res;
+function clearSession() {
+  localStorage.removeItem(STORAGE_KEYS.TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
+}
+
+// NOTE: Bearer token auth is used — CSRF tokens are NOT needed.
+// Modern browsers enforce same-origin policies for custom headers, and
+// Bearer auth header requires explicit JavaScript, making CSRF attacks
+// infeasible. No X-CSRF-Token header exchange is required.
+
+async function request<T>(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<T> {
+  const doFetch = async (retrySignal?: AbortSignal): Promise<Response> => {
+    const { signal, clear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${BASE_URL}${path}`, {
+        method, headers: getAuthHeaders(),
+        ...(body ? { body: JSON.stringify(body) } : {}),
+        signal: retrySignal || signal,
+      });
+      return res;
+    } finally { clear(); }
   };
-  const res = await makeRequest();
+
+  const res = await doFetch();
+  if (res.status === 401) {
+    const refreshed = await refreshToken();
+    if (refreshed) {
+      const { signal, clear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
+      try {
+        const retry = await fetch(`${BASE_URL}${path}`, {
+          method, headers: getAuthHeaders(),
+          ...(body ? { body: JSON.stringify(body) } : {}),
+          signal,
+        });
+        if (retry.ok) {
+          const ct = retry.headers.get("content-type");
+          if (ct && ct.includes("application/json")) {
+            const json = await retry.json();
+            if (json && typeof json === "object" && "data" in json) {
+              const data = json.data;
+              if (data && typeof data === "object" && Array.isArray(data.items)) return data.items as T;
+              return data as T;
+            }
+            return json as T;
+          }
+          throw new Error("Unexpected non-JSON response");
+        }
+      } finally { clear(); }
+    }
+    clearSession();
+    if (typeof window !== "undefined") window.location.replace("/login");
+    throw new Error("Session expired");
+  }
   if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
   const ct = res.headers.get("content-type");
   if (ct && ct.includes("application/json")) {
@@ -57,82 +107,135 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   throw new Error("Unexpected non-JSON response");
 }
 
-async function requestRaw<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const makeRequest = async () => {
-    const res = await fetch(`${BASE_URL}${path}`, { method, headers: getAuthHeaders(), ...(body ? { body: JSON.stringify(body) } : {}) });
-    if (res.status === 401) {
-      const refreshed = await refreshToken();
-      if (refreshed) {
-        const retry = await fetch(`${BASE_URL}${path}`, { method, headers: getAuthHeaders(), ...(body ? { body: JSON.stringify(body) } : {}) });
-        if (retry.ok) return retry;
-      }
-      localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("adminEmail");
-      if (typeof window !== "undefined") window.location.replace("/login");
-      throw new Error("Session expired");
-    }
-    return res;
+async function requestRaw<T>(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<T> {
+  const doFetch = async (retrySignal?: AbortSignal): Promise<Response> => {
+    const { signal, clear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${BASE_URL}${path}`, {
+        method, headers: getAuthHeaders(),
+        ...(body ? { body: JSON.stringify(body) } : {}),
+        signal: retrySignal || signal,
+      });
+      return res;
+    } finally { clear(); }
   };
-  const res = await makeRequest();
+
+  const res = await doFetch();
+  if (res.status === 401) {
+    const refreshed = await refreshToken();
+    if (refreshed) {
+      const { signal, clear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
+      try {
+        const retry = await fetch(`${BASE_URL}${path}`, {
+          method, headers: getAuthHeaders(),
+          ...(body ? { body: JSON.stringify(body) } : {}),
+          signal,
+        });
+        if (retry.ok) {
+          const rct = retry.headers.get("content-type");
+          if (rct && rct.includes("application/json")) {
+            const json = await retry.json();
+            if (json && typeof json === "object" && "data" in json) return json.data as T;
+            return json as T;
+          }
+          return await retry.text() as unknown as T;
+        }
+      } finally { clear(); }
+    }
+    clearSession();
+    if (typeof window !== "undefined") window.location.replace("/login");
+    throw new Error("Session expired");
+  }
   if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
-  const json = await res.json();
-  if (json && typeof json === "object" && "data" in json) return json.data as T;
-  return json as T;
+  const ct = res.headers.get("content-type");
+  if (ct && ct.includes("application/json")) {
+    const json = await res.json();
+    if (json && typeof json === "object" && "data" in json) return json.data as T;
+    return json as T;
+  }
+  return await res.text() as unknown as T;
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>("GET", path),
-  getRaw: <T>(path: string) => requestRaw<T>("GET", path),
-  post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
-  patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
-  put: <T>(path: string, body?: unknown) => request<T>("PUT", path, body),
-  del: <T>(path: string) => request<T>("DELETE", path),
-  upload: async <T = { url: string; filename: string }>(path: string, formData: FormData): Promise<T> => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    const doFetch = (headers: HeadersInit) =>
-      fetch(`${BASE_URL}${path}`, { method: "POST", headers, body: formData });
-    let res = await doFetch(token ? { Authorization: `Bearer ${token}` } : {});
-    if (res.status === 401) {
-      const refreshed = await refreshToken();
-      if (refreshed) res = await doFetch(getAuthHeaders());
-      else throw new Error("Session expired");
-    }
-    if (!res.ok) { const text = await res.text(); throw new Error(text || `Upload failed: ${res.status}`); }
-    const json = await res.json();
-    return (json?.data ?? json) as T;
+  get: <T>(path: string, timeoutMs?: number) => request<T>("GET", path, undefined, timeoutMs),
+  getRaw: <T>(path: string, timeoutMs?: number) => requestRaw<T>("GET", path, undefined, timeoutMs),
+  getPaginated: async <T>(path: string, timeoutMs?: number) => {
+    const data = await requestRaw<{ items: T[]; total: number; total_pages: number; page?: number } & Record<string, any>>("GET", path, undefined, timeoutMs);
+    return { ...data, items: (data?.items || []) as T[], total: data?.total ?? 0, totalPages: data?.total_pages ?? 1, page: data?.page ?? 1 };
   },
-  fetchRaw: async (method: string, path: string, body?: unknown): Promise<Response> => {
+  post: <T>(path: string, body?: unknown, timeoutMs?: number) => request<T>("POST", path, body, timeoutMs),
+  patch: <T>(path: string, body?: unknown, timeoutMs?: number) => request<T>("PATCH", path, body, timeoutMs),
+  put: <T>(path: string, body?: unknown, timeoutMs?: number) => request<T>("PUT", path, body, timeoutMs),
+  del: <T>(path: string, timeoutMs?: number) => request<T>("DELETE", path, undefined, timeoutMs),
+  upload: async <T = { url: string; filename: string }>(path: string, formData: FormData, timeoutMs?: number): Promise<T> => {
+    const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.TOKEN) : null;
+    const doFetch = (headers: HeadersInit, signal: AbortSignal) =>
+      fetch(`${BASE_URL}${path}`, { method: "POST", headers, body: formData, signal });
+    const { signal, clear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
+    try {
+      let res = await doFetch(token ? { Authorization: `Bearer ${token}` } : {}, signal);
+      if (res.status === 401) {
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          const freshToken = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.TOKEN) : null;
+          const { signal: rSignal, clear: rClear } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
+          try {
+            res = await doFetch(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}, rSignal);
+          } finally { rClear(); }
+        } else {
+          clearSession();
+          if (typeof window !== "undefined") window.location.replace("/login");
+          throw new Error("Session expired");
+        }
+      }
+      if (!res.ok) { const text = await res.text(); throw new Error(text || `Upload failed: ${res.status}`); }
+      const json = await res.json();
+      return (json?.data ?? json) as T;
+    } finally { clear(); }
+  },
+  fetchRaw: async (method: string, path: string, body?: unknown, timeoutMs?: number): Promise<Response> => {
     if (typeof window === "undefined") throw new Error("fetchRaw cannot be used during SSR");
-    const doFetch = () => {
-      const token = localStorage.getItem("token");
+    const doFetch = (signal: AbortSignal) => {
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
       return fetch(`${BASE_URL}${path}`, {
         method,
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}),
+        signal,
       });
     };
-    let res = await doFetch();
-    if (res.status === 401) {
-      const refreshed = await refreshToken();
-      if (refreshed) res = await doFetch();
-      else throw new Error("Session expired");
-    }
-    if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
-    return res;
+    const { signal: s1, clear: c1 } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
+    try {
+      let res = await doFetch(s1);
+      if (res.status === 401) {
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          const { signal: s2, clear: c2 } = createAbortController(timeoutMs ?? API_CONST.DEFAULT_TIMEOUT_MS);
+          try { res = await doFetch(s2); } finally { c2(); }
+        } else {
+          clearSession();
+          if (typeof window !== "undefined") window.location.replace("/login");
+          throw new Error("Session expired");
+        }
+      }
+      if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
+      return res;
+    } finally { c1(); }
   },
 };
 
 export async function adminLogin(email: string, password: string) {
   const data = await api.post<{ tokens?: { access_token?: string; refresh_token?: string }; profile?: { email?: string } }>("/admin/auth/login", { email, password });
   const token = data.tokens?.access_token;
-  if (token) { 
-    localStorage.setItem("token", token); 
-    if (data.tokens?.refresh_token) localStorage.setItem("refreshToken", data.tokens.refresh_token);
-    if (data.profile?.email) localStorage.setItem("adminEmail", data.profile.email); 
+  if (token) {
+    localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+    if (data.tokens?.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
+    if (data.profile?.email) localStorage.setItem(STORAGE_KEYS.ADMIN_EMAIL, data.profile.email);
   }
   return data;
 }
-export function adminLogout() { localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("adminEmail"); }
-export function isLoggedIn(): boolean { return !!localStorage.getItem("token"); }
+export function adminLogout() { clearSession(); }
+export function isLoggedIn(): boolean { return !!localStorage.getItem(STORAGE_KEYS.TOKEN); }
 
 export interface Reservation { id: number; store_id: number; customer_id: number | null; dining_table_id?: number; party_size: number; reservation_date: string; reservation_time: string; duration_minutes?: number; status: string; }
 

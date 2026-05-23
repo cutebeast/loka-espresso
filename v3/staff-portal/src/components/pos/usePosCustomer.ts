@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { searchCustomers, getCustomerWallet, useVoucher, useReward, scanCustomerCode } from "@/lib/api";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { searchCustomers, getCustomerWallet, markVoucherUsed, markRewardUsed, scanCustomerCode } from "@/lib/api";
 import type { Customer, CustomerWallet, Reward, Voucher } from "@/lib/api";
 
 export function usePosCustomer() {
@@ -11,6 +11,12 @@ export function usePosCustomer() {
   const [showRewardsDrawer, setShowRewardsDrawer] = useState(false);
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
   const customerSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (customerSearchTimerRef.current) clearTimeout(customerSearchTimerRef.current);
+    };
+  }, []);
 
   const loadCustomerWallet = useCallback(async (customerId: number) => {
     try {
@@ -49,7 +55,7 @@ export function usePosCustomer() {
   const handleBurnReward = useCallback(async (customer: Customer, reward: Reward) => {
     setRedeemingId(reward.id);
     try {
-      await useReward(customer.id, reward.id, "Used at POS");
+      await markRewardUsed(customer.id, reward.id, "Used at POS");
       await loadCustomerWallet(customer.id);
       return true;
     } catch (e: unknown) { throw e; } finally { setRedeemingId(null); }
@@ -58,7 +64,7 @@ export function usePosCustomer() {
   const handleBurnVoucher = useCallback(async (customer: Customer, voucher: Voucher) => {
     setRedeemingId(voucher.id);
     try {
-      await useVoucher(customer.id, voucher.id, "Used at POS");
+      await markVoucherUsed(customer.id, voucher.id, "Used at POS");
       await loadCustomerWallet(customer.id);
       return true;
     } catch (e: unknown) { throw e; } finally { setRedeemingId(null); }

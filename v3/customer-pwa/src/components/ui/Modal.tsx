@@ -102,7 +102,7 @@ export function Modal({ isOpen, onClose, title, meta, children, footer, variant 
                   <h3 id="modal-title" className="text-xl font-bold text-text-primary">{title}</h3>
                   <button
                     onClick={onClose}
-                    aria-label="Close"
+                    aria-label={t('common.close')}
                     className="w-11 h-11 rounded-full bg-bg-light flex items-center justify-center hover:bg-border-subtle transition-colors"
                   >
                     <X size={18} className="text-text-secondary" />

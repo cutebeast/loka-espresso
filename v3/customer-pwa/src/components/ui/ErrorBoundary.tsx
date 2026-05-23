@@ -1,7 +1,8 @@
 'use client';
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { t } from '@/lib/i18n';
+import { useTranslation } from '@/hooks/useTranslation';
+import type { t } from '@/lib/i18n';
 
 interface Props {
   children: React.ReactNode;
@@ -12,8 +13,10 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
-  constructor(props: Props) {
+type TFunc = typeof t;
+
+class ErrorBoundaryInner extends React.Component<Props & { t: TFunc }, State> {
+  constructor(props: Props & { t: TFunc }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -32,6 +35,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const { t } = this.props;
       return (
         <div className="eb-container">
           <div className="eb-inner">
@@ -49,4 +53,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     }
     return this.props.children;
   }
+}
+
+export function ErrorBoundary({ children }: Props) {
+  const { t } = useTranslation();
+  return <ErrorBoundaryInner t={t}>{children}</ErrorBoundaryInner>;
 }

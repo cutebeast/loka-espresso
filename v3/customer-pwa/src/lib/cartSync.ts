@@ -1,7 +1,7 @@
 import api from './api';
 import type { CartItem } from './api';
 import { useCartStore } from '@/stores/cartStore';
-import { useUIStore } from '@/stores/uiStore';
+import { useWalletStore } from '@/stores/walletStore';
 
 interface CustomizationStructure {
   options?: Array<{ id: number; name: string; price_adjustment: number }>;
@@ -24,6 +24,10 @@ function createIdempotencyKey(prefix: string): string {
 }
 
 export async function syncCartToServer(items: CartItem[]): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const token = localStorage.getItem('token');
+  if (!token) return;
+
   let serverItems: ServerCartItem[] = [];
   try {
     const res = await api.get('/cart');
@@ -78,13 +82,11 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
 
         customizationOptionIds.sort((a, b) => a - b);
 
-        const storeId = useUIStore.getState().selectedStore?.id;
-
         const payload = {
           menu_item_id: desired.menu_item_id,
           quantity: desired.quantity,
           customization_option_ids: customizationOptionIds,
-          store_id: storeId,
+          store_id: desired.store_id,
         };
 
         await api.post('/cart/items', payload);
@@ -146,6 +148,16 @@ export async function placeOrder(params: {
       ? 'awaiting_payment'
       : 'pending',
   };
+
+  if (params.voucherCode) {
+    orderPayload.voucher_code = params.voucherCode;
+  }
+  if (params.rewardRedemptionCode) {
+    const rewardId = parseInt(params.rewardRedemptionCode, 10);
+    if (!isNaN(rewardId) && rewardId > 0) {
+      orderPayload.reward_id = rewardId;
+    }
+  }
 
   if (checkoutToken) {
     orderPayload.checkout_token = checkoutToken;
@@ -214,6 +226,8 @@ export async function placeOrder(params: {
         console.error('Order cancel rollback failed:', cancelErr);
       }
     }
+    // Refresh wallet balance in case of partial deduction
+    useWalletStore.getState().refreshWallet().catch((err) => console.error('[CartSync] Wallet refresh after payment failure failed:', err));
     throw error;
   }
 
@@ -233,13 +247,17 @@ export async function placeOrder(params: {
 export function registerCartSyncListeners(): () => void {
   if (typeof window === 'undefined') return () => {};
   let _wasOffline = !navigator.onLine;
+  let _debounceTimer: ReturnType<typeof setTimeout> | null = null;
   const onOnline = () => {
     if (_wasOffline) {
       _wasOffline = false;
-      const items = useCartStore.getState().items;
-      if (items.length > 0) {
-        syncCartToServer(items).catch((err) => console.error('[CartSync] Background sync failed:', err));
-      }
+      if (_debounceTimer) clearTimeout(_debounceTimer);
+      _debounceTimer = setTimeout(() => {
+        const items = useCartStore.getState().items;
+        if (items.length > 0) {
+          syncCartToServer(items).catch((err) => console.error('[CartSync] Background sync failed:', err));
+        }
+      }, 500);
     }
   };
   const onOffline = () => { _wasOffline = true; };
@@ -248,5 +266,6 @@ export function registerCartSyncListeners(): () => void {
   return () => {
     window.removeEventListener('online', onOnline);
     window.removeEventListener('offline', onOffline);
+    if (_debounceTimer) clearTimeout(_debounceTimer);
   };
 }

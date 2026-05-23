@@ -73,6 +73,7 @@ export default function TimeClockPage() {
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [attemptCount, setAttemptCount] = useState(0);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -145,12 +146,16 @@ export default function TimeClockPage() {
     }
     setActionLoading(true);
     try {
+      const delay = Math.min(3000, attemptCount * 1000);
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
       const vd = await api.post<{ valid?: boolean; data?: { valid?: boolean } }>("/staff/auth/verify-pin", { pin });
       if (!(vd?.valid || vd?.data?.valid)) {
+        setAttemptCount((c) => c + 1);
         setError("Wrong PIN. Try again.");
         setActionLoading(false);
         return;
       }
+      setAttemptCount(0);
       const actionFn = ALL_ACTIONS[pendingAction];
       if (actionFn) await actionFn();
       await fetchEvents();

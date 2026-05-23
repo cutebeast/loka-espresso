@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RefreshCw, Server, Monitor, Smartphone, Globe } from "lucide-react";
+import { VERSION_URLS } from "@/lib/constants";
 
 interface VersionInfo {
   app: string;
@@ -17,8 +18,8 @@ interface VersionInfo {
 const SERVICES = [
   { key: "backend", name: "Backend API", icon: Server, url: "/api/v1/admin/system/version" },
   { key: "admin", name: "Admin Portal", icon: Monitor, url: "/version.json" },
-  { key: "staff", name: "Staff Portal", icon: Globe, url: "https://staff.loyaltysystem.uk/version.json" },
-  { key: "customer", name: "Customer PWA", icon: Smartphone, url: "https://app.loyaltysystem.uk/version.json" },
+  { key: "staff", name: "Staff Portal", icon: Globe, url: VERSION_URLS.staff },
+  { key: "customer", name: "Customer PWA", icon: Smartphone, url: VERSION_URLS.customer },
 ];
 
 function formatDate(ts: number | null): string {
@@ -139,8 +140,6 @@ export default function VersionControlPage() {
           );
         })}
       </div>
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

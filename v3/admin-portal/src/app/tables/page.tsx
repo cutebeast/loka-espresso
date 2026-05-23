@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Info, ChevronDown } from "lucide-react";
@@ -24,7 +24,7 @@ export default function TablesPage() {
   const [showGuide, setShowGuide] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
-  const qrInfo: TableQrInfo[] = tables.map(t => ({ id: t.id, qr_code_url: t.qr_code_url, qr_code_token: t.qr_code_token, qr_generated_at: t.qr_generated_at }));
+  const qrInfo: TableQrInfo[] = useMemo(() => tables.map(t => ({ id: t.id, qr_code_url: t.qr_code_url, qr_code_token: t.qr_code_token, qr_generated_at: t.qr_generated_at })), [tables]);
   const qrImages = useQrImages(qrInfo, selectedStore);
   const qrExpiry = useQrExpiry(qrInfo);
   const physicalStores = stores.filter(s => s.id > 0);

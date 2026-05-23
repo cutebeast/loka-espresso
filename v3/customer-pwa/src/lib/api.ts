@@ -14,7 +14,7 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  const locale = typeof window !== 'undefined' ? localStorage.getItem('locale') : null;
+  const locale = typeof window !== 'undefined' ? localStorage.getItem('loka-locale') : null;
   if (locale) {
     config.headers['Accept-Language'] = locale;
   }
@@ -39,10 +39,17 @@ function mapUrl(url: string, method?: string): string {
   }
 
   // ---- Exact path matches ----
-  const exactMap: Record<string, string> = {
+  // Keys are mapped (v3) URLs so that double-resolution is safe.
+  // v1 origins → v3 destinations:
+  //   /auth/session   → /auth/login
+  //   /users/me       → /me
+  //   /wallet         → /wallet/me
+  //   /checkout       → /orders
+  //   etc.
+  // When the response interceptor re-resolves the already-mapped URL,
+  // it finds the identity entry and returns the same URL.
+  const v1ToV3: Record<string, string> = {
     '/auth/session': '/auth/login',
-    '/auth/logout': '/auth/logout',
-    '/auth/refresh': '/auth/refresh',
     '/users/me': '/me',
     '/users/me/avatar': '/me/avatar',
     '/users/me/addresses': '/me/addresses',
@@ -51,36 +58,56 @@ function mapUrl(url: string, method?: string): string {
     '/users/me/payment-methods': '/payments/methods',
     '/content/stores': '/stores',
     '/content/location': '/stores',
-    '/promos/banners': '/promos/banners',
     '/rewards': '/rewards/catalog',
-    '/rewards/catalog': '/rewards/catalog',
     '/wallet': '/wallet/me',
     '/wallet/balance': '/wallet/me',
     '/me/wallet': '/wallet/me',
     '/wallet/transactions': '/wallet/ledger/me',
-    '/wallet/topup': '/wallet/topup',
     '/loyalty/balance': '/loyalty/me',
-    '/loyalty/me': '/loyalty/me',
     '/loyalty/history': '/loyalty/ledger/me',
     '/referral/stats': '/referrals/me',
     '/referral/code': '/referrals/me',
     '/referral/apply': '/referrals',
     '/notifications': '/notifications/me',
-    '/payments/methods': '/payments/methods',
     '/payments/create-intent': '/payments/intent',
     '/payments/confirm': '/payments/intent',
-    '/cart': '/cart',
-    '/cart/items': '/cart/items',
     '/checkout': '/orders',
-    '/feedback': '/feedback',
     '/tables/scan': '/stores/tables/scan',
     '/config': '/config/bootstrap',
-    '/config/bootstrap': '/config/bootstrap',
     '/vouchers/validate': '/vouchers/apply',
+  };
+  const exactMap: Record<string, string> = {
+    '/auth/login': '/auth/login',
+    '/auth/logout': '/auth/logout',
+    '/auth/refresh': '/auth/refresh',
+    '/me': '/me',
+    '/me/avatar': '/me/avatar',
+    '/me/addresses': '/me/addresses',
+    '/notifications/me': '/notifications/me',
+    '/notifications/preferences/me': '/notifications/preferences/me',
+    '/payments/methods': '/payments/methods',
+    '/payments/intent': '/payments/intent',
+    '/stores': '/stores',
+    '/stores/tables/scan': '/stores/tables/scan',
+    '/promos/banners': '/promos/banners',
+    '/rewards/catalog': '/rewards/catalog',
+    '/wallet/me': '/wallet/me',
+    '/wallet/ledger/me': '/wallet/ledger/me',
+    '/wallet/topup': '/wallet/topup',
+    '/loyalty/me': '/loyalty/me',
+    '/loyalty/ledger/me': '/loyalty/ledger/me',
+    '/referrals/me': '/referrals/me',
+    '/referrals': '/referrals',
+    '/cart': '/cart',
+    '/cart/items': '/cart/items',
+    '/orders': '/orders',
+    '/feedback': '/feedback',
+    '/config/bootstrap': '/config/bootstrap',
     '/vouchers/apply': '/vouchers/apply',
     '/reservations': '/reservations',
   };
-  if (exactMap[url]) { url = exactMap[url]; return queryPart ? url + queryPart : url; }
+  if (v1ToV3[url]) { url = v1ToV3[url]; return queryPart ? url + queryPart : url; }
+  if (exactMap[url]) { return queryPart ? url + queryPart : url; }
 
   // /users/me/addresses/{id} → /me/addresses/{id}
   if (url.startsWith('/users/me/addresses/')) {
@@ -196,8 +223,8 @@ function unwrapV3(data: any): any {
     return unwrapV3(data.data);
   }
   // Unwrap paginated response: { items, total, page, per_page, total_pages }
-  if (data && typeof data === 'object' && 'items' in data && !Array.isArray(data)) {
-    return unwrapV3(data.items);
+  if (data && typeof data === 'object' && 'items' in data && 'total' in data && !Array.isArray(data)) {
+    return data;
   }
   return data;
 }
@@ -238,14 +265,11 @@ function convertOperatingHours(hours: any[] | undefined): Record<string,string> 
 }
 
 function mapV3Response(url: string, data: any): any {
-  const raw = data; // keep original for paginated wrapper extraction
+  const raw = data;
 
-  // Extract items if this is a paginated response
-  const paginated = unwrapPaginatedV3(data);
-  const unwrapped = paginated ? paginated.items : unwrapV3(data);
-  
-  if (!unwrapped) {
-    // Return empty array for list endpoints
+  const unwrappedRaw = unwrapV3(data);
+
+  if (!unwrappedRaw) {
     if (['/stores','/orders','/rewards/catalog','/rewards/me','/vouchers/me',
          '/notifications/me','/wallet/ledger','/loyalty/ledger','/referrals/me',
          '/surveys','/reservations','/cart','/cart/items','/content/blocks'].some(p => url.includes(p))) {
@@ -253,6 +277,11 @@ function mapV3Response(url: string, data: any): any {
     }
     return null;
   }
+
+  const paginatedObj = (!Array.isArray(unwrappedRaw) && typeof unwrappedRaw === 'object' && 'items' in unwrappedRaw && 'total' in unwrappedRaw)
+    ? unwrappedRaw
+    : null;
+  const unwrapped = paginatedObj ? paginatedObj.items : unwrappedRaw;
 
   // ============================================
   // STORES — map field names
@@ -711,7 +740,7 @@ function mapV3Response(url: string, data: any): any {
   return unwrapped;
 }
 
-let _refreshPromise: Promise<any> | null = null;
+let _refreshPromise: Promise<{ access_token?: string; refresh_token?: string }> | null = null;
 
 api.interceptors.response.use(
   (res) => {
@@ -724,31 +753,35 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
+      let tokens: { access_token?: string; refresh_token?: string } | undefined;
       try {
         if (!_refreshPromise) {
-          _refreshPromise = axios.post(`${API_BASE}/auth/refresh`, {}, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('refreshToken') || ''}`,
-            },
+          _refreshPromise = axios.post(`${API_BASE}/auth/refresh`, {
+            refresh_token: typeof localStorage !== 'undefined' ? (localStorage.getItem('refreshToken') || '') : '',
+          }).then((res) => {
+            const data = res.data;
+            const t = (data?.data?.tokens) || data?.tokens || data;
+            if (t?.access_token) {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('token', t.access_token);
+                if (t.refresh_token) {
+                  localStorage.setItem('refreshToken', t.refresh_token);
+                }
+              }
+            }
+            return t;
           });
         }
-        const response = await _refreshPromise;
-        _refreshPromise = null;
-        const data = response.data;
-        // Unwrap nested v3 response for token extraction
-        const tokens = (data?.data?.tokens) || data?.tokens || data;
+        tokens = await _refreshPromise;
         if (tokens?.access_token) {
-          localStorage.setItem('token', tokens.access_token);
-          if (tokens.refresh_token) {
-            localStorage.setItem('refreshToken', tokens.refresh_token);
-          }
           return api(originalRequest);
         }
       } catch (refreshError: any) {
-        _refreshPromise = null;
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('auth:expired'));
         }
+      } finally {
+        _refreshPromise = null;
       }
     }
     return Promise.reject(error);

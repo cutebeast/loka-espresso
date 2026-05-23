@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Customer, Table } from "@/lib/api";
 
-export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Customer) => void) {
+export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Customer) => void, onTableSelect?: (table: Table) => void) {
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [qrScanMode, setQrScanMode] = useState<"table" | "customer">("table");
   const [scannerError, setScannerError] = useState("");
@@ -60,7 +60,7 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
             const token = match[1];
             const table = tables.find((t) => t.qr_code_token === token);
             if (table) {
-              // Table matched - handled by parent
+              onTableSelect?.(table);
               setShowQrScanner(false);
               scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
               return;
@@ -68,6 +68,7 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
           }
           const tableNum = tables.find((t) => t.table_number === decodedText.trim());
           if (tableNum) {
+            onTableSelect?.(tableNum);
             setShowQrScanner(false);
             scanner.stop().catch((err: unknown) => console.error("Scanner stop failed:", err));
           } else {
@@ -91,7 +92,7 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
     } finally {
       scannerStartingRef.current = false;
     }
-  }, [qrScanMode, tables, onCustomerScan]);
+  }, [qrScanMode, tables, onCustomerScan, onTableSelect]);
 
   const stopScanner = useCallback(() => {
     if (scannerRef.current) {

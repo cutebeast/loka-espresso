@@ -11,9 +11,16 @@ export default function MenuItemsPage() {
   const [catFilter, setCatFilter] = useState("");
   const [categories, setCategories] = useState<any[]>([]);
 
+  const [error, setError] = useState("");
+
   useEffect(() => {
-    api.getRaw<{ items: any[] }>("/admin/menu/items?per_page=100").then(d => setItems(d.items || [])).catch(()=>{}).finally(()=>setLoading(false));
-    api.getRaw<{ items: any[] }>("/admin/menu/categories?per_page=50").then(d => setCategories(d.items || [])).catch(()=>{});
+    api.getRaw<{ items: any[] }>("/admin/menu/items?per_page=100")
+      .then(d => setItems(d.items || []))
+      .catch((e: any) => setError(e.message || "Failed to load menu items"))
+      .finally(() => setLoading(false));
+    api.getRaw<{ items: any[] }>("/admin/menu/categories?per_page=50")
+      .then(d => setCategories(d.items || []))
+      .catch((e: any) => console.error("Failed to load categories:", e));
   }, []);
 
   const filtered = catFilter ? items.filter(i => i.category_id === Number(catFilter)) : items;
@@ -24,9 +31,10 @@ export default function MenuItemsPage() {
         <div><h1 className="page-title">Menu Items</h1><p className="page-subtitle">{items.length} items</p></div>
         <button onClick={() => router.push("/menu/items/new")} className="btn btn-primary btn-sm"><Plus size={16} /> Add Item</button>
       </div>
+      {error && <div className="alert alert-error">{error}</div>}
       <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center" }}>
-        <span style={{ fontSize: 13, fontWeight: 600 }}>Category:</span>
-        <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ padding: "4px 12px", fontSize: 13, borderRadius: "var(--radius-sm)" }}>
+        <label htmlFor="category-filter" style={{ fontSize: 13, fontWeight: 600 }}>Category:</label>
+        <select id="category-filter" value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ padding: "4px 12px", fontSize: 13, borderRadius: "var(--radius-sm)" }}>
           <option value="">All ({items.length})</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
         </select>

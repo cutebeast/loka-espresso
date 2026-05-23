@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw, Upload, Plus, Trash2 } from "lucide-react";
@@ -29,9 +29,7 @@ export default function ItemEditPage() {
   const [uploading,setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(()=>{loadItem(); loadRefs();},[id]);
-
-  const loadRefs = async () => {
+  const loadRefs = useCallback(async () => {
     const raw = (d:any) => Array.isArray(d)?d:(d?.items||[]);
     try{const d=await api.getRaw<any>("/admin/menu/categories?per_page=50");setCategories(raw(d));}catch (e) { console.error(e); }
     try{const d=await api.getRaw<any>("/admin/menu/allergens");setAllergens(raw(d));}catch (e) { console.error(e); }
@@ -39,9 +37,9 @@ export default function ItemEditPage() {
     try{const d=await api.getRaw<any>("/admin/menu/tax-categories");setTaxCategories(raw(d));}catch (e) { console.error(e); }
     try{const d=await api.getRaw<any>("/admin/loyalty/tiers");setLoyaltyTiers(raw(d));}catch (e) { console.error(e); }
     try{const d=await api.getRaw<any>("/admin/stores?per_page=50");setStores(raw(d));}catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const loadItem = async () => {
+  const loadItem = useCallback(async () => {
     setLoading(true);
     try {
       const d = await api.getRaw<any>(`/admin/menu/items/${id}`);
@@ -59,25 +57,46 @@ export default function ItemEditPage() {
       });
       // Load translations
       const x:Record<string,string>={};
-      for(const lc of LOCALES){
-        if(lc.code==="en")continue;
-        try{const rt=await api.getRaw<any>(`/admin/translations?table_name=menu_items&record_id=${id}&locale=${lc.code}&per_page=50`);if(rt?.items)for(const t of rt.items){const f=t.translation_key.split(".").pop()||"";x[`${lc.code}:${f}`]=t.translated_text||"";}}catch (e) { console.error(e); }
+      const itemResults = await Promise.all(
+        LOCALES.filter(lc => lc.code !== "en").map(async (lc) => {
+          try {
+            const rt = await api.getRaw<any>(`/admin/translations?table_name=menu_items&record_id=${id}&locale=${lc.code}&per_page=50`);
+            return { lc: lc.code, rt };
+          } catch (e) { console.error(e); return { lc: lc.code, rt: null }; }
+        })
+      );
+      for (const { lc, rt } of itemResults) {
+        if (rt?.items) for (const t of rt.items) {
+          const f = t.translation_key.split(".").pop() || "";
+          x[`${lc}:${f}`] = t.translated_text || "";
+        }
       }
       const mg = (d.modifier_groups||[]).map((g:any)=>({id:g.id,name:g.group_name,options:(g.options||[]).map((o:any)=>({id:o.id,name:o.option_name}))}));
       setModTr({groups:mg});
       setTr(x);
-      // Load modifier translations for each locale
-      for(const lc of LOCALES){
-        if(lc.code==="en")continue;
-        try{
-          const grt = await api.getRaw<any>(`/admin/translations?table_name=menu_modifier_groups&locale=${lc.code}&per_page=100`);
-          if(grt?.items) for(const t of grt.items){const rid=t.translation_key.split(".").pop()||"";x[`${lc.code}:mod:group_${t.record_id}`]=t.translated_text||"";}
-          const ort = await api.getRaw<any>(`/admin/translations?table_name=menu_modifier_options&locale=${lc.code}&per_page=100`);
-          if(ort?.items) for(const t of ort.items){x[`${lc.code}:mod:opt_${t.record_id}`]=t.translated_text||"";}
-        }catch(e){console.error(e);}
+      // Load modifier translations for each locale (parallel)
+      const modResults = await Promise.all(
+        LOCALES.filter(lc => lc.code !== "en").map(async (lc) => {
+          try {
+            const grt = await api.getRaw<any>(`/admin/translations?table_name=menu_modifier_groups&locale=${lc.code}&per_page=100`);
+            const ort = await api.getRaw<any>(`/admin/translations?table_name=menu_modifier_options&locale=${lc.code}&per_page=100`);
+            return { lc: lc.code, grt, ort };
+          } catch (e) { console.error(e); return { lc: lc.code, grt: null, ort: null }; }
+        })
+      );
+      for (const { lc, grt, ort } of modResults) {
+        if (grt?.items) for (const t of grt.items) {
+          x[`${lc}:mod:group_${t.record_id}`] = t.translated_text || "";
+        }
+        if (ort?.items) for (const t of ort.items) {
+          x[`${lc}:mod:opt_${t.record_id}`] = t.translated_text || "";
+        }
       }
+      setTr({ ...x });
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  };
+  }, [id]);
+
+  useEffect(()=>{loadItem(); loadRefs();},[id, loadItem, loadRefs]);
 
   const toggleTag = (type:"allergen"|"dietary", aid:number) => {
     const key = type==="allergen"?"allergen_ids":"dietary_tag_ids";

@@ -23,6 +23,7 @@ from app.schemas.auth import (
     TokenPair,
 )
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 
 settings = get_settings()
 
@@ -41,26 +42,9 @@ async def register_customer(
     data: CustomerRegisterRequest,
 ) -> Customer:
     """Register a new customer (passwordless / OTP-based)."""
-    # Check for existing email
-    if data.email_address:
-        existing = await db.execute(
-            select(Customer).where(Customer.email_address == data.email_address)
-        )
-        if existing.scalar_one_or_none():
-            raise AuthError("Email already registered", 409)
-    
-    # Check for existing phone
-    if data.phone_number:
-        existing = await db.execute(
-            select(Customer).where(Customer.phone_number == data.phone_number)
-        )
-        if existing.scalar_one_or_none():
-            raise AuthError("Phone number already registered", 409)
-    
-    # Create customer (no password — OTP auth)
+
     import secrets
     referral_code = "LOKA" + secrets.token_hex(3).upper()
-    # Ensure uniqueness
     for _ in range(5):
         existing = await db.execute(select(Customer).where(Customer.referral_code == referral_code))
         if not existing.scalar_one_or_none():
@@ -139,7 +123,19 @@ async def register_customer(
         )
         db.add(device)
     
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        if data.email_address:
+            email_check = await db.execute(select(Customer.id).where(Customer.email_address == data.email_address))
+            if email_check.scalar_one_or_none():
+                raise AuthError("Email already registered", 409)
+        if data.phone_number:
+            phone_check = await db.execute(select(Customer.id).where(Customer.phone_number == data.phone_number))
+            if phone_check.scalar_one_or_none():
+                raise AuthError("Phone number already registered", 409)
+        raise AuthError("Duplicate customer", 409)
     await db.refresh(customer)
     return customer
 

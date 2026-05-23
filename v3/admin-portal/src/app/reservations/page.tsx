@@ -16,7 +16,8 @@ export default function ReservationsPage() {
 
   useEffect(() => { api.get<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(()=>{}); }, []);
 
-  const fetch = () => { setLoading(true);
+  const fetch = useCallback(() => {
+    setLoading(true);
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (date) { params.set("date_from", date); params.set("date_to", date); }
@@ -25,8 +26,9 @@ export default function ReservationsPage() {
       .then(d => setItems(Array.isArray(d) ? d : (d.items || [])))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  };
-  useEffect(() => { fetch(); }, [status, date, storeId]);
+  }, [status, date, storeId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
 
   const updateStatus = async (id: number, s: string) => { if (!confirm(`${s} this reservation?`)) return;
     try { await api.patch(`/admin/reservations/${id}/status`, { status: s }); fetch(); } catch (e) { console.error(e); }; };
@@ -61,10 +63,10 @@ export default function ReservationsPage() {
             <td>{sb(r.status)}</td>
             <td>
               <div style={{ display: "flex", gap: 4 }}>
-                {r.status === "requested" && <button onClick={() => updateStatus(r.id, "confirmed")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Confirm</button>}
-                {r.status === "confirmed" && <button onClick={() => updateStatus(r.id, "seated")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Seat</button>}
-                {r.status === "seated" && <button onClick={() => updateStatus(r.id, "completed")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Complete</button>}
-                {(r.status === "requested" || r.status === "confirmed") && <button onClick={() => updateStatus(r.id, "cancelled")} className="btn btn-sm btn-ghost" style={{ fontSize: 11, color: "var(--color-error)" }}>Cancel</button>}
+                {r.status === "requested" && <button type="button" onClick={() => updateStatus(r.id, "confirmed")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Confirm</button>}
+                {r.status === "confirmed" && <button type="button" onClick={() => updateStatus(r.id, "seated")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Seat</button>}
+                {r.status === "seated" && <button type="button" onClick={() => updateStatus(r.id, "completed")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Complete</button>}
+                {(r.status === "requested" || r.status === "confirmed") && <button type="button" onClick={() => updateStatus(r.id, "cancelled")} className="btn btn-sm btn-ghost" style={{ fontSize: 11, color: "var(--color-error)" }}>Cancel</button>}
               </div>
             </td>
           </tr>))}

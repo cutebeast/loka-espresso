@@ -7,7 +7,7 @@ import { TableQrInfo, QR_EXPIRY_SECONDS } from "./useQrExpiry";
 export function useQrImages(tables: TableQrInfo[], storeId: number | string) {
   const [qrUrls, setQrUrls] = useState<Record<number, string>>({});
   const prevKey = useRef("");
-  const blobUrlsRef = useRef<string[]>([]);
+  const generationIdRef = useRef(0);
 
   const generateAll = useCallback(
     async (tableList: TableQrInfo[], now: number, signal: AbortSignal | null): Promise<Record<number, string>> => {
@@ -42,21 +42,21 @@ export function useQrImages(tables: TableQrInfo[], storeId: number | string) {
   useEffect(() => {
     const storeKey = String(storeId);
     if (!storeKey || !tables.length) {
-      blobUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
-      blobUrlsRef.current = [];
+      setQrUrls({});
       return;
     }
 
+    // Key includes qr_generated_at so any timestamp update triggers regeneration
+    // (intentional: ensures QR data matches the current backend state)
     const key = `${storeKey}:${tables.map((t) => `${t.id}:${t.qr_generated_at || "none"}`).join(",")}`;
     if (key === prevKey.current) return;
     prevKey.current = key;
 
-    blobUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
-    blobUrlsRef.current = [];
-
     const abortCtrl = new AbortController();
+    const genId = ++generationIdRef.current;
     generateAll(tables, Date.now(), abortCtrl.signal).then((urls) => {
-      blobUrlsRef.current = Object.values(urls).filter((u) => u.startsWith("blob:"));
+      if (abortCtrl.signal.aborted) return;
+      if (genId !== generationIdRef.current) return;
       setQrUrls(urls);
     });
     return () => abortCtrl.abort();

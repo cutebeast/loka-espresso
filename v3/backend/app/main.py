@@ -23,6 +23,7 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    settings.upload_dir.mkdir(parents=True, exist_ok=True)
     yield
     # Shutdown
     await engine.dispose()
@@ -52,8 +53,7 @@ app.add_middleware(
 )
 app.add_middleware(RequestLoggingMiddleware)
 
-# Static files for uploads
-settings.upload_dir.mkdir(parents=True, exist_ok=True)
+# Static files for uploads (directory creation moved to lifespan startup)
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
 # API routes

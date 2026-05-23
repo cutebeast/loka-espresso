@@ -87,4 +87,4 @@ class CartLineItem(Base):
     )
 
 
-# Legacy — CheckoutSession only used in customer PWA flow, not admin
+

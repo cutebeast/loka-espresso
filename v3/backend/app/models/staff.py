@@ -49,6 +49,8 @@ class StaffProfile(Base, SoftDeleteMixin, TimestampMixin):
     tip_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    failed_login_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     principal: Mapped["IAMPrincipal"] = relationship("IAMPrincipal", back_populates="staff_profile")
     store: Mapped["Store"] = relationship("Store")
@@ -65,6 +67,7 @@ class StaffProfile(Base, SoftDeleteMixin, TimestampMixin):
             name="ck_staff_profiles_role",
         ),
         CheckConstraint("hourly_rate >= 0", name="ck_staff_profiles_hourly_rate"),
+        CheckConstraint("failed_login_count >= 0", name="ck_staff_profiles_failed_login_count"),
     )
 
 
@@ -165,8 +168,8 @@ class TipAllocation(Base):
     order_id: Mapped[int] = mapped_column(
         ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
     )
-    staff_id: Mapped[int] = mapped_column(
-        ForeignKey("staff_profiles.id", ondelete="CASCADE"), nullable=False
+    staff_id: Mapped[int | None] = mapped_column(
+        ForeignKey("staff_profiles.id", ondelete="SET NULL"), nullable=True
     )
     tip_amount: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
     tip_percentage: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)

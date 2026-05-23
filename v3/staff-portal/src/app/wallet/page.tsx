@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   searchCustomers, getCustomerWallet, getCustomerById, topUpWallet, api,
-  useReward, useVoucher, scanCustomerCode, scanRewardCode, scanVoucherCode,
+  markRewardUsed, markVoucherUsed, scanCustomerCode, scanRewardCode, scanVoucherCode,
   type Customer, type CustomerWallet, type Reward, type Voucher
 } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
@@ -41,7 +41,14 @@ export default function WalletPage() {
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
   const [toppingUp, setToppingUp] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(0);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
 
   // QR Scanner
   const [showScanner, setShowScanner] = useState(false);
@@ -50,6 +57,13 @@ export default function WalletPage() {
   // Redeem state
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
   const [redeemType, setRedeemType] = useState<"reward" | "voucher" | null>(null);
+
+  // Redeem PIN state
+  const [showRedeemPin, setShowRedeemPin] = useState(false);
+  const [redeemPin, setRedeemPin] = useState("");
+  const [pendingRedeem, setPendingRedeem] = useState<{ reward?: Reward; voucher?: Voucher } | null>(null);
+
+  const MAX_TOPUP = 100000;
 
   const doSearch = useCallback(async (q: string) => {
     if (q.length < 2) { setSearchResults([]); return; }
@@ -119,6 +133,8 @@ export default function WalletPage() {
 
   const verifyPin = async (): Promise<boolean> => {
     try {
+      const delay = Math.min(3000, attemptCount * 1000);
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
       const d = await api.post<{ valid?: boolean; data?: { valid?: boolean } }>("/staff/auth/verify-pin", { pin });
       return (d?.valid || d?.data?.valid) === true;
     } catch (e) { console.error("PIN verification failed:", e); return false; }
@@ -127,10 +143,12 @@ export default function WalletPage() {
   const handleTopUp = async () => {
     const amt = parseFloat(amount);
     if (!selectedCustomer || !amount || isNaN(amt) || amt <= 0) return;
+    if (amt > MAX_TOPUP) { setError(`Maximum top-up is RM ${MAX_TOPUP.toLocaleString()}`); return; }
     setToppingUp(true);
     try {
       const valid = await verifyPin();
-      if (!valid) { setError("Invalid PIN"); setToppingUp(false); return; }
+      if (!valid) { setAttemptCount((c) => c + 1); setError("Invalid PIN"); setToppingUp(false); return; }
+      setAttemptCount(0);
       const res = await topUpWallet({
         customer_id: selectedCustomer.id,
         amount: parseFloat(amount),
@@ -146,24 +164,46 @@ export default function WalletPage() {
 
   const handleUseReward = async (reward: Reward) => {
     if (!selectedCustomer) return;
-    setRedeemingId(reward.id);
-    setRedeemType("reward");
-    try {
-      const res = await useReward(selectedCustomer.id, reward.id);
-      setSuccess(res.message || "Reward used successfully");
-      if (selectedCustomer) loadCustomer(selectedCustomer);
-    } catch (e: any) { setError(e.message); } finally { setRedeemingId(null); setRedeemType(null); }
+    setPendingRedeem({ reward });
+    setShowRedeemPin(true);
+    setRedeemPin("");
   };
 
   const handleUseVoucher = async (voucher: Voucher) => {
     if (!selectedCustomer) return;
-    setRedeemingId(voucher.id);
-    setRedeemType("voucher");
-    try {
-      const res = await useVoucher(selectedCustomer.id, voucher.id);
-      setSuccess(res.message || "Voucher used successfully");
-      if (selectedCustomer) loadCustomer(selectedCustomer);
-    } catch (e: any) { setError(e.message); } finally { setRedeemingId(null); setRedeemType(null); }
+    setPendingRedeem({ voucher });
+    setShowRedeemPin(true);
+    setRedeemPin("");
+  };
+
+  const executeRedeem = async () => {
+    if (!pendingRedeem || !selectedCustomer) return;
+    const valid = await verifyPin();
+    if (!valid) { setAttemptCount((c) => c + 1); setError("Invalid PIN"); return; }
+    setAttemptCount(0);
+    setShowRedeemPin(false);
+    setRedeemPin("");
+
+    if (pendingRedeem.reward) {
+      const reward = pendingRedeem.reward;
+      setRedeemingId(reward.id);
+      setRedeemType("reward");
+      try {
+        const res = await markRewardUsed(selectedCustomer.id, reward.id);
+        setSuccess(res.message || "Reward used successfully");
+        if (selectedCustomer) loadCustomer(selectedCustomer);
+      } catch (e: any) { setError(e.message); } finally { setRedeemingId(null); setRedeemType(null); }
+    } else if (pendingRedeem.voucher) {
+      const voucher = pendingRedeem.voucher;
+      setRedeemingId(voucher.id);
+      setRedeemType("voucher");
+      try {
+        const res = await markVoucherUsed(selectedCustomer.id, voucher.id);
+        setSuccess(res.message || "Voucher used successfully");
+        if (selectedCustomer) loadCustomer(selectedCustomer);
+      } catch (e: any) { setError(e.message); } finally { setRedeemingId(null); setRedeemType(null); }
+    }
+    setPendingRedeem(null);
   };
 
   const formatRewardName = (r: Reward) => {
@@ -300,6 +340,7 @@ export default function WalletPage() {
               <label className="form-label">Top-Up Amount</label>
               <input
                 type="number"
+                inputMode="decimal"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder="0.00"
@@ -353,6 +394,7 @@ export default function WalletPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <input
                     type="password"
+                    inputMode="numeric"
                     value={pin}
                     onChange={e => setPin(e.target.value)}
                     placeholder="Enter 4-digit PIN"
@@ -375,6 +417,37 @@ export default function WalletPage() {
 
           {tab === "rewards" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Redeem PIN Entry */}
+              {showRedeemPin && (
+                <Card style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
+                    Enter your PIN to confirm
+                  </div>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    value={redeemPin}
+                    onChange={e => setRedeemPin(e.target.value)}
+                    placeholder="4 digits"
+                    maxLength={6}
+                    className="form-input"
+                    style={{ textAlign: "center", fontSize: 24, letterSpacing: 8, marginBottom: 16 }}
+                    autoFocus
+                  />
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button className="btn btn-ghost flex-1" onClick={() => { setShowRedeemPin(false); setRedeemPin(""); setPendingRedeem(null); }}>
+                      Cancel
+                    </button>
+                    <button
+                      className="btn btn-primary flex-1"
+                      onClick={executeRedeem}
+                      disabled={redeemPin.length < 4}
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </Card>
+              )}
               {/* Rewards */}
               <Card title={`Available Rewards (${walletData.rewards?.length || 0})`}>
                 {(!walletData.rewards || walletData.rewards.length === 0) ? (

@@ -5,9 +5,11 @@ interface NumericKeypadProps {
   onBackspace?: () => void;
   onClear?: () => void;
   className?: string;
+  value?: string;
 }
 
-export default function NumericKeypad({ onPress, onBackspace, onClear, className = "" }: NumericKeypadProps) {
+export default function NumericKeypad({ onPress, onBackspace, onClear, className = "", value = "" }: NumericKeypadProps) {
+  const hasDecimal = value.includes(".");
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "←"];
 
   return (
@@ -19,6 +21,7 @@ export default function NumericKeypad({ onPress, onBackspace, onClear, className
           className="keypad-btn"
           onClick={() => {
             if (key === "←") onBackspace?.();
+            else if (key === "." && hasDecimal) return;
             else onPress(key);
           }}
           aria-label={key === "←" ? "Backspace" : key}

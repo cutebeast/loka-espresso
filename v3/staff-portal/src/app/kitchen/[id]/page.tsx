@@ -16,7 +16,8 @@ const STATUS_FLOW: Record<string, { next: OrderStatus[]; label: string; color: s
   preparing: { next: ["ready_for_pickup", "cancelled_by_merchant"], label: "Preparing", color: "orange" },
   ready_for_pickup: { next: ["delivered", "cancelled_by_merchant"], label: "Ready", color: "green" },
   delivered: { next: [], label: "Delivered", color: "green" },
-  cancelled_by_merchant: { next: [], label: "Cancelled", color: "red" },
+  cancelled_by_customer: { next: [], label: "Cancelled (Customer)", color: "red" },
+  cancelled_by_merchant: { next: [], label: "Cancelled (Merchant)", color: "red" },
 };
 
 const STATUS_ORDER = ["pending", "confirmed", "preparing", "ready_for_pickup", "delivered"];

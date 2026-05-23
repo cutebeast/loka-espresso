@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ArrowLeft, Wallet, Banknote, CheckCircle2, Loader2, UtensilsCrossed, Coffee, Tag, QrCode, ChevronRight, Utensils, Store,
 } from 'lucide-react';
@@ -67,13 +67,16 @@ export default function CheckoutPage() {
   useEffect(() => { refreshWallet(); }, [refreshWallet]);
   useEffect(() => { if (user && !checkoutDraft.recipientName && !recipientName) { setRecipientName(user.name || ''); setRecipientPhone(user.phone || ''); } }, [user]);
   // Migrate legacy drafts that stored voucher/reward without discountType
+  const migratedDraft = useRef(false);
   useEffect(() => {
+    if (migratedDraft.current) return;
     if (!discountType && !discountCode) {
-      if (checkoutDraft.voucherCode) { setDiscountType('voucher'); setDiscountCode(checkoutDraft.voucherCode); }
-      else if (checkoutDraft.rewardCode) { setDiscountType('reward'); setDiscountCode(checkoutDraft.rewardCode); }
+      if (checkoutDraft.voucherCode) { migratedDraft.current = true; setDiscountType('voucher'); setDiscountCode(checkoutDraft.voucherCode); }
+      else if (checkoutDraft.rewardCode) { migratedDraft.current = true; setDiscountType('reward'); setDiscountCode(checkoutDraft.rewardCode); }
+    } else {
+      migratedDraft.current = true;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [checkoutDraft.voucherCode, checkoutDraft.rewardCode]);
 
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? (selectedStore?.delivery_fee ?? config.delivery_fee) : 0;
@@ -84,23 +87,24 @@ export default function CheckoutPage() {
   const walletSufficient = balance >= total;
 
   // Delivery radius: check distance from store to delivery address (not user location)
-  const deliveryOutOfRange = (() => {
+  const deliveryOutOfRange = useMemo(() => {
     if (orderMode !== 'delivery' || !selectedStore?.lat || !selectedStore?.lng || !deliveryAddress?.lat || !deliveryAddress?.lng) return false;
     const radius = selectedStore.delivery_radius_km;
     if (radius == null || radius <= 0) return false;
     const dist = haversineKm(selectedStore.lat, selectedStore.lng, deliveryAddress.lat, deliveryAddress.lng);
     return dist > radius;
-  })();
+  }, [orderMode, selectedStore?.lat, selectedStore?.lng, selectedStore?.delivery_radius_km, deliveryAddress?.lat, deliveryAddress?.lng]);
 
   const saveDraft = () => {
     setCheckoutDraft({ orderMode, selectedStore, deliveryAddress, pickupTime, paymentMethod, notes: orderNote, discountType, discountCode, recipientName, recipientPhone, deliveryInstructions: deliveryInstr });
     setDraftSaved(true);
-    const t = setTimeout(() => setDraftSaved(false), 1500);
-    return () => clearTimeout(t);
+    setTimeout(() => setDraftSaved(false), 1500);
   };
 
   const handlePlaceOrder = async () => {
     const missing = new Set<string>();
+    const storeId = selectedStore?.id ?? dineInSession?.storeId ?? null;
+    if (!storeId || storeId === 0) missing.add('store');
     if (orderMode === 'delivery' && !deliveryAddress?.address) missing.add('address');
     if (orderMode === 'pickup' && !selectedStore) missing.add('store');
     if (orderMode !== 'dine_in' && !pickupTime) missing.add('time');
@@ -110,7 +114,7 @@ export default function CheckoutPage() {
     setPlacing(true);
     try {
       const result: any = await placeOrder({
-        storeId: selectedStore?.id || dineInSession?.storeId || 0, orderType: orderMode,
+        storeId: storeId!, orderType: orderMode,
         deliveryAddress: deliveryAddress || undefined, pickupTime: pickupTime || undefined,
         paymentMethod, notes: notes || orderNote,
         recipientName: recipientName || undefined, recipientPhone: recipientPhone || undefined,
@@ -236,7 +240,7 @@ export default function CheckoutPage() {
               const cust = item.customizations as CustomizationStructure | undefined;
               const tags = cust?.options?.map((o) => { const name = o.name || ''; const colonIdx = name.indexOf(': '); return colonIdx >= 0 ? name.slice(colonIdx + 2) : name; }) || [];
               return (
-                <div key={i} className="co-order-item-row">
+                <div key={`${item.menu_item_id}-${JSON.stringify((item.customization_option_ids ?? []).sort())}`} className="co-order-item-row">
                   <div className="co-order-item-thumb">{item.image_url && !brokenImages.has(item.menu_item_id) ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.name} loading="lazy" onError={() => setBrokenImages(prev => new Set(prev).add(item.menu_item_id))} /> : <Coffee size={18} color={LOKA.primary} />}</div>
                   <div className="co-order-item-info">
                     <div className="co-order-item-name">{item.name}</div>
@@ -258,7 +262,7 @@ export default function CheckoutPage() {
       <div className="checkout-footer">
         <div className="checkout-footer-row">
           <div><div className="checkout-footer-total-label">{t('cart.total')}</div><div className="checkout-footer-total">{formatPrice(total)}</div></div>
-          <div className="checkout-footer-count">{t('cart.itemCount', { count: items.length })}</div>
+          <div className="checkout-footer-count">{t('cart.itemCount', { count: itemCount })}</div>
         </div>
         {requiresWallet && !walletSufficient ? (
           <button className="co-topup-btn" onClick={() => setPage('wallet')}><Wallet size={18} /> {t('checkout.topUpToContinue', { amount: formatPrice(total - balance) })}</button>

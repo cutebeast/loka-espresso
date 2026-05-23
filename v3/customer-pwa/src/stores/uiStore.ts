@@ -133,9 +133,14 @@ export const useUIStore = create<UIState>()(
           const paramStr = params ? new URLSearchParams(
             Object.entries(params).filter(([_, v]) => v != null).map(([k, v]) => [k, String(v)])
           ).toString() : '';
-          window.location.hash = paramStr ? `${page}?${paramStr}` : page;
+          const newHash = paramStr ? `${page}?${paramStr}` : page;
+          if (window.location.hash === `#${newHash}`) {
+            set((state) => ({ page, pageParams: params ?? {}, previousPage: state.page }));
+            return;
+          }
+          window.location.hash = newHash;
         }
-        set((state) => ({ page, pageParams: params ?? {}, previousPage: state.page }));
+        set((state) => ({ page, pageParams: params ?? {} }));
       },
       setOrderMode: (orderMode) => set({ orderMode }),
       setDineInSession: (dineInSession) => set({ dineInSession }),

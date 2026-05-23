@@ -9,7 +9,6 @@ import api from '@/lib/api';
 import type { Order, CartItem } from '@/lib/api';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
-import { getLocale } from '@/stores/localeStore';
 
 const PICKUP_STEPS = ['orders.steps.pending', 'orders.steps.confirmed', 'orders.steps.preparing', 'orders.steps.ready', 'orders.steps.completed'];
 const DELIVERY_STEPS = ['orders.steps.pending', 'orders.steps.confirmed', 'orders.steps.preparing', 'orders.steps.ready', 'orders.steps.outForDelivery', 'orders.steps.completed'];
@@ -36,7 +35,7 @@ function stepIdx(status: string, orderType?: string): number {
 }
 
 export default function OrderDetailPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { pageParams, setPage, showToast } = useUIStore();
   const { currentOrder, setCurrentOrder, updateOrder } = useOrderStore();
   const { clearCart } = useCartStore();
@@ -99,7 +98,7 @@ export default function OrderDetailPage() {
 
   const handleShare = () => {
     if (!order) return;
-    const dateStr = new Date(order.created_at).toLocaleString(getLocale());
+    const dateStr = new Date(order.created_at).toLocaleString(locale);
     const statusKey = `orders.status.${order.status?.toLowerCase()}`;
     const statusLabel = t(statusKey);
     const lines = [
@@ -149,7 +148,7 @@ export default function OrderDetailPage() {
           <div className="od-eta-card">
             <div className="od-eta-title">{order.order_type === 'delivery' ? t('orderDetail.estimatedDelivery') : t('orderDetail.estimatedReady')}</div>
             <div className="od-eta-time">
-              {order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+              {order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '--:--'}
             </div>
             <div className="od-eta-sub">{order.order_type === 'delivery' ? t('orderDetail.preparingDelivery') : order.order_type === 'dine_in' ? t('orderDetail.preparingDineIn') : t('orderDetail.preparingPickup')}</div>
             <div className="od-eta-progress"><div className="od-eta-fill" style={{ width: `${Math.min((current / steps.length) * 100, 100)}%` }} /></div>
@@ -243,7 +242,7 @@ export default function OrderDetailPage() {
               ? ((item.customizations as Record<string, unknown>)?.options as Array<{ name?: string }>)?.map((o) => { const n = o.name || ''; const px = n.indexOf(': '); return px >= 0 ? n.slice(px + 2) : n; })?.join(' · ') || ''
               : '';
             return (
-              <div key={i} className="od-item-row">
+              <div key={(item as any).id ?? i} className="od-item-row">
                 <div className="od-item-thumb">
                   {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.name || 'Menu item'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={18} color={LOKA.primary} />}
                 </div>

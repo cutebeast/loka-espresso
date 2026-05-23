@@ -53,6 +53,9 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
         transition={{ type: 'spring', damping: 28, stiffness: 320 }}
         onClick={(e) => e.stopPropagation()}
         className="store-picker-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('storePicker.title')}
       >
         <div className="store-picker-handle-bar">
           <div className="store-picker-handle" />

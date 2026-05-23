@@ -30,11 +30,11 @@ function urgencyLevel(order: Order): "normal" | "warning" | "critical" | "overdu
   return "normal";
 }
 
-const urgencyStyles: Record<string, string> = {
-  normal: "border-gray-200",
-  warning: "border-yellow-400 bg-yellow-50/30",
-  critical: "border-red-400 bg-red-50/30",
-  overdue: "border-red-500 bg-red-50 ring-2 ring-red-300 animate-pulse",
+const urgencyStyles: Record<string, { border: string; background: string }> = {
+  normal: { border: "#e5e7eb", background: "transparent" },
+  warning: { border: "#facc15", background: "rgba(254, 252, 232, 0.3)" },
+  critical: { border: "#f87171", background: "rgba(254, 242, 242, 0.3)" },
+  overdue: { border: "#ef4444", background: "#fef2f2" },
 };
 
 const typeIcons: Record<string, React.ReactNode> = {
@@ -67,10 +67,19 @@ const nextMap: Partial<Record<OrderStatus, OrderStatus | null>> = {
   delivered: null,
   cancelled_by_customer: null,
   cancelled_by_merchant: null,
+  refunded: null,
+  partially_refunded: null,
+  disputed: null,
+};
+const reverseMap: Partial<Record<OrderStatus, OrderStatus | null>> = {
+  confirmed: "pending",
+  preparing: "confirmed",
+  ready_for_pickup: "preparing",
 };
 
 export default function OrderCard({ order, onClick, onQuickAction, compact = false }: OrderCardProps) {
   const urgency = urgencyLevel(order);
+  const urgencyStyle = urgencyStyles[urgency];
   const next = nextMap[order.status];
   const orderType = order.order_type as keyof typeof typeLabels;
   const typeLabel = typeLabels[orderType] || order.order_type;
@@ -85,7 +94,8 @@ export default function OrderCard({ order, onClick, onQuickAction, compact = fal
     <div
       role="button"
       tabIndex={0}
-      className={`bg-white rounded-xl border p-4 shadow-sm hover:shadow-md transition cursor-pointer ${urgencyStyles[urgency]} ${compact ? "" : "mb-3"}`}
+      className={`bg-white rounded-xl border p-4 shadow-sm hover:shadow-md transition cursor-pointer ${urgency === "overdue" ? "ring-red-300 animate-pulse" : ""} ${compact ? "" : "mb-3"}`}
+      style={urgency !== "normal" ? { borderColor: urgencyStyle.border, backgroundColor: urgencyStyle.background } : undefined}
       onClick={() => onClick?.(order)}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(order); } }}
     >
@@ -141,7 +151,7 @@ export default function OrderCard({ order, onClick, onQuickAction, compact = fal
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="font-semibold text-gray-700">RM {typeof order.total_amount === "number" ? order.total_amount.toFixed(2) : "0.00"}</span>
+          <span className="font-semibold text-gray-700">RM {typeof order.total_amount === "number" && !isNaN(order.total_amount) ? order.total_amount.toFixed(2) : "0.00"}</span>
           {next && onQuickAction && (
             <button
               type="button"

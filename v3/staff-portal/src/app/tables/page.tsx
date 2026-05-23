@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getTables, generateTableQr, updateTableStatus, type Table } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
@@ -29,6 +29,12 @@ export default function TablesPage() {
   const [generatingQr, setGeneratingQr] = useState<number | null>(null);
   const [confirmClean, setConfirmClean] = useState<Table | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
 
   const fetchTables = useCallback(async () => {
     if (!storeId) return;
@@ -68,6 +74,7 @@ export default function TablesPage() {
     occupied: tables.filter((t) => t.current_status === "occupied").length,
     reserved: tables.filter((t) => t.current_status === "reserved").length,
     cleaning: tables.filter((t) => t.current_status === "cleaning").length,
+    maintenance: tables.filter((t) => t.current_status === "maintenance").length,
   }), [tables]);
 
   const handleGenerateQr = async (table: Table) => {
@@ -109,6 +116,7 @@ export default function TablesPage() {
       case "occupied": return "var(--color-error)";
       case "reserved": return "var(--color-warning)";
       case "cleaning": return "var(--color-text-muted)";
+      case "maintenance": return "var(--color-info)";
       default: return "var(--color-text-muted)";
     }
   };
@@ -147,6 +155,7 @@ export default function TablesPage() {
           { label: "Occupied", count: statusCounts.occupied, color: "var(--color-error)" },
           { label: "Reserved", count: statusCounts.reserved, color: "var(--color-warning)" },
           { label: "Cleaning", count: statusCounts.cleaning, color: "var(--color-text-muted)" },
+          { label: "Maintenance", count: statusCounts.maintenance, color: "var(--color-info)" },
         ].map((s) => (
           <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
             <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.color }} />
@@ -191,6 +200,8 @@ export default function TablesPage() {
               <div
                 key={table.id}
                 className="card"
+                role="button"
+                tabIndex={0}
                 style={{
                   borderLeft: `4px solid ${statusColor(table.current_status)}`,
                   cursor: "pointer",
@@ -198,6 +209,7 @@ export default function TablesPage() {
                   transition: "transform 0.1s",
                 }}
                 onClick={() => setSelectedTable(table)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedTable(table); } }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                   <div>
@@ -319,6 +331,20 @@ export default function TablesPage() {
               {selectedTable.current_status === "occupied" && (
                 <button className="btn btn-outline flex-1" onClick={() => handleMarkCleaned(selectedTable)}>
                   <CheckCircle size={14} /> Mark as Cleaned
+                </button>
+              )}
+              {selectedTable.current_status !== "maintenance" && (
+                <button className="btn btn-outline flex-1" onClick={async () => {
+                  try {
+                    await updateTableStatus(storeId, selectedTable.id, "maintenance");
+                    await fetchTables();
+                    setSelectedTable(null);
+                    setSuccess(`Table ${selectedTable.table_number} set to maintenance`);
+                    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+                    successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
+                  } catch (err: any) { setError(err.message); }
+                }}>
+                  <AlertTriangle size={14} /> Maintenance
                 </button>
               )}
             </div>
