@@ -74,10 +74,10 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
 
       <div className="myrv-tab-bar">
         <button className={`myrv-tab ${activeTab === 'rewards' ? 'active' : ''}`} onClick={() => setActiveTab('rewards')}>
-          My Rewards <span className="count">{availableRewards.length}</span>
+          {t('myRewards.tabRewards')} <span className="count">{availableRewards.length}</span>
         </button>
         <button className={`myrv-tab ${activeTab === 'vouchers' ? 'active' : ''}`} onClick={() => setActiveTab('vouchers')}>
-          My Vouchers <span className="count">{availableVouchers.length}</span>
+          {t('myRewards.tabVouchers')} <span className="count">{availableVouchers.length}</span>
         </button>
       </div>
 
@@ -111,7 +111,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                       </span>
                     )}
                     {reward.expires_at && (
-                      <div className="myrv-item-expiry">Expires {formatDate(reward.expires_at)}</div>
+                      <div className="myrv-item-expiry">{t('myRewards.expires', { date: formatDate(reward.expires_at) })}</div>
                     )}
                   </div>
                 </div>
@@ -148,7 +148,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                     </span>
                   )}
                   {voucher.expires_at && (
-                    <div className="myrv-voucher-expiry">Expires {formatDate(voucher.expires_at)}</div>
+                    <div className="myrv-voucher-expiry">{t('myRewards.expires', { date: formatDate(voucher.expires_at) })}</div>
                   )}
                 </div>
               </div>
@@ -173,7 +173,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
               </div>
             </div>
             {selectedReward.expires_at && (
-              <div className="myrv-sheet-expiry">Expires {formatDate(selectedReward.expires_at)}</div>
+              <div className="myrv-sheet-expiry">{t('myRewards.expires', { date: formatDate(selectedReward.expires_at) })}</div>
             )}
             <button className="myrv-sheet-close-btn" onClick={() => setSelectedReward(null)}>{t('common.done')}</button>
           </div>
@@ -204,7 +204,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
               </div>
             </div>
             {selectedVoucher.expires_at && (
-              <div className="myrv-sheet-expiry">Expires {formatDate(selectedVoucher.expires_at)}</div>
+              <div className="myrv-sheet-expiry">{t('myRewards.expires', { date: formatDate(selectedVoucher.expires_at) })}</div>
             )}
             <button className="myrv-sheet-close-btn" onClick={() => setSelectedVoucher(null)}>{t('common.done')}</button>
           </div>

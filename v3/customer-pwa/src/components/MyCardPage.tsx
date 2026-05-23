@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { ArrowLeft, Share2, QrCode, Star, Clock, Settings } from 'lucide-react';
+import { ArrowLeft, Share2, QrCode, Clock, Settings } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -59,7 +59,6 @@ export default function MyCardPage() {
     } catch { /* cancelled */ }
   };
 
-  const initials = user?.name?.charAt(0)?.toUpperCase() || '';
   const memberId = user?.id ? `${t('myCard.memberIdPrefix')}${String(user.id).padStart(6, '0')}` : '';
 
   const displayTiers = tiersFromStore.length > 0 ? tiersFromStore.map(t => t.name) : [tier || 'Member'];

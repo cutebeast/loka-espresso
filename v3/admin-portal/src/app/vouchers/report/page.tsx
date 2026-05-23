@@ -6,7 +6,7 @@ export default function VoucherReportPage() {
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    api.get<{items:any[]}>("/admin/vouchers?per_page=100").then(d => setVouchers(Array.isArray(d) ? d : (d.items||[]))).catch(()=>{}).finally(() => setLoading(false));
+    api.get<{items:any[]}>("/admin/vouchers?per_page=100").then(d => setVouchers(Array.isArray(d) ? d : (d.items||[]))).catch((e)=>{console.error('vouchers:',e)}).finally(() => setLoading(false));
   }, []);
   const totalUsed = vouchers.reduce((s:number,v:any) => s + (v.global_use_count||0), 0);
   return (

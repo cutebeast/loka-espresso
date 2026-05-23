@@ -29,7 +29,7 @@ function formatPoints(value: number): string {
   return value.toLocaleString(getLocale());
 }
 
-export default function WalletCard({ isGuest, isAuthenticated, balance, points, tier, onTopUp, onRewards, onVouchers, onSignIn }: WalletCardProps) {
+export default function WalletCard({ isGuest: _isGuest, isAuthenticated, balance, points, tier, onTopUp, onRewards, onVouchers, onSignIn }: WalletCardProps) {
   const { t } = useTranslation();
   const amountRef = useRef<HTMLSpanElement>(null);
 

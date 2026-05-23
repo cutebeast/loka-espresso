@@ -39,7 +39,7 @@ export default function PwaTranslationsTab() {
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<string>("");
   const [search, setSearch] = useState("");
-  const [saving, setSaving] = useState<number | null>(null);
+  const [_saving, setSaving] = useState<number | null>(null);
   const [msg, setMsg] = useState("");
   const [regenerating, setRegenerating] = useState<string | false>(false);
   const [translateProgress, setTranslateProgress] = useState("");
@@ -51,7 +51,7 @@ export default function PwaTranslationsTab() {
       const results = await Promise.all(
         LOCALES.map((loc) =>
           api
-            .getRaw<{ items: Translation[] }>(`/translations?namespace=pwa-ui&locale=${loc}&per_page=2000`)
+            .getRaw<{ items: Translation[] }>(`/admin/translations?namespace=pwa-ui&locale=${loc}&per_page=2000`)
             .catch((e) => { console.error(`Failed to fetch ${loc}:`, e); return null; })
         )
       );
@@ -97,7 +97,6 @@ export default function PwaTranslationsTab() {
         namespace: existing.namespace,
       });
     } else {
-      const section = sectionFor(key);
       await api.post("/translations", {
         translation_key: key,
         locale,

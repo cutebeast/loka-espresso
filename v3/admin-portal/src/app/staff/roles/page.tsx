@@ -26,6 +26,7 @@ export default function StaffRolesPage() {
   const [form, setForm] = useState({ display_name: "", description: "", role_key: "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [assigningRole, setAssigningRole] = useState<number | null>(null);
   const [rolePerms, setRolePerms] = useState<number[]>([]);
 
@@ -34,7 +35,7 @@ export default function StaffRolesPage() {
     api.get<Role[] | { items: Role[] }>("/admin/auth/roles").then(d => {
       const all = Array.isArray(d) ? d : (d.items || []);
       setRoles(all.filter((r: Role) => STAFF_ROLE_KEYS.includes(r.role_key)));
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch((e) => { console.error('staff roles:', e); }).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export default function StaffRolesPage() {
       const all = Array.isArray(d) ? d : (d.items || []);
       // Only staff portal permissions (28-37)
       setPermissions(all.filter((p: Permission) => STAFF_PERM_GROUPS.some(g => g.resources.includes(p.resource))));
-    }).catch(() => {});
+    }).catch((e) => { console.error('staff permissions:', e); });
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => { e.preventDefault(); setSaving(true);
@@ -58,7 +59,8 @@ export default function StaffRolesPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this role? All assignments will be removed.")) return;
-    try { await api.del(`/admin/auth/roles/${id}`); fetch(); } catch (e) { console.error(e); }
+    setDeletingId(id);
+    try { await api.del(`/admin/auth/roles/${id}`); fetch(); } catch (e) { console.error(e); } finally { setDeletingId(null); }
   };
 
   const loadRolePerms = async (roleId: number) => {
@@ -134,7 +136,7 @@ export default function StaffRolesPage() {
                 <div style={{ display: "flex", gap: 4 }}>
                   <button type="button" onClick={() => { setForm({ display_name: r.display_name, description: r.description || "", role_key: r.role_key }); setEditingId(r.id); }} className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>Edit</button>
                   <button type="button" onClick={() => loadRolePerms(r.id)} className="btn btn-outline btn-sm" style={{ fontSize: 11 }}>Perms</button>
-                  <button type="button" onClick={() => handleDelete(r.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)", fontSize: 11 }}><Trash2 size={12} /></button>
+                  <button type="button" onClick={() => handleDelete(r.id)} disabled={deletingId === r.id} className="btn btn-ghost btn-sm" style={{ color: deletingId === r.id ? "var(--color-text-muted)" : "var(--color-error)", fontSize: 11 }}><Trash2 size={12} /></button>
                 </div>
               </td>
             </tr>

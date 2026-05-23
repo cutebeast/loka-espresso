@@ -27,7 +27,7 @@ interface OperatingHour {
 function parseTimeString(timeStr: string | undefined): { hour: number; minute: number } | null {
   if (!timeStr) return null;
   const m = timeStr.match(/(\d{1,2}):(\d{2})/);
-  if (!m) return null;
+  if (!m || !m[1] || !m[2]) return null;
   return { hour: parseInt(m[1]), minute: parseInt(m[2]) };
 }
 

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Store, Lock, Mail, User, ChevronDown, ChevronUp } from "lucide-react";
 import { api, staffLogin, staffLoginByName } from "@/lib/api";
 
-interface StoreInfo { id: number; store_name: string; }
+interface StoreInfo { id: number; store_name: string; is_active?: boolean; }
 
 function CustomSelect({
   value,
@@ -88,10 +88,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     let mounted = true;
-    api.get<{ items: StoreInfo[] }>("/stores")
+    api.get<{ items: StoreInfo[] }>("/public/stores")
       .then((d: { items: StoreInfo[] }) => {
         const list = d?.items || [];
-        if (mounted) setStores(list.filter((s: StoreInfo) => (s as any).is_active !== false));
+        if (mounted) setStores(list.filter((s: StoreInfo) => s.is_active !== false));
       })
       .catch((err: unknown) => { console.error("Store fetch failed:", err); if (mounted) setStores([]); });
     return () => { mounted = false; };
@@ -101,8 +101,8 @@ export default function LoginPage() {
     if (!selectedStore || mode !== "name") return;
     let mounted = true;
     api.get<{ id: number; display_name: string }[]>(`/staff/auth/names?store_id=${selectedStore}`)
-      .then((d: any) => {
-        if (mounted) setNameList(Array.isArray(d) ? d : []);
+      .then((nameData: { id: number; display_name: string }[]) => {
+        if (mounted) setNameList(Array.isArray(nameData) ? nameData : []);
       })
       .catch((err: unknown) => { console.error("Staff names fetch failed:", err); if (mounted) setNameList([]); });
     return () => { mounted = false; };
@@ -132,9 +132,9 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect") || "/";
       router.replace(redirect);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setAttemptCount((c) => c + 1);
-      setError(err.message || "Login failed");
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }

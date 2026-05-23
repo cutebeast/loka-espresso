@@ -103,7 +103,6 @@ export function formatPrice(val: number | string): string {
   return `${symbol} ${n.toFixed(2)}`;
 }
 
-const ADMIN_BASE = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin.loyaltysystem.uk';
 const APP_BASE = process.env.NEXT_PUBLIC_APP_URL || 'https://app.loyaltysystem.uk';
 
 /** Resolve an asset path to a same-origin API URL to avoid CSP issues. */

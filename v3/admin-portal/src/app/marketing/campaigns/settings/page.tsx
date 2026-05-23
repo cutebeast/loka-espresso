@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Save, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 const KEYS = [
   { k: "integration.twilio_account_sid",     l: "Twilio Account SID",    section: "Twilio SMS & WhatsApp", sensitive: false },
@@ -40,7 +40,7 @@ export default function CampaignSettingsPage() {
         });
         setConfig(m);
       })
-      .catch(() => {})
+      .catch((e) => { console.error('campaign settings:', e); })
       .finally(() => setLoading(false));
   }, []);
 

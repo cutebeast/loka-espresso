@@ -30,8 +30,8 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
   /* Sheet state */
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState(LABELS[0]);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [_name, setName] = useState('');
+  const [_phone, setPhone] = useState('');
   const [unit, setUnit] = useState('');
   const [line1, setLine1] = useState('');
   const [line2, setLine2] = useState('');
@@ -50,7 +50,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
   /* Fetch */
   const fetchSaved = async () => {
     if (!user) return;
-    const r: any = await api.get('/users/me/addresses').catch((err) => { console.error('[DeliveryAddress] Fetch failed:', err); return { data: [] }; });
+    const r = await api.get('/users/me/addresses').catch((err) => { console.error('[DeliveryAddress] Fetch failed:', err); return { data: [] as SavedAddress[] }; });
     if (Array.isArray(r.data)) setSaved(r.data);
   };
   useEffect(() => { fetchSaved(); }, [user]);
@@ -134,7 +134,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
     const full = p.join(', ');
 
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         label,
         address: line1.trim(),
         apartment: unit.trim() || undefined,
@@ -209,6 +209,7 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
         <div className="dac-label-row">
           {LABELS.map(lbl => {
             const I = ICONS[lbl];
+            if (!I) return null;
             return (
               <button key={lbl} onClick={() => setLabel(lbl)} className={`dac-label-pill${label === lbl ? ' active' : ''}`}>
                 <I size={15} />{lbl}

@@ -18,7 +18,7 @@ pytestmark = [pytest.mark.admin]
 async def test_admin_cannot_access_other_store_order(
     client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int, store_id_2: int
 ):
-    """Admin scoped to store A cannot read orders from store B."""
+    """Verify the orders list endpoint enforces store filtering (non-HQ admins see only their stores)."""
     # Get an order from store_id
     r = await client.get(f"{base_url}/admin/orders?store_id={store_id}&per_page=1", headers=admin_headers)
     assert r.status_code == 200
@@ -27,11 +27,19 @@ async def test_admin_cannot_access_other_store_order(
         pytest.skip("No orders in seed data")
     order_id = items[0]["id"]
 
-    # Now verify via the full order detail endpoint (which enforces store-scoping)
+    # Verify order detail returns 200 for own store
     r2 = await client.get(f"{base_url}/admin/orders/{order_id}", headers=admin_headers)
-    # Store-scoped admin or HQ admin can access their own orders
     assert r2.status_code == 200, f"Expected 200 for get_order_detail, got {r2.status_code}"
     assert r2.json()["data"]["id"] == order_id
+
+    # Now verify that listing orders for store_id_2 does NOT return this order
+    r3 = await client.get(f"{base_url}/admin/orders?store_id={store_id_2}&per_page=50", headers=admin_headers)
+    if r3.status_code == 200:
+        items3 = r3.json()["data"]["items"]
+        order_ids_3 = [o["id"] for o in items3]
+        assert order_id not in order_ids_3, (
+            f"Order {order_id} from store {store_id} should NOT appear in orders for store {store_id_2}"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -40,7 +48,7 @@ async def test_admin_cannot_access_other_store_order(
 
 @pytest.mark.asyncio
 async def test_admin_adjust_points_and_verify(
-    client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int
+    client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int, cleanup_registry: dict
 ):
     """Admin can adjust loyalty points and balance is updated."""
     # Get a customer
@@ -65,6 +73,9 @@ async def test_admin_adjust_points_and_verify(
     assert r2.status_code == 200
     data = r2.json()["data"]
     assert data["new_balance"] == old_balance + 50, f"Expected {old_balance + 50}, got {data['new_balance']}"
+
+    # Register cleanup
+    cleanup_registry.setdefault("point_adjustments", []).append({"customer_id": customer_id, "points": 50})
 
 
 @pytest.mark.asyncio
@@ -106,7 +117,7 @@ async def test_admin_customer_set_tier(
 
 @pytest.mark.asyncio
 async def test_admin_wallet_topup(
-    client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int
+    client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int, cleanup_registry: dict
 ):
     """Admin can top-up a customer wallet and ledger reflects it."""
     r = await client.get(f"{base_url}/admin/customers?store_id={store_id}&per_page=1", headers=admin_headers)
@@ -134,6 +145,9 @@ async def test_admin_wallet_topup(
     assert r2.status_code == 200
     data = r2.json()["data"]
     assert data["new_balance"] == old_balance + 25.00, f"Expected {old_balance + 25.00}, got {data['new_balance']}"
+
+    # Register cleanup
+    cleanup_registry.setdefault("wallet_topups", []).append({"customer_id": customer_id, "amount": 25.00})
 
 
 # ═══════════════════════════════════════════════════════════════════════════

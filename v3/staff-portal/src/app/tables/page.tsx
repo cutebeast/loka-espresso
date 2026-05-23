@@ -13,7 +13,7 @@ import Modal from "@/components/Modal";
 import SkeletonCard from "@/components/SkeletonCard";
 import {
   RefreshCw, QrCode, Download, Users, Circle, Receipt,
-  UtensilsCrossed, ShoppingCart, CheckCircle, AlertTriangle,
+  UtensilsCrossed, CheckCircle, AlertTriangle,
   Armchair, MapPin
 } from "lucide-react";
 
@@ -44,9 +44,9 @@ export default function TablesPage() {
       list.sort((a, b) => (a.table_number || "").localeCompare(b.table_number || "", undefined, { numeric: true }));
       setTables(list);
       setError("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load tables:", err);
-      setError(err.message || "Failed to load tables");
+      setError(err instanceof Error ? err.message : "Failed to load tables");
     } finally {
       setLoading(false);
     }
@@ -85,8 +85,8 @@ export default function TablesPage() {
       setSuccess(`QR generated for Table ${table.table_number}`);
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setGeneratingQr(null);
     }
@@ -105,8 +105,8 @@ export default function TablesPage() {
       setSuccess(`Table ${confirmClean.table_number} marked as available`);
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -194,7 +194,6 @@ export default function TablesPage() {
           {filteredTables.map((table) => {
             const expiry = qrExpiry[table.id];
             const hasQr = !!(table.qr_code_image_url || table.qr_code_token) && !expiry?.expired;
-            const qrUrl = qrImages[table.id];
 
             return (
               <div
@@ -342,7 +341,7 @@ export default function TablesPage() {
                     setSuccess(`Table ${selectedTable.table_number} set to maintenance`);
                     if (successTimerRef.current) clearTimeout(successTimerRef.current);
                     successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
-                  } catch (err: any) { setError(err.message); }
+                  } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
                 }}>
                   <AlertTriangle size={14} /> Maintenance
                 </button>

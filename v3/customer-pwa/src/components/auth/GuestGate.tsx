@@ -14,7 +14,6 @@ interface GuestGateProps {
 
 export function GuestGate({ children, message, fallback }: GuestGateProps) {
   const { t } = useTranslation();
-  const isGuest = useUIStore((s) => s.isGuest);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   if (isAuthenticated) {

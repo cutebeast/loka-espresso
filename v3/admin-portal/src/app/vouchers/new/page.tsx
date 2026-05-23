@@ -10,7 +10,7 @@ export default function VoucherNewPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [displayPercent, setDisplayPercent] = useState("0");
+  const [_displayPercent, setDisplayPercent] = useState("0");
   const { allSegments } = useAudienceSegments();
 
   const [form, setForm] = useState({

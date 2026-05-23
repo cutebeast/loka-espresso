@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronRight, Gift } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
@@ -246,7 +245,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
                   <div className="promotions-card-title">{promo.title}</div>
                   {promo.short_description && <div className="promotions-card-desc">{promo.short_description}</div>}
                   <div className={`promotions-card-tag ${promo.action_type === 'survey' ? 'tag-survey' : 'tag-promo'}`}>
-                    {promo.action_type === 'survey' ? 'Survey' : 'Promo'}
+                    {promo.action_type === 'survey' ? t('promotions.tagSurvey') : t('promotions.tagPromo')}
                   </div>
                 </div>
                 <div className="promotions-card-arrow"><ChevronRight size={16} /></div>

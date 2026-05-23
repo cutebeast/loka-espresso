@@ -12,8 +12,6 @@ export interface TierSegment extends Segment {
 }
 
 export function useAudienceSegments() {
-  const [segments, setSegments] = useState<Segment[]>([]);
-  const [tierSegments, setTierSegments] = useState<TierSegment[]>([]);
   const [allSegments, setAllSegments] = useState<Segment[]>([
     { value: "all_users", label: "All Users" },
     { value: "new_users", label: "New Users" },

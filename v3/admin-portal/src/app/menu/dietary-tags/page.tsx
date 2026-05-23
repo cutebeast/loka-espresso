@@ -10,7 +10,7 @@ export default function DietaryTagsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getRaw<{ items: any[] }>("/admin/menu/dietary-tags?per_page=50").then(d => setItems(d.items || [])).catch(() => {}).finally(() => setLoading(false));
+    api.getRaw<{ items: any[] }>("/admin/menu/dietary-tags?per_page=50").then(d => setItems(d.items || [])).catch((e) => { console.error('dietary-tags:', e); }).finally(() => setLoading(false));
   }, []);
 
   return (

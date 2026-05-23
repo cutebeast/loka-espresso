@@ -1,8 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import type { Locale } from '@/lib/i18n-types';
-import { isValidLocale, getDefaultLocale } from '@/lib/i18n-types';
+import { isValidLocale } from '@/lib/i18n-types';
 import { setGlobalLocale, getLocale, readStoredLocale, detectBrowserLocale } from '@/stores/localeStore';
 
 function resolveInitial(): string {

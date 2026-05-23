@@ -79,7 +79,7 @@ export default function SavedAddressesPage() {
   const handleSave = async () => {
     if (!unit.trim() && !line1.trim()) { showToast(t('toast.addressRequired'), 'error'); return; }
     setSaving(true);
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       label: formLabel, address: line1.trim(), apartment: unit.trim() || undefined,
       building: line2.trim() || undefined, city: city.trim() || undefined,
       postcode: postcode.trim() || undefined, state: state,
@@ -185,6 +185,7 @@ export default function SavedAddressesPage() {
           <div className="sav2-label-row">
             {LABELS.map(lbl => {
               const I = ICONS[lbl];
+              if (!I) return null;
               const exists = usedLabels.has(lbl.toLowerCase());
               const locked = !!editingId || (!editingId && exists);
               return (

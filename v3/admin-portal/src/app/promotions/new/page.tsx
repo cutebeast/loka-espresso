@@ -32,8 +32,8 @@ export default function PromotionNewPage() {
   });
 
   useEffect(() => {
-    api.get<{ items: Voucher[] }>("/admin/vouchers?per_page=100&is_active=true").then(d => setVouchers(Array.isArray(d) ? d : (d.items||[]))).catch(() => {});
-    api.get<{ items: Survey[] }>("/admin/surveys?per_page=100").then(d => setSurveys(Array.isArray(d) ? d : (d.items||[]))).catch(() => {});
+    api.get<{ items: Voucher[] }>("/admin/vouchers?per_page=100&is_active=true").then(d => setVouchers(Array.isArray(d) ? d : (d.items||[]))).catch((e) => { console.error('vouchers:', e); });
+    api.get<{ items: Survey[] }>("/admin/surveys?per_page=100").then(d => setSurveys(Array.isArray(d) ? d : (d.items||[]))).catch((e) => { console.error('surveys:', e); });
   }, []);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function PromotionNewPage() {
     api.getRaw<any>(`/admin/vouchers/${form.voucher_id}`).then(d => {
       const segs = d.customer_segments || [];
       setVoucherSegments(Array.isArray(segs) ? segs : []);
-    }).catch(() => setVoucherSegments([]));
+    }).catch((e) => { console.error('voucher segments:', e); setVoucherSegments([]); });
   }, [form.voucher_id]);
 
   const handleUpload = async () => {

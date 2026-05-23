@@ -14,7 +14,7 @@ export interface HeldOrder {
   crewName: string;
 }
 
-export function usePosCart(storeId: number, crewName: string) {
+export function usePosCart(_storeId: number, crewName: string) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
   const [selectedModifiers, setSelectedModifiers] = useState<Record<number, number[]>>({});

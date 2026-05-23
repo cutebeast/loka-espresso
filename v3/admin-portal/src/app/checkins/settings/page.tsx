@@ -16,7 +16,7 @@ export default function CheckinSettingsPage() {
         });
         setConfig(m);
       })
-      .catch(() => {})
+      .catch((e) => { console.error('checkin config:', e); })
       .finally(() => setLoading(false));
   }, []);
 

@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { ArrowLeft, Save, RefreshCw, Cake, Percent, Truck, Crown, Star, Coffee, Ticket, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, RefreshCw, Cake, Truck, Crown, Star, Coffee, Ticket, Sparkles } from "lucide-react";
 
 const L = [{code:"en",label:"English",flag:"🇬🇧"},{code:"ms",label:"BM",flag:"🇲🇾"},{code:"zh",label:"中文",flag:"🇨🇳"},{code:"ta",label:"தமிழ்",flag:"🇮🇳"},{code:"tr",label:"TR",flag:"🇹🇷"}];
 const F = [{key:"display_name",label:"Tier Name"}];

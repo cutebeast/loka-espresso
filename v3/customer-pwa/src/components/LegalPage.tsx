@@ -46,7 +46,7 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
       setContent(res.data);
       // Auto-expand all sections
       if (res.data?.sections?.length) {
-        setExpanded(new Set(res.data.sections.map((_: any, i: number) => i)));
+        setExpanded(new Set(res.data.sections.map((_item: LegalSection, i: number) => i)));
       }
     } catch {
       setError(`Unable to load ${key === 'terms' ? 'Terms of Service' : 'Privacy Policy'} right now.`);
@@ -90,8 +90,6 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
   const updatedAt = content?.updated_at
     ? new Date(content.updated_at).toLocaleDateString(getLocale(), { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
-
-  const filteredIdx = (i: number) => filtered.indexOf(sections[i]);
 
   return (
     <div className="legal-screen">
@@ -152,8 +150,8 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
             )}
 
             {/* Collapsible sections */}
-            {filtered.map((s: any, i: number) => {
-              const actualIdx = sections.indexOf(filtered[i]);
+            {filtered.map((s: LegalSection, _i: number) => {
+              const actualIdx = sections.indexOf(s);
               const isExpanded = expanded.has(actualIdx);
               return (
                 <div key={actualIdx} className="legal-section" id={`legal-section-${actualIdx}`}>

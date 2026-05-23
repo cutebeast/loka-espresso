@@ -17,6 +17,7 @@ export default function AdminUsersPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetch = () => {
     setLoading(true); setMsg("");
@@ -58,12 +59,13 @@ export default function AdminUsersPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this admin account?")) return;
+    setDeletingId(id);
     try {
       await api.del(`/admin/auth/users/${id}`);
       fetch();
       setMsg("Admin deleted");
       setTimeout(() => setMsg(""), 2000);
-    } catch (e: any) { setMsg(e.message || "Failed"); }
+    } catch (e: any) { setMsg(e.message || "Failed"); } finally { setDeletingId(null); }
   };
 
   return (
@@ -115,7 +117,7 @@ export default function AdminUsersPage() {
                 {a.store_ids?.length ? a.store_ids.map(id => allStores.find(s => s.id === id)?.store_name).filter(Boolean).join(", ") : <span className="badge badge-sm badge-gray" style={{ fontSize: 10 }}>All</span>}
               </td>
               <td><span className={`badge badge-sm ${a.is_active ? "badge-green" : "badge-gray"}`}>{a.is_active ? "Active" : "Inactive"}</span></td>
-              <td><button type="button" onClick={() => handleDelete(a.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button></td>
+              <td><button type="button" onClick={() => handleDelete(a.id)} disabled={deletingId === a.id} className="btn btn-ghost btn-sm" style={{ color: deletingId === a.id ? "var(--color-text-muted)" : "var(--color-error)" }}><Trash2 size={14} /></button></td>
             </tr>
           ))}
         </tbody>

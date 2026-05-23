@@ -235,7 +235,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
           <div className="info-empty">
             <Info size={40} className="info-empty-icon" />
             <p className="info-empty-title">
-              {activeTab === 'product' ? 'No products available' : 'No articles available'}
+              {activeTab === 'product' ? t('information.noProducts') : t('information.noArticles')}
             </p>
             <p className="info-empty-desc">{t('information.checkBackSoon')}</p>
           </div>
@@ -292,13 +292,17 @@ function ImageCarousel({ images, title }: { images: string[]; title?: string }) 
   const prev = () => setCurrent((c) => (c - 1 + total) % total);
 
   const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
+    const touch = e.touches[0];
+    if (!touch) return;
+    touchStartX.current = touch.clientX;
     isDragging.current = true;
   };
   const onTouchEnd = (e: React.TouchEvent) => {
     if (!isDragging.current) return;
     isDragging.current = false;
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    const cTouch = e.changedTouches[0];
+    if (!cTouch) return;
+    const diff = touchStartX.current - cTouch.clientX;
     if (diff > 40) next();
     else if (diff < -40) prev();
   };

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
   searchCustomers, getCustomerWallet, getCustomerById, topUpWallet, api,
   markRewardUsed, markVoucherUsed, scanCustomerCode, scanRewardCode, scanVoucherCode,
@@ -24,7 +23,6 @@ type PaymentMethod = "cash" | "card" | "qr";
 const QUICK_AMOUNTS = [20, 50, 100, 200, 300, 500];
 
 export default function WalletPage() {
-  const router = useRouter();
   const [tab, setTab] = useState<Tab>("topup");
   const [searchQ, setSearchQ] = useState("");
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
@@ -41,7 +39,6 @@ export default function WalletPage() {
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
   const [toppingUp, setToppingUp] = useState(false);
-  const [attemptCount, setAttemptCount] = useState(0);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -85,9 +82,9 @@ export default function WalletPage() {
       const wallet = await getCustomerWallet(customer.id);
       setWalletData(wallet);
       setError("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load customer wallet:", err);
-      setError(err.message || "Failed to load customer wallet");
+      setError(err instanceof Error ? err.message : "Failed to load customer wallet");
     } finally {
       setLoading(false);
     }
@@ -121,9 +118,9 @@ export default function WalletPage() {
         setSuccess(`Voucher found: ${data.title}`);
         setTab("rewards");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Scan failed:", err);
-      setError(err.message || "Scan failed");
+      setError(err instanceof Error ? err.message : "Scan failed");
     } finally {
       setLoading(false);
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
@@ -131,14 +128,16 @@ export default function WalletPage() {
     }
   };
 
-  const verifyPin = async (): Promise<boolean> => {
+  const attemptCountRef = useRef(0);
+
+  const verifyPin = useCallback(async (): Promise<boolean> => {
     try {
-      const delay = Math.min(3000, attemptCount * 1000);
+      const delay = Math.min(3000, attemptCountRef.current * 1000);
       if (delay > 0) await new Promise((r) => setTimeout(r, delay));
       const d = await api.post<{ valid?: boolean; data?: { valid?: boolean } }>("/staff/auth/verify-pin", { pin });
       return (d?.valid || d?.data?.valid) === true;
     } catch (e) { console.error("PIN verification failed:", e); return false; }
-  };
+  }, [pin]);
 
   const handleTopUp = async () => {
     const amt = parseFloat(amount);
@@ -147,8 +146,8 @@ export default function WalletPage() {
     setToppingUp(true);
     try {
       const valid = await verifyPin();
-      if (!valid) { setAttemptCount((c) => c + 1); setError("Invalid PIN"); setToppingUp(false); return; }
-      setAttemptCount(0);
+      if (!valid) { attemptCountRef.current++; setError("Invalid PIN"); setToppingUp(false); return; }
+      attemptCountRef.current = 0;
       const res = await topUpWallet({
         customer_id: selectedCustomer.id,
         amount: parseFloat(amount),
@@ -159,7 +158,7 @@ export default function WalletPage() {
       setSuccess(`Top-up successful! New balance: RM ${bal}`);
       setAmount(""); setPin(""); setNotes(""); setShowPin(false);
       if (selectedCustomer) loadCustomer(selectedCustomer);
-    } catch (e: any) { console.error("Top-up failed:", e); setError(e.message); } finally { setToppingUp(false); }
+    } catch (e: unknown) { console.error("Top-up failed:", e); setError(e instanceof Error ? e.message : String(e)); } finally { setToppingUp(false); }
   };
 
   const handleUseReward = async (reward: Reward) => {
@@ -179,8 +178,8 @@ export default function WalletPage() {
   const executeRedeem = async () => {
     if (!pendingRedeem || !selectedCustomer) return;
     const valid = await verifyPin();
-    if (!valid) { setAttemptCount((c) => c + 1); setError("Invalid PIN"); return; }
-    setAttemptCount(0);
+    if (!valid) { attemptCountRef.current++; setError("Invalid PIN"); return; }
+    attemptCountRef.current = 0;
     setShowRedeemPin(false);
     setRedeemPin("");
 
@@ -192,7 +191,7 @@ export default function WalletPage() {
         const res = await markRewardUsed(selectedCustomer.id, reward.id);
         setSuccess(res.message || "Reward used successfully");
         if (selectedCustomer) loadCustomer(selectedCustomer);
-      } catch (e: any) { setError(e.message); } finally { setRedeemingId(null); setRedeemType(null); }
+      } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); } finally { setRedeemingId(null); setRedeemType(null); }
     } else if (pendingRedeem.voucher) {
       const voucher = pendingRedeem.voucher;
       setRedeemingId(voucher.id);
@@ -201,7 +200,7 @@ export default function WalletPage() {
         const res = await markVoucherUsed(selectedCustomer.id, voucher.id);
         setSuccess(res.message || "Voucher used successfully");
         if (selectedCustomer) loadCustomer(selectedCustomer);
-      } catch (e: any) { setError(e.message); } finally { setRedeemingId(null); setRedeemType(null); }
+      } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); } finally { setRedeemingId(null); setRedeemType(null); }
     }
     setPendingRedeem(null);
   };

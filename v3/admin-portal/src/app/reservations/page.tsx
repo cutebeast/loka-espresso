@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
-import { CalendarClock } from "lucide-react";
 
 interface Res { id: number; customer_name?: string; customer_phone?: string; guest_count: number; reservation_date: string; reservation_time?: string; status: string; store_name?: string; }
 
@@ -14,7 +13,7 @@ export default function ReservationsPage() {
   const [storeId, setStoreId] = useState("");
   const [stores, setStores] = useState<{id:number;store_name:string}[]>([]);
 
-  useEffect(() => { api.get<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(()=>{}); }, []);
+  useEffect(() => { api.get<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('stores:',e)}); }, []);
 
   const fetch = useCallback(() => {
     setLoading(true);

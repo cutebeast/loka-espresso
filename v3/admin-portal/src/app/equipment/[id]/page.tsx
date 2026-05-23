@@ -44,7 +44,7 @@ export default function EquipmentEditPage() {
   };
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(()=>{});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('stores:',e)});
     loadEquipment();
   }, [id]);
 
@@ -78,11 +78,14 @@ export default function EquipmentEditPage() {
 
   const handleDeleteLog = async (logId: number) => {
     if (!confirm("Delete this maintenance log?")) return;
+    setDeletingLogId(logId);
     try {
       await api.del(`/admin/equipment/${id}/maintenance-logs/${logId}`);
       loadEquipment();
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); } finally { setDeletingLogId(null); }
   };
+
+  const [deletingLogId, setDeletingLogId] = useState<number | null>(null);
 
   const inputClass = "w-full border rounded px-3 py-2 text-sm";
   const labelClass = "block text-xs font-semibold text-gray-500 uppercase mb-1";
@@ -240,7 +243,7 @@ export default function EquipmentEditPage() {
                     {log.cost != null && <div style={{ fontSize: 11, marginTop: 2 }}>Cost: RM {Number(log.cost).toFixed(2)}</div>}
                     {log.started_at && <div style={{ fontSize: 11, marginTop: 2 }}>{new Date(log.started_at).toLocaleString()}</div>}
                   </div>
-                  <button onClick={() => handleDeleteLog(log.id)} className="btn btn-icon btn-ghost" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                  <button onClick={() => handleDeleteLog(log.id)} disabled={deletingLogId === log.id} className="btn btn-icon btn-ghost" style={{ color: deletingLogId === log.id ? "var(--color-text-muted)" : "var(--color-error)" }}><Trash2 size={14} /></button>
                 </div>
               </div>
             ))}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Search, X, ArrowLeft, Plus, Coffee, Star, RefreshCw, Crown } from 'lucide-react';
+import { Search, X, ArrowLeft, Plus, Coffee, Star, Crown } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
@@ -23,9 +23,7 @@ export default function MenuPage() {
     setMenuItems,
     setSearchQuery,
     setPage,
-    isGuest,
     showToast,
-    triggerSignIn,
     selectedStore,
   } = useUIStore();
 
@@ -90,7 +88,9 @@ export default function MenuPage() {
           if (!mountedRef.current) return;
           const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
           if (visible.length > 0) {
-            const id = Number(visible[0].target.getAttribute('data-category-id'));
+            const firstVisible = visible[0];
+            if (!firstVisible) return;
+            const id = Number(firstVisible.target.getAttribute('data-category-id'));
             setActiveCategoryId(id);
           }
         },
@@ -156,8 +156,11 @@ export default function MenuPage() {
   const scrollToCategory = useCallback((categoryId: number | null) => {
     setActiveCategoryId(categoryId);
     if (categoryId === null) {
-      const first = sectionRefs.current.get(categories[0]?.id);
-      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const firstCatId = categories[0]?.id;
+      if (firstCatId !== undefined) {
+        const first = sectionRefs.current.get(firstCatId);
+        if (first) first.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     } else {
       const el = sectionRefs.current.get(categoryId);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });

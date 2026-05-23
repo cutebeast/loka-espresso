@@ -10,8 +10,18 @@ interface QrScannerModalProps {
   title?: string;
 }
 
+interface Html5QrcodeScanner {
+  start(
+    facingModeOrDeviceId: { facingMode: string },
+    config: { fps: number; qrbox: { width: number; height: number } },
+    onScanSuccess: (decodedText: string) => void,
+    onScanFailure: (err: unknown) => void
+  ): Promise<void | null>;
+  stop(): Promise<void>;
+}
+
 export default function QrScannerModal({ open, onClose, onScan, title = "Scan QR Code" }: QrScannerModalProps) {
-  const scannerRef = useRef<any>(null);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const decodedRef = useRef(false);
   const mountedRef = useRef(true);
   const [error, setError] = useState("");

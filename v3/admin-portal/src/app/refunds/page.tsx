@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 interface Refund { id: number; payment_id: number; order_id: number; order_number?: string; store_id?: number; amount: number; reason: string; status: string; created_at: string; }
 interface Store { id: number; store_name: string; }
@@ -14,7 +14,7 @@ export default function RefundsPage() {
   const [storeId, setStoreId] = useState("");
 
   useEffect(() => {
-    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch(() => {});
+    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch((e) => { console.error('stores:', e); });
   }, []);
 
   const fetch = () => {

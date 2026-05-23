@@ -27,7 +27,9 @@ export function usePullToRefresh({
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
       if (!enabled || !isAtTop()) return;
-      startY.current = e.touches[0].clientY;
+      const touch = e.touches[0];
+      if (!touch) return;
+      startY.current = touch.clientY;
       currentY.current = startY.current;
       triggeredRef.current = false;
     },
@@ -37,7 +39,9 @@ export function usePullToRefresh({
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
       if (!enabled || triggeredRef.current) return;
-      currentY.current = e.touches[0].clientY;
+      const touch = e.touches[0];
+      if (!touch) return;
+      currentY.current = touch.clientY;
       const diff = currentY.current - startY.current;
       if (diff > 0 && isAtTop()) {
         e.preventDefault();

@@ -7,9 +7,9 @@ import { DEFAULT_COUNTRY, ALL_COUNTRIES, searchCountries, flagUrl } from '@/lib/
 import type { Country } from '@/lib/countries';
 import api from '@/lib/api';
 import { BottomSheet } from '@/components/ui';
-import { useUIStore } from '@/stores/uiStore';
-import { AuthStepIndicator } from './AuthStepIndicator';
 import { AuthLangButton } from './AuthLangButton';
+import { AuthStepIndicator } from './AuthStepIndicator';
+import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getLocale } from '@/stores/localeStore';
 
@@ -36,7 +36,6 @@ type LegalKey = 'terms' | 'privacy';
 
 export function PhoneInput({ onSubmit }: PhoneInputProps) {
   const { t } = useTranslation();
-  const { setPage } = useUIStore();
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

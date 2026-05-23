@@ -1,5 +1,5 @@
 "use client";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { staffLogout } from "@/lib/api";
@@ -7,9 +7,7 @@ import { Store, LogOut, Shield } from "lucide-react";
 
 export default function StoreHeader() {
   const router = useRouter();
-  const path = usePathname();
   const isAdmin = useIsAdmin();
-  const isHome = path === "/";
   const [staffName, setStaffName] = useState(() => typeof window !== "undefined" ? localStorage.getItem("staffName") || "" : "");
 
   useEffect(() => {

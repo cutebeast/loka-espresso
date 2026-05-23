@@ -5,8 +5,7 @@ import { useUIStore } from '@/stores/uiStore';
 import api from '@/lib/api';
 import { useTranslation } from '@/hooks/useTranslation';
 
-const VERSION_CHECK_INTERVAL = 60000; // Check every 60 seconds
-const STORAGE_KEY = 'loka_pwa_version';
+const VERSION_CHECK_INTERVAL = 60000;
 
 export function useVersionCheck() {
   const { showToast } = useUIStore();

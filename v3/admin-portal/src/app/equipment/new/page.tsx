@@ -16,7 +16,7 @@ export default function NewEquipmentPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(()=>{});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('stores:',e)});
   }, []);
 
   const update = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));

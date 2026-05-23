@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, RotateCcw, XCircle, Share2, MapPin, Phone, Coffee, Check, Clock, User, Truck, Utensils, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, RotateCcw, XCircle, Share2, MapPin, Phone, Coffee, Check, User, Truck, Utensils, ShoppingBag } from 'lucide-react';
 import { useOrderStore } from '@/stores/orderStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
@@ -242,7 +242,7 @@ export default function OrderDetailPage() {
               ? ((item.customizations as Record<string, unknown>)?.options as Array<{ name?: string }>)?.map((o) => { const n = o.name || ''; const px = n.indexOf(': '); return px >= 0 ? n.slice(px + 2) : n; })?.join(' · ') || ''
               : '';
             return (
-              <div key={(item as any).id ?? i} className="od-item-row">
+              <div key={item.id ?? i} className="od-item-row">
                 <div className="od-item-thumb">
                   {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.name || 'Menu item'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={18} color={LOKA.primary} />}
                 </div>

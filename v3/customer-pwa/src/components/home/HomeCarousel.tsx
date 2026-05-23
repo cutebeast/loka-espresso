@@ -77,8 +77,10 @@ export default function HomeCarousel({ banners, loading, infoCards, productCards
     const result: InformationCard[] = [];
     const maxLen = Math.max(infoCards.length, productCards.length);
     for (let i = 0; i < maxLen; i++) {
-      if (i < infoCards.length) result.push(infoCards[i]);
-      if (i < productCards.length) result.push(productCards[i]);
+      const info = infoCards[i];
+      const prod = productCards[i];
+      if (i < infoCards.length && info) result.push(info);
+      if (i < productCards.length && prod) result.push(prod);
     }
     return result.slice(0, 6);
   }, [infoCards, productCards]);

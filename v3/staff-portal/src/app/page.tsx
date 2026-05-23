@@ -46,7 +46,7 @@ export default function HomePage() {
   const getBadge = (b: string | null): string | number | null => {
     if (!b || !data) return null;
     if (b === "clock_status") return data.clock_status === "in" ? "IN" : data.clock_status === "break" ? "BRK" : "OUT";
-    return (data as any)[b] || null;
+    return (data[b as keyof DashboardData] as string | number) ?? null;
   };
 
   return (

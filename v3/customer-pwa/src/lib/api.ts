@@ -14,9 +14,17 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  const locale = typeof window !== 'undefined' ? localStorage.getItem('loka-locale') : null;
-  if (locale) {
-    config.headers['Accept-Language'] = locale;
+  const rawLocale = typeof window !== 'undefined' ? localStorage.getItem('loka-locale') : null;
+  if (rawLocale) {
+    try {
+      const parsed = JSON.parse(rawLocale);
+      const locale = parsed?.state?.locale || parsed?.locale;
+      if (locale && typeof locale === 'string') {
+        config.headers['Accept-Language'] = locale;
+      }
+    } catch {
+      config.headers['Accept-Language'] = rawLocale;
+    }
   }
   return config;
 });
@@ -27,7 +35,7 @@ let _getStoreId: (() => number | null) = () => null;
 export function setStoreIdGetter(fn: () => number | null) { _getStoreId = fn; }
 
 // URL mapping: old v1 endpoints → v3 endpoints
-function mapUrl(url: string, method?: string): string {
+function mapUrl(url: string, _method?: string): string {
   if (!url) return url;
   
   // Strip query params for matching, re-attach later
@@ -106,7 +114,7 @@ function mapUrl(url: string, method?: string): string {
     '/vouchers/apply': '/vouchers/apply',
     '/reservations': '/reservations',
   };
-  if (v1ToV3[url]) { url = v1ToV3[url]; return queryPart ? url + queryPart : url; }
+  if (v1ToV3[url]) return v1ToV3[url] as string;
   if (exactMap[url]) { return queryPart ? url + queryPart : url; }
 
   // /users/me/addresses/{id} → /me/addresses/{id}
@@ -195,7 +203,7 @@ function mapUrl(url: string, method?: string): string {
 }
 
 // Legacy params rewriter for known patterns
-function rewriteParams(url: string, params?: Record<string, any>): Record<string, any> {
+function rewriteParams(_url: string, params?: Record<string, any>): Record<string, any> {
   if (!params) return params || {};
   const result = { ...params };
   
@@ -229,20 +237,6 @@ function unwrapV3(data: any): any {
   return data;
 }
 
-function unwrapPaginatedV3(data: any): { items: any[]; total: number; page: number; total_pages: number } | null {
-  if (!data) return null;
-  if (data && typeof data === 'object' && 'data' in data && ('success' in data || 'message' in data)) {
-    return unwrapPaginatedV3(data.data);
-  }
-  if (data && typeof data === 'object' && 'items' in data && 'total' in data) {
-    return data;
-  }
-  if (Array.isArray(data)) {
-    return { items: data, total: data.length, page: 1, total_pages: 1 };
-  }
-  return null;
-}
-
 const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 function convertOperatingHours(hours: any[] | undefined): Record<string,string> {
   const result: Record<string,string> = {};
@@ -265,7 +259,6 @@ function convertOperatingHours(hours: any[] | undefined): Record<string,string> 
 }
 
 function mapV3Response(url: string, data: any): any {
-  const raw = data;
 
   const unwrappedRaw = unwrapV3(data);
 
@@ -314,13 +307,6 @@ function mapV3Response(url: string, data: any): any {
   if (url.includes('/menu/stores/')) {
     const categories = unwrapped.categories || [];
     const items = unwrapped.items || [];
-    const modifierGroups = unwrapped.modifier_groups || [];
-    
-    // Build a lookup of modifier options per item
-    const itemModifiers: Record<number, any[]> = {};
-    for (const mg of modifierGroups) {
-      // modifier groups might reference items differently; skip if no direct item link
-    }
     
     // Map menu items to PWA shape
     const mappedItems = items.map((item: any) => ({
@@ -754,9 +740,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       let tokens: { access_token?: string; refresh_token?: string } | undefined;
+      let currentPromise: Promise<any>;
       try {
         if (!_refreshPromise) {
-          _refreshPromise = axios.post(`${API_BASE}/auth/refresh`, {
+          currentPromise = axios.post(`${API_BASE}/auth/refresh`, {
             refresh_token: typeof localStorage !== 'undefined' ? (localStorage.getItem('refreshToken') || '') : '',
           }).then((res) => {
             const data = res.data;
@@ -771,8 +758,11 @@ api.interceptors.response.use(
             }
             return t;
           });
+          _refreshPromise = currentPromise;
+        } else {
+          currentPromise = _refreshPromise;
         }
-        tokens = await _refreshPromise;
+        tokens = await currentPromise;
         if (tokens?.access_token) {
           return api(originalRequest);
         }
@@ -780,8 +770,8 @@ api.interceptors.response.use(
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('auth:expired'));
         }
-      } finally {
         _refreshPromise = null;
+        return Promise.reject(refreshError);
       }
     }
     return Promise.reject(error);

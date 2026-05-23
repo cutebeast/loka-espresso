@@ -370,7 +370,12 @@ async def list_payments(
 
 def _verify_stripe_signature(payload_bytes: bytes, sig_header: str, secret: str) -> bool:
     if not secret:
-        return True  # Dev fallback
+        from app.core.config import get_settings
+        if get_settings().is_production:
+            import logging
+            logging.getLogger("payment").critical("Stripe webhook signing secret not configured in production")
+            return False
+        return True
     try:
         timestamp = None
         signatures = []
@@ -390,7 +395,12 @@ def _verify_stripe_signature(payload_bytes: bytes, sig_header: str, secret: str)
 
 def _verify_grabpay_signature(payload_bytes: bytes, sig_header: str, secret: str) -> bool:
     if not secret:
-        return True  # Dev fallback
+        from app.core.config import get_settings
+        if get_settings().is_production:
+            import logging
+            logging.getLogger("payment").critical("GrabPay webhook signing secret not configured in production")
+            return False
+        return True
     try:
         expected = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, sig_header)

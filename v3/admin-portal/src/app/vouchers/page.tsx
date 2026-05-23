@@ -20,6 +20,7 @@ export default function VouchersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const pagination = usePagination({ defaultPage: 1, defaultPerPage: PAGE_SIZE });
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchData = useCallback(async (p: number = 1) => {
     return api.getRaw<{ items: Voucher[]; total: number; total_pages: number }>(
@@ -44,13 +45,14 @@ export default function VouchersPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this voucher?")) return;
+    setDeletingId(id);
     try {
       await api.del(`/admin/vouchers/${id}`);
       const d = await fetchData(pagination.page);
       setItems(d.items || []);
       pagination.setTotalPages(d.total_pages || 1);
       pagination.setTotal(d.total || 0);
-    } catch (e: any) { console.error("Failed to delete voucher:", e); }
+    } catch (e: any) { console.error("Failed to delete voucher:", e); } finally { setDeletingId(null); }
   };
 
   const discountLabel = (v: Voucher) => {
@@ -88,7 +90,7 @@ export default function VouchersPage() {
                 <td onClick={e => e.stopPropagation()}>
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     <button type="button" onClick={() => router.push(`/vouchers/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }} aria-label="Edit voucher"><Edit2 size={14} /></button>
-                    <button type="button" onClick={() => handleDelete(item.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }} aria-label="Delete voucher"><Trash2 size={14} /></button>
+                    <button type="button" onClick={() => handleDelete(item.id)} disabled={deletingId === item.id} className="btn btn-ghost btn-sm" style={{ color: deletingId === item.id ? "var(--color-text-muted)" : "var(--color-error)" }} aria-label="Delete voucher"><Trash2 size={14} /></button>
                   </div>
                 </td>
               </tr>

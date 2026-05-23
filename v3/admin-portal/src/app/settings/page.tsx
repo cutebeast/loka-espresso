@@ -81,7 +81,7 @@ export default function SettingsPage() {
     try {
       await api.put("/admin/config", { key: item.config_key, value: newValue });
       setUpdateMsg(`${item.config_key} updated`);
-      api.get<ConfigItem[]>("/admin/config").then(d => setConfigs(Array.isArray(d) ? d : [])).catch(() => setUpdateMsg("Failed to reload configs"));
+      api.get<ConfigItem[]>("/admin/config").then(d => setConfigs(Array.isArray(d) ? d : [])).catch((e) => { console.error('reload configs:', e); setUpdateMsg("Failed to reload configs"); });
       setTimeout(() => setUpdateMsg(""), 3000);
     } catch (err: any) { setError(err.message); }
     finally { setSaving(null); }

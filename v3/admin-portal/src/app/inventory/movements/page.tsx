@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
-import { ArrowLeft } from "lucide-react";
 
 interface Store { id: number; store_name: string; }
 

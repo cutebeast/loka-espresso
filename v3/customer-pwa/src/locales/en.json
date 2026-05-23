@@ -373,6 +373,8 @@
     "recentOrders": "Recent Orders",
     "myRewards": "My Rewards",
     "myVouchers": "My Vouchers",
+    "reservations": "Reservations",
+    "promotions": "Promotions",
     "referral": "Referral",
     "paymentMethods": "Payment Methods",
     "savedAddresses": "Saved Addresses",
@@ -391,7 +393,8 @@
     "orderNumber": "Order #{id}",
     "tierMember": "{tier} Member",
     "viewAll": "View all →",
-    "pts": "{points} pts"
+    "pts": "{points} pts",
+    "events": "Events"
   },
   "settings": {
     "title": "Settings",
@@ -517,7 +520,23 @@
     "sendMessage": "Send Message",
     "subject": "Subject",
     "title": "Help & Support",
-    "yourName": "Your Name"
+    "yourName": "Your Name",
+    "faq": {
+      "q1": "How do I earn points?",
+      "q2": "How do I redeem rewards?",
+      "q3": "How do I use a voucher?",
+      "q4": "What are the delivery options?",
+      "a1": "You earn points with every purchase. The amount varies by your loyalty tier.",
+      "a2": "Go to the Rewards section, choose a reward, and tap Redeem.",
+      "a3": "Enter your voucher code at checkout or show it to the barista in-store.",
+      "a4": "We offer dine-in, takeaway, and delivery. Delivery availability depends on your location."
+    },
+    "subjects": {
+      "feedback": "Feedback",
+      "order": "Order Issue",
+      "rewards": "Rewards",
+      "technical": "Technical Support"
+    }
   },
   "home": {
     "add": "Add",
@@ -556,7 +575,7 @@
     "addQuantity": "Add Quantity",
     "all": "All",
     "allergenWarning": "Allergen Warning",
-    "cartItemCount": "Cart Item Count",
+    "cartItemCount": "{count} items",
     "clearSearch": "Clear Search",
     "loadError": "Load Error",
     "loadErrorToast": "Load Error Toast",
@@ -585,7 +604,7 @@
     "noNotificationsDesc": "You're all caught up!",
     "newCount_one": "{count} new notification",
     "newCount_other": "{count} new notifications",
-    "retentionNote": "Notifications are automatically cleared after 30 days",
+    "retentionNote": "Notifications are automatically cleared after {days} days",
     "filters": {
       "all": "All",
       "order": "Order",
@@ -614,8 +633,8 @@
     "addNewCard": "Add New Card",
     "availableForPurchases": "Available For Purchases",
     "default": "Default",
-    "endingIn": "Ending In",
-    "expires": "Expires",
+    "endingIn": "{brand} •••• {last4}",
+    "expires": "Expires {expiry}",
     "noMethods": "No Methods",
     "noMethodsDesc": "No Methods",
     "savedCards": "Saved Cards",
@@ -651,7 +670,13 @@
     "invitedUsers_one": "{count} invited",
     "invitedUsers_other": "{count} invited",
     "toNextTier_one": "{count} more to next tier",
-    "toNextTier_other": "{count} more to next tier"
+    "toNextTier_other": "{count} more to next tier",
+    "tiers": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "platinum": "Platinum"
+    }
   },
   "savedAddresses": {
     "addNewAddress": "Add New Address",
@@ -662,7 +687,7 @@
     "city": "City",
     "cityPlaceholder": "city...",
     "deleteConfirm": "Delete Confirm",
-    "distance": "Distance",
+    "distance": "{distance} · ~{minutes} min",
     "editAddress": "Edit Address",
     "noAddresses": "No Addresses",
     "noAddressesDesc": "No Addresses",

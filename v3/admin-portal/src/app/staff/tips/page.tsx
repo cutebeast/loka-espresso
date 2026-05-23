@@ -14,7 +14,7 @@ export default function StaffTipsPage() {
   const [stores, setStores] = useState<Store[]>([]);
 
   useEffect(() => {
-    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch(() => {});
+    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch((e) => { console.error('stores:', e); });
   }, []);
 
   const fetchData = useCallback(async () => {

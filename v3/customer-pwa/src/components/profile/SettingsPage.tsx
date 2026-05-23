@@ -20,7 +20,7 @@ export default function SettingsPage() {
         const data = res.data;
         let desc = null;
         if (Array.isArray(data)) {
-          const aboutBlock = data.find((b: any) => 
+          const aboutBlock = data.find((b: { content_type?: string; block_key?: string; block_name?: string; long_description?: string; body_text?: string; short_description?: string }) => 
             b.content_type === 'system' || b.block_key === 'about' || b.block_name?.toLowerCase().includes('about')
           );
           desc = aboutBlock?.long_description || aboutBlock?.body_text || aboutBlock?.short_description;

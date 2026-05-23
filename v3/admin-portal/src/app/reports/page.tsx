@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
-import { BarChart3, TrendingUp, DollarSign, ShoppingBag } from "lucide-react";
+import { BarChart3, TrendingUp } from "lucide-react";
 
 interface Store { id: number; store_name: string; }
 
@@ -19,9 +19,9 @@ export default function ReportsPage() {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   useEffect(() => {
-    api.get<{ items: Store[] }>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : (d.items || []))).catch(() => {});
+    api.get<{ items: Store[] }>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : (d.items || []))).catch((e) => { console.error('stores:', e); });
     setAnalyticsLoading(true);
-    api.get<any>("/admin/marketing/analytics").then(d => setAnalytics(Array.isArray(d) ? d : [])).catch(() => {}).finally(() => setAnalyticsLoading(false));
+    api.get<any>("/admin/marketing/analytics").then(d => setAnalytics(Array.isArray(d) ? d : [])).catch((e) => { console.error('analytics:', e); }).finally(() => setAnalyticsLoading(false));
   }, []);
 
   const fetchData = useCallback(async () => {

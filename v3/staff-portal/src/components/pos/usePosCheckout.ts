@@ -2,12 +2,12 @@
 
 import { useState, useCallback, useRef } from "react";
 import { getOrderById, applyOrderVoucher, applyOrderReward, payWithWallet, getCustomerWallet, scanCustomerCode, updateOrderPayment } from "@/lib/api";
-import type { Customer, CustomerWallet, Order } from "@/lib/api";
+import type { Customer, CustomerWallet, Order, OrderDetail, OrderStatus } from "@/lib/api";
 
 export function usePosCheckout(checkoutOrderId: string | null) {
   const isPaymentProcessingRef = useRef(false);
 
-  const [checkoutOrder, setCheckoutOrder] = useState<unknown>(null);
+  const [checkoutOrder, setCheckoutOrder] = useState<OrderDetail | null>(null);
   const [checkoutCustomer, setCheckoutCustomer] = useState<Customer | null>(null);
   const [checkoutWalletData, setCheckoutWalletData] = useState<CustomerWallet | null>(null);
   const [showCheckoutDiscounts, setShowCheckoutDiscounts] = useState(false);
@@ -100,9 +100,9 @@ export function usePosCheckout(checkoutOrderId: string | null) {
     if (isPaymentProcessingRef.current) return null;
     isPaymentProcessingRef.current = true;
     try {
-    const orderBase = (checkoutOrder as { total_amount?: number; total?: number })?.total_amount
-      || (checkoutOrder as { total?: number })?.total || 0;
-    const finalTotal = Math.max(0, orderBase - manualDisc - walletPaid);
+    const orderBase = checkoutOrder?.total_amount ?? 0;
+    const computedDisc = discountType === "percentage" ? orderBase * (manualDisc / 100) : manualDisc;
+    const finalTotal = Math.max(0, orderBase - computedDisc - walletPaid);
     const tenderedNum = parseFloat(amountTendered || "");
     await updateOrderPayment(orderId, {
       payment_method: paymentMethod,
@@ -110,23 +110,23 @@ export function usePosCheckout(checkoutOrderId: string | null) {
         ? tenderedNum
         : finalTotal,
       amount: finalTotal,
-      discount_amount: manualDisc,
+      discount_amount: computedDisc,
       discount_type: discountType,
     });
-    return { order_id: orderId, order_number: (checkoutOrder as { order_number?: string })?.order_number, total: finalTotal };
+    return { order_id: orderId, order_number: checkoutOrder?.order_number, total: finalTotal };
     } finally { isPaymentProcessingRef.current = false; }
   }, [checkoutOrder]);
 
-  const fetchUnpaidOrders = useCallback(async (storeId: number, getOrdersFn: (storeId: number, status?: unknown) => Promise<Order[]>) => {
+  const fetchUnpaidOrders = useCallback(async (storeId: number, getOrdersFn: (storeId?: number, status?: OrderStatus, paymentStatus?: string) => Promise<Order[]>) => {
     if (!storeId) return;
     setUnpaidLoading(true);
     try {
       const data = await getOrdersFn(storeId, undefined);
       const list = Array.isArray(data) ? data : [];
-      const unpaid = list.filter((o: { payment_status?: string; status?: string }) => {
+      const unpaid = list.filter((o) => {
         const ps = o.payment_status;
         return ps !== "paid" && ps !== "captured" && ps !== "settled" && ps !== "authorized"
-          && !o.status?.includes("cancelled") && !o.status?.includes("delivered");
+          && !o.status.includes("cancelled") && !o.status.includes("delivered");
       });
       setUnpaidOrders(unpaid);
     } catch (e) { console.error("Failed to load unpaid orders:", e); }

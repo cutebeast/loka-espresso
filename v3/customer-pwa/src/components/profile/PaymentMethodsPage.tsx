@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Wallet, Plus, Trash2, CreditCard } from 'lucide-react';
+import { ArrowLeft, Plus, CreditCard } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';

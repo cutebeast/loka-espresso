@@ -140,7 +140,7 @@ export const useUIStore = create<UIState>()(
           }
           window.location.hash = newHash;
         }
-        set((state) => ({ page, pageParams: params ?? {} }));
+        set((_state) => ({ page, pageParams: params ?? {} }));
       },
       setOrderMode: (orderMode) => set({ orderMode }),
       setDineInSession: (dineInSession) => set({ dineInSession }),

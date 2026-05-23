@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Star, Wallet, Gift, Coffee, ShoppingBag, Users, Ticket, Circle } from 'lucide-react';
+import { ArrowLeft, Star, Wallet, Gift, ShoppingBag, Users, Ticket, Circle } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
-import { useConfigStore } from '@/stores/configStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -182,7 +181,8 @@ export default function HistoryPage() {
                 {items.map((item, idx) => {
                   const isPositive = activeTab === 'loyalty' ? ((item as LoyaltyHistoryEntry).points || 0) > 0 : (item as Transaction).amount > 0;
                   const type = (item.type || '').toLowerCase();
-                  const IconComp = CATEGORY_ICONS[type] || CATEGORY_ICONS.default;
+                  const IconComp = CATEGORY_ICONS[type];
+                  if (!IconComp) return null;
                   const catLabel = categoryLabel(type);
                   return (
                     <div key={item.id || idx} className="history-tx-card">
@@ -201,7 +201,7 @@ export default function HistoryPage() {
                       <div className="history-tx-right">
                         <div className={`history-tx-amount ${isPositive ? 'credit' : 'debit'}`}>
                           {activeTab === 'loyalty'
-                            ? `${isPositive ? '+' : '−'}${Math.abs((item as LoyaltyHistoryEntry).points || 0).toLocaleString()} pts`
+                            ? `${isPositive ? '+' : '−'}${Math.abs((item as LoyaltyHistoryEntry).points || 0).toLocaleString()} ${t('common.pointsAbbr')}`
                             : `${isPositive ? '+' : '−'}${formatPrice(Math.abs((item as Transaction).amount || 0))}`}
                         </div>
                       </div>

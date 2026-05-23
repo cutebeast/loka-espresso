@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import Drawer from "@/components/Drawer";
@@ -10,8 +10,35 @@ import { showFeatureToast } from "@/lib/featureFlags";
 import { type Customer, type CustomerWallet } from "@/lib/api";
 import { PaymentMethod } from "./usePosState";
 
+interface PosCheckoutLineItem {
+  menu_item_id?: number;
+  id?: string | number;
+  item_name?: string;
+  name?: string;
+  modifiers_label?: string;
+  quantity: number;
+  unit_price?: number;
+  price?: number;
+}
+
+interface PosCheckoutOrder {
+  order_number: string;
+  total_amount?: number;
+  total?: number;
+  voucher_discount?: number;
+  reward_discount?: number;
+  line_items?: PosCheckoutLineItem[];
+  items?: PosCheckoutLineItem[];
+}
+
+interface DiscountsApplied {
+  voucher?: unknown;
+  reward?: unknown;
+  wallet?: number;
+}
+
 interface PosCheckoutPanelProps {
-  order: any;
+  order: PosCheckoutOrder;
   orderId: string | null;
   customer: Customer | null;
   walletData: CustomerWallet | null;
@@ -21,12 +48,12 @@ interface PosCheckoutPanelProps {
   discountType: "percentage" | "fixed";
   saving: boolean;
   applyingDiscount: boolean;
-  discountsApplied: { voucher?: any; reward?: any; wallet?: number };
+  discountsApplied: DiscountsApplied;
   error: string;
   msg: string;
   showDiscounts: boolean;
   onSetPaymentMethod: (m: PaymentMethod) => void;
-  onSetAmountTendered: React.Dispatch<React.SetStateAction<string>>;
+  onSetAmountTendered: Dispatch<SetStateAction<string>>;
   onSetDiscountAmount: (v: number) => void;
   onSetDiscountType: (t: "percentage" | "fixed") => void;
   onSetShowDiscounts: (v: boolean) => void;
@@ -42,7 +69,7 @@ interface PosCheckoutPanelProps {
 }
 
 export default function PosCheckoutPanel({
-  order, orderId, customer, walletData,
+  order, orderId: _orderId, customer, walletData,
   paymentMethod, amountTendered, discountAmount, discountType,
   saving, applyingDiscount, discountsApplied,
   error, msg, showDiscounts,
@@ -51,8 +78,8 @@ export default function PosCheckoutPanel({
   onSetError, onSetMsg, onScanCustomer,
   onApplyVoucher, onApplyReward, onWalletPayment, onCheckout,
 }: PosCheckoutPanelProps) {
-  const voucherDisc = Number((order as any).voucher_discount ?? 0);
-  const rewardDisc = Number((order as any).reward_discount ?? 0);
+  const voucherDisc = Number(order.voucher_discount ?? 0);
+  const rewardDisc = Number(order.reward_discount ?? 0);
   const originalTotal = (order.total_amount || order.total || 0);
   const orderBase = order.total_amount || order.total || 0;
   const manualDisc = discountType === "percentage" ? orderBase * (discountAmount / 100) : discountAmount;
@@ -100,7 +127,7 @@ export default function PosCheckoutPanel({
           <table className="data-table">
             <thead><tr><th>Item</th><th style={{ textAlign: "center" }}>Qty</th><th style={{ textAlign: "right" }}>Price</th></tr></thead>
             <tbody>
-              {(order.line_items || order.items || []).map((li: any, idx: number) => (
+              {(order.line_items || order.items || []).map((li, idx) => (
                 <tr key={`${li.menu_item_id || li.id || li.item_name}-${li.modifiers_label || "none"}-${idx}`}>
                   <td>{li.item_name || li.name}</td>
                   <td style={{ textAlign: "center" }}>{li.quantity}</td>
@@ -239,7 +266,7 @@ export default function PosCheckoutPanel({
               <div className="card" style={{ background: "var(--color-bg-muted)" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                   <span style={{ fontWeight: 700 }}>Wallet Balance</span>
-                  <span className="badge badge-primary">RM {walletData.balance.toFixed(2)}</span>
+                  <span className="badge badge-primary">RM {Number(walletData.balance ?? 0).toFixed(2)}</span>
                 </div>
                 {(order.total_amount || order.total || 0) > 0 && (
                   <button className="btn btn-primary w-full" onClick={() => onWalletPayment(Math.min(walletData.balance, order.total_amount || order.total || 0))}>
@@ -253,7 +280,7 @@ export default function PosCheckoutPanel({
               <div>
                 <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Vouchers</h4>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {walletData.vouchers.map((v: any) => (
+                  {walletData.vouchers.map((v) => (
                     <div key={v.id} className="card" style={{ padding: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{v.title || v.code}</div>
@@ -262,7 +289,7 @@ export default function PosCheckoutPanel({
                           {v.min_spend ? ` · Min spend RM ${v.min_spend}` : ""}
                         </div>
                       </div>
-                      <button className="btn btn-sm btn-primary" onClick={() => onApplyVoucher(v.code)}>Apply</button>
+                      <button className="btn btn-sm btn-primary" onClick={() => onApplyVoucher(v.code ?? "")}>Apply</button>
                     </div>
                   ))}
                 </div>
@@ -273,7 +300,7 @@ export default function PosCheckoutPanel({
               <div>
                 <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Rewards</h4>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {walletData.rewards.map((r: any) => (
+                  {walletData.rewards.map((r) => (
                     <div key={r.id} className="card" style={{ padding: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{r.name || r.redemption_code}</div>

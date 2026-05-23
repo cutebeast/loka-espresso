@@ -39,9 +39,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     Note: Does NOT auto-commit. Endpoints must explicitly commit.
     This enables multi-statement transactions across service calls.
     """
+    import logging
+    logger = logging.getLogger("database")
     async with AsyncSessionLocal() as session:
         try:
             yield session
         except Exception:
+            logger.debug("Rolling back session due to exception")
             await session.rollback()
             raise

@@ -1,16 +1,26 @@
 """Rate limiting configuration for FNB v3 API."""
 
+import os
+
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-# WARNING: In-memory storage won't work across multiple workers/instances.
-# For multi-process deployments, configure SlowAPI with Redis:
-#   from slowapi.storage.redis import RedisStorage
-#   limiter = Limiter(key_func=get_remote_address, storage_uri="redis://localhost:6379/0")
-limiter = Limiter(key_func=get_remote_address)
+
+def _build_limiter() -> Limiter:
+    redis_url = os.getenv("REDIS_URL", os.getenv("RATE_LIMIT_REDIS_URL", ""))
+    storage_uri = None
+    if redis_url:
+        storage_uri = redis_url
+    kwargs: dict = {"key_func": get_remote_address}
+    if storage_uri:
+        kwargs["storage_uri"] = storage_uri
+    return Limiter(**kwargs)
+
+
+limiter = _build_limiter()
 
 
 def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):

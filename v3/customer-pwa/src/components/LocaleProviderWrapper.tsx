@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import { isValidLocale } from '@/lib/i18n-types';
 import { readStoredLocale, detectBrowserLocale, setGlobalLocale } from '@/stores/localeStore';
 import { switchLocale } from '@/lib/i18n';
+import type { Locale } from '@/lib/i18n-types';
 
 interface LocaleCtx {
   locale: string;
@@ -25,7 +26,7 @@ export function LocaleProviderWrapper({ children }: { children: ReactNode }) {
     if (resolved !== 'en') {
       setReactLocale(resolved);
       // Fetch dynamic translations for non-en locale
-      switchLocale(resolved as any).catch(() => { /* offline — use static fallback */ });
+      switchLocale(resolved as Locale).catch(() => { /* offline — use static fallback */ });
     }
     setReady(true);
   }, []);
@@ -35,11 +36,12 @@ export function LocaleProviderWrapper({ children }: { children: ReactNode }) {
     if (!isValidLocale(next)) return;
     setGlobalLocale(next);
     setReactLocale(next);
-    // Fetch dynamic translations for non-en locale
-    switchLocale(next as any).catch(() => { /* offline — use static fallback */ });
+    switchLocale(next).catch(() => { /* offline — use static fallback */ });
   }, []);
 
-  return <Ctx.Provider value={{ locale, setLocaleAction }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ locale, setLocaleAction }}>
+    {ready ? children : null}
+  </Ctx.Provider>;
 }
 
 export function useLocaleCtx() {

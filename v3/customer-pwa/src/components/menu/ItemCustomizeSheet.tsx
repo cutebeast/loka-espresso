@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Minus, Plus, ShoppingCart, Coffee, AlertTriangle } from 'lucide-react';
+import { X, Minus, Plus, Coffee, AlertTriangle } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { MenuItem, CustomizationOption } from '@/lib/api';
 import { resolveAssetUrl, formatPrice, LOKA } from '@/lib/tokens';
@@ -215,7 +215,8 @@ export default function ItemCustomizeSheet({
                       <div className="ics-cup-row">
                         {opts.map((opt) => {
                           const key = opt.name.toLowerCase();
-                          const cup = CUP_SIZES[key] || CUP_SIZES['regular'];
+                          const cup = CUP_SIZES[key] ?? CUP_SIZES['regular'];
+                          if (!cup) return null;
                           const cupLabelKey = key in CUP_SIZES ? key : 'regular';
                           const sel = isSelected(opt.id);
                           return (

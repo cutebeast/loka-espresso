@@ -22,20 +22,30 @@ export function Carousel({
 }: CarouselProps) {
   const [current, setCurrent] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentRef = useRef(current);
+  useEffect(() => { currentRef.current = current; });
   const total = children.length;
 
   const goTo = useCallback((i: number) => {
     setCurrent(((i % total) + total) % total);
   }, [total]);
 
-  const next = useCallback(() => goTo(current + 1), [goTo, current]);
-  const prev = useCallback(() => goTo(current - 1), [goTo, current]);
+  const next = useCallback(() => goTo(currentRef.current + 1), [goTo]);
+  const prev = useCallback(() => goTo(currentRef.current - 1), [goTo]);
 
   useEffect(() => {
-    if (autoPlay && total > 1) {
-      timerRef.current = setInterval(next, interval);
-      return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    }
+    if (!autoPlay || total <= 1) return;
+    let active = true;
+    const tick = () => {
+      if (!active) return;
+      next();
+      timerRef.current = setTimeout(tick, interval);
+    };
+    timerRef.current = setTimeout(tick, interval);
+    return () => {
+      active = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [autoPlay, interval, total, next]);
 
   if (total === 0) return null;

@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 export default function CustomerDetailLoading() {
   return (
     <div style={{ padding: 32 }}>

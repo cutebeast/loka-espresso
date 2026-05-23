@@ -16,7 +16,7 @@ export const COUNTRIES: Country[] = countriesJson as Country[];
 
 /** Default country (Malaysia — home of LOKA Espresso) */
 export const DEFAULT_COUNTRY: Country =
-  COUNTRIES.find((c) => c.code === 'MY') || COUNTRIES[0];
+  COUNTRIES.find((c) => c.code === 'MY') ?? COUNTRIES[0]!;
 
 /** Compute a flag emoji from an ISO alpha-2 country code */
 export function countryFlag(isoCode: string): string {

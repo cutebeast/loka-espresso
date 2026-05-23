@@ -82,9 +82,9 @@ export default function TimeClockPage() {
       const data = await getMyTimeEvents(today);
       setEvents(Array.isArray(data) ? data : []);
       setError("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Time clock: Failed to load events:", err);
-      setError(err.message || "Failed to load");
+      setError(err instanceof Error ? err.message : "Failed to load");
     } finally {
       setLoading(false);
     }
@@ -95,6 +95,7 @@ export default function TimeClockPage() {
   const shiftStatus: ShiftStatus = (() => {
     if (events.length === 0) return "out";
     const last = events[events.length - 1];
+    if (!last) return "out";
     if (last.event_type === "clock_out") return "out";
     if (last.event_type === "break_start") return "break";
     if (last.event_type === "break_end") return "in";
@@ -104,8 +105,10 @@ export default function TimeClockPage() {
 
   const lastClockInMs = useMemo(() => {
     for (let i = events.length - 1; i >= 0; i--) {
-      if (events[i].event_type === "clock_in") {
-        const d = new Date(events[i].event_timestamp);
+      const ev = events[i];
+      if (!ev) continue;
+      if (ev.event_type === "clock_in") {
+        const d = new Date(ev.event_timestamp);
         return isNaN(d.getTime()) ? null : d.getTime();
       }
     }
@@ -162,9 +165,9 @@ export default function TimeClockPage() {
       setShowPin(false);
       setPin("");
       setPendingAction(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Time clock: Action failed:", err);
-      setError(err.message || "Failed");
+      setError(err instanceof Error ? err.message : "Failed");
     } finally {
       setActionLoading(false);
     }

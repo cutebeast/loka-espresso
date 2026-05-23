@@ -22,17 +22,20 @@ export function useQrExpiry(tables: TableQrInfo[]) {
   useEffect(() => {
     const tick = () => setNow(Date.now());
     const id = setInterval(tick, 1000);
+    let visId: ReturnType<typeof setInterval> | null = null;
     const onVisibilityChange = () => {
       if (document.hidden) {
+        if (visId) { clearInterval(visId); visId = null; }
         clearInterval(id);
       } else {
         tick();
-        setInterval(tick, 1000);
+        visId = setInterval(tick, 1000);
       }
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       clearInterval(id);
+      if (visId) clearInterval(visId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);

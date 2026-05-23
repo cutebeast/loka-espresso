@@ -6,8 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Store, UtensilsCrossed, Package, Users, LogOut,
   ChevronRight, Menu, X, Calendar, Award, Wallet,
-  Tag, Gift, FileText, Bell, UserCircle, BarChart3,
-  LayoutTemplate, Megaphone, Share2, ClipboardList, ShoppingBag, Grid3X3,
+  FileText, Bell, UserCircle, BarChart3,
+  LayoutTemplate, ShoppingBag, Grid3X3,
   Star, Settings, Languages, TrendingUp, Wrench,
 } from "lucide-react";
 import { adminLogout } from "@/lib/api";

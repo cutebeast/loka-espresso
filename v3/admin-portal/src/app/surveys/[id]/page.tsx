@@ -85,7 +85,7 @@ load();
     for(const f of TR_FIELDS){const src=(form[f.key]||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:${f.key}`]:rt.translated_text}));await upsertTr(f.key,loc,src,rt.translated_text);c++;}}catch (e) { console.error(e); }}
     for(const q of qTr.questions){
       const src=(q.text||"").trim();if(!src)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:src,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:q:${q.id}`]:rt.translated_text}));await upsertTr("question_text",loc,src,rt.translated_text,"survey_questions",q.id);c++;}}catch (e) { console.error(e); }
-      for(let oi=0;oi<(q.options||[]).length;oi++){const opt=q.options[oi].trim();if(!opt)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:opt,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:qopt:${q.id}_${oi}`]:rt.translated_text}));await upsertTr(`option_${oi}`,loc,opt,rt.translated_text,"survey_questions",q.id);c++;}}catch (e) { console.error(e); }}
+      for(let oi=0;oi<(q.options||[]).length;oi++){const opt=q.options?.[oi]?.trim();if(!opt)continue;try{const rt:any=await api.post("/admin/translations/translate",{text:opt,target_locale:loc,source_locale:"en"});if(rt?.translated_text){setTr(p=>({...p,[`${loc}:qopt:${q.id}_${oi}`]:rt.translated_text}));await upsertTr(`option_${oi}`,loc,opt,rt.translated_text,"survey_questions",q.id);c++;}}catch (e) { console.error(e); }}
     }
     setMsg(`Regenerated ${c} fields & options`);setTimeout(()=>setMsg(""),2500);setRegen(false);
   };
@@ -93,7 +93,7 @@ load();
   const saveAllTr = async () => {setSavingTr(true);
     for(const f of TR_FIELDS){const t=tr[`${loc}:${f.key}`]||"";if(t)await upsertTr(f.key,loc,(form[f.key]||"").trim(),t);}
     for(const q of qTr.questions){const t=tr[`${loc}:q:${q.id}`]||"";if(t)await upsertTr("question_text",loc,q.text,t,"survey_questions",q.id);
-      for(let oi=0;oi<(q.options||[]).length;oi++){const ot=tr[`${loc}:qopt:${q.id}_${oi}`]||"";if(ot)await upsertTr(`option_${oi}`,loc,q.options[oi],ot,"survey_questions",q.id);}
+      for(let oi=0;oi<(q.options||[]).length;oi++){const ot=tr[`${loc}:qopt:${q.id}_${oi}`]||"";if(ot)await upsertTr(`option_${oi}`,loc,q.options?.[oi]?.trim()||"",ot,"survey_questions",q.id);}
     }
     setMsg("Translations saved");setTimeout(()=>setMsg(""),2000);setSavingTr(false);
   };

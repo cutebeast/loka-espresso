@@ -87,16 +87,19 @@ export function findNearestStore(
   if (physicalStores.length === 0) return null;
 
   let nearest = physicalStores[0];
+  if (!nearest) return null;
   let minDist = haversineKm(userLoc.lat, userLoc.lng, nearest.lat!, nearest.lng!);
 
   for (let i = 1; i < physicalStores.length; i++) {
+    const store = physicalStores[i];
+    if (!store) continue;
     const d = haversineKm(
       userLoc.lat, userLoc.lng,
-      physicalStores[i].lat!, physicalStores[i].lng!,
+      store.lat!, store.lng!,
     );
     if (d < minDist) {
       minDist = d;
-      nearest = physicalStores[i];
+      nearest = store;
     }
   }
 

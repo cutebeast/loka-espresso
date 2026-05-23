@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { ArrowLeft, Save, Gift, Percent, Truck, Crown, Star, Cake, Sparkles, Coffee, Ticket } from "lucide-react";
+import { ArrowLeft, Save, Truck, Crown, Star, Cake, Sparkles, Coffee, Ticket } from "lucide-react";
 
 const DEFAULT_BENEFITS = {
   order_discount_percent: 0,

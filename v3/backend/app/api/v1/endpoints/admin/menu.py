@@ -333,6 +333,17 @@ async def list_items(
                 MenuModifierGroupOut.model_validate(mg).model_dump() | {"options": options}
             )
 
+    # Load variants in bulk
+    variant_map: dict[int, list[dict]] = {}
+    if item_ids:
+        var_result = await db.execute(
+            select(MenuVariant).where(MenuVariant.parent_item_id.in_(item_ids))
+        )
+        for v in var_result.scalars().all():
+            if v.parent_item_id not in variant_map:
+                variant_map[v.parent_item_id] = []
+            variant_map[v.parent_item_id].append(MenuVariantOut.model_validate(v).model_dump())
+
     # Load recipes in bulk
     recipe_map: dict[int, list[dict]] = {}
     if item_ids:
@@ -351,7 +362,7 @@ async def list_items(
         item_dict["allergens"] = allergen_map.get(item.id, [])
         item_dict["dietary_tags"] = dietary_map.get(item.id, [])
         item_dict["modifier_groups"] = modifier_map.get(item.id, [])
-        item_dict["variants"] = []
+        item_dict["variants"] = variant_map.get(item.id, [])
         item_dict["recipes"] = recipe_map.get(item.id, [])
         item_outs.append(MenuItemOut.model_validate(item_dict))
 

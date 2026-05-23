@@ -300,11 +300,11 @@ async def send_campaign(
             )
             phone_map = {row[0]: row[1] for row in phone_result.all()}
             body = f"{campaign.campaign_name}\n\n{campaign.body_content or ''}"
-            tasks = []
-            for cid in customer_ids:
-                phone = phone_map.get(cid)
-                if phone:
-                    tasks.append(_send_sms_via_twilio(sid, token, sms_from, phone, body))
+            sem = asyncio.Semaphore(50)
+            async def _send_sms(phone: str, cid: int) -> bool:
+                async with sem:
+                    return await _send_sms_via_twilio(sid, token, sms_from, phone, body)
+            tasks = [_send_sms(phone, cid) for cid in customer_ids if (phone := phone_map.get(cid))]
             if tasks:
                 results = await asyncio.gather(*tasks)
                 delivered_count = sum(1 for r in results if r)
@@ -320,13 +320,12 @@ async def send_campaign(
             )
             phone_map = {row[0]: row[1] for row in phone_result.all()}
             body = f"{campaign.campaign_name}\n\n{campaign.body_content or ''}"
-            tasks = []
-            for cid in customer_ids:
-                phone = phone_map.get(cid)
-                if phone:
-                    # Twilio WhatsApp format: whatsapp:+1234567890
+            sem = asyncio.Semaphore(50)
+            async def _send_wa(phone: str, cid: int) -> bool:
+                async with sem:
                     wa_to = f"whatsapp:{phone}" if not phone.startswith("whatsapp:") else phone
-                    tasks.append(_send_sms_via_twilio(sid, token, wa_from, wa_to, body))
+                    return await _send_sms_via_twilio(sid, token, wa_from, wa_to, body)
+            tasks = [_send_wa(phone, cid) for cid in customer_ids if (phone := phone_map.get(cid))]
             if tasks:
                 results = await asyncio.gather(*tasks)
                 delivered_count = sum(1 for r in results if r)
@@ -351,14 +350,14 @@ async def send_campaign(
             )
             email_map = {row[0]: row[1] for row in email_result.all()}
 
-            tasks = []
-            for cid in customer_ids:
-                addr = email_map.get(cid)
-                if addr:
-                    tasks.append(_send_email_via_resend(
+            sem = asyncio.Semaphore(50)
+            async def _send_email(addr: str, cid: int) -> bool:
+                async with sem:
+                    return await _send_email_via_resend(
                         api_key, from_email, addr,
                         campaign.campaign_name, campaign.body_content or "",
-                    ))
+                    )
+            tasks = [_send_email(addr, cid) for cid in customer_ids if (addr := email_map.get(cid))]
             if tasks:
                 results = await asyncio.gather(*tasks)
                 delivered_count = sum(1 for r in results if r)

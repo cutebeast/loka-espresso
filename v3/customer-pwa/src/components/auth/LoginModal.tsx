@@ -77,9 +77,9 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
   }, [resendTimer]);
 
   const apiError = useCallback((err: unknown, fallback: string) => {
-    const detail = (err as any)?.response?.data?.detail;
+    const detail = (err as { response?: { data?: { detail?: unknown; message?: string } } })?.response?.data?.detail;
     if (typeof detail === 'string' && detail.trim()) return detail;
-    const msg = (err as any)?.response?.data?.message;
+    const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
     if (typeof msg === 'string' && msg.trim()) return msg;
     return fallback;
   }, []);
@@ -126,7 +126,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
 
   const verifyOtp = async (code: string) => {
     const res = await api.post('/auth/login', { phone_number: phoneNumber, otp_code: code });
-    const tokens = res.data?.tokens || (res.data as any)?.data?.tokens;
+      const tokens = res.data?.tokens || (res.data as { data?: { tokens?: { access_token?: string; refresh_token?: string } } })?.data?.tokens;
     if (tokens?.access_token) {
       localStorage.setItem('token', tokens.access_token);
       if (tokens.refresh_token) localStorage.setItem('refreshToken', tokens.refresh_token);
@@ -150,8 +150,8 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
       await verifyOtp(code);
       haptic('success');
       finishAuth();
-    } catch (err: any) {
-      if (err?.response?.status === 404) {
+    } catch (err: unknown) {
+      if ((err as { response?: { status?: number } })?.response?.status === 404) {
         // New user
         setIsNewUser(true);
         setStep('profile');
@@ -162,15 +162,18 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
     } finally { setOtpLoading(false); submittingOtpRef.current = false; }
   };
 
+  const handleVerifyOtpRef = useRef(handleVerifyOtp);
+  useEffect(() => { handleVerifyOtpRef.current = handleVerifyOtp; });
+
   useEffect(() => {
     if (step !== 'otp' || !otp.every((d) => d) || otpLoading || submittingOtpRef.current) return;
-    const timer = setTimeout(() => handleVerifyOtp(), 600);
+    const timer = setTimeout(() => handleVerifyOtpRef.current(), 600);
     return () => clearTimeout(timer);
-  }, [otp.join('')]);
+  }, [otp.join(''), step, otpLoading]);
 
   const handleResendOtp = async () => {
     if (resendTimer > 0) return;
-    // v3 doesn't have resend-otp
+    showToast(t('auth.otpResent'), 'info');
     setOtp(['', '', '', '', '', '']); otpRefs.current[0]?.focus();
   };
 
@@ -191,13 +194,9 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
       const me = await api.get('/me'); setUser(me.data as UserProfile);
       setIsNewUser(false);
       finishAuth();
-    } catch (err: any) {
+    } catch (err: unknown) {
       showToast(apiError(err, t('auth.saveProfileFailed')), 'error');
     } finally { setProfileLoading(false); }
-  };
-
-  const handleProfileSkip = async () => {
-    showToast(t('auth.nameRequired'), 'warning');
   };
 
   const handleClose = () => { if (!useAuthStore.getState().isAuthenticated) useUIStore.getState().setIsGuest(true); onClose(); };
@@ -295,7 +294,7 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
           <form onSubmit={handleProfileSubmit} className="flex flex-col gap-4">
             <div className="flex items-center gap-4 mb-2">
               <div className={`lm-avatar ${profileName ? 'lm-avatar-filled' : ''}`}>
-                {profileName ? profileName.trim()[0].toUpperCase() : <User color="#8A8078" size={24} />}
+                {profileName ? (profileName.trim()[0] ?? '?').toUpperCase() : <User color="#8A8078" size={24} />}
               </div>
               <div>
                 <p className="text-xs text-text-muted font-medium">{t('auth.yourAccount')}</p>

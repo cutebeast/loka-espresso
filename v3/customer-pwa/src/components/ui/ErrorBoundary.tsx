@@ -2,7 +2,7 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { t } from '@/lib/i18n';
+import { t } from '@/lib/i18n';
 
 interface Props {
   children: React.ReactNode;

@@ -10,9 +10,9 @@ export default function AllergensPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getRaw<{ items: any[] }>("/admin/menu/allergens").then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(() => {}).finally(() => setLoading(false));
+    api.getRaw<{ items: any[] }>("/admin/menu/allergens").then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch((e) => { console.error('allergens:', e); }).finally(() => setLoading(false));
   }, []);
-  const refresh = () => api.getRaw<{ items: any[] }>("/admin/menu/allergens").then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch(()=>{});
+  const refresh = () => api.getRaw<{ items: any[] }>("/admin/menu/allergens").then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch((e)=>{console.error('allergens:',e)});
   return (
     <div style={{ padding: 32 }}>
       <div className="page-header">

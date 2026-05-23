@@ -154,7 +154,7 @@ async def create_order_from_cart(
     service_charge = float(config_map.get("order.service_charge", 0) or 0)
     tax_rate = Decimal(str(config_map.get("order.tax_rate", 0) or 0))
     subtotal = float(cart.subtotal)
-    tax_amount = float(round(cart.subtotal * tax_rate, 2))
+    tax_amount = float(round(Decimal(str(cart.subtotal)) * tax_rate, 2))
 
     # Create order
     order = Order(

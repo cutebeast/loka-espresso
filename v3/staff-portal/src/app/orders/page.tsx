@@ -46,9 +46,9 @@ export default function OrdersPage() {
       const list = Array.isArray(data) ? data : [];
       setOrders(list);
       setError("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load orders:", err);
-      setError(err.message || "Failed to load orders");
+      setError(err instanceof Error ? err.message : "Failed to load orders");
     } finally {
       setLoading(false);
     }

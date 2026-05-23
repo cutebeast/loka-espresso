@@ -15,7 +15,7 @@ export default function NewCategoryPage() {
   const [form, setForm] = useState({ category_name: "", slug: "", description: "", is_active: true });
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const list = d.items || []; setStores(list); if (list.length > 0) setStoreId(String(list[0].id)); }).catch(()=>{});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const list = d.items || []; setStores(list); if (list.length > 0) setStoreId(String(list[0].id)); }).catch((e)=>{console.error('stores:',e)});
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setSaving(true);

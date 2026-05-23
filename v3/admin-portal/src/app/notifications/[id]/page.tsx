@@ -25,7 +25,7 @@ export default function NotificationEditPage() {
   const [tr, setTr] = useState<Record<string, string>>({});
   const { allSegments: AUDIENCES } = useAudienceSegments();
 
-  useEffect(() => { load(); api.get<{items:Template[]}>("/admin/notifications/templates/list").then(d => setTemplates(Array.isArray(d)?d:(d.items||[]))).catch(()=>{}); }, [id]);
+  useEffect(() => { load(); api.get<{items:Template[]}>("/admin/notifications/templates/list").then(d => setTemplates(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('templates:',e)}); }, [id]);
 
   const load = async () => { setLoading(true);
     try {

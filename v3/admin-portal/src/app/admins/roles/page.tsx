@@ -32,6 +32,7 @@ export default function RolesPage() {
   const [form, setForm] = useState({ display_name: "", description: "", role_key: "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Permission assignment
   const [assigningRole, setAssigningRole] = useState<number | null>(null);
@@ -39,12 +40,12 @@ export default function RolesPage() {
 
   const fetch = useCallback(() => {
     setLoading(true);
-    api.get<any>("/admin/auth/roles").then(d => setRoles(Array.isArray(d) ? d : (d.items || []))).catch(() => {}).finally(() => setLoading(false));
+    api.get<any>("/admin/auth/roles").then(d => setRoles(Array.isArray(d) ? d : (d.items || []))).catch((e) => { console.error('roles:', e); }).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     fetch();
-    api.get<any>("/admin/auth/permissions").then(d => setPermissions(Array.isArray(d) ? d : (d.items || []))).catch(() => {});
+    api.get<any>("/admin/auth/permissions").then(d => setPermissions(Array.isArray(d) ? d : (d.items || []))).catch((e) => { console.error('permissions:', e); });
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -67,7 +68,8 @@ export default function RolesPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this role? All assignments will be removed.")) return;
-    try { await api.del(`/admin/auth/roles/${id}`); fetch(); setMsg("Role deleted"); setTimeout(() => setMsg(""), 2000); } catch (e) { console.error(e); }
+    setDeletingId(id);
+    try { await api.del(`/admin/auth/roles/${id}`); fetch(); setMsg("Role deleted"); setTimeout(() => setMsg(""), 2000); } catch (e) { console.error(e); } finally { setDeletingId(null); }
   };
 
   const loadRolePerms = async (roleId: number) => {
@@ -157,7 +159,7 @@ export default function RolesPage() {
                 <div style={{ display: "flex", gap: 4 }}>
                   <button onClick={() => startEdit(r)} className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>Edit</button>
                   <button onClick={() => loadRolePerms(r.id)} className="btn btn-outline btn-sm" style={{ fontSize: 11 }}>Perms</button>
-                  <button onClick={() => handleDelete(r.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)", fontSize: 11 }}><Trash2 size={12} /></button>
+                  <button onClick={() => handleDelete(r.id)} disabled={deletingId === r.id} className="btn btn-ghost btn-sm" style={{ color: deletingId === r.id ? "var(--color-text-muted)" : "var(--color-error)", fontSize: 11 }}><Trash2 size={12} /></button>
                 </div>
               </td>
             </tr>

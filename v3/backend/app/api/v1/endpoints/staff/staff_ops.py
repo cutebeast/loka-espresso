@@ -211,6 +211,15 @@ async def admin_select_store(request: Request, db: DBDependency, data: StaffAdmi
         payload = decode_token(token)
         if payload.get("type") != "admin":
             raise HTTPException(status_code=401, detail="Not an admin token")
+        jti = payload.get("jti")
+        if jti:
+            blacklist_check = await db.execute(
+                select(TokenBlacklist).where(TokenBlacklist.jti == jti)
+            )
+            if blacklist_check.scalar_one_or_none():
+                raise HTTPException(status_code=401, detail="Token has been revoked")
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 

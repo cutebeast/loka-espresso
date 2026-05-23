@@ -36,7 +36,11 @@ def _login_and_get_token(base_url: str, email: str, password: str, timeout: floa
             inner = data.get("data", {})
             token = inner.get("tokens", {}).get("access_token")
         return token
-    except Exception:
+    except httpx.ConnectError as e:
+        logger.error("Admin login: backend connection refused — %s", e)
+        return None
+    except Exception as e:
+        logger.error("Admin login: unexpected error — %s: %s", type(e).__name__, str(e))
         return None
 
 
@@ -151,10 +155,10 @@ def cleanup_registry():
                         headers=headers,
                         json={"points": -adj["points"], "reason": "E2E cleanup reversal"},
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("[cleanup] Failed to revert points for customer %d: %s", adj.get("customer_id"), e)
 
-            # Revert wallet top-ups (no undo endpoint, but we can try a negative top-up)
+            # Revert wallet top-ups
             for w in reversed(registry["wallet_topups"]):
                 try:
                     c.post(
@@ -162,8 +166,8 @@ def cleanup_registry():
                         headers=headers,
                         json={"customer_id": w["customer_id"], "amount": -w["amount"], "reason": "E2E cleanup reversal"},
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("[cleanup] Failed to revert wallet topup for customer %d: %s", w.get("customer_id"), e)
 
             # Cancel orders
             for order in reversed(registry["orders"]):
@@ -173,15 +177,15 @@ def cleanup_registry():
                         headers=headers,
                         json={"status": "cancelled"},
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("[cleanup] Failed to cancel order %d: %s", order.get("id"), e)
 
             # Delete customers
             for cust in registry["customers"]:
                 try:
                     c.delete(f"{BASE_URL}/admin/customers/{cust['id']}", headers=headers)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("[cleanup] Failed to delete customer %d: %s", cust.get("id"), e)
 
     except Exception:
         logger.warning("[cleanup] Cleanup failed — skipping", exc_info=True)

@@ -20,6 +20,7 @@ export default function StaffShiftsPage() {
   const [form, setForm] = useState({ staff_id: "", shift_template_id: "", shift_date: "" });
   const [tplForm, setTplForm] = useState({ name: "", start_time: "", end_time: "", store_id: "" });
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch((err: any) => { console.error("Failed to load stores:", err); });
@@ -57,9 +58,10 @@ export default function StaffShiftsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete?")) return;
+    setDeletingId(id);
     try { await api.del(`/admin/staff/shifts/${id}`);
       api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch((err: any) => { console.error("Failed to refresh shifts after delete:", err); });
-    } catch (e: any) { console.error("Failed to delete shift:", e); }
+    } catch (e: any) { console.error("Failed to delete shift:", e); } finally { setDeletingId(null); }
   };
 
   return (
@@ -152,7 +154,7 @@ export default function StaffShiftsPage() {
               <td>{s.template_name || "—"}</td>
               <td>{s.shift_date}</td>
               <td>{s.start_time} – {s.end_time}</td>
-              <td><button type="button" onClick={() => handleDelete(s.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button></td>
+              <td><button type="button" onClick={() => handleDelete(s.id)} disabled={deletingId === s.id} className="btn btn-ghost btn-sm" style={{ color: deletingId === s.id ? "var(--color-text-muted)" : "var(--color-error)" }}><Trash2 size={14} /></button></td>
             </tr>
           ))}
         </tbody>

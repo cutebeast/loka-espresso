@@ -11,7 +11,7 @@ interface Props {
   disabled?: boolean;
 }
 
-export default function GalleryUpload({ imageUrls, videoUrl, onImagesChange, onVideoChange, disabled }: Props) {
+export default function GalleryUpload({ imageUrls, videoUrl, onImagesChange, onVideoChange, disabled: _disabled }: Props) {
   const imgRef = useRef<HTMLInputElement>(null);
   const vidRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -30,7 +30,9 @@ export default function GalleryUpload({ imageUrls, videoUrl, onImagesChange, onV
       const newUrls: string[] = [];
       for (let i = 0; i < files.length; i++) {
         if (controller.signal.aborted) return;
-        const fd = new FormData(); fd.append("file", files[i]);
+        const file = files[i];
+        if (!file) continue;
+        const fd = new FormData(); fd.append("file", file);
         const j = await api.upload("/upload/image", fd);
         newUrls.push(j.url || j.filename);
       }

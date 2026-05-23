@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Zap, ZapOff, Camera, CameraOff, AlertTriangle } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { haptic } from '@/lib/haptics';
-import { LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface QRScannerProps {
@@ -63,8 +62,8 @@ export default function QRScanner({ isOpen, onClose, onScan }: QRScannerProps) {
     try {
       if (!scannerRef.current) return;
       await scannerRef.current.applyVideoConstraints({
-        advanced: [{ torch: !flashOn } as any],
-      } as any);
+        advanced: [{ torch: !flashOn } as MediaTrackConstraintSet],
+      } as MediaTrackConstraints);
       setFlashOn(!flashOn);
     } catch { /* unsupported */ }
   }, [flashOn]);

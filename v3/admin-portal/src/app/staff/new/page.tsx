@@ -17,12 +17,12 @@ export default function NewStaffPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const list = d.items || []; setStores(list); if (list.length > 0) setStoreId(String(list[0].id)); }).catch(()=>{});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const list = d.items || []; setStores(list); if (list.length > 0) setStoreId(String(list[0].id)); }).catch((e)=>{console.error('stores:',e)});
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setSaving(true); setError("");
     try {
-      const result = await api.post<any>("/admin/staff", {
+      await api.post<any>("/admin/staff", {
         email: form.email, password: form.password, display_name: form.display_name,
         phone_number: form.phone_number, role: form.role, store_id: Number(storeId),
         pin: "000000",

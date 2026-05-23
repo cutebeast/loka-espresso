@@ -14,6 +14,7 @@ import { placeOrder } from '@/lib/cartSync';
 import TimeSlotPicker from '@/components/checkout/TimeSlotPicker';
 import DeliveryAddressCard from '@/components/checkout/DeliveryAddressCard';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
+import type { Order } from '@/lib/api';
 import { haversineKm } from '@/lib/geolocation';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
@@ -57,7 +58,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash' | 'gateway'>(
     checkoutDraft.paymentMethod || (orderMode === 'dine_in' ? 'pay_at_store' : 'wallet')
   );
-  const [notes, setNotes] = useState(checkoutDraft.notes || orderNote || '');
+  const [notes, _setNotes] = useState(checkoutDraft.notes || orderNote || '');
   const [placing, setPlacing] = useState(false);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
   const [showRewardSheet, setShowRewardSheet] = useState(false);
@@ -113,7 +114,7 @@ export default function CheckoutPage() {
     setFieldErrors(new Set());
     setPlacing(true);
     try {
-      const result: any = await placeOrder({
+      const result: Order = await placeOrder({
         storeId: storeId!, orderType: orderMode,
         deliveryAddress: deliveryAddress || undefined, pickupTime: pickupTime || undefined,
         paymentMethod, notes: notes || orderNote,
@@ -126,7 +127,7 @@ export default function CheckoutPage() {
       clearCheckoutDraft();
       haptic('success');
       setPage('order-detail', { orderId: result.id });
-    } catch (e: any) { showToast(e?.response?.data?.detail || t('toast.orderFailed'), 'error'); }
+    } catch (e: unknown) { showToast((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('toast.orderFailed'), 'error'); }
     finally { setPlacing(false); }
   };
 
@@ -236,7 +237,7 @@ export default function CheckoutPage() {
         <div className="co-summary-card">
           <div className="co-section-title">{t('checkout.orderSummary')}</div>
           <div className="co-order-items-list">
-            {items.map((item, i) => {
+            {items.map((item, _i) => {
               const cust = item.customizations as CustomizationStructure | undefined;
               const tags = cust?.options?.map((o) => { const name = o.name || ''; const colonIdx = name.indexOf(': '); return colonIdx >= 0 ? name.slice(colonIdx + 2) : name; }) || [];
               return (

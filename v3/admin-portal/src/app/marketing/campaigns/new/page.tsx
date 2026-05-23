@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, createMarketingCampaign } from "@/lib/api";
+import { createMarketingCampaign } from "@/lib/api";
 import { ArrowLeft, Save } from "lucide-react";
 import { useAudienceSegments } from "@/lib/useAudienceSegments";
 

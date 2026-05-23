@@ -1,8 +1,10 @@
 "use client";
 
+export type BadgeVariant = "green" | "yellow" | "red" | "blue" | "gray" | "orange" | "purple" | "primary" | "outline" | "amber";
+
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: "green" | "yellow" | "red" | "blue" | "gray" | "orange" | "purple" | "primary" | "outline" | "amber";
+  variant?: BadgeVariant;
   size?: "sm" | "md";
   className?: string;
   style?: React.CSSProperties;

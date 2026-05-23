@@ -21,7 +21,7 @@ export default function LoyaltySettingsPage() {
       const map: Record<string, ConfigItem> = {};
       (Array.isArray(d) ? d : []).forEach((c: any) => { map[c.config_key] = c; });
       setConfigs(map);
-    }).catch(()=>{}).finally(() => setLoading(false));
+    }).catch((e)=>{console.error('loyalty config:',e)}).finally(() => setLoading(false));
   }, []);
 
   const save = async (key: string, value: string) => {

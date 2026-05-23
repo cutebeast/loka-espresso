@@ -97,7 +97,7 @@ export default function ProfilePage() {
     { id: 'card', icon: IdCard, label: t('profile.myCard'), iconClass: 'profile-icon-card', onClick: () => setPage('my-card') },
     { id: 'notification', icon: Bell, label: t('profile.notifications'), iconClass: 'profile-icon-notif', onClick: () => setPage('notifications') },
     { id: 'reservations', icon: CalendarCheck, label: t('profile.reservations') || 'Reservations', iconClass: 'profile-icon-notif', onClick: () => setPage('reservations') },
-    { id: 'events', icon: CalendarCheck, label: 'Events', iconClass: 'profile-icon-notif', onClick: () => setPage('events') },
+    { id: 'events', icon: CalendarCheck, label: t('profile.events'), iconClass: 'profile-icon-notif', onClick: () => setPage('events') },
     { id: 'promotions', icon: Tag, label: t('profile.promotions') || 'Promotions', iconClass: 'profile-icon-reward', onClick: () => setPage('promotions') },
   ];
 

@@ -38,7 +38,7 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
           if (qrScanMode === "customer") {
             const custMatch = decodedText.match(/loka:customer:(\d+)/);
             let customerId: number | null = null;
-            if (custMatch) {
+            if (custMatch && custMatch[1]) {
               customerId = parseInt(custMatch[1], 10);
             } else {
               const rawId = parseInt(decodedText.trim(), 10);

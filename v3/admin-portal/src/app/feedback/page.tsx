@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
-import { Star, MessageSquare, Reply, Edit2, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, Reply, Edit2, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 const PAGE_SIZE = 20;
 

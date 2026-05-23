@@ -91,13 +91,44 @@ async def create_translation(
     db: DBDependency,
     admin: CurrentAdmin,
     data: TranslationCreate,
-):
+):  # Updated from PUT to handle composite key upsert
     """Create a translation record."""
     translation = Translation(**data.model_dump())
     db.add(translation)
     await db.commit()
     await db.refresh(translation)
     return APIResponse(data=TranslationOut.model_validate(translation))
+
+
+@router.put("/upsert", response_model=APIResponse[TranslationOut])
+async def upsert_translation(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    data: TranslationCreate,
+):
+    """Upsert a translation by composite key."""
+    result = await db.execute(
+        select(Translation).where(
+            Translation.namespace == data.namespace,
+            Translation.table_name == data.table_name,
+            Translation.record_id == data.record_id,
+            Translation.column_name == data.column_name,
+            Translation.locale == data.locale,
+        ).with_for_update()
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        existing.translated_text = data.translated_text
+        existing.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(existing)
+        return APIResponse(data=TranslationOut.model_validate(existing))
+    else:
+        translation = Translation(**data.model_dump())
+        db.add(translation)
+        await db.commit()
+        await db.refresh(translation)
+        return APIResponse(data=TranslationOut.model_validate(translation))
 
 
 @router.get("/{translation_id}", response_model=APIResponse[TranslationOut])

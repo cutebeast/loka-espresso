@@ -32,8 +32,8 @@ export default function OfflineBanner() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearTimer();
-          // Reload the page to retry fetching fresh content
-          window.location.reload();
+          const shouldReload = window.confirm("Connection lost. Reload page to retry?");
+          if (shouldReload) window.location.reload();
           return 0;
         }
         return prev - 1;

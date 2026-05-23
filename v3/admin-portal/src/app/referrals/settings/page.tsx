@@ -17,7 +17,7 @@ export default function ReferralSettingsPage() {
       setPoints(map["loyalty.referral_reward_points"] || "50");
       setMinOrders(map["loyalty.referral_min_orders"] || "1");
       setMinSpend(map["loyalty.referral_min_spend"] || "0");
-    }).catch(()=>{}).finally(() => setLoading(false));
+    }).catch((e)=>{console.error('referral config:',e)}).finally(() => setLoading(false));
   }, []);
 
   const save = async (key: string, val: string) => {

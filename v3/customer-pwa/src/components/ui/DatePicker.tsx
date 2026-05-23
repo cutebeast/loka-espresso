@@ -15,7 +15,7 @@ const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 100 }, (_, i) => currentYear - i);
 
 function daysInMonth(monthIndex: number): number {
-  return DAYS_PER_MONTH[monthIndex] || 31;
+  return DAYS_PER_MONTH[monthIndex] ?? 31;
 }
 
 interface DatePickerProps {
@@ -30,16 +30,16 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
   const [open, setOpen] = useState(false);
 
   const parsed = value ? value.split('-').map(Number) : null;
-  const [month, setMonth] = useState(parsed ? parsed[1] - 1 : 0);
-  const [day, setDay] = useState(parsed ? parsed[2] : 1);
-  const [year, setYear] = useState(parsed ? parsed[0] : currentYear - 25);
+  const [month, setMonth] = useState(parsed && parsed[1] != null ? parsed[1] - 1 : 0);
+  const [day, setDay] = useState(parsed && parsed[2] != null ? parsed[2] : 1);
+  const [year, setYear] = useState(parsed && parsed[0] != null ? parsed[0] : currentYear - 25);
 
   const monthRef = useRef<HTMLDivElement>(null);
   const dayRef = useRef<HTMLDivElement>(null);
   const yearRef = useRef<HTMLDivElement>(null);
 
-  const displayText = parsed
-    ? `${parsed[2]} ${MONTHS[parsed[1] - 1].slice(0, 3)} ${parsed[0]}`
+  const displayText = parsed && parsed[0] != null && parsed[1] != null && parsed[2] != null
+    ? `${parsed[2]} ${MONTHS[parsed[1] - 1]?.slice(0, 3) ?? ''} ${parsed[0]}`
     : null;
 
   const safeDay = Math.min(day, daysInMonth(month));
@@ -55,11 +55,14 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
   useEffect(() => {
     if (!open) return;
     const timeout = setTimeout(() => {
-      monthRef.current?.children[month]?.scrollIntoView({ block: 'center', behavior: 'auto' });
-      dayRef.current?.children[safeDay - 1]?.scrollIntoView({ block: 'center', behavior: 'auto' });
+      const mc = monthRef.current?.children[month];
+      if (mc) mc.scrollIntoView({ block: 'center', behavior: 'auto' });
+      const dc = dayRef.current?.children[safeDay - 1];
+      if (dc) dc.scrollIntoView({ block: 'center', behavior: 'auto' });
       const yearIdx = YEARS.indexOf(year);
       if (yearIdx >= 0) {
-        yearRef.current?.children[yearIdx]?.scrollIntoView({ block: 'center', behavior: 'auto' });
+        const yc = yearRef.current?.children[yearIdx];
+        if (yc) yc.scrollIntoView({ block: 'center', behavior: 'auto' });
       }
     }, 50);
     return () => clearTimeout(timeout);
@@ -80,7 +83,8 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
     e.preventDefault();
     const idx = YEARS.indexOf(year);
     const newIdx = Math.max(0, Math.min(YEARS.length - 1, idx + (e.deltaY > 0 ? 1 : -1)));
-    setYear(YEARS[newIdx]);
+    const newYear = YEARS[newIdx];
+    if (newYear != null) setYear(newYear);
   };
 
   return (

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Plus, Edit2, Trash2, Wrench } from "lucide-react";
+import { Plus, Edit2, Trash2 } from "lucide-react";
 
 interface Equipment {
   id: number;
@@ -33,6 +33,7 @@ export default function EquipmentPage() {
   const [loading, setLoading] = useState(true);
   const [storeFilter, setStoreFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -48,13 +49,14 @@ export default function EquipmentPage() {
   }, [storeFilter, statusFilter]);
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(()=>{});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('stores:',e)});
     fetchData();
   }, [fetchData]);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this equipment record?")) return;
-    try { await api.del(`/admin/equipment/${id}`); fetchData(); } catch (e) { console.error(e); }
+    setDeletingId(id);
+    try { await api.del(`/admin/equipment/${id}`); fetchData(); } catch (e) { console.error(e); } finally { setDeletingId(null); }
   };
 
   return (
@@ -111,7 +113,7 @@ export default function EquipmentPage() {
                   <td>
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={() => router.push(`/equipment/${item.id}`)} className="btn btn-icon btn-ghost"><Edit2 size={14} /></button>
-                      <button onClick={() => handleDelete(item.id)} className="btn btn-icon btn-ghost" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                      <button onClick={() => handleDelete(item.id)} disabled={deletingId === item.id} className="btn btn-icon btn-ghost" style={{ color: deletingId === item.id ? "var(--color-text-muted)" : "var(--color-error)" }}><Trash2 size={14} /></button>
                     </div>
                   </td>
                 </tr>

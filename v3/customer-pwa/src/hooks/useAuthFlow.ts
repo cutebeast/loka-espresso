@@ -21,7 +21,7 @@ function isPublicPage(page: PageId): boolean {
 export function useAuthFlow() {
   const { isAuthenticated, setUser, authDone, setAuthDone } = useAuthStore();
   const {
-    page, selectedStore,
+    page,
     setPage, setSelectedStore, setStores, showToast,
     setIsLoading,
   } = useUIStore();

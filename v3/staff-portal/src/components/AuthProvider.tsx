@@ -7,7 +7,10 @@ import { staffLogout, refreshToken as apiRefreshToken } from "@/lib/api";
 
 function parseJwtExp(token: string): number | null {
   try {
-    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const parts = token.split(".");
+    const payload = parts[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
     const json = JSON.parse(atob(base64));
     return json.exp ? json.exp * 1000 : null;
   } catch (e) {

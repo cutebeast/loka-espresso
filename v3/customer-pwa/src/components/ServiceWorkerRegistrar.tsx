@@ -1,9 +1,14 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function ServiceWorkerRegistrar() {
+  const registeredRef = useRef(false);
+
   useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+    if (!('serviceWorker' in navigator) || registeredRef.current) return;
+    registeredRef.current = true;
+
+    const workerListeners: Array<{ target: ServiceWorkerRegistration | ServiceWorker; type: string; handler: () => void }> = [];
 
     const registerServiceWorker = async () => {
       try {
@@ -11,16 +16,21 @@ export function ServiceWorkerRegistrar() {
           updateViaCache: 'none',
         });
 
-        registration.addEventListener('updatefound', () => {
+        const onUpdateFound = () => {
           const newWorker = registration.installing;
           if (!newWorker) return;
-          newWorker.addEventListener('statechange', () => {
+          const onStateChange = () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               const event = new CustomEvent('sw-update-available');
               window.dispatchEvent(event);
             }
-          });
-        });
+          };
+          newWorker.addEventListener('statechange', onStateChange);
+          workerListeners.push({ target: newWorker, type: 'statechange', handler: onStateChange });
+        };
+
+        registration.addEventListener('updatefound', onUpdateFound);
+        workerListeners.push({ target: registration, type: 'updatefound', handler: onUpdateFound });
 
         if (registration.waiting) {
           const event = new CustomEvent('sw-update-available');
@@ -32,6 +42,12 @@ export function ServiceWorkerRegistrar() {
     };
 
     void registerServiceWorker();
+
+    return () => {
+      workerListeners.forEach(({ target, type, handler }) => {
+        target.removeEventListener(type, handler);
+      });
+    };
   }, []);
 
   return null;

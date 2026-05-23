@@ -177,7 +177,7 @@ v3/
 cd backend && uvicorn app.main:app --reload
 cd backend && alembic upgrade head
 cd backend && alembic revision --autogenerate -m "description"
-cd backend && python scripts/seed.py
+cd backend && python scripts/seed_v3.py
 
 # Staff Portal
 cd staff-portal && npm run dev
@@ -196,7 +196,7 @@ cd customer-pwa && npm run build
 
 ---
 
-## Quality Standards (from 6 rounds of audit)
+## Quality Standards (from 7 rounds of audit)
 
 ### All Clear
 - **No runtime crash risks**: All `.toFixed()`, `.charAt()`, `new Date()`, `JSON.parse()`, `parseFloat()` calls are properly guarded with `Number(… ?? 0)`, `|| "?"`, `isNaN()` checks, or try/catch
@@ -207,7 +207,7 @@ cd customer-pwa && npm run build
 - **Auth token refresh**: Every API call through `api` module auto-refreshes on 401
 - **Error boundaries**: `error.tsx` at root-level + `orders/[id]`; `loading.tsx` skeletons on `orders/`, `orders/[id]`, `customers/[id]`, `menu/items/[id]`
 - **Staff middleware**: `src/middleware.ts` provides security headers (CSP, HSTS, X-Frame-Options, etc.)
-- **CSP hardened**: Customer PWA CSP removed `unsafe-eval`/`unsafe-inline` from script-src, added `frame-ancestors 'none'`
+- **CSP hardened**: Customer PWA CSP includes `frame-ancestors 'none'`; Staff Portal CSP includes `'unsafe-inline' 'unsafe-eval'` for Next.js 16 hydration compatibility
 
 ### Active Logging
 - All catch blocks log `console.error` with descriptive context strings

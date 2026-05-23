@@ -11,9 +11,7 @@ Multi-app F&B platform for Loka Espresso. Active development is in `v3/`.
 | **Admin Portal** | `v3/admin-portal/` | Next.js 16 (Turbopack) | 13830 |
 | **Customer PWA** | `v3/customer-pwa/` | Next.js 16 (Turbopack) | 13810 |
 
-Legacy v2 (not in active development): `backend/`, `frontend/`, `customer-app/`
-
-Shared: `uploads/` (mounted by both v2 and v3 backends), `scripts/`, `infra/`
+Shared: `v3/infra/`, `v3/scripts/`
 
 ---
 
@@ -116,7 +114,7 @@ npm run build && npx next start -p 13810
 
 ---
 
-## Quality Standards (5 audit rounds completed)
+## Quality Standards (7 audit rounds completed)
 
 - Zero runtime crash risks — all `.toFixed()`, `.charAt()`, `new Date()`, `parseFloat()` properly guarded
 - SSR-safe — all `localStorage`/`window` calls use `typeof window !== "undefined"`

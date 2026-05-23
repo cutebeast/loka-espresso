@@ -1,19 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import Card from "@/components/Card";
 import SkeletonCard from "@/components/SkeletonCard";
-import { Mail, Shield, Store, Lock, KeyRound, AlertCircle, User } from "lucide-react";
+import { Mail, Shield, Store, Lock, KeyRound, AlertCircle } from "lucide-react";
+
+interface StaffProfile {
+  roles: string[];
+  display_name: string;
+  email: string;
+  store_id: number;
+}
 
 export default function ProfilePage() {
-  const router = useRouter();
   const isAdmin = useIsAdmin();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<StaffProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPw, setShowPw] = useState(false);
   const [showPin, setShowPin] = useState(false);
@@ -26,7 +31,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let mounted = true;
-    api.get<any>("/staff/auth/me")
+    api.get<StaffProfile>("/staff/auth/me")
       .then((d) => { if (mounted) setProfile(d); })
       .catch((e) => { console.error("Failed to load profile:", e); if (mounted) setProfile(null); })
       .finally(() => { if (mounted) setLoading(false); });
@@ -48,9 +53,9 @@ export default function ProfilePage() {
       setShowPw(false);
       setCurrentPw("");
       setNewPw("");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Password change failed:", e);
-      setMsg(e.message || "Failed");
+      setMsg(e instanceof Error ? e.message : "Failed");
     } finally { setSaving(false); }
   };
 
@@ -64,9 +69,9 @@ export default function ProfilePage() {
       setShowPin(false);
       setCurrentPin("");
       setNewPin("");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("PIN change failed:", e);
-      setMsg(e.message || "Failed");
+      setMsg(e instanceof Error ? e.message : "Failed");
     } finally { setSaving(false); }
   };
 

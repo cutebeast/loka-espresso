@@ -12,6 +12,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import type { InformationCard } from '@/lib/api';
 import { idbStorage } from '@/lib/idbStorage';
 import { resolveAssetUrl } from '@/lib/tokens';
+import type { PageId } from '@/lib/api';
 
 const DISMISSED_KEY = 'loka-dismissed-popups';
 
@@ -39,7 +40,6 @@ interface PromotionPopupProps {
 
 export default function PromotionPopup({ splashMode = false }: PromotionPopupProps) {
   const { t } = useTranslation();
-  const page = useUIStore((s) => s.page);
   const [popups, setPopups] = useState<InformationCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -75,6 +75,7 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
   const handleClose = async () => {
     if (popups.length === 0) return;
     const current = popups[currentIndex];
+    if (!current) return;
     await dismissPopup(current.id);
     if (currentIndex + 1 < popups.length) {
       setCurrentIndex(prev => prev + 1);
@@ -103,6 +104,7 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
   if (popups.length === 0) return null;
 
   const popup = popups[currentIndex];
+  if (!popup) return null;
   const imageUrl = resolveAssetUrl(popup.image_url);
   const isVideo = popup.image_url && /\.(mp4|webm)($|\?)/i.test(popup.image_url);
   const visibleSections = (popup.sections || []).filter(s => s.visible !== false);
@@ -172,7 +174,7 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
                         e.stopPropagation();
                         if (popup.action_url?.startsWith('#')) {
                           e.preventDefault();
-                          useUIStore.getState().setPage(popup.action_url.replace('#', '') as any);
+                          useUIStore.getState().setPage(popup.action_url.replace('#', '') as PageId);
                         }
                       }}
                     >

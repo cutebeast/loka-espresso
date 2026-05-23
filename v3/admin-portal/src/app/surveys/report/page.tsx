@@ -32,7 +32,7 @@ export default function SurveyReportPage() {
         const list = (Array.isArray(d) ? d : (d.items || [])) as Survey[];
         setSurveys(list);
       })
-      .catch(() => {});
+      .catch((e) => { console.error('surveys:', e); });
   }, []);
 
   const fetchResponses = useCallback(async (p: number = 1) => {

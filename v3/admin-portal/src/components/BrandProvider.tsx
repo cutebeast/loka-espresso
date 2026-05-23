@@ -39,8 +39,8 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         if (nameItem?.config_value) setBrandName(nameItem.config_value);
         if (favItem?.config_value) setFaviconUrl(favItem.config_value);
       })
-      .catch(() => {
-        // fallback already set
+      .catch((e) => {
+        console.error('branding config:', e);
       });
 
     return () => { controller.abort(); };

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -16,7 +16,7 @@ export default function InventoryCategoriesPage() {
   const [storeId, setStoreId] = useState("");
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const list = d.items || []; setStores(list); if (list.length > 0) setStoreId(String(list[0].id)); }).catch(()=>{});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const list = d.items || []; setStores(list); if (list.length > 0) setStoreId(String(list[0].id)); }).catch((e)=>{console.error('stores:',e)});
   }, []);
 
   useEffect(() => {(async () => {

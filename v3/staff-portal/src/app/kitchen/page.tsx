@@ -43,7 +43,7 @@ export default function KitchenPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"oldest" | "newest" | "value">("oldest");
   const [view, setView] = useState<"kanban" | "list">("kanban");
-  const [updatingId, setUpdatingId] = useState<string | number | null>(null);
+  const [_updatingId, setUpdatingId] = useState<string | number | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [connected, setConnected] = useState(true);
   const prevCountRef = useRef(0);
@@ -75,10 +75,10 @@ export default function KitchenPage() {
       }
       prevCountRef.current = list.length;
       setError("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Kitchen: Failed to load orders:", err);
       setConnected(false);
-      setError(err.message || "Failed to load orders");
+      setError(err instanceof Error ? err.message : "Failed to load orders");
     } finally {
       setLoading(false);
     }
@@ -89,7 +89,7 @@ export default function KitchenPage() {
   useEffect(() => {
     prevCountRef.current = 0;
     try {
-      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioCtxRef.current = new (window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
     } catch (e) { console.error("Failed to create AudioContext:", e); }
     return () => {
       if (audioTimerRef.current) clearTimeout(audioTimerRef.current);
@@ -104,9 +104,9 @@ export default function KitchenPage() {
       await updateOrderStatus(id, status);
       if (seq !== fetchSeqRef.current) return;
       await fetchOrders();
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (seq !== fetchSeqRef.current) return;
-      setError(err.message || "Failed to update order");
+      setError(err instanceof Error ? err.message : "Failed to update order");
     } finally {
       if (seq === fetchSeqRef.current) setUpdatingId(null);
     }
@@ -183,7 +183,7 @@ export default function KitchenPage() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <SearchInput value={search} onChange={setSearch} placeholder="Search order #, customer, table..." />
-          <select className="form-input" style={{ width: 120 }} value={sort} onChange={(e) => setSort(e.target.value as any)} aria-label="Sort order">
+          <select className="form-input" style={{ width: 120 }} value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Sort order">
             <option value="oldest">Oldest First</option>
             <option value="newest">Newest First</option>
             <option value="value">Highest Value</option>

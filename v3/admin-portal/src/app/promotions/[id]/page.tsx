@@ -37,7 +37,7 @@ export default function PromotionEditPage() {
       api.getRaw<any>(`/admin/vouchers/${form.voucher_id}`).then(d => {
         const segs = d.customer_segments || [];
         setVoucherSegments(Array.isArray(segs) ? segs : []);
-      }).catch(() => setVoucherSegments([]));
+      }).catch((e) => { console.error('voucher segments:', e); setVoucherSegments([]); });
     
 })();}, [form.voucher_id]);
 

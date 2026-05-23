@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Share2, Copy, Users, Check, Lock, Gift } from 'lucide-react';
+import { ArrowLeft, Share2, Copy, Check, Lock, Gift } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useConfigStore } from '@/stores/configStore';

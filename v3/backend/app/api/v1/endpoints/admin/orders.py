@@ -71,8 +71,7 @@ async def list_orders(
                 if store_id not in admin_store_ids:
                     raise HTTPException(status_code=403, detail="Access denied for this store")
             else:
-                # Non-HQ admin sees only their stores
-                pass  # store_id remains None, will be filtered below
+                store_id = admin_store_ids
 
     base_stmt = select(Order).options(
         joinedload(Order.customer),
@@ -386,8 +385,10 @@ async def apply_order_voucher(
     if not voucher_code:
         raise HTTPException(status_code=400, detail="voucher_code is required")
 
-    # Load order
-    result = await db.execute(select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)))
+    # Load and lock order in one query to prevent TOCTOU race
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -395,10 +396,6 @@ async def apply_order_voucher(
 
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot apply voucher to a completed/cancelled order")
-
-    # Lock order row and load voucher to prevent concurrent modifications
-    result = await db.execute(select(Order).where(Order.id == order_id).with_for_update())
-    _ = result.scalar_one()
     result = await db.execute(
         select(CustomerVoucher, VoucherDefinition)
         .join(VoucherDefinition, CustomerVoucher.voucher_definition_id == VoucherDefinition.id, isouter=True)
@@ -498,8 +495,10 @@ async def apply_order_reward(
     """Apply a customer reward to an existing order."""
     reward_id = data.reward_id
 
-    # Load order
-    result = await db.execute(select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)))
+    # Load and lock order in one query to prevent TOCTOU race
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -507,10 +506,6 @@ async def apply_order_reward(
 
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot apply reward to a completed/cancelled order")
-
-    # Lock order row and load reward to prevent concurrent modifications
-    result = await db.execute(select(Order).where(Order.id == order_id).with_for_update())
-    _ = result.scalar_one()
     result = await db.execute(
         select(CustomerReward, RewardCatalog)
         .join(RewardCatalog, CustomerReward.reward_catalog_id == RewardCatalog.id, isouter=True)
@@ -613,18 +608,28 @@ async def pay_with_wallet(
     if wallet.is_frozen:
         raise HTTPException(status_code=400, detail="Wallet is frozen")
 
-    # Compute current balance from ledger
-    lr = await db.execute(select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id))
-    total_credited = 0.0
-    total_debited = 0.0
-    for entry in lr.scalars().all():
-        if entry.entry_type in ("credit", "release"):
-            total_credited += float(entry.amount)
-        elif entry.entry_type in ("debit", "hold"):
-            total_debited += float(entry.amount)
-        elif entry.entry_type == "adjustment":
-            total_credited += float(entry.amount)
-    current_balance = round(total_credited - total_debited, 2)
+    # Compute current balance from ledger using SQL SUM
+    balance_result = await db.execute(
+        select(
+            func.coalesce(
+                func.sum(
+                    func.case(
+                        (WalletLedgerEntry.entry_type.in_(["credit", "release", "adjustment"]), WalletLedgerEntry.amount),
+                        else_=0,
+                    )
+                )
+                -
+                func.sum(
+                    func.case(
+                        (WalletLedgerEntry.entry_type.in_(["debit", "hold"]), WalletLedgerEntry.amount),
+                        else_=0,
+                    )
+                ),
+                0,
+            )
+        ).where(WalletLedgerEntry.wallet_id == wallet.id)
+    )
+    current_balance = round(float(balance_result.scalar() or 0), 2)
 
     if current_balance < amount:
         raise HTTPException(status_code=400, detail=f"Insufficient wallet balance. Available: RM {current_balance:.2f}")

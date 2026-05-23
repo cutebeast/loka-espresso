@@ -1,26 +1,25 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getOrderById, updateOrderStatus, OrderDetail, OrderStatus } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
-import Badge from "@/components/Badge";
+import Badge, { type BadgeVariant } from "@/components/Badge";
 import SkeletonCard from "@/components/SkeletonCard";
 import { ArrowLeft, CheckCircle, Clock, Printer, XCircle } from "lucide-react";
 
-const STATUS_FLOW: Record<string, { next: OrderStatus[]; label: string; color: string }> = {
+const STATUS_FLOW: Record<string, { next: OrderStatus[]; label: string; color: BadgeVariant }> = {
   pending: { next: ["confirmed", "cancelled_by_merchant"], label: "Pending", color: "yellow" },
   confirmed: { next: ["preparing", "cancelled_by_merchant"], label: "Confirmed", color: "blue" },
-  preparing: { next: ["ready_for_pickup", "cancelled_by_merchant"], label: "Preparing", color: "orange" },
+  preparing: { next: ["ready_for_pickup", "out_for_delivery", "cancelled_by_merchant"], label: "Preparing", color: "orange" },
   ready_for_pickup: { next: ["delivered", "cancelled_by_merchant"], label: "Ready", color: "green" },
+  out_for_delivery: { next: ["delivered", "cancelled_by_merchant"], label: "Out for Delivery", color: "blue" },
   delivered: { next: [], label: "Delivered", color: "green" },
   cancelled_by_customer: { next: [], label: "Cancelled (Customer)", color: "red" },
   cancelled_by_merchant: { next: [], label: "Cancelled (Merchant)", color: "red" },
 };
-
-const STATUS_ORDER = ["pending", "confirmed", "preparing", "ready_for_pickup", "delivered"];
 
 export default function KitchenDetailPage() {
   const params = useParams();
@@ -38,9 +37,9 @@ export default function KitchenDetailPage() {
       const data = await getOrderById(id);
       setOrder(data);
       setError("");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Failed to load kitchen order:", e);
-      setError(e.message);
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -56,8 +55,8 @@ export default function KitchenDetailPage() {
       setCancelReason("");
       const updated = await getOrderById(id);
       setOrder(updated);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setUpdating(false);
     }
@@ -90,7 +89,7 @@ export default function KitchenDetailPage() {
   }
 
   const flow = STATUS_FLOW[order.status] || STATUS_FLOW.pending;
-  const currentStatusIndex = STATUS_ORDER.indexOf(order.status);
+  if (!flow) return null;
 
   return (
     <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
@@ -98,7 +97,7 @@ export default function KitchenDetailPage() {
         title={order.order_number}
         subtitle={`${order.customer_name || "Walk-in"} · ${dt(order.created_at)}`}
        
-        action={<Badge variant={flow.color as any}>{flow.label}</Badge>}
+        action={<Badge variant={flow.color}>{flow.label}</Badge>}
       />
 
       {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
@@ -168,7 +167,7 @@ export default function KitchenDetailPage() {
               </tr>
             </thead>
             <tbody>
-              {(order.line_items || []).map((li: any) => (
+              {(order.line_items || []).map((li) => (
                 <tr key={`${li.menu_item_id || li.id || li.item_name}-${li.modifiers_label || "none"}`}>
                   <td style={{ fontWeight: 600 }}>
                     {li.item_name || li.name || "—"}
@@ -190,7 +189,7 @@ export default function KitchenDetailPage() {
         <div className="card" style={{ marginBottom: 20 }}>
           <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Status Timeline</h4>
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {(order.status_log || []).map((sl: any, i: number, arr: any[]) => {
+            {(order.status_log || []).map((sl, i, arr) => {
               const isLast = i === arr.length - 1;
               return (
                 <div key={`${sl.to_status}-${sl.created_at || i}`} style={{ display: "flex", gap: 12 }}>
@@ -203,7 +202,7 @@ export default function KitchenDetailPage() {
                     {!isLast && <div style={{ width: 2, flex: 1, background: "var(--color-border-light)", margin: "4px 0" }} />}
                   </div>
                   <div style={{ paddingBottom: isLast ? 0 : 16 }}>
-                    <Badge variant={STATUS_FLOW[sl.to_status]?.color as any || "gray"} size="sm">
+                    <Badge variant={STATUS_FLOW[sl.to_status]?.color || "gray"} size="sm">
                       {sl.to_status?.replace(/_/g, " ")}
                     </Badge>
                     <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 4 }}>

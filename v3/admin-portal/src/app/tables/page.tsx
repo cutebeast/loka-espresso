@@ -54,7 +54,7 @@ export default function TablesPage() {
         setStores(list);
         if (list.length > 0) setSelectedStore(list[0].id);
       })
-      .catch(() => {});
+      .catch((e) => { console.error('stores:', e); });
     return () => { cancelled = true; };
   }, [fetchStores]);
 

@@ -74,19 +74,19 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
           ...(body ? { body: JSON.stringify(body) } : {}),
           signal,
         });
-        if (retry.ok) {
-          const ct = retry.headers.get("content-type");
-          if (ct && ct.includes("application/json")) {
-            const json = await retry.json();
-            if (json && typeof json === "object" && "data" in json) {
-              const data = json.data;
-              if (data && typeof data === "object" && Array.isArray(data.items)) return data.items as T;
-              return data as T;
+          if (retry.ok) {
+            const ct = retry.headers.get("content-type");
+            if (ct && ct.includes("application/json")) {
+              const json = await retry.json();
+              if (json && typeof json === "object" && "data" in json) {
+                const data = json.data;
+                if (data && typeof data === "object" && "items" in data) return data as T;
+                return data as T;
+              }
+              return json as T;
             }
-            return json as T;
+            throw new Error("Unexpected non-JSON response");
           }
-          throw new Error("Unexpected non-JSON response");
-        }
       } finally { clear(); }
     }
     clearSession();
@@ -99,7 +99,7 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
     const json = await res.json();
     if (json && typeof json === "object" && "data" in json) {
       const data = json.data;
-      if (data && typeof data === "object" && Array.isArray(data.items)) return data.items as T;
+      if (data && typeof data === "object" && "items" in data) return data as T;
       return data as T;
     }
     return json as T;

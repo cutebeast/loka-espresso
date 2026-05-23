@@ -241,7 +241,6 @@ async function queueOrder(orderPayload, authToken) {
     const store = tx.objectStore(STORE_NAME);
     const record = {
       payload: orderPayload,
-      authToken: authToken || null,
       timestamp: Date.now(),
       retryCount: 0,
       nextRetryAt: 0,
@@ -382,9 +381,6 @@ async function replayOrders() {
         'Content-Type': 'application/json',
         'Idempotency-Key': `sw-sync-${record.id}`,
       };
-      if (record.authToken) {
-        headers['Authorization'] = `Bearer ${record.authToken}`;
-      }
       const response = await fetch(`${API_BASE}/orders`, {
         method: 'POST',
         headers,
@@ -397,7 +393,7 @@ async function replayOrders() {
         const nextRetry = retryCount + 1;
         const delay = BASE_DELAY_MS * Math.pow(2, retryCount);
         await updateOrderRetry(record.id, nextRetry, now + delay);
-        break;
+        continue;
       } else {
         await removeOrder(record.id);
       }

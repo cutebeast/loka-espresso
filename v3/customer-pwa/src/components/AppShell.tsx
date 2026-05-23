@@ -11,7 +11,7 @@ import api, { setStoreIdGetter } from '@/lib/api';
 import type { Store as StoreType } from '@/lib/api';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { useAuthFlow } from '@/hooks/useAuthFlow';
-import { usePageRouter, SUB_PAGES } from '@/hooks/usePageRouter';
+import { usePageRouter } from '@/hooks/usePageRouter';
 import { useNotifications } from '@/hooks/useNotifications';
 import { resolveAppUrl } from '@/lib/tokens';
 import { getBrowserLocation } from '@/lib/geolocation';
@@ -71,7 +71,7 @@ function getPageComponent(key: string): React.ComponentType<any> | null {
   }
 })();
 
-function LazyRenderer({ pageKey, ...props }: { pageKey: string; [key: string]: any }) {
+function LazyRenderer({ pageKey, ...props }: { pageKey: string } & Record<string, unknown>) {
   const Comp = getPageComponent(pageKey);
   // eslint-disable-next-line -- dynamic components are pre-cached at module scope
   return Comp ? <Comp {...props} /> : null;

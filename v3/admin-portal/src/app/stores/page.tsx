@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Plus, MapPin, Trash2, Edit2 } from "lucide-react";
+import { Plus, Trash2, Edit2 } from "lucide-react";
 
 interface Store {
   id: number; store_name: string; store_code: string; slug: string;
@@ -19,6 +19,7 @@ export default function StoresPage() {
   const [items, setItems] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -32,7 +33,8 @@ export default function StoresPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this store?")) return;
-    try { await api.del(`/admin/stores/${id}`); fetchData(); } catch (e: any) { console.error("Failed to delete store:", e); }
+    setDeletingId(id);
+    try { await api.del(`/admin/stores/${id}`); fetchData(); } catch (e: any) { console.error("Failed to delete store:", e); } finally { setDeletingId(null); }
   };
 
   return (
@@ -80,7 +82,7 @@ export default function StoresPage() {
                   <button type="button" onClick={() => router.push(`/stores/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}>
                     <Edit2 size={14} />
                   </button>
-                  <button type="button" onClick={() => handleDelete(item.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}>
+                  <button type="button" onClick={() => handleDelete(item.id)} disabled={deletingId === item.id} className="btn btn-ghost btn-sm" style={{ color: deletingId === item.id ? "var(--color-text-muted)" : "var(--color-error)" }}>
                     <Trash2 size={14} />
                   </button>
                 </td>

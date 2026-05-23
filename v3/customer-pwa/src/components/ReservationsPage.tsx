@@ -3,10 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, CalendarCheck, Plus, Users, Clock, MapPin, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { getLocale } from '@/stores/localeStore';
 import api from '@/lib/api';
 import type { Reservation, Store } from '@/lib/api';
 import { GuestGate } from '@/components/auth/GuestGate';
@@ -76,8 +74,8 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
       });
       setShowForm(false);
       await fetchReservations();
-    } catch (err: any) {
-      setFormError(err?.response?.data?.detail || (t('reservations.submitFailed') || 'Failed to create reservation'));
+    } catch (err: unknown) {
+      setFormError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || (t('reservations.submitFailed') || 'Failed to create reservation'));
     } finally {
       setSubmitting(false);
     }
@@ -157,7 +155,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
               <div key={r.id} className="bg-bg-card rounded-2xl p-4 shadow-card border border-border-subtle">
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <p className="font-bold text-text-primary">{r.store_name || stores.find((s) => s.id === r.store_id)?.name || `Store #${r.store_id}`}</p>
+                    <p className="font-bold text-text-primary">{r.store_name || stores.find((s) => s.id === r.store_id)?.name || t('orderDetail.storeId', { id: r.store_id })}</p>
                     <p className="text-xs text-text-muted flex items-center gap-1 mt-1">
                       <MapPin size={12} /> {stores.find((s) => s.id === r.store_id)?.address || ''}
                     </p>

@@ -15,13 +15,13 @@ export default function NewItemPage() {
   const [form, setForm] = useState({ item_name: "", item_code: "", unit_of_measure: "kg", category_id: "", supplier_id: "", current_stock: 0, reorder_level: 0, unit_cost: 0, is_active: true });
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const l = d.items || []; setStores(l); if (l.length > 0) setStoreId(String(l[0].id)); }).catch(()=>{});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => { const l = d.items || []; setStores(l); if (l.length > 0) setStoreId(String(l[0].id)); }).catch((e)=>{console.error('stores:',e)});
   }, []);
 
   useEffect(() => {
     if (!storeId) return;
-    api.getRaw<any>(`/admin/inventory/categories?store_id=${storeId}`).then(d => setCategories(Array.isArray(d) ? d : (d.items||[]))).catch(()=>{});
-    api.getRaw<any>(`/admin/inventory/suppliers?store_id=${storeId}`).then(d => setSuppliers(Array.isArray(d) ? d : (d.items||[]))).catch(()=>{});
+    api.getRaw<any>(`/admin/inventory/categories?store_id=${storeId}`).then(d => setCategories(Array.isArray(d) ? d : (d.items||[]))).catch((e)=>{console.error('categories:',e)});
+    api.getRaw<any>(`/admin/inventory/suppliers?store_id=${storeId}`).then(d => setSuppliers(Array.isArray(d) ? d : (d.items||[]))).catch((e)=>{console.error('suppliers:',e)});
   }, [storeId]);
 
   const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setSaving(true);

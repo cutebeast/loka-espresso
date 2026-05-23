@@ -15,10 +15,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  getMenuItems, getMenuCategories, getTables, searchCustomers, getOrders,
-  createPosOrder, getOrderById, getCustomerWallet,
-  type MenuItem, type Category, type CartItem, type Customer, type Table,
-  type Order
+  getMenuItems, getMenuCategories, getTables, getOrders,
+  createPosOrder,
+  type MenuItem, type Category, type Customer, type Table,
+  type Reward, type Voucher
 } from "@/lib/api";
 import { usePosCart, type HeldOrder } from "./usePosCart";
 import { usePosCustomer } from "./usePosCustomer";
@@ -34,8 +34,6 @@ export function usePosState() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const checkoutOrderId = searchParams.get("checkout");
-  const initialTableId = searchParams.get("table");
-  const initialOrderType = searchParams.get("type") || "dine_in";
 
   // Shared state
   const [mode, setMode] = useState<PosMode>(checkoutOrderId ? "checkout" : "new_order");
@@ -102,8 +100,11 @@ export function usePosState() {
         setItems((Array.isArray(itemsData) ? itemsData : []).filter((i: { is_available?: boolean }) => i.is_available));
         const cats = Array.isArray(catsData) ? catsData : [];
         setCategories(cats);
-        if (cats.length > 0) setActiveCat(cats[0].id);
-        setTables(Array.isArray(tablesData) ? (tablesData as Table[]).filter((t) => (t as any).is_active !== false) : []);
+        if (cats.length > 0) {
+          const firstCat = cats[0];
+          if (firstCat) setActiveCat(firstCat.id);
+        }
+        setTables(Array.isArray(tablesData) ? (tablesData as Table[]).filter((t) => t.is_active !== false) : []);
 
         const held = localStorage.getItem("pos_held_orders");
         if (held) {
@@ -158,13 +159,14 @@ export function usePosState() {
   }, [customerHook, handleCustomerSelect]);
 
   // ── Order actions ──
-  const isProcessingRef = useRef(false);
+  const isKitchenProcessingRef = useRef(false);
+  const isCheckoutProcessingRef = useRef(false);
 
   const handleSendToKitchen = async () => {
-    if (isProcessingRef.current) return;
+    if (isKitchenProcessingRef.current) return;
     if (cartHook.cart.length === 0) { setError("Cart is empty"); return; }
     if (cartHook.orderType === "dine_in" && !cartHook.tableId) { setError("Please assign a table for dine-in orders"); return; }
-    isProcessingRef.current = true;
+    isKitchenProcessingRef.current = true;
     setSaving(true);
     try {
       const res = await createPosOrder({
@@ -181,13 +183,13 @@ export function usePosState() {
       });
       setResult(res);
       setState("done");
-    } catch (e: unknown) { setError((e as Error).message); } finally { isProcessingRef.current = false; setSaving(false); }
+    } catch (e: unknown) { setError((e as Error).message); } finally { isKitchenProcessingRef.current = false; setSaving(false); }
   };
 
   const handleCheckout = async () => {
-    if (isProcessingRef.current) return;
+    if (isCheckoutProcessingRef.current) return;
     if (!checkoutOrderId) return;
-    isProcessingRef.current = true;
+    isCheckoutProcessingRef.current = true;
     setSaving(true);
     try {
       const walletPaid = checkoutHook.checkoutDiscountsApplied.wallet || 0;
@@ -196,7 +198,7 @@ export function usePosState() {
       );
       setResult(res);
       setState("done");
-    } catch (e: unknown) { setError((e as Error).message); } finally { isProcessingRef.current = false; setSaving(false); }
+    } catch (e: unknown) { setError((e as Error).message); } finally { isCheckoutProcessingRef.current = false; setSaving(false); }
   };
 
   const holdOrder = () => {
@@ -265,15 +267,15 @@ export function usePosState() {
     loadCustomerWallet: customerHook.loadCustomerWallet,
     handleCustomerSelect,
     handleCustomerQrScan,
-    handleBurnReward: (reward: { id: number }) =>
+    handleBurnReward: (reward: Reward) =>
       cartHook.selectedCustomer
-        ? customerHook.handleBurnReward(cartHook.selectedCustomer, reward as any)
+        ? customerHook.handleBurnReward(cartHook.selectedCustomer, reward)
             .then(() => { setMsg("Reward redeemed!"); customerHook.loadCustomerWallet(cartHook.selectedCustomer!.id); })
             .catch((e) => setError((e as Error).message))
         : undefined,
-    handleBurnVoucher: (voucher: { id: number }) =>
+    handleBurnVoucher: (voucher: Voucher) =>
       cartHook.selectedCustomer
-        ? customerHook.handleBurnVoucher(cartHook.selectedCustomer, voucher as any)
+        ? customerHook.handleBurnVoucher(cartHook.selectedCustomer, voucher)
             .then(() => { setMsg("Voucher redeemed!"); customerHook.loadCustomerWallet(cartHook.selectedCustomer!.id); })
             .catch((e) => setError((e as Error).message))
         : undefined,
@@ -302,7 +304,7 @@ export function usePosState() {
       checkoutHook.handleCheckoutWalletPayment(amount)
         .then((res) => { setMsg((res as { message?: string }).message || "Wallet payment applied"); })
         .catch((e) => setError((e as Error).message || "Wallet payment failed")),
-    fetchUnpaidOrders: () => checkoutHook.fetchUnpaidOrders(storeId, getOrders as any),
+    fetchUnpaidOrders: () => checkoutHook.fetchUnpaidOrders(storeId, getOrders),
 
     // Scanner (from usePosScanner)
     showQrScanner: scannerHook.showQrScanner, setShowQrScanner: scannerHook.setShowQrScanner,

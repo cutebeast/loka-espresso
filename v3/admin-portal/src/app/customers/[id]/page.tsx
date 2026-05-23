@@ -7,9 +7,121 @@ import { ArrowLeft, UserCircle, ShoppingBag, Award, Wallet, Shield, Smartphone, 
 
 const TIERS = ["silver", "gold", "platinum"];
 
+interface LoyaltyInfo {
+  points_balance?: number;
+  current_tier_id?: string;
+}
+
+interface ConsentItem {
+  id: number | string;
+  consent_type?: string;
+  status?: string;
+  granted_at?: string;
+}
+
+interface DeviceItem {
+  id: number | string;
+  platform?: string;
+  device_model?: string;
+  is_active?: boolean;
+  last_seen_at?: string;
+}
+
+interface CustomerDetail {
+  display_name?: string;
+  phone_number?: string;
+  email_address?: string;
+  date_of_birth?: string;
+  is_active?: boolean;
+  created_at?: string;
+  loyalty?: LoyaltyInfo;
+  lifetime_value?: number;
+  preferred_language?: string;
+  referral_code?: string;
+  referral_count?: number;
+  order_count?: number;
+  phone_verified_at?: string;
+  consents?: ConsentItem[];
+  devices?: DeviceItem[];
+}
+
+interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  total_pages: number;
+}
+
+interface OrderItem {
+  id: number | string;
+  order_number?: string;
+  status?: string;
+  total_amount?: number;
+  created_at?: string;
+}
+
+interface LoyaltyEventItem {
+  id: number | string;
+  event_type?: string;
+  points_delta?: number;
+  running_balance?: number;
+  created_at?: string;
+}
+
+interface WalletTxItem {
+  id: number | string;
+  transaction_type?: string;
+  amount?: number;
+  running_balance?: number;
+  created_at?: string;
+}
+
+interface RewardItem {
+  id: number | string;
+  redemption_code?: string;
+  status?: string;
+  points_spent?: number;
+  expires_at?: string;
+}
+
+interface VoucherItem {
+  id: number | string;
+  redemption_code?: string;
+  voucher_title?: string;
+  voucher_code?: string;
+  status?: string;
+  expires_at?: string;
+}
+
+interface RewardsAndVouchers {
+  rewards: RewardItem[];
+  vouchers: VoucherItem[];
+}
+
+interface VoucherOption {
+  id: number | string;
+  display_title?: string;
+  voucher_code?: string;
+}
+
+interface ActionData {
+  points?: number;
+  reason?: string;
+  voucher_id?: number | string;
+  tier?: string;
+  amount?: number | string;
+}
+
+interface ActionResponse {
+  message?: string;
+  new_balance?: number;
+}
+
+const emptyPaginated = <T,>(): PaginatedResponse<T> => ({ items: [], total: 0, page: 1, total_pages: 0 });
+
 export default function CustomerDetailPage() {
   const p = useParams(); const r = useRouter(); const id = Number(p.id);
-  const [c, setC] = useState<any>(null);
+  const [c, setC] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("profile");
@@ -25,43 +137,44 @@ export default function CustomerDetailPage() {
   const [walletReason, setWalletReason] = useState("");
   const [tierVal, setTierVal] = useState("silver");
   const [tierReason, setTierReason] = useState("");
-  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [vouchers, setVouchers] = useState<VoucherOption[]>([]);
   const [selVoucher, setSelVoucher] = useState("");
   const [voucherReason, setVoucherReason] = useState("");
   const [actionLoading, setActionLoading] = useState("");
 
-  const [orders, setOrders] = useState<any>({ items: [], total: 0, page: 1, total_pages: 0 });
-  const [loyalty, setLoyalty] = useState<any>({ items: [], total: 0, page: 1, total_pages: 0 });
-  const [walletTx, setWalletTx] = useState<any>({ items: [], total: 0, page: 1, total_pages: 0 });
-  const [rewardsVouchers, setRewardsVouchers] = useState<any>({ rewards: [], vouchers: [] });
+  const [orders, setOrders] = useState<PaginatedResponse<OrderItem>>(emptyPaginated());
+  const [loyalty, setLoyalty] = useState<PaginatedResponse<LoyaltyEventItem>>(emptyPaginated());
+  const [walletTx, setWalletTx] = useState<PaginatedResponse<WalletTxItem>>(emptyPaginated());
+  const [rewardsVouchers, setRewardsVouchers] = useState<RewardsAndVouchers>({ rewards: [], vouchers: [] });
 
   const load = useCallback(async () => {
-    try { setC(await api.get<any>(`/admin/customers/${id}`)); } catch (e: any) { setError(e.message); }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    try { setC(await api.get<CustomerDetail>(`/admin/customers/${id}`)); } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   }, [id]);
 
   useEffect(() => {
     load();
-    api.get<any>("/admin/vouchers?is_active=true&per_page=100").then(d => setVouchers(Array.isArray(d)?d:(d.items||[]))).catch(() => { /* ignore voucher preload errors */ });
+    api.get<VoucherOption[]>("/admin/vouchers?is_active=true&per_page=100").then(d => setVouchers(Array.isArray(d)?d:((d as unknown as {items: VoucherOption[]}).items||[]))).catch((e) => { console.error('vouchers preload:', e); });
   }, [id, load]);
 
   useEffect(() => {
-    if (c) { setForm({ display_name: c.display_name || "", phone_number: c.phone_number || "", email_address: c.email_address || "", date_of_birth: c.date_of_birth || "", is_active: c.is_active }); }
+    if (c) { setForm({ display_name: c.display_name || "", phone_number: c.phone_number || "", email_address: c.email_address || "", date_of_birth: c.date_of_birth || "", is_active: c.is_active || true }); }
   }, [c]);
 
   const fetchTab = useCallback(async (t: string, pg: number = 1) => {
     const SIZE = 10;
     if (t === "orders") {
-      const d = await api.getRaw<any>(`/admin/customers/${id}/orders?page=${pg}&page_size=${SIZE}`);
-      setOrders(d || { items: [], total: 0, page: 1, total_pages: 0 });
+      const d = await api.getRaw<PaginatedResponse<OrderItem>>(`/admin/customers/${id}/orders?page=${pg}&page_size=${SIZE}`);
+      setOrders(d || emptyPaginated<OrderItem>());
     } else if (t === "loyalty") {
-      const d = await api.getRaw<any>(`/admin/customers/${id}/loyalty-history?page=${pg}&page_size=${SIZE}`);
-      setLoyalty(d || { items: [], total: 0, page: 1, total_pages: 0 });
+      const d = await api.getRaw<PaginatedResponse<LoyaltyEventItem>>(`/admin/customers/${id}/loyalty-history?page=${pg}&page_size=${SIZE}`);
+      setLoyalty(d || emptyPaginated<LoyaltyEventItem>());
     } else if (t === "wallet") {
-      const d = await api.getRaw<any>(`/admin/customers/${id}/wallet-history?page=${pg}&page_size=${SIZE}`);
-      setWalletTx(d || { items: [], total: 0, page: 1, total_pages: 0 });
+      const d = await api.getRaw<PaginatedResponse<WalletTxItem>>(`/admin/customers/${id}/wallet-history?page=${pg}&page_size=${SIZE}`);
+      setWalletTx(d || emptyPaginated<WalletTxItem>());
     } else if (t === "vouchers") {
-      const d = await api.getRaw<any>(`/admin/customers/${id}/wallet`);
+      const d = await api.getRaw<RewardsAndVouchers>(`/admin/customers/${id}/wallet`);
       setRewardsVouchers(d || { rewards: [], vouchers: [] });
     }
   }, [id]);
@@ -69,37 +182,42 @@ export default function CustomerDetailPage() {
   useEffect(() => { fetchTab(tab); }, [tab, fetchTab]);
 
   const handleSave = async () => { setSaving(true); setMsg("");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     try { await api.patch(`/admin/customers/${id}`, form); setMsg("Saved"); setEdit(false); load(); } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
 
-  const doAction = async (action: string, data: any) => {
+  const doAction = async (action: string, data: ActionData) => {
     setActionLoading(action); setMsg("");
     try {
-      let res: any;
+      let res: ActionResponse | null = null;
       if (action === "points") {
-        res = await api.post(`/admin/customers/${id}/adjust-points`, data);
-        if (res.new_balance) setC((prev: any) => ({ ...prev, loyalty: { ...prev.loyalty, points_balance: res.new_balance } }));
+        res = await api.post<ActionResponse>(`/admin/customers/${id}/adjust-points`, data);
+        if (res?.new_balance) {
+          const balance = res.new_balance;
+          setC((prev: CustomerDetail | null) => prev ? { ...prev, loyalty: { ...prev.loyalty, points_balance: balance } } : prev);
+        }
       } else if (action === "voucher") {
-        res = await api.post(`/admin/customers/${id}/award-voucher`, { voucher_id: Number(data.voucher_id), reason: data.reason });
+        res = await api.post<ActionResponse>(`/admin/customers/${id}/award-voucher`, { voucher_id: Number(data.voucher_id), reason: data.reason });
       } else if (action === "tier") {
-        res = await api.post(`/admin/customers/${id}/set-tier`, data);
+        res = await api.post<ActionResponse>(`/admin/customers/${id}/set-tier`, data);
       } else if (action === "approve") {
-        res = await api.post(`/admin/customers/${id}/approve-profile`, {});
+        res = await api.post<ActionResponse>(`/admin/customers/${id}/approve-profile`, {});
         load();
       } else if (action === "wallet") {
-        const amt = parseFloat(data.amount);
-        if (amt > 0) res = await api.post("/admin/wallets/topup", { user_id: id, amount: amt, reason: data.reason });
-        else res = await api.post("/admin/wallets/deduct", { user_id: id, amount: Math.abs(amt), reason: data.reason });
+        const amt = parseFloat(String(data.amount || "0"));
+        if (amt > 0) res = await api.post<ActionResponse>("/admin/wallets/topup", { customer_id: id, amount: amt, reason: data.reason });
+        else res = await api.post<ActionResponse>("/admin/wallets/deduct", { customer_id: id, amount: Math.abs(amt), reason: data.reason });
       }
       setMsg(res?.message || "Done");
       if (action !== "approve") fetchTab(tab);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) { setMsg(e.message); }
     finally { setActionLoading(""); }
   };
 
-  const fmt = (v: number) => `RM ${Number(v || 0).toFixed(2)}`;
-  const dt = (s: string | null) => s ? new Date(s).toLocaleDateString("en-MY") : "—";
+  const fmt = (v: number | null | undefined) => `RM ${Number(v || 0).toFixed(2)}`;
+  const dt = (s: string | null | undefined) => s ? new Date(s).toLocaleDateString("en-MY") : "—";
 
   if (loading) return <div style={{ padding: 32 }}>Loading...</div>;
   if (!c) return <div style={{ padding: 32, color: "var(--color-error)" }}>{error || "Not found"}</div>;
@@ -194,7 +312,7 @@ export default function CustomerDetailPage() {
           <div className="card" style={{ padding: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><h4 style={{ margin: 0 }}>Award Voucher</h4><span style={{ fontSize: 15, color: "var(--color-text-muted)" }}>{(rewardsVouchers.vouchers?.length||0)} active</span></div>
             <div style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 150 }}><label htmlFor="cust-mgmt-voucher-sel" style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Voucher</label><select id="cust-mgmt-voucher-sel" value={selVoucher} onChange={e => setSelVoucher(e.target.value)} style={{ width: "100%" }}><option value="">Select...</option>{vouchers.map((v: any) => <option key={v.id} value={v.id}>{v.display_title || v.voucher_code}</option>)}</select></div>
+              <div style={{ flex: 1, minWidth: 150 }}><label htmlFor="cust-mgmt-voucher-sel" style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Voucher</label><select id="cust-mgmt-voucher-sel" value={selVoucher} onChange={e => setSelVoucher(e.target.value)} style={{ width: "100%" }}><option value="">Select...</option>{vouchers.map((v: VoucherOption) => <option key={v.id} value={v.id}>{v.display_title || v.voucher_code}</option>)}</select></div>
               <div style={{ flex: 2, minWidth: 150 }}><label htmlFor="cust-mgmt-voucher-reason" style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Reason</label><input id="cust-mgmt-voucher-reason" value={voucherReason} onChange={e => setVoucherReason(e.target.value)} placeholder="e.g. Compensation" style={{ width: "100%" }}/></div>
               <button type="button" onClick={() => doAction("voucher", { voucher_id: selVoucher, reason: voucherReason })} disabled={!!actionLoading || !selVoucher} className="btn btn-sm btn-primary">{actionLoading==="voucher"?"...":"Award"}</button>
             </div>
@@ -212,21 +330,21 @@ export default function CustomerDetailPage() {
       )}
 
       {tab === "orders" && (
-        <PaginatedTable data={orders} cols={["Order #","Status","Total","Date"]} render={(o: any) => {
+        <PaginatedTable<OrderItem> data={orders} cols={["Order #","Status","Total","Date"]} render={(o: OrderItem) => {
           const sm: Record<string,string> = { pending: "badge-yellow", confirmed: "badge-blue", preparing: "badge-yellow", completed: "badge-green", cancelled: "badge-red" };
-          return <><td style={{ fontSize: 11 }} className="font-mono">{o.order_number}</td><td><span className={`badge badge-sm ${sm[o.status] || "badge-gray"}`}>{o.status?.replace(/_/g," ")}</span></td><td style={{ textAlign: "right" }}>{fmt(o.total_amount)}</td><td style={{ fontSize: 12 }}>{dt(o.created_at)}</td></>;
+          return <><td style={{ fontSize: 11 }} className="font-mono">{o.order_number}</td><td><span className={`badge badge-sm ${sm[o.status ?? ""] || "badge-gray"}`}>{o.status?.replace(/_/g," ")}</span></td><td style={{ textAlign: "right" }}>{fmt(o.total_amount)}</td><td style={{ fontSize: 12 }}>{dt(o.created_at)}</td></>;
         }} onChange={(p: number) => fetchTab("orders", p)} />
       )}
 
       {tab === "loyalty" && (
-        <PaginatedTable data={loyalty} cols={["Event","Delta","Balance","Date"]} render={(e: any) => (
-          <><td>{e.event_type?.replace(/_/g," ")}</td><td style={{ fontWeight: 600, color: e.points_delta >= 0 ? "var(--color-success)" : "var(--color-error)" }}>{e.points_delta > 0 ? `+${e.points_delta}` : e.points_delta}</td><td>{e.running_balance}</td><td style={{ fontSize: 12 }}>{dt(e.created_at)}</td></>
+        <PaginatedTable<LoyaltyEventItem> data={loyalty} cols={["Event","Delta","Balance","Date"]} render={(e: LoyaltyEventItem) => (
+          <><td>{e.event_type?.replace(/_/g," ")}</td><td style={{ fontWeight: 600, color: (e.points_delta ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)" }}>{(e.points_delta ?? 0) > 0 ? `+${e.points_delta}` : e.points_delta}</td><td>{e.running_balance}</td><td style={{ fontSize: 12 }}>{dt(e.created_at)}</td></>
         )} onChange={(p: number) => fetchTab("loyalty", p)} />
       )}
 
       {tab === "wallet" && (
-        <PaginatedTable data={walletTx} cols={["Type","Amount","Balance","Date"]} render={(t: any) => (
-          <><td>{t.transaction_type}</td><td style={{ fontWeight: 600, color: t.amount >= 0 ? "var(--color-success)" : "var(--color-error)" }}>{t.amount > 0 ? `+${t.amount}` : t.amount}</td><td>{Number(t.running_balance).toFixed(2)}</td><td style={{ fontSize: 12 }}>{dt(t.created_at)}</td></>
+        <PaginatedTable<WalletTxItem> data={walletTx} cols={["Type","Amount","Balance","Date"]} render={(t: WalletTxItem) => (
+          <><td>{t.transaction_type}</td><td style={{ fontWeight: 600, color: (t.amount ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)" }}>{(t.amount ?? 0) > 0 ? `+${t.amount}` : t.amount}</td><td>{Number(t.running_balance).toFixed(2)}</td><td style={{ fontSize: 12 }}>{dt(t.created_at)}</td></>
         )} onChange={(p: number) => fetchTab("wallet", p)} />
       )}
 
@@ -234,39 +352,37 @@ export default function CustomerDetailPage() {
         <h4 style={{ marginTop: 0 }}>Active Rewards ({rewardsVouchers.rewards?.length||0})</h4>
         <div className="table-container" style={{ marginBottom: 20 }}><table className="data-table"><thead><tr><th>Code</th><th>Status</th><th>Points</th><th>Expires</th></tr></thead><tbody>
           {(rewardsVouchers.rewards||[]).length === 0 ? <tr><td colSpan={4} className="data-table-empty">None</td></tr>
-          : rewardsVouchers.rewards.map((r: any) => (<tr key={r.id}><td style={{ fontSize: 11 }} className="font-mono">{r.redemption_code}</td><td><span className="badge badge-sm badge-blue">{r.status}</span></td><td>{r.points_spent} pts</td><td style={{ fontSize: 12 }}>{dt(r.expires_at)}</td></tr>))}
+          : rewardsVouchers.rewards.map((r: RewardItem) => (<tr key={r.id}><td style={{ fontSize: 11 }} className="font-mono">{r.redemption_code}</td><td><span className="badge badge-sm badge-blue">{r.status}</span></td><td>{r.points_spent} pts</td><td style={{ fontSize: 12 }}>{dt(r.expires_at)}</td></tr>))}
         </tbody></table></div>
         <h4>Active Vouchers ({rewardsVouchers.vouchers?.length||0})</h4>
         <div className="table-container"><table className="data-table"><thead><tr><th>Code</th><th>Title</th><th>Status</th><th>Expires</th></tr></thead><tbody>
           {(rewardsVouchers.vouchers||[]).length === 0 ? <tr><td colSpan={4} className="data-table-empty">None</td></tr>
-          : rewardsVouchers.vouchers.map((v: any) => (<tr key={v.id}><td style={{ fontSize: 11 }} className="font-mono">{v.redemption_code}</td><td>{v.voucher_title || v.voucher_code}</td><td><span className="badge badge-sm badge-blue">{v.status}</span></td><td style={{ fontSize: 12 }}>{dt(v.expires_at)}</td></tr>))}
+          : rewardsVouchers.vouchers.map((v: VoucherItem) => (<tr key={v.id}><td style={{ fontSize: 11 }} className="font-mono">{v.redemption_code}</td><td>{v.voucher_title || v.voucher_code}</td><td><span className="badge badge-sm badge-blue">{v.status}</span></td><td style={{ fontSize: 12 }}>{dt(v.expires_at)}</td></tr>))}
         </tbody></table></div>
       </>)}
 
       {tab === "consents" && (
         <div className="table-container"><table className="data-table"><thead><tr><th>Type</th><th style={{ width: 90 }}>Status</th><th>Granted</th></tr></thead><tbody>
-          {(c.consents||[]).length === 0 ? <tr><td colSpan={3} className="data-table-empty">None</td></tr>
-          : c.consents.map((x: any) => (<tr key={x.id}><td style={{ textTransform: "capitalize" }}>{x.consent_type?.replace(/_/g," ")}</td><td><span className={`badge badge-sm ${x.status==="granted"?"badge-green":"badge-red"}`}>{x.status}</span></td><td style={{ fontSize: 12 }}>{x.granted_at ? new Date(x.granted_at).toLocaleString("en-MY") : "—"}</td></tr>))}
+          {((cons: ConsentItem[]) => cons.length === 0 ? <tr><td colSpan={3} className="data-table-empty">None</td></tr> : <>{cons.map((x: ConsentItem) => (<tr key={x.id}><td style={{ textTransform: "capitalize" }}>{x.consent_type?.replace(/_/g," ")}</td><td><span className={`badge badge-sm ${x.status==="granted"?"badge-green":"badge-red"}`}>{x.status}</span></td><td style={{ fontSize: 12 }}>{x.granted_at ? new Date(x.granted_at).toLocaleString("en-MY") : "—"}</td></tr>))}</>)(c.consents || [])}
         </tbody></table></div>
       )}
 
       {tab === "devices" && (
         <div className="table-container"><table className="data-table"><thead><tr><th>Platform</th><th>Model</th><th style={{ width: 80 }}>Status</th><th>Last Seen</th></tr></thead><tbody>
-          {(c.devices||[]).length === 0 ? <tr><td colSpan={4} className="data-table-empty">None</td></tr>
-          : c.devices.map((d: any) => (<tr key={d.id}><td style={{ textTransform: "capitalize" }}>{d.platform}</td><td style={{ fontSize: 12 }}>{d.device_model||"—"}</td><td><span className={`badge badge-sm ${d.is_active?"badge-green":"badge-gray"}`}>{d.is_active?"Active":"Inactive"}</span></td><td style={{ fontSize: 12 }}>{d.last_seen_at?new Date(d.last_seen_at).toLocaleString("en-MY"):"—"}</td></tr>))}
+          {((devs: DeviceItem[]) => devs.length === 0 ? <tr><td colSpan={4} className="data-table-empty">None</td></tr> : <>{devs.map((d: DeviceItem) => (<tr key={d.id}><td style={{ textTransform: "capitalize" }}>{d.platform}</td><td style={{ fontSize: 12 }}>{d.device_model||"—"}</td><td><span className={`badge badge-sm ${d.is_active?"badge-green":"badge-gray"}`}>{d.is_active?"Active":"Inactive"}</span></td><td style={{ fontSize: 12 }}>{d.last_seen_at?new Date(d.last_seen_at).toLocaleString("en-MY"):"—"}</td></tr>))}</>)(c.devices || [])}
         </tbody></table></div>
       )}
     </div>
   );
 }
 
-function PaginatedTable({ data, cols, render, onChange }: { data: any; cols: string[]; render: (item: any) => React.ReactNode; onChange: (p: number) => void }) {
+function PaginatedTable<T>({ data, cols, render, onChange }: { data: PaginatedResponse<T>; cols: string[]; render: (item: T) => React.ReactNode; onChange: (p: number) => void }) {
   const items = data.items || [];
   return <div>
     <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} of {data.total||0}</span></div>
     <div className="table-container"><table className="data-table">
       <thead><tr>{cols.map(c => <th key={c}>{c}</th>)}</tr></thead>
-      <tbody>{items.length === 0 ? <tr><td colSpan={cols.length} className="data-table-empty">No data</td></tr> : items.map((item: any) => <tr key={item.id}>{render(item)}</tr>)}</tbody>
+      <tbody>{items.length === 0 ? <tr><td colSpan={cols.length} className="data-table-empty">No data</td></tr> : items.map((item: T) => <tr key={(item as { id: unknown }).id as React.Key}>{render(item)}</tr>)}</tbody>
     </table></div>
     {(data.total_pages||0) > 1 && (
       <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 12 }}>

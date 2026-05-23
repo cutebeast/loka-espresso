@@ -10,6 +10,7 @@ export default function MarketingCampaignsPage() {
   const [items, setItems] = useState<MarketingCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     return getMarketingCampaigns();
@@ -26,7 +27,8 @@ export default function MarketingCampaignsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this campaign?")) return;
-    try { await api.del(`/admin/marketing/campaigns/${id}`); setItems(await fetchData()); } catch (e: any) { console.error("Failed to delete campaign:", e); }
+    setDeletingId(id);
+    try { await api.del(`/admin/marketing/campaigns/${id}`); setItems(await fetchData()); } catch (e: any) { console.error("Failed to delete campaign:", e); } finally { setDeletingId(null); }
   };
 
   const handleSend = async (id: number) => {
@@ -64,7 +66,7 @@ export default function MarketingCampaignsPage() {
                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                   <button type="button" onClick={() => router.push(`/marketing/campaigns/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><Edit2 size={14} /></button>
                   {(item.status === "draft" || item.status === "scheduled") && <button type="button" onClick={() => handleSend(item.id)} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Send</button>}
-                  <button type="button" onClick={() => handleDelete(item.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                  <button type="button" onClick={() => handleDelete(item.id)} disabled={deletingId === item.id} className="btn btn-ghost btn-sm" style={{ color: deletingId === item.id ? "var(--color-text-muted)" : "var(--color-error)" }}><Trash2 size={14} /></button>
                 </div>
               </td>
             </tr>

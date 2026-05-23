@@ -84,7 +84,7 @@ export interface PaginatedData<T> {
 
 export function usePaginatedFetch<T>(
   fetchFn: (params: { page: number; per_page: number }) => Promise<PaginatedData<T>>,
-  deps: any[] = [],
+  _deps: any[] = [],
   options: UsePaginationOptions = {}
 ) {
   const pagination = usePagination(options);

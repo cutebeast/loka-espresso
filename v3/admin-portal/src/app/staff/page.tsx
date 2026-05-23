@@ -15,6 +15,7 @@ export default function StaffPage() {
   const [storeId, setStoreId] = useState("");
 
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchStores = useCallback(async () => {
     try { const d = await api.get<Store[] | { items: Store[] }>("/admin/stores?per_page=50"); const list = Array.isArray(d) ? d : (d.items || []); setStores(list); }
@@ -35,7 +36,8 @@ export default function StaffPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this staff member?")) return;
-    try { await api.del(`/admin/staff/${id}`); fetchData(); } catch (e) { console.error(e); }
+    setDeletingId(id);
+    try { await api.del(`/admin/staff/${id}`); fetchData(); } catch (e) { console.error(e); } finally { setDeletingId(null); }
   };
 
   return (
@@ -70,7 +72,7 @@ export default function StaffPage() {
               </td>
               <td><span className={`badge badge-sm ${s.is_active ? "badge-green" : "badge-gray"}`}>{s.is_active ? "Active" : "Inactive"}</span></td>
               <td>
-                <button type="button" onClick={() => handleDelete(s.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                <button type="button" onClick={() => handleDelete(s.id)} disabled={deletingId === s.id} className="btn btn-ghost btn-sm" style={{ color: deletingId === s.id ? "var(--color-text-muted)" : "var(--color-error)" }}><Trash2 size={14} /></button>
               </td>
             </tr>
           ))}

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { getStaffTimeEvents, verifyTimeEvent, type StaffTimeEvent } from "@/lib/api";
+import { verifyTimeEvent, type StaffTimeEvent } from "@/lib/api";
 import { api } from "@/lib/api";
 
 interface St { id: number; store_name: string; }
@@ -14,7 +14,7 @@ export default function StaffTimeEventsPage() {
   const [eventTypeFilter, setEventTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
 
-  useEffect(() => { api.getRaw<any>("/admin/stores?per_page=50").then(d => { const l = d.items||[]; setStores(l); if (l.length>0) setStoreId(String(l[0].id)); }).catch(()=>{}); }, []);
+  useEffect(() => { api.getRaw<any>("/admin/stores?per_page=50").then(d => { const l = d.items||[]; setStores(l); if (l.length>0) setStoreId(String(l[0].id)); }).catch((e)=>{console.error('stores:',e)}); }, []);
 
   const fetchData = useCallback(() => { setLoading(true);
     const qs = new URLSearchParams({ per_page: "50" }); if (storeId) qs.set("store_id", storeId); if (eventTypeFilter) qs.set("event_type", eventTypeFilter); if (dateFilter) { qs.set("date_from", dateFilter); qs.set("date_to", dateFilter); }

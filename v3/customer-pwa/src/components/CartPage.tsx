@@ -96,7 +96,7 @@ export default function CartPage() {
       } catch {
         // Fallback: use menu items already in state
         const { menuItems } = useUIStore.getState();
-        const menuItem = menuItems.find((mi: any) => mi.id === item.menu_item_id);
+        const menuItem = menuItems.find((mi: MenuItem) => mi.id === item.menu_item_id);
         setEditOptions(menuItem?.customization_options || []);
       }
       setEditItem({ id: item.menu_item_id, name: item.name, base_price: item.base_price ?? item.price, category_id: 0 } as MenuItem);
@@ -105,7 +105,7 @@ export default function CartPage() {
     finally { setEditLoading(false); }
   };
 
-  const handleCustomizeConfirm = (item: MenuItem, quantity: number, customizations: { id: number; name: string; price_adjustment: number }[], totalPrice: number) => {
+  const handleCustomizeConfirm = (_item: MenuItem, quantity: number, customizations: { id: number; name: string; price_adjustment: number }[], totalPrice: number) => {
     if (editingItem === null) return;
     updateItem(editingItem, {
       quantity,

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { api, getPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder, type PurchaseOrder, type PurchaseOrderLineItem } from "@/lib/api";
+import { api, getPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, cancelPurchaseOrder, type PurchaseOrder } from "@/lib/api";
 import { Plus, Trash2, CheckCircle, XCircle } from "lucide-react";
 
 interface Supplier { id: number; supplier_name: string; }
@@ -40,7 +40,7 @@ export default function PurchaseOrdersPage() {
   const resetForm = () => { setForm({ supplier_id: "", store_id: storeId, expected_delivery: "", lines: [{ inventory_item_id: "", quantity_ordered: "", unit_cost: "" }] }); setShowForm(false); };
 
   const addLineItem = () => setForm({ ...form, lines: [...form.lines, { inventory_item_id: "", quantity_ordered: "", unit_cost: "" }] });
-  const updateLine = (i: number, p: Partial<typeof form.lines[0]>) => { const lns = [...form.lines]; lns[i] = { ...lns[i], ...p }; setForm({ ...form, lines: lns }); };
+  const updateLine = (i: number, p: { inventory_item_id?: string; quantity_ordered?: string; unit_cost?: string }) => { const lns = [...form.lines]; const cur = lns[i]; if (!cur) return; lns[i] = { inventory_item_id: p.inventory_item_id ?? cur.inventory_item_id, quantity_ordered: p.quantity_ordered ?? cur.quantity_ordered, unit_cost: p.unit_cost ?? cur.unit_cost }; setForm({ ...form, lines: lns }); };
   const removeLine = (i: number) => { if (form.lines.length <= 1) return; setForm({ ...form, lines: form.lines.filter((_, j) => j !== i) }); };
 
   const handleSubmit = async (e: React.FormEvent) => { e.preventDefault();

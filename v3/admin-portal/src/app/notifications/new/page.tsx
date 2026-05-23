@@ -17,7 +17,7 @@ export default function NotificationNewPage() {
   const { allSegments: AUDIENCES } = useAudienceSegments();
   const [form, setForm] = useState({ title:"", body:"", notification_type:"general", audience_segment:"all_users", image_url:"", action_url:"", scheduled_at:"", status:"draft" });
 
-  useEffect(() => { api.get<{items:Template[]}>("/admin/notifications/templates/list").then(d => setTemplates(Array.isArray(d)?d:(d.items||[]))).catch(()=>{}); }, []);
+  useEffect(() => { api.get<{items:Template[]}>("/admin/notifications/templates/list").then(d => setTemplates(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('templates:',e)}); }, []);
 
   const [selTemplate, setSelTemplate] = useState("");
   const applyTemplate = () => { const t = templates.find(x => x.id === Number(selTemplate)); if(t) setForm({ ...form, title: t.title, body: t.body || "", notification_type: t.notification_type, audience_segment: t.audience_segment }); };

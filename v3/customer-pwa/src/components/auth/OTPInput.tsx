@@ -108,7 +108,6 @@ export function OTPInput({ phone, onSubmit, onResend, initialRetryAfterSeconds =
   })();
 
   const filledCount = otp.filter((d) => d).length;
-  const autoFillPercent = (filledCount / 6) * 100;
 
   return (
     <div className="auth-page">

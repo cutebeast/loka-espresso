@@ -64,6 +64,7 @@ const nextMap: Partial<Record<OrderStatus, OrderStatus | null>> = {
   confirmed: "preparing",
   preparing: "ready_for_pickup",
   ready_for_pickup: "delivered",
+  out_for_delivery: "delivered",
   delivered: null,
   cancelled_by_customer: null,
   cancelled_by_merchant: null,
@@ -71,15 +72,10 @@ const nextMap: Partial<Record<OrderStatus, OrderStatus | null>> = {
   partially_refunded: null,
   disputed: null,
 };
-const reverseMap: Partial<Record<OrderStatus, OrderStatus | null>> = {
-  confirmed: "pending",
-  preparing: "confirmed",
-  ready_for_pickup: "preparing",
-};
-
 export default function OrderCard({ order, onClick, onQuickAction, compact = false }: OrderCardProps) {
   const urgency = urgencyLevel(order);
   const urgencyStyle = urgencyStyles[urgency];
+  if (!urgencyStyle) return null;
   const next = nextMap[order.status];
   const orderType = order.order_type as keyof typeof typeLabels;
   const typeLabel = typeLabels[orderType] || order.order_type;

@@ -160,60 +160,6 @@ async function requestRaw<T>(method: string, path: string, body?: unknown): Prom
   return text as unknown as T;
 }
 
-async function requestWithTimeout<T>(method: string, path: string, body?: unknown, timeoutMs = 30000): Promise<T> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const makeRequest = async () => {
-      const res = await fetch(`${BASE_URL}${path}`, {
-        method,
-        headers: getAuthHeaders(),
-        signal: controller.signal,
-        ...(body ? { body: JSON.stringify(body) } : {}),
-      });
-      if (res.status === 401) {
-        const refreshed = await refreshToken();
-        if (refreshed) {
-          const retryController = new AbortController();
-          const retry = await fetch(`${BASE_URL}${path}`, {
-            method,
-            headers: getAuthHeaders(),
-            signal: retryController.signal,
-            ...(body ? { body: JSON.stringify(body) } : {}),
-          });
-          if (retry.ok) return retry;
-        }
-        if (typeof window !== "undefined") {
-          clearAuthStorage();
-          window.location.replace("/login");
-        }
-        throw new Error("Session expired");
-      }
-      return res;
-    };
-    const res = await makeRequest();
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || `Request failed: ${res.status}`);
-    }
-    const contentType = res.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      const json = await res.json();
-      if (json && typeof json === "object" && "data" in json) {
-        const data = json.data;
-        if (data && typeof data === "object" && Array.isArray(data.items)) {
-          return data.items as T;
-        }
-        return data as T;
-      }
-      return json as T;
-    }
-    throw new Error("Expected JSON response but received non-JSON");
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 export const api = {
   get: <T>(path: string, signal?: AbortSignal) => request<T>("GET", path, undefined, signal),
   getRaw: <T>(path: string) => requestRaw<T>("GET", path),
@@ -230,8 +176,8 @@ export const api = {
     if (res.status === 401) {
       const refreshed = await refreshToken();
       if (refreshed) {
-        const freshToken = localStorage.getItem("token");
-        res = await doFetch(freshToken ? { Authorization: `Bearer ${freshToken}` } : {});
+        const _freshToken = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        res = await doFetch(_freshToken ? { Authorization: `Bearer ${_freshToken}` } : {});
       }
       else throw new Error("Session expired");
     }
@@ -250,11 +196,10 @@ export const api = {
       if (res.status === 401) {
         const refreshed = await refreshToken();
         if (refreshed) {
-          const freshToken = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-          const retry = await fetch(`${BASE_URL}${path}`, {
-            method,
-            headers: { ...(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
-            ...(body ? { body: JSON.stringify(body) } : {}),
+        const retry = await fetch(`${BASE_URL}${path}`, {
+          method,
+          headers: getAuthHeaders(),
+          ...(body ? { body: JSON.stringify(body) } : {}),
           });
           if (retry.ok) return retry;
         }
@@ -352,6 +297,9 @@ export interface OrderItem {
   notes?: string;
   modifier_ids?: number[];
   modifiers_label?: string;
+  menu_item_id?: number;
+  item_name?: string;
+  unit_price?: number;
 }
 
 export interface Order {

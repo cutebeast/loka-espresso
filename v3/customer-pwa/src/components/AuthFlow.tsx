@@ -85,8 +85,8 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
       setIsNewUser(false);
       onAuthDone();
       setAuthStep('done');
-    } catch (err: any) {
-      if (err?.response?.status === 404) {
+    } catch (err: unknown) {
+      if ((err as { response?: { status?: number } })?.response?.status === 404) {
         // Account not found — new user, go to profile setup
         setIsNewUser(true);
         setAuthStep('profile');
@@ -127,7 +127,7 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
       onAuthDone();
       setAuthStep('done');
       showToast(t('toast.profileSaved'), 'success');
-    } catch (err: any) {
+    } catch (err: unknown) {
       const msg = getApiErrorMessage(err, t('toast.profileFailed'));
       showToast(msg, 'error');
     } finally {

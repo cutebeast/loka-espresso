@@ -35,14 +35,14 @@ function parseTime(timeStr: string): { hour: number; minute: number } | null {
   const clean = timeStr.trim();
   // 24-hour format: "14:30"
   const m24 = clean.match(/^(\d{1,2}):(\d{2})$/);
-  if (m24) {
+  if (m24 && m24[1] && m24[2]) {
     const h = parseInt(m24[1], 10);
     const min = parseInt(m24[2], 10);
     if (h >= 0 && h <= 23 && min >= 0 && min <= 59) return { hour: h, minute: min };
   }
   // 12-hour format: "2:30 PM", "9:00 AM"
   const m12 = clean.match(/^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)$/i);
-  if (m12) {
+  if (m12 && m12[1] && m12[2] && m12[3]) {
     let h = parseInt(m12[1], 10);
     const min = parseInt(m12[2], 10);
     const period = m12[3].toUpperCase();
@@ -72,7 +72,7 @@ export default function ReservationsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [filter, setFilter] = useState<ReservationStatus | "all" | "cancelled">("all");
-  const [dateFilter, setDateFilter] = useState<string>(() => new Date().toISOString().split("T")[0]);
+  const [dateFilter, setDateFilter] = useState<string>(() => new Date().toISOString().split("T")[0] ?? "");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -100,9 +100,10 @@ export default function ReservationsPage() {
         setReservations(all);
       }
       setError("");
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to load reservations";
       console.error("Failed to load reservations:", err);
-      setError(err.message || "Failed to load reservations");
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -118,9 +119,9 @@ export default function ReservationsPage() {
       setSuccess(`Reservation ${status.replace(/_/g, " ")}`);
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to update reservation:", err);
-      setError(err.message || "Failed to update reservation");
+      setError(err instanceof Error ? err.message : "Failed to update reservation");
     } finally {
       setUpdatingId(null);
     }
@@ -145,8 +146,8 @@ export default function ReservationsPage() {
       setSuccess("Reservation confirmed");
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
-    } catch (err: any) {
-      setError(err.message || "Failed to confirm reservation");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to confirm reservation");
     } finally {
       setUpdatingId(null);
       setConfirmModalOpen(false);

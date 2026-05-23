@@ -47,7 +47,7 @@ export function ProfileSetup({ onSubmit, onSkip }: ProfileSetupProps) {
       <div className="ps-avatar-wrap">
         <div className={`ps-avatar ${name.trim() ? 'ps-avatar-filled' : ''}`}>
           {name.trim() ? (
-            name.trim()[0].toUpperCase()
+            (name.trim()[0] ?? '?').toUpperCase()
           ) : (
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
               <circle cx="16" cy="12" r="6" fill="#6A7A8A" />
