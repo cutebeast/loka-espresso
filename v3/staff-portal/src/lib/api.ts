@@ -203,12 +203,13 @@ export const api = {
     const json = await res.json();
     return (json?.data ?? json) as T;
   },
-  fetchRaw: async (method: string, path: string, body?: unknown) => {
+  fetchRaw: async (method: string, path: string, body?: unknown, signal?: AbortSignal) => {
     const makeRequest = async () => {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       const res = await fetch(`${BASE_URL}${path}`, {
         method,
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+        signal,
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
     if (res.status === 401) {
