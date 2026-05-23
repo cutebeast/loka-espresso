@@ -132,7 +132,7 @@ async function requestPaginated<T>(method: string, path: string, body?: unknown,
   return request<PaginatedResponse<T>>(method, path, body, signal);
 }
 
-async function requestRaw<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function requestRaw<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   // Reset idle timer on API activity
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("staff:activity"));
@@ -141,14 +141,17 @@ async function requestRaw<T>(method: string, path: string, body?: unknown): Prom
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers: getAuthHeaders(),
+      signal,
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     if (res.status === 401) {
+      if (signal?.aborted) throw new Error("Request aborted");
       const refreshed = await refreshToken();
       if (refreshed) {
         const retry = await fetch(`${BASE_URL}${path}`, {
           method,
           headers: getAuthHeaders(),
+          signal,
           ...(body ? { body: JSON.stringify(body) } : {}),
         });
         if (retry.ok) return retry;
@@ -175,7 +178,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown): Prom
 
 export const api = {
   get: <T>(path: string, signal?: AbortSignal) => request<T>("GET", path, undefined, signal),
-  getRaw: <T>(path: string) => requestRaw<T>("GET", path),
+  getRaw: <T>(path: string, signal?: AbortSignal) => requestRaw<T>("GET", path, undefined, signal),
   getPaginated: <T>(path: string, signal?: AbortSignal) => requestPaginated<T>("GET", path, undefined, signal),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
   postPaginated: <T>(path: string, body?: unknown) => requestPaginated<T>("POST", path, body),
