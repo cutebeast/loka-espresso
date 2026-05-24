@@ -19,7 +19,7 @@ from app.models.staff import StaffProfile
 settings = get_settings()
 security_scheme = HTTPBearer(auto_error=False)
 
-SUPPORTED_LOCALES = {"ms", "zh", "ta", "tr"}
+SUPPORTED_LOCALES = {"en", "ms", "zh", "ta", "tr"}
 SUPPORTED_LOCALE_PREFIXES = {locale.split("-")[0] if "-" in locale else locale for locale in SUPPORTED_LOCALES} | SUPPORTED_LOCALES
 SOURCE_LOCALE = "en"
 
