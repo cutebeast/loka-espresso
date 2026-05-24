@@ -177,14 +177,16 @@ async def get_current_admin(
         ) from exc
 
     token_type = payload.get("type")
-    if token_type != "access":
+    # Accept access tokens AND staff tokens with admin_id (staff portal uses admin endpoints)
+    if token_type not in ("access", "staff", "admin"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    admin_id = int(payload.get("sub", 0))
+    # Staff portal: use admin_id from claims if staff token
+    admin_id = int(payload.get("admin_id", payload.get("sub", 0)))
     if not admin_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
