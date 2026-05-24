@@ -27,7 +27,7 @@ from sqlalchemy import select
 from app.core.database import AsyncSessionLocal
 from app.models.iam import IAMPrincipal, AdminAccount, IAMRole, RoleAssignment
 
-ADMIN_EMAIL = os.getenv("SEED_ADMIN_EMAIL", "admin@lokaespresso.my")
+ADMIN_EMAIL = os.getenv("SEED_ADMIN_EMAIL", "admin@loyaltysystem.uk")
 ADMIN_PASS  = os.getenv("SEED_ADMIN_PASS", "admin123")
 
 ph = PasswordHasher()

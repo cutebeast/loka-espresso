@@ -17,7 +17,7 @@ JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-for-development-only-
 JWT_ALGORITHM = "HS256"
 
 # Bootstrap admin credentials — created by seed_v3.py if DB is blank
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@lokaespresso.my")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@loyaltysystem.uk")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
 
