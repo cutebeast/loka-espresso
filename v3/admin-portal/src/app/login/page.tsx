@@ -6,6 +6,7 @@ import { adminLogin, isLoggedIn } from "@/lib/api";
 import { Store, Lock, Mail } from "lucide-react";
 import { useBrand } from "@/components/BrandProvider";
 import { ROUTES } from "@/lib/constants";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,6 +41,10 @@ export default function LoginPage() {
           <div className="login-brand-icon"><Store size={28} /></div>
           <div className="login-brand-name">{brandName}</div>
           <div className="login-brand-sub">Admin Portal</div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+          <LanguageSelector />
         </div>
 
         {error && <div className="login-error">{error}</div>}

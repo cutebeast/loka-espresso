@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Store, Lock, Mail, User, ChevronDown, ChevronUp } from "lucide-react";
 import { api, staffLogin, staffLoginByName } from "@/lib/api";
 import type { PaginatedResponse } from "@/lib/api";
+import LanguageSelector from "@/components/LanguageSelector";
 
 interface StoreInfo { id: number; store_name: string; is_active?: boolean; }
 
@@ -90,7 +91,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     let mounted = true;
-    api.get<PaginatedResponse<StoreInfo>>("/stores?locale=en")
+    const locale = typeof window !== "undefined" ? localStorage.getItem("locale") || "en" : "en";
+    api.get<PaginatedResponse<StoreInfo>>(`/stores?locale=${locale}`)
       .then((d) => {
         const list = d?.items || [];
         if (mounted) setStores(list.filter((s: StoreInfo) => s.is_active !== false));
@@ -157,6 +159,10 @@ export default function LoginPage() {
           </div>
           <h1 className="login-brand-title">LOKA Espresso</h1>
           <p className="login-brand-subtitle">Staff Portal</p>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+          <LanguageSelector />
         </div>
 
         {/* Store Selection */}
