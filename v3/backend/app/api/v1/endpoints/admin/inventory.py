@@ -33,7 +33,7 @@ def _slugify(value: str) -> str:
 # Inventory Categories
 # ---------------------------------------------------------------------------
 
-@router.get("/categories", response_model=APIResponse[list[InventoryCategoryOut]])
+@router.get("/categories", response_model=APIResponse[PaginatedResponse[InventoryCategoryOut]])
 async def list_categories(
     db: DBDependency,
     admin: CurrentAdmin,
