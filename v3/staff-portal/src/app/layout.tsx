@@ -5,6 +5,7 @@ import AuthProvider from "@/components/AuthProvider";
 export const metadata: Metadata = {
   title: "LOKA Espresso — Staff Portal",
   description: "Staff portal for LOKA Espresso",
+  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
