@@ -84,7 +84,7 @@ export default function KitchenPage() {
     }
   }, [storeId, soundOn]);
 
-  usePolling(fetchOrders, [storeId, soundOn], { interval: 10000 });
+  usePolling(fetchOrders, [storeId, soundOn], { interval: 5000 });
 
   useEffect(() => {
     prevCountRef.current = 0;

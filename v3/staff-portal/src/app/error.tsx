@@ -13,6 +13,15 @@ export default function Error({
     console.error("Staff portal error:", error);
   }, [error]);
 
+  const displayMessage =
+    !error.message
+      ? "An unexpected error occurred. Please try again."
+      : error.message.includes("Cannot read") || error.message.includes("undefined")
+        ? "Something went wrong. Please try again."
+        : error.message.startsWith("{") || error.message.includes("Error:")
+          ? "An unexpected error occurred. Please go back and try again."
+          : error.message;
+
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center",
@@ -23,7 +32,7 @@ export default function Error({
         Something went wrong
       </h2>
       <p style={{ fontSize: 14, color: "var(--color-text-muted)", maxWidth: 320 }}>
-        {error.message || "An unexpected error occurred. Please try again."}
+        {displayMessage}
       </p>
       <button
         type="button"

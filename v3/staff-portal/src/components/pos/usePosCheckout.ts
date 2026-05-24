@@ -97,7 +97,7 @@ export function usePosCheckout(checkoutOrderId: string | null) {
     walletPaid: number,
     amountTendered: string,
   ) => {
-    if (isPaymentProcessingRef.current) return null;
+    if (isPaymentProcessingRef.current) throw new Error("Payment is already being processed — please wait");
     isPaymentProcessingRef.current = true;
     try {
     const orderBase = checkoutOrder?.total_amount ?? 0;

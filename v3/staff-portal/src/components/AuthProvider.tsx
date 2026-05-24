@@ -25,6 +25,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [checked, setChecked] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const [authError, setAuthError] = useState(false);
+  const [showIdleWarning, setShowIdleWarning] = useState(false);
   const isLoginPage = pathname === "/login";
 
   // Branding favicon
@@ -52,20 +53,30 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return () => { if (injectedLink) injectedLink.remove(); };
   }, []);
 
-  // ── Idle timeout (30 min) ──
+  // ── Idle timeout (30 min) with 60s warning ──
   useEffect(() => {
     if (isLoginPage) return;
     const IDLE_MS = 30 * 60 * 1000;
+    const WARN_MS = 60 * 1000;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    let warnTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const logoutIdle = () => {
+    const forceLogout = () => {
+      setShowIdleWarning(false);
       staffLogout();
       router.replace("/login");
     };
 
+    const showWarning = () => {
+      setShowIdleWarning(true);
+      warnTimer = setTimeout(forceLogout, WARN_MS);
+    };
+
     const resetIdleTimer = () => {
+      setShowIdleWarning(false);
       if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(logoutIdle, IDLE_MS);
+      if (warnTimer) clearTimeout(warnTimer);
+      idleTimer = setTimeout(showWarning, IDLE_MS - WARN_MS);
     };
 
     const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
@@ -77,6 +88,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       events.forEach((e) => window.removeEventListener(e, resetIdleTimer));
       window.removeEventListener("staff:activity", resetIdleTimer);
       if (idleTimer) clearTimeout(idleTimer);
+      if (warnTimer) clearTimeout(warnTimer);
     };
   }, [isLoginPage, router]);
 
@@ -181,6 +193,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   return (
     <div className="app-shell">
       <StoreHeader />
+      {showIdleWarning && (
+        <div style={{ background: "#FFF3CD", color: "#856404", padding: "10px 16px", textAlign: "center", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+          Session expiring soon — tap anywhere to stay logged in
+          <button type="button" onClick={() => { setShowIdleWarning(false); window.dispatchEvent(new Event("staff:activity")); }} style={{ background: "#856404", color: "white", border: "none", padding: "4px 12px", borderRadius: 6, cursor: "pointer", fontSize: 13 }}>
+            I&apos;m here
+          </button>
+        </div>
+      )}
       <main className="app-main">
         {forbidden ? (
           <div className="forbidden-screen">

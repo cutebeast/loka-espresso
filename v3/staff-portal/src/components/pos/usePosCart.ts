@@ -61,6 +61,7 @@ export function usePosCart(_storeId: number, crewName: string) {
   }, []);
 
   const handleItemClick = useCallback((item: MenuItem) => {
+    if (!item.is_available) return;
     if (item.modifier_groups && item.modifier_groups.length > 0) {
       setModifierItem(item);
       setSelectedModifiers({});

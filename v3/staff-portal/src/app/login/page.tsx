@@ -84,6 +84,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [nameList, setNameList] = useState<{ id: number; display_name: string }[]>([]);
+  const [namesLoading, setNamesLoading] = useState(false);
   const [selectedName, setSelectedName] = useState("");
   const [attemptCount, setAttemptCount] = useState(0);
 
@@ -101,11 +102,13 @@ export default function LoginPage() {
   useEffect(() => {
     if (!selectedStore || mode !== "name") return;
     let mounted = true;
+    setNamesLoading(true);
     api.get<{ id: number; display_name: string }[]>(`/staff/auth/names?store_id=${selectedStore}`)
       .then((nameData: { id: number; display_name: string }[]) => {
         if (mounted) setNameList(Array.isArray(nameData) ? nameData : []);
       })
-      .catch((err: unknown) => { console.error("Staff names fetch failed:", err); if (mounted) setNameList([]); });
+      .catch((err: unknown) => { console.error("Staff names fetch failed:", err); if (mounted) setNameList([]); })
+      .finally(() => { if (mounted) setNamesLoading(false); });
     return () => { mounted = false; };
   }, [selectedStore, mode]);
 
@@ -117,7 +120,11 @@ export default function LoginPage() {
       if (!selectedStore) { setError("Please select a store"); setLoading(false); return; }
 
       const delay = Math.min(3000, attemptCount * 1000);
-      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+      if (delay > 0) {
+        setError(`Too many attempts — please wait ${Math.ceil(delay / 1000)} seconds`);
+        await new Promise((r) => setTimeout(r, delay));
+        setError("");
+      }
 
       if (mode === "name") {
         if (!selectedName) { setError("Please select your name"); setLoading(false); return; }
@@ -200,7 +207,7 @@ export default function LoginPage() {
               value={selectedName}
               onChange={setSelectedName}
               options={nameList.map((n) => ({ value: n.display_name, label: n.display_name }))}
-              placeholder={selectedStore ? "Select staff..." : "Select a store first"}
+              placeholder={!selectedStore ? "Select a store first" : namesLoading ? "Loading staff..." : "Select staff..."}
               label="Name"
               icon={<User size={16} className="login-icon-primary" />}
               disabled={!selectedStore || nameList.length === 0}
