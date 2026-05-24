@@ -74,12 +74,12 @@ async def list_stores(
     locale: OptionalLocale,
     latitude: float | None = Query(None, ge=-90, le=90),
     longitude: float | None = Query(None, ge=-180, le=180),
-    radius_km: float | None = Query(None, gt=0, le=100),
+    radius_km: float | None = Query(None, gt=0, le=500),
     city: str | None = Query(None, max_length=100),
     is_open: bool | None = Query(None),
     search: str | None = Query(None, max_length=100),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List public stores with optional filters."""
     stmt = select(Store).where(Store.is_active.is_(True))

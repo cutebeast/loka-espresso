@@ -17,7 +17,7 @@ router = APIRouter(prefix="/admin/checkins", tags=["admin — check-ins"])
 @router.get("", response_model=APIResponse[PaginatedResponse[dict]])
 async def list_checkins(
     db: DBDependency, admin: CurrentAdmin,
-    page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=100),
+    page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500),
 ):
     total = (await db.execute(select(func.count(CustomerDailyCheckin.id)))).scalar() or 0
     rows = (await db.execute(

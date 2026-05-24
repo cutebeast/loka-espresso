@@ -49,7 +49,7 @@ async def list_rewards(
     locale: OptionalLocale,
     is_active: bool | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List reward catalog entries with filters."""
     base_stmt = select(RewardCatalog).where(RewardCatalog.deleted_at.is_(None))
@@ -159,7 +159,7 @@ async def list_reward_redemptions(
     admin: CurrentAdmin,
     reward_id: int,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List customer redemptions for a reward."""
     await _get_reward_or_404(db, reward_id)
@@ -204,7 +204,7 @@ async def list_reward_catalog(
     db: DBDependency,
     locale: OptionalLocale,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List available rewards for the current customer."""
     base_stmt = select(RewardCatalog).where(
@@ -239,7 +239,7 @@ async def list_my_rewards(
     customer: ActiveCustomer,
     db: DBDependency,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List current customer's rewards."""
     count_stmt = select(func.count(CustomerReward.id)).where(CustomerReward.customer_id == customer.id)

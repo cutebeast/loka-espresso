@@ -48,7 +48,7 @@ async def list_reservations(
     db: DBDependency,
     admin: CurrentAdmin,
     page: int = Query(1, ge=1),
-    per_page: int = Query(50, ge=1, le=100),
+    per_page: int = Query(50, ge=1, le=500),
     status: str | None = Query(None),
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
@@ -215,7 +215,7 @@ async def list_my_reservations(
     db: DBDependency,
     customer: ActiveCustomer,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List current customer's reservations."""
     base_stmt = select(Reservation).where(Reservation.customer_id == customer.id)

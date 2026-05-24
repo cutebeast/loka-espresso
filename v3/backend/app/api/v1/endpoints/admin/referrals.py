@@ -37,7 +37,7 @@ async def list_referrals(
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List referral events with filters."""
     base_stmt = select(ReferralEvent)
@@ -154,7 +154,7 @@ async def list_my_referrals(
     db: DBDependency,
     customer: ActiveCustomer,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """Get current customer's referrals."""
     count_stmt = select(func.count(ReferralEvent.id)).where(

@@ -36,7 +36,7 @@ router = APIRouter(tags=["public — content"])
 async def list_promo_banners(
     db: DBDependency,
     locale: OptionalLocale,
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
 ):
     """List active promo banners for PWA display."""
     now = datetime.now(timezone.utc)
@@ -93,7 +93,7 @@ async def list_information_cards(
     db: DBDependency,
     locale: OptionalLocale,
     content_type: str | None = Query(None),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
 ):
     """List active information cards."""
     now = datetime.now(timezone.utc)
@@ -144,7 +144,7 @@ async def get_information_card(
 async def list_product_cards(
     db: DBDependency,
     locale: OptionalLocale,
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
 ):
     """List active product cards."""
     stmt = (
@@ -186,7 +186,7 @@ async def get_product_card(
 async def list_event_cards(
     db: DBDependency,
     locale: OptionalLocale,
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
 ):
     """List active event cards."""
     now = datetime.now(timezone.utc)

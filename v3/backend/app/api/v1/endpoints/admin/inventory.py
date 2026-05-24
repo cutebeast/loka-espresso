@@ -167,7 +167,7 @@ async def list_items(
     store_id: int = Query(...),
     category_id: int | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List inventory items for a store (optionally filtered by category)."""
     base_stmt = select(InventoryItem).where(

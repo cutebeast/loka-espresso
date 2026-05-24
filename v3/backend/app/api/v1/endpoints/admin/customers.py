@@ -35,7 +35,7 @@ async def list_customers(
     db: DBDependency,
     search: str | None = Query(None, description="Search by name, phone, or email"),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List all customers with search."""
     base_stmt = select(Customer).where(

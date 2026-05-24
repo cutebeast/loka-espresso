@@ -15,7 +15,7 @@ router = APIRouter(prefix="/admin/promo-banners", tags=["admin — promo banners
 
 
 @router.get("", response_model=APIResponse[PaginatedResponse[PromoBannerOut]])
-async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=100)):
+async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500)):
     base = select(PromoBanner)
     cnt = select(func.count(PromoBanner.id))
     total = (await db.execute(cnt)).scalar() or 0

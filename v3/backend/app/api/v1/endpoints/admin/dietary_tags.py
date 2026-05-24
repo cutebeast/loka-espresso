@@ -13,7 +13,7 @@ router = APIRouter(prefix="/admin/dietary-tags", tags=["admin — dietary tags"]
 
 
 @router.get("", response_model=APIResponse[PaginatedResponse[dict]])
-async def list_tags(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=100)):
+async def list_tags(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500)):
     base = select(DietaryTag).order_by(DietaryTag.display_name)
     total = (await db.execute(select(func.count()).select_from(DietaryTag))).scalar() or 0
     result = await db.execute(base.offset((page - 1) * per_page).limit(per_page))

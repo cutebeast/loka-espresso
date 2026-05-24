@@ -240,7 +240,7 @@ async def list_orders(
     status: str | None = Query(None),
     store_id: int | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List customer's orders."""
     orders, total = await get_customer_orders(

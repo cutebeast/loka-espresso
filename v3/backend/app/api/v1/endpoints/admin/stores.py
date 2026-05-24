@@ -92,7 +92,7 @@ async def list_stores(
     db: DBDependency,
     admin: CurrentAdmin,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
     is_active: bool | None = Query(None),
 ):
     """List all stores (paginated, optional is_active filter)."""

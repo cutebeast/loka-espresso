@@ -334,7 +334,7 @@ async def list_payments(
     status: str | None = Query(None),
     provider: str | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List payments (admin only)."""
     base_stmt = select(Payment)

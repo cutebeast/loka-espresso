@@ -256,7 +256,7 @@ async def list_items(
     category_id: int | None = Query(None),
     is_available: bool | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List menu items with optional filters and pagination."""
     base_stmt = select(MenuItem).where(

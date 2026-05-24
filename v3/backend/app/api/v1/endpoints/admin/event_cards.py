@@ -15,7 +15,7 @@ router = APIRouter(prefix="/admin/event-cards", tags=["admin — event cards"])
 
 
 @router.get("", response_model=APIResponse[PaginatedResponse[EventCardOut]])
-async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=100)):
+async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500)):
     base = select(EventCard)
     cnt = select(func.count(EventCard.id))
     total = (await db.execute(cnt)).scalar() or 0

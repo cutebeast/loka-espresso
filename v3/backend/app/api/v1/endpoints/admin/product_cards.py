@@ -15,7 +15,7 @@ router = APIRouter(prefix="/admin/product-cards", tags=["admin — product cards
 
 
 @router.get("", response_model=APIResponse[PaginatedResponse[ProductCardOut]])
-async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=100)):
+async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500)):
     base = select(ProductCard)
     cnt = select(func.count(ProductCard.id))
     total = (await db.execute(cnt)).scalar() or 0

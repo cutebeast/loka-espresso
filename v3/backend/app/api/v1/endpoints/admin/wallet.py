@@ -93,7 +93,7 @@ async def list_wallets(
     admin: CurrentAdmin,
     customer_id: int | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List wallets with optional customer filter."""
     base_stmt = select(Wallet)
@@ -151,7 +151,7 @@ async def list_wallet_ledger(
     admin: CurrentAdmin,
     wallet_id: int,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List ledger entries for a wallet."""
     await _get_wallet_or_404(db, wallet_id)
@@ -353,7 +353,7 @@ async def get_my_ledger(
     customer: ActiveCustomer,
     db: DBDependency,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """Get current customer's ledger entries. Returns empty if no wallet."""
     wallet = await _get_customer_wallet(db, customer.id)

@@ -18,7 +18,7 @@ router = APIRouter(prefix="/admin/info-cards", tags=["admin — information card
 async def list_cards(
     db: DBDependency, admin: CurrentAdmin,
     content_type: str | None = Query(None),
-    page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=100),
+    page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500),
 ):
     base = select(InformationCard)
     cnt = select(func.count(InformationCard.id))

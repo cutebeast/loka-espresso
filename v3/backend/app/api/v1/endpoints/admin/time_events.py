@@ -170,7 +170,7 @@ async def list_time_events(
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List staff time events with filters."""
     base_stmt = select(StaffTimeEvent)
@@ -338,7 +338,7 @@ async def staff_list_my_time_events(
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """Get current staff's time events."""
     base_stmt = select(StaffTimeEvent).where(StaffTimeEvent.staff_id == staff.id)

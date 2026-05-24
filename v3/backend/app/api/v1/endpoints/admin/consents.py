@@ -26,7 +26,7 @@ async def list_consents(
     consent_type: str | None = Query(None),
     status: str | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List customer consents with filters."""
     base_stmt = select(CustomerConsent)

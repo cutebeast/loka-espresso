@@ -113,7 +113,7 @@ async def list_purchase_orders(
     supplier_id: int | None = Query(None),
     status: str | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List purchase orders with filters."""
     base_stmt = select(PurchaseOrder)

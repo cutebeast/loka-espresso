@@ -25,7 +25,7 @@ async def list_audit_logs(
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List audit logs with filters."""
     base_stmt = select(AuditLog)

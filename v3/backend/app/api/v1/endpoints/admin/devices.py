@@ -26,7 +26,7 @@ async def list_devices(
     device_type: str | None = Query(None),
     is_active: bool | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List customer devices with filters."""
     base_stmt = select(CustomerDevice)

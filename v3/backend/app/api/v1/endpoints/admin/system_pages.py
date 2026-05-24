@@ -15,7 +15,7 @@ router = APIRouter(prefix="/admin/system-pages", tags=["admin — system pages"]
 
 
 @router.get("", response_model=APIResponse[PaginatedResponse[SystemPageOut]])
-async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=100)):
+async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500)):
     base = select(SystemPage)
     cnt = select(func.count(SystemPage.id))
     total = (await db.execute(cnt)).scalar() or 0

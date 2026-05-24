@@ -55,7 +55,7 @@ async def list_tip_allocations(
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List tip allocations with filters."""
     base_stmt = select(TipAllocation).join(StaffProfile)

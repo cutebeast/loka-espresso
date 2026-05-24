@@ -91,7 +91,7 @@ async def list_surveys(
     admin: CurrentAdmin,
     is_active: bool | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List surveys with question/response counts."""
     base_stmt = select(SurveyDefinition).where(SurveyDefinition.deleted_at.is_(None))
@@ -422,7 +422,7 @@ async def list_survey_responses(
     admin: CurrentAdmin,
     survey_id: int,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List responses for a survey with question text/type."""
     survey = await _get_survey_or_404(db, survey_id)
@@ -481,7 +481,7 @@ async def list_public_surveys(
     db: DBDependency,
     locale: OptionalLocale,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List active surveys."""
     base_stmt = select(SurveyDefinition).where(

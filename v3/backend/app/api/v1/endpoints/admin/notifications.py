@@ -65,7 +65,7 @@ async def list_admin_notifications(
     admin: CurrentAdmin,
     is_archived: bool | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
     from_date: str | None = Query(None),
     to_date: str | None = Query(None),
 ):
@@ -414,7 +414,7 @@ async def list_my_notifications(
     db: DBDependency,
     locale: OptionalLocale,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List current customer's notifications."""
     count_stmt = select(func.count(NotificationMessage.id)).where(

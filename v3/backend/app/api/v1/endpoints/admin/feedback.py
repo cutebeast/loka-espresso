@@ -24,7 +24,7 @@ async def list_feedback(
     from_date: str | None = Query(None),
     to_date: str | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List customer feedback with filters."""
     base = select(FeedbackEntry)

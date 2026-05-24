@@ -46,7 +46,7 @@ async def list_vouchers(
     admin: CurrentAdmin,
     is_active: bool | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List voucher definitions with filters."""
     base_stmt = select(VoucherDefinition).where(VoucherDefinition.deleted_at.is_(None))
@@ -153,7 +153,7 @@ async def list_voucher_redemptions(
     admin: CurrentAdmin,
     voucher_id: int,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List customer redemptions for a voucher."""
     await _get_voucher_or_404(db, voucher_id)
@@ -195,7 +195,7 @@ async def list_my_vouchers(
     db: DBDependency,
     locale: OptionalLocale,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List current customer's vouchers."""
     count_stmt = select(func.count(CustomerVoucher.id)).where(CustomerVoucher.customer_id == customer.id)

@@ -15,7 +15,7 @@ router = APIRouter(prefix="/admin/content/splash-screens", tags=["admin — spla
 
 
 @router.get("", response_model=APIResponse[PaginatedResponse[dict]])
-async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=100)):
+async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500)):
     base = select(SplashScreen).where(SplashScreen.deleted_at.is_(None))
     cnt = select(func.count(SplashScreen.id)).where(SplashScreen.deleted_at.is_(None))
     total = (await db.execute(cnt)).scalar() or 0

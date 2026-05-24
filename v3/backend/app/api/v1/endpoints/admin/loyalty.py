@@ -173,7 +173,7 @@ async def list_loyalty_accounts(
     customer_id: int | None = Query(None),
     tier_id: int | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List loyalty accounts with optional filters."""
     base_stmt = select(LoyaltyAccount)
@@ -261,7 +261,7 @@ async def list_ledger_entries(
     customer_id: int | None = Query(None),
     event_type: str | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List loyalty ledger entries with optional filters."""
     base_stmt = select(LoyaltyPointsLedger)
@@ -396,7 +396,7 @@ async def get_my_ledger_entries(
     db: DBDependency,
     customer: ActiveCustomer,
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """Get current customer's loyalty ledger entries. Returns empty if no account."""
     result = await db.execute(

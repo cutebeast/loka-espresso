@@ -180,7 +180,7 @@ async def list_campaigns(
     status: str | None = Query(None),
     channel: str | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List marketing campaigns with filters."""
     base_stmt = select(MarketingCampaign)

@@ -17,7 +17,7 @@ async def list_refunds(
     db: DBDependency,
     admin: CurrentAdmin,
     page: int = Query(1, ge=1),
-    per_page: int = Query(50, ge=1, le=100),
+    per_page: int = Query(50, ge=1, le=500),
     store_id: int | None = Query(None),
 ):
     base = select(Refund).options(joinedload(Refund.order))

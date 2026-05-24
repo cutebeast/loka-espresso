@@ -62,7 +62,7 @@ async def list_movements(
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=500),
 ):
     """List inventory movement logs with filters."""
     base_stmt = select(InventoryMovementLog)
