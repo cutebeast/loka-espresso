@@ -5,6 +5,7 @@ import { Store, Lock, Mail, User, ChevronDown, ChevronUp } from "lucide-react";
 import { api, staffLogin, staffLoginByName } from "@/lib/api";
 import type { PaginatedResponse } from "@/lib/api";
 import LanguageSelector from "@/components/LanguageSelector";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface StoreInfo { id: number; store_name: string; is_active?: boolean; }
 
@@ -76,6 +77,7 @@ function CustomSelect({
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [selectedStore, setSelectedStore] = useState("");
   const [mode, setMode] = useState<"email" | "name">("email");
@@ -119,23 +121,23 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      if (!selectedStore) { setError("Please select a store"); setLoading(false); return; }
+      if (!selectedStore) { setError(t("login.error_no_store")); setLoading(false); return; }
 
       const delay = Math.min(3000, attemptCount * 1000);
       if (delay > 0) {
-        setError(`Too many attempts — please wait ${Math.ceil(delay / 1000)} seconds`);
+        setError(t("login.error_too_many").replace("{seconds}", String(Math.ceil(delay / 1000))));
         await new Promise((r) => setTimeout(r, delay));
         setError("");
       }
 
       if (mode === "name") {
-        if (!selectedName) { setError("Please select your name"); setLoading(false); return; }
+        if (!selectedName) { setError(t("login.error_select_name")); setLoading(false); return; }
         // staffLoginByName sends pin as the `password` field in the API payload — the backend
         // expects PIN-based auth under `password` for name-based login
         await staffLoginByName(selectedName, pin, Number(selectedStore));
       } else {
-        if (!email) { setError("Please enter your email"); setLoading(false); return; }
-        if (!password && !pin) { setError("Please enter your password or PIN"); setLoading(false); return; }
+        if (!email) { setError(t("login.error_enter_email")); setLoading(false); return; }
+        if (!password && !pin) { setError(t("login.error_enter_pin")); setLoading(false); return; }
         await staffLogin(email, password || pin);
       }
       setAttemptCount(0);
@@ -157,8 +159,8 @@ export default function LoginPage() {
           <div className="login-brand-icon">
             <Store size={28} className="text-white" />
           </div>
-          <h1 className="login-brand-title">LOKA Espresso</h1>
-          <p className="login-brand-subtitle">Staff Portal</p>
+          <h1 className="login-brand-title">{t("login.title")}</h1>
+          <p className="login-brand-subtitle">{t("login.subtitle")}</p>
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
@@ -170,8 +172,8 @@ export default function LoginPage() {
           value={selectedStore}
           onChange={(val) => { setSelectedStore(val); setNameList([]); setSelectedName(""); }}
           options={stores.map((s) => ({ value: String(s.id), label: s.store_name }))}
-          placeholder="Select a store..."
-          label="Store"
+          placeholder={t("login.store_placeholder")}
+          label={t("login.store_label")}
           icon={<Store size={16} className="login-icon-primary" />}
         />
 
@@ -181,13 +183,13 @@ export default function LoginPage() {
             onClick={() => setMode("email")}
             className={`btn flex-1 justify-center ${mode === "email" ? "btn-primary" : "btn-ghost"}`}
           >
-            Email + PIN
+            {t("login.mode_email")}
           </button>
           <button
             onClick={() => setMode("name")}
             className={`btn flex-1 justify-center ${mode === "name" ? "btn-primary" : "btn-ghost"}`}
           >
-            Name + PIN
+            {t("login.mode_name")}
           </button>
         </div>
 
@@ -197,14 +199,14 @@ export default function LoginPage() {
           {mode === "email" ? (
             <div className="form-group">
               <label className="form-label flex items-center gap-2">
-                <Mail size={16} className="login-icon-primary" /> Email
+                <Mail size={16} className="login-icon-primary" /> {t("login.email_label")}
               </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="staff@loyaltysystem.uk"
+                placeholder={t("login.email_placeholder")}
                 className="form-input"
               />
             </div>
@@ -213,8 +215,8 @@ export default function LoginPage() {
               value={selectedName}
               onChange={setSelectedName}
               options={nameList.map((n) => ({ value: n.display_name, label: n.display_name }))}
-              placeholder={!selectedStore ? "Select a store first" : namesLoading ? "Loading staff..." : "Select staff..."}
-              label="Name"
+              placeholder={!selectedStore ? t("login.select_store_first") : namesLoading ? t("login.loading_staff") : t("login.name_placeholder")}
+              label={t("login.name_label")}
               icon={<User size={16} className="login-icon-primary" />}
               disabled={!selectedStore || nameList.length === 0}
             />
@@ -222,14 +224,14 @@ export default function LoginPage() {
 
           <div className="form-group">
             <label className="form-label flex items-center gap-2">
-              <Lock size={16} className="login-icon-primary" /> {mode === "email" ? "PIN or Password" : "PIN"}
+              <Lock size={16} className="login-icon-primary" /> {t("login.pin_label")}
             </label>
             <input
               type="password"
               required
               value={mode === "email" ? password : pin}
               onChange={e => mode === "email" ? setPassword(e.target.value) : setPin(e.target.value)}
-              placeholder={mode === "email" ? "PIN (6 digits) or password" : "6-digit PIN"}
+              placeholder={t("login.pin_placeholder")}
               maxLength={mode === "email" ? 50 : 6}
               className={`form-input ${mode === "name" ? "login-input-center" : ""}`}
             />
@@ -240,7 +242,7 @@ export default function LoginPage() {
             disabled={loading || !selectedStore}
             className="btn btn-primary w-full login-submit"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? t("login.signing_in") : t("login.signin")}
           </button>
         </form>
       </div>
