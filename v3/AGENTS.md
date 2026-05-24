@@ -45,7 +45,8 @@ v3/
 │       │   ├── reservations/   # Reservation management
 │       │   ├── time-clock/     # Staff clock-in/out
 │       │   ├── wallet/         # Customer wallet top-up
-│       │   └── profile/        # Staff profile
+│       │   ├── profile/        # Staff profile
+│       │   └── equipment/      # Equipment status view
 │       ├── components/         # 22 shared components
 │       ├── hooks/              # 5 custom hooks
 │       ├── lib/api.ts          # API client with token refresh
@@ -97,17 +98,18 @@ v3/
 ### Page Routes (12 total)
 | Route | Description | Key Features |
 |-------|-------------|--------------|
-| `/login` | Staff login | Store selector, name-based or email-based login, PIN/password |
-| `/` | Home dashboard | KPI cards, navigation grid, pending orders count, table status |
-| `/pos` | POS terminal | Menu grid with images, cart, modifiers, table assignment, QR scanner, held orders, checkout with voucher/reward/wallet |
-| `/orders` | Orders list | Filterable order list, status updates, payment status |
-| `/kitchen` | Kitchen display | Real-time order queue, urgency colors, audio alerts, status filters |
-| `/kitchen/[id]` | Order detail | Line items, modifiers, status timeline, update actions |
-| `/tables` | Table management | Status overview, section filter, QR generation, active order display |
-| `/reservations` | Reservation management | Date/status filter, confirm with table assignment, cancel |
-| `/time-clock` | Staff clock-in/out | Clock in, clock out, break start/end, event history |
-| `/wallet` | Customer wallet | Search/scan customer, top-up, view rewards/vouchers, redeem |
-| `/profile` | Staff profile | Display name, email, roles, change password, change PIN |
+| `/login` | Staff login | Store selector, name/PIN or email/password |
+| `/` | Home dashboard | KPI cards, navigation grid, equipment access |
+| `/pos` | POS terminal | Menu grid, cart, table transfer, held orders, checkout with tip/voucher/reward/wallet |
+| `/orders` | Orders list | Filterable, kanban view, queue/unpaid/history tabs |
+| `/kitchen` | Kitchen display | 5s polling, urgency colors, audio alerts, kanban columns |
+| `/kitchen/[id]` | Order detail | Status updates, cancel, table transfer, line items |
+| `/tables` | Table management | QR generation, status overview, section filter |
+| `/reservations` | Reservation management | Confirm with table, cancel |
+| `/time-clock` | Staff clock-in/out | Clock in, out, break, event history |
+| `/wallet` | Customer wallet | Search/scan, top-up, rewards, vouchers, redeem |
+| `/profile` | Staff profile | Display info, change password, change PIN |
+| `/equipment` | Equipment | View status, serial numbers, maintenance dates |
 
 ### Shared Components
 `Alert`, `AuthProvider`, `Badge`, `Button`, `Card`, `Drawer`, `EmptyState`, `Modal`, `NumericKeypad`, `OrderCard`, `PageHeader`, `QrScannerModal`, `SearchInput`, `SkeletonCard`, `SkeletonText`, `StatusBadge`, `StoreHeader`, `Timer`
@@ -198,95 +200,100 @@ cd customer-pwa && npm run build
 
 ---
 
-## Quality Standards (from 9 rounds of audit)
+## Quality Standards (from 10 rounds of audit)
 
-### All Clear (Reinforced by Round 9)
-- **No runtime crash risks**: All `.toFixed()`, `.charAt()`, `new Date()`, `JSON.parse()`, `parseFloat()` calls are properly guarded with `Number(… ?? 0)`, `|| "?"`, `isNaN()` checks, or try/catch
-- **No SSR crashes**: All `localStorage`/`window`/`document` access in api.ts and layout.tsx guarded by `typeof window !== "undefined"`
-- **No React key warnings**: Every `.map()` call has proper `key` prop using stable composite IDs (Round 8 hardened OrderCard composite keys; Round 9 fixed GalleryUpload index→URL keys)
+### All Clear (Reinforced by Round 10)
+- **No runtime crash risks**: All `.toFixed()`, `.charAt()`, `new Date()`, `JSON.parse()` calls properly guarded
+- **No SSR crashes**: All `localStorage`/`window`/`document` access guarded by `typeof window !== "undefined"`
+- **No React key warnings**: Every `.map()` call has proper `key` prop
 - **No state mutations**: All array operations use spread/copy patterns
-- **All useEffect cleanups present**: Timers, intervals, event listeners, abort controllers all properly cleaned up (Round 9 added cleanup to refunds, reports, useAudienceSegments)
-- **Auth token refresh**: Every API call through `api` module auto-refreshes on 401 with proper retry-failure handling (Round 8 fixed bypass in failed-retry path; Round 9 added abort check to staff requestRaw)
-- **Error boundaries**: `error.tsx` at root-level in admin and staff portals; staff portal now has `error.tsx` + `loading.tsx` (Round 9)
-- **Staff middleware**: `src/middleware.ts` provides security headers (CSP, HSTS, X-Frame-Options, etc.)
-- **Admin middleware**: `src/middleware.ts` provides full CSP, HSTS, and security headers
-- **CSP hardened**: Customer PWA CSP includes `frame-ancestors 'none'`; Staff Portal CSP includes `'unsafe-inline' 'unsafe-eval'` for Next.js 16 hydration compatibility
+- **All useEffect cleanups present**: Timers, intervals, event listeners, abort controllers cleaned up
+- **Auth token refresh**: Every API call through `api` module auto-refreshes on 401
+- **Error boundaries**: `error.tsx` at root-level in admin and staff portals (staff: user-friendly messages)
+- **CSP hardened**: `connect-src` gated for dev-only; all 3 portals have security headers
 - **Monetary precision**: All financial models use `Mapped[Decimal]` with `Numeric(12,4)` columns
-- **NULL-safe DB constraints**: CHECK constraints use `IS NULL OR` pattern for nullable unlimited-use columns
-- **Row locks on financial operations**: All wallet balance reads in mutation endpoints use `.with_for_update()`
-- **Rate limiter**: Logs warning when falling back to in-memory storage; should use Redis in production
-- **Customer PWA**: Cart persistence uses synchronous in-memory Map cache backed by async IndexedDB fire-and-forget writes
-- **Infrastructure**: Docker-compose ports aligned to docs (13830/13810/13820), Redis healthcheck fixed, REDIS_URL with credentials, Caddy reverse proxy service added (Round 9)
-- **Seed data**: Full `seed_v3.py` baseline script — stores, loyalty tiers, menu items, rewards, vouchers (Round 9)
-- **Services layer**: `__init__.py` with proper re-exports from all 8 service modules (Round 9)
+- **Row locks on financial operations**: All wallet balance reads use `.with_for_update()`
+- **API response consistency**: `request<T>` returns `data.items` for paginated responses (Round 10 fix)
+- **Seed minimal**: `seed_v3.py` only creates admin + roles (105 lines); e2e conftest creates data via API
+- **TypeScript**: 0 errors across all 3 portals
+- **ESLint**: 0 warnings across all 3 portals
 
-### Round 9 Audit & Remediation (2026-05-23) — 38 issues, 25 files fixed
+### Round 10 Audit & Remediation (2026-05-24) — Backend crash-loop fix + F&B features
 
-The 9th full-system audit across all 6 domains found 38 issues (6 critical, 11 high, 12 medium, 9 low). Infrastructure had the worst drift from v1→v3 migration. Customer PWA emerged as the cleanest domain (2 low findings).
+**Backend crash-loop fix (pre-existing, not from audit):**
+- `services/__init__.py` imported 6 non-existent functions → rewritten with real exports
+- `services/order.py` imported `with_for_update` (is a method, not standalone) → removed
+- `wallet.py` imported `AuditLog` from `app.models.audit` → fixed to `app.models.platform`
+- Alembic migration `d4e5f6a7b8c9` (staff lockout columns) never applied to production DB → applied
+- `refunds.updated_at` missing from SQL seed schema → ALTER TABLE added column
+- `inventory/categories` response model `list[]` → `PaginatedResponse[]`
 
-**Critical Fixes:**
-| Domain | Issue | Fix |
-|--------|-------|-----|
-| Infra | Port numbers (13801-13803) didn't match docs (13830/13810/13820) | Aligned compose ports to match AGENTS.md |
-| Infra | Redis healthcheck `redis-cli ping` failed with `requirepass` set | Changed to password-authenticated healthcheck |
-| Infra | Caddyfile referenced v1 service names and port 8000 | Full rewrite for v3 service names and port 13800 |
-| Infra | REDIS_URL missing password — backend couldn't authenticate | Added `redis://:${REDIS_PASSWORD}@redis:6379/0` |
-| Admin | Marketing redirect to `/rewards` instead of `/marketing/campaigns` | Fixed to correct landing page |
-| Backend | `seed_v3.py` documented but didn't exist | Created comprehensive baseline seed (8 steps, 50+ entities) |
+**FastAPI route ordering fix:**
+- `/{staff_id}` defined before `/shifts` → staff shifts page 422 → reordered
+- `/{notif_id}` defined before `/templates` → notification templates 422 → reordered
 
-**High Fixes:**
-| Domain | Issue | Fix |
-|--------|-------|-----|
-| Admin | `useEffect` missing deps in stores, refunds, reports pages | Added `useCallback` wrapping + correct dep arrays |
-| Admin | Store fetch in refunds with no abort cleanup | Added `mountedRef` guard |
-| Admin | Staff listing fetched ALL staff then client-side filtered | Changed to server-side `store_id` query param |
-| Admin | `isLoggedIn()` accessed localStorage with no SSR guard | Added `typeof window !== "undefined"` check |
-| E2E | Voucher redemption accepted 400/422 as "pass" | Strengthened to strict `== 200` assertion |
-| E2E | Order cancel rejection accepted both 400 and 409 | Tightened to `== 409` (semantically correct Conflict) |
-| E2E | Brute-force endpoint guessing in voucher assignment | Removed; uses correct direct endpoint |
-| Infra | `NEXT_PUBLIC_API_URL` hardcoded to `localhost:13800` | Changed to relative `/api/v1` across all 3 frontends |
-| Infra | `CORS_ORIGINS` hardcoded to old ports | Changed to env-var driven `${CORS_ORIGINS:-...}` |
+**API client fix:**
+- `request<T>` returned paginated wrapper `{items:[...]}` as `T[]` → `.map()` failed → returns `(data.items ?? [])` now
+- Same fix applied to retry path
 
-**Medium Fixes:**
-| Domain | Issue | Fix |
-|--------|-------|-----|
-| Backend | 13 empty model subdirectories | Deleted |
-| Backend | No `__init__.py` in admin endpoints | Created |
-| Backend | Empty services `__init__.py` | Added re-exports from all 8 service modules |
-| Admin | `GalleryUpload` used `key={idx}` for images | Changed to stable `key={url}` with filter-based remove |
-| Admin | `PwaTranslationsTab` API paths missing `/admin/` prefix | Fixed 3 endpoints |
-| Staff | `requestRaw` missing abort check before `refreshToken` | Added consistent abort guard |
-| Staff | No `error.tsx` or `loading.tsx` | Created both at root level |
-| Staff | Duplicate CSS selectors in utilities.css | Removed duplicates |
+**Admin portal:**
+- Layout fix: added `display:flex` wrapper (sidebar + content were stacking vertically)
+- Dietary-tags PATCH path `/admin/menu/dietary-tags` → `/admin/dietary-tags`
+- Version page: bare `fetch()` without auth → added `localStorage` token header
+- Translations per_page: backend limit 100→5000 to match PWA tab 2000 request
+- Store create/update: removed `db.refresh()` + manual output construction (MissingGreenlet fix)
+- Settings config PUT: reverted to query params (backend expects Query, not JSON body)
+- Profile page: created `/profile` with view info + change password
+- 10 unused Next.js boilerplate SVGs deleted
 
-**Low Fixes:**
-| Domain | Issue | Fix |
-|--------|-------|-----|
-| Admin | `feedback/page.tsx` CSS drawer width conflict | Removed inline width override |
-| Backend | `config.py` cors_origins default used old ports | Updated to 13830,13810,13820 |
-| E2E | `conftest.py` BASE_URL hardcoded, misleading comment | Added `E2E_BASE_URL` env var, fixed comment |
-| Backend | `useAudienceSegments` no cleanup | Added `cancelled` flag |
+**Staff portal F&B features (new):**
+- **Tip entry**: `tip_amount` on payment schema, 5%/10%/15%/20% presets + custom in PosCheckoutPanel
+- **Table transfer**: `PATCH /admin/orders/{id}/transfer-table` + UI on kitchen detail page
+- **Order cancel**: `POST /admin/orders/{id}/cancel` (from POS/orders, not just kitchen)
+- **Order modification**: `POST /admin/orders/{id}/items` (add), `DELETE .../items/{line}` (void)
+- **Equipment view**: new `/equipment` page — view status, maintenance dates from admin config
+- **Idle timeout**: 60s warning banner before logout (was instant wipe), cart preserved on logout
+- **Kitchen polling**: 10s → 5s interval
+- **Login UX**: name list shows "Loading staff...", PIN retry shows "Wait X seconds"
+- **Error page**: technical JS errors filtered into user-friendly messages
 
-### Active Logging
-- All catch blocks log `console.error` with descriptive context strings
-- `usePolling` logs polling errors to console
-- Scanner errors logged with descriptive messages
+**Customer PWA:**
+- SW offline orders: store `authToken` in record, include `Authorization` on replay
+- Token refresh: URL guard prevents infinite recursion on `/auth/refresh` 401
+- Cart sync: `_syncLock` mutex prevents concurrent sync races
+- idbStorage: console.error when both IDB + localStorage fail
 
-### Accessibility
-- All icon-only buttons have `aria-label`
-- Interactive cards use `role="button"` + `tabIndex={0}` + `onKeyDown` handlers
-- `Button` component defaults to `type="button"` (prevents accidental form submits)
-- Admin portal buttons on all core pages have `type="button"`
+**Seed + E2E:**
+- `seed_v3.py` reduced from 579 lines to 105 — only creates admin + roles
+- `conftest.py` auto-bootstraps if DB blank; `_ensure_baseline_data` fixture creates stores + tiers via API
+- `seed_pwa_translations.py` deleted (unused; PWA translations from admin panel)
+- Seed config keys fixed: `otp_bypass_enabled` → `otp.bypass_enabled`
 
-### Remaining Known (Round 9 — Post-Fix, 2 items)
+### Remaining Known (Round 10 Post-Fix)
 
-| Domain | Issue | Reason |
-|--------|-------|--------|
-| Customer PWA | i18n ~25 lines incomplete for ta/tr/zh | English fallback is automatic; functional but cosmetically incomplete |
-| Customer PWA | SW maintains separate IndexedDB from Zustand | By design — `loka-offline-orders` isolates offline order queue from `loka-pwa-db` cart state
+| Domain | Item | Status |
+|--------|------|--------|
+| Staff | Card payment | Placeholder UI — Stripe/payment gateway integration next week |
+| Staff | QR payment gateway | Pending third-party integration |
+| Staff | Bill splitting | Not needed (premium KL venues: KLCC, TRX, Pavilion) |
+| Customer PWA | i18n ~25 lines incomplete | English fallback automatic |
 
-### Legacy Cleanup (Round 9)
-- Removed old v1/v2 directories: `backend/`, `frontend/`, `customer-app/` (~1.1 GB)
-- Removed old `docker-compose.yml`, `.env`, `.env.local`, `scripts/seed/`, `scripts/fnb-manage.sh`, third-party mock scripts
-- Caddyfile rewritten for v3; v3 docker-compose ports fixed; Redis healthcheck fixed
-- `v3/backend/.env.example` CORS and REDIS_URL aligned with v3 defaults
+### Staff Portal — F&B Workflow Coverage
+
+| Feature | Status |
+|---------|--------|
+| POS dine-in orders with table assignment | ✅ |
+| Table transfer | ✅ kitchen detail page |
+| Payment — cash (full), card/QR (placeholder) | ✅ |
+| Tip entry — presets + custom | ✅ |
+| Order cancel from POS/orders | ✅ |
+| Order modification (add/void items) | ✅ POST/DELETE endpoints |
+| Kitchen display — kanban, timer, audio | ✅ 5s polling |
+| Order tracking — queue, unpaid, history | ✅ |
+| Equipment status view | ✅ /equipment page |
+| Customer wallet — search, top-up, rewards | ✅ |
+| Reservations — confirm, cancel | ✅ |
+| Tables — status, QR, mark clean | ✅ |
+| Time clock — in/out, history | ✅ |
+| Profile — change password/PIN | ✅ |
+| Idle timeout — 60s warning | ✅ |

@@ -1,188 +1,153 @@
-# FNB Enterprise v3
+# FNB Enterprise v3 — Loka Espresso
 
-> **Status**: Live | **Last Audit**: 2026-05-24 (Round 9 — 38 issues fixed across 6 domains, 25 files changed, legacy cleaned)
-> **Backend**: 53 endpoint files, 24 models, 8 services | **Staff Portal**: 12 pages | **Admin Portal**: 90+ pages | **E2E**: 16 test files
-
----
+> **Status**: Live | **Last Audit**: Round 10 (2026-05-24) | **TS**: 0 errors | **Lint**: 0 warnings
 
 ## Services
 
 | Service | Stack | Port | Build |
 |---------|-------|------|-------|
-| **Backend** | FastAPI + SQLAlchemy async | 13800 | Python 3.12+ |
-| **Staff Portal** | Next.js 16 (Turbopack) + pure CSS | 13820 | TypeScript |
-| **Admin Portal** | Next.js 16 (Turbopack) + pure CSS | 13830 | TypeScript |
-| **Customer PWA** | Next.js 16 (Turbopack) + pure CSS | 13810 | TypeScript |
-
----
+| **Backend** | FastAPI + SQLAlchemy async | 13800 | `uvicorn app.main:app` |
+| **Staff Portal** | Next.js 16 + pure CSS | 13820 | `npm run build && npx next start -p 13820` |
+| **Admin Portal** | Next.js 16 + pure CSS | 13830 | `npm run build && npx next start -p 13830` |
+| **Customer PWA** | Next.js 16 + pure CSS | 13810 | `npm run build && npx next start -p 13810` |
 
 ## Quick Start
 
-### 1. Start Infrastructure
 ```bash
-cd v3/infra/docker
-docker compose up -d postgres redis
+# Infrastructure
+cd v3/infra/docker && docker compose up -d postgres redis
+
+# Database
+cd v3/backend && alembic upgrade head && python scripts/seed_v3.py
+
+# Backend
+cd v3/backend && uvicorn app.main:app --reload --port 13800
+
+# Frontends (each in its own terminal)
+cd v3/staff-portal    && npm run dev   # → localhost:13820
+cd v3/admin-portal    && npm run dev   # → localhost:13830
+cd v3/customer-pwa    && npm run dev   # → localhost:13810
+
+# E2E Tests
+cd v3/e2e-tests && pip install -r requirements.txt && pytest -v
+
+# Full audit
+cd v3 && bash scripts/check-all.sh
 ```
 
-### 2. Initialize Database
+## Production (PM2)
+
 ```bash
-cd v3/backend
-alembic upgrade head
-python scripts/seed_v3.py
+pm2 start npm --name staff-portal-v3    --cwd v3/staff-portal    -- start -- -p 13820
+pm2 start npm --name admin-portal-v3    --cwd v3/admin-portal    -- start -- -p 13830
+pm2 start npm --name customer-pwa-v3    --cwd v3/customer-pwa    -- start -- -p 13810
+pm2 start v3/backend/.venv/bin/python --name v3-backend -- -m uvicorn app.main:app --port 13800
+pm2 save
 ```
 
-### 3. Run Backend
-```bash
-cd v3/backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 13800
-```
+## Staff Portal (12 pages)
 
-### 4. Run Frontends
-```bash
-# Staff Portal
-cd v3/staff-portal && npm install && npm run dev
-# or production: npm run build && npx next start -p 13820
+POS + Kitchen Display + Order Tracking for service crew:
 
-# Admin Portal
-cd v3/admin-portal && npm install && npm run dev
-# or production: npm run build && npx next start -p 13830
+| Page | Purpose |
+|------|---------|
+| `/login` | Store selector + name/PIN or email login |
+| `/` | Dashboard with KPI cards + nav grid |
+| `/pos` | POS terminal — menu grid, cart, table, checkout with tips |
+| `/orders` | Order list — kanban, queue/unpaid/history tabs |
+| `/kitchen` | Kitchen display — 5s polling, urgency timers, audio |
+| `/kitchen/[id]` | Order detail — status updates, cancel, table transfer |
+| `/tables` | Table management — QR codes, status overview |
+| `/reservations` | Reservation confirm/cancel |
+| `/time-clock` | Clock in/out with PIN |
+| `/wallet` | Customer wallet search, top-up, rewards, vouchers |
+| `/profile` | Change password/PIN |
+| `/equipment` | Equipment status and maintenance dates |
 
-# Customer PWA
-cd v3/customer-pwa && npm install && npm run dev
-```
+**Key features**: Tip entry (presets + custom), table transfer, order cancel, order modification, idle timeout with 60s warning, equipment status from admin config.
 
-### 5. Health Check
-```bash
-curl http://localhost:13800/api/v1/health
-curl http://localhost:13820/login
-curl http://localhost:13830/
-```
+## Admin Portal (90+ pages)
 
-### 6. E2E Tests
-```bash
-cd v3/e2e-tests
-pip install -r requirements.txt
-pytest -v
-```
+Full CRUD dashboard for management:
 
----
-
-## Directory Structure
-
-```
-v3/
-├── backend/                    # FastAPI backend
-│   ├── app/
-│   │   ├── api/v1/
-│   │   │   ├── deps.py         # CurrentAdmin, DBDependency
-│   │   │   ├── router.py       # Route registration
-│   │   │   └── endpoints/
-│   │   │       ├── admin/      # 37 CRUD endpoint files
-│   │   │       ├── staff/      # Staff auth + POS
-│   │   │       ├── customer/   # Customer-facing
-│   │   │       ├── public/     # Unauthenticated
-│   │   │       └── common/     # Health, upload
-│   │   ├── models/             # 24 SQLAlchemy models
-│   │   ├── schemas/            # Pydantic v2 schemas
-│   │   └── services/           # Business logic
-│   ├── alembic/                # Database migrations
-│   └── scripts/                # Seed scripts
-├── staff-portal/               # Staff POS + operations (12 pages)
-│   └── src/
-│       ├── app/                # Page routes
-│       ├── components/         # 22 shared components
-│       ├── hooks/              # 5 custom hooks
-│       ├── lib/api.ts          # API client
-│       └── styles/             # CSS variables + utilities
-├── admin-portal/               # Admin dashboard (90+ pages)
-│   └── src/
-│       ├── app/                # Page routes
-│       ├── components/         # Sidebar, GalleryUpload, QR
-│       ├── lib/api.ts          # API client
-│       └── styles/             # CSS
-**Services layer**: 8 modules with proper re-exports in `__init__.py` (Round 9)
-├── customer-pwa/               # Customer mobile PWA
-├── e2e-tests/                  # Pytest E2E API suite (16 test files)
-├── scripts/                    # Init scripts
-└── infra/                      # Docker + DB schema + Caddy reverse proxy
-```
-
----
+| Section | Pages |
+|---------|-------|
+| Dashboard | KPI metrics, store selector |
+| Stores | CRUD, settings, operating hours |
+| Menu | Categories, items, allergens, dietary tags, tax |
+| Loyalty | Tiers, accounts, ledger, settings |
+| Marketing | Rewards, promotions, vouchers, surveys, campaigns, referrals, checkins |
+| Content | Info cards, products, events, system pages, PWA splash |
+| Customers | Management, consents, devices |
+| Staff | Profiles, roles, shifts, tips |
+| Inventory | Categories, items, suppliers, movements, purchase orders |
+| Orders | Full order management |
+| Notifications | Templates, broadcast, report |
+| Settings | Platform config, version control, reservation settings |
+| Equipment | CRUD + maintenance logs |
+| Tables | Table configuration by store |
+| Translations | PWA UI translations with auto-translate |
+| Other | Profile, audit log, reports, feedback, refunds, reservations, admins/roles |
 
 ## Database
 
 - **Database**: `fnb_enterprise_v3` (PostgreSQL)
 - **Models**: 24 domain-organized SQLAlchemy models
-- **Migrations**: Alembic (baseline + 8 incremental)
-- **Key decisions**: Wallet double-entry ledger, loyalty points ledger with FIFO expiry, staff PINs bcrypt-hashed, RLS for tenant isolation, DB-driven platform config
-
----
+- **Migrations**: Alembic (10 migrations)
+- **Key decisions**: Wallet double-entry ledger, loyalty points ledger with FIFO expiry, staff PINs bcrypt-hashed, DB-driven platform config
 
 ## Design Decisions
 
-1. **New Database**: `fnb_enterprise_v3` — clean slate, no legacy migration
+1. **New Database**: `fnb_enterprise_v3` — clean slate
 2. **Separate Identity Domains**: Customer ≠ Staff ≠ Admin, unified via `iam_principals`
 3. **Wallet**: Double-entry ledger — no mutable `balance` column
 4. **Loyalty**: Points ledger with FIFO expiry, tier auto-computation
-5. **Staff PINs**: Bcrypt-hashed (legacy was plaintext)
-6. **DB-Driven Config**: Feature flags and business rules in `platform_config` table
-7. **Pure CSS**: No frameworks — CSS variables design system across all 3 portals
+5. **Staff PINs**: Bcrypt-hashed
+6. **DB-Driven Config**: Feature flags in `platform_config` table
+7. **Pure CSS**: CSS variables design system, no frameworks
 8. **Client-Side Auth**: localStorage JWT tokens with auto-refresh on 401
+9. **Minimal Seed**: `seed_v3.py` only creates admin + roles (105 lines); everything else via API
 
----
+## Round 10 Audit (2026-05-24)
 
-## Round 9 Audit & Remediation (2026-05-24)
+### Backend crash-loop fix
+Backend had 2000+ restarts over 23 hours due to:
+- `services/__init__.py` importing 6 non-existent functions
+- `services/order.py` importing `with_for_update` (is a method)
+- `wallet.py` importing `AuditLog` from wrong module
+- Alembic migration never applied to production DB
+- `refunds.updated_at` column missing from SQL seed
 
-The 9th full-system audit across 6 domains (backend, admin portal, staff portal, customer PWA, e2e tests, infrastructure) found **38 new issues** (6 critical, 11 high, 12 medium, 9 low). 25 files changed, ~1.1 GB of legacy v1/v2 code removed.
+### Route ordering fix
+FastAPI route shadowing: `/{staff_id}` matched before `/shifts` and `/templates` → 422 errors. Reordered routes in `staff.py` and `notifications.py`.
 
-### Infrastructure Fixes
-- Docker-compose ports aligned to documentation (13830/13810/13820)
-- Redis healthcheck fixed for password-protected instances
-- REDIS_URL with credentials, CORS_ORIGINS env-var driven
-- NEXT_PUBLIC_API_URL changed to relative `/api/v1` across all frontends
-- Caddy reverse proxy service added to compose; Caddyfile fully rewritten for v3
-- Legacy v1/v2 directories removed (`backend/`, `frontend/`, `customer-app/`, old compose, old env files)
+### API client fix
+`request<T>` returned paginated wrapper `{items:[...]}` cast as `T[]` → `.map is not a function` at runtime. Fixed to return `data.items` directly.
 
-### Backend Fixes
-- `seed_v3.py` created — comprehensive baseline seed (stores, loyalty tiers, menu, rewards, vouchers, platform config)
-- Services `__init__.py` with proper re-exports; admin endpoints `__init__.py` added
-- 13 empty model subdirectories cleaned; `cors_origins` default aligned with v3 ports
+### Admin portal fixes
+- Layout: flex container added (sidebar + content were stacking vertically)
+- Dietary-tags PATCH path fixed
+- Version page auth fixed (was bare `fetch()`)
+- Store PATCH: MissingGreenlet — removed `db.refresh()` + manual output construction
+- Profile page created (`/profile`)
+- 10 unused boilerplate SVGs deleted
 
-### Admin Portal Fixes
-- Marketing redirect fixed (`/rewards` → `/marketing/campaigns`)
-- `isLoggedIn()` SSR guard added; `useEffect` deps fixed in stores, refunds, reports
-- Staff listing: client-side filter → server-side query
-- GalleryUpload: index keys → stable URL keys
-- PwaTranslationsTab: 3 endpoints missing `/admin/` prefix fixed
-- useAudienceSegments: abort cleanup added
+### Staff portal — F&B features added
+- **Tip entry**: `tip_amount` schema, 5%/10%/15%/20% presets + custom
+- **Table transfer**: `PATCH /admin/orders/{id}/transfer-table` + UI
+- **Order cancel**: `POST /admin/orders/{id}/cancel`
+- **Order modification**: `POST .../items` (add), `DELETE .../items/{id}` (void)
+- **Equipment view**: new `/equipment` page from admin equipment config
+- **Idle timeout**: 60s warning banner before logout
+- **Kitchen**: 5s polling, login UX improvements, user-friendly error page
 
-### Staff Portal Fixes
-- `requestRaw` abort check added; `error.tsx` + `loading.tsx` created
-- Duplicate CSS selectors removed
+### Customer PWA fixes
+- SW offline orders: `authToken` stored in record + sent on replay
+- Token refresh: URL guard prevents infinite recursion
+- Cart sync: `_syncLock` mutex
+- idbStorage: error visibility
 
-### E2E Tests Fixes
-- Voucher redemption assertion tightened (`in 200,400,422` → `== 200`)
-- Order cancel rejection tightened to `== 409` (semantically correct)
-- Brute-force endpoint guessing removed; BASE_URL env-var driven
-- New `test_round9_coverage.py`: staff shift CRUD + KDS order display tests
-
-## Quality Standards (Established by Rounds 1-7, Reinforced by Round 8)
-
-- **Zero runtime crash risks** — all `.toFixed()`, `.charAt()`, `new Date()`, `parseFloat()` properly guarded
-- **SSR-safe** — all `localStorage`/`window` calls use `typeof window !== "undefined"`
-- **No React key warnings, no state mutations, all `useEffect` cleanups present**
-- **Token refresh on all 401 responses** with proper retry-failure handling (Round 8 fixed bypass in failed-retry path)
-- **`console.error` logging** on all catch blocks with descriptive context
-- **`type="button"` and `aria-label`** on all interactive elements
-- **Rate limiting** uses Redis storage (not in-memory) for multi-worker safety; warns on fallback
-- **Webhook signatures** validated in production
-- **Uploads validated** by magic bytes + MIME type
-- **Financial calculations** use `Decimal` arithmetic throughout all models (Round 8: wallet, voucher, reward, order, customer monetary fields migrated from `float`)
-- **Wallet balance** computed via SQL aggregation (not Python iteration)
-- **Campaign sends** batched with concurrency limits
-- **Translation upserts** use atomic composite-key endpoint
-- **NULL-safe CHECK constraints** — nullable unlimited-use columns use `IS NULL OR` pattern (Round 8)
-- **Row locks** on all financial mutation reads — `with_for_update()` on wallet/payment balance reads (Round 8)
-- **Admin portal security headers** — full CSP, HSTS, X-Frame-Options via middleware (Round 8)
-- **Customer PWA cart persistence** — sync in-memory cache backed by async IndexedDB (Round 8)
+### Known remaining
+- Card/QR payment: placeholder UI (Stripe integration next week)
+- Bill splitting: not needed (premium KL venues)
+- Customer PWA i18n: ~25 lines incomplete (English fallback)
