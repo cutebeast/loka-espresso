@@ -188,8 +188,38 @@ async def create_store(
 
     await db.commit()
     await auto_translate_record(db, "stores", store.id, {"store_name": store.store_name})
-    await db.refresh(store)
-    return APIResponse(data=StoreOut.model_validate(store))
+    out = StoreOut(
+        id=store.id,
+        store_code=store.store_code,
+        store_name=store.store_name,
+        slug=store.slug,
+        brand_name=store.brand_name,
+        address_line_1=store.address_line_1,
+        address_line_2=store.address_line_2,
+        city=store.city,
+        state_province=store.state_province,
+        postal_code=store.postal_code,
+        country_code=store.country_code,
+        latitude=store.latitude,
+        longitude=store.longitude,
+        phone_number=store.phone_number,
+        email_address=store.email_address,
+        timezone=store.timezone,
+        currency_code=store.currency_code,
+        logo_url=store.logo_url,
+        banner_image_url=store.banner_image_url,
+        pickup_lead_minutes=store.pickup_lead_minutes,
+        delivery_radius_km=store.delivery_radius_km,
+        first_order_minutes_after_open=store.first_order_minutes_after_open,
+        last_order_minutes_before_close=store.last_order_minutes_before_close,
+        is_active=store.is_active,
+        is_accepting_orders=store.is_accepting_orders,
+        position=store.position,
+        created_at=store.created_at,
+        updated_at=store.updated_at,
+        operating_hours=[],
+    )
+    return APIResponse(data=out)
 
 
 @router.get("/{store_id}", response_model=APIResponse[StoreDetailOut])
@@ -256,7 +286,6 @@ async def update_store(
 
     # Update operating hours if provided
     if hours_data is not None:
-        from app.models.store import StoreOperatingHours
         existing = await db.execute(
             select(StoreOperatingHours).where(StoreOperatingHours.store_id == store.id)
         )
@@ -280,8 +309,49 @@ async def update_store(
     store.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await auto_translate_record(db, "stores", store.id, {"store_name": store.store_name})
-    await db.refresh(store)
-    return APIResponse(data=StoreOut.model_validate(store))
+
+    hours_result = await db.execute(
+        select(StoreOperatingHours).where(StoreOperatingHours.store_id == store.id)
+    )
+    hours = [{
+        "id": h.id, "store_id": h.store_id, "day_of_week": h.day_of_week,
+        "open_time": str(h.open_time), "close_time": str(h.close_time),
+        "is_closed": h.is_closed, "is_24_hours": h.is_24_hours,
+        "last_order_time": str(h.last_order_time) if h.last_order_time else None,
+        "created_at": h.created_at, "updated_at": h.updated_at,
+    } for h in hours_result.scalars().all()]
+    out = StoreOut(
+        id=store.id,
+        store_code=store.store_code,
+        store_name=store.store_name,
+        slug=store.slug,
+        brand_name=store.brand_name,
+        address_line_1=store.address_line_1,
+        address_line_2=store.address_line_2,
+        city=store.city,
+        state_province=store.state_province,
+        postal_code=store.postal_code,
+        country_code=store.country_code,
+        latitude=store.latitude,
+        longitude=store.longitude,
+        phone_number=store.phone_number,
+        email_address=store.email_address,
+        timezone=store.timezone,
+        currency_code=store.currency_code,
+        logo_url=store.logo_url,
+        banner_image_url=store.banner_image_url,
+        pickup_lead_minutes=store.pickup_lead_minutes,
+        delivery_radius_km=store.delivery_radius_km,
+        first_order_minutes_after_open=store.first_order_minutes_after_open,
+        last_order_minutes_before_close=store.last_order_minutes_before_close,
+        is_active=store.is_active,
+        is_accepting_orders=store.is_accepting_orders,
+        position=store.position,
+        created_at=store.created_at,
+        updated_at=store.updated_at,
+        operating_hours=hours,
+    )
+    return APIResponse(data=out)
 
 
 @router.delete("/{store_id}", response_model=APIResponse[dict])
