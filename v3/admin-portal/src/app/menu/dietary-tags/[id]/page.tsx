@@ -21,7 +21,7 @@ export default function DietaryTagEditPage() {
 
   const load = useCallback(async () => {
     try {
-      const d = await api.getRaw<any>(`/admin/menu/dietary-tags/${id}`);
+      const d = await api.getRaw<any>(`/admin/dietary-tags/${id}`);
       setForm({ display_name: d.display_name || "", tag_key: d.tag_key || "", icon: d.icon || "", color_hex: d.color_hex || "#22C55E", is_active: d.is_active });
       const x: Record<string,string> = {};
       for (const lc of L) {
