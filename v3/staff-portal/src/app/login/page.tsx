@@ -138,7 +138,7 @@ export default function LoginPage() {
       } else {
         if (!email) { setError(t("login.error_enter_email")); setLoading(false); return; }
         if (!password && !pin) { setError(t("login.error_enter_pin")); setLoading(false); return; }
-        await staffLogin(email, password || pin);
+        await staffLogin(email, password || pin, Number(selectedStore));
       }
       setAttemptCount(0);
       const params = new URLSearchParams(window.location.search);

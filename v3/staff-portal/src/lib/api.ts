@@ -241,12 +241,12 @@ export const api = {
 /*  Auth                                                              */
 /* ------------------------------------------------------------------ */
 
-export async function staffLogin(email: string, password: string) {
+export async function staffLogin(email: string, password: string, storeId?: number) {
   clearAuthStorage();
   const data = await api.post<{
     tokens?: { access_token?: string; refresh_token?: string };
     profile?: { email?: string; display_name?: string; store_id?: number; staff_id?: number; is_admin?: boolean };
-  }>("/staff/auth/login", { email, password });
+  }>("/staff/auth/login", { email, password, store_id: storeId });
   const token = data.tokens?.access_token;
   const refresh = data.tokens?.refresh_token;
   if (token) {
