@@ -544,6 +544,10 @@ export function cancelOrder(orderId: string | number, reason?: string) {
   return api.post(`/admin/orders/${orderId}/cancel${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`);
 }
 
+export function transferTable(orderId: string | number, newTableId: number) {
+  return api.patch(`/admin/orders/${orderId}/transfer-table?new_table_id=${newTableId}`);
+}
+
 export function getReservations(storeId: number, date?: string, status?: ReservationStatus) {
   const params = new URLSearchParams();
   if (date) { params.append("date_from", date); params.append("date_to", date); }

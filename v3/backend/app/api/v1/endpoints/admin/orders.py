@@ -14,6 +14,7 @@ from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLine
 from app.models.menu import MenuItem
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
+from app.models.store import DiningTable
 from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 from app.schemas.order import (
     ApplyOrderRewardRequest,
@@ -854,3 +855,67 @@ async def cancel_order_staff(
     db.add(log)
     await db.commit()
     return APIResponse(data={"id": order.id, "order_number": order.order_number, "status": "cancelled_by_merchant"})
+
+
+@router.patch("/{order_id}/transfer-table", response_model=APIResponse[dict])
+async def transfer_table(
+    admin: CurrentAdmin,
+    db: DBDependency,
+    order_id: int,
+    new_table_id: int = Query(..., ge=1),
+):
+    """Transfer a dine-in order to a different table."""
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await require_store_admin(db, admin, order.store_id)
+
+    if order.order_type != "dine_in":
+        raise HTTPException(status_code=400, detail="Only dine-in orders support table transfer")
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=400, detail="Cannot transfer a completed or cancelled order")
+
+    if order.dining_table_id == new_table_id:
+        raise HTTPException(status_code=400, detail="Order is already assigned to this table")
+
+    table_result = await db.execute(
+        select(DiningTable).where(
+            DiningTable.id == new_table_id,
+            DiningTable.store_id == order.store_id,
+            DiningTable.deleted_at.is_(None),
+        )
+    )
+    new_table = table_result.scalar_one_or_none()
+    if not new_table:
+        raise HTTPException(status_code=404, detail="Table not found in this store")
+
+    if new_table.status == "occupied" and new_table.active_order_id != order.id:
+        raise HTTPException(status_code=400, detail="Target table is occupied by a different order")
+
+    old_table_id = order.dining_table_id
+    order.dining_table_id = new_table_id
+    order.dining_table_number = new_table.table_number
+    order.updated_at = datetime.now(timezone.utc)
+
+    # Free old table
+    if old_table_id:
+        old_result = await db.execute(select(DiningTable).where(DiningTable.id == old_table_id))
+        old_table = old_result.scalar_one_or_none()
+        if old_table:
+            old_table.status = "available"
+            old_table.active_order_id = None
+
+    new_table.status = "occupied"
+    new_table.active_order_id = order.id
+
+    await db.commit()
+    return APIResponse(data={
+        "id": order.id,
+        "order_number": order.order_number,
+        "old_table_id": old_table_id,
+        "new_table_id": new_table_id,
+        "new_table_number": new_table.table_number,
+    })

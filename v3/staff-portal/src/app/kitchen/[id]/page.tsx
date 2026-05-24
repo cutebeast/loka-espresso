@@ -2,13 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getOrderById, updateOrderStatus, OrderDetail, OrderStatus } from "@/lib/api";
+import { getOrderById, updateOrderStatus, transferTable, OrderDetail, OrderStatus } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import Badge, { type BadgeVariant } from "@/components/Badge";
 import SkeletonCard from "@/components/SkeletonCard";
-import { ArrowLeft, CheckCircle, Clock, Printer, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock, Printer, XCircle, MoveRight } from "lucide-react";
 
 const STATUS_FLOW: Record<string, { next: OrderStatus[]; label: string; color: BadgeVariant }> = {
   pending: { next: ["confirmed", "cancelled_by_merchant"], label: "Pending", color: "yellow" },
@@ -31,6 +31,9 @@ export default function KitchenDetailPage() {
   const [msg, setMsg] = useState("");
   const [updating, setUpdating] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [showTableTransfer, setShowTableTransfer] = useState(false);
+  const [availableTables, setAvailableTables] = useState<{ id: number; table_number: string; status: string }[]>([]);
+  const [transferring, setTransferring] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -62,6 +65,31 @@ export default function KitchenDetailPage() {
     }
   };
 
+  const handleTransfer = async (newTableId: number) => {
+    setTransferring(true);
+    try {
+      await transferTable(id, newTableId);
+      setMsg("Table transferred successfully");
+      setShowTableTransfer(false);
+      const updated = await getOrderById(id);
+      setOrder(updated);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally { setTransferring(false); }
+  };
+
+  const loadTables = async () => {
+    const storeId = typeof window !== "undefined" ? localStorage.getItem("staffStoreId") : null;
+    if (!storeId) return;
+    try {
+      const data = await fetch(`/api/v1/admin/stores/${storeId}/tables`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }).then((r) => r.json());
+      const items = data?.data?.items || data?.items || data || [];
+      setAvailableTables(Array.isArray(items) ? items.filter((t: { status: string }) => t.status === "available") : []);
+      setShowTableTransfer(true);
+    } catch { setError("Failed to load tables"); }
+  };
   const fmt = (v: number) => `RM ${Number(v || 0).toFixed(2)}`;
   const dt = (s: string | null) => {
     if (!s) return "—";
@@ -127,7 +155,45 @@ export default function KitchenDetailPage() {
                 onChange={(e) => setCancelReason(e.target.value)}
               />
             )}
+        </div>
+      </div>
+      )}
+
+      {/* Table Transfer — dine-in only */}
+      {order.order_type === "dine_in" && order.dining_table_id && !["delivered", "cancelled_by_customer", "cancelled_by_merchant"].includes(order.status) && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+              Table: <span style={{ color: "var(--color-primary)" }}>{order.table_number || "—"}</span>
+            </h4>
+            {!showTableTransfer ? (
+              <button className="btn btn-sm btn-ghost" onClick={loadTables} disabled={transferring}>
+                <MoveRight size={14} /> Transfer
+              </button>
+            ) : (
+              <button className="btn btn-sm btn-ghost" onClick={() => setShowTableTransfer(false)}>Cancel</button>
+            )}
           </div>
+          {showTableTransfer && (
+            <div style={{ marginTop: 12 }}>
+              {availableTables.length === 0 ? (
+                <p style={{ fontSize: 13, color: "var(--color-text-muted)" }}>No available tables</p>
+              ) : (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {availableTables.map((t) => (
+                    <button
+                      key={t.id}
+                      className="btn btn-sm btn-outline"
+                      onClick={() => handleTransfer(t.id)}
+                      disabled={transferring}
+                    >
+                      {t.table_number}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

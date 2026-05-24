@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import SkeletonCard from "@/components/SkeletonCard";
 import {
   Armchair, CreditCard, CalendarCheck, Clock, UserCircle, Wallet,
-  ChefHat, ClipboardList
+  ChefHat, ClipboardList, Wrench
 } from "lucide-react";
 
 interface DashboardData {
@@ -27,6 +27,7 @@ const BUTTONS = [
   { key: "wallet", label: "Member", icon: Wallet, badge: null, route: "/wallet", cls: "", desc: "Wallet & Rewards" },
   { key: "clock", label: "Clock In", icon: Clock, badge: "clock_status", route: "/time-clock", cls: "", desc: "Time Clock" },
   { key: "profile", label: "Me", icon: UserCircle, badge: null, route: "/profile", cls: "", desc: "Profile" },
+  { key: "equipment", label: "Equipment", icon: Wrench, badge: null, route: "/equipment", cls: "", desc: "Maintenance" },
 ];
 
 export default function HomePage() {
