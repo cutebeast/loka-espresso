@@ -178,11 +178,8 @@ export default function PwaTranslationsTab() {
       <div style={{ padding: 48, textAlign: "center" }}>
         <h2>No PWA translations in database</h2>
         <p style={{ color: "var(--color-text-muted)", marginBottom: 16 }}>
-          Run the seed script to import PWA UI labels from en.json:
+          Use the Auto-Translate button per locale above to generate translations, or add them manually.
         </p>
-        <code style={{ background: "var(--color-bg-muted)", padding: "8px 16px", borderRadius: 6 }}>
-          cd v3/backend && python scripts/seed_pwa_translations.py
-        </code>
       </div>
     );
   }

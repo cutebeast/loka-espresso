@@ -2,75 +2,58 @@
 
 Service layer encapsulates all non-trivial business operations:
 transactions, domain logic, and cross-cutting orchestration.
-
-Usage:
-    from app.services.auth import register_customer, login_customer
-    from app.services.cart import add_to_cart, get_or_create_cart
-    from app.services.order import create_order_from_cart
-    from app.services.payment import create_payment_intent, capture_payment
-    from app.services.commerce import recalculate_loyalty_tier, credit_referral_points
-    from app.services.translation import auto_translate, merge_translations
-    from app.services.platform_config import get_config_value, set_config_value
 """
 
 from app.services.auth import (
     login_admin,
-    login_customer,
-    login_staff,
     register_customer,
-    refresh_admin_token,
-    refresh_customer_token,
-    refresh_staff_token,
+    create_customer_tokens,
+    refresh_customer_tokens,
+    create_admin_tokens,
+    refresh_admin_tokens,
 )
 from app.services.cart import (
-    add_to_cart,
-    clear_cart,
     get_or_create_cart,
-    remove_from_cart,
-    update_cart_item,
+    add_line_item,
+    update_line_item,
+    remove_line_item,
+    clear_cart,
 )
 from app.services.commerce import (
     credit_referral_points,
-    recalculate_loyalty_tier,
+    get_default_tier_id,
 )
 from app.services.order import (
-    calculate_service_charge,
     create_order_from_cart,
-    deduct_inventory_for_order,
+    get_customer_orders,
+    generate_order_number,
 )
 from app.services.payment import (
-    cancel_payment,
-    capture_payment,
-    confirm_payment,
     create_payment_intent,
-    process_refund,
-)
-from app.services.platform_config import (
-    get_config_value,
-    set_config_value,
-    get_all_public_config,
+    confirm_payment,
+    capture_payment,
+    cancel_payment,
+    refund_payment,
 )
 from app.services.translation import (
-    auto_translate,
-    get_cached_translation,
+    auto_translate_text,
+    auto_translate_record,
+    delete_translations,
     merge_translations,
     translate_single,
 )
 
 __all__ = [
-    # Auth
-    "register_customer", "login_customer", "login_admin", "login_staff",
-    "refresh_admin_token", "refresh_customer_token", "refresh_staff_token",
-    # Cart
-    "add_to_cart", "remove_from_cart", "update_cart_item", "clear_cart", "get_or_create_cart",
-    # Commerce
-    "recalculate_loyalty_tier", "credit_referral_points",
-    # Order
-    "create_order_from_cart", "calculate_service_charge", "deduct_inventory_for_order",
-    # Payment
-    "create_payment_intent", "capture_payment", "confirm_payment", "cancel_payment", "process_refund",
-    # Platform Config
-    "get_config_value", "set_config_value", "get_all_public_config",
-    # Translation
-    "auto_translate", "merge_translations", "translate_single", "get_cached_translation",
+    "login_admin",
+    "register_customer",
+    "create_customer_tokens", "refresh_customer_tokens",
+    "create_admin_tokens", "refresh_admin_tokens",
+    "get_or_create_cart", "add_line_item", "update_line_item",
+    "remove_line_item", "clear_cart",
+    "credit_referral_points", "get_default_tier_id",
+    "create_order_from_cart", "get_customer_orders", "generate_order_number",
+    "create_payment_intent", "confirm_payment", "capture_payment",
+    "cancel_payment", "refund_payment",
+    "auto_translate_text", "auto_translate_record", "delete_translations",
+    "merge_translations", "translate_single",
 ]

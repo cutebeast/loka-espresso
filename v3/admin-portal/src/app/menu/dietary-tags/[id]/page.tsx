@@ -39,7 +39,7 @@ export default function DietaryTagEditPage() {
 load();
 })();},[load]);
 
-  const save = async () => { setSaving(true); try { await api.patch(`/admin/menu/dietary-tags/${id}`, form); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); } catch (e) { console.error(e); } finally { setSaving(false); } };
+  const save = async () => { setSaving(true); try { await api.patch(`/admin/dietary-tags/${id}`, form); setMsg("Saved"); setTimeout(() => setMsg(""), 2000); } catch (e) { console.error(e); } finally { setSaving(false); } };
   const upsert = async (field: string, locale: string, src: string, text: string) => {
     const rt = await api.getRaw<any>(`/admin/translations?table_name=dietary_tags&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);
     const ex = rt?.items?.[0];

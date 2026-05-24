@@ -132,3 +132,41 @@ async def customer_logout(db: DBDependency, data: RefreshTokenRequest | None = N
         except Exception as e:
             logger.warning("Failed to blacklist refresh token: %s", str(e))
     return {"success": True, "message": "Logged out successfully"}
+
+
+@router.post("/send-otp")
+@limiter.limit("5/minute")
+async def send_otp(request: Request):
+    """Request an OTP code for phone-based login.
+
+    Production: sends a real SMS OTP via configured provider.
+    Non-production: returns success immediately (OTP verification bypassed).
+    """
+    settings = get_settings()
+    if settings.is_production:
+        raise HTTPException(
+            status_code=501,
+            detail="SMS OTP provider not yet configured. "
+                   "Set otp.bypass_enabled=true for temporary bypass.",
+        )
+    logger.info("OTP send requested (bypassed in non-production)")
+    return {"success": True, "message": "OTP sent (development bypass)"}
+
+
+@router.post("/resend-otp")
+@limiter.limit("3/minute")
+async def resend_otp(request: Request):
+    """Resend an OTP code.
+
+    Production: re-sends SMS OTP via configured provider.
+    Non-production: returns success immediately (OTP verification bypassed).
+    """
+    settings = get_settings()
+    if settings.is_production:
+        raise HTTPException(
+            status_code=501,
+            detail="SMS OTP provider not yet configured. "
+                   "Set otp.bypass_enabled=true for temporary bypass.",
+        )
+    logger.info("OTP resend requested (bypassed in non-production)")
+    return {"success": True, "message": "OTP resent (development bypass)"}

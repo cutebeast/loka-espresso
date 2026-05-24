@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency
-from app.models.audit import AuditLog
+from app.models.platform import AuditLog
 from app.models.wallet import Wallet, WalletLedgerEntry
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.wallet import AdminTopupRequest, TopUpRequest, WalletLedgerEntryOut, WalletOut

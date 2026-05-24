@@ -60,8 +60,8 @@ async def _count(db, model) -> int:
 PLATFORM_DEFAULTS = [
     ("brand_name", "LOKA Espresso", "App brand name"),
     ("default_currency", "MYR", "Default currency code"),
-    ("otp_bypass_enabled", "false", "Bypass OTP in dev (true/false)"),
-    ("otp_bypass_code", "000000", "Default OTP code for dev bypass"),
+    ("otp.bypass_enabled", "false", "Bypass OTP in dev (true/false)"),
+    ("otp.bypass_code", "000000", "Default OTP code for dev bypass"),
     ("service_charge_percent", "10.00", "Default service charge percentage"),
     ("tax_name", "SST", "Tax label displayed on receipts"),
     ("tax_percent", "6.00", "Default tax percentage"),
