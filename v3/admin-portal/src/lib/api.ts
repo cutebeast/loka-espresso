@@ -81,7 +81,7 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
             const json = await retry.json();
             if (json && typeof json === "object" && "data" in json) {
               const data = json.data;
-              if (data && typeof data === "object" && "items" in data) return data as T;
+              if (data && typeof data === "object" && "items" in data) return (data.items ?? []) as T;
               return data as T;
             }
             return json as T;
@@ -107,7 +107,7 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
     const json = await res.json();
     if (json && typeof json === "object" && "data" in json) {
       const data = json.data;
-      if (data && typeof data === "object" && "items" in data) return data as T;
+      if (data && typeof data === "object" && "items" in data) return (data.items ?? []) as T;
       return data as T;
     }
     return json as T;
