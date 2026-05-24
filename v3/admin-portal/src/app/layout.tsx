@@ -170,7 +170,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   }, [pathname, router, isLogin]);
 
   return (
-    <>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
       {!isLogin && !forbidden && <Sidebar />}
       <main style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
       {forbidden ? (
@@ -183,7 +183,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       )}
       </main>
-    </>
+    </div>
   );
 }
 
