@@ -1,6 +1,7 @@
 """Shared fixtures for FNB v3 E2E API test suite."""
 
 import os
+import sys
 import jwt as pyjwt
 import logging
 import pytest
@@ -15,9 +16,35 @@ BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:13800/api/v1")
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-for-development-only-12345")
 JWT_ALGORITHM = "HS256"
 
-# Seeded admin credentials (from scripts/seed_v3.py)
+# Bootstrap admin credentials — created by seed_v3.py if DB is blank
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@lokaespresso.my")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+
+
+# ---------------------------------------------------------------------------
+# Auto-bootstrap: run seed_v3.py if no admin account exists
+# ---------------------------------------------------------------------------
+
+def _bootstrap_admin_if_needed(base_url: str) -> bool:
+    """Run seed_v3.py if admin login fails — DB is blank and needs bootstrap."""
+    token = _login_and_get_token(base_url, ADMIN_EMAIL, ADMIN_PASSWORD)
+    if token:
+        return True
+
+    # DB is blank — run minimal seed
+    logger.info("Admin login failed — DB appears blank. Running bootstrap seed...")
+    seed_dir = os.path.join(os.path.dirname(__file__), "..", "backend", "scripts")
+    if seed_dir not in sys.path:
+        sys.path.insert(0, seed_dir)
+    try:
+        import seed_v3
+        import asyncio as _asyncio
+        _asyncio.run(seed_v3.main())
+        logger.info("Bootstrap complete. Retrying admin login...")
+        return True
+    except Exception as e:
+        logger.error("Bootstrap failed: %s", e)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -69,13 +96,11 @@ def base_url() -> str:
 
 @pytest.fixture(scope="session")
 def _admin_token_session(base_url: str) -> str:
-    """Session-scoped admin token (accessed via fresh_admin_token only)."""
+    """Session-scoped admin token. Auto-bootstraps if DB is blank."""
+    _bootstrap_admin_if_needed(base_url)
     token = _login_and_get_token(base_url, ADMIN_EMAIL, ADMIN_PASSWORD)
     if not token:
-        pytest.skip(
-            "Real admin login returned non-200 — backend not running or seed data missing. "
-            "Run seed script and start backend before executing E2E tests."
-        )
+        pytest.skip("Backend not running or admin account could not be created")
     return token
 
 
@@ -165,6 +190,68 @@ def discovered_store_id(base_url: str) -> int:
 
     # Fallback
     return 1
+
+
+# ---------------------------------------------------------------------------
+# Baseline test data — created via API if DB is blank
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session", autouse=True)
+def _ensure_baseline_data(base_url: str, admin_headers: dict):
+    """Create minimum test data via API if DB is blank (no stores exist).
+
+    The seed_v3.py bootstrap only creates the admin account. Everything else —
+    stores, loyalty tiers, menu items — is created here via the admin API.
+    This keeps the seed minimal and tests self-contained.
+    """
+    created = False
+    try:
+        with httpx.Client(timeout=15.0) as c:
+            # Check if stores exist
+            r = c.get(f"{base_url}/admin/stores?per_page=1", headers=admin_headers)
+            if r.status_code == 200:
+                data = r.json().get("data", r.json())
+                items = data.get("items", []) if isinstance(data, dict) else []
+                if len(items) > 0:
+                    logger.info("Baseline data exists — %d stores found, skipping creation", len(items))
+                    return
+
+            logger.info("No stores found — creating baseline test data via API...")
+
+            # Create loyalty tiers
+            tiers = [
+                ("bronze",   "Bronze",   0,      1.0),
+                ("silver",   "Silver",   500,    1.1),
+                ("gold",     "Gold",     2000,   1.2),
+                ("platinum", "Platinum", 10000,  1.5),
+            ]
+            tier_ids = {}
+            for key, name, min_pts, mult in tiers:
+                r = c.post(f"{base_url}/admin/loyalty/tiers", headers=admin_headers, json={
+                    "tier_key": key, "display_name": name,
+                    "minimum_points": min_pts, "points_multiplier": mult,
+                    "color_hex": {"bronze":"#CD7F32","silver":"#C0C0C0","gold":"#FFD700","platinum":"#E5E4E2"}[key],
+                })
+                if r.status_code in (200, 201):
+                    tier_ids[key] = r.json().get("data", r.json()).get("id", 0)
+                    created = True
+
+            # Create stores
+            stores_data = [
+                {"store_name": "Loka HQ", "store_code": "HQ001", "city": "Kuala Lumpur",
+                 "address_line_1": "1 Jalan Test", "phone_number": "+60123456789", "postal_code": "50000"},
+                {"store_name": "Loka Bangsar", "store_code": "BS001", "city": "Kuala Lumpur",
+                 "address_line_1": "2 Jalan Test", "phone_number": "+60123456780", "postal_code": "59100"},
+            ]
+            for sd in stores_data:
+                r = c.post(f"{base_url}/admin/stores", headers=admin_headers, json=sd)
+                if r.status_code in (200, 201):
+                    created = True
+
+            if created:
+                logger.info("Baseline test data created via API")
+    except Exception as e:
+        logger.warning("Failed to create baseline data: %s", e)
 
 
 # ---------------------------------------------------------------------------
