@@ -185,86 +185,6 @@ async def list_staff_roles(
     )
 
 
-@router.get("/{staff_id}", response_model=APIResponse[StaffProfileDetailOut])
-async def get_staff(
-    db: DBDependency,
-    admin: CurrentAdmin,
-    staff_id: int,
-):
-    """Get a single staff profile with shifts."""
-    result = await db.execute(
-        select(StaffProfile).where(
-            StaffProfile.id == staff_id,
-            StaffProfile.deleted_at.is_(None),
-        )
-    )
-    profile = result.scalar_one_or_none()
-    if profile is None:
-        raise HTTPException(status_code=404, detail="Staff not found")
-
-    shifts_result = await db.execute(
-        select(StaffShift).where(StaffShift.staff_id == staff_id)
-    )
-    shifts = shifts_result.scalars().all()
-
-    profile_dict = {
-        c: getattr(profile, c) for c in profile.__table__.columns.keys()
-    }
-    profile_dict["shifts"] = [StaffShiftOut.model_validate(s) for s in shifts]
-
-    return APIResponse(data=StaffProfileDetailOut.model_validate(profile_dict))
-
-
-@router.patch("/{staff_id}", response_model=APIResponse[StaffProfileOut])
-async def update_staff(
-    db: DBDependency,
-    admin: CurrentAdmin,
-    staff_id: int,
-    data: StaffProfileUpdate,
-):
-    """Update a staff profile."""
-    result = await db.execute(
-        select(StaffProfile).where(
-            StaffProfile.id == staff_id,
-            StaffProfile.deleted_at.is_(None),
-        )
-    )
-    profile = result.scalar_one_or_none()
-    if profile is None:
-        raise HTTPException(status_code=404, detail="Staff not found")
-
-    update_data = data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(profile, field, value)
-
-    await db.commit()
-    await db.refresh(profile)
-    return APIResponse(data=StaffProfileOut.model_validate(profile))
-
-
-@router.delete("/{staff_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_staff(
-    db: DBDependency,
-    admin: CurrentAdmin,
-    staff_id: int,
-):
-    """Soft-delete a staff profile."""
-    result = await db.execute(
-        select(StaffProfile).where(
-            StaffProfile.id == staff_id,
-            StaffProfile.deleted_at.is_(None),
-        )
-    )
-    profile = result.scalar_one_or_none()
-    if profile is None:
-        raise HTTPException(status_code=404, detail="Staff not found")
-
-    profile.is_active = False
-    profile.deleted_at = datetime.now(timezone.utc)
-    await db.commit()
-    return APIResponse(data={"id": staff_id, "deleted": True})
-
-
 # ── Flat Shift endpoints (must be before /{staff_id}/* routes) ──
 
 @router.get("/shifts", response_model=APIResponse[PaginatedResponse[dict]])
@@ -504,6 +424,88 @@ async def create_shift_template(db: DBDependency, admin: CurrentAdmin, data: Shi
 
 
 # ── Staff Role Management ── 
+
+@router.get("/{staff_id}", response_model=APIResponse[StaffProfileDetailOut])
+async def get_staff(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    staff_id: int,
+):
+    """Get a single staff profile with shifts."""
+    result = await db.execute(
+        select(StaffProfile).where(
+            StaffProfile.id == staff_id,
+            StaffProfile.deleted_at.is_(None),
+        )
+    )
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    shifts_result = await db.execute(
+        select(StaffShift).where(StaffShift.staff_id == staff_id)
+    )
+    shifts = shifts_result.scalars().all()
+
+    profile_dict = {
+        c: getattr(profile, c) for c in profile.__table__.columns.keys()
+    }
+    profile_dict["shifts"] = [StaffShiftOut.model_validate(s) for s in shifts]
+
+    return APIResponse(data=StaffProfileDetailOut.model_validate(profile_dict))
+
+
+@router.patch("/{staff_id}", response_model=APIResponse[StaffProfileOut])
+async def update_staff(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    staff_id: int,
+    data: StaffProfileUpdate,
+):
+    """Update a staff profile."""
+    result = await db.execute(
+        select(StaffProfile).where(
+            StaffProfile.id == staff_id,
+            StaffProfile.deleted_at.is_(None),
+        )
+    )
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(profile, field, value)
+
+    await db.commit()
+    await db.refresh(profile)
+    return APIResponse(data=StaffProfileOut.model_validate(profile))
+
+
+@router.delete("/{staff_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_staff(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    staff_id: int,
+):
+    """Soft-delete a staff profile."""
+    result = await db.execute(
+        select(StaffProfile).where(
+            StaffProfile.id == staff_id,
+            StaffProfile.deleted_at.is_(None),
+        )
+    )
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Staff not found")
+
+    profile.is_active = False
+    profile.deleted_at = datetime.now(timezone.utc)
+    await db.commit()
+    return APIResponse(data={"id": staff_id, "deleted": True})
+
+
+
 
 @router.post("/{staff_id}/roles", response_model=APIResponse[dict])
 async def update_staff_roles(db: DBDependency, admin: CurrentAdmin, staff_id: int, data: StaffRolesUpdateRequest):

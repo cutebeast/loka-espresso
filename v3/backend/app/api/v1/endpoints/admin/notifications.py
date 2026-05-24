@@ -122,6 +122,47 @@ async def create_notification(
     return APIResponse(data=AdminNotificationOut.model_validate(notif))
 
 
+@admin_router.get("/templates/list", response_model=APIResponse[PaginatedResponse[NotificationTemplateOut]])
+async def list_templates(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+):
+    """List all notification templates."""
+    total_result = await db.execute(select(func.count(NotificationTemplate.id)))
+    total = total_result.scalar() or 0
+    result = await db.execute(
+        select(NotificationTemplate)
+        .order_by(NotificationTemplate.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    templates = result.scalars().all()
+    return APIResponse(
+        data=PaginatedResponse(
+            items=[NotificationTemplateOut.model_validate(t) for t in templates],
+            total=total, page=page, per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
+
+
+@admin_router.post("/templates", response_model=APIResponse[NotificationTemplateOut], status_code=status.HTTP_201_CREATED)
+async def create_template(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    data: NotificationTemplateCreate,
+):
+    """Create a notification template."""
+    tmpl = NotificationTemplate(**data.model_dump())
+    db.add(tmpl)
+    await db.commit()
+    await auto_translate_record(db, "notification_templates", tmpl.id, {"title": tmpl.title or "", "body": tmpl.body or ""})
+    await db.refresh(tmpl)
+    return APIResponse(data=NotificationTemplateOut.model_validate(tmpl))
+
+
 @admin_router.get("/{notif_id}", response_model=APIResponse[AdminNotificationOut])
 async def get_notification(
     db: DBDependency,
@@ -290,45 +331,6 @@ async def send_notification(
 # Notification Templates
 # ---------------------------------------------------------------------------
 
-@admin_router.get("/templates/list", response_model=APIResponse[PaginatedResponse[NotificationTemplateOut]])
-async def list_templates(
-    db: DBDependency,
-    admin: CurrentAdmin,
-    page: int = Query(1, ge=1),
-    per_page: int = Query(50, ge=1, le=200),
-):
-    """List all notification templates."""
-    total_result = await db.execute(select(func.count(NotificationTemplate.id)))
-    total = total_result.scalar() or 0
-    result = await db.execute(
-        select(NotificationTemplate)
-        .order_by(NotificationTemplate.id.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-    )
-    templates = result.scalars().all()
-    return APIResponse(
-        data=PaginatedResponse(
-            items=[NotificationTemplateOut.model_validate(t) for t in templates],
-            total=total, page=page, per_page=per_page,
-            total_pages=(total + per_page - 1) // per_page,
-        )
-    )
-
-
-@admin_router.post("/templates", response_model=APIResponse[NotificationTemplateOut], status_code=status.HTTP_201_CREATED)
-async def create_template(
-    db: DBDependency,
-    admin: CurrentAdmin,
-    data: NotificationTemplateCreate,
-):
-    """Create a notification template."""
-    tmpl = NotificationTemplate(**data.model_dump())
-    db.add(tmpl)
-    await db.commit()
-    await auto_translate_record(db, "notification_templates", tmpl.id, {"title": tmpl.title or "", "body": tmpl.body or ""})
-    await db.refresh(tmpl)
-    return APIResponse(data=NotificationTemplateOut.model_validate(tmpl))
 
 
 @admin_router.put("/templates/{template_id}", response_model=APIResponse[NotificationTemplateOut])
