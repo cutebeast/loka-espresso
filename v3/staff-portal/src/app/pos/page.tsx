@@ -62,6 +62,7 @@ export default function PosPage() {
         amountTendered={pos.amountTendered}
         discountAmount={pos.discountAmount}
         discountType={pos.discountType}
+        tipAmount={pos.tipAmount}
         saving={pos.saving}
         applyingDiscount={pos.applyingDiscount}
         discountsApplied={pos.checkoutDiscountsApplied}
@@ -72,6 +73,7 @@ export default function PosPage() {
         onSetAmountTendered={pos.setAmountTendered}
         onSetDiscountAmount={pos.setDiscountAmount}
         onSetDiscountType={pos.setDiscountType}
+        onSetTipAmount={pos.setTipAmount}
         onSetShowDiscounts={pos.setShowCheckoutDiscounts}
         onSetCustomer={pos.setCheckoutCustomer}
         onSetWalletData={pos.setCheckoutWalletData}

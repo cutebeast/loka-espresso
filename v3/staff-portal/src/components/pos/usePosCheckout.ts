@@ -96,6 +96,7 @@ export function usePosCheckout(checkoutOrderId: string | null) {
     discountType: "percentage" | "fixed",
     walletPaid: number,
     amountTendered: string,
+    tipAmount: number = 0,
   ) => {
     if (isPaymentProcessingRef.current) throw new Error("Payment is already being processed — please wait");
     isPaymentProcessingRef.current = true;
@@ -112,6 +113,7 @@ export function usePosCheckout(checkoutOrderId: string | null) {
       amount: finalTotal,
       discount_amount: computedDisc,
       discount_type: discountType,
+      tip_amount: tipAmount,
     });
     return { order_id: orderId, order_number: checkoutOrder?.order_number, total: finalTotal };
     } finally { isPaymentProcessingRef.current = false; }

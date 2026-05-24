@@ -157,6 +157,7 @@ class ProcessOrderPaymentRequest(BaseSchema):
     amount: float | None = Field(None, ge=0)
     discount_amount: float = Field(0, ge=0)
     discount_type: str | None = None
+    tip_amount: float = Field(0, ge=0)
 
 
 class ApplyOrderVoucherRequest(BaseSchema):

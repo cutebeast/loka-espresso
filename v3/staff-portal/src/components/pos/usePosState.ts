@@ -55,6 +55,7 @@ export function usePosState() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [amountTendered, setAmountTendered] = useState("");
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [tipAmount, setTipAmount] = useState(0);
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<unknown>(null);
@@ -190,7 +191,7 @@ export function usePosState() {
     try {
       const walletPaid = checkoutHook.checkoutDiscountsApplied.wallet || 0;
       const res = await checkoutHook.handleCheckoutPayment(
-        checkoutOrderId, paymentMethod, discountAmount, discountType, walletPaid, amountTendered
+        checkoutOrderId, paymentMethod, discountAmount, discountType, walletPaid, amountTendered, tipAmount
       );
       setResult(res);
       setState("done");
@@ -312,6 +313,7 @@ export function usePosState() {
     paymentMethod, setPaymentMethod,
     amountTendered, setAmountTendered,
     discountAmount, setDiscountAmount,
+    tipAmount, setTipAmount,
     discountType, setDiscountType,
     saving, setSaving,
     result, setResult,

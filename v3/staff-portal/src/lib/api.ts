@@ -515,6 +515,7 @@ export function updateOrderPayment(id: string | number, payload: {
   amount?: number;
   discount_amount?: number;
   discount_type?: "percentage" | "fixed";
+  tip_amount?: number;
 }) {
   return api.patch(`/admin/orders/${id}/payment`, payload);
 }
@@ -529,6 +530,18 @@ export function applyOrderReward(orderId: string | number, rewardId: number) {
 
 export function payWithWallet(orderId: string | number, amount: number) {
   return api.post<{ order_id: number; amount_paid: number; wallet_balance_remaining: number; payment_status: string; message: string }>(`/admin/orders/${orderId}/wallet-payment`, { amount });
+}
+
+export function addOrderItem(orderId: string | number, payload: { menu_item_id: number; quantity?: number; modifier_ids?: number[]; special_instructions?: string; unit_price?: number }) {
+  return api.post(`/admin/orders/${orderId}/items`, payload);
+}
+
+export function removeOrderItem(orderId: string | number, lineItemId: number, reason?: string) {
+  return api.del(`/admin/orders/${orderId}/items/${lineItemId}${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`);
+}
+
+export function cancelOrder(orderId: string | number, reason?: string) {
+  return api.post(`/admin/orders/${orderId}/cancel${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`);
 }
 
 export function getReservations(storeId: number, date?: string, status?: ReservationStatus) {

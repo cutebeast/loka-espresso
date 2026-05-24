@@ -46,6 +46,7 @@ interface PosCheckoutPanelProps {
   amountTendered: string;
   discountAmount: number;
   discountType: "percentage" | "fixed";
+  tipAmount: number;
   saving: boolean;
   applyingDiscount: boolean;
   discountsApplied: DiscountsApplied;
@@ -56,6 +57,7 @@ interface PosCheckoutPanelProps {
   onSetAmountTendered: Dispatch<SetStateAction<string>>;
   onSetDiscountAmount: (v: number) => void;
   onSetDiscountType: (t: "percentage" | "fixed") => void;
+  onSetTipAmount: (v: number) => void;
   onSetShowDiscounts: (v: boolean) => void;
   onSetCustomer: (c: Customer | null) => void;
   onSetWalletData: (w: CustomerWallet | null) => void;
@@ -70,10 +72,10 @@ interface PosCheckoutPanelProps {
 
 export default function PosCheckoutPanel({
   order, orderId: _orderId, customer, walletData,
-  paymentMethod, amountTendered, discountAmount, discountType,
+  paymentMethod, amountTendered, discountAmount, discountType, tipAmount,
   saving, applyingDiscount, discountsApplied,
   error, msg, showDiscounts,
-  onSetPaymentMethod, onSetAmountTendered, onSetDiscountAmount, onSetDiscountType,
+  onSetPaymentMethod, onSetAmountTendered, onSetDiscountAmount, onSetDiscountType, onSetTipAmount,
   onSetShowDiscounts, onSetCustomer, onSetWalletData,
   onSetError, onSetMsg, onScanCustomer,
   onApplyVoucher, onApplyReward, onWalletPayment, onCheckout,
@@ -194,6 +196,31 @@ export default function PosCheckoutPanel({
             </button>
           ))}
           <button className={`btn btn-sm ${discountAmount === 0 ? "btn-primary" : "btn-ghost"}`} onClick={() => onSetDiscountAmount(0)}>None</button>
+        </div>
+      </div>
+
+      {/* Tip */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700 }}>Tip</h4>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+          {[0, 5, 10, 15, 20].map((pct) => {
+            const tip = Math.round(checkoutTotal * pct / 100 * 100) / 100;
+            return (
+              <button key={pct} className={`btn btn-sm ${tipAmount === tip ? "btn-primary" : "btn-ghost"}`} onClick={() => onSetTipAmount(tip)}>
+                {pct === 0 ? "None" : `${pct}% (RM ${tip.toFixed(0)})`}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>RM</span>
+          <input
+            type="number" min={0} step={0.5}
+            value={tipAmount === 0 ? "" : tipAmount}
+            onChange={(e) => { const v = parseFloat(e.target.value); onSetTipAmount(isNaN(v) ? 0 : Math.max(0, v)); }}
+            placeholder="Custom"
+            className="form-input" style={{ width: 100 }}
+          />
         </div>
       </div>
 

@@ -4,18 +4,17 @@ import uuid
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
+from pydantic import Field
 from sqlalchemy import select, func, text
 from sqlalchemy.orm import joinedload
 
 from app.api.v1.deps import CurrentAdmin, DBDependency, get_staff_store_id_from_request, require_store_admin, _get_admin_store_ids, _get_admin_role_keys
 from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
+from app.models.menu import MenuItem
 from app.models.platform import AuditLog
-from app.models.store import Store, DiningTable
-from app.models.voucher import CustomerVoucher, VoucherDefinition
-from app.models.reward import CustomerReward, RewardCatalog
-from app.models.wallet import Wallet, WalletLedgerEntry
-from app.schemas.base import APIResponse, PaginatedResponse
+from app.models.pos import OrderModificationLog
+from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 from app.schemas.order import (
     ApplyOrderRewardRequest,
     ApplyOrderVoucherRequest,
@@ -308,6 +307,7 @@ async def process_order_payment(
     amount = data.amount if data.amount is not None else float(order.total_amount or 0)
     discount_amount = data.discount_amount
     discount_type = data.discount_type
+    tip_amount = data.tip_amount
 
     if amount < 0:
         raise HTTPException(status_code=400, detail="Payment amount cannot be negative")
@@ -342,6 +342,7 @@ async def process_order_payment(
     db.add(payment)
 
     order.payment_status = "captured"
+    order.tip_amount = float(order.tip_amount or 0) + tip_amount
     order.updated_at = datetime.now(timezone.utc)
 
     # Log status change
@@ -364,6 +365,7 @@ async def process_order_payment(
             "payment_status": order.payment_status,
             "amount": net_amount,
             "change": change,
+            "tip_amount": tip_amount,
             "payment_method": payment_method,
             "message": "Payment processed successfully",
         }
@@ -692,3 +694,163 @@ async def pay_with_wallet(
             "message": f"RM {amount:.2f} paid from wallet. Remaining balance: RM {new_balance:.2f}",
         }
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Order Modification (add/remove line items + cancel)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class AddLineItemRequest(BaseSchema):
+    menu_item_id: int
+    quantity: int = Field(1, ge=1, le=99)
+    modifier_ids: list[int] = []
+    special_instructions: str | None = None
+    unit_price: float = Field(0, ge=0)
+
+
+class RemoveLineItemRequest(BaseSchema):
+    reason: str | None = None
+
+
+@router.post("/{order_id}/items", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
+async def add_order_line_item(
+    admin: CurrentAdmin,
+    db: DBDependency,
+    order_id: int,
+    data: AddLineItemRequest,
+):
+    """Add a line item to an existing order (post-submission modification)."""
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await require_store_admin(db, admin, order.store_id)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=400, detail="Cannot modify a completed or cancelled order")
+
+    menu_result = await db.execute(select(MenuItem).where(MenuItem.id == data.menu_item_id))
+    menu_item = menu_result.scalar_one_or_none()
+    if not menu_item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    price = data.unit_price if data.unit_price > 0 else float(menu_item.base_price or 0)
+    total = round(price * data.quantity, 2)
+
+    line_item = OrderLineItem(
+        order_id=order.id,
+        menu_item_id=menu_item.id,
+        item_name=menu_item.item_name,
+        quantity=data.quantity,
+        unit_price=price,
+        total_price=total,
+        modifier_ids=data.modifier_ids or None,
+        special_instructions=data.special_instructions,
+    )
+    db.add(line_item)
+
+    order.items_subtotal = float(order.items_subtotal or 0) + total
+    order.item_count = (order.item_count or 0) + data.quantity
+    order.total_amount = round(float(order.items_subtotal or 0) + float(order.modifier_subtotal or 0) + float(order.delivery_fee or 0) + float(order.service_charge or 0) + float(order.tax_amount or 0) - float(order.discount_amount or 0) - float(order.voucher_discount or 0) - float(order.reward_discount or 0), 2)
+    order.updated_at = datetime.now(timezone.utc)
+
+    log = OrderModificationLog(
+        order_id=order.id,
+        staff_id=admin.id,
+        modification_type="add_item",
+        new_value={"menu_item_id": data.menu_item_id, "item_name": menu_item.item_name, "quantity": data.quantity, "unit_price": price},
+    )
+    db.add(log)
+    await db.commit()
+    await db.refresh(line_item)
+    return APIResponse(data={"id": line_item.id, "order_id": order.id, "item_name": line_item.item_name, "total": total}, status_code=201)
+
+
+@router.delete("/{order_id}/items/{line_item_id}", response_model=APIResponse[dict])
+async def remove_order_line_item(
+    admin: CurrentAdmin,
+    db: DBDependency,
+    order_id: int,
+    line_item_id: int,
+    reason: str | None = None,
+):
+    """Void/remove a line item from an existing order."""
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await require_store_admin(db, admin, order.store_id)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=400, detail="Cannot modify a completed or cancelled order")
+
+    item_result = await db.execute(
+        select(OrderLineItem).where(OrderLineItem.id == line_item_id, OrderLineItem.order_id == order_id)
+    )
+    line_item = item_result.scalar_one_or_none()
+    if not line_item:
+        raise HTTPException(status_code=404, detail="Line item not found")
+
+    removed_total = float(line_item.total_price or 0)
+    order.items_subtotal = float(order.items_subtotal or 0) - removed_total
+    order.item_count = max(0, (order.item_count or 0) - (line_item.quantity or 1))
+    order.total_amount = round(float(order.items_subtotal or 0) + float(order.modifier_subtotal or 0) + float(order.delivery_fee or 0) + float(order.service_charge or 0) + float(order.tax_amount or 0) - float(order.discount_amount or 0) - float(order.voucher_discount or 0) - float(order.reward_discount or 0), 2)
+    order.total_amount = max(0, order.total_amount)
+    order.updated_at = datetime.now(timezone.utc)
+
+    log = OrderModificationLog(
+        order_id=order.id,
+        staff_id=admin.id,
+        modification_type="remove_item",
+        line_item_id=line_item.id,
+        previous_value={"item_name": line_item.item_name, "total_price": removed_total},
+        reason=reason,
+    )
+    db.add(log)
+    await db.delete(line_item)
+    await db.commit()
+    return APIResponse(data={"id": line_item_id, "order_id": order.id, "removed": True, "new_total": order.total_amount})
+
+
+@router.post("/{order_id}/cancel", response_model=APIResponse[dict])
+async def cancel_order_staff(
+    admin: CurrentAdmin,
+    db: DBDependency,
+    order_id: int,
+    reason: str | None = None,
+):
+    """Cancel an order from staff POS/orders page."""
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await require_store_admin(db, admin, order.store_id)
+
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded"):
+        raise HTTPException(status_code=400, detail="Order is already completed or cancelled")
+
+    old_status = order.status
+    order.status = "cancelled_by_merchant"
+    order.cancellation_reason = reason or "Cancelled by staff"
+    order.cancelled_by = "merchant"
+    order.cancelled_at = datetime.now(timezone.utc)
+    order.updated_at = datetime.now(timezone.utc)
+
+    log = OrderStatusLog(
+        order_id=order.id,
+        from_status=old_status,
+        to_status="cancelled_by_merchant",
+        reason=reason or "Cancelled by staff",
+        actor_type="staff",
+        actor_id=admin.id,
+    )
+    db.add(log)
+    await db.commit()
+    return APIResponse(data={"id": order.id, "order_number": order.order_number, "status": "cancelled_by_merchant"})
