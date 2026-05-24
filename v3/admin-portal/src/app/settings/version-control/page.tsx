@@ -51,7 +51,12 @@ export default function VersionControlPage() {
 
     for (const svc of SERVICES) {
       try {
-        const res = await fetch(svc.url, { cache: "no-store" });
+        const headers: Record<string, string> = {};
+        if (svc.key === "backend") {
+          const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+        }
+        const res = await fetch(svc.url, { cache: "no-store", headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const info = data.data || data;

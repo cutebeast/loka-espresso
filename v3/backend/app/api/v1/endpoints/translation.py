@@ -46,7 +46,7 @@ async def list_translations(
     record_id: int | None = Query(None),
     column_name: str | None = Query(None),
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=5000),
 ):
     """List translations with optional filters."""
     stmt = select(Translation)
