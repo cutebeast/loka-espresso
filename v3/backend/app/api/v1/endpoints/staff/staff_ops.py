@@ -594,7 +594,7 @@ async def staff_change_password(request: Request, db: DBDependency, data: StaffC
         payload = decode_token(token)
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
-    if payload.get("type") == "admin":
+    if payload.get("type") == "admin" or payload.get("staff_id") == 0:
         raise HTTPException(status_code=403, detail="Admins must use the admin portal")
     staff_id = payload.get("staff_id", 0)
     if not staff_id:
@@ -626,9 +626,11 @@ async def staff_change_pin(request: Request, db: DBDependency, data: StaffChange
         payload = decode_token(token)
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
-    if payload.get("type") == "admin":
+    if payload.get("type") == "admin" or payload.get("staff_id") == 0:
         raise HTTPException(status_code=403, detail="Admins cannot change PIN here")
     staff_id = payload.get("staff_id", 0)
+    if not staff_id:
+        raise HTTPException(status_code=404, detail="Staff profile not found")
     result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id))
     staff = result.scalar_one_or_none()
     if not staff: raise HTTPException(status_code=404, detail="Staff not found")

@@ -8,109 +8,12 @@ from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from app.api.v1.deps import CurrentAdmin, DBDependency, security_scheme
+from app.api.v1.deps import CurrentAdmin, DBDependency, CurrentStaff, security_scheme
 from app.core.security import decode_token
 from app.models.iam import AdminAccount
 from app.models.staff import StaffProfile, StaffTimeEvent
 from app.schemas.base import APIResponse, PaginatedResponse
 
-
-async def get_current_staff(
-    db: DBDependency,
-    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
-) -> StaffProfile:
-    """Dependency to get the currently authenticated staff member."""
-    if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    token = credentials.credentials
-    try:
-        payload = decode_token(token)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
-
-    token_type = payload.get("type")
-    if token_type not in ("access", "staff"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token type",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    raw_staff_id = payload.get("staff_id")
-    staff_id = int(raw_staff_id) if raw_staff_id is not None else int(payload.get("sub", 0))
-
-    # Admin users on staff portal have staff_id=0 — look up or create a StaffProfile
-    if staff_id == 0:
-        admin_id = payload.get("admin_id")
-        if admin_id:
-            admin_result = await db.execute(
-                select(AdminAccount).where(AdminAccount.id == int(admin_id))
-            )
-            admin = admin_result.scalar_one_or_none()
-            if admin:
-                # Try to find existing staff profile by principal_id
-                sp_result = await db.execute(
-                    select(StaffProfile).where(
-                        StaffProfile.principal_id == admin.principal_id,
-                        StaffProfile.deleted_at.is_(None),
-                    )
-                )
-                sp = sp_result.scalar_one_or_none()
-                if sp:
-                    return sp
-                # Create a shadow StaffProfile for the admin
-                sp = StaffProfile(
-                    principal_id=admin.principal_id,
-                    store_id=int(payload.get("store_id", 0)),
-                    employee_id=f"ADMIN-{admin.id}",
-                    display_name=admin.display_name,
-                    email_address=admin.email,
-                    role="shift_supervisor",
-                    is_active=True,
-                )
-                db.add(sp)
-                await db.commit()
-                await db.refresh(sp)
-                return sp
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Admin staff profile not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    result = await db.execute(
-        select(StaffProfile).where(
-            StaffProfile.id == staff_id,
-            StaffProfile.deleted_at.is_(None),
-        )
-    )
-    staff = result.scalar_one_or_none()
-    if staff is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Staff not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if not staff.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Staff account is inactive",
-        )
-
-    return staff
-
-
-CurrentStaff = Annotated[StaffProfile, Depends(get_current_staff)]
 
 # ---------------------------------------------------------------------------
 # Inline schemas
@@ -314,6 +217,8 @@ async def staff_clock_event(
     notes: str | None = Query(None, max_length=255),
 ):
     """Staff clocks in/out or records a break/overtime event."""
+    if staff.id == 0:
+        raise HTTPException(status_code=403, detail="Admin users cannot clock in/out. Use the admin portal for time audits.")
     event = StaffTimeEvent(
         staff_id=staff.id,
         store_id=staff.store_id,
