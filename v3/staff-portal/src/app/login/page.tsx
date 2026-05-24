@@ -90,7 +90,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     let mounted = true;
-    api.get<PaginatedResponse<StoreInfo>>("/stores")
+    api.get<PaginatedResponse<StoreInfo>>("/stores?locale=en")
       .then((d) => {
         const list = d?.items || [];
         if (mounted) setStores(list.filter((s: StoreInfo) => s.is_active !== false));
