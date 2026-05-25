@@ -781,6 +781,7 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: PO
                 order_id=order.id,
                 provider="cash",
                 payment_method_type=payment_data.method,
+                idempotency_key=f"pos-{uuid.uuid4().hex[:16]}",
                 amount=total,
                 currency_code=store.currency_code,
                 status="captured",

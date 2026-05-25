@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "@/lib/api";
 import { Edit2 } from "lucide-react";
 
 interface Store { id: number; store_name: string; }
-interface InventoryItem { id: number; item_name: string; item_code: string; item_type: string; unit_of_measure: string; }
+interface Category { id: number; category_name: string; }
+interface InventoryItem { id: number; item_name: string; item_code: string; item_type: string; unit_of_measure: string; category_id: number; }
 interface StockRecord {
   id: number;
   inventory_item_id: number;
@@ -22,7 +23,9 @@ interface StockRecord {
 
 export default function InventoryStocksPage() {
   const [stores, setStores] = useState<Store[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [storeId, setStoreId] = useState("");
+  const [catFilter, setCatFilter] = useState("");
   const [stocks, setStocks] = useState<StockRecord[]>([]);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,6 +40,9 @@ export default function InventoryStocksPage() {
       setStores(list);
       if (list.length > 0) setStoreId(String(list[0].id));
     }).catch((e: any) => setError(e.message || "Failed to load stores"));
+    api.getRaw<any>("/admin/inventory/categories?per_page=100").then(d => {
+      setCategories(d.items || (Array.isArray(d) ? d : []));
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -59,18 +65,26 @@ export default function InventoryStocksPage() {
 
   useEffect(() => { fetchStocks(); }, [fetchStocks]);
 
-  const itemMap = new Map<number, InventoryItem>();
-  items.forEach(i => itemMap.set(i.id, i));
+  const itemMap = useMemo(() => {
+    const m = new Map<number, InventoryItem>();
+    items.forEach(i => m.set(i.id, i));
+    return m;
+  }, [items]);
 
-  const mergedStocks = stocks.map(s => {
-    const item = itemMap.get(s.inventory_item_id);
-    return {
-      ...s,
-      item_name: item?.item_name || `Item #${s.inventory_item_id}`,
-      item_code: item?.item_code || "",
-      item_type: item?.item_type || "",
-    };
-  });
+  const mergedStocks = useMemo(() => {
+    return stocks
+      .map(s => {
+        const item = itemMap.get(s.inventory_item_id);
+        return {
+          ...s,
+          item_name: item?.item_name || `Item #${s.inventory_item_id}`,
+          item_code: item?.item_code || "",
+          item_type: item?.item_type || "",
+          category_id: item?.category_id || 0,
+        };
+      })
+      .filter(s => !catFilter || s.category_id === Number(catFilter));
+  }, [stocks, itemMap, catFilter]);
 
   const openEdit = (s: StockRecord) => {
     setEditModal(s);
@@ -115,7 +129,7 @@ export default function InventoryStocksPage() {
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
         <select
           value={storeId}
           onChange={e => setStoreId(e.target.value)}
@@ -123,6 +137,16 @@ export default function InventoryStocksPage() {
         >
           {stores.map(s => (
             <option key={s.id} value={s.id}>{s.store_name}</option>
+          ))}
+        </select>
+        <select
+          value={catFilter}
+          onChange={e => setCatFilter(e.target.value)}
+          style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
+        >
+          <option value="">All Categories</option>
+          {categories.map(c => (
+            <option key={c.id} value={c.id}>{c.category_name}</option>
           ))}
         </select>
       </div>
@@ -147,42 +171,45 @@ export default function InventoryStocksPage() {
               <tr><td colSpan={9} className="data-table-empty">Loading...</td></tr>
             ) : mergedStocks.length === 0 ? (
               <tr><td colSpan={9} className="data-table-empty">No stock records for this store.</td></tr>
-            ) : (
-              mergedStocks.map(s => (
-                <tr key={s.id}>
-                  <td><div style={{fontWeight:600}}>{s.item_name}</div></td>
-                  <td className="font-mono" style={{fontSize:12}}>{s.item_code}</td>
-                  <td><span className={`badge badge-sm ${s.item_type==="non_fnb"?"badge-purple":"badge-blue"}`}>{s.item_type==="non_fnb"?"Non-FnB":"FnB"}</span></td>
-                  <td style={{textAlign:"center",fontWeight:600,color:s.current_stock<=s.reorder_level?"var(--color-error)":"var(--color-success)"}}>{s.current_stock}</td>
-                  <td style={{textAlign:"center"}}>{s.reserved_stock}</td>
-                  <td style={{textAlign:"center"}}>{s.reorder_level}</td>
-                  <td style={{textAlign:"center"}}>{s.par_level}</td>
-                  <td style={{fontSize:12}}>{s.storage_location||"—"}</td>
-                  <td>
-                    <button onClick={() => openEdit(s)} className="btn btn-ghost btn-sm" style={{color:"var(--color-info)"}}><Edit2 size={14}/></button>
-                  </td>
-                </tr>
-              ))
-            )}
+            ) : mergedStocks.map(s => (
+              <tr key={s.id}>
+                <td>
+                  <div style={{ fontWeight: 600 }}>{s.item_name}</div>
+                  {s.storage_location && <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{s.storage_location}</div>}
+                </td>
+                <td className="font-mono" style={{ fontSize: 12 }}>{s.item_code}</td>
+                <td><span className={`badge badge-sm ${s.item_type === "fnb" ? "badge-green" : "badge-blue"}`}>{s.item_type === "fnb" ? "FnB" : "Non-FnB"}</span></td>
+                <td style={{ textAlign: "center", fontWeight: 600, color: s.current_stock <= (s.reorder_level || 0) ? "var(--color-error)" : "var(--color-text)" }}>{s.current_stock}</td>
+                <td style={{ textAlign: "center" }}>{s.reserved_stock || "—"}</td>
+                <td style={{ textAlign: "center", fontSize: 12 }}>{s.reorder_level || "—"}</td>
+                <td style={{ textAlign: "center", fontSize: 12 }}>{s.par_level || "—"}</td>
+                <td style={{ fontSize: 12 }}>{s.storage_location || "—"}</td>
+                <td>
+                  <button type="button" onClick={() => openEdit(s)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}>
+                    <Edit2 size={14} />
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
       {editModal && (
-        <div className="modal-overlay" onClick={() => setEditModal(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
-          <div className="card" onClick={e => e.stopPropagation()} style={{padding:24,maxWidth:500,width:"90%"}}>
-            <h3 style={{marginTop:0}}>Edit Stock: {editModal.item_name || `Item #${editModal.inventory_item_id}`}</h3>
-            <div className="df-grid">
-              <div className="df-field"><label className="df-label">Current Stock</label><input type="number" value={editForm.current_stock} onChange={e => setEditForm({...editForm,current_stock:Number(e.target.value)})} /></div>
-              <div className="df-field"><label className="df-label">Reserved Stock</label><input type="number" value={editForm.reserved_stock} onChange={e => setEditForm({...editForm,reserved_stock:Number(e.target.value)})} /></div>
-              <div className="df-field"><label className="df-label">Reorder Level</label><input type="number" value={editForm.reorder_level} onChange={e => setEditForm({...editForm,reorder_level:Number(e.target.value)})} /></div>
-              <div className="df-field"><label className="df-label">Reorder Quantity</label><input type="number" value={editForm.reorder_quantity} onChange={e => setEditForm({...editForm,reorder_quantity:Number(e.target.value)})} /></div>
-              <div className="df-field"><label className="df-label">Par Level</label><input type="number" value={editForm.par_level} onChange={e => setEditForm({...editForm,par_level:Number(e.target.value)})} /></div>
-              <div className="df-field"><label className="df-label">Storage Location</label><input value={editForm.storage_location} onChange={e => setEditForm({...editForm,storage_location:e.target.value})} /></div>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setEditModal(null)}>
+          <div style={{ background: "var(--color-bg)", borderRadius: "var(--radius-md)", padding: 24, minWidth: 360, maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: "0 0 8px" }}>Edit Stock — {editModal.item_name}</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Current Stock</label><input type="number" step="0.01" value={editForm.current_stock} onChange={e => setEditForm(f => ({ ...f, current_stock: Number(e.target.value) }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
+              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Reserved Stock</label><input type="number" step="0.01" value={editForm.reserved_stock} onChange={e => setEditForm(f => ({ ...f, reserved_stock: Number(e.target.value) }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
+              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Reorder Level</label><input type="number" step="0.01" value={editForm.reorder_level} onChange={e => setEditForm(f => ({ ...f, reorder_level: Number(e.target.value) }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
+              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Reorder Quantity</label><input type="number" step="0.01" value={editForm.reorder_quantity} onChange={e => setEditForm(f => ({ ...f, reorder_quantity: Number(e.target.value) }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
+              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Par Level</label><input type="number" step="0.01" value={editForm.par_level} onChange={e => setEditForm(f => ({ ...f, par_level: Number(e.target.value) }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
+              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Storage Location</label><input value={editForm.storage_location} onChange={e => setEditForm(f => ({ ...f, storage_location: e.target.value }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
             </div>
-            <div className="df-actions" style={{marginTop:20}}>
-              <button onClick={() => setEditModal(null)} className="btn btn-ghost">Cancel</button>
-              <button onClick={saveEdit} disabled={saving} className="btn btn-primary">{saving ? "Saving..." : "Save"}</button>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+              <button type="button" onClick={() => setEditModal(null)} className="btn btn-ghost btn-sm">Cancel</button>
+              <button type="button" onClick={saveEdit} disabled={saving} className="btn btn-primary btn-sm">{saving ? "Saving..." : "Save"}</button>
             </div>
           </div>
         </div>

@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import SkeletonCard from "@/components/SkeletonCard";
 import {
   Armchair, CreditCard, CalendarCheck, Clock, UserCircle, Wallet,
-  ChefHat, ClipboardList, Wrench
+  ChefHat, ClipboardList, Wrench, Package, AlertTriangle
 } from "lucide-react";
 
 interface DashboardData {
@@ -18,16 +18,24 @@ interface DashboardData {
   staff_name: string;
 }
 
-const BUTTONS = [
+const ORDER_BUTTONS = [
   { key: "pos", label: "New Order", icon: CreditCard, badge: null, route: "/pos", cls: "home-btn--primary", desc: "POS" },
   { key: "orders", label: "Orders", icon: ClipboardList, badge: null, route: "/orders", cls: "", desc: "Queue & History" },
   { key: "kitchen", label: "Kitchen", icon: ChefHat, badge: "pending_orders", route: "/kitchen", cls: "", desc: "KDS" },
   { key: "tables", label: "Tables", icon: Armchair, badge: "occupied_tables", route: "/tables", cls: "", desc: "Floor" },
   { key: "reservations", label: "Bookings", icon: CalendarCheck, badge: "today_reservations", route: "/reservations", cls: "", desc: "Reservations" },
-  { key: "wallet", label: "Member", icon: Wallet, badge: null, route: "/wallet", cls: "", desc: "Wallet & Rewards" },
-  { key: "clock", label: "Clock In", icon: Clock, badge: "clock_status", route: "/time-clock", cls: "", desc: "Time Clock" },
-  { key: "profile", label: "Me", icon: UserCircle, badge: null, route: "/profile", cls: "", desc: "Profile" },
+];
+
+const OPS_BUTTONS = [
   { key: "equipment", label: "Equipment", icon: Wrench, badge: null, route: "/equipment", cls: "", desc: "Maintenance" },
+  { key: "inventory", label: "Inventory", icon: Package, badge: null, route: "/inventory", cls: "", desc: "Stock Count" },
+  { key: "wastage", label: "Wastage", icon: AlertTriangle, badge: null, route: "/wastage", cls: "", desc: "Report Waste" },
+];
+
+const SELF_BUTTONS = [
+  { key: "clock", label: "Clock In", icon: Clock, badge: "clock_status", route: "/time-clock", cls: "", desc: "Time Clock" },
+  { key: "wallet", label: "Member", icon: Wallet, badge: null, route: "/wallet", cls: "", desc: "Wallet" },
+  { key: "profile", label: "Me", icon: UserCircle, badge: null, route: "/profile", cls: "", desc: "Profile" },
 ];
 
 export default function HomePage() {
@@ -60,21 +68,59 @@ export default function HomePage() {
       {loading ? (
         <SkeletonCard count={4} />
       ) : (
-        <div className="home-grid">
-          {BUTTONS.map((btn) => {
-            const badge = getBadge(btn.badge);
-            return (
-              <button key={btn.key} onClick={() => router.push(btn.route)} className={`home-btn ${btn.cls}`}>
-                {badge !== null && badge !== undefined && badge !== 0 && (
-                  <span className="home-btn-badge">{badge}</span>
-                )}
-                <span className="home-btn-icon"><btn.icon size={btn.key === "pos" ? 42 : 32} /></span>
-                <span className="home-btn-label">{btn.label}</span>
-                {btn.key === "pos" && <span style={{ fontSize: 11, opacity: 0.6, fontWeight: 400 }}>{btn.desc}</span>}
-              </button>
-            );
-          })}
-        </div>
+        <>
+          {/* Order Management */}
+          <div style={{ marginBottom: 20 }}>
+            <h2 style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 1, margin: "0 0 8px 4px" }}>Order Management</h2>
+            <div className="home-grid">
+              {ORDER_BUTTONS.map((btn) => {
+                const badge = getBadge(btn.badge);
+                return (
+                  <button key={btn.key} onClick={() => router.push(btn.route)} className={`home-btn ${btn.cls}`}>
+                    {badge !== null && badge !== undefined && badge !== 0 && <span className="home-btn-badge">{badge}</span>}
+                    <span className="home-btn-icon"><btn.icon size={btn.key === "pos" ? 42 : 32} /></span>
+                    <span className="home-btn-label">{btn.label}</span>
+                    {btn.key === "pos" && <span style={{ fontSize: 11, opacity: 0.6, fontWeight: 400 }}>{btn.desc}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Operations */}
+          <div style={{ marginBottom: 20 }}>
+            <h2 style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 1, margin: "0 0 8px 4px" }}>Reporting & Checks</h2>
+            <div className="home-grid">
+              {OPS_BUTTONS.map((btn) => {
+                const badge = getBadge(btn.badge);
+                return (
+                  <button key={btn.key} onClick={() => router.push(btn.route)} className="home-btn">
+                    {badge !== null && badge !== undefined && badge !== 0 && <span className="home-btn-badge">{badge}</span>}
+                    <span className="home-btn-icon"><btn.icon size={32} /></span>
+                    <span className="home-btn-label">{btn.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Personal */}
+          <div>
+            <h2 style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 1, margin: "0 0 8px 4px" }}>Personal</h2>
+            <div className="home-grid">
+              {SELF_BUTTONS.map((btn) => {
+                const badge = getBadge(btn.badge);
+                return (
+                  <button key={btn.key} onClick={() => router.push(btn.route)} className="home-btn">
+                    {badge !== null && badge !== undefined && badge !== 0 && <span className="home-btn-badge">{badge}</span>}
+                    <span className="home-btn-icon"><btn.icon size={32} /></span>
+                    <span className="home-btn-label">{btn.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getOrders, type Order, type OrderStatus } from "@/lib/api";
+import { getOrders, type Order } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
 import OrderCard from "@/components/OrderCard";
 import PageHeader from "@/components/PageHeader";
@@ -11,19 +11,11 @@ import EmptyState from "@/components/EmptyState";
 import SearchInput from "@/components/SearchInput";
 import SkeletonCard from "@/components/SkeletonCard";
 import {
-  RefreshCw, LayoutGrid, List, ClipboardList, Wallet, CheckCircle,
+  RefreshCw, LayoutGrid, ClipboardList, Wallet, CheckCircle,
   UtensilsCrossed, Package, Truck, Filter
 } from "lucide-react";
 
 type Tab = "queue" | "unpaid" | "history";
-
-const queueColumns: { status: OrderStatus; label: string; color: string }[] = [
-  { status: "pending", label: "Pending", color: "#D97706" },
-  { status: "confirmed", label: "Confirmed", color: "#2563EB" },
-  { status: "preparing", label: "Preparing", color: "#9B6625" },
-  { status: "ready_for_pickup", label: "Ready", color: "#16A34A" },
-  { status: "out_for_delivery", label: "Out for Delivery", color: "#7C3AED" },
-];
 
 function isPaid(ps?: string): boolean {
   return ps === "paid" || ps === "captured" || ps === "settled" || ps === "authorized";
@@ -38,7 +30,6 @@ export default function OrdersPage() {
   const [tab, setTab] = useState<Tab>("queue");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<"kanban" | "list">("kanban");
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -153,16 +144,6 @@ export default function OrdersPage() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <SearchInput value={search} onChange={setSearch} placeholder="Search order #, customer..." />
-          {tab === "queue" && (
-            <div style={{ display: "flex", border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
-              <button className={`btn btn-sm ${view === "kanban" ? "btn-primary" : "btn-ghost"}`} onClick={() => setView("kanban")} style={{ borderRadius: 0, border: "none" }} aria-label="Grid view">
-                <LayoutGrid size={14} />
-              </button>
-              <button className={`btn btn-sm ${view === "list" ? "btn-primary" : "btn-ghost"}`} onClick={() => setView("list")} style={{ borderRadius: 0, border: "none" }} aria-label="List view">
-                <List size={14} />
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -210,7 +191,7 @@ export default function OrdersPage() {
           )}
         </div>
       ) : tab === "history" ? (
-        /* ── History List View ── */
+        /* ── History List ── */
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
           {filteredOrders.map((order) => (
             <OrderCard
@@ -220,38 +201,8 @@ export default function OrdersPage() {
             />
           ))}
         </div>
-      ) : view === "kanban" ? (
-        /* ── Kanban Queue View ── */
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-          {queueColumns.map((col) => {
-            const colOrders = filteredOrders.filter((o) => o.status === col.status);
-            return (
-              <div key={col.status} style={{ background: "var(--color-bg-muted)", borderRadius: "var(--radius-lg)", padding: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, color: col.color }}>{col.label}</h3>
-                  <span className="badge badge-sm badge-outline">{colOrders.length}</span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {colOrders.map((order) => (
-                    <OrderCard
-                      key={order.id}
-                      order={order}
-                      compact
-                      onClick={(o) => router.push(`/kitchen/${o.id}`)}
-                    />
-                  ))}
-                  {colOrders.length === 0 && (
-                    <div style={{ textAlign: "center", padding: 24, color: "var(--color-text-muted)", fontSize: 13 }}>
-                      No {col.label.toLowerCase()} orders
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       ) : (
-        /* ── List Queue View ── */
+        /* ── Queue List ── */
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12 }}>
           {filteredOrders.map((order) => (
             <OrderCard
