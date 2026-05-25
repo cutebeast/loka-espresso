@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
-from app.models.inventory import InventoryCategory, InventoryItem, Supplier
+from app.models.inventory import InventoryCategory, InventoryItem, InventoryStock, Supplier
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.inventory import (
     InventoryCategoryCreate,
@@ -16,6 +16,9 @@ from app.schemas.inventory import (
     InventoryItemCreate,
     InventoryItemOut,
     InventoryItemUpdate,
+    InventoryStockCreate,
+    InventoryStockOut,
+    InventoryStockUpdate,
     SupplierCreate,
     SupplierOut,
     SupplierUpdate,
@@ -37,22 +40,18 @@ def _slugify(value: str) -> str:
 async def list_categories(
     db: DBDependency,
     admin: CurrentAdmin,
-    store_id: int = Query(...),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
 ):
-    """List inventory categories for a store."""
+    """List global inventory categories."""
     total_result = await db.execute(
         select(func.count(InventoryCategory.id))
-        .where(InventoryCategory.store_id == store_id, InventoryCategory.deleted_at.is_(None))
+        .where(InventoryCategory.deleted_at.is_(None))
     )
     total = total_result.scalar() or 0
     result = await db.execute(
         select(InventoryCategory)
-        .where(
-            InventoryCategory.store_id == store_id,
-            InventoryCategory.deleted_at.is_(None),
-        )
+        .where(InventoryCategory.deleted_at.is_(None))
         .order_by(InventoryCategory.display_order)
         .offset((page - 1) * per_page)
         .limit(per_page)
@@ -164,21 +163,19 @@ async def delete_category(
 async def list_items(
     db: DBDependency,
     admin: CurrentAdmin,
-    store_id: int = Query(...),
+    store_id: int | None = Query(None),
     category_id: int | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=500),
 ):
-    """List inventory items for a store (optionally filtered by category)."""
+    """List global inventory items (optionally filtered by category, with stock for a store)."""
     base_stmt = select(InventoryItem).where(
-        InventoryItem.store_id == store_id,
         InventoryItem.deleted_at.is_(None),
     )
     if category_id is not None:
         base_stmt = base_stmt.where(InventoryItem.category_id == category_id)
 
     count_stmt = select(func.count(InventoryItem.id)).where(
-        InventoryItem.store_id == store_id,
         InventoryItem.deleted_at.is_(None),
     )
     if category_id is not None:
@@ -191,9 +188,26 @@ async def list_items(
     result = await db.execute(stmt)
     items = result.scalars().all()
 
+    item_ids = [i.id for i in items]
+    stock_by_item: dict[int, InventoryStock | None] = {}
+    if store_id is not None and item_ids:
+        stock_result = await db.execute(
+            select(InventoryStock).where(
+                InventoryStock.inventory_item_id.in_(item_ids),
+                InventoryStock.store_id == store_id,
+            )
+        )
+        for s in stock_result.scalars().all():
+            stock_by_item[s.inventory_item_id] = s
+
     return APIResponse(
         data=PaginatedResponse(
-            items=[InventoryItemOut.model_validate(i) for i in items],
+            items=[
+                InventoryItemOut.model_validate(i).model_copy(
+                    update={"stock": InventoryStockOut.model_validate(stock_by_item[i.id]) if i.id in stock_by_item else None}
+                )
+                for i in items
+            ],
             total=total,
             page=page,
             per_page=per_page,
@@ -226,8 +240,9 @@ async def get_item(
     db: DBDependency,
     admin: CurrentAdmin,
     id: int,
+    store_id: int | None = Query(None),
 ):
-    """Get an inventory item by ID."""
+    """Get an inventory item by ID (optionally with stock for a store)."""
     result = await db.execute(
         select(InventoryItem).where(
             InventoryItem.id == id,
@@ -239,7 +254,24 @@ async def get_item(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
         )
-    return APIResponse(data=InventoryItemOut.model_validate(item))
+
+    stock_out = None
+    if store_id is not None:
+        stock_result = await db.execute(
+            select(InventoryStock).where(
+                InventoryStock.inventory_item_id == id,
+                InventoryStock.store_id == store_id,
+            )
+        )
+        stock = stock_result.scalar_one_or_none()
+        if stock:
+            stock_out = InventoryStockOut.model_validate(stock)
+
+    item_out = InventoryItemOut.model_validate(item)
+    if stock_out:
+        item_out = item_out.model_copy(update={"stock": stock_out})
+
+    return APIResponse(data=item_out)
 
 
 @router.patch("/items/{id}", response_model=APIResponse[InventoryItemOut])
@@ -296,6 +328,136 @@ async def delete_item(
     await db.commit()
     await delete_translations(db, "inventory_items", id)
     return APIResponse(data={"id": item.id, "deleted": True})
+
+
+# ---------------------------------------------------------------------------
+# Inventory Stock (per-store stock levels for global items)
+# ---------------------------------------------------------------------------
+
+@router.get("/stocks", response_model=APIResponse[PaginatedResponse[InventoryStockOut]])
+async def list_stocks(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    store_id: int = Query(...),
+    inventory_item_id: int | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+):
+    """List per-store stock levels, filterable by store and item."""
+    base_stmt = select(InventoryStock).where(
+        InventoryStock.store_id == store_id,
+    )
+    if inventory_item_id is not None:
+        base_stmt = base_stmt.where(InventoryStock.inventory_item_id == inventory_item_id)
+
+    total_result = await db.execute(
+        select(func.count(InventoryStock.id)).where(
+            InventoryStock.store_id == store_id,
+        ).where(
+            InventoryStock.inventory_item_id == inventory_item_id
+        ) if inventory_item_id is not None else
+        select(func.count(InventoryStock.id)).where(
+            InventoryStock.store_id == store_id,
+        )
+    )
+    total = total_result.scalar() or 0
+
+    result = await db.execute(
+        base_stmt.offset((page - 1) * per_page).limit(per_page)
+    )
+    stocks = result.scalars().all()
+
+    return APIResponse(
+        data=PaginatedResponse(
+            items=[InventoryStockOut.model_validate(s) for s in stocks],
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=(total + per_page - 1) // per_page,
+        )
+    )
+
+
+@router.post(
+    "/stocks",
+    response_model=APIResponse[InventoryStockOut],
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_stock(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    data: InventoryStockCreate,
+):
+    """Create per-store stock levels for a global inventory item."""
+    existing = await db.execute(
+        select(InventoryStock).where(
+            InventoryStock.inventory_item_id == data.inventory_item_id,
+            InventoryStock.store_id == data.store_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Stock record already exists for this item and store",
+        )
+
+    stock = InventoryStock(**data.model_dump())
+    db.add(stock)
+    await db.commit()
+    await db.refresh(stock)
+    return APIResponse(data=InventoryStockOut.model_validate(stock))
+
+
+@router.get("/stocks/{id}", response_model=APIResponse[InventoryStockOut])
+async def get_stock(db: DBDependency, admin: CurrentAdmin, id: int):
+    result = await db.execute(select(InventoryStock).where(InventoryStock.id == id))
+    stock = result.scalar_one_or_none()
+    if not stock:
+        raise HTTPException(404, "Stock record not found")
+    return APIResponse(data=InventoryStockOut.model_validate(stock))
+
+
+@router.patch("/stocks/{id}", response_model=APIResponse[InventoryStockOut])
+async def update_stock(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    id: int,
+    data: InventoryStockUpdate,
+):
+    """Update per-store stock levels (current_stock, reorder_level, etc)."""
+    result = await db.execute(select(InventoryStock).where(InventoryStock.id == id))
+    stock = result.scalar_one_or_none()
+    if stock is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Stock record not found"
+        )
+
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(stock, key, value)
+
+    await db.commit()
+    await db.refresh(stock)
+    return APIResponse(data=InventoryStockOut.model_validate(stock))
+
+
+@router.delete("/stocks/{id}", response_model=APIResponse[dict])
+async def delete_stock(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    id: int,
+):
+    """Hard-delete a stock record (removes per-store stock for an item)."""
+    result = await db.execute(select(InventoryStock).where(InventoryStock.id == id))
+    stock = result.scalar_one_or_none()
+    if stock is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Stock record not found"
+        )
+
+    await db.delete(stock)
+    await db.commit()
+    return APIResponse(data={"id": id, "deleted": True})
 
 
 # ---------------------------------------------------------------------------

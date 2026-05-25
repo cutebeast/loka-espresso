@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from decimal import Decimal
 
 from app.models.cart import CartLineItem, CustomerCart
-from app.models.inventory import InventoryItem, InventoryMovementLog
+from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
 from app.models.menu import MenuItemRecipe
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.staff import TipAllocation
@@ -71,31 +71,47 @@ async def _deduct_stock_for_order(
     if not recipe_needs:
         return
 
-    inv_result = await db.execute(
-        select(InventoryItem).where(
-            InventoryItem.id.in_(list(recipe_needs.keys())),
-            InventoryItem.store_id == order.store_id,
-        ).with_for_update()
+    inv_item_result = await db.execute(
+        select(InventoryItem).where(InventoryItem.id.in_(list(recipe_needs.keys())))
     )
-    inv_items = {inv.id: inv for inv in inv_result.scalars().all()}
+    inv_items = {inv.id: inv for inv in inv_item_result.scalars().all()}
 
-    # Filter recipe needs to only those inventory items present in this store.
-    # Recipes may be shared across stores with store-specific inventory mappings.
     recipe_needs = {inv_id: qty for inv_id, qty in recipe_needs.items() if inv_id in inv_items}
     if not recipe_needs:
         return
 
+    stock_result = await db.execute(
+        select(InventoryStock).where(
+            InventoryStock.inventory_item_id.in_(list(recipe_needs.keys())),
+            InventoryStock.store_id == order.store_id,
+        ).with_for_update()
+    )
+    stock_map = {s.inventory_item_id: s for s in stock_result.scalars().all()}
+
+    for inv_id in recipe_needs:
+        if inv_id not in stock_map:
+            stock = InventoryStock(
+                inventory_item_id=inv_id,
+                store_id=order.store_id,
+                current_stock=0,
+                reserved_stock=0,
+            )
+            db.add(stock)
+            stock_map[inv_id] = stock
+
     for inv_id, qty_needed in recipe_needs.items():
-        inv = inv_items[inv_id]
-        current = Decimal(str(inv.current_stock))
+        stock = stock_map[inv_id]
+        current = Decimal(str(stock.current_stock))
         if current < qty_needed:
+            inv = inv_items[inv_id]
             raise OrderError(f"Insufficient stock for {inv.item_name}: need {float(qty_needed):.3f}, have {float(current):.3f}", 400)
 
     for inv_id, qty_needed in recipe_needs.items():
+        stock = stock_map[inv_id]
         inv = inv_items[inv_id]
-        old_stock = Decimal(str(inv.current_stock))
+        old_stock = Decimal(str(stock.current_stock))
         new_stock = old_stock - qty_needed
-        inv.current_stock = new_stock
+        stock.current_stock = new_stock
         db.add(InventoryMovementLog(
             store_id=order.store_id,
             inventory_item_id=inv_id,
@@ -103,7 +119,7 @@ async def _deduct_stock_for_order(
             quantity_delta=-Decimal(str(qty_needed)),
             stock_after=Decimal(str(new_stock)),
             reserved_delta=0,
-            reserved_after=float(inv.reserved_stock),
+            reserved_after=float(stock.reserved_stock),
             reason=f"Order {order.order_number} stock deduction",
             reference_type="order",
             reference_id=order.id,

@@ -8,7 +8,6 @@ from app.schemas.base import BaseSchema, TimestampedSchema
 class InventoryCategoryBase(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    store_id: int
     category_name: str
     slug: str = ""
     description: str | None = None
@@ -37,18 +36,15 @@ class InventoryCategoryOut(InventoryCategoryBase, TimestampedSchema):
 
 
 class InventoryItemBase(BaseSchema):
-    store_id: int
     category_id: int | None = None
     item_code: str
     item_name: str
     description: str | None = None
     unit_of_measure: str
-    current_stock: float = 0
-    reserved_stock: float = 0
-    reorder_level: float = 0
-    reorder_quantity: float = 0
-    par_level: float = 0
-    unit_cost: float = 0
+    unit_cost: float | None = None
+    shelf_life_days: int | None = None
+    supplier_id: int | None = None
+    item_type: str = "fnb"
     is_active: bool = True
     is_direct_sale: bool = False
 
@@ -58,24 +54,54 @@ class InventoryItemCreate(InventoryItemBase):
 
 
 class InventoryItemUpdate(BaseSchema):
-    store_id: int | None = None
     category_id: int | None = None
     item_code: str | None = None
     item_name: str | None = None
     description: str | None = None
     unit_of_measure: str | None = None
+    unit_cost: float | None = None
+    shelf_life_days: int | None = None
+    supplier_id: int | None = None
+    item_type: str | None = None
+    is_active: bool | None = None
+    is_direct_sale: bool | None = None
+
+
+class InventoryStockBase(BaseSchema):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    inventory_item_id: int
+    store_id: int
+    current_stock: float = 0
+    reserved_stock: float = 0
+    reorder_level: float = 0
+    reorder_quantity: float = 0
+    par_level: float = 0
+    storage_location: str | None = None
+
+
+class InventoryStockCreate(InventoryStockBase):
+    pass
+
+
+class InventoryStockUpdate(BaseSchema):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     current_stock: float | None = None
     reserved_stock: float | None = None
     reorder_level: float | None = None
     reorder_quantity: float | None = None
     par_level: float | None = None
-    unit_cost: float | None = None
-    is_active: bool | None = None
-    is_direct_sale: bool | None = None
+    storage_location: str | None = None
+
+
+class InventoryStockOut(InventoryStockBase, TimestampedSchema):
+    id: int
 
 
 class InventoryItemOut(InventoryItemBase, TimestampedSchema):
     id: int
+    stock: InventoryStockOut | None = None
 
 
 class SupplierBase(BaseSchema):

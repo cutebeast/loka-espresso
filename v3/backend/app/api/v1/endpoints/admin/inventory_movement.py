@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
-from app.models.inventory import InventoryItem, InventoryMovementLog
+from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
 from app.schemas.base import APIResponse, PaginatedResponse
 
 router = APIRouter(prefix="/admin/inventory", tags=["admin — inventory"])
@@ -123,7 +123,6 @@ async def create_movement(
     item_result = await db.execute(
         select(InventoryItem).where(
             InventoryItem.id == data.inventory_item_id,
-            InventoryItem.store_id == data.store_id,
             InventoryItem.deleted_at.is_(None),
         )
     )
@@ -133,8 +132,29 @@ async def create_movement(
             status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found"
         )
 
+    # Find or create per-store stock record
+    stock_result = await db.execute(
+        select(InventoryStock).where(
+            InventoryStock.inventory_item_id == data.inventory_item_id,
+            InventoryStock.store_id == data.store_id,
+        )
+    )
+    stock = stock_result.scalar_one_or_none()
+    if stock is None:
+        stock = InventoryStock(
+            inventory_item_id=data.inventory_item_id,
+            store_id=data.store_id,
+            current_stock=0,
+            reserved_stock=0,
+            reorder_level=0,
+            reorder_quantity=0,
+            par_level=0,
+        )
+        db.add(stock)
+        await db.flush()
+
     # Calculate new stock after movement
-    new_stock = float(item.current_stock) + data.quantity_delta
+    new_stock = float(stock.current_stock) + data.quantity_delta
     if new_stock < 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -152,7 +172,7 @@ async def create_movement(
         quantity_delta=data.quantity_delta,
         stock_after=new_stock,
         reserved_delta=0,
-        reserved_after=float(item.reserved_stock),
+        reserved_after=float(stock.reserved_stock),
         reason=data.reason,
         reference_type=data.reference_type,
         reference_id=data.reference_id,
@@ -161,8 +181,8 @@ async def create_movement(
         performed_by=admin.id,
     )
 
-    # Update item stock
-    item.current_stock = new_stock
+    # Update stock record
+    stock.current_stock = new_stock
 
     db.add(movement)
     await db.commit()

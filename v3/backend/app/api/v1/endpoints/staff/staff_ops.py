@@ -15,7 +15,7 @@ from app.api.v1.deps import CurrentAdmin, CurrentStaff, DBDependency
 from app.models.customer import Customer
 from app.models.equipment import Equipment, EquipmentMaintenanceLog
 from app.models.iam import AdminAccount, IAMRole, RoleAssignment, RolePermission, StoreAssignment, TokenBlacklist
-from app.models.inventory import InventoryItem, InventoryMovementLog
+from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
 from app.models.menu import MenuItem, MenuModifierGroup, MenuModifierOption
 from app.models.order import Order, OrderLineItem
 from app.models.payment import Payment
@@ -977,31 +977,40 @@ async def list_inventory_for_staff(
         raise HTTPException(status_code=400, detail="No store assigned to this staff member")
 
     result = await db.execute(
-        select(InventoryItem).options(selectinload(InventoryItem.category)).where(
-            InventoryItem.store_id == store_id,
-            InventoryItem.is_active.is_(True),
-            InventoryItem.deleted_at.is_(None),
-        ).order_by(InventoryItem.item_name)
+        select(InventoryStock)
+        .options(
+            selectinload(InventoryStock.item).selectinload(InventoryItem.category)
+        )
+        .where(
+            InventoryStock.store_id == store_id,
+            InventoryStock.item.has(
+                InventoryItem.is_active.is_(True),
+            ),
+            InventoryStock.item.has(
+                InventoryItem.deleted_at.is_(None),
+            ),
+        )
+        .order_by(InventoryStock.inventory_item_id)
     )
-    items = result.scalars().all()
+    stocks = result.scalars().all()
 
     return APIResponse(data={
         "items": [
             {
-                "id": it.id,
-                "item_name": it.item_name,
-                "item_code": it.item_code,
-                "item_type": it.item_type,
-                "unit_of_measure": it.unit_of_measure,
-                "current_stock": float(it.current_stock),
-                "reorder_level": float(it.reorder_level or 0),
-                "par_level": float(it.par_level or 0),
-                "storage_location": it.storage_location,
-                "category_name": it.category.category_name if it.category else None,
+                "id": s.item.id,
+                "item_name": s.item.item_name,
+                "item_code": s.item.item_code,
+                "item_type": s.item.item_type,
+                "unit_of_measure": s.item.unit_of_measure,
+                "current_stock": float(s.current_stock),
+                "reorder_level": float(s.reorder_level or 0),
+                "par_level": float(s.par_level or 0),
+                "storage_location": s.storage_location,
+                "category_name": s.item.category.category_name if s.item.category else None,
             }
-            for it in items
+            for s in stocks
         ],
-        "total": len(items),
+        "total": len(stocks),
     })
 
 
@@ -1023,22 +1032,41 @@ async def staff_update_stock(
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Inventory item not found")
-    if store_id and item.store_id != store_id:
-        raise HTTPException(status_code=403, detail="Item does not belong to your store")
 
-    old_stock = float(item.current_stock)
+    # Find or create per-store stock record
+    stock_result = await db.execute(
+        select(InventoryStock).where(
+            InventoryStock.inventory_item_id == data.item_id,
+            InventoryStock.store_id == store_id,
+        )
+    )
+    stock = stock_result.scalar_one_or_none()
+    if stock is None:
+        stock = InventoryStock(
+            inventory_item_id=data.item_id,
+            store_id=store_id,
+            current_stock=0,
+            reserved_stock=0,
+            reorder_level=0,
+            reorder_quantity=0,
+            par_level=0,
+        )
+        db.add(stock)
+        await db.flush()
+
+    old_stock = float(stock.current_stock)
     delta = round(data.current_stock - old_stock, 4)
 
     staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
     now = datetime.now(timezone.utc)
 
-    item.current_stock = data.current_stock
-    item.updated_at = now
+    stock.current_stock = data.current_stock
+    stock.updated_at = now
 
     if abs(delta) > 0.0001:
         movement = InventoryMovementLog(
             inventory_item_id=item.id,
-            store_id=item.store_id,
+            store_id=store_id,
             movement_type="adjustment",
             quantity_delta=delta,
             stock_after=data.current_stock,
@@ -1047,12 +1075,12 @@ async def staff_update_stock(
         db.add(movement)
 
     await db.commit()
-    await db.refresh(item)
+    await db.refresh(stock)
 
     return APIResponse(data={
         "id": item.id,
         "item_name": item.item_name,
-        "current_stock": float(item.current_stock),
+        "current_stock": float(stock.current_stock),
         "previous_stock": old_stock,
         "delta": delta,
     })
@@ -1079,32 +1107,51 @@ async def staff_report_waste(
         item = result.scalar_one_or_none()
         if not item:
             raise HTTPException(status_code=404, detail="Inventory item not found")
-        if store_id and item.store_id != store_id:
-            raise HTTPException(status_code=403, detail="Item does not belong to your store")
+
+        # Find or create per-store stock record
+        stock_result = await db.execute(
+            select(InventoryStock).where(
+                InventoryStock.inventory_item_id == data.inventory_item_id,
+                InventoryStock.store_id == store_id,
+            )
+        )
+        stock = stock_result.scalar_one_or_none()
+        if stock is None:
+            stock = InventoryStock(
+                inventory_item_id=data.inventory_item_id,
+                store_id=store_id,
+                current_stock=0,
+                reserved_stock=0,
+                reorder_level=0,
+                reorder_quantity=0,
+                par_level=0,
+            )
+            db.add(stock)
+            await db.flush()
 
         delta = round(-data.quantity, 4)
-        new_stock = round(float(item.current_stock) + delta, 4)
-        item.current_stock = max(0, new_stock)
-        item.updated_at = now
+        new_stock = round(float(stock.current_stock) + delta, 4)
+        stock.current_stock = max(0, new_stock)
+        stock.updated_at = now
 
         movement = InventoryMovementLog(
             inventory_item_id=item.id,
-            store_id=item.store_id,
+            store_id=store_id,
             movement_type="waste",
             quantity_delta=delta,
-            stock_after=float(item.current_stock),
+            stock_after=float(stock.current_stock),
             reason=f"[Reported by {staff_name}] {data.reason}",
         )
         db.add(movement)
 
         await db.commit()
-        await db.refresh(item)
+        await db.refresh(stock)
 
         return APIResponse(data={
             "id": item.id,
             "item_name": item.item_name,
             "wasted_quantity": data.quantity,
-            "current_stock": float(item.current_stock),
+            "current_stock": float(stock.current_stock),
             "message": "Waste recorded for inventory item",
         })
 

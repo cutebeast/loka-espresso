@@ -138,6 +138,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Categories", href: "/inventory/categories" },
       { label: "Items", href: "/inventory/items" },
+      { label: "Stock Levels", href: "/inventory/stocks" },
       { label: "Suppliers", href: "/inventory/suppliers" },
       { label: "Movements", href: "/inventory/movements" },
       { label: "Purchase Orders", href: "/inventory/purchase-orders" },

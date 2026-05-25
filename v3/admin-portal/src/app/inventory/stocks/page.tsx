@@ -1,0 +1,192 @@
+"use client";
+import { useEffect, useState, useCallback } from "react";
+import { api } from "@/lib/api";
+import { Edit2 } from "lucide-react";
+
+interface Store { id: number; store_name: string; }
+interface InventoryItem { id: number; item_name: string; item_code: string; item_type: string; unit_of_measure: string; }
+interface StockRecord {
+  id: number;
+  inventory_item_id: number;
+  store_id: number;
+  current_stock: number;
+  reserved_stock: number;
+  reorder_level: number;
+  reorder_quantity: number;
+  par_level: number;
+  storage_location: string | null;
+  item_name?: string;
+  item_code?: string;
+  item_type?: string;
+}
+
+export default function InventoryStocksPage() {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [storeId, setStoreId] = useState("");
+  const [stocks, setStocks] = useState<StockRecord[]>([]);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [editModal, setEditModal] = useState<StockRecord | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({ current_stock: 0, reserved_stock: 0, reorder_level: 0, reorder_quantity: 0, par_level: 0, storage_location: "" });
+
+  useEffect(() => {
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => {
+      const list = d.items || [];
+      setStores(list);
+      if (list.length > 0) setStoreId(String(list[0].id));
+    }).catch((e: any) => setError(e.message || "Failed to load stores"));
+  }, []);
+
+  useEffect(() => {
+    api.getRaw<any>("/admin/inventory/items?per_page=500").then(d => {
+      setItems(d.items || (Array.isArray(d) ? d : []));
+    }).catch((e) => console.error("Failed to load items:", e));
+  }, []);
+
+  const fetchStocks = useCallback(() => {
+    if (!storeId) return;
+    setLoading(true);
+    api.getRaw<any>(`/admin/inventory/stocks?store_id=${storeId}&per_page=200`)
+      .then(d => {
+        const raw = d.items || (Array.isArray(d) ? d : []);
+        setStocks(raw);
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [storeId]);
+
+  useEffect(() => { fetchStocks(); }, [fetchStocks]);
+
+  const itemMap = new Map<number, InventoryItem>();
+  items.forEach(i => itemMap.set(i.id, i));
+
+  const mergedStocks = stocks.map(s => {
+    const item = itemMap.get(s.inventory_item_id);
+    return {
+      ...s,
+      item_name: item?.item_name || `Item #${s.inventory_item_id}`,
+      item_code: item?.item_code || "",
+      item_type: item?.item_type || "",
+    };
+  });
+
+  const openEdit = (s: StockRecord) => {
+    setEditModal(s);
+    setEditForm({
+      current_stock: s.current_stock,
+      reserved_stock: s.reserved_stock,
+      reorder_level: s.reorder_level,
+      reorder_quantity: s.reorder_quantity,
+      par_level: s.par_level,
+      storage_location: s.storage_location || "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editModal) return;
+    setSaving(true);
+    try {
+      await api.patch(`/admin/inventory/stocks/${editModal.id}`, {
+        current_stock: Number(editForm.current_stock),
+        reserved_stock: Number(editForm.reserved_stock),
+        reorder_level: Number(editForm.reorder_level),
+        reorder_quantity: Number(editForm.reorder_quantity),
+        par_level: Number(editForm.par_level),
+        storage_location: editForm.storage_location || null,
+      });
+      setEditModal(null);
+      fetchStocks();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: 32 }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Inventory Stock Levels</h1>
+          <p className="page-subtitle">{mergedStocks.length} stock records</p>
+        </div>
+      </div>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div style={{ marginBottom: 16 }}>
+        <select
+          value={storeId}
+          onChange={e => setStoreId(e.target.value)}
+          style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
+        >
+          {stores.map(s => (
+            <option key={s.id} value={s.id}>{s.store_name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="table-container" style={{ marginTop: 16 }}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Item Name</th>
+              <th>Code</th>
+              <th>Type</th>
+              <th style={{textAlign:"center"}}>Current Stock</th>
+              <th style={{textAlign:"center"}}>Reserved</th>
+              <th style={{textAlign:"center"}}>Reorder Level</th>
+              <th style={{textAlign:"center"}}>Par Level</th>
+              <th>Location</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={9} className="data-table-empty">Loading...</td></tr>
+            ) : mergedStocks.length === 0 ? (
+              <tr><td colSpan={9} className="data-table-empty">No stock records for this store.</td></tr>
+            ) : (
+              mergedStocks.map(s => (
+                <tr key={s.id}>
+                  <td><div style={{fontWeight:600}}>{s.item_name}</div></td>
+                  <td className="font-mono" style={{fontSize:12}}>{s.item_code}</td>
+                  <td><span className={`badge badge-sm ${s.item_type==="non_fnb"?"badge-purple":"badge-blue"}`}>{s.item_type==="non_fnb"?"Non-FnB":"FnB"}</span></td>
+                  <td style={{textAlign:"center",fontWeight:600,color:s.current_stock<=s.reorder_level?"var(--color-error)":"var(--color-success)"}}>{s.current_stock}</td>
+                  <td style={{textAlign:"center"}}>{s.reserved_stock}</td>
+                  <td style={{textAlign:"center"}}>{s.reorder_level}</td>
+                  <td style={{textAlign:"center"}}>{s.par_level}</td>
+                  <td style={{fontSize:12}}>{s.storage_location||"—"}</td>
+                  <td>
+                    <button onClick={() => openEdit(s)} className="btn btn-ghost btn-sm" style={{color:"var(--color-info)"}}><Edit2 size={14}/></button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {editModal && (
+        <div className="modal-overlay" onClick={() => setEditModal(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+          <div className="card" onClick={e => e.stopPropagation()} style={{padding:24,maxWidth:500,width:"90%"}}>
+            <h3 style={{marginTop:0}}>Edit Stock: {editModal.item_name || `Item #${editModal.inventory_item_id}`}</h3>
+            <div className="df-grid">
+              <div className="df-field"><label className="df-label">Current Stock</label><input type="number" value={editForm.current_stock} onChange={e => setEditForm({...editForm,current_stock:Number(e.target.value)})} /></div>
+              <div className="df-field"><label className="df-label">Reserved Stock</label><input type="number" value={editForm.reserved_stock} onChange={e => setEditForm({...editForm,reserved_stock:Number(e.target.value)})} /></div>
+              <div className="df-field"><label className="df-label">Reorder Level</label><input type="number" value={editForm.reorder_level} onChange={e => setEditForm({...editForm,reorder_level:Number(e.target.value)})} /></div>
+              <div className="df-field"><label className="df-label">Reorder Quantity</label><input type="number" value={editForm.reorder_quantity} onChange={e => setEditForm({...editForm,reorder_quantity:Number(e.target.value)})} /></div>
+              <div className="df-field"><label className="df-label">Par Level</label><input type="number" value={editForm.par_level} onChange={e => setEditForm({...editForm,par_level:Number(e.target.value)})} /></div>
+              <div className="df-field"><label className="df-label">Storage Location</label><input value={editForm.storage_location} onChange={e => setEditForm({...editForm,storage_location:e.target.value})} /></div>
+            </div>
+            <div className="df-actions" style={{marginTop:20}}>
+              <button onClick={() => setEditModal(null)} className="btn btn-ghost">Cancel</button>
+              <button onClick={saveEdit} disabled={saving} className="btn btn-primary">{saving ? "Saving..." : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

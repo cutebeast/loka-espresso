@@ -78,9 +78,6 @@ class Store(Base, SoftDeleteMixin):
     admin_assignments: Mapped[List["StoreAssignment"]] = relationship(
         "StoreAssignment", back_populates="store"
     )
-    inventory_categories: Mapped[List["InventoryCategory"]] = relationship(
-        "InventoryCategory", back_populates="store"
-    )
     suppliers: Mapped[List["Supplier"]] = relationship(
         "Supplier", back_populates="store"
     )
