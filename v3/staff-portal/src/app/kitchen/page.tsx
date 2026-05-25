@@ -12,24 +12,22 @@ import SearchInput from "@/components/SearchInput";
 import SkeletonCard from "@/components/SkeletonCard";
 import {
   Filter, RefreshCw, Volume2, VolumeX, LayoutGrid, List,
-  UtensilsCrossed, Package, Truck, Wifi, WifiOff, ChefHat
+  UtensilsCrossed, Package, Wifi, WifiOff, ChefHat
 } from "lucide-react";
 
 const statusFilters: { label: string; value: OrderStatus | "all" }[] = [
   { label: "All", value: "all" },
-  { label: "Pending", value: "pending" },
-  { label: "Confirmed", value: "confirmed" },
+  { label: "New", value: "pending" },
+  { label: "Queued", value: "confirmed" },
   { label: "Preparing", value: "preparing" },
-  { label: "Ready", value: "ready_for_pickup" },
-  { label: "Delivered", value: "delivered" },
+  { label: "Done", value: "ready_for_pickup" },
 ];
 
 const kanbanColumns: { status: OrderStatus; label: string; color: string }[] = [
-  { status: "pending", label: "Pending", color: "#D97706" },
-  { status: "confirmed", label: "Confirmed", color: "#2563EB" },
+  { status: "pending", label: "New", color: "#D97706" },
+  { status: "confirmed", label: "Queued", color: "#2563EB" },
   { status: "preparing", label: "Preparing", color: "#9B6625" },
-  { status: "ready_for_pickup", label: "Ready", color: "#16A34A" },
-  { status: "delivered", label: "Delivered", color: "#6B7280" },
+  { status: "ready_for_pickup", label: "Done", color: "#16A34A" },
 ];
 
 export default function KitchenPage() {
@@ -114,8 +112,12 @@ export default function KitchenPage() {
 
   const filteredOrders = useMemo(() => orders
     .filter((o) => {
+      // Kitchen only cares about preparation — exclude delivered/cancelled/refunded
+      const kitchenStatuses: OrderStatus[] = ["pending","confirmed","preparing","ready_for_pickup"];
+      if (!kitchenStatuses.includes(o.status)) return false;
       if (filter !== "all" && o.status !== filter) return false;
-      if (typeFilter !== "all" && o.order_type !== typeFilter) return false;
+      if (typeFilter === "dine_in" && o.order_type !== "dine_in") return false;
+      if (typeFilter === "pack_away" && !["takeaway", "delivery"].includes(o.order_type)) return false;
       if (search) {
         const q = search.toLowerCase();
         return (
@@ -141,7 +143,7 @@ export default function KitchenPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  const activeOrders = filteredOrders.filter((o) => o.status !== "delivered" && o.status !== "out_for_delivery" && !o.status.includes("cancelled"));
+  const activeOrders = filteredOrders.filter((o) => o.status !== "ready_for_pickup");
 
   return (
     <div style={{ padding: 24, maxWidth: 1400, margin: "0 auto" }}>
@@ -217,9 +219,8 @@ export default function KitchenPage() {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
         {[
           { value: "all", label: "All Types", icon: null },
-          { value: "dine_in", label: "Dine-in", icon: <UtensilsCrossed size={12} /> },
-          { value: "takeaway", label: "Takeaway", icon: <Package size={12} /> },
-          { value: "delivery", label: "Delivery", icon: <Truck size={12} /> },
+          { value: "dine_in", label: "Dine In", icon: <UtensilsCrossed size={12} /> },
+          { value: "pack_away", label: "Pack Away", icon: <Package size={12} /> },
         ].map((t) => (
           <button
             key={t.value}

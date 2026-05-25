@@ -605,7 +605,7 @@ export function getMenuCategories(perPage = 50) {
 }
 
 export function searchCustomers(q: string) {
-  return api.get<Customer[]>(`/staff/customers/search?q=${encodeURIComponent(q)}`);
+  return api.get<Customer[]>(`/admin/customers?search=${encodeURIComponent(q)}&per_page=10`);
 }
 
 export function createPosOrder(payload: {

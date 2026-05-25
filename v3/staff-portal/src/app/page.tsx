@@ -24,6 +24,7 @@ const ORDER_BUTTONS = [
   { key: "kitchen", label: "Kitchen", icon: ChefHat, badge: "pending_orders", route: "/kitchen", cls: "", desc: "KDS" },
   { key: "tables", label: "Tables", icon: Armchair, badge: "occupied_tables", route: "/tables", cls: "", desc: "Floor" },
   { key: "reservations", label: "Bookings", icon: CalendarCheck, badge: "today_reservations", route: "/reservations", cls: "", desc: "Reservations" },
+  { key: "wallet", label: "Member", icon: Wallet, badge: null, route: "/wallet", cls: "", desc: "Wallet & Rewards" },
 ];
 
 const OPS_BUTTONS = [
@@ -34,7 +35,6 @@ const OPS_BUTTONS = [
 
 const SELF_BUTTONS = [
   { key: "clock", label: "Clock In", icon: Clock, badge: "clock_status", route: "/time-clock", cls: "", desc: "Time Clock" },
-  { key: "wallet", label: "Member", icon: Wallet, badge: null, route: "/wallet", cls: "", desc: "Wallet" },
   { key: "profile", label: "Me", icon: UserCircle, badge: null, route: "/profile", cls: "", desc: "Profile" },
 ];
 

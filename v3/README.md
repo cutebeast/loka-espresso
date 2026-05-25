@@ -45,27 +45,28 @@ pm2 start v3/backend/.venv/bin/python --name v3-backend -- -m uvicorn app.main:a
 pm2 save
 ```
 
-## Staff Portal (13 pages)
+## Staff Portal (14 pages)
 
 POS + Kitchen Display + Order Tracking for service crew:
 
 | Page | Purpose |
 |------|---------|
 | `/login` | Store selector + name/PIN or email login |
-| `/` | Dashboard with KPI cards + nav grid |
-| `/pos` | POS terminal — menu grid, cart, table, checkout with tips |
-| `/orders` | Order list — kanban, queue/unpaid/history tabs |
-| `/kitchen` | Kitchen display — 5s polling, urgency timers, audio |
+| `/` | Dashboard — 3-group grid: Order Mgmt, Reporting, Personal |
+| `/pos` | POS terminal — menu grid, cart, table, checkout with customer+voucher+reward+wallet+tips |
+| `/orders` | Order list — Queue/Unpaid/History tabs, type filters, list view |
+| `/kitchen` | Kitchen display — New→Queued→Preparing→Done kanban, audio, 5s polling |
 | `/kitchen/[id]` | Order detail — status updates, cancel, table transfer |
 | `/tables` | Table management — QR codes, status overview |
 | `/reservations` | Reservation confirm/cancel |
 | `/time-clock` | Clock in/out with PIN |
-| `/wallet` | Customer wallet search, top-up, rewards, vouchers |
+| `/wallet` | Customer service — search/scan, top-up, rewards, vouchers, PIN-protected redeem |
 | `/profile` | Change password/PIN |
 | `/equipment` | Daily equipment check + issue reporting with photo upload |
-| `/inventory` | Stock count updates (non-FnB) + wastage reporting |
+| `/inventory` | Stock counts — category filter, update all items (FnB & Non-FnB) |
+| `/wastage` | Menu item waste report — burnt, spilled, expired with preset reasons |
 
-**Key features**: Tip entry (presets + custom), table transfer, order cancel, order modification, idle timeout with 60s warning, equipment check & issue reporting with photos, inventory stock count + waste reporting.
+**Key features**: Tip entry (presets + custom), customer lookup during checkout, voucher/reward/wallet in POS checkout, table transfer, order cancel, order modification, idle timeout with 60s warning, equipment check & issue reporting with photos, inventory stock count, wastage reporting.
 
 ## Admin Portal (90+ pages)
 

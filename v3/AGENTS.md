@@ -95,21 +95,23 @@ v3/
 - SSR-safe: all `localStorage` access guarded by `typeof window !== "undefined"`
 - Error handling: `console.error` on all failures, proper error propagation
 
-### Page Routes (12 total)
+### Page Routes (14 total)
 | Route | Description | Key Features |
 |-------|-------------|--------------|
 | `/login` | Staff login | Store selector, name/PIN or email/password |
-| `/` | Home dashboard | KPI cards, navigation grid, equipment access |
-| `/pos` | POS terminal | Menu grid, cart, table transfer, held orders, checkout with tip/voucher/reward/wallet |
-| `/orders` | Orders list | Filterable, kanban view, queue/unpaid/history tabs |
-| `/kitchen` | Kitchen display | 5s polling, urgency colors, audio alerts, kanban columns |
+| `/` | Home dashboard | 3-group grid: Order Mgmt, Reporting, Personal |
+| `/pos` | POS terminal | Menu grid, cart, table, held orders, checkout with customer+voucher+reward+wallet+tips |
+| `/orders` | Orders list | Queue/Unpaid/History tabs, type filters, search — list view only |
+| `/kitchen` | Kitchen display | 5s polling, audio alerts, New→Queued→Preparing→Done kanban, Dine In/Pack Away filters |
 | `/kitchen/[id]` | Order detail | Status updates, cancel, table transfer, line items |
 | `/tables` | Table management | QR generation, status overview, section filter |
 | `/reservations` | Reservation management | Confirm with table, cancel |
-| `/time-clock` | Staff clock-in/out | Clock in, out, break, event history |
-| `/wallet` | Customer wallet | Search/scan, top-up, rewards, vouchers, redeem |
+| `/time-clock` | Staff clock-in/out | Clock in, out, break, event history with PIN |
+| `/wallet` | Customer service | Search/scan, top-up, rewards, vouchers, redeem with PIN |
 | `/profile` | Staff profile | Display info, change password, change PIN |
-| `/equipment` | Equipment | View status, serial numbers, maintenance dates |
+| `/equipment` | Equipment | Daily check + issue reporting with photo upload |
+| `/inventory` | Inventory | Stock counts, category filter, update all items (FnB & Non-FnB) |
+| `/wastage` | Wastage report | Menu item waste — burnt, spilled, expired, with preset reasons |
 
 ### Shared Components
 `Alert`, `AuthProvider`, `Badge`, `Button`, `Card`, `Drawer`, `EmptyState`, `Modal`, `NumericKeypad`, `OrderCard`, `PageHeader`, `QrScannerModal`, `SearchInput`, `SkeletonCard`, `SkeletonText`, `StatusBadge`, `StoreHeader`, `Timer`
@@ -367,13 +369,64 @@ cd customer-pwa && npm run build
 | Tip entry — presets + custom | ✅ |
 | Order cancel from POS/orders | ✅ |
 | Order modification (add/void items) | ✅ POST/DELETE endpoints |
-| Kitchen display — kanban, timer, audio | ✅ 5s polling |
+| Kitchen display — kanban, timer, audio | ✅ 5s polling, kitchen-only statuses (New/Queued/Preparing/Done) |
 | Order tracking — queue, unpaid, history | ✅ |
+| Customer wallet — search, top-up, rewards, vouchers | ✅ search path fixed to admin endpoint |
+| Customer rewards/vouchers during checkout | ✅ Apply Discounts drawer in POS checkout |
 | Equipment check & report | ✅ with photo upload |
-| Inventory stock count & waste | ✅ /inventory page |
-| Customer wallet — search, top-up, rewards | ✅ |
+| Inventory stock count & waste | ✅ /inventory page + /wastage page |
 | Reservations — confirm, cancel | ✅ |
 | Tables — status, QR, mark clean | ✅ |
 | Time clock — in/out, history | ✅ |
 | Profile — change password/PIN | ✅ |
 | Idle timeout — 60s warning | ✅ |
+
+### Staff Portal — Dashboard Layout (Final)
+
+```
+Order Management          │  Reporting & Checks    │  Personal
+──────────────────────   │  ────────────────────  │  ──────────
+New Order (POS)          │  Equipment             │  Clock In
+Orders                    │  Inventory             │  Me
+Kitchen                   │  Wastage               │
+Tables                    │                        │
+Bookings                  │                        │
+Member (Wallet & Rewards) │                        │
+```
+
+### Kitchen Display System (KDS) — Final
+
+| Column | DB Status | Kitchen Meaning |
+|--------|-----------|-----------------|
+| **New** 🟠 | `pending` | Just arrived — needs attention |
+| **Queued** 🔵 | `confirmed` | Acknowledged — waiting to start |
+| **Preparing** 🟤 | `preparing` | Currently cooking |
+| **Done** 🟢 | `ready_for_pickup` | Finished — ready for pickup |
+
+Type filters: **Dine In** (plate it) | **Pack Away** (wrap for takeaway+delivery). Kitchen sees no payment status, no cancelled/delivered orders.
+
+### Round 11 — Complete Audit Summary (2026-05-25)
+
+All 50+ staff portal API endpoints verified — 0 missing, 0 broken.
+
+**Backend crash fixes**: orders.py missing imports + wrong AuditLog/OrderLineItem fields + set[int] store_id comparisons + reservations.py regression. AuditAction enum expanded + migration.
+
+**Global Inventory Refactor**: InventoryItem/Category → company-level (no store_id). New InventoryStock model for per-store quantities. Migration 0e1f2g3h4i5j.
+
+**Staff equipment redesign**: Check & report with photo upload (JSONB image_urls).
+
+**Staff inventory + wastage**: Separate pages — /inventory for stock counts, /wastage for menu item waste reporting.
+
+**Staff dashboard**: Reorganized into 3 logical groups (Order Mgmt / Reporting / Personal).
+
+**Kitchen vs Orders**: Visually distinct — Kitchen is KDS kanban (New→Done), Orders is list management (Queue/Unpaid/History).
+
+**Wallet fix**: `searchCustomers` path corrected to `/admin/customers?search=`. All wallet/reward/voucher endpoints verified.
+
+**Admin portal fixes**: Reservations status values corrected, equipment pagination + reports ledger, menu recipe store filter removed, inventory item_type toggle + stock levels page with category filter.
+
+**Customer PWA**: Hardcoded store ID removed, cart sync lock → queue, MyRewards timer fixed, focus trap aria-hidden fixed.
+
+**E2E tests**: ScopeMismatch, wrong emails, wrong endpoint paths, wrong response parsing — all fixed.
+
+**Verification**: TypeScript 0 errors, ESLint 0 warnings, all 4 services healthy, all 50+ endpoints verified.
