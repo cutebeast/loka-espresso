@@ -152,7 +152,17 @@ FastAPI route shadowing: `/{staff_id}` matched before `/shifts` and `/templates`
 - Card/QR payment: placeholder UI (Stripe integration next week)
 - Bill splitting: not needed (premium KL venues)
 - Customer PWA i18n: ~25 lines incomplete (English fallback)
-- Float/Decimal precision in orders.py: monetary calc uses float() — Numeric(12,4) columns cap precision at DB level
+
+## Design Decision: Inventory Architecture (Round 11)
+
+Inventory has a two-layer design:
+- **Company (Global)**: `InventoryCategory` + `InventoryItem` — master catalog of what products/ingredients exist
+- **Store (Per-Store)**: `InventoryStock` — how many of each item at each location (stock, reorder, par levels)
+
+This ensures:
+- Menu item recipes reference global inventory items (formulas are the same across stores)
+- Items exist once globally — no duplication per store
+- Each store manages only its own stock quantities
 
 ## Round 11 Audit (2026-05-25)
 

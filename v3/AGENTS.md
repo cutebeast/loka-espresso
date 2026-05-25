@@ -337,6 +337,26 @@ cd customer-pwa && npm run build
 
 **Verification**: TypeScript 0 errors, ESLint 0 warnings across all 3 portals. All 4 services healthy.
 
+### Global Inventory Refactor (end of Round 11) — Design Decision
+
+**Problem**: Inventory categories and items were per-store, causing:
+- Menu item recipes couldn't reference inventory items globally (recipe formulas are the same across all stores)
+- Items had to be duplicated per store (same ingredient existed as 3 separate records for 3 stores)
+- Staff inventory page needed complex store filtering
+- Menu item editor needed a store selector just to load inventory for recipes
+
+**Solution**: Split inventory into two layers:
+- **Company-level**: `InventoryCategory` and `InventoryItem` (global master catalog — what products/ingredients exist)
+- **Store-level**: `InventoryStock` (per-store stock quantities, reorder levels, par levels, storage locations)
+
+**Changes**:
+- `InventoryCategory`: removed `store_id` → global catalog
+- `InventoryItem`: removed `store_id`, `current_stock`, `reserved_stock`, `reorder_level`, `reorder_quantity`, `par_level`, `storage_location` → global master
+- New `InventoryStock` model: `inventory_item_id` + `store_id` + all stock fields
+- Migration `0e1f2g3h4i5j`: creates `inventory_stock` table, migrates data, drops old columns
+- Admin: new `/inventory/stocks` page for per-store stock management
+- Stock deduction in POS orders now uses `InventoryStock` (upsert pattern)
+
 ### Staff Portal — F&B Workflow Coverage
 
 | Feature | Status |
@@ -349,7 +369,8 @@ cd customer-pwa && npm run build
 | Order modification (add/void items) | ✅ POST/DELETE endpoints |
 | Kitchen display — kanban, timer, audio | ✅ 5s polling |
 | Order tracking — queue, unpaid, history | ✅ |
-| Equipment status view | ✅ /equipment page |
+| Equipment check & report | ✅ with photo upload |
+| Inventory stock count & waste | ✅ /inventory page |
 | Customer wallet — search, top-up, rewards | ✅ |
 | Reservations — confirm, cancel | ✅ |
 | Tables — status, QR, mark clean | ✅ |

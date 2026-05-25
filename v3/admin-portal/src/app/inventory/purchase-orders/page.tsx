@@ -4,7 +4,7 @@ import { api, getPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, canc
 import { Plus, Trash2, CheckCircle, XCircle } from "lucide-react";
 
 interface Supplier { id: number; supplier_name: string; }
-interface InvItem { id: number; item_name: string; current_stock: number; }
+interface InvItem { id: number; item_name: string; unit_of_measure: string; }
 interface Store { id: number; store_name: string; }
 
 export default function PurchaseOrdersPage() {
@@ -88,7 +88,7 @@ export default function PurchaseOrdersPage() {
             </div>
             {form.lines.map((li, i) => (
               <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
-                <select value={li.inventory_item_id} onChange={e => updateLine(i, { inventory_item_id: e.target.value })} style={{ flex: 2, padding: "6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required><option value="">Item</option>{invItems.map(iv => <option key={iv.id} value={iv.id}>{iv.item_name} (stock: {iv.current_stock})</option>)}</select>
+                <select value={li.inventory_item_id} onChange={e => updateLine(i, { inventory_item_id: e.target.value })} style={{ flex: 2, padding: "6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required><option value="">Item</option>{invItems.map(iv => <option key={iv.id} value={iv.id}>{iv.item_name} ({iv.unit_of_measure})</option>)}</select>
                 <input type="number" value={li.quantity_ordered} onChange={e => updateLine(i, { quantity_ordered: e.target.value })} placeholder="Qty" style={{ width: 70, padding: "6px 8px", fontSize: 12 }} required />
                 <input type="number" step="0.01" value={li.unit_cost} onChange={e => updateLine(i, { unit_cost: e.target.value })} placeholder="Cost" style={{ width: 90, padding: "6px 8px", fontSize: 12 }} />
                 <button type="button" onClick={() => removeLine(i)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
