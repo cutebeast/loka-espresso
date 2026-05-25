@@ -143,7 +143,10 @@ const navItems: NavItem[] = [
       { label: "Purchase Orders", href: "/inventory/purchase-orders" },
     ],
   },
-  { label: "Equipment", href: "/equipment", icon: Wrench },
+  { label: "Equipment", href: "/equipment", icon: Wrench, children: [
+      { label: "Equipment List", href: "/equipment" },
+      { label: "Reports Ledger", href: "/equipment/reports" },
+    ] },
   {
     label: "Staff", href: "/staff", icon: Users,
     children: [

@@ -1,6 +1,6 @@
 # FNB Enterprise v3 — Loka Espresso
 
-> **Status**: Live | **Last Audit**: Round 10 (2026-05-24) | **TS**: 0 errors | **Lint**: 0 warnings
+> **Status**: Live | **Last Audit**: Round 11 (2026-05-25) | **TS**: 0 errors | **Lint**: 0 warnings
 
 ## Services
 
@@ -45,7 +45,7 @@ pm2 start v3/backend/.venv/bin/python --name v3-backend -- -m uvicorn app.main:a
 pm2 save
 ```
 
-## Staff Portal (12 pages)
+## Staff Portal (13 pages)
 
 POS + Kitchen Display + Order Tracking for service crew:
 
@@ -62,9 +62,10 @@ POS + Kitchen Display + Order Tracking for service crew:
 | `/time-clock` | Clock in/out with PIN |
 | `/wallet` | Customer wallet search, top-up, rewards, vouchers |
 | `/profile` | Change password/PIN |
-| `/equipment` | Equipment status and maintenance dates |
+| `/equipment` | Daily equipment check + issue reporting with photo upload |
+| `/inventory` | Stock count updates (non-FnB) + wastage reporting |
 
-**Key features**: Tip entry (presets + custom), table transfer, order cancel, order modification, idle timeout with 60s warning, equipment status from admin config.
+**Key features**: Tip entry (presets + custom), table transfer, order cancel, order modification, idle timeout with 60s warning, equipment check & issue reporting with photos, inventory stock count + waste reporting.
 
 ## Admin Portal (90+ pages)
 
@@ -80,11 +81,11 @@ Full CRUD dashboard for management:
 | Content | Info cards, products, events, system pages, PWA splash |
 | Customers | Management, consents, devices |
 | Staff | Profiles, roles, shifts, tips |
-| Inventory | Categories, items, suppliers, movements, purchase orders |
+| Inventory | Items (FnB/Non-FnB), categories, suppliers, movements, purchase orders |
 | Orders | Full order management |
 | Notifications | Templates, broadcast, report |
 | Settings | Platform config, version control, reservation settings |
-| Equipment | CRUD + maintenance logs |
+| Equipment | CRUD + maintenance logs + reports ledger with photos |
 | Tables | Table configuration by store |
 | Translations | PWA UI translations with auto-translate |
 | Other | Profile, audit log, reports, feedback, refunds, reservations, admins/roles |
@@ -151,3 +152,45 @@ FastAPI route shadowing: `/{staff_id}` matched before `/shifts` and `/templates`
 - Card/QR payment: placeholder UI (Stripe integration next week)
 - Bill splitting: not needed (premium KL venues)
 - Customer PWA i18n: ~25 lines incomplete (English fallback)
+- Float/Decimal precision in orders.py: monetary calc uses float() — Numeric(12,4) columns cap precision at DB level
+
+## Round 11 Audit (2026-05-25)
+
+### Backend crash bugs (new Round 10 features)
+- 6 model imports missing from `orders.py` — `CustomerVoucher`, `VoucherDefinition`, `CustomerReward`, `RewardCatalog`, `Wallet`, `WalletLedgerEntry`
+- AuditLog fields wrong in 3 places (`actor_id`→`principal_id`, `target_type`→`resource_type`, etc.)
+- AuditAction enum expanded + migration `a1b2c3d4e5f6`
+- OrderLineItem fields wrong (`item_name`→`item_snapshot`, `total_price`→`line_total`, `modifier_ids`→`selected_modifiers`)
+- set[int] store_id comparisons fixed in `orders.py` and `reservations.py`
+- reservations.py regression: restored accidentally removed `base_stmt`/`count_stmt` definitions
+
+### Staff portal — Equipment check & report (redesign)
+- New endpoints: `GET /staff/equipment`, `POST /staff/equipment/{id}/report` (operational/maintenance/broken + photo uploads)
+- Model: `image_urls`(JSONB) on `EquipmentMaintenanceLog` + migration
+- UI: Report button on every card → inline form with status + description + 5-image upload
+
+### Staff portal — Inventory management (new)
+- New endpoints: `GET /staff/inventory`, `POST /staff/inventory/update` (stock count), `POST /staff/inventory/waste` (menu + inventory items)
+- Model: `item_type` (fnb/non_fnb) on `InventoryItem` + migration
+- New page: `/inventory` — stock counts, update non-FnB items, report waste
+
+### Staff portal — 8 low-severity fixes
+- API client: `request<T>` returns `data.items` (claimed fixed in R10 but code unchanged)
+- Kitchen detail: raw `fetch()` → `getTables()`; Orders: added `out_for_delivery` kanban column
+- Time-clock: invalid pendingAction error handling; timer flicker fix
+- Wallet: stale `walletData` reset on error; various dead code/guard fixes
+
+### Admin portal — Fixes + new features
+- Reservations page: status values fixed (`cancelled`→`cancelled_by_merchant`), badge map, `party_size` field
+- Equipment reports ledger: new `/equipment/reports` page with filters + photo gallery
+- Equipment pages: pagination added; create page error feedback
+- Menu item editor: removed per-store recipe filter (recipes are global)
+- Inventory: `item_type` toggle (FnB/Non-FnB) on create/edit/list
+- Customers CSS unit, favicon cleanup, settings typo fixes
+
+### Customer PWA
+- Hardcoded store ID 1 fallback removed; cart sync lock → promise queue
+- MyRewards frozen timer fixed; focus trap aria-hidden filter fixed
+
+### E2E tests
+- ScopeMismatch, wrong admin email, wrong endpoint paths, wrong response parsing fixed

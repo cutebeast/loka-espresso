@@ -23,16 +23,18 @@ function createIdempotencyKey(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-let _syncLock = false;
+let _syncPromise: Promise<void> | null = null;
 
 export async function syncCartToServer(items: CartItem[]): Promise<void> {
   if (typeof window === 'undefined') return;
-  if (_syncLock) return;
   const token = localStorage.getItem('token');
   if (!token) return;
 
-  _syncLock = true;
-  try {
+  while (_syncPromise) {
+    try { await _syncPromise; } catch { /* ignore previous failure */ }
+  }
+
+  _syncPromise = (async () => {
     let serverItems: ServerCartItem[] = [];
     try {
       const res = await api.get('/cart');
@@ -100,8 +102,12 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
       console.error('Failed to sync cart item:', err);
     }
   }
+  })();
+
+  try {
+    await _syncPromise;
   } finally {
-    _syncLock = false;
+    _syncPromise = null;
   }
 }
 

@@ -43,7 +43,6 @@ export default function KitchenPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"oldest" | "newest" | "value">("oldest");
   const [view, setView] = useState<"kanban" | "list">("kanban");
-  const [_updatingId, setUpdatingId] = useState<string | number | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [connected, setConnected] = useState(true);
   const prevCountRef = useRef(0);
@@ -52,10 +51,11 @@ export default function KitchenPage() {
   const fetchSeqRef = useRef(0);
 
   const fetchOrders = useCallback(async () => {
+    let list: Order[] = [];
     try {
       if (!storeId) { setLoading(false); setError("Store not selected"); return; }
       const data = await getOrders(storeId, undefined);
-      const list = Array.isArray(data) ? data : [];
+      list = Array.isArray(data) ? data : [];
       setOrders(list);
       setConnected(true);
       // Sound notification on new orders
@@ -73,13 +73,13 @@ export default function KitchenPage() {
           osc.onended = () => { osc.disconnect(); gain.disconnect(); };
         } catch (err) { console.error("Audio notification failed:", err); }
       }
-      prevCountRef.current = list.length;
       setError("");
     } catch (err: unknown) {
       console.error("Kitchen: Failed to load orders:", err);
       setConnected(false);
       setError(err instanceof Error ? err.message : "Failed to load orders");
     } finally {
+      prevCountRef.current = list.length;
       setLoading(false);
     }
   }, [storeId, soundOn]);
@@ -101,7 +101,6 @@ export default function KitchenPage() {
   }, []);
 
   const handleUpdateStatus = async (id: string | number, status: OrderStatus) => {
-    setUpdatingId(id);
     const seq = ++fetchSeqRef.current;
     try {
       await updateOrderStatus(id, status);
@@ -110,8 +109,6 @@ export default function KitchenPage() {
     } catch (err: unknown) {
       if (seq !== fetchSeqRef.current) return;
       setError(err instanceof Error ? err.message : "Failed to update order");
-    } finally {
-      if (seq === fetchSeqRef.current) setUpdatingId(null);
     }
   };
 

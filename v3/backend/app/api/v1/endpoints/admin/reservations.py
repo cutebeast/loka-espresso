@@ -76,7 +76,10 @@ async def list_reservations(
     base_stmt = select(Reservation)
     count_stmt = select(func.count(Reservation.id))
 
-    if store_id is not None:
+    if isinstance(store_id, (list, set)):
+        base_stmt = base_stmt.where(Reservation.store_id.in_(store_id))
+        count_stmt = count_stmt.where(Reservation.store_id.in_(store_id))
+    elif store_id is not None:
         base_stmt = base_stmt.where(Reservation.store_id == store_id)
         count_stmt = count_stmt.where(Reservation.store_id == store_id)
     if status is not None:

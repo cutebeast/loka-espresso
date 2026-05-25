@@ -122,8 +122,8 @@ async def test_order_list_response_shape(
 async def test_admin_payments_list_shape(
     client: httpx.AsyncClient, admin_headers: dict, base_url: str
 ):
-    """GET /admin/payments returns paginated payment list with expected fields."""
-    r = await client.get(f"{base_url}/admin/payments?per_page=5", headers=admin_headers)
+    """GET /payments returns paginated payment list with expected fields."""
+    r = await client.get(f"{base_url}/payments?per_page=5", headers=admin_headers)
     if r.status_code == 404:
         pytest.skip("Payment list endpoint not available (404)")
     if r.status_code == 200:

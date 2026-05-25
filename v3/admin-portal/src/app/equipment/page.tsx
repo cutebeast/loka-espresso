@@ -31,27 +31,42 @@ export default function EquipmentPage() {
   const [items, setItems] = useState<Equipment[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [storeFilter, setStoreFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const perPage = 20;
+
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
       const params = new URLSearchParams();
       if (storeFilter) params.set("store_id", storeFilter);
       if (statusFilter) params.set("status", statusFilter);
-      params.set("per_page", "100");
+      params.set("per_page", String(perPage));
+      params.set("page", String(page));
       const d = await api.getRaw<any>(`/admin/equipment?${params.toString()}`);
       setItems(d?.items || []);
-    } catch (e) { console.error(e); }
+      setTotal(d?.total || 0);
+    } catch (e) { setError(e instanceof Error ? e.message : "Failed to load equipment"); }
     finally { setLoading(false); }
-  }, [storeFilter, statusFilter]);
+  }, [storeFilter, statusFilter, page]);
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('stores:',e)});
-    fetchData();
-  }, [fetchData]);
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(()=>{});
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const changePage = (delta: number) => {
+    const next = page + delta;
+    if (next >= 1 && next <= totalPages) setPage(next);
+  };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this equipment record?")) return;
@@ -72,11 +87,11 @@ export default function EquipmentPage() {
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <select className="border rounded px-3 py-2 text-sm" value={storeFilter} onChange={e => setStoreFilter(e.target.value)}>
+        <select className="border rounded px-3 py-2 text-sm" value={storeFilter} onChange={e => { setStoreFilter(e.target.value); setPage(1); }}>
           <option value="">All Stores</option>
           {stores.map((s: any) => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
-        <select className="border rounded px-3 py-2 text-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+        <select className="border rounded px-3 py-2 text-sm" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
           <option value="">All Statuses</option>
           <option value="operational">Operational</option>
           <option value="maintenance">Maintenance</option>
@@ -84,6 +99,8 @@ export default function EquipmentPage() {
           <option value="retired">Retired</option>
         </select>
       </div>
+
+      {error && <div className="alert alert-error">{error}</div>}
 
       {loading ? <p>Loading...</p> : (
         <div className="table-container">
@@ -123,6 +140,14 @@ export default function EquipmentPage() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {total > perPage && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 16 }}>
+          <button type="button" onClick={() => changePage(-1)} disabled={page <= 1} className="btn btn-ghost btn-sm" style={{ opacity: page <= 1 ? 0.4 : 1 }}>Prev</button>
+          <span style={{ fontSize: 13 }}>Page {page} of {totalPages} ({total} total)</span>
+          <button type="button" onClick={() => changePage(1)} disabled={page >= totalPages} className="btn btn-ghost btn-sm" style={{ opacity: page >= totalPages ? 0.4 : 1 }}>Next</button>
         </div>
       )}
     </div>

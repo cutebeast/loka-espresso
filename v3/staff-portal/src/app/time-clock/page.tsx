@@ -120,6 +120,7 @@ export default function TimeClockPage() {
       setElapsed(0);
       return;
     }
+    setElapsed(Math.floor((Date.now() - lastClockInMs) / 1000));
     const interval = setInterval(() => {
       setElapsed(Math.floor((Date.now() - lastClockInMs) / 1000));
     }, 1000);
@@ -160,7 +161,12 @@ export default function TimeClockPage() {
       }
       setAttemptCount(0);
       const actionFn = ALL_ACTIONS[pendingAction];
-      if (actionFn) await actionFn();
+      if (!actionFn) {
+        setError("Invalid action selected");
+        setActionLoading(false);
+        return;
+      }
+      await actionFn();
       await fetchEvents();
       setShowPin(false);
       setPin("");

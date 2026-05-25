@@ -80,6 +80,7 @@ class InventoryItem(Base, SoftDeleteMixin, TimestampMixin):
     shelf_life_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_direct_sale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    item_type: Mapped[str] = mapped_column(String(10), nullable=False, default="fnb")
 
     store: Mapped["Store"] = relationship("Store")
     category: Mapped["InventoryCategory | None"] = relationship(
@@ -101,6 +102,7 @@ class InventoryItem(Base, SoftDeleteMixin, TimestampMixin):
         CheckConstraint("par_level >= 0", name="ck_inventory_items_par_level"),
         CheckConstraint("unit_cost >= 0", name="ck_inventory_items_unit_cost"),
         CheckConstraint("shelf_life_days > 0", name="ck_inventory_items_shelf_life_days"),
+        CheckConstraint("item_type IN ('fnb','non_fnb')", name="ck_inventory_items_item_type"),
     )
 
 

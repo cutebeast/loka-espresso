@@ -23,9 +23,7 @@ export default function ItemEditPage() {
   const [dietaryTags,setDietaryTags] = useState<any[]>([]);
   const [taxCategories,setTaxCategories] = useState<any[]>([]);
   const [loyaltyTiers,setLoyaltyTiers] = useState<any[]>([]);
-  const [stores,setStores] = useState<any[]>([]);
   const [inventoryItems,setInventoryItems] = useState<any[]>([]);
-  const [recipeStoreId,setRecipeStoreId] = useState<string>("");
   const [uploading,setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -36,7 +34,6 @@ export default function ItemEditPage() {
     try{const d=await api.getRaw<any>("/admin/menu/dietary-tags?per_page=50");setDietaryTags(raw(d));}catch (e) { console.error(e); }
     try{const d=await api.getRaw<any>("/admin/menu/tax-categories");setTaxCategories(raw(d));}catch (e) { console.error(e); }
     try{const d=await api.getRaw<any>("/admin/loyalty/tiers");setLoyaltyTiers(raw(d));}catch (e) { console.error(e); }
-    try{const d=await api.getRaw<any>("/admin/stores?per_page=50");setStores(raw(d));}catch (e) { console.error(e); }
   }, []);
 
   const loadItem = useCallback(async () => {
@@ -111,9 +108,8 @@ export default function ItemEditPage() {
   const updateOpt = (gi:number, oi:number, p:any) => { const g=[...(form.modifier_groups||[])]; g[gi].options[oi]={...g[gi].options[oi],...p}; setForm({...form,modifier_groups:g}); };
   const removeOpt = (gi:number, oi:number) => { const g=[...(form.modifier_groups||[])]; g[gi].options=g[gi].options.filter((_:any,j:number)=>j!==oi); setForm({...form,modifier_groups:g}); };
 
-  const loadInventoryForStore = async (storeId:string) => {
-    if(!storeId)return;
-    try{const d=await api.getRaw<any>(`/admin/inventory/items?store_id=${storeId}&per_page=200`);setInventoryItems(Array.isArray(d)?d:(d.items||[]));}catch(e){console.error(e);setInventoryItems([]);}
+  const loadInventoryForStore = async () => {
+    try{const d=await api.getRaw<any>("/admin/inventory/items?per_page=500");setInventoryItems(Array.isArray(d)?d:(d.items||[]));}catch(e){console.error(e);setInventoryItems([]);}
   };
 
   const addRecipe = () => setForm({...form, recipes: [...(form.recipes||[]), {inventory_item_id:"",quantity_required:1,unit_of_measure:"unit",waste_factor:0.05,is_primary_component:false}]});
@@ -194,11 +190,8 @@ export default function ItemEditPage() {
                 <button type="button" onClick={addRecipe} className="btn btn-sm btn-outline"><Plus size={14}/>Add Component</button>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
-                <select className="w-full border rounded px-3 py-2 text-sm" style={{maxWidth:220}} value={recipeStoreId} onChange={e=>{setRecipeStoreId(e.target.value);loadInventoryForStore(e.target.value);}}>
-                  <option value="">— Select Store —</option>
-                  {stores.map((s:any)=><option key={s.id} value={s.id}>{s.store_name}</option>)}
-                </select>
-                <span style={{fontSize:11,color:"var(--color-text-muted)"}}>Pick a store to load its inventory</span>
+                <button type="button" onClick={() => loadInventoryForStore()} className="btn btn-sm btn-ghost" style={{fontSize:11}}>Load Inventory Items</button>
+                <span style={{fontSize:11,color:"var(--color-text-muted)"}}>{inventoryItems.length} items loaded — recipe formula is global (not per-store)</span>
               </div>
               {(form.recipes||[]).map((rc:any,ri:number)=>(
                 <div key={ri} style={{background:"var(--color-bg-muted)",borderRadius:"var(--radius-md)",padding:12,marginBottom:10,border:"1px solid var(--color-border-light)"}}>

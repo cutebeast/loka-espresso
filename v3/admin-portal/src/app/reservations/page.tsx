@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
-interface Res { id: number; customer_name?: string; customer_phone?: string; guest_count: number; reservation_date: string; reservation_time?: string; status: string; store_name?: string; }
+interface Res { id: number; customer_name?: string; customer_phone?: string; party_size: number; guest_count: number; reservation_date: string; reservation_time?: string; status: string; store_name?: string; }
 
 export default function ReservationsPage() {
   const [items, setItems] = useState<Res[]>([]);
@@ -33,7 +33,7 @@ export default function ReservationsPage() {
     try { await api.patch(`/admin/reservations/${id}/status`, { status: s }); fetch(); } catch (e) { console.error(e); }; };
 
   const sb = (s: string) => {
-    const m: Record<string, string> = { requested: "badge-yellow", confirmed: "badge-blue", seated: "badge-green", completed: "badge-green", cancelled: "badge-red", no_show: "badge-gray" };
+    const m: Record<string, string> = { requested: "badge-yellow", confirmed: "badge-blue", seated: "badge-green", completed: "badge-green", cancelled_by_guest: "badge-red", cancelled_by_merchant: "badge-red", no_show: "badge-gray" };
     return <span className={`badge badge-sm ${m[s] || "badge-gray"}`}>{s?.replace(/_/g, " ")}</span>;
   };
 
@@ -44,7 +44,7 @@ export default function ReservationsPage() {
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Stores</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select>
-        <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Status</option><option value="requested">Requested</option><option value="confirmed">Confirmed</option><option value="seated">Seated</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option><option value="no_show">No Show</option></select>
+        <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Status</option><option value="requested">Requested</option><option value="confirmed">Confirmed</option><option value="seated">Seated</option><option value="completed">Completed</option><option value="cancelled_by_guest">Cancelled by Guest</option><option value="cancelled_by_merchant">Cancelled by Merchant</option><option value="no_show">No Show</option></select>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />
       </div>
 
@@ -55,7 +55,7 @@ export default function ReservationsPage() {
           {loading ? <tr><td colSpan={7} className="data-table-empty">Loading...</td></tr>
           : items.map(r => (<tr key={r.id}>
             <td><div style={{ fontWeight: 600 }}>{r.customer_name || "—"}</div>{r.customer_phone && <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{r.customer_phone}</div>}</td>
-            <td>{r.guest_count}</td>
+            <td>{r.party_size || r.guest_count || "—"}</td>
             <td style={{ fontSize: 12 }}>{r.reservation_date?.slice(0, 10)}</td>
             <td style={{ fontSize: 12 }}>{r.reservation_time || "—"}</td>
             <td>{r.store_name || "—"}</td>
@@ -65,7 +65,7 @@ export default function ReservationsPage() {
                 {r.status === "requested" && <button type="button" onClick={() => updateStatus(r.id, "confirmed")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Confirm</button>}
                 {r.status === "confirmed" && <button type="button" onClick={() => updateStatus(r.id, "seated")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Seat</button>}
                 {r.status === "seated" && <button type="button" onClick={() => updateStatus(r.id, "completed")} className="btn btn-sm btn-primary" style={{ fontSize: 11 }}>Complete</button>}
-                {(r.status === "requested" || r.status === "confirmed") && <button type="button" onClick={() => updateStatus(r.id, "cancelled")} className="btn btn-sm btn-ghost" style={{ fontSize: 11, color: "var(--color-error)" }}>Cancel</button>}
+                {(r.status === "requested" || r.status === "confirmed") && <button type="button" onClick={() => updateStatus(r.id, "cancelled_by_merchant")} className="btn btn-sm btn-ghost" style={{ fontSize: 11, color: "var(--color-error)" }}>Cancel</button>}
               </div>
             </td>
           </tr>))}

@@ -89,14 +89,15 @@ export default function LoginPage() {
   const [nameList, setNameList] = useState<{ id: number; display_name: string }[]>([]);
   const [namesLoading, setNamesLoading] = useState(false);
   const [selectedName, setSelectedName] = useState("");
-  const [attemptCount, setAttemptCount] = useState(0);
+  const [_attemptCount, setAttemptCount] = useState(0);
+  const attemptCountRef = useRef(0);
 
   useEffect(() => {
     let mounted = true;
     const locale = typeof window !== "undefined" ? localStorage.getItem("locale") || "en" : "en";
     api.get<PaginatedResponse<StoreInfo>>(`/stores?locale=${locale}`)
       .then((d) => {
-        const list = d?.items || [];
+        const list = Array.isArray(d) ? d : (d?.items || []);
         if (mounted) setStores(list.filter((s: StoreInfo) => s.is_active !== false));
       })
       .catch((err: unknown) => { console.error("Store fetch failed:", err); if (mounted) setStores([]); });
@@ -123,7 +124,7 @@ export default function LoginPage() {
     try {
       if (!selectedStore) { setError(t("login.error_no_store")); setLoading(false); return; }
 
-      const delay = Math.min(3000, attemptCount * 1000);
+      const delay = Math.min(3000, attemptCountRef.current * 1000);
       if (delay > 0) {
         setError(t("login.error_too_many").replace("{seconds}", String(Math.ceil(delay / 1000))));
         await new Promise((r) => setTimeout(r, delay));
@@ -138,11 +139,13 @@ export default function LoginPage() {
         if (!password && !pin) { setError(t("login.error_enter_pin")); setLoading(false); return; }
         await staffLogin(email, password || pin, Number(selectedStore));
       }
+      attemptCountRef.current = 0;
       setAttemptCount(0);
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect") || "/";
       router.replace(redirect);
     } catch (err: unknown) {
+      attemptCountRef.current += 1;
       setAttemptCount((c) => c + 1);
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

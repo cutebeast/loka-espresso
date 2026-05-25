@@ -22,6 +22,7 @@ const queueColumns: { status: OrderStatus; label: string; color: string }[] = [
   { status: "confirmed", label: "Confirmed", color: "#2563EB" },
   { status: "preparing", label: "Preparing", color: "#9B6625" },
   { status: "ready_for_pickup", label: "Ready", color: "#16A34A" },
+  { status: "out_for_delivery", label: "Out for Delivery", color: "#7C3AED" },
 ];
 
 function isPaid(ps?: string): boolean {

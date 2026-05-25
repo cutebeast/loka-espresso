@@ -88,7 +88,7 @@ class AuditLog(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "action IN ('create','read','update','delete','export','login','logout','approve','reject','transfer','void')",
+            "action IN ('create','read','update','delete','export','login','logout','approve','reject','transfer','void','apply_voucher','apply_reward','wallet_payment')",
             name="ck_audit_log_action",
         ),
         CheckConstraint(

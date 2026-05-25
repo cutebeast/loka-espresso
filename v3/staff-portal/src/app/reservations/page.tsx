@@ -72,7 +72,7 @@ export default function ReservationsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [filter, setFilter] = useState<ReservationStatus | "all" | "cancelled">("all");
-  const [dateFilter, setDateFilter] = useState<string>(() => new Date().toISOString().split("T")[0] ?? "");
+  const [dateFilter, setDateFilter] = useState<string>(() => new Date().toISOString().split("T")[0]!);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

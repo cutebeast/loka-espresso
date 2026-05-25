@@ -14,6 +14,7 @@ export default function NewEquipmentPage() {
     next_maintenance_date: "", notes: "", is_active: true,
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('stores:',e)});
@@ -31,7 +32,7 @@ export default function NewEquipmentPage() {
       const r: any = await api.post("/admin/equipment", payload);
       const id = r?.id;
       if (id) router.push(`/equipment/${id}`);
-    } catch (e) { console.error(e); }
+    } catch (e: any) { setError(e?.message || "Failed to create equipment"); }
     finally { setSaving(false); }
   };
 
@@ -44,6 +45,8 @@ export default function NewEquipmentPage() {
         <button onClick={() => router.push("/equipment")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
         <div><h1 className="page-title" style={{ margin: 0 }}>New Equipment</h1></div>
       </div>
+
+      {error && <div className="alert alert-error">{error}</div>}
 
       <form onSubmit={handleSubmit} className="card" style={{ padding: 24, maxWidth: 720 }}>
         <div className="df-grid">

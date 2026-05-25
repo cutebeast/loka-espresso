@@ -85,6 +85,7 @@ export default function WalletPage() {
     } catch (err: unknown) {
       console.error("Failed to load customer wallet:", err);
       setError(err instanceof Error ? err.message : "Failed to load customer wallet");
+      setWalletData(null);
     } finally {
       setLoading(false);
     }

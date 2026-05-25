@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getOrderById, updateOrderStatus, transferTable, OrderDetail, OrderStatus } from "@/lib/api";
+import { getOrderById, getTables, updateOrderStatus, transferTable, OrderDetail, OrderStatus, type Table } from "@/lib/api";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
@@ -32,7 +32,7 @@ export default function KitchenDetailPage() {
   const [updating, setUpdating] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [showTableTransfer, setShowTableTransfer] = useState(false);
-  const [availableTables, setAvailableTables] = useState<{ id: number; table_number: string; status: string }[]>([]);
+  const [availableTables, setAvailableTables] = useState<Pick<Table, 'id' | 'table_number' | 'current_status'>[]>([]);
   const [transferring, setTransferring] = useState(false);
 
   const load = useCallback(async () => {
@@ -82,11 +82,8 @@ export default function KitchenDetailPage() {
     const storeId = typeof window !== "undefined" ? localStorage.getItem("staffStoreId") : null;
     if (!storeId) return;
     try {
-      const data = await fetch(`/api/v1/admin/stores/${storeId}/tables`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }).then((r) => r.json());
-      const items = data?.data?.items || data?.items || data || [];
-      setAvailableTables(Array.isArray(items) ? items.filter((t: { status: string }) => t.status === "available") : []);
+      const items = await getTables(Number(storeId));
+      setAvailableTables(Array.isArray(items) ? items.filter((t) => t.current_status === "available") : []);
       setShowTableTransfer(true);
     } catch { setError("Failed to load tables"); }
   };
@@ -207,6 +204,7 @@ export default function KitchenDetailPage() {
             ["Payment Status", order.payment_status || "—"],
             ["Subtotal", fmt(order.items_subtotal || 0)],
             ["Tax", fmt(order.tax_amount || 0)],
+            ["Delivery Fee", fmt(order.delivery_fee || 0)],
             ["Discount", fmt(order.discount_amount || 0)],
             ["Total", fmt(order.total_amount || 0)],
           ].map(([label, value]) => (

@@ -1,9 +1,9 @@
 """Admin equipment and maintenance tracking endpoints."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import CurrentAdmin, DBDependency
@@ -65,6 +65,87 @@ async def list_equipment(
             total_pages=(total + per_page - 1) // per_page,
         )
     )
+
+
+# ---------------------------------------------------------------------------
+# Reports Ledger (admin view of all reports across stores — must be before /{equipment_id})
+# ---------------------------------------------------------------------------
+
+@router.get("/reports", response_model=APIResponse[dict])
+async def list_equipment_reports(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    store_id: int | None = Query(None),
+    equipment_id: int | None = Query(None),
+    maintenance_type: str | None = Query(None),
+    status: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(30, ge=1, le=200),
+):
+    """Ledger view of all equipment maintenance logs / staff reports."""
+    base_stmt = select(EquipmentMaintenanceLog).join(
+        Equipment, EquipmentMaintenanceLog.equipment_id == Equipment.id
+    ).options(selectinload(EquipmentMaintenanceLog.equipment))
+    count_stmt = select(func.count(EquipmentMaintenanceLog.id)).join(
+        Equipment, EquipmentMaintenanceLog.equipment_id == Equipment.id
+    )
+
+    if store_id:
+        base_stmt = base_stmt.where(Equipment.store_id == store_id)
+        count_stmt = count_stmt.where(Equipment.store_id == store_id)
+    if equipment_id:
+        base_stmt = base_stmt.where(EquipmentMaintenanceLog.equipment_id == equipment_id)
+        count_stmt = count_stmt.where(EquipmentMaintenanceLog.equipment_id == equipment_id)
+    if maintenance_type:
+        base_stmt = base_stmt.where(EquipmentMaintenanceLog.maintenance_type == maintenance_type)
+        count_stmt = count_stmt.where(EquipmentMaintenanceLog.maintenance_type == maintenance_type)
+    if status:
+        base_stmt = base_stmt.where(EquipmentMaintenanceLog.status == status)
+        count_stmt = count_stmt.where(EquipmentMaintenanceLog.status == status)
+    if date_from:
+        base_stmt = base_stmt.where(EquipmentMaintenanceLog.created_at >= date_from)
+        count_stmt = count_stmt.where(EquipmentMaintenanceLog.created_at >= date_from)
+    if date_to:
+        base_stmt = base_stmt.where(EquipmentMaintenanceLog.created_at <= date_to)
+        count_stmt = count_stmt.where(EquipmentMaintenanceLog.created_at <= date_to)
+
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar() or 0
+
+    stmt = (
+        base_stmt
+        .order_by(EquipmentMaintenanceLog.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    result = await db.execute(stmt)
+    logs = result.scalars().all()
+
+    items = []
+    for log in logs:
+        items.append({
+            "id": log.id,
+            "equipment_id": log.equipment_id,
+            "equipment_name": log.equipment.name,
+            "equipment_type": log.equipment.equipment_type,
+            "store_id": log.equipment.store_id,
+            "maintenance_type": log.maintenance_type,
+            "status": log.status,
+            "description": log.description,
+            "performed_by": log.performed_by,
+            "image_urls": log.image_urls or [],
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        })
+
+    return APIResponse(data={
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": max(1, (total + per_page - 1) // per_page),
+    })
 
 
 @router.get("/{equipment_id}", response_model=APIResponse[EquipmentOut])

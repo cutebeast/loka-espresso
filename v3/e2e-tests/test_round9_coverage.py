@@ -84,7 +84,7 @@ async def test_staff_shift_crud(
 
     # 5. Update shift time
     r_update = await client.patch(
-        f"{base_url}/admin/staff/shifts/{shift_id}",
+        f"{base_url}/admin/staff/{staff_id}/shifts/{shift_id}",
         headers=admin_headers,
         json={"end_time": "18:00:00"},
     )
@@ -143,7 +143,7 @@ async def test_kds_order_display(
         },
     )
     assert r_reg.status_code in (200, 201), f"Register failed: {r_reg.status_code}"
-    cust_data = r_reg.json()["data"]
+    cust_data = r_reg.json()
     cust_token = cust_data["tokens"]["access_token"]
     cust_headers = {"Authorization": f"Bearer {cust_token}", "Content-Type": "application/json"}
 

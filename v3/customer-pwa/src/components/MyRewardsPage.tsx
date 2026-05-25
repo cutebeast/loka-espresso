@@ -32,7 +32,12 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
     return new Date(dateStr).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const [now] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const daysUntil = (dateStr: string | null | undefined): number | null => {
     if (!dateStr) return null;

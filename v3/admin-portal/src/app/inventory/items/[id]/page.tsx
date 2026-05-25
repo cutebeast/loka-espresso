@@ -33,7 +33,7 @@ export default function InventoryItemEditPage() {
     try {
       const d = await api.getRaw<any>(`/admin/inventory/items/${itemId}`);
       setForm({
-        item_name:d.item_name||"", item_code:d.item_code||"", description:d.description||"",
+        item_name:d.item_name||"", item_code:d.item_code||"", item_type:d.item_type||"fnb", description:d.description||"",
         category_id:d.category_id||"", supplier_id:d.supplier_id||"",
         unit_of_measure:d.unit_of_measure||"kg", current_stock:d.current_stock||0,
         reorder_level:d.reorder_level||0, unit_cost:d.unit_cost||0, is_active:d.is_active,
@@ -87,6 +87,7 @@ export default function InventoryItemEditPage() {
           <div className="df-grid">
             <div className="df-field"><label className="df-label">Name *</label><input required className="w-full border rounded px-3 py-2 text-sm" value={form.item_name||""} onChange={e=>setForm({...form,item_name:e.target.value})}/></div>
             <div className="df-field"><label className="df-label">Code</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.item_code||""} onChange={e=>setForm({...form,item_code:e.target.value})} placeholder="auto-generated"/></div>
+            <div className="df-field"><label className="df-label">Type</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.item_type||"fnb"} onChange={e=>setForm({...form,item_type:e.target.value})}><option value="fnb">FnB Item</option><option value="non_fnb">Non-FnB Item</option></select></div>
             <div className="df-field" style={{gridColumn:"1/-1"}}><label className="df-label">Description</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.description||""} onChange={e=>setForm({...form,description:e.target.value})}/></div>
             <div className="df-field"><label className="df-label">Unit</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.unit_of_measure||"kg"} onChange={e=>setForm({...form,unit_of_measure:e.target.value})}><option value="kg">kg</option><option value="g">g</option><option value="L">L</option><option value="ml">ml</option><option value="pcs">pcs</option><option value="pack">pack</option></select></div>
             <div className="df-field"><label className="df-label">Category</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.category_id||""} onChange={e=>setForm({...form,category_id:e.target.value})}><option value="">—</option>{categories.map((c:any)=><option key={c.id} value={c.id}>{c.category_name||c.name}</option>)}</select></div>

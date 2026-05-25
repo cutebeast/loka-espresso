@@ -12,7 +12,7 @@ export default function NewItemPage() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ item_name: "", item_code: "", unit_of_measure: "kg", category_id: "", supplier_id: "", current_stock: 0, reorder_level: 0, unit_cost: 0, is_active: true });
+  const [form, setForm] = useState({ item_name: "", item_code: "", item_type: "fnb", unit_of_measure: "kg", category_id: "", supplier_id: "", current_stock: 0, reorder_level: 0, unit_cost: 0, is_active: true });
 
   useEffect(() => {
     api.getRaw<any>("/admin/stores?per_page=50").then(d => { const l = d.items || []; setStores(l); if (l.length > 0) setStoreId(String(l[0].id)); }).catch((e)=>{console.error('stores:',e)});
@@ -44,6 +44,7 @@ export default function NewItemPage() {
         <form onSubmit={handleSubmit}><div className="df-grid">
           <div className="df-field"><label className="df-label">Name *</label><input required value={form.item_name} onChange={e => setForm({ ...form, item_name: e.target.value })} /></div>
           <div className="df-field"><label className="df-label">Code *</label><input required value={form.item_code} onChange={e => setForm({ ...form, item_code: e.target.value })} /></div>
+          <div className="df-field"><label className="df-label">Type</label><select value={form.item_type} onChange={e => setForm({ ...form, item_type: e.target.value })}><option value="fnb">FnB Item</option><option value="non_fnb">Non-FnB Item</option></select></div>
           <div className="df-field"><label className="df-label">Unit</label><select value={form.unit_of_measure} onChange={e => setForm({ ...form, unit_of_measure: e.target.value })}><option value="kg">kg</option><option value="g">g</option><option value="L">L</option><option value="ml">ml</option><option value="pcs">pcs</option><option value="pack">pack</option></select></div>
           <div className="df-field"><label className="df-label">Store</label><select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ width: "100%" }}>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select></div>
           <div className="df-field"><label className="df-label">Category</label><select value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })}><option value="">—</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.category_name || c.name}</option>)}</select></div>

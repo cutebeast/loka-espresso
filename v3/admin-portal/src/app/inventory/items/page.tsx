@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 
-interface InventoryItem { id: number; item_name: string; item_code: string; description?: string; current_stock: number; unit_of_measure: string; reorder_level: number; category_name?: string; is_active: boolean; }
+interface InventoryItem { id: number; item_name: string; item_code: string; item_type?: string; description?: string; current_stock: number; unit_of_measure: string; reorder_level: number; category_name?: string; is_active: boolean; }
 interface InvCategory { id: number; category_name: string; }
 interface Store { id: number; store_name: string; }
 
@@ -60,13 +60,14 @@ export default function InventoryItemsPage() {
 
       <div className="table-container" style={{ marginTop: 16 }}>
         <table className="data-table">
-          <thead><tr><th>Name</th><th>Code</th><th>Category</th><th style={{textAlign:"center"}}>Stock</th><th>Unit</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Code</th><th>Type</th><th>Category</th><th style={{textAlign:"center"}}>Stock</th><th>Unit</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={7} className="data-table-empty">Loading...</td></tr>
-            : items.map(item => (
+            {loading ? <tr><td colSpan={8} className="data-table-empty">Loading...</td></tr>
+              : items.map(item => (
               <tr key={item.id}>
                 <td><div style={{fontWeight:600}}>{item.item_name}</div>{item.description&&<div style={{fontSize:12,color:"var(--color-text-muted)"}}>{item.description.slice(0,60)}</div>}</td>
                 <td className="font-mono" style={{fontSize:12}}>{item.item_code}</td>
+                <td><span className={`badge badge-sm ${item.item_type==="non_fnb"?"badge-purple":"badge-blue"}`}>{item.item_type==="non_fnb"?"Non-FnB":"FnB"}</span></td>
                 <td>{item.category_name||"—"}</td>
                 <td style={{textAlign:"center",fontWeight:600,color:item.current_stock<=(item.reorder_level||0)?"var(--color-error)":"var(--color-success)"}}>{item.current_stock}</td>
                 <td style={{fontSize:12}}>{item.unit_of_measure}</td>

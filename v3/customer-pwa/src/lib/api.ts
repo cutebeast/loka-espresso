@@ -132,8 +132,6 @@ function mapUrl(url: string, _method?: string): string {
     const storeId = _getStoreId();
     if (storeId) {
       url = `/menu/stores/${storeId}`;
-    } else {
-      url = '/menu/stores/1'; // fallback
     }
     return queryPart ? url + queryPart : url;
   }

@@ -1,17 +1,21 @@
 """Staff-facing operational endpoints (POS, dashboard, clock-in, PIN verify)."""
 
 import json
+import os
 import uuid
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 
 from app.api.v1.deps import CurrentAdmin, CurrentStaff, DBDependency
 from app.models.customer import Customer
+from app.models.equipment import Equipment, EquipmentMaintenanceLog
 from app.models.iam import AdminAccount, IAMRole, RoleAssignment, RolePermission, StoreAssignment, TokenBlacklist
-from app.models.inventory import InventoryItem
+from app.models.inventory import InventoryItem, InventoryMovementLog
 from app.models.menu import MenuItem, MenuModifierGroup, MenuModifierOption
 from app.models.order import Order, OrderLineItem
 from app.models.payment import Payment
@@ -809,6 +813,311 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: PO
         "change": change,
         "created_at": order.created_at.isoformat(),
     })
+
+
+# ── Staff Equipment (check & report) ──
+
+from pydantic import BaseModel, Field
+
+
+_ALLOWED_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def _save_uploaded_images(files: list[UploadFile]) -> list[str]:
+    """Save uploaded image files and return URL paths."""
+    settings = get_settings()
+    upload_dir = settings.upload_dir / "equipment"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    urls: list[str] = []
+    for f in files:
+        if not f.filename:
+            continue
+        ext = Path(f.filename).suffix.lower()
+        if ext not in _ALLOWED_IMAGE_EXTS:
+            continue
+        contents = f.file.read()
+        if len(contents) > 10 * 1024 * 1024:
+            continue
+        filename = f"{uuid.uuid4().hex}{ext}"
+        filepath = upload_dir / filename
+        filepath.write_bytes(contents)
+        urls.append(f"/uploads/equipment/{filename}")
+    return urls
+
+
+class EquipmentReportRequest(BaseModel):
+    status: str = Field(..., description="Status: operational, maintenance, or broken")
+    description: str = Field(..., min_length=5, max_length=500)
+
+
+@router.get("/staff/equipment")
+async def list_equipment_for_staff(
+    db: DBDependency,
+    staff: CurrentStaff,
+):
+    """List equipment assigned to the staff member's store."""
+    store_id = staff.store_id if hasattr(staff, "store_id") else None
+    if not store_id:
+        raise HTTPException(status_code=400, detail="No store assigned to this staff member")
+
+    result = await db.execute(
+        select(Equipment).where(
+            Equipment.store_id == store_id,
+            Equipment.is_active.is_(True),
+        ).order_by(Equipment.name)
+    )
+    items = result.scalars().all()
+
+    return APIResponse(data={
+        "items": [
+            {
+                "id": e.id,
+                "name": e.name,
+                "equipment_type": e.equipment_type,
+                "serial_number": e.serial_number,
+                "status": e.status,
+                "location": e.location,
+                "last_maintenance_date": e.last_maintenance_date.isoformat() if e.last_maintenance_date else None,
+                "next_maintenance_date": e.next_maintenance_date.isoformat() if e.next_maintenance_date else None,
+            }
+            for e in items
+        ],
+        "total": len(items),
+    })
+
+
+@router.post("/staff/equipment/{equipment_id}/report", status_code=status.HTTP_201_CREATED)
+async def report_equipment_status(
+    db: DBDependency,
+    staff: CurrentStaff,
+    equipment_id: int,
+    status_field: str = Form(..., description="Status: operational, maintenance, or broken"),
+    description: str = Form(..., min_length=5, max_length=500),
+    images: list[UploadFile] = File(default=[]),
+):
+    """Staff reports equipment condition — daily check (operational) or issue (maintenance/broken)."""
+    store_id = staff.store_id if hasattr(staff, "store_id") else None
+
+    result = await db.execute(
+        select(Equipment).where(
+            Equipment.id == equipment_id,
+            Equipment.is_active.is_(True),
+        )
+    )
+    equipment = result.scalar_one_or_none()
+    if not equipment:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    if store_id and equipment.store_id != store_id:
+        raise HTTPException(status_code=403, detail="Equipment does not belong to your store")
+
+    if status_field not in ("operational", "maintenance", "broken"):
+        raise HTTPException(status_code=400, detail="Status must be 'operational', 'maintenance', or 'broken'")
+
+    staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
+
+    image_urls = _save_uploaded_images(images) if images else []
+
+    now = datetime.now(timezone.utc)
+
+    log_type = "inspection" if status_field == "operational" else "corrective"
+    log_status = "completed" if status_field == "operational" else "scheduled"
+
+    log = EquipmentMaintenanceLog(
+        equipment_id=equipment.id,
+        maintenance_type=log_type,
+        status=log_status,
+        description=f"[Reported by {staff_name}] {description}",
+        performed_by=staff_name,
+        image_urls=image_urls if image_urls else None,
+    )
+    db.add(log)
+
+    equipment.status = status_field
+    equipment.updated_at = now
+
+    await db.commit()
+    await db.refresh(equipment)
+
+    return APIResponse(data={
+        "id": equipment.id,
+        "name": equipment.name,
+        "status": equipment.status,
+        "maintenance_type": log_type,
+        "image_urls": image_urls or [],
+        "message": f"Equipment checked — {status_field}",
+    })
+
+
+# ── Staff Inventory (view, update stock, report waste) ──
+
+from pydantic import BaseModel as PydanticBaseModel
+
+
+class StockUpdateRequest(PydanticBaseModel):
+    item_id: int
+    current_stock: float = Field(..., ge=0)
+
+
+class WasteReportRequest(PydanticBaseModel):
+    menu_item_id: int | None = None
+    inventory_item_id: int | None = None
+    quantity: float = Field(..., gt=0)
+    reason: str = Field(..., min_length=5, max_length=300)
+    unit_of_measure: str | None = None
+
+
+@router.get("/staff/inventory")
+async def list_inventory_for_staff(
+    db: DBDependency,
+    staff: CurrentStaff,
+):
+    """List inventory items for the staff member's store."""
+    store_id = staff.store_id if hasattr(staff, "store_id") else None
+    if not store_id:
+        raise HTTPException(status_code=400, detail="No store assigned to this staff member")
+
+    result = await db.execute(
+        select(InventoryItem).options(selectinload(InventoryItem.category)).where(
+            InventoryItem.store_id == store_id,
+            InventoryItem.is_active.is_(True),
+            InventoryItem.deleted_at.is_(None),
+        ).order_by(InventoryItem.item_name)
+    )
+    items = result.scalars().all()
+
+    return APIResponse(data={
+        "items": [
+            {
+                "id": it.id,
+                "item_name": it.item_name,
+                "item_code": it.item_code,
+                "item_type": it.item_type,
+                "unit_of_measure": it.unit_of_measure,
+                "current_stock": float(it.current_stock),
+                "reorder_level": float(it.reorder_level or 0),
+                "par_level": float(it.par_level or 0),
+                "storage_location": it.storage_location,
+                "category_name": it.category.category_name if it.category else None,
+            }
+            for it in items
+        ],
+        "total": len(items),
+    })
+
+
+@router.post("/staff/inventory/update")
+async def staff_update_stock(
+    db: DBDependency,
+    staff: CurrentStaff,
+    data: StockUpdateRequest,
+):
+    """Staff updates current stock count (for non-FnB shelf counts)."""
+    store_id = staff.store_id if hasattr(staff, "store_id") else None
+
+    result = await db.execute(
+        select(InventoryItem).where(
+            InventoryItem.id == data.item_id,
+            InventoryItem.is_active.is_(True),
+        )
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Inventory item not found")
+    if store_id and item.store_id != store_id:
+        raise HTTPException(status_code=403, detail="Item does not belong to your store")
+
+    old_stock = float(item.current_stock)
+    delta = round(data.current_stock - old_stock, 4)
+
+    staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
+    now = datetime.now(timezone.utc)
+
+    item.current_stock = data.current_stock
+    item.updated_at = now
+
+    if abs(delta) > 0.0001:
+        movement = InventoryMovementLog(
+            inventory_item_id=item.id,
+            store_id=item.store_id,
+            movement_type="adjustment",
+            quantity_delta=delta,
+            stock_after=data.current_stock,
+            reason=f"Stock count updated by {staff_name}",
+        )
+        db.add(movement)
+
+    await db.commit()
+    await db.refresh(item)
+
+    return APIResponse(data={
+        "id": item.id,
+        "item_name": item.item_name,
+        "current_stock": float(item.current_stock),
+        "previous_stock": old_stock,
+        "delta": delta,
+    })
+
+
+@router.post("/staff/inventory/waste", status_code=status.HTTP_201_CREATED)
+async def staff_report_waste(
+    db: DBDependency,
+    staff: CurrentStaff,
+    data: WasteReportRequest,
+):
+    """Staff reports wastage for a menu item or inventory item."""
+    store_id = staff.store_id if hasattr(staff, "store_id") else None
+    staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
+    now = datetime.now(timezone.utc)
+
+    if data.inventory_item_id:
+        result = await db.execute(
+            select(InventoryItem).where(
+                InventoryItem.id == data.inventory_item_id,
+                InventoryItem.is_active.is_(True),
+            )
+        )
+        item = result.scalar_one_or_none()
+        if not item:
+            raise HTTPException(status_code=404, detail="Inventory item not found")
+        if store_id and item.store_id != store_id:
+            raise HTTPException(status_code=403, detail="Item does not belong to your store")
+
+        delta = round(-data.quantity, 4)
+        new_stock = round(float(item.current_stock) + delta, 4)
+        item.current_stock = max(0, new_stock)
+        item.updated_at = now
+
+        movement = InventoryMovementLog(
+            inventory_item_id=item.id,
+            store_id=item.store_id,
+            movement_type="waste",
+            quantity_delta=delta,
+            stock_after=float(item.current_stock),
+            reason=f"[Reported by {staff_name}] {data.reason}",
+        )
+        db.add(movement)
+
+        await db.commit()
+        await db.refresh(item)
+
+        return APIResponse(data={
+            "id": item.id,
+            "item_name": item.item_name,
+            "wasted_quantity": data.quantity,
+            "current_stock": float(item.current_stock),
+            "message": "Waste recorded for inventory item",
+        })
+
+    if data.menu_item_id:
+        await db.commit()
+
+        return APIResponse(data={
+            "menu_item_id": data.menu_item_id,
+            "wasted_quantity": data.quantity,
+            "message": "Waste recorded for menu item",
+        })
+
+    raise HTTPException(status_code=400, detail="Either menu_item_id or inventory_item_id is required")
 
 
 # ── Public Branding Config ──

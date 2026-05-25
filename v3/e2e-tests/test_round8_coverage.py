@@ -15,6 +15,7 @@ import pytest
 import httpx
 import uuid
 from datetime import datetime, timezone
+from conftest import ADMIN_EMAIL, ADMIN_PASSWORD
 
 pytestmark = [pytest.mark.admin]
 
@@ -74,7 +75,7 @@ async def test_voucher_create_and_redeem_flow(
         # Try to issue a voucher via direct assignment
         try:
             r_assign = await client.post(
-                f"{base_url}/admin/customers/{customer_id}/vouchers",
+                f"{base_url}/admin/customers/{customer_id}/award-voucher",
                 headers=admin_headers,
                 json={"voucher_definition_id": voucher_def_id},
             )
@@ -126,7 +127,7 @@ async def test_staff_clock_in_flow(client: httpx.AsyncClient, base_url: str, sto
     """Staff login, clock in, verify time event created, clock out."""
     # 1. Login as staff
     r_login = await client.post(f"{base_url}/staff/auth/login", json={
-        "email": "admin@lokaespresso.my",
+        "email": ADMIN_EMAIL,
         "password": "admin123",
         "store_id": store_id,
     })
@@ -307,7 +308,7 @@ async def test_customer_address_crud(
     }
     try:
         r_create = await client.post(
-            f"{base_url}/customer/addresses",
+            f"{base_url}/me/addresses",
             headers=headers,
             json=address_payload,
         )
@@ -324,7 +325,7 @@ async def test_customer_address_crud(
     assert address_id is not None, f"No address ID in response: {create_data}"
 
     # READ addresses back
-    r_list = await client.get(f"{base_url}/customer/addresses", headers=headers)
+    r_list = await client.get(f"{base_url}/me/addresses", headers=headers)
     assert r_list.status_code == 200
     addresses = r_list.json()["data"]
     if isinstance(addresses, dict) and "items" in addresses:
@@ -338,7 +339,7 @@ async def test_customer_address_crud(
     update_payload = {"address_label": "Office", "street_address": "456 Work Avenue"}
     try:
         r_update = await client.patch(
-            f"{base_url}/customer/addresses/{address_id}",
+            f"{base_url}/me/addresses/{address_id}",
             headers=headers,
             json=update_payload,
         )
@@ -356,7 +357,7 @@ async def test_customer_address_crud(
     # DELETE address
     try:
         r_delete = await client.delete(
-            f"{base_url}/customer/addresses/{address_id}",
+            f"{base_url}/me/addresses/{address_id}",
             headers=headers,
         )
     except httpx.ConnectError:
@@ -369,7 +370,7 @@ async def test_customer_address_crud(
     )
 
     # Verify address is gone
-    r_list2 = await client.get(f"{base_url}/customer/addresses", headers=headers)
+    r_list2 = await client.get(f"{base_url}/me/addresses", headers=headers)
     assert r_list2.status_code == 200
     after_data = r_list2.json()["data"]
     if isinstance(after_data, dict) and "items" in after_data:
@@ -391,7 +392,7 @@ async def test_token_blacklist_prevention(client: httpx.AsyncClient, base_url: s
     """Use a refresh token once, then try to reuse — second attempt must fail."""
     # Login as staff to get access + refresh tokens
     r_login = await client.post(f"{base_url}/staff/auth/login", json={
-        "email": "admin@lokaespresso.my",
+        "email": ADMIN_EMAIL,
         "password": "admin123",
         "store_id": 1,
     })

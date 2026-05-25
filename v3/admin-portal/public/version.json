@@ -2,9 +2,9 @@
   "app": "admin-portal",
   "name": "Admin Portal",
   "version": "0.1.0",
-  "commit": "22e6650",
+  "commit": "b58a2fa",
   "branch": "master",
-  "builtAt": 1779652107348,
-  "commitAt": 1779649301000,
+  "builtAt": 1779681922489,
+  "commitAt": 1779671330000,
   "environment": "production"
 }

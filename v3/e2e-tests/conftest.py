@@ -197,13 +197,14 @@ def discovered_store_id(base_url: str) -> int:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="session", autouse=True)
-def _ensure_baseline_data(base_url: str, admin_headers: dict):
+def _ensure_baseline_data(base_url: str, _admin_token_session: str):
     """Create minimum test data via API if DB is blank (no stores exist).
 
     The seed_v3.py bootstrap only creates the admin account. Everything else —
     stores, loyalty tiers, menu items — is created here via the admin API.
     This keeps the seed minimal and tests self-contained.
     """
+    admin_headers = {"Authorization": f"Bearer {_admin_token_session}", "Content-Type": "application/json"}
     created = False
     try:
         with httpx.Client(timeout=15.0) as c:

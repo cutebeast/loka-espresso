@@ -50,7 +50,7 @@ export default function CustomersPage() {
 
       <div style={{ marginBottom: 16, maxWidth: 400 }}>
         <div style={{ position: "relative" }}>
-          <label htmlFor="customer-search" style={{ position: "absolute", left: -9999, width: 1, height: 1, overflow: "hidden" }}>Search customers</label>
+          <label htmlFor="customer-search" style={{ position: "absolute", left: "-9999px", width: 1, height: 1, overflow: "hidden" }}>Search customers</label>
           <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-text-muted)" }} />
           <input id="customer-search" type="text" value={search} onChange={e => { setSearch(e.target.value); pagination.setPage(1); }}
             placeholder="Search by name, phone, or email..."

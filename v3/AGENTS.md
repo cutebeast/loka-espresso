@@ -269,7 +269,7 @@ cd customer-pwa && npm run build
 - `seed_pwa_translations.py` deleted (unused; PWA translations from admin panel)
 - Seed config keys fixed: `otp_bypass_enabled` → `otp.bypass_enabled`
 
-### Remaining Known (Round 10 Post-Fix)
+### Remaining Known (Round 11 Post-Fix)
 
 | Domain | Item | Status |
 |--------|------|--------|
@@ -277,6 +277,65 @@ cd customer-pwa && npm run build
 | Staff | QR payment gateway | Pending third-party integration |
 | Staff | Bill splitting | Not needed (premium KL venues: KLCC, TRX, Pavilion) |
 | Customer PWA | i18n ~25 lines incomplete | English fallback automatic |
+
+### Round 11 Audit & Remediation (2026-05-25) — Backend crash fixes + equipment/inventory redesign
+
+**Backend orders.py crash bugs:**
+- **Missing model imports**: `CustomerVoucher`, `VoucherDefinition`, `CustomerReward`, `RewardCatalog`, `Wallet`, `WalletLedgerEntry` added
+- **AuditLog wrong field names**: `actor_id`→`principal_id`, `target_type`→`resource_type`, `target_id`→`resource_id`, `details`→`changes_summary`
+- **AuditAction enum expanded**: Added `apply_voucher`, `apply_reward`, `wallet_payment` + CHECK constraint + migration `a1b2c3d4e5f6`
+- **OrderLineItem wrong field names**: `item_name`→`item_snapshot`(JSONB), `total_price`→`line_total`, `modifier_ids`→`selected_modifiers`(JSONB)
+- **set[int] comparison**: `isinstance(store_id, (list, set))` in both `orders.py` and `reservations.py`
+- **reservations.py regression**: Restored accidentally-removed `base_stmt`/`count_stmt` definitions (`UnboundLocalError` fix)
+
+**Staff portal — API + 8 page fixes:**
+- **API client**: `request<T>` returns `(data.items ?? [])` (was paginated wrapper — fix claimed in R10 but code unchanged)
+- **Login page**: `Array.isArray` guard handles both array and wrapper responses
+- **Kitchen detail**: Raw `fetch()` → `getTables()` via API client
+- **Orders page**: Added `out_for_delivery` kanban column
+- **Time-clock**: Invalid `pendingAction` now shows error instead of silent failure
+- **Wallet page**: `walletData` reset to null on fetch failure (stale data leak fix)
+- **Kitchen page**: Removed dead `_updatingId`; `prevCountRef` updated in finally
+- **Tables page**: `URL.revokeObjectURL()` for QR blob cleanup
+- **Reservations page**: Dead `?? ""` removed from date filter
+- **Time-clock**: Timer flicker on break return fixed
+- **Equipment page**: Invalid date guard for maintenance dates
+
+**Staff portal — Equipment redesign (check & report):**
+- **New endpoints**: `GET /staff/equipment` (list for store), `POST /staff/equipment/{id}/report` (operational/maintenance/broken with image uploads)
+- **Model**: Added `image_urls`(JSONB) to `EquipmentMaintenanceLog` + migration `18e8ade63ebb`
+- **UI**: Report button on every equipment card → inline form with status dropdown + description + 5-image upload + previews
+
+**Staff portal — Inventory management (new):**
+- **New endpoints**: `GET /staff/inventory` (list), `POST /staff/inventory/update` (stock count), `POST /staff/inventory/waste` (menu item + inventory item waste)
+- **Model**: Added `item_type`(fnb/non_fnb) to `InventoryItem` + CHECK constraint + migration `060b141b5548`
+- **New page**: `/inventory` — view stock, update counts for non-FnB items, report waste (menu items + inventory items)
+
+**Admin portal — Fixes + new features:**
+- **Reservations page**: Status filter/update use `cancelled_by_guest`/`cancelled_by_merchant` (was invalid `cancelled`); badge map + cancel button fixed; `party_size` field fix
+- **Equipment pages**: Added pagination + Prev/Next controls; create page error feedback
+- **Equipment reports ledger**: New page at `/equipment/reports` — table of all maintenance logs with store/type/date filters, photo gallery modal
+- **Menu item editor**: Removed per-store recipe filter (recipes are global, not store-scoped); inventory items loaded globally
+- **Inventory**: Added `item_type` toggle (FnB/Non-FnB) to create/edit pages + list table
+- **Customers page**: CSS unit fix (`left: -9999px`)
+- **Layout**: Favicon cleanup scoped to created element
+- **Settings**: Typo fix ("confiration" → "confirmation")
+- **Sidebar**: Equipment now has submenu (Equipment List + Reports Ledger)
+
+**Customer PWA fixes:**
+- **Menu fallback**: Removed hardcoded store ID 1 — unmapped URL returns gracefully
+- **Cart sync**: `_syncLock` boolean → promise-based queue (concurrent calls serialize instead of drop)
+- **MyRewards timer**: `Date.now()` updates every 60s (was frozen on mount)
+- **Focus trap**: `aria-hidden` filter fixed — `"false"` string no longer treated as hidden
+
+**E2E tests:**
+- **ScopeMismatch**: `_ensure_baseline_data` uses `_admin_token_session`(session) instead of `admin_headers`(function)
+- **Wrong admin email**: Hardcoded `admin@lokaespresso.my` → `ADMIN_EMAIL` from conftest
+- **Wrong endpoint paths**: `/customer/addresses`→`/me/addresses`, `/admin/customers/{id}/vouchers`→`/award-voucher`, `/admin/payments`→`/payments`
+- **Wrong response parsing**: Register response `r.json()["data"]` → `r.json()` (no data wrapper)
+- **Staff shift PATCH**: Added missing `{staff_id}` segment
+
+**Verification**: TypeScript 0 errors, ESLint 0 warnings across all 3 portals. All 4 services healthy.
 
 ### Staff Portal — F&B Workflow Coverage
 

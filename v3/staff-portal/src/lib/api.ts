@@ -121,7 +121,7 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
     if (json && typeof json === "object" && "data" in json) {
       const data = json.data;
       if (data && typeof data === "object" && Array.isArray((data as Record<string, unknown>).items)) {
-        return { items: data.items, total: data.total, page: data.page, total_pages: data.total_pages } as unknown as T;
+        return (data.items ?? []) as unknown as T;
       }
       return data as T;
     }
@@ -173,7 +173,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, signa
     const json = await res.json();
     if (json && typeof json === "object" && "data" in json) {
       const data = json.data;
-      if (data && typeof data === "object" && "items" in data) return (data.items ?? []) as T;
+      if (data && typeof data === "object" && Array.isArray((data as Record<string, unknown>).items)) return (data.items ?? []) as T;
       return data as T;
     }
     return json as T;

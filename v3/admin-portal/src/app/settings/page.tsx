@@ -15,7 +15,7 @@ const SECTIONS: { title: string; description: string; prefix: string }[] = [
   { title: "Orders", description: "Auto-confirm, preparation time", prefix: "order." },
   { title: "Notifications", description: "Retention and delivery settings", prefix: "notifications." },
   { title: "Upload", description: "File upload limits", prefix: "upload." },
-  { title: "Reservation", description: "SMS/WhatsApp confiration & default duration", prefix: "reservation." },
+  { title: "Reservation", description: "SMS/WhatsApp confirmation & default duration", prefix: "reservation." },
 ];
 
 function ConfigRow({ item, onSave, saving }: { item: ConfigItem; onSave: (item: ConfigItem, newValue: string) => void; saving: string | null }) {

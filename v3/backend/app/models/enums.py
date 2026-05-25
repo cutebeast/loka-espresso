@@ -151,6 +151,7 @@ VoucherType = Enum(
 AuditAction = Enum(
     "create", "read", "update", "delete", "export", "login", "logout",
     "approve", "reject", "transfer", "void",
+    "apply_voucher", "apply_reward", "wallet_payment",
     name="audit_action",
     native_enum=True,
     create_type=False,

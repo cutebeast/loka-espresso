@@ -14,7 +14,10 @@ from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLine
 from app.models.menu import MenuItem
 from app.models.platform import AuditLog
 from app.models.pos import OrderModificationLog
+from app.models.reward import CustomerReward, RewardCatalog
 from app.models.store import DiningTable
+from app.models.voucher import CustomerVoucher, VoucherDefinition
+from app.models.wallet import Wallet, WalletLedgerEntry
 from app.schemas.base import APIResponse, PaginatedResponse, BaseSchema
 from app.schemas.order import (
     ApplyOrderRewardRequest,
@@ -90,7 +93,7 @@ async def list_orders(
         base_stmt = base_stmt.where(Order.payment_status == payment_status)
         count_stmt = count_stmt.where(Order.payment_status == payment_status)
     if store_id:
-        if isinstance(store_id, list):
+        if isinstance(store_id, (list, set)):
             base_stmt = base_stmt.where(Order.store_id.in_(store_id))
             count_stmt = count_stmt.where(Order.store_id.in_(store_id))
         else:
@@ -469,11 +472,11 @@ async def apply_order_voucher(
 
     # Audit log
     db.add(AuditLog(
-        actor_id=admin.id,
-        action="voucher.apply_to_order",
-        target_type="order",
-        target_id=order_id,
-        details={"voucher_code": voucher_code, "discount": discount, "customer_id": order.customer_id},
+        principal_id=admin.id,
+        action="apply_voucher",
+        resource_type="order",
+        resource_id=order_id,
+        changes_summary={"voucher_code": voucher_code, "discount": discount, "customer_id": order.customer_id},
     ))
 
     await db.commit()
@@ -563,11 +566,11 @@ async def apply_order_reward(
 
     # Audit log
     db.add(AuditLog(
-        actor_id=admin.id,
-        action="reward.apply_to_order",
-        target_type="order",
-        target_id=order_id,
-        details={"reward_id": reward_id, "discount": discount, "customer_id": order.customer_id},
+        principal_id=admin.id,
+        action="apply_reward",
+        resource_type="order",
+        resource_id=order_id,
+        changes_summary={"reward_id": reward_id, "discount": discount, "customer_id": order.customer_id},
     ))
 
     await db.commit()
@@ -676,11 +679,11 @@ async def pay_with_wallet(
 
     # Audit log
     db.add(AuditLog(
-        actor_id=admin.id,
-        action="wallet.pay_for_order",
-        target_type="order",
-        target_id=order_id,
-        details={"amount": amount, "remaining_balance": new_balance, "customer_id": order.customer_id},
+        principal_id=admin.id,
+        action="wallet_payment",
+        resource_type="order",
+        resource_id=order_id,
+        changes_summary={"amount": amount, "remaining_balance": new_balance, "customer_id": order.customer_id},
     ))
 
     await db.commit()
@@ -744,11 +747,11 @@ async def add_order_line_item(
     line_item = OrderLineItem(
         order_id=order.id,
         menu_item_id=menu_item.id,
-        item_name=menu_item.item_name,
+        item_snapshot={"item_name": menu_item.item_name},
         quantity=data.quantity,
         unit_price=price,
-        total_price=total,
-        modifier_ids=data.modifier_ids or None,
+        line_total=total,
+        selected_modifiers=data.modifier_ids or {},
         special_instructions=data.special_instructions,
     )
     db.add(line_item)
@@ -767,7 +770,7 @@ async def add_order_line_item(
     db.add(log)
     await db.commit()
     await db.refresh(line_item)
-    return APIResponse(data={"id": line_item.id, "order_id": order.id, "item_name": line_item.item_name, "total": total}, status_code=201)
+    return APIResponse(data={"id": line_item.id, "order_id": order.id, "item_name": line_item.item_snapshot.get("item_name"), "total": total}, status_code=201)
 
 
 @router.delete("/{order_id}/items/{line_item_id}", response_model=APIResponse[dict])
@@ -797,7 +800,7 @@ async def remove_order_line_item(
     if not line_item:
         raise HTTPException(status_code=404, detail="Line item not found")
 
-    removed_total = float(line_item.total_price or 0)
+    removed_total = float(line_item.line_total or 0)
     order.items_subtotal = float(order.items_subtotal or 0) - removed_total
     order.item_count = max(0, (order.item_count or 0) - (line_item.quantity or 1))
     order.total_amount = round(float(order.items_subtotal or 0) + float(order.modifier_subtotal or 0) + float(order.delivery_fee or 0) + float(order.service_charge or 0) + float(order.tax_amount or 0) - float(order.discount_amount or 0) - float(order.voucher_discount or 0) - float(order.reward_discount or 0), 2)
@@ -809,7 +812,7 @@ async def remove_order_line_item(
         staff_id=admin.id,
         modification_type="remove_item",
         line_item_id=line_item.id,
-        previous_value={"item_name": line_item.item_name, "total_price": removed_total},
+        previous_value={"item_name": line_item.item_snapshot.get("item_name"), "total_price": removed_total},
         reason=reason,
     )
     db.add(log)

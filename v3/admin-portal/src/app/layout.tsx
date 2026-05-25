@@ -59,6 +59,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!faviconUrl) return;
+    let created: HTMLLinkElement | null = null;
     const link = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
     if (link) {
       link.type = "image/svg+xml";
@@ -69,10 +70,12 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       el.type = "image/svg+xml";
       el.href = faviconUrl;
       document.head.appendChild(el);
+      created = el;
     }
     return () => {
-      const existing = document.querySelector("link[rel='icon']");
-      if (existing) existing.remove();
+      if (created) {
+        created.remove();
+      }
     };
   }, [faviconUrl]);
 
