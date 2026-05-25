@@ -80,7 +80,7 @@ export default function LoginPage() {
   const { t } = useTranslation();
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [selectedStore, setSelectedStore] = useState("");
-  const [mode, setMode] = useState<"admin" | "staff">("staff");
+  const [mode, setMode] = useState<"email" | "name">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pin, setPin] = useState("");
@@ -104,7 +104,7 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedStore || mode !== "staff") return;
+    if (!selectedStore || mode !== "name") return;
     let mounted = true;
     setNamesLoading(true);
     api.get<{ id: number; display_name: string }[]>(`/staff/auth/names?store_id=${selectedStore}`)
@@ -130,13 +130,13 @@ export default function LoginPage() {
         setError("");
       }
 
-      if (mode === "staff") {
+      if (mode === "name") {
         if (!selectedName) { setError(t("login.error_select_name")); setLoading(false); return; }
         await staffLoginByName(selectedName, pin, Number(selectedStore));
       } else {
         if (!email) { setError(t("login.error_enter_email")); setLoading(false); return; }
-        if (!password) { setError(t("login.error_enter_pin")); setLoading(false); return; }
-        await staffLogin(email, password, Number(selectedStore));
+        if (!password && !pin) { setError(t("login.error_enter_pin")); setLoading(false); return; }
+        await staffLogin(email, password || pin, Number(selectedStore));
       }
       setAttemptCount(0);
       const params = new URLSearchParams(window.location.search);
@@ -178,23 +178,23 @@ export default function LoginPage() {
         {/* Mode Toggle */}
         <div className="login-mode-toggle">
           <button
-            onClick={() => setMode("staff")}
-            className={`btn flex-1 justify-center ${mode === "staff" ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setMode("email")}
+            className={`btn flex-1 justify-center ${mode === "email" ? "btn-primary" : "btn-ghost"}`}
           >
-            {t("login.mode_staff")}
+            {t("login.mode_email")}
           </button>
           <button
-            onClick={() => setMode("admin")}
-            className={`btn flex-1 justify-center ${mode === "admin" ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setMode("name")}
+            className={`btn flex-1 justify-center ${mode === "name" ? "btn-primary" : "btn-ghost"}`}
           >
-            {t("login.mode_admin")}
+            {t("login.mode_name")}
           </button>
         </div>
 
         {error && <div className="alert alert-error mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === "admin" ? (
+          {mode === "email" ? (
             <div className="form-group">
               <label className="form-label flex items-center gap-2">
                 <Mail size={16} className="login-icon-primary" /> {t("login.email_label")}
@@ -222,16 +222,16 @@ export default function LoginPage() {
 
           <div className="form-group">
             <label className="form-label flex items-center gap-2">
-              <Lock size={16} className="login-icon-primary" /> {mode === "admin" ? t("login.password_label") : t("login.pin_label_short")}
+              <Lock size={16} className="login-icon-primary" /> {t("login.pin_label")}
             </label>
             <input
               type="password"
               required
-              value={mode === "admin" ? password : pin}
-              onChange={e => mode === "admin" ? setPassword(e.target.value) : setPin(e.target.value)}
-              placeholder={mode === "admin" ? t("login.password_placeholder") : t("login.pin_placeholder_short")}
-              maxLength={mode === "admin" ? 50 : 6}
-              className={`form-input ${mode === "staff" ? "login-input-center" : ""}`}
+              value={mode === "email" ? password : pin}
+              onChange={e => mode === "email" ? setPassword(e.target.value) : setPin(e.target.value)}
+              placeholder={t("login.pin_placeholder")}
+              maxLength={mode === "email" ? 50 : 6}
+              className={`form-input ${mode === "name" ? "login-input-center" : ""}`}
             />
           </div>
 

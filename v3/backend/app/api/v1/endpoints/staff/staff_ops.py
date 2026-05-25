@@ -42,8 +42,8 @@ router = APIRouter(tags=["staff — operations"])
 # ── Staff Auth (login, verify) ──
 
 @router.get("/staff/auth/names")
-async def staff_name_list(db: DBDependency, admin: CurrentAdmin, store_id: int | None = None):
-    """List staff display names for the login dropdown, optionally filtered by store."""
+async def staff_name_list(db: DBDependency, store_id: int | None = None):
+    """List staff display names for the login dropdown."""
     q = select(StaffProfile.id, StaffProfile.display_name, Store.store_name).join(Store, StaffProfile.store_id == Store.id).where(StaffProfile.deleted_at.is_(None), StaffProfile.is_active.is_(True))
     if store_id:
         q = q.where(StaffProfile.store_id == store_id)
