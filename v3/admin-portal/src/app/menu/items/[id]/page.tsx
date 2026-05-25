@@ -93,7 +93,7 @@ export default function ItemEditPage() {
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [id]);
 
-  useEffect(()=>{loadItem(); loadRefs();},[id, loadItem, loadRefs]);
+  useEffect(()=>{loadItem(); loadRefs(); loadInventoryForStore();},[id, loadItem, loadRefs]);
 
   const toggleTag = (type:"allergen"|"dietary", aid:number) => {
     const key = type==="allergen"?"allergen_ids":"dietary_tag_ids";
@@ -108,9 +108,9 @@ export default function ItemEditPage() {
   const updateOpt = (gi:number, oi:number, p:any) => { const g=[...(form.modifier_groups||[])]; g[gi].options[oi]={...g[gi].options[oi],...p}; setForm({...form,modifier_groups:g}); };
   const removeOpt = (gi:number, oi:number) => { const g=[...(form.modifier_groups||[])]; g[gi].options=g[gi].options.filter((_:any,j:number)=>j!==oi); setForm({...form,modifier_groups:g}); };
 
-  const loadInventoryForStore = async () => {
+  const loadInventoryForStore = useCallback(async () => {
     try{const d=await api.getRaw<any>("/admin/inventory/items?per_page=500");setInventoryItems(Array.isArray(d)?d:(d.items||[]));}catch(e){console.error(e);setInventoryItems([]);}
-  };
+  }, []);
 
   const addRecipe = () => setForm({...form, recipes: [...(form.recipes||[]), {inventory_item_id:"",quantity_required:1,unit_of_measure:"unit",waste_factor:0.05,is_primary_component:false}]});
   const updateRecipe = (i:number, p:any) => { const r=[...(form.recipes||[])]; r[i]={...r[i],...p}; setForm({...form,recipes:r}); };
