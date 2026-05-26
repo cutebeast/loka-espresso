@@ -63,7 +63,7 @@ export default function EquipmentPage() {
   };
 
   const handleReport = async () => {
-    if (!reporting || reportDesc.trim().length < 5) return;
+    if (!reporting || reportDesc.trim().length < 2) { setError("Please enter a note (min 2 characters)"); return; }
     setSubmitting(true);
     setError("");
     setSuccess("");
@@ -130,7 +130,12 @@ export default function EquipmentPage() {
               <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>Condition</label>
               <select
                 value={reportStatus}
-                onChange={(e) => setReportStatus(e.target.value)}
+                onChange={(e) => {
+                  setReportStatus(e.target.value);
+                  if (e.target.value === "operational" && reportDesc.trim().length < 2) {
+                    setReportDesc("Checked OK");
+                  }
+                }}
                 style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
               >
                 <option value="operational">Operational — Checked OK</option>
