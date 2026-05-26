@@ -8,7 +8,7 @@ import type { PageId } from '@/lib/api';
 const VALID_PAGES: PageId[] = [
   'home', 'menu', 'rewards', 'cart', 'orders', 'checkout', 'profile',
   'wallet', 'history', 'promotions', 'information', 'my-rewards',
-  'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'referral', 'reservations', 'events',
+  'account-details', 'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'order-detail', 'referral', 'reservations', 'events', 'checkin',
 ];
 
 export const SUB_PAGES: PageId[] = [

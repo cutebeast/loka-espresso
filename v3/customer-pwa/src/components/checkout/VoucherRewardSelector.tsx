@@ -41,7 +41,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
     setVoucherError('');
     try {
       const res = await api.post('/vouchers/validate', { voucher_code: voucherInput.trim(), order_total: subtotal });
-      const discountVal = res.data?.discount_value || 0;
+      const discountVal = res.data?.discount_value ?? res.data?.discount_amount ?? res.data?.calculated_discount ?? 0;
       onChange('voucher', voucherInput.trim(), discountVal);
     } catch {
       setVoucherError(t('checkout.invalidVoucher'));

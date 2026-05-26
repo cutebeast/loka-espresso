@@ -65,7 +65,7 @@ export default function CartPage() {
   const [editLoading, setEditLoading] = useState(false);
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const subtotal = getTotal();
-  const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
+  const deliveryFee = orderMode === 'delivery' ? (selectedStore?.delivery_fee ?? config.delivery_fee) : 0;
   const total = subtotal + deliveryFee;
   const itemCount = getItemCount();
   const belowDeliveryMinimum = orderMode === 'delivery' && config.min_order_delivery > 0 && subtotal < config.min_order_delivery;

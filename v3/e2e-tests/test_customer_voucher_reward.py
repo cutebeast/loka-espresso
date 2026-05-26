@@ -48,37 +48,30 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
         "scope": "global",
     })
     voucher_code = None
+    vd_id = None
     if vd.status_code in (200, 201):
         vd_data = vd.json().get("data", {})
         voucher_code = vd_data.get("voucher_code", "E2ETESTFIXED5")
+        vd_id = vd_data.get("id")
     else:
         print(f"Voucher create: {vd.status_code} {vd.text}")
         voucher_code = "E2ETESTFIXED5"
 
-    # Assign voucher to customer
-    r_assign = await client.post(
-        f"{base_url}/admin/vouchers/assign",
-        headers={"Authorization": f"Bearer {admin_token}"},
-        json={
-            "customer_phone": CUSTOMER_PHONE,
-            "voucher_code": voucher_code,
-            "store_id": store_id,
-        },
-    )
-    # Note: if assign fails (endpoint name may differ), skip
+    # Assign voucher to customer via award-voucher endpoint
+    me = await client.get(f"{base_url}/me", headers={"Authorization": f"Bearer {token}"})
+    if me.status_code == 200:
+        cust_id = me.json().get("data", {}).get("profile", {}).get("id")
+        if not cust_id:
+            pytest.skip("Cannot determine customer ID from /me response")
+        r_assign = await client.post(
+            f"{base_url}/admin/customers/{cust_id}/award-voucher",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"voucher_id": vd_id or 1, "reason": "E2E test assignment"},
+        )
+    else:
+        r_assign = httpx.Response(400)
     if r_assign.status_code >= 400:
-        # Try the award-voucher endpoint via customer ID
-        me = await client.get(f"{base_url}/me", headers={"Authorization": f"Bearer {token}"})
-        if me.status_code == 200:
-            cust_id = me.json().get("data", {}).get("id")
-            # Award voucher via admin
-            r_assign = await client.post(
-                f"{base_url}/admin/customers/{cust_id}/award-voucher",
-                headers={"Authorization": f"Bearer {admin_token}"},
-                json={"voucher_code": voucher_code, "store_id": store_id},
-            )
-        if r_assign.status_code >= 400:
-            pytest.skip(f"Cannot assign voucher to customer: {r_assign.status_code} {r_assign.text}")
+        pytest.skip(f"Cannot assign voucher to customer: {r_assign.status_code} {r_assign.text}")
 
     # Get customer's vouchers to find the assigned code
     r_vc = await client.get(f"{base_url}/vouchers/me", headers={
@@ -104,9 +97,9 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
         pytest.skip("No menu items available")
     menu_item_id = items_data[0]["id"]
 
-    await client.post(f"{base_url}/cart/items", headers={
+    await client.post(f"{base_url}/cart/items?store_id={store_id}", headers={
         "Authorization": f"Bearer {token}",
-    }, json={"menu_item_id": menu_item_id, "quantity": 2, "store_id": store_id})
+    }, json={"menu_item_id": menu_item_id, "quantity": 2})
 
     # Place order with voucher
     r_order = await client.post(f"{base_url}/orders", headers={

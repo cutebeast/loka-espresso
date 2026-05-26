@@ -443,9 +443,13 @@ export default function AppShell() {
                   tableNumber: data.table_number,
                 });
                 setOrderMode('dine_in');
-                const storeRes = await api.get('/content/stores');
-                const storeList: StoreType[] = storeRes.data;
-                const found = storeList.find((s) => s.id === data.store_id);
+                let found = stores.find((s) => s.id === data.store_id);
+                if (!found) {
+                  const storeRes = await api.get('/content/stores');
+                  const storeList: StoreType[] = storeRes.data;
+                  if (storeList.length > 0) setStores(storeList);
+                  found = storeList.find((s) => s.id === data.store_id);
+                }
                 if (found) setStore(found);
                 showToast(t('toast.tableScanned', { table: data.table_number, store: data.store_name }), 'success');
               } catch (err: unknown) {

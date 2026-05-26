@@ -59,6 +59,7 @@ export function usePosState() {
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<unknown>(null);
+  const [successChange, setSuccessChange] = useState(0);
 
   // Runtime helpers
   const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
@@ -194,6 +195,9 @@ export function usePosState() {
         checkoutOrderId, paymentMethod, discountAmount, discountType, walletPaid, amountTendered, tipAmount
       );
       setResult(res);
+      const serverTotal = (res as Record<string, unknown>).total as number | undefined;
+      const actualChange = !isNaN(tenderedVal) ? Math.max(0, tenderedVal - (serverTotal ?? total)) : 0;
+      setSuccessChange(actualChange);
       setState("done");
     } catch (e: unknown) { setError((e as Error).message); } finally { isCheckoutProcessingRef.current = false; setSaving(false); }
   };
@@ -317,6 +321,7 @@ export function usePosState() {
     discountType, setDiscountType,
     saving, setSaving,
     result, setResult,
+    successChange,
 
     // Derived
     menuSearch, setMenuSearch,

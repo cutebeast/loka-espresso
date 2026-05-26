@@ -538,3 +538,94 @@ Full cross-reference of all 24 admin-managed customer-facing features vs PWA con
 **CRUD fixes**: Staff create MissingGreenlet + employee_id. Menu delete selectinload ModifierGroup. Equipment dict output. Pool pre_ping removed. 204 handling in both API clients.
 
 **Verification**: TS 0 errors both portals. Staff 13/13 pages 200. Admin 17+/17+ pages 200. Staff login verified via HTTPS through Cloudflare.
+
+
+### Round 13 Audit & Remediation (2026-05-26) — Full 5-domain audit + 32 fixes
+
+Comprehensive audit of all 5 domains after Round 13 initial fixes. Every finding verified by reading actual source files.
+
+**Admin Portal — 10 fixes:**
+- **BrandProvider**: Effect never re-ran after cold login (empty dep array `[]`). Added `usePathname()` dep + `loadedRef` guard — brand config loads on first navigation after auth.
+- **upload() second 401**: Upload retry after token refresh didn't redirect to `/login` on a second 401 (stale refresh token). Added redirect + `clearSession()` in both admin and staff API clients.
+- **Voucher report**: `Math.round(v.discount_value)` for percentage vouchers — removes `Numeric(10,4)` decimal noise (5.0000% → 5%).
+- **NaN.toFixed(2) guards**: 5 pages had unguarded `Number(x).toFixed(2)` calls that crash on undefined/null. Fixed with `(Number(x) || 0).toFixed(2)` pattern on `/orders`, `/customers`, `/customers/[id]` (wallet tab), `/reports`, `/menu/items`.
+- **Rewards list**: `(item.points_cost ?? 0).toLocaleString()` null guard.
+- **Settings page**: Config save now does optimistic local state update — no full re-fetch that overwrites in-progress edits in other rows. Re-fetch only happens on error.
+- **Rewards image**: `next/image` for locally-uploaded images reverted — no `unoptimized` needed (images are local paths, not external URLs).
+
+**Staff Portal — 10 fixes:**
+- **POS wallet payment**: Button used stale `remainingTotal` (doesn't decrease after wallet pays). Switched to `checkoutTotal` — button hides and amount updates correctly.
+- **POS success change**: `change` computed from client-side `total` (ignored wallet/voucher/reward deductions). Now computed from server `result.total` via new `successChange` state.
+- **AuthProvider favicon**: Bare `fetch()` without `Authorization` header on authenticated endpoint — permanent 401 console error. Added token header.
+- **Time-clock break**: Elapsed timer didn't subtract break duration. Added `breakAccumulatedRef` + `breakStartMsRef` tracking via `useEffect` on `shiftStatus`.
+- **Kitchen sound**: `prevCountRef` started at 0 — first fetch with existing orders triggered new-order sound. Added `isFirstFetchRef` guard.
+- **Equipment validation**: Submit validated `< 2` chars but button disabled at `< 5` — unreachable error. Unified at 5 chars minimum.
+- **Wallet scanner**: Scanning reward/voucher for already-selected customer didn't refresh wallet data. Added `getCustomerWallet` refresh call.
+- **Login ghost store**: Store fetch failure cleared `stores[]` but left `selectedStore` from prior load. Cleared both.
+- **requestPaginated**: Stripped pagination metadata (passed through `requestRaw` which unwraps `data.items` array, losing `total`/`page`/`pages`). Rewrote with direct fetch path. Dormant — no current callers.
+
+**Customer PWA — 10 fixes:**
+- **WalletPage balance**: `fetchBalance` read `res.data?.balance` directly but v3 wallet nests under `cash.balance`. Shows RM 0.00 when balance is non-zero. Replaced with `walletStore.refreshWallet()` which uses `extractCashBalance()`.
+- **OTP send-fail**: `setStep('otp')` always fired after `send-otp`, even on failure — user saw OTP screen with no code sent. Added `sendFailed` flag gating the transition.
+- **CartPage delivery_fee**: Used global `config.delivery_fee` — checkout showed different amount. Matched `CheckoutPage.tsx` formula: `selectedStore?.delivery_fee ?? config.delivery_fee`.
+- **LocaleProviderWrapper**: `setReady(true)` ran synchronously before `switchLocale()` (async, not awaited) completed. Flash of English for non-EN users. Wrapped in async IIFE with `await`.
+- **_refreshPromise dispatch**: Concurrent 401-triggered requests shared same rejected `_refreshPromise` — all `catch` blocks dispatched `auth:expired`. Guarded with `if (_refreshPromise)`.
+- **QR scan store fetch**: Always re-fetched `/content/stores` even when stores already loaded in UI store. Uses local list first, only fetches on cache miss.
+- **VALID_PAGES**: Missing `'checkin'` — browser back/forward from #checkin hash silently ignored. Added to array.
+- **CheckoutPage brokenImages**: Key mismatch with CartPage — `Set<number>(menu_item_id)` vs `Set<string>(composite key)`. Unified to `Set<string>` with composite key.
+- **VoucherRewardSelector**: `discount_value || 0` fallback — 0 is valid for `free_delivery` vouchers. Changed to `??` chain: `discount_value ?? discount_amount ?? calculated_discount ?? 0`.
+- **ErrorBoundary**: Removed `import { t } from '@/lib/i18n'` used only for `typeof t` type alias. Replaced with explicit `type TFunc = (key: string, params?: ...) => string`.
+
+**E2E Tests — 7 fixes:**
+- **test_customer_voucher_reward**: Customer ID from wrong path (`data.id` — always None, `id` nested under `profile`). Fixed to `data.profile.id`. Award-voucher sent `voucher_code` but backend expects `voucher_id: int`. Fixed payload. Removed dead `POST /admin/vouchers/assign` (no such endpoint — always 404'd then fell through to broken path).
+- **test_admin_auth_orders**: Added `assert voucher_id is not None` after award-voucher assignment.
+- **Store-scoping cleanup**: Removed `store_id` param from `GET /admin/customers` in 5 files (backend doesn't filter customers by store — customers are global). Removed dead `test_admin_customers_filter_by_store` which always skipped. Fixed hardcoded `store_id: 1` in `test_cross_auth_lifecycle`.
+- **Cart items**: `store_id` moved from JSON body to query string for `POST /cart/items` (backend expects query param).
+
+**Backend — Inventory remark:**
+- **StockUpdateRequest**: Added `reason: str | None = None` — staff can now provide a remark when updating stock counts (previously hardcoded "Stock count updated by {name}").
+- **Admin movements**: Added "Reason" column to inventory movements table showing `m.reason`.
+
+**Store-scoping audit (confirmed):**
+- **Store-scoped (22)**: Orders, Staff Profiles/Shifts/Templates, Time Events, Tips, Tables, Reservations, Feedback, Equipment, Inventory Stocks/Movements, Purchase Orders, Suppliers, POS Terminals, Dashboard, Audit Log, Refunds.
+- **Global (31)**: Customers, Menu (items/categories/allergens/dietary/tax), Inventory Categories/Items catalog, Vouchers, Rewards, Loyalty, Marketing, Notifications, Content cards, Surveys, Referrals, Check-ins, Platform config, Translations, Auth/IAM, Customer wallets/devices/consents.
+
+**Verification**: TS 0 errors all 3 portals. 22/22 E2E Python files compile. All 3 portals + backend build and serve 200 via Caddy HTTPS. Route validation: 0 unmatched API calls.
+
+
+### Translation System Audit & Fix (2026-05-26)
+
+**DB state**: 22 namespaces, 6,975 total records. All content namespaces (menu, inventory, reward, etc.) are 100% translated. Only `pwa-ui` had gaps — 794 records per locale, MS had 0 translated, TA/TR/ZH had only 18/794 each (2.3%).
+
+**PWA translations page fixes:**
+- **EN column**: Previously read `row["en"]?.source_text` but EN locale was never fetched. Now reads `source_text` from first available locale record (all locales share identical `source_text`).
+- **Auto-translate source**: Same fix — reads `source_text` from any locale record instead of non-existent `existing["en"]`.
+- **Translate All button**: New button row at top of PWA tab — batch translates ALL sections for a locale at once (per-section "Auto" buttons still exist for targeted use).
+
+**Staff translations page:**
+- **StaffTranslationsTab**: New CRUD component replacing the placeholder. Manages `staff-ui` namespace (36 keys). Includes "Translate All" for all locales.
+- **DB seed**: Created staff-ui records for zh, ta, tr (36 each, copied from EN with empty translated_text).
+- **Staff portal consumption**: `useTranslation()` fetches from `/public/translations/ui?namespace=staff-ui`. MS has full translations; other locales fall back to EN.
+
+**Translation architecture:**
+- **PWA**: 4-tier fallback (DB overlay → static locale JSON → English JSON → raw key). DB translations cached in localStorage for 24h.
+- **Staff portal**: DB-only (no JSON fallback). Raw key displayed if no translation exists. Only login page uses `useTranslation()` — all other pages are hardcoded English.
+- **Content translations**: Managed inline on entity edit pages via `TranslationTabs` component. Separate from UI label translations. 100% of content translations are complete.
+- **JSON fallback files**: Static build assets, never updated from DB at runtime. DB translations always take priority. JSON serves as offline/degraded fallback.
+
+**To complete translations**:
+- Admin clicks "Translate All BM/中文/தமிழ்/TR" buttons on `/translations` PWA tab → translates all 794 labels per locale
+- Same for Staff tab → translates 36 labels per locale (zh/ta/tr)
+
+
+### Translation Sync & PWA Auto-Update (2026-05-26)
+
+**Sync endpoint**: `POST /admin/translations/sync-to-json` — writes all DB translations for pwa-ui to static JSON files, bumps `version.json` `builtAt` timestamp, auto-rebuilds and restarts PWA. Button added to admin translations page.
+
+**PWA service worker self-update**: SW reads `CACHE_VERSION` from `version.json` on activate (was hardcoded). When `builtAt` changes, SW creates new cache namespace, cleans old caches, triggers update. Users get fresh translations on next visit.
+
+**Staff portal**: Fetches translations live from DB at runtime (`/public/translations/ui?namespace=staff-ui`). No sync needed — live immediately. 36 keys × 5 locales = 180 records, 100% complete.
+
+**Standalone sync script**: `backend/scripts/sync_translations_to_json.py` — syncs DB → JSON files, bumps version, auto-rebuilds PWA. Can be run independently from CLI.
+
+**Translation completeness**: All 5 pwa-ui locales 794/794 (3,970 total). All content namespaces 100%. Staff-ui 5×36=180 100%.

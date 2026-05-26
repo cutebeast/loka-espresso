@@ -78,13 +78,16 @@ export default function SettingsPage() {
 
   const handleSave = async (item: ConfigItem, newValue: string) => {
     setSaving(item.config_key); setUpdateMsg("");
+    setConfigs(prev => prev.map(c => c.config_key === item.config_key ? { ...c, config_value: newValue } : c));
     try {
       const qs = new URLSearchParams({ key: item.config_key, value: newValue });
       await api.put(`/admin/config?${qs.toString()}`);
       setUpdateMsg(`${item.config_key} updated`);
-      api.get<ConfigItem[]>("/admin/config").then(d => setConfigs(Array.isArray(d) ? d : [])).catch((e) => { console.error('reload configs:', e); setUpdateMsg("Failed to reload configs"); });
       setTimeout(() => setUpdateMsg(""), 3000);
-    } catch (err: any) { setError(err.message); }
+    } catch (err: any) {
+      setError(err.message);
+      api.get<ConfigItem[]>("/admin/config").then(d => setConfigs(Array.isArray(d) ? d : [])).catch((e) => { console.error('reload configs:', e); });
+    }
     finally { setSaving(null); }
   };
 

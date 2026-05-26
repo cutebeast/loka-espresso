@@ -43,7 +43,7 @@ export default function PosPage() {
         mode={pos.mode}
         result={pos.result as { order_number?: string | number; order_id?: string | number; total?: number }}
         total={pos.total}
-        change={pos.change}
+        change={pos.successChange}
         paymentMethod={pos.paymentMethod}
         onNewOrder={pos.newOrder}
       />

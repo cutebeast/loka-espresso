@@ -136,7 +136,7 @@ async def test_concurrent_points_adjustment(
     that succeeded, not double-count or miss an adjustment.
     """
     # Get a customer with loyalty account
-    r = await client.get(f"{base_url}/admin/customers?store_id={store_id}&per_page=10", headers=admin_headers)
+    r = await client.get(        f"{base_url}/admin/customers?per_page=10", headers=admin_headers)
     assert r.status_code == 200
     customers = r.json()["data"]["items"]
     if not customers:

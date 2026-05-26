@@ -121,7 +121,63 @@ export default function PwaTranslationsTab() {
     finally { setSaving(null); }
   };
 
-  // Auto-translate all missing keys for a locale with batching (concurrency limit of 5)
+  // Auto-translate ALL missing keys across ALL sections for a locale
+  const autoTranslateAll = async (locale: string) => {
+    setRegenerating(locale);
+    setTranslateProgress("");
+    let count = 0;
+    const CONCURRENCY = 5;
+
+    // Build map of ALL keys (not just active section) from the full items array
+    const allKeyMap = new Map<string, Record<string, Translation>>();
+    for (const t of items) {
+      if (!allKeyMap.has(t.translation_key)) allKeyMap.set(t.translation_key, {});
+      allKeyMap.get(t.translation_key)![t.locale] = t;
+    }
+
+    const missingKeys: { key: string; source: string }[] = [];
+    for (const key of [...allKeyMap.keys()]) {
+      const existing = allKeyMap.get(key)!;
+      if (existing[locale]?.translated_text) continue;
+      const anyRecord = existing["ms"] || existing["zh"] || existing["ta"] || existing["tr"];
+      const source = anyRecord?.source_text || "";
+      if (!source) continue;
+      missingKeys.push({ key, source });
+    }
+
+    let batchIndex = 0;
+    const total = missingKeys.length;
+    setTranslateProgress(`0 / ${total}`);
+    while (batchIndex < total) {
+      const batch = missingKeys.slice(batchIndex, batchIndex + CONCURRENCY);
+      batchIndex += CONCURRENCY;
+
+      const results = await Promise.allSettled(
+        batch.map(async ({ key, source }) => {
+          const existing = allKeyMap.get(key)!;
+          const r = await api.post<{ translated_text?: string }>("/admin/translations/translate", {
+            text: source,
+            source_locale: "en",
+            target_locale: locale,
+          });
+          if (r?.translated_text) {
+            await upsertTranslation(key, locale, r.translated_text, existing[locale]);
+          }
+        })
+      );
+
+      count += results.filter(r => r.status === "fulfilled").length;
+      setTranslateProgress(`${Math.min(batchIndex, total)} / ${total}`);
+    }
+
+    setMsg(`Auto-translated ${count} keys for ${locale}`);
+    setTimeout(() => setMsg(""), 3000);
+    fetchAll();
+    setRegenerating(false);
+    setTranslateProgress("");
+  };
+
+  // Auto-translate missing keys for current section
   const autoTranslate = async (locale: string) => {
     setRegenerating(locale);
     setTranslateProgress("");
@@ -132,8 +188,8 @@ export default function PwaTranslationsTab() {
     for (const key of [...keyMap.keys()]) {
       const existing = keyMap.get(key)!;
       if (existing[locale]?.translated_text) continue;
-      const en = existing["en"] || items.find(t => t.translation_key === key && t.locale === "en");
-      const source = en?.source_text || en?.translated_text || "";
+      const anyRecord = existing["ms"] || existing["zh"] || existing["ta"] || existing["tr"];
+      const source = anyRecord?.source_text || "";
       if (!source) continue;
       missingKeys.push({ key, source });
     }
@@ -185,7 +241,26 @@ export default function PwaTranslationsTab() {
   }
 
   return (
-    <div style={{ display: "flex", gap: 0, minHeight: 400 }}>
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", marginRight: 4 }}>Translate All:</span>
+        {LOCALES.map((loc) => (
+          <button
+            key={loc}
+            type="button"
+            onClick={() => autoTranslateAll(loc)}
+            disabled={!!regenerating}
+            className="btn btn-sm btn-primary"
+            style={{ fontSize: 12 }}
+            aria-label={`Batch translate all to ${loc}`}
+          >
+            {FLAGS[loc]} {regenerating === loc ? "..." : `All ${NAMES[loc]}`}
+          </button>
+        ))}
+        {msg && <span style={{ fontSize: 12, color: "var(--color-success, #16a34a)", marginLeft: 8 }}>{msg}</span>}
+        {translateProgress && <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{translateProgress}</span>}
+      </div>
+      <div style={{ display: "flex", gap: 0, minHeight: 400 }}>
       {/* Left sidebar — sections */}
       <div style={{ width: 200, flexShrink: 0, borderRight: "1px solid var(--color-border-light, #e5e7eb)", paddingRight: 12 }}>
         <input
@@ -268,7 +343,8 @@ export default function PwaTranslationsTab() {
                   <tbody>
                     {keys.map((key) => {
                       const row = keyMap.get(key)!;
-                      const enText = row["en"]?.translated_text || row["en"]?.source_text || "";
+                      const anyRecord = row["ms"] || row["zh"] || row["ta"] || row["tr"];
+                      const enText = anyRecord?.source_text || "";
                       const shortKey = key.split(".").slice(1).join(".") || key;
                       return (
                         <tr key={key}>
@@ -278,28 +354,37 @@ export default function PwaTranslationsTab() {
                              const existing = row[loc];
                              const value = existing?.translated_text || "";
                              // defaultValue is safe — React auto-escapes to prevent XSS
-                             return (
-                              <td key={loc} style={{ padding: 4 }}>
-                                <input
-                                  type="text"
-                                  defaultValue={value}
-                                  placeholder={value ? "" : "—"}
-                                  onBlur={(e) => {
-                                    const newVal = e.target.value;
-                                    if (newVal !== (value || "")) {
-                                      handleCellBlur(key, loc, newVal, existing);
-                                    }
-                                  }}
-                                  className="form-input"
-                                  style={{
-                                    fontSize: 12,
-                                    padding: "4px 6px",
-                                    width: "100%",
-                                    border: value ? "1px solid var(--color-border, #d1d5db)" : "1px dashed var(--color-border-light, #e5e7eb)",
-                                    background: value ? "white" : "var(--color-bg-warm, #fefce8)",
-                                  }}
-                                  aria-label={`Translate ${shortKey} to ${loc}`}
-                                />
+                              return (
+                               <td key={loc} style={{ padding: 4 }}>
+                                 <input
+                                   type="text"
+                                   defaultValue={value}
+                                   placeholder={value ? "" : "—"}
+                                   onBlur={(e) => {
+                                     const newVal = e.target.value;
+                                     if (newVal !== (value || "")) {
+                                       handleCellBlur(key, loc, newVal, existing);
+                                     }
+                                   }}
+                                   onKeyDown={(e) => {
+                                     if (e.key === "Enter") {
+                                       const newVal = (e.target as HTMLInputElement).value;
+                                       if (newVal !== (value || "")) {
+                                         handleCellBlur(key, loc, newVal, existing);
+                                       }
+                                       (e.target as HTMLInputElement).blur();
+                                     }
+                                   }}
+                                   className="form-input"
+                                   style={{
+                                     fontSize: 12,
+                                     padding: "4px 6px",
+                                     width: "100%",
+                                     border: value ? "1px solid var(--color-border, #d1d5db)" : "1px dashed var(--color-border-light, #e5e7eb)",
+                                     background: value ? "white" : "var(--color-bg-warm, #fefce8)",
+                                   }}
+                                   aria-label={`Translate ${shortKey} to ${loc}`}
+                                 />
                               </td>
                             );
                           })}
@@ -320,6 +405,7 @@ export default function PwaTranslationsTab() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

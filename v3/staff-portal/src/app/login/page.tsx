@@ -101,7 +101,7 @@ export default function LoginPage() {
         const list = Array.isArray(d) ? d : (d?.items || []);
         if (mounted) setStores(list.filter((s: StoreInfo) => s.is_active !== false));
       })
-      .catch((err: unknown) => { console.error("Store fetch failed:", err); if (mounted) setStores([]); });
+      .catch((err: unknown) => { console.error("Store fetch failed:", err); if (mounted) { setStores([]); setSelectedStore(""); } });
     return () => { mounted = false; };
   }, []);
 

@@ -83,7 +83,7 @@ export default function OrdersPage() {
               <td>{o.customer_name || "—"}</td>
               <td style={{ textTransform: "capitalize", fontSize: 12 }}>{o.order_type?.replace(/_/g, " ")}</td>
               <td>{sb(o.status)}</td>
-              <td style={{ textAlign: "right", fontWeight: 600 }}>RM {Number(o.total_amount).toFixed(2)}</td>
+              <td style={{ textAlign: "right", fontWeight: 600 }}>RM {(Number(o.total_amount) || 0).toFixed(2)}</td>
               <td style={{ fontSize: 12 }}>{o.created_at ? new Date(o.created_at).toLocaleDateString("en-MY") : "—"}</td>
               <td><button type="button" onClick={e => { e.stopPropagation(); router.push(`/orders/${o.id}`); }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><ExternalLink size={12} /> View</button></td>
             </tr>

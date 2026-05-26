@@ -1,11 +1,10 @@
 /**
  * Loka Espresso PWA Service Worker
- * Version: 0.1.0 (build 2026-05-26T07:47:08.873Z)
- * Build: 2026-04-23T20:22:55.000Z
+ * Version is read from version.json at activation time.
  */
 
-const CACHE_VERSION = 'v0.1.0.1779781628';
-const CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
+let CACHE_VERSION = 'v0.1.0.default';
+let CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -44,29 +43,38 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches, check for new version
 self.addEventListener('activate', (event) => {
-  console.log(`[SW] Activating ${CACHE_VERSION}`);
-  
   event.waitUntil(
-    caches.keys()
-      .then((cacheNames) => {
-        // Delete old page-specific caches to prevent serving stale HTML
+    (async () => {
+      // Read version.json to get current build version
+      try {
+        const res = await fetch('/version.json', { cache: 'no-cache' });
+        if (res.ok) {
+          const info = await res.json();
+          CACHE_VERSION = `v${info.version || '0.1.0'}.${info.builtAt || Date.now()}`;
+          CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
+        }
+      } catch (_) { /* use default */ }
+
+      console.log(`[SW] Activating ${CACHE_VERSION}`);
+
+      // Clean up old caches
+      const cacheNames = await caches.keys();
+      cacheNames
+        .filter((k) => k.startsWith('pages-') && k !== CACHE_NAME)
+        .forEach((k) => caches.delete(k));
+      await Promise.all(
         cacheNames
-          .filter((k) => k.startsWith('pages-') && k !== CACHE_NAME)
-          .forEach((k) => caches.delete(k));
-        return Promise.all(
-          cacheNames
-            .filter((name) => name.startsWith('loka-pwa-') && name !== CACHE_NAME)
-            .map((name) => {
-              console.log(`[SW] Deleting old cache: ${name}`);
-              return caches.delete(name);
-            })
-        );
-      })
-      .then(() => {
-        console.log('[SW] Activated');
-      })
+          .filter((name) => name.startsWith('loka-pwa-') && name !== CACHE_NAME)
+          .map((name) => {
+            console.log(`[SW] Deleting old cache: ${name}`);
+            return caches.delete(name);
+          })
+      );
+
+      console.log('[SW] Activated');
+    })()
   );
 });
 

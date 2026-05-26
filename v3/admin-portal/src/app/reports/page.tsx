@@ -114,7 +114,7 @@ export default function ReportsPage() {
                     <td style={{ textAlign: "center" }}>{a.messages_sent}</td>
                     <td style={{ textAlign: "center" }}>{a.opens_count}</td>
                     <td style={{ textAlign: "center" }}>{a.clicks_count}</td>
-                    <td style={{ textAlign: "center", fontWeight: 600, color: "var(--color-success)" }}>{a.conversion_revenue ? `RM ${Number(a.conversion_revenue).toFixed(2)}` : "—"}</td>
+                    <td style={{ textAlign: "center", fontWeight: 600, color: "var(--color-success)" }}>{a.conversion_revenue ? `RM ${(Number(a.conversion_revenue) || 0).toFixed(2)}` : "—"}</td>
                   </tr>
                 ))}
               </tbody>

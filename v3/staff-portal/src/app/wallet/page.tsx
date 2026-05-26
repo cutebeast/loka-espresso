@@ -107,6 +107,9 @@ export default function WalletPage() {
         if (data.customer_id && selectedCustomer?.id !== data.customer_id) {
           const customer = await getCustomerById(data.customer_id);
           await loadCustomer(customer);
+        } else if (selectedCustomer) {
+          const wallet = await getCustomerWallet(selectedCustomer.id);
+          setWalletData(wallet);
         }
         setSuccess(`Reward found: ${data.name}`);
         setTab("rewards");
@@ -116,6 +119,9 @@ export default function WalletPage() {
         if (data.customer_id && selectedCustomer?.id !== data.customer_id) {
           const customer = await getCustomerById(data.customer_id);
           await loadCustomer(customer);
+        } else if (selectedCustomer) {
+          const wallet = await getCustomerWallet(selectedCustomer.id);
+          setWalletData(wallet);
         }
         setSuccess(`Voucher found: ${data.title}`);
         setTab("rewards");

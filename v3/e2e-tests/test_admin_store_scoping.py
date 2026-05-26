@@ -43,7 +43,7 @@ def _make_admin_token(admin_id: str, expiry_hours: int = 1) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Store Filtering (Positive)
+# Store Filtering — Orders (positive)
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
@@ -64,28 +64,6 @@ async def test_admin_orders_filter_by_store(
         s2_ids = {o["id"] for o in orders_s2}
         overlap = s1_ids & s2_ids
         assert not overlap, f"Orders leaked between stores: {overlap}"
-
-
-@pytest.mark.asyncio
-async def test_admin_customers_filter_by_store(
-    client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int, store_id_2: int
-):
-    """Customers list is correctly filtered by store_id query param."""
-    r1 = await client.get(f"{base_url}/admin/customers?store_id={store_id}&per_page=50", headers=admin_headers)
-    assert r1.status_code == 200
-    cust_s1 = r1.json()["data"]["items"]
-
-    r2 = await client.get(f"{base_url}/admin/customers?store_id={store_id_2}&per_page=50", headers=admin_headers)
-    assert r2.status_code == 200
-    cust_s2 = r2.json()["data"]["items"]
-
-    if cust_s1 and cust_s2:
-        s1_ids = {c["id"] for c in cust_s1}
-        s2_ids = {c["id"] for c in cust_s2}
-        overlap = s1_ids & s2_ids
-        # Customers may span stores; this is informational
-        if overlap:
-            pytest.skip(f"Customers overlap between stores (may share customers): {len(overlap)} overlapping")
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -336,3 +336,90 @@ Added `hydrated` state to `useTranslation` hook. Server and initial client rende
 - **Staff portal**: 13/13 pages HTTP 200
 - **Admin portal**: 17+/17+ pages HTTP 200
 - **Staff login**: verified via HTTPS through Cloudflare (store@loyaltysystem.uk / admin1234)
+
+
+## Round 13 Post-Fix Audit (2026-05-26) — 32 fixes across 5 domains
+
+Full audit of admin, staff, PWA, backend, and E2E tests. All findings verified by reading source files. Zero false positives.
+
+### Admin Portal (10 fixes)
+- BrandProvider: `usePathname()` dep + `loadedRef` — loads after cold login
+- upload(): redirect to /login on second 401 after token refresh
+- Voucher report: `Math.round(discount_value)` for % vouchers
+- NaN.toFixed(2) guards: 5 pages (`/orders`, `/customers`, `/customers/[id]`, `/reports`, `/menu/items`)
+- Rewards list: `(points_cost ?? 0).toLocaleString()`
+- Settings: optimistic update on save — no re-fetch race
+- Rewards Image: reverted `unoptimized` — images are local uploads
+
+### Staff Portal (10 fixes)
+- POS wallet payment: `checkoutTotal` replaces stale `remainingTotal`
+- POS success change: computed from server `result.total` (includes wallet/voucher/reward)
+- AuthProvider: Authorization header on branding fetch
+- Time-clock: elapsed timer subtracts break duration
+- Kitchen: `isFirstFetchRef` skips sound on initial load
+- upload(): redirect to /login on second 401
+- Equipment: validation min unified at 5 chars
+- Wallet scanner: refreshes data for same customer
+- Login: clears `selectedStore` on store fetch failure
+- requestPaginated: rewritten with direct fetch — metadata preserved
+
+### Customer PWA (10 fixes)
+- WalletPage: `walletStore.refreshWallet()` handles nested `cash.balance`
+- OTP: `sendFailed` flag gates `setStep('otp')`
+- CartPage: `selectedStore?.delivery_fee ?? config.delivery_fee`
+- LocaleProviderWrapper: `await switchLocale()` before `setReady(true)`
+- api.ts: `_refreshPromise` guard prevents double `auth:expired` dispatch
+- AppShell: QR scan uses local stores first, fetches on cache miss
+- usePageRouter: `'checkin'` added to VALID_PAGES
+- CheckoutPage: `brokenImages` key matches CartPage composite format
+- VoucherRewardSelector: `??` fallback chain for discount
+- ErrorBoundary: explicit `TFunc` type, no `@/lib/i18n` import
+
+### E2E Tests (7 fixes)
+- Customer voucher reward: customer ID from `data.profile.id`, award-voucher sends `voucher_id`, removed dead `/admin/vouchers/assign`
+- test_admin_auth_orders: `assert voucher_id is not None`
+- Store-scoping: removed `store_id` from `GET /admin/customers` (customers are global). Removed dead `test_admin_customers_filter_by_store`
+- test_cross_auth_lifecycle: `store_id` from fixture, not hardcoded `1`
+- POST /cart/items: `store_id` in query string
+
+### Backend — Inventory remark
+- `StockUpdateRequest`: added `reason: str | None = None`
+- Movement log uses `data.reason or f"Stock count updated by {staff_name}"`
+- Admin movements table: added "Reason" column
+
+### Store-scoping confirmed
+- **Store (22)**: Orders, Staff/Shifts, Time Events, Tips, Tables, Reservations, Feedback, Equipment, Inventory Stocks/Movements, POs, Suppliers, POS Terminals, Dashboard, Audit Log, Refunds
+- **Global (31)**: Customers, Menu, Inventory Catalog, Vouchers, Rewards, Loyalty, Marketing, Notifications, Content, Surveys, Referrals, Check-ins, Config, Translations, Auth/IAM
+
+### Verification
+- **TypeScript**: 0 errors all 3 portals
+- **E2E**: 22/22 Python files compile
+- **Route validation**: 0 unmatched API calls
+- **All portals**: build + serve 200 via Caddy HTTPS
+
+
+## Translation System — Sync & Auto-Update (2026-05-26)
+
+### DB state (completed)
+| Namespace | Locales | Records | Translated |
+|-----------|---------|---------|------------|
+| pwa-ui | en/ms/zh/ta/tr | 3,970 | 3,970 (100%) |
+| staff-ui | en/ms/zh/ta/tr | 180 | 180 (100%) |
+| Content (menu/inventory/vouchers/etc.) | 19 namespaces | 2,825 | 2,825 (100%) |
+
+### Admin translations page (`/translations`)
+- **PWA tab**: Full CRUD with per-section Auto buttons + "Translate All" batch buttons + Enter key save
+- **Staff tab**: Full CRUD (`StaffTranslationsTab`) replacing old placeholder
+- **Sync to JSON button**: Writes DB translations to static JSON, bumps version, auto-rebuilds PWA
+- **Sync endpoint**: `POST /admin/translations/sync-to-json`
+
+### PWA auto-update
+- Service worker reads `CACHE_VERSION` from `version.json` on activate
+- Sync bumps `version.json` `builtAt` → SW detects new version → activates fresh cache
+- Translation fallback: DB overlay (live) → static JSON (offline) → English JSON → raw key
+
+### Standalone sync script
+```bash
+cd v3/backend && python3 scripts/sync_translations_to_json.py
+```
+Syncs DB → JSON files, bumps version, auto-rebuilds PWA, restarts PM2.

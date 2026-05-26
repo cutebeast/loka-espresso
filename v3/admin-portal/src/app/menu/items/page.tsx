@@ -48,7 +48,7 @@ export default function MenuItemsPage() {
               <tr key={item.id}>
                 <td><div style={{ fontWeight: 600 }}>{item.item_name}</div>{item.description && <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{item.description?.slice(0, 60)}</div>}</td>
                 <td className="font-mono" style={{ fontSize: 12 }}>{item.item_code}</td>
-                <td>RM {Number(item.base_price).toFixed(2)}</td>
+                <td>RM {(Number(item.base_price) || 0).toFixed(2)}</td>
                 <td style={{ fontSize: 13 }}>{item.category?.category_name || "—"}</td>
                 <td style={{ fontSize: 11 }}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>

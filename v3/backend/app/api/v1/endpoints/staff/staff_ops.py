@@ -965,6 +965,7 @@ from pydantic import BaseModel as PydanticBaseModel
 class StockUpdateRequest(PydanticBaseModel):
     item_id: int
     current_stock: float = Field(..., ge=0)
+    reason: str | None = None
 
 
 class WasteReportRequest(PydanticBaseModel):
@@ -1079,7 +1080,7 @@ async def staff_update_stock(
             movement_type="adjustment",
             quantity_delta=delta,
             stock_after=data.current_stock,
-            reason=f"Stock count updated by {staff_name}",
+            reason=data.reason or f"Stock count updated by {staff_name}",
         )
         db.add(movement)
 

@@ -753,7 +753,7 @@ api.interceptors.response.use(
           return api(originalRequest);
         }
       } catch (refreshError: any) {
-        if (typeof window !== 'undefined') {
+        if (_refreshPromise && typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('auth:expired'));
         }
         _refreshPromise = null;

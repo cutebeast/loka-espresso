@@ -348,7 +348,7 @@ export default function CustomerDetailPage() {
 
       {tab === "wallet" && (
         <PaginatedTable<WalletTxItem> data={walletTx} cols={["Type","Amount","Balance","Date"]} render={(t: WalletTxItem) => (
-          <><td>{t.transaction_type}</td><td style={{ fontWeight: 600, color: (t.amount ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)" }}>{(t.amount ?? 0) > 0 ? `+${t.amount}` : t.amount}</td><td>{Number(t.running_balance).toFixed(2)}</td><td style={{ fontSize: 12 }}>{dt(t.created_at)}</td></>
+          <><td>{t.transaction_type}</td><td style={{ fontWeight: 600, color: (t.amount ?? 0) >= 0 ? "var(--color-success)" : "var(--color-error)" }}>{(t.amount ?? 0) > 0 ? `+${t.amount}` : t.amount}</td><td>{(Number(t.running_balance) || 0).toFixed(2)}</td><td style={{ fontSize: 12 }}>{dt(t.created_at)}</td></>
         )} onChange={(p: number) => fetchTab("wallet", p)} />
       )}
 

@@ -31,6 +31,7 @@ export default function InventoryPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editStock, setEditStock] = useState("");
+  const [editReason, setEditReason] = useState("");
   const [updateSubmitting, setUpdateSubmitting] = useState(false);
 
   const load = useCallback(async () => {
@@ -68,6 +69,7 @@ export default function InventoryPage() {
   const openUpdate = (item: InventoryItem) => {
     setEditingId(item.id);
     setEditStock(String(item.current_stock));
+    setEditReason("");
     setError("");
     setSuccess("");
   };
@@ -75,6 +77,7 @@ export default function InventoryPage() {
   const cancelUpdate = () => {
     setEditingId(null);
     setEditStock("");
+    setEditReason("");
   };
 
   const handleUpdate = async (itemId: number) => {
@@ -87,7 +90,7 @@ export default function InventoryPage() {
     setError("");
     setSuccess("");
     try {
-      await api.post("/staff/inventory/update", { item_id: itemId, current_stock: newCount });
+      await api.post("/staff/inventory/update", { item_id: itemId, current_stock: newCount, reason: editReason.trim() || null });
       setSuccess("Stock updated — movement logged");
       setEditingId(null);
       setEditStock("");
@@ -159,10 +162,13 @@ export default function InventoryPage() {
               </div>
 
               {editingId === item.id ? (
-                <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
-                  <input type="number" value={editStock} onChange={e => setEditStock(e.target.value)} style={{ width: 100, padding: "4px 8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: 13 }} />
-                  <button type="button" onClick={() => handleUpdate(item.id)} disabled={updateSubmitting} className="btn btn-primary btn-sm">{updateSubmitting ? "..." : "Save"}</button>
-                  <button type="button" onClick={cancelUpdate} className="btn btn-ghost btn-sm"><X size={14} /></button>
+                <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input type="number" value={editStock} onChange={e => setEditStock(e.target.value)} style={{ width: 100, padding: "4px 8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: 13 }} />
+                    <button type="button" onClick={() => handleUpdate(item.id)} disabled={updateSubmitting} className="btn btn-primary btn-sm">{updateSubmitting ? "..." : "Save"}</button>
+                    <button type="button" onClick={cancelUpdate} className="btn btn-ghost btn-sm"><X size={14} /></button>
+                  </div>
+                  <input type="text" value={editReason} onChange={e => setEditReason(e.target.value)} placeholder="Remark / reason for update" style={{ width: "100%", maxWidth: 300, padding: "4px 8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: 12 }} />
                 </div>
               ) : (
                 <div style={{ marginTop: 12 }}>

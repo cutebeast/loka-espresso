@@ -60,7 +60,7 @@ export default function CheckoutPage() {
   );
   const [notes, _setNotes] = useState(checkoutDraft.notes || orderNote || '');
   const [placing, setPlacing] = useState(false);
-  const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const [showRewardSheet, setShowRewardSheet] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
   const [draftSaved, setDraftSaved] = useState(false);
@@ -242,7 +242,7 @@ export default function CheckoutPage() {
               const tags = cust?.options?.map((o) => { const name = o.name || ''; const colonIdx = name.indexOf(': '); return colonIdx >= 0 ? name.slice(colonIdx + 2) : name; }) || [];
               return (
                 <div key={`${item.menu_item_id}-${JSON.stringify((item.customization_option_ids ?? []).sort())}`} className="co-order-item-row">
-                  <div className="co-order-item-thumb">{item.image_url && !brokenImages.has(item.menu_item_id) ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.name} loading="lazy" onError={() => setBrokenImages(prev => new Set(prev).add(item.menu_item_id))} /> : <Coffee size={18} color={LOKA.primary} />}</div>
+                  <div className="co-order-item-thumb">{item.image_url && !brokenImages.has(`${item.menu_item_id}-${(item.customization_option_ids ?? []).join(',') || '0'}`) ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.name} loading="lazy" onError={() => setBrokenImages(prev => new Set(prev).add(`${item.menu_item_id}-${(item.customization_option_ids ?? []).join(',') || '0'}`))} /> : <Coffee size={18} color={LOKA.primary} />}</div>
                   <div className="co-order-item-info">
                     <div className="co-order-item-name">{item.name}</div>
                     {tags.length > 0 && <div className="co-order-item-tags">{tags.map((t: string, j: number) => <span key={j} className="co-order-item-tag">{t}</span>)}</div>}

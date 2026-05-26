@@ -295,9 +295,9 @@ export default function PosCheckoutPanel({
                   <span style={{ fontWeight: 700 }}>Wallet Balance</span>
                   <span className="badge badge-primary">RM {Number(walletData.balance ?? 0).toFixed(2)}</span>
                 </div>
-                {remainingTotal > 0 && (
-                  <button className="btn btn-primary w-full" onClick={() => onWalletPayment(Math.min(walletData.balance, remainingTotal))}>
-                    Pay RM {Math.min(walletData.balance, remainingTotal).toFixed(2)} from Wallet
+                {checkoutTotal > 0 && walletData.balance > 0 && (
+                  <button className="btn btn-primary w-full" onClick={() => onWalletPayment(Math.min(walletData.balance, checkoutTotal))}>
+                    Pay RM {Math.min(walletData.balance, checkoutTotal).toFixed(2)} from Wallet
                   </button>
                 )}
               </div>

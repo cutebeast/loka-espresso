@@ -20,15 +20,17 @@ export function LocaleProviderWrapper({ children }: { children: ReactNode }) {
 
   // ── After mount, apply persisted/browser locale ──
   useEffect(() => {
-    const stored = readStoredLocale();
-    const resolved = stored ?? detectBrowserLocale();
-    setGlobalLocale(resolved);
-    if (resolved !== 'en') {
-      setReactLocale(resolved);
-      // Fetch dynamic translations for non-en locale
-      switchLocale(resolved as Locale).catch(() => { /* offline — use static fallback */ });
-    }
-    setReady(true);
+    const init = async () => {
+      const stored = readStoredLocale();
+      const resolved = stored ?? detectBrowserLocale();
+      setGlobalLocale(resolved);
+      if (resolved !== 'en') {
+        setReactLocale(resolved);
+        await switchLocale(resolved as Locale).catch(() => {});
+      }
+      setReady(true);
+    };
+    init();
   }, []);
 
   // ── User-triggered locale change ──

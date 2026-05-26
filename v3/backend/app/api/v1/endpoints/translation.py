@@ -1,5 +1,8 @@
 """Translation endpoints."""
 
+import json
+import os
+from collections import defaultdict
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -218,3 +221,84 @@ async def clear_cache(
     """Clear old translation cache entries (admin only)."""
     deleted = await clear_old_cache(db, days)
     return APIResponse(data={"deleted": deleted})
+
+
+@router.post("/sync-to-json", response_model=APIResponse[dict])
+async def sync_to_json(
+    db: DBDependency,
+    admin: CurrentAdmin,
+):
+    """Sync pwa-ui DB translations to static JSON locale files."""
+    LOCALES = ["ms", "zh", "ta", "tr"]
+    PWA_LOCALES_DIR = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "..", "..",
+        "customer-pwa", "src", "locales",
+    )
+    PWA_LOCALES_DIR = os.path.abspath(PWA_LOCALES_DIR)
+
+    def set_nested(d, key, value):
+        parts = key.split(".")
+        current = d
+        for part in parts[:-1]:
+            current = current.setdefault(part, {})
+        current[parts[-1]] = value
+
+    def sort_dict(d):
+        return {k: sort_dict(v) if isinstance(v, dict) else v for k, v in sorted(d.items())}
+
+    results = {}
+    for locale in LOCALES:
+        result = await db.execute(
+            select(Translation.translation_key, Translation.translated_text)
+            .where(
+                Translation.namespace == "pwa-ui",
+                Translation.locale == locale,
+                Translation.translated_text.isnot(None),
+                Translation.translated_text != "",
+            )
+        )
+        rows = result.all()
+
+        nested: dict = {}
+        for key, text in rows:
+            set_nested(nested, key, text)
+
+        out_path = os.path.join(PWA_LOCALES_DIR, f"{locale}.json")
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(sort_dict(nested), f, ensure_ascii=False, indent=2)
+            f.write("\n")
+
+        results[locale] = len(rows)
+
+    # Bump version.json builtAt timestamp so PWA service worker detects update
+    import time
+    version_path = os.path.join(PWA_LOCALES_DIR, "..", "..", "public", "version.json")
+    version_path = os.path.abspath(version_path)
+    try:
+        with open(version_path, "r") as f:
+            version_info = json.load(f)
+        version_info["builtAt"] = int(time.time() * 1000)
+        version_info["updatedAt"] = datetime.now(timezone.utc).isoformat()
+        with open(version_path, "w") as f:
+            json.dump(version_info, f, indent=2)
+            f.write("\n")
+        results["_version"] = version_info.get("version")
+    except Exception as e:
+        results["_version_error"] = str(e)
+
+    # Trigger PWA rebuild so new JSON is bundled
+    import subprocess
+    try:
+        pwa_dir = os.path.abspath(os.path.join(PWA_LOCALES_DIR, "..", ".."))
+        subprocess.run(["npm", "run", "build"], cwd=pwa_dir, capture_output=True, timeout=180)
+        subprocess.run(["pm2", "restart", "customer-pwa-v3"], capture_output=True, timeout=30)
+        results["_rebuild"] = "ok"
+    except Exception as e:
+        results["_rebuild_error"] = str(e)
+
+    return APIResponse(data={
+        "message": "Translations synced to JSON files",
+        "results": results,
+    })

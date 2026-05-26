@@ -2,7 +2,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { t } from '@/lib/i18n';
 
 interface Props {
   children: React.ReactNode;
@@ -13,7 +12,7 @@ interface State {
   error: Error | null;
 }
 
-type TFunc = typeof t;
+type TFunc = (key: string, params?: Record<string, string | number>) => string;
 
 class ErrorBoundaryInner extends React.Component<Props & { t: TFunc }, State> {
   constructor(props: Props & { t: TFunc }) {

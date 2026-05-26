@@ -63,7 +63,7 @@ export default function EquipmentPage() {
   };
 
   const handleReport = async () => {
-    if (!reporting || reportDesc.trim().length < 2) { setError("Please enter a note (min 2 characters)"); return; }
+    if (!reporting || reportDesc.trim().length < 5) { setError("Please enter a note (min 5 characters)"); return; }
     setSubmitting(true);
     setError("");
     setSuccess("");

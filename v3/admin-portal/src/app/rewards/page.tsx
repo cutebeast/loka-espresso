@@ -69,7 +69,7 @@ export default function RewardsPage() {
                 <td>{item.image_url ? <Image src={item.image_url} alt={item.reward_name} width={32} height={32} style={{ borderRadius: 6, objectFit: "cover" }} /> : <span style={{ fontSize: 16 }}>🎁</span>}</td>
                 <td style={{ fontWeight: 600 }}>{item.reward_name}</td>
                 <td>{typeLabel(item.reward_type)}</td>
-                <td style={{ fontWeight: 600 }}>{item.points_cost.toLocaleString()} pts</td>
+                <td style={{ fontWeight: 600 }}>{(item.points_cost ?? 0).toLocaleString()} pts</td>
                 <td>{item.minimum_order_value != null ? `RM ${item.minimum_order_value}` : "—"}</td>
                 <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
                 <td onClick={e => e.stopPropagation()}>

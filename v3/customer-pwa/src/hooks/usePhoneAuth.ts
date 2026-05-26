@@ -51,14 +51,16 @@ export function usePhoneAuth() {
     setLoading(true);
     setError('');
     try {
+      let sendFailed = false;
       try {
         await api.post('/auth/send-otp', { phone_number: normalized });
       } catch (err: unknown) {
         if ((err as { response?: { status?: number } })?.response?.status !== 404) {
           showToast(t('auth.sendOtpFailed'), 'error');
+          sendFailed = true;
         }
       }
-      setStep('otp');
+      if (!sendFailed) setStep('otp');
     } catch (err: unknown) {
       showToast(getApiErrorMessage(err, t('auth.sendOtpFailed')), 'error');
     } finally {

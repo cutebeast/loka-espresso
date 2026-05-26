@@ -25,7 +25,7 @@ const TOPUP_LABELS = ['wallet.labelStarter', 'wallet.labelPopular', 'wallet.labe
 
 export default function WalletPage() {
   const { t } = useTranslation();
-  const { balance, setBalance, transactions, setTransactions } = useWalletStore();
+  const { balance, transactions, setTransactions } = useWalletStore();
   const { setPage, showToast } = useUIStore();
   const config = useConfigStore((s) => s.config);
 
@@ -38,12 +38,11 @@ export default function WalletPage() {
   const fetchBalance = useCallback(async () => {
     if (!useAuthStore.getState().isAuthenticated) return;
     try {
-      const res = await api.get('/wallet');
-      setBalance(res.data?.balance ?? 0);
+      await useWalletStore.getState().refreshWallet();
     } catch (err) { console.error('[WalletPage] Failed to fetch balance:', err);
       // keep existing
     }
-  }, [setBalance]);
+  }, []);
 
   const fetchTransactions = useCallback(async () => {
     setLoadingTx(true);

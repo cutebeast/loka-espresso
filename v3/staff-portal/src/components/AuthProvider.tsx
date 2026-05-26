@@ -32,7 +32,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   // Branding favicon
   useEffect(() => {
     let injectedLink: HTMLLinkElement | null = null;
-    fetch("/api/v1/staff/config/branding")
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    fetch("/api/v1/staff/config/branding", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((r) => { if (!r.ok) throw new Error('branding fetch failed'); return r.json(); })
       .then((d) => {
         const items = d.data || {};

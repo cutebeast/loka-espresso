@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { clockIn, clockOut, startBreak, endBreak, getMyTimeEvents, api, type TimeEvent } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -75,6 +75,8 @@ export default function TimeClockPage() {
   const [showPin, setShowPin] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [attemptCount, setAttemptCount] = useState(0);
+  const breakAccumulatedRef = useRef(0);
+  const breakStartMsRef = useRef<number | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -121,12 +123,25 @@ export default function TimeClockPage() {
       setElapsed(0);
       return;
     }
-    setElapsed(Math.floor((Date.now() - lastClockInMs) / 1000));
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - lastClockInMs) / 1000));
-    }, 1000);
+    const getBreakOffset = () => breakAccumulatedRef.current + (breakStartMsRef.current ? Date.now() - breakStartMsRef.current : 0);
+    const updateElapsed = () => setElapsed(Math.floor((Date.now() - lastClockInMs - getBreakOffset()) / 1000));
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1000);
     return () => clearInterval(interval);
   }, [shiftStatus, lastClockInMs]);
+
+  useEffect(() => {
+    if (shiftStatus === "break" && breakStartMsRef.current === null) {
+      breakStartMsRef.current = Date.now();
+    } else if (shiftStatus !== "break" && breakStartMsRef.current !== null) {
+      breakAccumulatedRef.current += Date.now() - breakStartMsRef.current;
+      breakStartMsRef.current = null;
+    }
+    if (shiftStatus === "out") {
+      breakAccumulatedRef.current = 0;
+      breakStartMsRef.current = null;
+    }
+  }, [shiftStatus]);
 
   const formatElapsed = (seconds: number) => {
     const h = Math.floor(seconds / 3600);

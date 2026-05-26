@@ -52,7 +52,7 @@ async def test_admin_adjust_points_and_verify(
 ):
     """Admin can adjust loyalty points and balance is updated."""
     # Get a customer
-    r = await client.get(f"{base_url}/admin/customers?store_id={store_id}&per_page=1", headers=admin_headers)
+    r = await client.get(f"{base_url}/admin/customers?per_page=1", headers=admin_headers)
     assert r.status_code == 200
     items = r.json()["data"]["items"]
     assert len(items) > 0, "Seed data must include customers"
@@ -85,7 +85,7 @@ async def test_admin_customer_set_tier(
     client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int
 ):
     """Admin can set customer loyalty tier."""
-    r = await client.get(f"{base_url}/admin/customers?store_id={store_id}&per_page=1", headers=admin_headers)
+    r = await client.get(f"{base_url}/admin/customers?per_page=1", headers=admin_headers)
     assert r.status_code == 200
     items = r.json()["data"]["items"]
     assert len(items) > 0
@@ -122,7 +122,7 @@ async def test_admin_wallet_topup(
     client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int, cleanup_registry: dict
 ):
     """Admin can top-up a customer wallet and ledger reflects it."""
-    r = await client.get(f"{base_url}/admin/customers?store_id={store_id}&per_page=1", headers=admin_headers)
+    r = await client.get(f"{base_url}/admin/customers?per_page=1", headers=admin_headers)
     assert r.status_code == 200
     items = r.json()["data"]["items"]
     assert len(items) > 0

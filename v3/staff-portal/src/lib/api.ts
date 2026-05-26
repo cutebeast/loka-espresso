@@ -132,13 +132,54 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
 }
 
 async function requestPaginated<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<PaginatedResponse<T>> {
-  const raw = await requestRaw<{ items: T[] } & Record<string, unknown>>(method, path, body, signal);
-  return {
-    items: (raw?.items ?? []) as T[],
-    total: (raw?.total ?? 0) as number,
-    page: (raw?.page ?? 1) as number,
-    total_pages: (raw?.total_pages ?? raw?.pages ?? 1) as number,
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("staff:activity"));
+  }
+  const makeRequest = async () => {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers: getAuthHeaders(),
+      signal,
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (res.status === 401) {
+      if (signal?.aborted) throw new Error("Request aborted");
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        const retry = await fetch(`${BASE_URL}${path}`, {
+          method,
+          headers: getAuthHeaders(),
+          signal,
+          ...(body ? { body: JSON.stringify(body) } : {}),
+        });
+        if (retry.ok) return retry;
+      }
+      if (typeof window !== "undefined") {
+        clearAuthStorage();
+        window.location.replace("/login");
+      }
+      throw new Error("Session expired");
+    }
+    return res;
   };
+  const res = await makeRequest();
+  if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
+  if (res.status === 204) return { items: [], total: 0, page: 1, total_pages: 1 };
+  const contentType = res.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    const json = await res.json();
+    const data = (json && typeof json === "object" && "data" in json) ? json.data : json;
+    if (data && typeof data === "object" && Array.isArray((data as Record<string, unknown>).items)) {
+      return {
+        items: (data as Record<string, unknown>).items as T[],
+        total: ((data as Record<string, unknown>).total ?? 0) as number,
+        page: ((data as Record<string, unknown>).page ?? 1) as number,
+        total_pages: ((data as Record<string, unknown>).total_pages ?? (data as Record<string, unknown>).pages ?? 1) as number,
+      };
+    }
+    return { items: (Array.isArray(data) ? data : []) as T[], total: 0, page: 1, total_pages: 1 };
+  }
+  throw new Error("Expected JSON response for paginated request");
 }
 
 async function requestRaw<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
@@ -210,6 +251,11 @@ export const api = {
       if (refreshed) {
         const _freshToken = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         res = await doFetch(_freshToken ? { Authorization: `Bearer ${_freshToken}` } : {});
+        if (res.status === 401) {
+          clearAuthStorage();
+          window.location.replace("/login");
+          throw new Error("Session expired");
+        }
       }
       else throw new Error("Session expired");
     }

@@ -57,16 +57,17 @@ export default function InventoryMovementsPage() {
 
       <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} movements</span></div>
       <div className="table-container"><table className="data-table">
-        <thead><tr><th>Item</th><th>Type</th><th style={{ textAlign: "center" }}>Qty</th><th style={{ textAlign: "right" }}>Unit Cost</th><th>Date</th><th>By</th></tr></thead>
+        <thead><tr><th>Item</th><th>Type</th><th style={{ textAlign: "center" }}>Qty</th><th style={{ textAlign: "right" }}>Unit Cost</th><th>Reason</th><th>Date</th><th>By</th></tr></thead>
         <tbody>
-          {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
-          : items.length === 0 ? <tr><td colSpan={6} className="data-table-empty">No movements found.</td></tr>
+          {loading ? <tr><td colSpan={7} className="data-table-empty">Loading...</td></tr>
+          : items.length === 0 ? <tr><td colSpan={7} className="data-table-empty">No movements found.</td></tr>
           : items.map(m => (
             <tr key={m.id}>
               <td style={{ fontWeight: 600 }}>{m.item_name || `#${m.inventory_item_id}`}</td>
               <td>{typeBadge(m.movement_type)}</td>
               <td style={{ textAlign: "center", fontWeight: 600, color: m.quantity_delta < 0 ? "var(--color-error)" : "var(--color-success)" }}>{m.quantity_delta > 0 ? `+${m.quantity_delta}` : m.quantity_delta}</td>
               <td style={{ textAlign: "right" }}>{m.unit_cost_at_movement ? `RM ${Number(m.unit_cost_at_movement).toFixed(2)}` : "—"}</td>
+              <td style={{ fontSize: 12, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.reason || "—"}</td>
               <td style={{ fontSize: 12 }}>{m.created_at ? new Date(m.created_at).toLocaleDateString() : "—"}</td>
               <td style={{ fontSize: 12 }}>{m.performed_by_name || "—"}</td>
             </tr>

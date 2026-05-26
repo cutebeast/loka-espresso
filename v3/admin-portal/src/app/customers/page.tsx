@@ -70,7 +70,7 @@ export default function CustomersPage() {
               <td style={{ fontSize: 11 }} className="font-mono">{c.phone_number || "—"}</td>
               <td style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{c.email_address || "—"}</td>
               <td style={{ textAlign: "center" }}>{c.order_count}</td>
-              <td style={{ textAlign: "right", fontWeight: 600 }}>RM {Number(c.lifetime_value).toFixed(2)}</td>
+              <td style={{ textAlign: "right", fontWeight: 600 }}>RM {(Number(c.lifetime_value) || 0).toFixed(2)}</td>
               <td style={{ fontSize: 12 }}>{formatDate(c.created_at)}</td>
               <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${c.is_active ? "badge-green" : "badge-gray"}`}>{c.is_active ? "Active" : "Inactive"}</span></td>
               <td onClick={e => e.stopPropagation()}><Link href={`/customers/${c.id}`} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)" }}><ExternalLink size={12} /> View</Link></td>

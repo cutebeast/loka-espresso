@@ -48,6 +48,7 @@ export default function KitchenPage() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchSeqRef = useRef(0);
+  const isFirstFetchRef = useRef(true);
 
   const fetchOrders = useCallback(async () => {
     let list: Order[] = [];
@@ -58,7 +59,7 @@ export default function KitchenPage() {
       setOrders(list);
       setConnected(true);
       // Sound notification on new orders
-      if (soundOn && list.length > prevCountRef.current && audioCtxRef.current) {
+      if (!isFirstFetchRef.current && soundOn && list.length > prevCountRef.current && audioCtxRef.current) {
         try {
           const ctx = audioCtxRef.current;
           if (ctx.state === "suspended") await ctx.resume();
@@ -79,6 +80,7 @@ export default function KitchenPage() {
       setError(parseApiError(err, "Failed to load orders"));
     } finally {
       prevCountRef.current = list.length;
+      isFirstFetchRef.current = false;
       setLoading(false);
     }
   }, [storeId, soundOn]);

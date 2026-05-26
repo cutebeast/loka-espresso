@@ -141,7 +141,7 @@ async def test_staff_confirm_reservation(
     # Create a reservation via admin to have a known reservation
     # First, find a customer
     r_cust = await client.get(
-        f"{base_url}/admin/customers?store_id={store_id}&per_page=1",
+        f"{base_url}/admin/customers?per_page=1",
         headers=admin_headers,
     )
     if r_cust.status_code != 200:

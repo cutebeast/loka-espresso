@@ -201,6 +201,11 @@ export const api = {
           try {
             res = await doFetch(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}, rSignal);
           } finally { rClear(); }
+          if (res.status === 401) {
+            clearSession();
+            if (typeof window !== "undefined") window.location.replace("/login");
+            throw new Error("Session expired");
+          }
         } else {
           clearSession();
           if (typeof window !== "undefined") window.location.replace("/login");

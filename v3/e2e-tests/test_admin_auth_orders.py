@@ -31,7 +31,7 @@ async def test_voucher_create_and_redeem_flow(
     """Create a voucher definition, assign to customer, verify wallet, redeem."""
     # 1. Find a customer
     r_cust = await client.get(
-        f"{base_url}/admin/customers?store_id={store_id}&per_page=1",
+        f"{base_url}/admin/customers?per_page=1",
         headers=admin_headers,
     )
     if r_cust.status_code != 200:
@@ -83,6 +83,7 @@ async def test_voucher_create_and_redeem_flow(
             if r_assign.status_code in (200, 201):
                 data = r_assign.json().get("data", r_assign.json())
                 voucher_id = data.get("id") or data.get("voucher_id")
+                assert voucher_id is not None, f"Cannot determine voucher ID from response: {data}"
                 voucher_assigned = True
         except httpx.ConnectError:
             pass
