@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 
 interface Equipment {
@@ -53,7 +54,7 @@ export default function EquipmentPage() {
       const d = await api.getRaw<any>(`/admin/equipment?${params.toString()}`);
       setItems(d?.items || []);
       setTotal(d?.total || 0);
-    } catch (e) { setError(e instanceof Error ? e.message : "Failed to load equipment"); }
+    } catch (e) { setError(parseApiError(e, "Failed to load equipment")); }
     finally { setLoading(false); }
   }, [storeFilter, statusFilter, page]);
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import EmptyState from "@/components/EmptyState";
@@ -39,7 +40,7 @@ export default function InventoryPage() {
       const data = await api.getRaw<any>("/staff/inventory");
       setItems(Array.isArray(data) ? data : (data?.items || []));
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(parseApiError(e, "Failed to load inventory"));
     } finally {
       setLoading(false);
     }
@@ -92,7 +93,7 @@ export default function InventoryPage() {
       setEditStock("");
       load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(parseApiError(e, "Failed to update stock"));
     } finally {
       setUpdateSubmitting(false);
     }

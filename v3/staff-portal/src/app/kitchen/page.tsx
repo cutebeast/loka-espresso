@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getOrders, updateOrderStatus, Order, OrderStatus } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import OrderCard from "@/components/OrderCard";
 import PageHeader from "@/components/PageHeader";
@@ -75,7 +76,7 @@ export default function KitchenPage() {
     } catch (err: unknown) {
       console.error("Kitchen: Failed to load orders:", err);
       setConnected(false);
-      setError(err instanceof Error ? err.message : "Failed to load orders");
+      setError(parseApiError(err, "Failed to load orders"));
     } finally {
       prevCountRef.current = list.length;
       setLoading(false);
@@ -106,7 +107,7 @@ export default function KitchenPage() {
       await fetchOrders();
     } catch (err: unknown) {
       if (seq !== fetchSeqRef.current) return;
-      setError(err instanceof Error ? err.message : "Failed to update order");
+      setError(parseApiError(err, "Failed to update order"));
     }
   };
 

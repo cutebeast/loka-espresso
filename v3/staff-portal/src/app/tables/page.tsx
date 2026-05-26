@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getTables, generateTableQr, updateTableStatus, type Table } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import { useQrImages } from "@/hooks/useQrImages";
 import { useQrExpiry } from "@/hooks/useQrExpiry";
@@ -46,7 +47,7 @@ export default function TablesPage() {
       setError("");
     } catch (err: unknown) {
       console.error("Failed to load tables:", err);
-      setError(err instanceof Error ? err.message : "Failed to load tables");
+      setError(parseApiError(err, "Failed to load tables"));
     } finally {
       setLoading(false);
     }
@@ -86,7 +87,7 @@ export default function TablesPage() {
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(parseApiError(err, "Failed to generate QR"));
     } finally {
       setGeneratingQr(null);
     }
@@ -106,7 +107,7 @@ export default function TablesPage() {
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(parseApiError(err, "Failed to update table"));
     }
   };
 
@@ -342,7 +343,7 @@ export default function TablesPage() {
                     setSuccess(`Table ${selectedTable.table_number} set to maintenance`);
                     if (successTimerRef.current) clearTimeout(successTimerRef.current);
                     successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
-                  } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
+                  } catch (err: unknown) { setError(parseApiError(err, "Failed to set maintenance")); }
                 }}>
                   <AlertTriangle size={14} /> Maintenance
                 </button>

@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getOrders, type Order } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import OrderCard from "@/components/OrderCard";
 import PageHeader from "@/components/PageHeader";
@@ -40,7 +41,7 @@ export default function OrdersPage() {
       setError("");
     } catch (err: unknown) {
       console.error("Failed to load orders:", err);
-      setError(err instanceof Error ? err.message : "Failed to load orders");
+      setError(parseApiError(err, "Failed to load orders"));
     } finally {
       setLoading(false);
     }

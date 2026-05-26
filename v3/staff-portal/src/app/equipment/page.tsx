@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import EmptyState from "@/components/EmptyState";
@@ -38,7 +39,7 @@ export default function EquipmentPage() {
       const data = await api.getRaw<any>("/staff/equipment");
       setItems(Array.isArray(data) ? data : (data?.items || []));
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(parseApiError(e, "Failed to load equipment"));
     } finally { setLoading(false); }
   }, []);
 
@@ -83,7 +84,7 @@ export default function EquipmentPage() {
       setPreviews([]);
       load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(parseApiError(e, "Failed to submit report"));
     } finally { setSubmitting(false); }
   };
 

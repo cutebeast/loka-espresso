@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Store, Lock, Mail, User, ChevronDown, ChevronUp } from "lucide-react";
 import { api, staffLogin, staffLoginByName } from "@/lib/api";
 import type { PaginatedResponse } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import LanguageSelector from "@/components/LanguageSelector";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -147,7 +148,7 @@ export default function LoginPage() {
     } catch (err: unknown) {
       attemptCountRef.current += 1;
       setAttemptCount((c) => c + 1);
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(parseApiError(err, "Login failed"));
     } finally {
       setLoading(false);
     }

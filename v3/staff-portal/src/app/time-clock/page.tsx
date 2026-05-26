@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { clockIn, clockOut, startBreak, endBreak, getMyTimeEvents, api, type TimeEvent } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
@@ -84,7 +85,7 @@ export default function TimeClockPage() {
       setError("");
     } catch (err: unknown) {
       console.error("Time clock: Failed to load events:", err);
-      setError(err instanceof Error ? err.message : "Failed to load");
+      setError(parseApiError(err, "Failed to load"));
     } finally {
       setLoading(false);
     }
@@ -173,7 +174,7 @@ export default function TimeClockPage() {
       setPendingAction(null);
     } catch (err: unknown) {
       console.error("Time clock: Action failed:", err);
-      setError(err instanceof Error ? err.message : "Failed");
+      setError(parseApiError(err, "Failed"));
     } finally {
       setActionLoading(false);
     }

@@ -49,13 +49,13 @@ async function fetchTranslations(locale: string): Promise<Translations> {
 export function useTranslation() {
   const [locale, setLocale] = useState("en");
   const [translations, setTranslations] = useState<Translations>({});
+  const [hydrated, setHydrated] = useState(false);
 
-  // Load locale on mount
+  useEffect(() => { setHydrated(true); }, []);
   useEffect(() => {
     setLocale(getStoredLocale());
   }, []);
 
-  // Fetch translations when locale changes
   useEffect(() => {
     if (!locale) return;
     let cancelled = false;
@@ -66,8 +66,9 @@ export function useTranslation() {
   }, [locale]);
 
   const t = useCallback((key: string): string => {
+    if (!hydrated) return key;
     return translations[key] || key;
-  }, [translations]);
+  }, [translations, hydrated]);
 
   return { t, locale, setLocale };
 }

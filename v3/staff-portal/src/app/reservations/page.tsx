@@ -6,6 +6,7 @@ import {
   getReservations, updateReservationStatus, getTables,
   Reservation, ReservationStatus, type Table,
 } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
@@ -101,7 +102,7 @@ export default function ReservationsPage() {
       }
       setError("");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load reservations";
+      const msg = parseApiError(err, "Failed to load reservations");
       console.error("Failed to load reservations:", err);
       setError(msg);
     } finally {
@@ -121,7 +122,7 @@ export default function ReservationsPage() {
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
     } catch (err: unknown) {
       console.error("Failed to update reservation:", err);
-      setError(err instanceof Error ? err.message : "Failed to update reservation");
+      setError(parseApiError(err, "Failed to update reservation"));
     } finally {
       setUpdatingId(null);
     }
@@ -147,7 +148,7 @@ export default function ReservationsPage() {
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 3000);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to confirm reservation");
+      setError(parseApiError(err, "Failed to confirm reservation"));
     } finally {
       setUpdatingId(null);
       setConfirmModalOpen(false);

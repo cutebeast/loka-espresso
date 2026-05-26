@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getOrderById, getTables, updateOrderStatus, transferTable, OrderDetail, OrderStatus, type Table } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
@@ -42,7 +43,7 @@ export default function KitchenDetailPage() {
       setError("");
     } catch (e: unknown) {
       console.error("Failed to load kitchen order:", e);
-      setError(e instanceof Error ? e.message : String(e));
+      setError(parseApiError(e, "Failed to load order"));
     } finally {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ export default function KitchenDetailPage() {
       const updated = await getOrderById(id);
       setOrder(updated);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(parseApiError(e, "Failed to update order"));
     } finally {
       setUpdating(false);
     }
@@ -74,7 +75,7 @@ export default function KitchenDetailPage() {
       const updated = await getOrderById(id);
       setOrder(updated);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(parseApiError(e, "Failed to transfer table"));
     } finally { setTransferring(false); }
   };
 

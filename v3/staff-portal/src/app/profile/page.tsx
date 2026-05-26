@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
@@ -57,7 +58,7 @@ export default function ProfilePage() {
       setNewPw("");
     } catch (e: unknown) {
       console.error("Password change failed:", e);
-      setMsg(e instanceof Error ? e.message : "Failed");
+      setMsg(parseApiError(e, "Failed"));
       setIsError(true);
     } finally { setSaving(false); }
   };
@@ -75,7 +76,7 @@ export default function ProfilePage() {
       setNewPin("");
     } catch (e: unknown) {
       console.error("PIN change failed:", e);
-      setMsg(e instanceof Error ? e.message : "Failed");
+      setMsg(parseApiError(e, "Failed"));
       setIsError(true);
     } finally { setSaving(false); }
   };

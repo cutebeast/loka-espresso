@@ -6,6 +6,7 @@ import {
   markRewardUsed, markVoucherUsed, scanCustomerCode, scanRewardCode, scanVoucherCode,
   type Customer, type CustomerWallet, type Reward, type Voucher
 } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import Card from "@/components/Card";
@@ -84,7 +85,7 @@ export default function WalletPage() {
       setError("");
     } catch (err: unknown) {
       console.error("Failed to load customer wallet:", err);
-      setError(err instanceof Error ? err.message : "Failed to load customer wallet");
+      setError(parseApiError(err, "Failed to load customer wallet"));
       setWalletData(null);
     } finally {
       setLoading(false);
@@ -121,7 +122,7 @@ export default function WalletPage() {
       }
     } catch (err: unknown) {
       console.error("Scan failed:", err);
-      setError(err instanceof Error ? err.message : "Scan failed");
+      setError(parseApiError(err, "Scan failed"));
     } finally {
       setLoading(false);
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
@@ -159,7 +160,7 @@ export default function WalletPage() {
       setSuccess(`Top-up successful! New balance: RM ${bal}`);
       setAmount(""); setPin(""); setNotes(""); setShowPin(false);
       if (selectedCustomer) loadCustomer(selectedCustomer);
-    } catch (e: unknown) { console.error("Top-up failed:", e); setError(e instanceof Error ? e.message : String(e)); } finally { setToppingUp(false); }
+    } catch (e: unknown) { console.error("Top-up failed:", e); setError(parseApiError(e, "Top-up failed")); } finally { setToppingUp(false); }
   };
 
   const handleUseReward = async (reward: Reward) => {
@@ -192,7 +193,7 @@ export default function WalletPage() {
         const res = await markRewardUsed(selectedCustomer.id, reward.id);
         setSuccess(res.message || "Reward used successfully");
         if (selectedCustomer) loadCustomer(selectedCustomer);
-      } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); } finally { setRedeemingId(null); setRedeemType(null); }
+      } catch (e: unknown) { setError(parseApiError(e, "Failed to redeem reward")); } finally { setRedeemingId(null); setRedeemType(null); }
     } else if (pendingRedeem.voucher) {
       const voucher = pendingRedeem.voucher;
       setRedeemingId(voucher.id);
@@ -201,7 +202,7 @@ export default function WalletPage() {
         const res = await markVoucherUsed(selectedCustomer.id, voucher.id);
         setSuccess(res.message || "Voucher used successfully");
         if (selectedCustomer) loadCustomer(selectedCustomer);
-      } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); } finally { setRedeemingId(null); setRedeemType(null); }
+      } catch (e: unknown) { setError(parseApiError(e, "Failed to redeem voucher")); } finally { setRedeemingId(null); setRedeemType(null); }
     }
     setPendingRedeem(null);
   };

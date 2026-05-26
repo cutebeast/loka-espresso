@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import { AlertTriangle } from "lucide-react";
@@ -43,7 +44,7 @@ export default function WastagePage() {
       setSuccess("Wastage reported successfully");
       setForm({ menu_item_id: "", quantity: 0, reason: "", notes: "" });
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(parseApiError(e, "Failed to submit wastage"));
     } finally {
       setSubmitting(false);
     }
