@@ -17,6 +17,7 @@ from app.api.v1.endpoints.admin import rewards as admin_rewards
 from app.api.v1.endpoints.admin import audit as admin_audit
 from app.api.v1.endpoints.admin import notifications as admin_notifications
 from app.api.v1.endpoints.customer import cart as customer_cart
+from app.api.v1.endpoints.customer import checkin as customer_checkin
 from app.api.v1.endpoints.customer import order as customer_order
 from app.api.v1.endpoints.customer import profile as customer_profile
 from app.api.v1.endpoints import translation as translation_endpoints
@@ -206,6 +207,7 @@ api_router.include_router(translation_endpoints.router, prefix="/admin/translati
 
 # Customer (auth required)
 api_router.include_router(customer_profile.router, tags=["customer"])
+api_router.include_router(customer_checkin.router, tags=["customer"])
 api_router.include_router(customer_cart.router, tags=["cart"])
 api_router.include_router(customer_order.router, tags=["orders"])
 

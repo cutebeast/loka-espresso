@@ -57,6 +57,7 @@ const pageImporters: Record<string, () => Promise<{ default: React.ComponentType
   'order-detail': () => import('./OrderDetailPage'),
   reservations: () => import('./ReservationsPage'),
   events: () => import('./EventsPage'),
+  checkin: () => import('./CheckinPage'),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

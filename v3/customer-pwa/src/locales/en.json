@@ -567,8 +567,22 @@
       "signInPrompt": "Sign in to view your Loka wallet",
       "tierMember": "{tier} Member",
       "topUp": "Top Up",
-      "vouchers": "Vouchers"
+      "vouchers": "Vouchers",
+      "checkin": "Daily Check-In"
     }
+  },
+  "checkin": {
+    "title": "Daily Check-In",
+    "subtitle": "Check in daily to earn loyalty points",
+    "streak": "Current Streak",
+    "rewards": "Reward Tiers",
+    "dailyBase": "Daily Base",
+    "streakBonus": "Streak Bonus",
+    "sevenDayBonus": "7-Day Bonus",
+    "checkInNow": "Check In Now",
+    "checkedIn": "You're checked in!",
+    "pointsEarned": "+{points} points earned",
+    "comeBackTomorrow": "Come back tomorrow for your next reward"
   },
   "menu": {
     "addPrice": "Add Price",

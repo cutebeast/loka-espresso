@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ChevronRight, Wallet, Crown, Award, Gift, Ticket } from 'lucide-react';
+import { ChevronRight, Wallet, Crown, Award, Gift, Ticket, CalendarCheck } from 'lucide-react';
 import { useFitText } from '@/hooks/useFitText';
 import { getLocale } from '@/stores/localeStore';
 
@@ -15,6 +15,7 @@ interface WalletCardProps {
   onTopUp: () => void;
   onRewards: () => void;
   onVouchers: () => void;
+  onCheckin: () => void;
   onSignIn: () => void;
 }
 
@@ -29,7 +30,7 @@ function formatPoints(value: number): string {
   return value.toLocaleString(getLocale());
 }
 
-export default function WalletCard({ isGuest: _isGuest, isAuthenticated, balance, points, tier, onTopUp, onRewards, onVouchers, onSignIn }: WalletCardProps) {
+export default function WalletCard({ isGuest: _isGuest, isAuthenticated, balance, points, tier, onTopUp, onRewards, onVouchers, onCheckin, onSignIn }: WalletCardProps) {
   const { t } = useTranslation();
   const amountRef = useRef<HTMLSpanElement>(null);
 
@@ -83,6 +84,9 @@ export default function WalletCard({ isGuest: _isGuest, isAuthenticated, balance
         </span>
         <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onVouchers(); }}>
           <Ticket size={14} color="#C4893A" /> {t('home.wallet.vouchers')}
+        </span>
+        <span className="wallet-chip" onClick={(e) => { e.stopPropagation(); onCheckin(); }}>
+          <CalendarCheck size={14} color="#3B4A1A" /> {t('home.wallet.checkin')}
         </span>
       </div>
     </div>

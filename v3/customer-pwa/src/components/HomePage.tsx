@@ -161,6 +161,7 @@ export default function HomePage() {
               onTopUp={() => setPage('wallet')}
               onRewards={() => setPage('my-rewards', { initialTab: 'rewards' })}
               onVouchers={() => setPage('my-rewards', { initialTab: 'vouchers' })}
+              onCheckin={() => setPage('checkin')}
               onSignIn={triggerSignIn}
             />
           </motion.div>
