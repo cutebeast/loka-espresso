@@ -1,6 +1,6 @@
 # FNB Enterprise v3 — Loka Espresso
 
-> **Status**: Live | **Last Audit**: Round 12 complete (2026-05-26) | **TS**: 0 errors | **Coverage**: 24/24 features
+> **Status**: Live | **Last Audit**: Round 13 (2026-05-26) | **TS**: 0 errors | **Coverage**: 24/24 features | **Staff pages**: 13/13 | **Admin pages**: 17+/17+
 
 ## Services
 
@@ -296,3 +296,43 @@ Full cross-reference of all 24 admin-managed customer-facing content/marketing f
 - **Python**: all backend + E2E files compile
 - **All 70+ PWA API calls**: cross-referenced against backend routes — 0 unmatched
 - **Live tests**: order flow (add→cart→place→history), check-in (streak + points 409 guard), rewards catalog, reservations, stores, addresses, promo banners — all pass with customer `+60123456789`
+
+## Round 13 (2026-05-26) — Staff/Admin error handling, hydration fix, backend refactor
+
+### Staff token on admin endpoints (backend refactor)
+When a staff member with a proper `StaffProfile` logs in (e.g., `store@loyaltysystem.uk`), the `_make_token` creates a JWT with `type="staff"` but no `admin_id`. Admin endpoints used by the staff portal (`CurrentAdmin` dependency) failed with "Admin not found" or "Store access denied".
+
+**Fix**: Refactored `deps.py` to handle staff tokens cleanly across all admin endpoints:
+- `get_current_admin`: Returns `_StaffAdmin` dataclass with `is_staff_context=True` when token is staff type without `admin_id`
+- `_get_admin_role_keys` + `_get_admin_store_ids`: Accept `admin_obj` param — detect `is_staff_context` and return staff's store + implicit role
+- `require_store_admin`: Works automatically for staff via helper functions — no per-endpoint patches
+- **All staff-accessible admin endpoints** (orders, reservations, tables, staff, inventory, equipment) verified working
+
+### POS order fix
+`POST /staff/pos/orders` used `CurrentAdmin` — only worked for admin accounts with linked StaffProfile. Changed to `CurrentStaff` — any staff profile can now create POS orders. Auto-creates `+0000000000` walk-in customer when no `customer_id` provided (fixes NOT NULL violation).
+
+### Error handling overhaul (both portals)
+Created `parseApiError()` helper in both `staff-portal/src/lib/errors.ts` and `admin-portal/src/lib/errors.ts`. Extracts user-friendly `detail` text from raw JSON API errors. Applied to 14 files — now shows "Invalid credentials" instead of `{"detail":"Invalid credentials"}`.
+
+### Translation hydration fix
+Added `hydrated` state to `useTranslation` hook. Server and initial client render both show raw translation keys (matching HTML), preventing React error #418 which wiped error state on mount.
+
+### Form/UX fixes
+- **Dietary tags**: Wrong URL `/admin/menu/dietary-tags` → `/admin/dietary-tags` in menu item create/edit pages
+- **DOM warnings**: All standalone `<input type="password">` elements wrapped in `<form>` on both portals (campaigns settings, staff profile, wallet, time-clock)
+- **Login placeholders**: Generic text "Enter your email"/"Enter your password" on both portals
+- **POS checkout**: Customer section shows "(optional — walk-ins accepted)" label
+
+### CRUD regression fixes
+- **Staff create**: MissingGreenlet fix (captured profile attrs before 2nd commit), auto-generated `employee_id`
+- **Menu item delete**: `selectinload(ModifierGroup)` to eagerly load relationships
+- **Equipment create/update**: Dict output instead of `EquipmentOut.model_validate` (lazy `maintenance_logs`)
+- **Pool config**: Removed `pool_pre_ping=True` (asyncpg incompatibility), set `pool_recycle=1800`
+- **204 No Content**: Added `res.status === 204` guards to both API clients (6 code paths) — prevents JSON parse crash on DELETE ops
+
+### Verification
+- **TypeScript**: 0 errors across both portals
+- **ESLint**: only pre-existing (1 admin, 4 staff)
+- **Staff portal**: 13/13 pages HTTP 200
+- **Admin portal**: 17+/17+ pages HTTP 200
+- **Staff login**: verified via HTTPS through Cloudflare (store@loyaltysystem.uk / admin1234)

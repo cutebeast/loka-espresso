@@ -204,7 +204,7 @@ cd customer-pwa && npm run build
 
 ## Quality Standards (from 10 rounds of audit)
 
-### All Clear (Reinforced by Round 12, 70+ endpoint audit, 24/24 feature coverage)
+### All Clear (Reinforced by Round 13 — staff+admin deep audit, 204/error handling/staff-token refactor)
 - **No runtime crash risks**: All `.toFixed()`, `.charAt()`, `new Date()`, `JSON.parse()` calls properly guarded
 - **No SSR crashes**: All `localStorage`/`window`/`document` access guarded by `typeof window !== "undefined"`
 - **No React key warnings**: Every `.map()` call has proper `key` prop
@@ -518,3 +518,23 @@ Full cross-reference of all 24 admin-managed customer-facing features vs PWA con
 - **ESLint**: only pre-existing (1 admin error, 4 staff warnings)
 - **Python**: all backend + E2E compile
 - **All 70+ PWA API calls**: cross-referenced against backend routes — 0 unmatched
+
+### Round 13 (2026-05-26) — Staff/Admin error handling, hydration fix, backend staff-token refactor
+
+**Backend — staff token on admin endpoints**: Staff profiles log in via `_make_token` creating JWT with `type="staff"` but no `admin_id`. Admin endpoints used by staff portal (`CurrentAdmin` dependency) failed with "Admin not found" or "Store access denied". Fixed via `deps.py` refactor:
+- `get_current_admin`: Returns `_StaffAdmin` dataclass with `is_staff_context=True` for staff tokens without `admin_id`
+- `_get_admin_role_keys` + `_get_admin_store_ids`: Accept `admin_obj`, detect `is_staff_context`, return staff's store + implicit role
+- `require_store_admin`: Works automatically via helpers — no per-endpoint hacks
+- All staff-accessible admin endpoints verified (orders, reservations, tables, staff, inventory, equipment)
+
+**POS order fix**: `POST /staff/pos/orders` switched from `CurrentAdmin` to `CurrentStaff`. Auto-creates `+0000000000` walk-in customer when no `customer_id` provided.
+
+**Error handling**: Created `parseApiError()` helper in both portals — extracts `detail` from raw JSON errors. Applied to 14 files across both portals. Users now see "Invalid credentials" instead of raw JSON.
+
+**Translation hydration**: Added `hydrated` state to `useTranslation` — server/client render matching raw keys, preventing React error #418 that wiped error state.
+
+**Form/UX**: Dietary tags URL fix (`/admin/menu/dietary-tags`→`/admin/dietary-tags`). Password inputs wrapped in `<form>` on both portals (6 locations). Generic login placeholders. POS walk-in label.
+
+**CRUD fixes**: Staff create MissingGreenlet + employee_id. Menu delete selectinload ModifierGroup. Equipment dict output. Pool pre_ping removed. 204 handling in both API clients.
+
+**Verification**: TS 0 errors both portals. Staff 13/13 pages 200. Admin 17+/17+ pages 200. Staff login verified via HTTPS through Cloudflare.
