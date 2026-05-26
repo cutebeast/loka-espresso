@@ -55,7 +55,7 @@ export default function LoginPage() {
             <input
               type="email" required autoComplete="email"
               value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.com"
+              placeholder="Enter your email address"
             />
           </div>
           <div className="login-field">
@@ -63,7 +63,7 @@ export default function LoginPage() {
             <input
               type="password" required autoComplete="current-password"
               value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Enter your password"
             />
           </div>
           <button type="submit" disabled={loading} className="login-submit">

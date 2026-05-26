@@ -2,9 +2,9 @@
   "app": "staff-portal",
   "name": "Staff Portal",
   "version": "0.1.0",
-  "commit": "b9ba2fa",
+  "commit": "a67061d",
   "branch": "master",
-  "builtAt": 1779745457345,
-  "commitAt": 1779740607000,
+  "builtAt": 1779766796584,
+  "commitAt": 1779762629000,
   "environment": "production"
 }
