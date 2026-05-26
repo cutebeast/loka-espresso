@@ -94,6 +94,7 @@ export default function CampaignSettingsPage() {
                     <tr key={r.k}>
                       <td style={{ fontWeight: 600 }}>{r.l}</td>
                       <td>
+                        <form onSubmit={e => e.preventDefault()} style={{ display: "inline" }}>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <input
                             type={r.sensitive && !showToken ? "password" : "text"}
@@ -120,6 +121,7 @@ export default function CampaignSettingsPage() {
                             </button>
                           )}
                         </div>
+                        </form>
                       </td>
                     </tr>
                   ))}
