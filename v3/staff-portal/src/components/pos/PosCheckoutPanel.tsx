@@ -100,7 +100,7 @@ export default function PosCheckoutPanel({
       {/* Customer Identification */}
       {!customer ? (
         <div className="card" style={{ marginBottom: 16 }}>
-          <h4 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700 }}>Customer</h4>
+          <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700 }}>Customer <span style={{ fontWeight: 400, fontSize: 12, color: "var(--color-text-muted)" }}>(optional — walks in accepted)</span></h4>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={onScanCustomer}>
               <QrCode size={14} /> Scan Customer
