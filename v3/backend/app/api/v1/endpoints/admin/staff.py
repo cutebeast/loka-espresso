@@ -89,9 +89,13 @@ async def create_staff(
     pw_hash = hash_password(password) if password else None
     pin_hash = hash_password(pin)
 
+    # Generate employee_id from principal_id
+    employee_id = f"EMP{principal.id:04d}"
+
     profile = StaffProfile(
         principal_id=principal.id,
         store_id=data.store_id,
+        employee_id=employee_id,
         display_name=display_name,
         email_address=email or None,
         password_hash=pw_hash,
@@ -104,19 +108,22 @@ async def create_staff(
     await db.commit()
     await db.refresh(profile)
 
+    profile_id = profile.id
+    profile_name = profile.display_name
+
     # Audit log
     db.add(AuditLog(
         principal_id=admin.id,
         action="create",
         resource_type="staff",
-        resource_id=profile.id,
+        resource_id=profile_id,
         changes_summary={"display_name": display_name, "email": email, "store_id": data.store_id},
     ))
     await db.commit()
 
     return APIResponse(data={
-        "id": profile.id,
-        "display_name": profile.display_name,
+        "id": profile_id,
+        "display_name": profile_name,
         "email": email,
         "message": "Staff created successfully",
     })

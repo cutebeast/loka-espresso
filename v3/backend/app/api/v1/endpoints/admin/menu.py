@@ -628,7 +628,9 @@ async def delete_item(
 ):
     """Soft-delete a menu item."""
     result = await db.execute(
-        select(MenuItem).where(
+        select(MenuItem)
+        .options(selectinload(MenuItem.modifier_groups).selectinload(MenuModifierGroup.options))
+        .where(
             MenuItem.id == id,
             MenuItem.deleted_at.is_(None),
         )
