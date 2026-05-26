@@ -141,6 +141,47 @@ async def get_store_menu(
     return APIResponse(data=menu_data)
 
 
+@router.get("/items", response_model=APIResponse[dict])
+async def list_menu_items(
+    db: DBDependency,
+    locale: OptionalLocale,
+    is_featured: bool | None = Query(None),
+    category_id: int | None = Query(None),
+    search: str | None = Query(None, max_length=100),
+    available_only: bool = Query(False),
+    limit: int = Query(20, ge=1, le=100),
+):
+    """List global menu items (no store_id required — menu is global)."""
+    item_stmt = select(MenuItem).where(
+        MenuItem.is_available.is_(True),
+        MenuItem.deleted_at.is_(None),
+    )
+    if category_id:
+        item_stmt = item_stmt.where(MenuItem.category_id == category_id)
+    if is_featured is not None:
+        item_stmt = item_stmt.where(MenuItem.is_featured.is_(is_featured))
+    if search:
+        item_stmt = item_stmt.where(
+            MenuItem.item_name.ilike(f"%{search}%")
+            | MenuItem.description.ilike(f"%{search}%")
+        )
+    if available_only:
+        item_stmt = item_stmt.where(MenuItem.is_available.is_(True))
+
+    item_stmt = item_stmt.order_by(MenuItem.item_name).limit(limit)
+    item_result = await db.execute(item_stmt)
+    items = item_result.scalars().all()
+
+    result_items = []
+    for i in items:
+        d = {c.name: getattr(i, c.name) for c in i.__table__.columns}
+        d["dietary_tags"] = None
+        d["allergens"] = []
+        result_items.append(d)
+
+    return APIResponse(data={"items": result_items})
+
+
 @router.get("/items/{item_id}", response_model=APIResponse[MenuItemPublicOut])
 async def get_menu_item(db: DBDependency, locale: OptionalLocale, item_id: int):
     """Get public menu item details."""

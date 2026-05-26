@@ -7,7 +7,7 @@ import { Smartphone } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 
-import api, { setStoreIdGetter } from '@/lib/api';
+import api from '@/lib/api';
 import type { Store as StoreType } from '@/lib/api';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { useAuthFlow } from '@/hooks/useAuthFlow';
@@ -101,10 +101,7 @@ export default function AppShell() {
   const userLocation = useUIStore((s) => s.userLocation);
   const setUserLocation = useUIStore((s) => s.setUserLocation);
 
-  // Initialize store ID getter for menu URL mapping in api.ts
-  useEffect(() => {
-    setStoreIdGetter(() => selectedStore?.id ?? null);
-  }, [selectedStore]);
+  // ── Menu is global — no store_id mapping needed for browsing ──
   const reducedMotion = useReducedMotion();
   const a2hs = useA2HS();
 

@@ -32,9 +32,6 @@ api.interceptors.request.use((config) => {
 
 // Store-scoped helper: extracts store_id from UI state for menu/category calls
 // The getter is set by the app shell once the store is initialized.
-let _getStoreId: (() => number | null) = () => null;
-export function setStoreIdGetter(fn: () => number | null) { _getStoreId = fn; }
-
 // URL mapping: old v1 endpoints → v3 endpoints
 function mapUrl(url: string, _method?: string): string {
   if (!url) return url;
@@ -130,14 +127,8 @@ function mapUrl(url: string, _method?: string): string {
     return queryPart ? url + queryPart : url;
   }
 
-  // ---- Menu items/categories → /menu/stores/{store_id} ----
-  // Only remap bare /menu/items or /menu/categories (not sub-paths like /menu/items/3/customizations)
-  const isMenuItemsRoot = url === '/menu/items' || url === '/menu/categories';
-  if (isMenuItemsRoot) {
-    const storeId = _getStoreId() || 1;  // default to store 1 if none selected
-    if (storeId) {
-      url = `/menu/stores/${storeId}`;
-    }
+  // ---- Menu items/categories → no store_id needed (menu is global) ----
+  if (url === '/menu/items' || url === '/menu/categories') {
     return queryPart ? url + queryPart : url;
   }
   // Sub-paths like /menu/items/{id} → keep as-is (backend has /menu/items/{item_id})
