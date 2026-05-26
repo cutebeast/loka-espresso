@@ -29,7 +29,7 @@ export default function NewItemPage() {
   useEffect(() => {
     api.getRaw<any>("/admin/menu/categories?per_page=50").then(d => setCategories(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('categories:',e)});
     api.getRaw<any>("/admin/menu/allergens").then(d => setAllergens(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('allergens:',e)});
-    api.getRaw<any>("/admin/menu/dietary-tags?per_page=50").then(d => setDietaryTags(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('dietary-tags:',e)});
+    api.getRaw<any>("/admin/dietary-tags?per_page=50").then(d => setDietaryTags(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('dietary-tags:',e)});
     api.getRaw<any>("/admin/menu/tax-categories").then(d => setTaxCategories(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('tax-categories:',e)});
     api.getRaw<any>("/admin/loyalty/tiers").then(d => setLoyaltyTiers(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('loyalty-tiers:',e)});
     api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('stores:',e)});

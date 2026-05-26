@@ -31,7 +31,7 @@ export default function ItemEditPage() {
     const raw = (d:any) => Array.isArray(d)?d:(d?.items||[]);
     try{const d=await api.getRaw<any>("/admin/menu/categories?per_page=50");setCategories(raw(d));}catch (e) { console.error(e); }
     try{const d=await api.getRaw<any>("/admin/menu/allergens");setAllergens(raw(d));}catch (e) { console.error(e); }
-    try{const d=await api.getRaw<any>("/admin/menu/dietary-tags?per_page=50");setDietaryTags(raw(d));}catch (e) { console.error(e); }
+    try{const d=await api.getRaw<any>("/admin/dietary-tags?per_page=50");setDietaryTags(raw(d));}catch (e) { console.error(e); }
     try{const d=await api.getRaw<any>("/admin/menu/tax-categories");setTaxCategories(raw(d));}catch (e) { console.error(e); }
     try{const d=await api.getRaw<any>("/admin/loyalty/tiers");setLoyaltyTiers(raw(d));}catch (e) { console.error(e); }
   }, []);
