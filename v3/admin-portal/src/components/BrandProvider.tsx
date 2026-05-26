@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { STORAGE_KEYS, BRANDING } from "@/lib/constants";
+import { api } from "@/lib/api";
 
 interface BrandConfig {
   brandName: string;
@@ -25,15 +26,9 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.TOKEN) : "";
     if (!token) return;
 
-    const controller = new AbortController();
-
-    fetch("/api/v1/admin/config?prefix=branding", {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        const items = d.data || [];
+    api.getRaw<any>("/admin/config?prefix=branding")
+      .then((items) => {
+        if (!Array.isArray(items)) return;
         const nameItem = items.find((i: { config_key: string }) => i.config_key === "branding.brand_name");
         const favItem = items.find((i: { config_key: string }) => i.config_key === "branding.admin_favicon_url");
         if (nameItem?.config_value) setBrandName(nameItem.config_value);
@@ -42,8 +37,6 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       .catch((e) => {
         console.error('branding config:', e);
       });
-
-    return () => { controller.abort(); };
   }, []);
 
   return (

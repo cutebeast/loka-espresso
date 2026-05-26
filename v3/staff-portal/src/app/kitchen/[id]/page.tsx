@@ -284,7 +284,11 @@ export default function KitchenDetailPage() {
 
       {/* Print Ticket */}
       <div style={{ display: "flex", gap: 8 }}>
-        <button className="btn btn-outline" disabled title="Printer integration pending">
+        <button
+          className="btn btn-outline"
+          onClick={() => window.dispatchEvent(new CustomEvent("pos:toast", { detail: { message: "Printer integration pending", type: "info" } }))}
+          title="Printer integration pending"
+        >
           <Printer size={16} /> Print Kitchen Ticket
         </button>
       </div>

@@ -153,14 +153,20 @@ async def test_inventory_item_response_shape(
         pytest.skip("No inventory items for schema validation")
     item_id = items[0]["id"]
 
-    r2 = await client.get(f"{base_url}/admin/inventory/items/{item_id}", headers=admin_headers)
+    r2 = await client.get(f"{base_url}/admin/inventory/items/{item_id}?store_id={store_id}", headers=admin_headers)
     assert r2.status_code == 200
     item = r2.json()["data"]
     assert_has_keys(item, {
-        "id", "item_name", "sku", "unit_of_measure",
-        "current_stock", "min_stock_level", "reorder_point",
-        "unit_cost", "store_id",
+        "id", "item_code", "item_name", "unit_of_measure",
+        "unit_cost", "item_type", "is_active", "is_direct_sale",
     })
+    # Stock fields are in the nested stock object (populated when store_id is provided)
+    stock = item.get("stock")
+    if stock:
+        assert_has_keys(stock, {
+            "id", "inventory_item_id", "store_id",
+            "current_stock", "reorder_level", "par_level",
+        })
 
 
 # ═══════════════════════════════════════════════════════════════════════════

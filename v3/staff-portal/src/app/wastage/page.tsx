@@ -16,7 +16,7 @@ export default function WastagePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ menu_item_id: "", quantity: 0, reason: "" });
+  const [form, setForm] = useState({ menu_item_id: "", quantity: 0, reason: "", notes: "" });
 
   useEffect(() => {
     api.getRaw<any>("/admin/menu/items?per_page=500")
@@ -27,18 +27,21 @@ export default function WastagePage() {
   const handleSubmit = async () => {
     if (!form.menu_item_id) { setError("Select a menu item"); return; }
     if (form.quantity <= 0) { setError("Quantity must be greater than 0"); return; }
-    if (form.reason.trim().length < 3) { setError("Please provide a reason (min 3 characters)"); return; }
+    if (form.reason.trim().length < 3) { setError("Please select a reason"); return; }
     setSubmitting(true);
     setError("");
     setSuccess("");
     try {
+      const combinedReason = form.notes.trim()
+        ? `${form.reason} — ${form.notes.trim()}`
+        : form.reason;
       await api.post("/staff/inventory/waste", {
         menu_item_id: Number(form.menu_item_id),
         quantity: form.quantity,
-        reason: form.reason.trim(),
+        reason: combinedReason,
       });
       setSuccess("Wastage reported successfully");
-      setForm({ menu_item_id: "", quantity: 0, reason: "" });
+      setForm({ menu_item_id: "", quantity: 0, reason: "", notes: "" });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -113,9 +116,9 @@ export default function WastagePage() {
           <div>
             <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Additional Notes</label>
             <textarea
-              value={form.reason === "" || ["Burnt during preparation","Spilled or dropped","Expired or spoiled","Damaged packaging","Overproduction","Quality control rejection"].includes(form.reason) ? "" : ""}
-              onChange={e => setForm({ ...form, reason: e.target.value })}
-              placeholder="Custom reason if not listed above..."
+              value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
+              placeholder="Supplementary details about this wastage..."
               rows={2}
               style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", resize: "vertical", fontSize: 14 }}
             />

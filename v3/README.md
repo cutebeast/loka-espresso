@@ -1,6 +1,6 @@
 # FNB Enterprise v3 — Loka Espresso
 
-> **Status**: Live | **Last Audit**: Round 11 (2026-05-25) | **TS**: 0 errors | **Lint**: 0 warnings
+> **Status**: Live | **Last Audit**: Round 12 (2026-05-26) | **TS**: 0 errors | **Lint**: 0 warnings
 
 ## Services
 
@@ -205,3 +205,32 @@ This ensures:
 
 ### E2E tests
 - ScopeMismatch, wrong admin email, wrong endpoint paths, wrong response parsing fixed
+
+## Round 12 Audit (2026-05-26)
+
+Full audit across all 5 domains (backend, admin, staff, customer PWA, e2e-tests). **13 issues found and fixed — 0 false positives.**
+
+### Critical fixes
+- **E2E inventory schema**: `test_schema_validation.py` had 5 stale field names after Global Inventory Refactor (`sku`→`item_code`, stock fields moved to nested `stock: InventoryStockOut`). Updated assertions + added `store_id` on detail query for stock population.
+- **Wastage textarea**: `wastage/page.tsx` textarea value binding was `condition ? "" : ""` — both branches returned empty string. Fixed by splitting `form.notes` from `form.reason`, concatenating them on submit.
+
+### Medium fixes
+- **Admin badge-amber**: Added missing `.badge-amber` CSS class (corrective maintenance badges were unstyled).
+- **Backend models/__init__.py**: Added `InventoryStock` and `ShiftTemplate` to exports (both were defined but not re-exported — dormant today but future-proofing).
+- **Staff api.ts requestPaginated**: Fixed to use `requestRaw` + reconstruct `PaginatedResponse<T>` instead of accidentally stripping pagination metadata.
+- **E2E inventory test**: Verified `store_id` query param on `/admin/inventory/items` is valid and functional (populates nested stock per store via `inventory.py:193-201`).
+
+### Low fixes
+- **Staff feature toast**: Added global `pos:toast` event listener in `AuthProvider` with visual toast overlay (4s auto-dismiss). Fixes silently-dropped toasts from checkout panel.
+- **Admin BrandProvider**: Replaced bare `fetch()` with `api.getRaw()` — gets 401→token-refresh→retry.
+- **Admin GalleryUpload**: `disabled` prop now passed to both upload buttons.
+- **Staff kitchen detail**: Print button now enabled, dispatches feature toast instead of permanent `disabled`.
+- **Staff kitchen/[id]**: Added route-level `error.tsx` boundary with user-friendly message + retry button.
+- **Admin useDebounce**: Added `"use client"` directive.
+- **PWA port**: Standardized port 13810 in `package.json`, `Dockerfile.customer`, and `docker-compose.yml` (was 3012 internal, now consistent with docs).
+
+### Verification
+- **TypeScript**: 0 errors across all 3 portals (admin, staff, customer PWA)
+- **ESLint**: 0 new errors/warnings (1 pre-existing admin error, 4 pre-existing staff warnings)
+- **E2E tests**: Python syntax valid
+- **Recipe-to-stock deduction**: Verified `_deduct_stock_for_order` → `InventoryStock` with `WITH FOR UPDATE` row locks intact

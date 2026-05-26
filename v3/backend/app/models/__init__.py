@@ -43,6 +43,7 @@ from app.models.staff import (
     StaffTimeEvent,
     StaffShift,
     TipAllocation,
+    ShiftTemplate,
 )
 from app.models.platform import (
     PlatformConfig,
@@ -81,6 +82,7 @@ from app.models.inventory import (
     InventoryMovementLog,
     PurchaseOrder,
     PurchaseOrderLine,
+    InventoryStock,
 )
 from app.models.cart import (
     CartLineItem,

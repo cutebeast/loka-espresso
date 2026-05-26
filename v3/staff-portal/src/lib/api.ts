@@ -131,7 +131,13 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
 }
 
 async function requestPaginated<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<PaginatedResponse<T>> {
-  return request<PaginatedResponse<T>>(method, path, body, signal);
+  const raw = await requestRaw<{ items: T[] } & Record<string, unknown>>(method, path, body, signal);
+  return {
+    items: (raw?.items ?? []) as T[],
+    total: (raw?.total ?? 0) as number,
+    page: (raw?.page ?? 1) as number,
+    total_pages: (raw?.total_pages ?? raw?.pages ?? 1) as number,
+  };
 }
 
 async function requestRaw<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {

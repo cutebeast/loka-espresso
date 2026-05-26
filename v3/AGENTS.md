@@ -204,7 +204,7 @@ cd customer-pwa && npm run build
 
 ## Quality Standards (from 10 rounds of audit)
 
-### All Clear (Reinforced by Round 10)
+### All Clear (Reinforced by Round 12)
 - **No runtime crash risks**: All `.toFixed()`, `.charAt()`, `new Date()`, `JSON.parse()` calls properly guarded
 - **No SSR crashes**: All `localStorage`/`window`/`document` access guarded by `typeof window !== "undefined"`
 - **No React key warnings**: Every `.map()` call has proper `key` prop
@@ -430,3 +430,30 @@ All 50+ staff portal API endpoints verified — 0 missing, 0 broken.
 **E2E tests**: ScopeMismatch, wrong emails, wrong endpoint paths, wrong response parsing — all fixed.
 
 **Verification**: TypeScript 0 errors, ESLint 0 warnings, all 4 services healthy, all 50+ endpoints verified.
+
+### Round 12 Audit (2026-05-26) — 13 fixes across 5 domains, zero false positives
+
+Full audit of all 5 domains. Every finding confirmed by reading actual source files.
+
+**Critical (2 fixes)**:
+- **E2E inventory schema**: `test_schema_validation.py` had 5 stale field names after Global Inventory Refactor (`sku`→`item_code`, stock fields moved to nested `stock: InventoryStockOut`). Added `store_id` on detail query.
+- **Wastage textarea**: `wastage/page.tsx` value binding `condition ? "" : ""` — permanently non-functional. Split `form.notes` from `form.reason`, concatenate on submit.
+
+**Medium (4 fixes)**:
+- **Admin badge-amber**: Added `.badge-amber` CSS — corrective maintenance badges were unstyled.
+- **Backend models/__init__.py**: Added `InventoryStock` + `ShiftTemplate` exports (dormant bug, fixed for safety).
+- **Staff api.ts requestPaginated**: Rewrote to use `requestRaw` + reconstruct `PaginatedResponse<T>` — was stripping pagination metadata.
+- **E2E inventory query**: Verified `store_id` on `/admin/inventory/items` is valid (populates nested stock). Not a bug.
+
+**Low (7 fixes)**:
+- **Staff feature toast**: Global `pos:toast` listener in `AuthProvider` + visual overlay (4s auto-dismiss). Was silently dropped from checkout panel.
+- **Admin BrandProvider**: Bare `fetch()` → `api.getRaw()` (401→refresh→retry).
+- **Admin GalleryUpload**: `disabled` prop passed to upload buttons.
+- **Staff kitchen Print**: Button enabled, dispatches feature toast.
+- **Staff kitchen/[id]/error.tsx**: New route error boundary.
+- **Admin useDebounce.ts**: Added `"use client"`.
+- **PWA port**: Standardized to 13810 in `package.json`, `Dockerfile.customer`, `docker-compose.yml`.
+
+**Dispelled false claims**: Admin layout missing `<html>/<body>` (Next.js 16 auto-injects), PWA SPA pattern (architectural choice), staff PIN test dependency (has `pytest.skip` guard), `CartModifierSelection` duplicate in `__all__` (Python deduplicates).
+
+**Verification**: TypeScript 0 errors all 3 portals. ESLint 0 new. E2E Python valid. Recipe-to-stock deduction (`_deduct_stock_for_order` → `InventoryStock` `WITH FOR UPDATE`) intact.

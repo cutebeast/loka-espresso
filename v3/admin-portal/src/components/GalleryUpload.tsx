@@ -60,7 +60,7 @@ export default function GalleryUpload({ imageUrls, videoUrl, onImagesChange, onV
         <label className="form-label">Image Gallery</label>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <input ref={imgRef} type="file" accept="image/*" multiple onChange={handleImages} style={{ display: "none" }} />
-          <button type="button" onClick={() => imgRef.current?.click()} className="btn btn-sm btn-outline" disabled={uploading}><Upload size={14} /> {uploading ? "Uploading..." : "Add Images"}</button>
+          <button type="button" onClick={() => imgRef.current?.click()} className="btn btn-sm btn-outline" disabled={_disabled || uploading}><Upload size={14} /> {uploading ? "Uploading..." : "Add Images"}</button>
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", display: "flex", alignItems: "center" }}>Multiple images</span>
         </div>
         {imageUrls.length > 0 && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -76,7 +76,7 @@ export default function GalleryUpload({ imageUrls, videoUrl, onImagesChange, onV
         <label className="form-label">Gallery Video</label>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <input ref={vidRef} type="file" accept="video/*" onChange={handleVideo} style={{ display: "none" }} />
-          <button type="button" onClick={() => vidRef.current?.click()} className="btn btn-sm btn-outline" disabled={uploading}><Upload size={14} /> {uploading ? "Uploading..." : "Upload Video"}</button>
+          <button type="button" onClick={() => vidRef.current?.click()} className="btn btn-sm btn-outline" disabled={_disabled || uploading}><Upload size={14} /> {uploading ? "Uploading..." : "Upload Video"}</button>
           {videoUrl && <span style={{ fontSize: 12, color: "var(--color-success)" }}>✓ {videoUrl.split("/").pop()}</span>}
           {videoUrl && <button type="button" onClick={() => onVideoChange("")} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)", fontSize: 11 }}>Remove</button>}
         </div>

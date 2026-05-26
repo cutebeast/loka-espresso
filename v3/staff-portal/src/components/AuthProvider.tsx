@@ -26,6 +26,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [forbidden, setForbidden] = useState(false);
   const [authError, setAuthError] = useState(false);
   const [showIdleWarning, setShowIdleWarning] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: string } | null>(null);
   const isLoginPage = pathname === "/login";
 
   // Branding favicon
@@ -51,6 +52,19 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       })
       .catch((err) => { console.error("Branding fetch failed:", err); });
     return () => { if (injectedLink) injectedLink.remove(); };
+  }, []);
+
+  // Global toast listener for feature-flag toasts
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.message) {
+        setToast({ message: detail.message, type: detail.type || "info" });
+        setTimeout(() => setToast(null), 4000);
+      }
+    };
+    window.addEventListener("pos:toast", handler);
+    return () => window.removeEventListener("pos:toast", handler);
   }, []);
 
   // ── Idle timeout (30 min) with 60s warning ──
@@ -202,6 +216,17 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         </div>
       )}
       <main className="app-main">
+        {toast && (
+          <div style={{
+            position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 9999,
+            background: toast.type === "error" ? "#FEE2E2" : toast.type === "success" ? "#DCFCE7" : "#DBEAFE",
+            color: toast.type === "error" ? "#991B1B" : toast.type === "success" ? "#166534" : "#1E40AF",
+            padding: "12px 24px", borderRadius: 12, fontSize: 14, fontWeight: 600,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.15)", pointerEvents: "none",
+          }}>
+            {toast.message}
+          </div>
+        )}
         {forbidden ? (
           <div className="forbidden-screen">
             <div>

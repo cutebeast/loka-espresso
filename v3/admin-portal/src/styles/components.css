@@ -52,6 +52,7 @@
 .badge-blue, .badge-info { background: #DBEAFE; color: #1E40AF; }
 .badge-gray, .badge-neutral { background: #F1F5F9; color: #334155; }
 .badge-orange { background: #FFEDD5; color: #9A3412; }
+.badge-amber { background: #FFFBEB; color: #92400E; }
 .badge-purple { background: #F3E8FF; color: #6B21A8; }
 .badge-primary { background: rgba(59,74,26,0.12); color: var(--color-primary); }
 
