@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 
-from app.api.v1.deps import DBDependency, OptionalLocale
+from app.api.v1.deps import DBDependency, OptionalLocale, CurrentCustomer
 from app.services.translation import merge_translations, translate_single
 from app.models.info_card import (
     EventCard,
@@ -84,6 +84,60 @@ async def get_banner_status(
     if not item:
         raise HTTPException(status_code=404, detail="Banner not found")
     return APIResponse(data={"claimed": False, "viewed": False, "banner_id": banner_id})
+
+
+@router.post("/promos/banners/{banner_id}/claim", response_model=APIResponse[dict])
+async def claim_promo_banner(
+    db: DBDependency,
+    banner_id: int,
+    customer: CurrentCustomer,
+):
+    """Claim a voucher linked to a promo banner."""
+    from app.models.voucher import CustomerVoucher, VoucherDefinition
+
+    banner = await db.get(PromoBanner, banner_id)
+    if not banner or not banner.is_active:
+        raise HTTPException(status_code=404, detail="Banner not found or inactive")
+
+    voucher_id = banner.voucher_id
+    if not voucher_id:
+        raise HTTPException(status_code=400, detail="No voucher linked to this banner")
+
+    vd = await db.get(VoucherDefinition, voucher_id)
+    if not vd or not vd.is_active:
+        raise HTTPException(status_code=400, detail="Linked voucher is no longer active")
+
+    # Check if customer already has this voucher
+    existing = await db.execute(
+        select(CustomerVoucher).where(
+            CustomerVoucher.customer_id == customer.id,
+            CustomerVoucher.voucher_definition_id == voucher_id,
+            CustomerVoucher.status == "active",
+        )
+    )
+    if existing.scalar_one_or_none():
+        return APIResponse(data={"voucher_code": vd.voucher_code, "already_claimed": True})
+
+    import secrets
+    cv = CustomerVoucher(
+        customer_id=customer.id,
+        voucher_definition_id=vd.id,
+        store_id=banner.store_id or 1,
+        voucher_code=f"{vd.voucher_code}-{secrets.token_hex(4).upper()}",
+        status="active",
+        voucher_snapshot={
+            "display_title": vd.display_title,
+            "discount_value": float(vd.discount_value),
+            "voucher_type": str(vd.voucher_type),
+        },
+        expires_at=vd.valid_until or datetime.now(timezone.utc),
+        source="promo_banner",
+        source_id=banner_id,
+    )
+    db.add(cv)
+    await db.commit()
+    await db.refresh(cv)
+    return APIResponse(data={"voucher_code": cv.voucher_code, "claimed": True})
 
 
 # ── Information Cards ──

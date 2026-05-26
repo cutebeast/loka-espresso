@@ -1,10 +1,10 @@
 /**
  * Loka Espresso PWA Service Worker
- * Version: 0.1.0 (build 2026-05-26T01:40:22.291Z)
+ * Version: 0.1.0 (build 2026-05-26T01:50:55.522Z)
  * Build: 2026-04-23T20:22:55.000Z
  */
 
-const CACHE_VERSION = 'v0.1.0.1779759622';
+const CACHE_VERSION = 'v0.1.0.1779760255';
 const CACHE_NAME = `loka-pwa-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   '/',

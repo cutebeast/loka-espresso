@@ -182,6 +182,22 @@ async def list_menu_items(
     return APIResponse(data={"items": result_items})
 
 
+@router.get("/categories", response_model=APIResponse[dict])
+async def list_menu_categories(db: DBDependency, locale: OptionalLocale):
+    """List global menu categories (no store_id required)."""
+    cat_stmt = select(MenuCategory).where(
+        MenuCategory.is_available.is_(True),
+        MenuCategory.deleted_at.is_(None),
+    ).order_by(MenuCategory.display_order)
+    cat_result = await db.execute(cat_stmt)
+    categories = cat_result.scalars().all()
+    result = []
+    for c in categories:
+        d = {col.name: getattr(c, col.name) for col in c.__table__.columns}
+        result.append(d)
+    return APIResponse(data={"categories": result})
+
+
 @router.get("/items/{item_id}", response_model=APIResponse[MenuItemPublicOut])
 async def get_menu_item(db: DBDependency, locale: OptionalLocale, item_id: int):
     """Get public menu item details."""

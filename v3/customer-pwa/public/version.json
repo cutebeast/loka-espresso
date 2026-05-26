@@ -2,9 +2,9 @@
   "app": "customer-pwa",
   "name": "Customer PWA",
   "version": "0.1.0",
-  "commit": "b1f74d9",
+  "commit": "9ecfaa4",
   "branch": "master",
-  "builtAt": 1779759622436,
-  "commitAt": 1779759385000,
+  "builtAt": 1779760255637,
+  "commitAt": 1779759673000,
   "environment": "production"
 }

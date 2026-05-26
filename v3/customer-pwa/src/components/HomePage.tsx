@@ -84,7 +84,7 @@ export default function HomePage() {
     try {
       const [infoRes, prodRes] = await Promise.all([
         api.get('/content/information?limit=3&content_type=information', { signal }),
-        api.get('/content/information?limit=3&content_type=product', { signal }),
+        api.get('/content/products?limit=3', { signal }),
       ]);
       setInfoCards(Array.isArray(infoRes.data) ? infoRes.data : []);
       setProductCards(Array.isArray(prodRes.data) ? prodRes.data : []);

@@ -156,11 +156,6 @@ function mapUrl(url: string, _method?: string): string {
   if (url.match(/^\/orders\/\d+\/cancel/)) {
     return url + queryPart;
   }
-  // /promos/banners/{id}/claim → /vouchers/apply (claim linked voucher)
-  if (url.match(/^\/promos\/banners\/\d+\/claim/)) {
-    url = '/vouchers/apply' + queryPart;
-    return url;
-  }
   // /promos/banners/{id}/status → keep as-is (new endpoint exists)
   if (url.match(/^\/promos\/banners\/\d+\/status/)) {
     return url + queryPart;
