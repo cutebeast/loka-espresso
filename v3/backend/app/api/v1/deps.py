@@ -1,7 +1,7 @@
 """FastAPI dependencies for API v1."""
 
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -286,8 +286,11 @@ async def get_current_staff(request: Request, db: DBDependency) -> StaffProfile:
 CurrentStaff = Annotated[StaffProfile, Depends(get_current_staff)]
 
 
-async def _get_admin_role_keys(db: AsyncSession, admin_id: int) -> set[str]:
-    """Query active role keys for an admin."""
+async def _get_admin_role_keys(db: AsyncSession, admin_id: int, admin_obj: Any = None) -> set[str]:
+    """Query active role keys for an admin. Supports staff-context objects."""
+    # Staff profiles have implicit "store_staff" role for their own store
+    if admin_obj is not None and getattr(admin_obj, 'is_staff_context', False):
+        return {"store_staff"}
     result = await db.execute(
         select(IAMRole.role_key)
         .join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
@@ -300,8 +303,18 @@ async def _get_admin_role_keys(db: AsyncSession, admin_id: int) -> set[str]:
     return {row[0] for row in result.all()}
 
 
-async def _get_admin_store_ids(db: AsyncSession, admin_id: int) -> set[int]:
-    """Query assigned store IDs for an admin."""
+async def _get_admin_store_ids(db: AsyncSession, admin_id: int, admin_obj: Any = None) -> set[int]:
+    """Query assigned store IDs for an admin. Supports staff-context objects."""
+    # Staff profiles are scoped to their assigned store
+    if admin_obj is not None and getattr(admin_obj, 'is_staff_context', False):
+        staff_r = await db.execute(
+            select(StaffProfile.store_id).where(
+                StaffProfile.id == admin_obj.id,
+                StaffProfile.deleted_at.is_(None),
+            )
+        )
+        sid = staff_r.scalar_one_or_none()
+        return {sid} if sid else set()
     result = await db.execute(
         select(StoreAssignment.store_id)
         .where(
@@ -316,7 +329,7 @@ async def require_hq_admin(
     admin: CurrentAdmin,
 ) -> AdminAccount:
     """Require admin to have global scope role (system_admin or regional_manager)."""
-    role_keys = await _get_admin_role_keys(db, admin.id)
+    role_keys = await _get_admin_role_keys(db, admin.id, admin_obj=admin)
     if not (role_keys & {"system_admin", "regional_manager", "readonly_analyst"}):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -334,31 +347,12 @@ async def require_store_admin(
     store_id: int,
 ) -> AdminAccount:
     """Require admin to have access to a specific store."""
-    # Staff context: staff profiles are scoped to their own store
-    if getattr(admin, 'is_staff_context', False):
-        if admin.id == 0:
-            # admin-on-staff-portal (no StaffProfile) — allow access to any store
-            return admin
-        staff_r = await db.execute(
-            select(StaffProfile).where(
-                StaffProfile.id == admin.id,
-                StaffProfile.deleted_at.is_(None),
-            )
-        )
-        staff_profile = staff_r.scalar_one_or_none()
-        if staff_profile and staff_profile.store_id == store_id:
-            return admin
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Store access denied",
-        )
-
-    role_keys = await _get_admin_role_keys(db, admin.id)
+    role_keys = await _get_admin_role_keys(db, admin.id, admin_obj=admin)
     # HQ admins can access any store
     if role_keys & {"system_admin", "regional_manager", "readonly_analyst"}:
         return admin
     # Store-scoped admins need explicit assignment
-    store_ids = await _get_admin_store_ids(db, admin.id)
+    store_ids = await _get_admin_store_ids(db, admin.id, admin_obj=admin)
     if store_id not in store_ids:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
