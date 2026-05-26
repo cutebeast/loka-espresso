@@ -50,7 +50,7 @@ async def daily_checkin(db: DBDependency, customer: ActiveCustomer):
     )
     la = la_result.scalar_one_or_none()
     if not la:
-        la = LoyaltyAccount(customer_id=customer.id, current_points=0, lifetime_points=0)
+        la = LoyaltyAccount(customer_id=customer.id, points_balance=0, lifetime_points_earned=0, lifetime_points_redeemed=0)
         db.add(la)
         await db.flush()
 
@@ -96,16 +96,14 @@ async def daily_checkin(db: DBDependency, customer: ActiveCustomer):
     ledger = LoyaltyPointsLedger(
         loyalty_account_id=la.id,
         customer_id=customer.id,
-        event_type="checkin",
+        event_type="promo_bonus",
         points_delta=points,
-        running_balance=la.current_points + points,
-        source="daily_checkin",
-        source_id=checkin.id,
+        running_balance=la.points_balance + points,
         description=f"Day {new_streak} check-in streak",
     )
     db.add(ledger)
-    la.current_points += points
-    la.lifetime_points = (la.lifetime_points or 0) + points
+    la.points_balance += points
+    la.lifetime_points_earned = (la.lifetime_points_earned or 0) + points
 
     await db.commit()
     await db.refresh(checkin)
@@ -114,7 +112,7 @@ async def daily_checkin(db: DBDependency, customer: ActiveCustomer):
         "checked_in": True,
         "streak_day": new_streak,
         "points_earned": points,
-        "total_points": la.current_points,
+        "total_points": la.points_balance,
         "next_bonus_day": 7 if new_streak < 7 else (new_streak + 7 - (new_streak % 7)) % 7 or 0,
     })
 
