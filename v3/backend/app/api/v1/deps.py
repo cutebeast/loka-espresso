@@ -187,6 +187,28 @@ async def get_current_admin(
 
     # Staff portal: use admin_id from claims if staff token
     admin_id = int(payload.get("admin_id", payload.get("sub", 0)))
+    if token_type == "staff" and not payload.get("admin_id"):
+        staff_id = int(payload.get("staff_id", 0))
+        if staff_id > 0:
+            staff_result = await db.execute(select(StaffProfile).where(StaffProfile.id == staff_id))
+            staff = staff_result.scalar_one_or_none()
+            if staff and staff.principal_id:
+                admin_id = staff.principal_id
+
+    # For staff tokens authenticated via StaffProfile (not admin), accept without AdminAccount lookup
+    if token_type == "staff" and not payload.get("admin_id"):
+        from dataclasses import dataclass as _dc
+        @_dc
+        class _StaffAdmin:
+            id: int = int(payload.get("staff_id", 0))
+            principal_id: int = int(payload.get("sub", 0))
+            display_name: str = payload.get("admin_name", "Staff")
+            email: str = ""
+            is_active: bool = True
+            is_staff_context: bool = True
+            deleted_at = None
+        return _StaffAdmin()
+
     if not admin_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -312,6 +334,25 @@ async def require_store_admin(
     store_id: int,
 ) -> AdminAccount:
     """Require admin to have access to a specific store."""
+    # Staff context: staff profiles are scoped to their own store
+    if getattr(admin, 'is_staff_context', False):
+        if admin.id == 0:
+            # admin-on-staff-portal (no StaffProfile) — allow access to any store
+            return admin
+        staff_r = await db.execute(
+            select(StaffProfile).where(
+                StaffProfile.id == admin.id,
+                StaffProfile.deleted_at.is_(None),
+            )
+        )
+        staff_profile = staff_r.scalar_one_or_none()
+        if staff_profile and staff_profile.store_id == store_id:
+            return admin
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Store access denied",
+        )
+
     role_keys = await _get_admin_role_keys(db, admin.id)
     # HQ admins can access any store
     if role_keys & {"system_admin", "regional_manager", "readonly_analyst"}:
