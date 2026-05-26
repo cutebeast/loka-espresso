@@ -653,8 +653,7 @@ async def staff_change_pin(request: Request, db: DBDependency, data: StaffChange
 # ── POS Order Create ──
 
 @router.post("/staff/pos/orders", status_code=status.HTTP_201_CREATED)
-async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: POSOrderCreateRequest):
-    staff = await _get_staff_profile(db, admin)
+async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: POSOrderCreateRequest):
     store_id = data.store_id or staff.store_id
 
     # Validate store
@@ -677,6 +676,15 @@ async def staff_pos_create_order(db: DBDependency, admin: CurrentAdmin, data: PO
         cust_r = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_active.is_(True), Customer.deleted_at.is_(None)))
         if not cust_r.scalar_one_or_none():
             raise HTTPException(status_code=400, detail=f"Customer {customer_id} not found or inactive")
+    else:
+        # POS walk-in — find or create system walk-in customer
+        walkin_r = await db.execute(select(Customer).where(Customer.phone_number == "+0000000000", Customer.deleted_at.is_(None)))
+        walkin = walkin_r.scalar_one_or_none()
+        if not walkin:
+            walkin = Customer(phone_number="+0000000000", display_name="Walk-in", is_active=True)
+            db.add(walkin)
+            await db.flush()
+        customer_id = walkin.id
 
     # Validate dining table if provided
     if dining_table_id:
