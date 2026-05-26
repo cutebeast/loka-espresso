@@ -74,10 +74,11 @@ async def test_voucher_create_and_redeem_flow(
     if not customer_vouchers:
         # Try to issue a voucher via direct assignment
         try:
+            voucher_assigned = False
             r_assign = await client.post(
                 f"{base_url}/admin/customers/{customer_id}/award-voucher",
                 headers=admin_headers,
-                json={"voucher_definition_id": voucher_def_id},
+                json={"voucher_id": voucher_def_id},
             )
             if r_assign.status_code in (200, 201):
                 data = r_assign.json().get("data", r_assign.json())
@@ -128,7 +129,7 @@ async def test_staff_clock_in_flow(client: httpx.AsyncClient, base_url: str, sto
     # 1. Login as staff
     r_login = await client.post(f"{base_url}/staff/auth/login", json={
         "email": ADMIN_EMAIL,
-        "password": "admin123",
+        "password": ADMIN_PASSWORD,
         "store_id": store_id,
     })
     assert r_login.status_code == 200, f"Staff login failed: {r_login.text}"
@@ -229,7 +230,7 @@ async def test_kds_order_flow(
         "store_id": store_id,
         "cart_id": cart_id,
         "order_type": "dine_in",
-        "fulfillment_type": "table_service",
+        "fulfillment_type": "dine_in_service",
     })
     assert r_order.status_code == 201, f"Order creation failed: {r_order.text}"
     order_id = r_order.json()["data"]["id"]
@@ -393,8 +394,8 @@ async def test_token_blacklist_prevention(client: httpx.AsyncClient, base_url: s
     # Login as staff to get access + refresh tokens
     r_login = await client.post(f"{base_url}/staff/auth/login", json={
         "email": ADMIN_EMAIL,
-        "password": "admin123",
-        "store_id": 1,
+        "password": ADMIN_PASSWORD,
+        "store_id": store_id,
     })
     assert r_login.status_code == 200, f"Staff login failed: {r_login.text}"
     refresh_token = r_login.json()["tokens"]["refresh_token"]

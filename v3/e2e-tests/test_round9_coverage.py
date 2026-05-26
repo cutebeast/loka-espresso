@@ -52,9 +52,9 @@ async def test_staff_shift_crud(
         "staff_id": staff_id,
         "store_id": store_id,
         "shift_date": tomorrow.isoformat(),
-        "start_time": "08:00:00",
-        "end_time": "16:00:00",
-        "shift_type": "morning",
+        "planned_start": "08:00:00",
+        "planned_end": "16:00:00",
+        "status": "scheduled",
         "notes": "E2E test shift",
     }
     r_create = await client.post(
@@ -156,7 +156,7 @@ async def test_kds_order_display(
     r_order = await client.post(
         f"{base_url}/orders",
         headers=cust_headers,
-        json={"store_id": store_id, "order_type": "dine_in", "fulfillment_type": "dine_in"},
+        json={"store_id": store_id, "order_type": "dine_in", "fulfillment_type": "dine_in_service"},
     )
     assert r_order.status_code in (200, 201), f"Order creation failed: {r_order.status_code}"
     order_data = r_order.json()["data"]

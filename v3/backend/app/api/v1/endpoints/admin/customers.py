@@ -363,9 +363,9 @@ async def adjust_points(admin: CurrentAdmin, db: DBDependency, customer_id: int,
         running_balance=la.points_balance, description=reason,
     ))
     db.add(AuditLog(
-        actor_id=admin.id, action="points_adjustment", target_type="customer",
-        target_id=customer_id,
-        details={"points_delta": points, "reason": reason, "new_balance": la.points_balance},
+        principal_id=admin.id, action="update", resource_type="customer",
+        resource_id=customer_id,
+        changes_summary={"points_delta": points, "reason": reason, "new_balance": la.points_balance},
     ))
     await db.commit()
     return APIResponse(data={"message": f"{points} points", "new_balance": la.points_balance})
@@ -448,9 +448,9 @@ async def use_reward(admin: CurrentAdmin, db: DBDependency, customer_id: int, re
         cr.store_id = data.store_id
 
     db.add(AuditLog(
-        actor_id=admin.id, action="reward_used", target_type="customer_reward",
-        target_id=reward_id,
-        details={"customer_id": customer_id, "store_id": data.store_id, "redemption_code": cr.redemption_code},
+        principal_id=admin.id, action="update", resource_type="customer_reward",
+        resource_id=reward_id,
+        changes_summary={"customer_id": customer_id, "store_id": data.store_id, "redemption_code": cr.redemption_code},
     ))
     await db.commit()
     return APIResponse(data={"message": "Reward marked as used", "success": True})
@@ -488,9 +488,9 @@ async def use_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int, v
         cv.store_id = data.store_id
 
     db.add(AuditLog(
-        actor_id=admin.id, action="voucher_used", target_type="customer_voucher",
-        target_id=voucher_id,
-        details={"customer_id": customer_id, "store_id": data.store_id, "voucher_code": cv.voucher_code},
+        principal_id=admin.id, action="update", resource_type="customer_voucher",
+        resource_id=voucher_id,
+        changes_summary={"customer_id": customer_id, "store_id": data.store_id, "voucher_code": cv.voucher_code},
     ))
     await db.commit()
     return APIResponse(data={"message": "Voucher marked as used", "success": True})
@@ -526,9 +526,9 @@ async def set_tier(admin: CurrentAdmin, db: DBDependency, customer_id: int, data
         ))
     # Audit log
     db.add(AuditLog(
-        actor_id=admin.id, action="set_customer_tier", target_type="customer",
-        target_id=customer_id,
-        details={"tier": tier_key, "reason": reason},
+        principal_id=admin.id, action="update", resource_type="customer",
+        resource_id=customer_id,
+        changes_summary={"tier": tier_key, "reason": reason},
     ))
     await db.commit()
     return APIResponse(data={"message": f"Tier set to {tier.display_name}", "tier": tier_key})

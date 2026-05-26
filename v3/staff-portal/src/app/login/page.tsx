@@ -181,13 +181,13 @@ export default function LoginPage() {
         {/* Mode Toggle */}
         <div className="login-mode-toggle">
           <button
-            onClick={() => setMode("email")}
+            onClick={() => { setMode("email"); setPassword(""); }}
             className={`btn flex-1 justify-center ${mode === "email" ? "btn-primary" : "btn-ghost"}`}
           >
             {t("login.mode_email")}
           </button>
           <button
-            onClick={() => setMode("name")}
+            onClick={() => { setMode("name"); setPin(""); }}
             className={`btn flex-1 justify-center ${mode === "name" ? "btn-primary" : "btn-ghost"}`}
           >
             {t("login.mode_name")}

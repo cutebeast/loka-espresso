@@ -129,31 +129,6 @@ export async function placeOrder(params: {
 
   await syncCartToServer(items);
 
-  let checkoutToken: string | undefined;
-
-  if (params.voucherCode || params.rewardRedemptionCode) {
-    try {
-      const checkoutPayload: Record<string, unknown> = {
-        store_id: params.storeId,
-        order_type: params.orderType,
-      };
-      if (params.voucherCode) {
-        checkoutPayload.voucher_code = params.voucherCode;
-      }
-      if (params.rewardRedemptionCode) {
-        const rewardId = parseInt(params.rewardRedemptionCode, 10);
-        if (!isNaN(rewardId) && rewardId > 0) {
-          checkoutPayload.reward_id = rewardId;
-        }
-      }
-      // v3 doesn't have /checkout endpoint — voucher/reward applied at order creation
-      checkoutToken = undefined;
-    } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      throw new Error(detail || 'Checkout discount validation failed');
-    }
-  }
-
   const orderPayload: Record<string, unknown> = {
     store_id: params.storeId,
     order_type: params.orderType,
@@ -163,8 +138,14 @@ export async function placeOrder(params: {
       : 'pending',
   };
 
-  if (checkoutToken) {
-    orderPayload.checkout_token = checkoutToken;
+  if (params.voucherCode) {
+    orderPayload.voucher_code = params.voucherCode;
+  }
+  if (params.rewardRedemptionCode) {
+    const rewardId = parseInt(params.rewardRedemptionCode, 10);
+    if (!isNaN(rewardId) && rewardId > 0) {
+      orderPayload.reward_id = rewardId;
+    }
   }
 
   if (params.orderType === 'pickup' && params.pickupTime) {
@@ -187,14 +168,6 @@ export async function placeOrder(params: {
   }
   if (params.deliveryInstructions) {
     orderPayload.delivery_instructions = params.deliveryInstructions;
-  }
-  if (!checkoutToken) {
-    if (params.voucherCode) {
-      orderPayload.voucher_code = params.voucherCode;
-    }
-    if (params.rewardRedemptionCode) {
-      orderPayload.reward_redemption_code = params.rewardRedemptionCode;
-    }
   }
 
   const orderRes = await api.post('/orders', orderPayload, {

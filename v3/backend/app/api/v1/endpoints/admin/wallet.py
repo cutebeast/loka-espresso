@@ -224,12 +224,12 @@ async def adjust_wallet(
     )
     db.add(entry)
     db.add(AuditLog(
-        action=f"wallet_{data.entry_type}",
+        action="update",
         resource_type="wallet",
         resource_id=wallet_id,
         principal_id=admin.id,
-        severity="medium",
-        details={"amount": data.amount, "entry_type": data.entry_type, "new_balance": new_balance, "description": data.description},
+        severity="warning",
+        changes_summary={"amount": data.amount, "entry_type": data.entry_type, "new_balance": new_balance, "description": data.description},
     ))
     await db.commit()
     await db.refresh(entry)
@@ -263,12 +263,12 @@ async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: AdminTopupReq
     entry = WalletLedgerEntry(wallet_id=wallet.id, entry_type="credit", amount=amount, running_balance=new_balance, description=reason, reference_type="adjustment")
     db.add(entry)
     db.add(AuditLog(
-        action="wallet_topup",
+        action="transfer",
         resource_type="wallet",
         resource_id=wallet.id,
         principal_id=admin.id,
-        severity="medium",
-        details={"amount": amount, "reason": reason, "new_balance": new_balance},
+        severity="warning",
+        changes_summary={"amount": amount, "reason": reason, "new_balance": new_balance},
     )); await db.commit(); await db.refresh(entry)
     return APIResponse(data={"message": "Top-up complete", "new_balance": new_balance})
 
@@ -311,12 +311,12 @@ async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: AdminDeductR
     entry = WalletLedgerEntry(wallet_id=wallet.id, entry_type="debit", amount=amount, running_balance=new_balance, description=reason, reference_type="adjustment")
     db.add(entry)
     db.add(AuditLog(
-        action="wallet_deduct",
+        action="transfer",
         resource_type="wallet",
         resource_id=wallet.id,
         principal_id=admin.id,
-        severity="medium",
-        details={"amount": amount, "reason": reason, "new_balance": new_balance},
+        severity="warning",
+        changes_summary={"amount": amount, "reason": reason, "new_balance": new_balance},
     )); await db.commit(); await db.refresh(entry)
     return APIResponse(data={"message": "Deducted", "new_balance": new_balance})
 

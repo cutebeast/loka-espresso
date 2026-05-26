@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
@@ -31,7 +31,7 @@ export default function EquipmentPage() {
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -40,9 +40,9 @@ export default function EquipmentPage() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);

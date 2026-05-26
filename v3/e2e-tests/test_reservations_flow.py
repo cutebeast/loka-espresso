@@ -249,10 +249,11 @@ async def test_reservation_store_scoping(
     )
     headers_s2 = {"Authorization": f"Bearer {token_s2}", "Content-Type": "application/json"}
 
-    # Create a reservation in store 1 for reference
-    r_create = await client.post(
+    # Create a reservation in store 1 for reference (response not used in scoping test)
+    _r_create = await client.post(
         f"{base_url}/admin/reservations?store_id={store_id}",
         headers=admin_headers,
+        json={"store_id": store_id, "reservation_date": "2026-06-01", "reservation_time": "19:00:00", "party_size": 2, "customer_name": "Scope Test"},
     )
 
     # Attempt to list reservations for store 1 with store 2 token

@@ -150,7 +150,7 @@ async def test_list_inventory_items(client: httpx.AsyncClient, admin_headers: di
 async def test_list_suppliers(client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int):
     r = await client.get(f"{base_url}/admin/inventory/suppliers?store_id={store_id}", headers=admin_headers)
     assert r.status_code == 200
-    assert len(r.json()["data"]) >= 1
+    assert len(r.json()["data"]["items"]) >= 1
 
 
 @pytest.mark.asyncio
@@ -259,7 +259,7 @@ async def test_list_staff_shifts(client: httpx.AsyncClient, admin_headers: dict,
     assert isinstance(shifts, list)
     if shifts:
         shift = shifts[0]
-        assert_has_keys(shift, {"id", "staff_id", "store_id", "date", "start_time", "end_time"})
+        assert_has_keys(shift, {"id", "staff_id", "store_id", "shift_date", "planned_start", "planned_end"})
 
 
 @pytest.mark.asyncio

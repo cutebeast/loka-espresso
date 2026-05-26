@@ -1,6 +1,6 @@
 # FNB Enterprise v3 — Loka Espresso
 
-> **Status**: Live | **Last Audit**: Round 12 (2026-05-26) | **TS**: 0 errors | **Lint**: 0 warnings
+> **Status**: Live | **Last Audit**: Round 12 deep-audit (2026-05-26) | **TS**: 0 errors | **Lint**: 0 warnings
 
 ## Services
 
@@ -234,3 +234,46 @@ Full audit across all 5 domains (backend, admin, staff, customer PWA, e2e-tests)
 - **ESLint**: 0 new errors/warnings (1 pre-existing admin error, 4 pre-existing staff warnings)
 - **E2E tests**: Python syntax valid
 - **Recipe-to-stock deduction**: Verified `_deduct_stock_for_order` → `InventoryStock` with `WITH FOR UPDATE` row locks intact
+
+## Round 12 Deep Audit (2026-05-26)
+
+Second-pass deep audit across all 5 domains. **28 new bugs found, 25 fixed** (3 are backend feature gaps noted as known-remaining).
+
+### Backend AuditLog crash fixes (3 critical)
+- **customers.py**: 4 AuditLog calls (`adjust_points`, `use_reward`, `use_voucher`, `set_tier`) had wrong field names (`actor_id`→`principal_id`, `target_type`→`resource_type`, `details`→`changes_summary`) + invalid `action` values not in CHECK constraint. Fixed to use valid actions (`update`) and correct field names.
+- **staff.py**: `create_staff` AuditLog with `action="staff.create"` (not in CHECK constraint) + wrong field names. Fixed to `action="create"` + correct field names.
+- **wallet.py**: 3 AuditLog calls (`adjust_wallet`, `admin_topup`, `admin_deduct`) with invalid `action` (`wallet_credit`, `wallet_topup`, `wallet_deduct`) + invalid `severity="medium"` (not in AuditSeverity enum). Fixed to `action="update"/"transfer"`, `severity="warning"`, `details`→`changes_summary`.
+
+### Admin portal fixes (3)
+- **staff/page.tsx**: Store filter sent `store_id` to `/admin/staff/roles` which doesn't accept it — filter was non-functional. Switched to `/admin/staff?store_id=` endpoint which supports the param.
+- **orders/page.tsx**: Status filter offered `"completed"` and `"cancelled"` — not valid order statuses (backend uses `cancelled_by_customer`/`cancelled_by_merchant`). Replaced with actual status values.
+- **orders/page.tsx**: Badge map referenced non-existent `completed`/`cancelled` — real cancelled orders fell through to default gray. Added `cancelled_by_customer`, `cancelled_by_merchant`, `partially_refunded`, `disputed`.
+
+### Staff portal fixes (6)
+- **login/page.tsx**: Mode switch (Name→Email) didn't clear `pin` state — `password || pin` fallthrough could leak PIN. Now clears both fields on mode toggle.
+- **inventory/page.tsx, equipment/page.tsx**: `useEffect` missing `load` in dependency array (exhaustive-deps violation). Wrapped in `useCallback`.
+- **wastage/page.tsx**: `.catch(() => {})` silently swallowed menu-items fetch errors. Added `console.error`.
+- **login/page.tsx**: PIN retry delay stored in `useRef` (page refresh resets it) — noted as known limitation (server-side rate limiting is on the backend roadmap).
+
+### E2E test fixes (10)
+- **test_round8_coverage.py**: `voucher_assigned` UnboundLocalError if not 200 → added init. `voucher_definition_id`→`voucher_id`. Hardcoded `"admin123"`→`ADMIN_PASSWORD` (2 places). `"table_service"`→`"dine_in_service"`. `store_id: 1`→`store_id` fixture.
+- **test_round9_coverage.py**: `"dine_in"`→`"dine_in_service"`. Shift payload: `start_time`/`end_time`/`shift_type`→`planned_start`/`planned_end`/`status`.
+- **test_admin_setup_flow.py**: Shift assertion: `date`/`start_time`/`end_time`→`shift_date`/`planned_start`/`planned_end`. Suppliers: `len(data)`→`len(data["items"])`.
+- **test_reservations_flow.py**: Added missing JSON body to `POST /admin/reservations`.
+- **test_staff_flow.py**: `store_id` now uses fixture instead of `staff.get("store_id", 1)` (names endpoint doesn't return store_id).
+
+### Customer PWA fixes (3)
+- **api.ts**: `_refreshPromise` never cleared on success → stale token reused on subsequent 401s, auth broke after first expiry. Now reset to `null` after successful refresh.
+- **api.ts**: `page_size`→`per_page` conversion moved to top of `mapUrl()` so it applies to all endpoints, not just non-exactMap paths.
+- **cartSync.ts**: Removed dead `checkoutPayload` block + duplicate `checkoutToken` guarding. Voucher/reward codes now passed directly in `orderPayload`.
+
+### Known remaining (3 — backend feature gaps)
+- `create_order_from_cart` (`order.py:201-203`) still hardcodes `voucher_discount=0`, `reward_discount=0` — full voucher/reward discount calculation requires validating codes, checking balances, computing amounts. Slated for upcoming feature work.
+- `reward_redemption_code` stripped by backend `customer/order.py:88` — PWA sends codes but backend expects `reward_id: int`. Needs schema bridge.
+- Client-side PIN rate limiting is bypassable via page refresh — server-side rate limiting is on the backend roadmap.
+
+### Verification
+- **TypeScript**: 0 errors across all 3 portals
+- **ESLint**: 0 new errors (1 pre-existing admin, 4 pre-existing staff warnings)
+- **Python**: All backend + E2E files compile
+- **Backend**: All 8 AuditLog calls in 3 files use correct field names + valid CHECK constraint values

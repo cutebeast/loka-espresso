@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { api } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
@@ -32,7 +32,7 @@ export default function InventoryPage() {
   const [editStock, setEditStock] = useState("");
   const [updateSubmitting, setUpdateSubmitting] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -43,9 +43,9 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const categories = useMemo(() => {
     const seen = new Set<string>();

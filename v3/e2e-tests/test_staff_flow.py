@@ -36,7 +36,7 @@ async def test_staff_login_success(client: httpx.AsyncClient, base_url: str, sto
 
 
 @pytest.mark.asyncio
-async def test_staff_login_pin_success(client: httpx.AsyncClient, base_url: str):
+async def test_staff_login_pin_success(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Staff can log in with display_name + correct PIN."""
     r = await client.get(f"{base_url}/staff/auth/names")
     if r.status_code != 200:
@@ -45,13 +45,13 @@ async def test_staff_login_pin_success(client: httpx.AsyncClient, base_url: str)
     if not staff_list:
         pytest.skip("No seeded staff for login test")
     staff = staff_list[0]
-    payload = {"display_name": staff["display_name"], "store_id": staff.get("store_id", 1), "password": "1234"}
+    payload = {"display_name": staff["display_name"], "store_id": store_id, "password": "1234"}
     r2 = await client.post(f"{base_url}/staff/auth/login", json=payload)
     assert r2.status_code == 200, f"Staff login failed: {r2.text}"
     data = r2.json()
     assert "tokens" in data
     assert "access_token" in data["tokens"]
-    assert data["profile"]["store_id"] == staff.get("store_id", 1)
+    assert data["profile"]["store_id"] == store_id
 
 
 @pytest.mark.asyncio

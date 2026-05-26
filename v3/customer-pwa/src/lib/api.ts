@@ -47,6 +47,11 @@ function mapUrl(url: string, _method?: string): string {
     url = url.substring(0, qIdx);
   }
 
+  // Apply pagination param fix early so all paths benefit
+  if (queryPart && queryPart.includes('page_size=')) {
+    queryPart = queryPart.replace('page_size=', 'per_page=');
+  }
+
   // ---- Exact path matches ----
   // Keys are mapped (v3) URLs so that double-resolution is safe.
   // v1 origins → v3 destinations:
@@ -191,11 +196,6 @@ function mapUrl(url: string, _method?: string): string {
   // /orders/* webhook passthrough
   if (url.startsWith('/orders/') && (url.includes('/pos-webhook') || url.includes('/delivery-webhook'))) {
     return url + queryPart;
-  }
-
-  // ---- Pagination param fix: page_size → per_page ----
-  if (queryPart && queryPart.includes('page_size=')) {
-    queryPart = queryPart.replace('page_size=', 'per_page=');
   }
 
   return url + queryPart;
@@ -762,6 +762,7 @@ api.interceptors.response.use(
           currentPromise = _refreshPromise;
         }
         tokens = await currentPromise;
+        _refreshPromise = null;
         if (tokens?.access_token) {
           return api(originalRequest);
         }

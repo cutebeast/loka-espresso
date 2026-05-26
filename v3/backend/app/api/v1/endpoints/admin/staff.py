@@ -106,11 +106,11 @@ async def create_staff(
 
     # Audit log
     db.add(AuditLog(
-        actor_id=admin.id,
-        action="staff.create",
-        target_type="staff",
-        target_id=profile.id,
-        details={"display_name": display_name, "email": email, "store_id": data.store_id},
+        principal_id=admin.id,
+        action="create",
+        resource_type="staff",
+        resource_id=profile.id,
+        changes_summary={"display_name": display_name, "email": email, "store_id": data.store_id},
     ))
     await db.commit()
 

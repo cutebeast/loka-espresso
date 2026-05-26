@@ -21,7 +21,7 @@ export default function WastagePage() {
   useEffect(() => {
     api.getRaw<any>("/admin/menu/items?per_page=500")
       .then(d => setMenuItems(Array.isArray(d) ? d : (d?.items || [])))
-      .catch(() => {});
+      .catch((err) => { console.error("Failed to load menu items:", err); });
   }, []);
 
   const handleSubmit = async () => {

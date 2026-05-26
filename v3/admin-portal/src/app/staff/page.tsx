@@ -27,7 +27,10 @@ export default function StaffPage() {
     try {
       const qs = new URLSearchParams();
       if (storeId) qs.set("store_id", storeId);
-      const path = `/admin/staff/roles${qs.toString() ? "?" + qs.toString() : ""}`;
+      // /admin/staff/roles does not accept store_id — fetch staff list with store filter instead
+      const path = storeId
+        ? `/admin/staff?store_id=${storeId}`
+        : `/admin/staff`;
       const d = await api.get<Staff[] | { items: Staff[] }>(path);
       const all = Array.isArray(d) ? d : (d.items || []);
       setItems(all);
