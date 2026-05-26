@@ -15,8 +15,9 @@ class SplashScreenBase(BaseSchema):
     subtitle: str | None = Field(None, max_length=200)
     cta_text: str | None = Field(None, max_length=50)
     cta_url: str | None = Field(None, max_length=500)
-    show_frequency: Literal["once", "once_per_session", "every_open", "once_per_day"] = "once_per_session"
+    show_frequency: Literal["once", "once_per_session", "every_open", "once_per_day", "always"] = "once_per_session"
     dismissible: bool = True
+    duration_ms: int | None = None
     active_from: datetime | None = None
     active_until: datetime | None = None
     is_active: bool = True
@@ -35,8 +36,9 @@ class SplashScreenUpdate(BaseSchema):
     subtitle: str | None = Field(None, max_length=200)
     cta_text: str | None = Field(None, max_length=50)
     cta_url: str | None = Field(None, max_length=500)
-    show_frequency: Literal["once", "once_per_session", "every_open", "once_per_day"] | None = None
+    show_frequency: Literal["once", "once_per_session", "every_open", "once_per_day", "always"] | None = None
     dismissible: bool | None = None
+    duration_ms: int | None = None
     active_from: datetime | None = None
     active_until: datetime | None = None
     is_active: bool | None = None

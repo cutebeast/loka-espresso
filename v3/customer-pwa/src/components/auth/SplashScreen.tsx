@@ -16,6 +16,45 @@ interface SplashData {
   subtitle?: string;
   cta_text?: string;
   cta_url?: string;
+  show_frequency?: string;
+  dismissible?: boolean;
+  duration_ms?: number;
+}
+
+const SPLASH_KEY = 'pwa_splash_shown';
+const SPLASH_DATE_KEY = 'pwa_splash_date';
+
+function shouldShowSplash(frequency: string): boolean {
+  if (typeof window === 'undefined') return true;
+  switch (frequency) {
+    case 'once':
+      return !localStorage.getItem(SPLASH_KEY);
+    case 'once_per_session':
+      return !sessionStorage.getItem(SPLASH_KEY);
+    case 'once_per_day': {
+      const last = localStorage.getItem(SPLASH_DATE_KEY);
+      if (!last) return true;
+      return last !== new Date().toISOString().slice(0, 10);
+    }
+    case 'always':
+    default:
+      return true;
+  }
+}
+
+function markSplashShown(frequency: string) {
+  if (typeof window === 'undefined') return;
+  switch (frequency) {
+    case 'once':
+      localStorage.setItem(SPLASH_KEY, '1');
+      break;
+    case 'once_per_session':
+      sessionStorage.setItem(SPLASH_KEY, '1');
+      break;
+    case 'once_per_day':
+      localStorage.setItem(SPLASH_DATE_KEY, new Date().toISOString().slice(0, 10));
+      break;
+  }
 }
 
 
@@ -52,22 +91,33 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         const axiosRes = res as { data?: SplashData };
         const d = axiosRes?.data || (res as SplashData);
         if (d?.image_url) {
+          const frequency = d.show_frequency || 'once_per_session';
+          if (!shouldShowSplash(frequency)) {
+            onFinish();
+            return;
+          }
           setSplashData({
             image_url: resolveAssetUrl(d.image_url) || d.image_url,
             title: d.title,
             subtitle: d.subtitle,
             cta_text: d.cta_text,
             cta_url: d.cta_url,
+            show_frequency: frequency,
+            dismissible: d.dismissible !== false,
+            duration_ms: d.duration_ms,
           });
+          markSplashShown(frequency);
         }
       })
       .catch((err) => console.error('[Splash] Content fetch failed:', err));
-  }, []);
+  }, [onFinish]);
 
   useEffect(() => {
-    const timer = setTimeout(onFinish, reducedMotion ? 800 : 3000);
+    if (!splashData) return;
+    const duration = splashData.duration_ms || (reducedMotion ? 800 : 3000);
+    const timer = setTimeout(onFinish, duration);
     return () => clearTimeout(timer);
-  }, [onFinish, reducedMotion]);
+  }, [splashData?.image_url, onFinish, reducedMotion]);
 
   // Admin-managed splash with image
   if (splashData) {
@@ -95,6 +145,16 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
           <div className={`splash-progress-wrap ${reducedMotion ? '' : 'animate-fade-up-3'}`}>
             <div className={`splash-progress-track ${reducedMotion ? '' : 'animate-fill-progress'}`} />
           </div>
+          {splashData.dismissible && (
+            <button
+              type="button"
+              onClick={onFinish}
+              className="splash-dismiss-btn"
+              aria-label="Skip"
+            >
+              Skip →
+            </button>
+          )}
         </div>
       </div>
     );
@@ -114,6 +174,14 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
         <div className={`splash-progress-wrap ${reducedMotion ? '' : 'animate-fade-up-3'}`}>
           <div className={`splash-progress-track ${reducedMotion ? '' : 'animate-fill-progress'}`} />
         </div>
+        <button
+          type="button"
+          onClick={onFinish}
+          className="splash-dismiss-btn"
+          aria-label="Skip"
+        >
+          Skip →
+        </button>
       </div>
     </div>
   );

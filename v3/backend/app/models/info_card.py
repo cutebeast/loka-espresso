@@ -151,6 +151,7 @@ class SplashScreen(Base, SoftDeleteMixin):
     cta_url: Mapped[str | None] = mapped_column(String(500))
     show_frequency: Mapped[str] = mapped_column(String(20), nullable=False, default="once_per_session")
     dismissible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     active_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     active_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
