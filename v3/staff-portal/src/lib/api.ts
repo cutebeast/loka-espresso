@@ -115,6 +115,7 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
     const text = await res.text();
     throw new Error(text || `Request failed: ${res.status}`);
   }
+  if (res.status === 204) return {} as T;
   const contentType = res.headers.get("content-type");
   if (contentType && contentType.includes("application/json")) {
     const json = await res.json();
@@ -174,6 +175,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, signa
   };
   const res = await makeRequest();
   if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
+  if (res.status === 204) return {} as T;
   const contentType = res.headers.get("content-type");
   if (contentType && contentType.includes("application/json")) {
     const json = await res.json();

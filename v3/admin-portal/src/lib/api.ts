@@ -76,6 +76,7 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
           signal,
         });
         if (retry.ok) {
+          if (retry.status === 204) return {} as T;
           const ct = retry.headers.get("content-type");
           if (ct && ct.includes("application/json")) {
             const json = await retry.json();
@@ -102,6 +103,7 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
     throw new Error("Session expired");
   }
   if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
+  if (res.status === 204) return {} as T;
   const ct = res.headers.get("content-type");
   if (ct && ct.includes("application/json")) {
     const json = await res.json();
@@ -140,6 +142,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, timeo
           signal,
         });
         if (retry.ok) {
+          if (retry.status === 204) return {} as T;
           const rct = retry.headers.get("content-type");
           if (rct && rct.includes("application/json")) {
             const json = await retry.json();
@@ -162,6 +165,7 @@ async function requestRaw<T>(method: string, path: string, body?: unknown, timeo
     throw new Error("Session expired");
   }
   if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
+  if (res.status === 204) return {} as T;
   const ct = res.headers.get("content-type");
   if (ct && ct.includes("application/json")) {
     const json = await res.json();
