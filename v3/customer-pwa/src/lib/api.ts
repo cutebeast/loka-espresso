@@ -134,7 +134,7 @@ function mapUrl(url: string, _method?: string): string {
   // Only remap bare /menu/items or /menu/categories (not sub-paths like /menu/items/3/customizations)
   const isMenuItemsRoot = url === '/menu/items' || url === '/menu/categories';
   if (isMenuItemsRoot) {
-    const storeId = _getStoreId();
+    const storeId = _getStoreId() || 1;  // default to store 1 if none selected
     if (storeId) {
       url = `/menu/stores/${storeId}`;
     }
