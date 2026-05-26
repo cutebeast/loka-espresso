@@ -86,7 +86,7 @@ async def test_staff_shift_crud(
     r_update = await client.patch(
         f"{base_url}/admin/staff/{staff_id}/shifts/{shift_id}",
         headers=admin_headers,
-        json={"end_time": "18:00:00"},
+        json={"planned_end": "18:00:00"},
     )
     assert r_update.status_code == 200, f"Update shift failed: {r_update.status_code}: {r_update.text}"
 

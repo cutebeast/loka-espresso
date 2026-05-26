@@ -409,9 +409,9 @@ async def test_full_order_lifecycle(
     r_cancel = await client.patch(
         f"{base_url}/admin/orders/{order_id}/status",
         headers=admin_headers,
-        json={"status": "cancelled"},
+        json={"status": "cancelled_by_merchant"},
     )
     assert r_cancel.status_code == 200
     r_final = await client.get(f"{base_url}/admin/orders/{order_id}", headers=admin_headers)
     assert r_final.status_code == 200
-    assert r_final.json()["data"]["status"] == "cancelled"
+    assert r_final.json()["data"]["status"] == "cancelled_by_merchant"

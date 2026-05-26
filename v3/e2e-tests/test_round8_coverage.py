@@ -389,7 +389,7 @@ async def test_customer_address_crud(
 
 @pytest.mark.staff
 @pytest.mark.asyncio
-async def test_token_blacklist_prevention(client: httpx.AsyncClient, base_url: str):
+async def test_token_blacklist_prevention(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Use a refresh token once, then try to reuse — second attempt must fail."""
     # Login as staff to get access + refresh tokens
     r_login = await client.post(f"{base_url}/staff/auth/login", json={
@@ -527,19 +527,19 @@ async def test_order_invalid_status_transition(
     assert r_detail.status_code == 200
     assert r_detail.json()["data"]["status"] == "pending"
 
-    # Try to jump directly to completed
+    # Try to jump directly to delivered (pending→delivered is invalid)
     try:
         r_jump = await client.patch(
             f"{base_url}/admin/orders/{order_id}/status",
             headers=admin_headers,
-            json={"status": "completed"},
+            json={"status": "delivered"},
         )
     except httpx.ConnectError:
         pytest.skip("Order status endpoint not available")
 
-    # Must be rejected: pending → completed is not a valid direct transition
+    # Must be rejected: pending → delivered is not a valid direct transition
     assert r_jump.status_code in (400, 409, 422), (
-        f"Direct pending→completed transition should be rejected (400/409/422), "
+        f"Direct pending→delivered transition should be rejected (400/409/422), "
         f"got {r_jump.status_code}: {r_jump.text}"
     )
 

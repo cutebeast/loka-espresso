@@ -318,7 +318,7 @@ def cleanup_registry():
                     c.patch(
                         f"{BASE_URL}/admin/orders/{order['id']}/status",
                         headers=headers,
-                        json={"status": "cancelled"},
+                        json={"status": "cancelled_by_merchant"},
                     )
                 except Exception as e:
                     logger.warning("[cleanup] Failed to cancel order %d: %s", order.get("id"), e)
