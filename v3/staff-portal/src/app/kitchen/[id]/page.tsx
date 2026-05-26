@@ -81,7 +81,7 @@ export default function KitchenDetailPage() {
 
   const loadTables = async () => {
     const storeId = typeof window !== "undefined" ? localStorage.getItem("staffStoreId") : null;
-    if (!storeId) return;
+    if (!storeId) { setError("Store not selected — please log in again"); return; }
     try {
       const items = await getTables(Number(storeId));
       setAvailableTables(Array.isArray(items) ? items.filter((t) => t.current_status === "available") : []);

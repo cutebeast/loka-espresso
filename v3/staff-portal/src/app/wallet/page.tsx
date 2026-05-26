@@ -143,7 +143,7 @@ export default function WalletPage() {
 
   const handleTopUp = async () => {
     const amt = parseFloat(amount);
-    if (!selectedCustomer || !amount || isNaN(amt) || amt <= 0) return;
+    if (!selectedCustomer || !amount || isNaN(amt) || amt <= 0) { setError("Select a customer and enter a valid amount"); return; }
     if (amt > MAX_TOPUP) { setError(`Maximum top-up is RM ${MAX_TOPUP.toLocaleString()}`); return; }
     setToppingUp(true);
     try {
@@ -164,21 +164,21 @@ export default function WalletPage() {
   };
 
   const handleUseReward = async (reward: Reward) => {
-    if (!selectedCustomer) return;
+    if (!selectedCustomer) { setError("Search for a customer first"); return; }
     setPendingRedeem({ reward });
     setShowRedeemPin(true);
     setRedeemPin("");
   };
 
   const handleUseVoucher = async (voucher: Voucher) => {
-    if (!selectedCustomer) return;
+    if (!selectedCustomer) { setError("Search for a customer first"); return; }
     setPendingRedeem({ voucher });
     setShowRedeemPin(true);
     setRedeemPin("");
   };
 
   const executeRedeem = async () => {
-    if (!pendingRedeem || !selectedCustomer) return;
+    if (!pendingRedeem || !selectedCustomer) { setError("Select a reward or voucher first"); return; }
     const valid = await verifyPin(redeemPin);
     if (!valid) { attemptCountRef.current++; setError("Invalid PIN"); return; }
     attemptCountRef.current = 0;
