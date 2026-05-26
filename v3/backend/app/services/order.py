@@ -13,8 +13,10 @@ from app.models.cart import CartLineItem, CustomerCart
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
 from app.models.menu import MenuItemRecipe
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
+from app.models.reward import CustomerReward, RewardCatalog
 from app.models.staff import TipAllocation
 from app.models.store import Store, StoreConfiguration
+from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.schemas.order import OrderCreate
 
 
@@ -181,6 +183,110 @@ async def create_order_from_cart(
     tip = Decimal(str(data.tip_amount or 0))
     total = subtotal + modifier_sub + (delivery_fee if is_delivery else Decimal(0)) + service_charge + tax_amount + tip
 
+    # ── Voucher / Reward discount processing ──
+    voucher_discount = Decimal(0)
+    reward_discount = Decimal(0)
+    voucher_used: CustomerVoucher | None = None
+    reward_used: CustomerReward | None = None
+
+    if data.voucher_code:
+        voucher_result = await db.execute(
+            select(CustomerVoucher).where(
+                CustomerVoucher.voucher_code == data.voucher_code,
+                CustomerVoucher.customer_id == customer_id,
+            ).with_for_update()
+        )
+        cv = voucher_result.scalar_one_or_none()
+        if cv is None:
+            raise OrderError(f"Voucher not found: {data.voucher_code}", 400)
+        if cv.status != "active":
+            raise OrderError(f"Voucher is {cv.status}", 400)
+        if cv.expires_at and cv.expires_at < datetime.now(timezone.utc):
+            raise OrderError("Voucher has expired", 400)
+        
+        vd_result = await db.execute(
+            select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id)
+        )
+        vd = vd_result.scalar_one_or_none()
+        if vd is None or not vd.is_active:
+            raise OrderError("Voucher definition is no longer active", 400)
+        if vd.valid_from and vd.valid_from > datetime.now(timezone.utc):
+            raise OrderError("Voucher is not yet valid", 400)
+        if vd.valid_until and vd.valid_until < datetime.now(timezone.utc):
+            raise OrderError("Voucher has expired", 400)
+
+        order_base = subtotal + modifier_sub  # voucher minimum order value checked against food+modifiers
+        min_order = Decimal(str(vd.minimum_order_value or 0))
+        if order_base < min_order:
+            raise OrderError(f"Voucher requires minimum order of {float(min_order):.2f}", 400)
+
+        if vd.voucher_type == "percentage_off":
+            pct = Decimal(str(vd.discount_value)) / Decimal(100)
+            voucher_discount = round(order_base * pct, 2)
+            if vd.discount_max_amount is not None:
+                voucher_discount = min(voucher_discount, Decimal(str(vd.discount_max_amount)))
+        elif vd.voucher_type == "fixed_amount_off":
+            voucher_discount = Decimal(str(vd.discount_value))
+        elif vd.voucher_type == "free_delivery":
+            voucher_discount = delivery_fee if is_delivery else Decimal(0)
+        # free_item and other types not implemented for self-checkout
+
+        cv.status = "used"
+        cv.order_id = None  # set after order flush
+        cv.used_at = datetime.now(timezone.utc)
+        cv.use_count = (cv.use_count or 0) + 1
+        vd.global_use_count = (vd.global_use_count or 0) + 1
+        voucher_used = cv
+
+    if data.reward_id:
+        reward_result = await db.execute(
+            select(CustomerReward).where(
+                CustomerReward.id == data.reward_id,
+                CustomerReward.customer_id == customer_id,
+            ).with_for_update()
+        )
+        cr = reward_result.scalar_one_or_none()
+        if cr is None:
+            raise OrderError(f"Reward not found for this customer: id={data.reward_id}", 400)
+        if cr.status != "active":
+            raise OrderError(f"Reward is {cr.status}", 400)
+        if cr.expires_at and cr.expires_at < datetime.now(timezone.utc):
+            raise OrderError("Reward has expired", 400)
+
+        rc_result = await db.execute(
+            select(RewardCatalog).where(RewardCatalog.id == cr.reward_catalog_id)
+        )
+        rc = rc_result.scalar_one_or_none()
+        if rc is None or not rc.is_active:
+            raise OrderError("Reward catalog is no longer active", 400)
+
+        order_base = subtotal + modifier_sub
+        min_order = Decimal(str(rc.minimum_order_value or 0))
+        if order_base < min_order:
+            raise OrderError(f"Reward requires minimum order of {float(min_order):.2f}", 400)
+
+        if rc.reward_type == "percentage_discount":
+            pct = Decimal(str(rc.discount_value or 0)) / Decimal(100)
+            reward_discount = round(order_base * pct, 2)
+            if rc.discount_max_amount is not None:
+                reward_discount = min(reward_discount, Decimal(str(rc.discount_max_amount)))
+        elif rc.reward_type == "fixed_discount":
+            reward_discount = Decimal(str(rc.discount_value or 0))
+        elif rc.reward_type == "free_delivery":
+            reward_discount = delivery_fee if is_delivery else Decimal(0)
+
+        cr.status = "used"
+        cr.order_id = None  # set after order flush
+        cr.used_at = datetime.now(timezone.utc)
+        rc.total_redemptions = (rc.total_redemptions or 0) + 1
+        reward_used = cr
+
+    total_discount = voucher_discount + reward_discount
+    total -= total_discount
+    loyalty_points_earned = 0  # recalculated after discount
+    if not voucher_used and not reward_used:
+        loyalty_points_earned = 0  # points from order subtotal (simplified)
+
     # Create order
     order = Order(
         customer_id=customer_id,
@@ -198,18 +304,24 @@ async def create_order_from_cart(
         delivery_fee=float(delivery_fee) if is_delivery else 0,
         service_charge=float(service_charge),
         tax_amount=float(tax_amount),
-        discount_amount=0,
-        voucher_discount=0,
-        reward_discount=0,
+        discount_amount=float(total_discount),
+        voucher_discount=float(voucher_discount),
+        reward_discount=float(reward_discount),
         tip_amount=float(tip),
         total_amount=float(total),
         total_amount_currency=store.currency_code,
-        loyalty_points_earned=0,
+        loyalty_points_earned=loyalty_points_earned,
         loyalty_points_redeemed=0,
         customer_notes=data.customer_notes,
     )
     db.add(order)
     await db.flush()
+
+    # Link used voucher/reward to this order
+    if voucher_used:
+        voucher_used.order_id = order.id
+    if reward_used:
+        reward_used.order_id = order.id
     
     # Create order line items
     for ci in cart_items:
@@ -231,11 +343,16 @@ async def create_order_from_cart(
     await _deduct_stock_for_order(db, order, cart_items)
 
     # Create initial status log
+    reason_parts = ["Order created"]
+    if voucher_used:
+        reason_parts.append(f"voucher {data.voucher_code} applied ({float(voucher_discount):.2f})")
+    if reward_used:
+        reason_parts.append(f"reward #{data.reward_id} applied ({float(reward_discount):.2f})")
     status_log = OrderStatusLog(
         order_id=order.id,
         from_status=None,
         to_status="pending",
-        reason="Order created",
+        reason="; ".join(reason_parts),
         actor_type="system",
     )
     db.add(status_log)

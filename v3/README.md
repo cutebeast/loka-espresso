@@ -267,10 +267,19 @@ Second-pass deep audit across all 5 domains. **28 new bugs found, 25 fixed** (3 
 - **api.ts**: `page_size`→`per_page` conversion moved to top of `mapUrl()` so it applies to all endpoints, not just non-exactMap paths.
 - **cartSync.ts**: Removed dead `checkoutPayload` block + duplicate `checkoutToken` guarding. Voucher/reward codes now passed directly in `orderPayload`.
 
-### Known remaining (3 — backend feature gaps)
-- `create_order_from_cart` (`order.py:201-203`) still hardcodes `voucher_discount=0`, `reward_discount=0` — full voucher/reward discount calculation requires validating codes, checking balances, computing amounts. Slated for upcoming feature work.
-- `reward_redemption_code` stripped by backend `customer/order.py:88` — PWA sends codes but backend expects `reward_id: int`. Needs schema bridge.
-- Client-side PIN rate limiting is bypassable via page refresh — server-side rate limiting is on the backend roadmap.
+### Backend voucher/reward discount implementation (new feature)
+- **services/order.py**: `create_order_from_cart` now processes `voucher_code` and `reward_id` from `OrderCreate`:
+  - **Voucher**: Looks up `CustomerVoucher` by code + customer_id → validates active/not-expired → fetches `VoucherDefinition` → computes discount from `voucher_type` (`percentage_off`, `fixed_amount_off`, `free_delivery`) with `discount_max_amount` cap → checks `minimum_order_value` → marks as `used`, increments `use_count` and `global_use_count`.
+  - **Reward**: Looks up `CustomerReward` by `reward_id` + customer_id → validates active/not-expired → fetches `RewardCatalog` → computes discount from `reward_type` (`percentage_discount`, `fixed_discount`, `free_delivery`) → checks `minimum_order_value` → marks as `used`, increments `total_redemptions`.
+  - Discounts deducted from total. Order `discount_amount`, `voucher_discount`, `reward_discount` fields populated. Used voucher/reward linked to order via `order_id`. Status log includes discount details.
+  - All operations within a single DB transaction (cart row lock + voucher/reward `with_for_update()`).
+
+### Verification
+- **TypeScript**: 0 errors across all 3 portals
+- **ESLint**: 0 new errors (1 pre-existing admin, 4 pre-existing staff warnings)
+- **Python**: All backend + E2E files compile
+- **Backend**: All 8 AuditLog calls in 3 files use correct field names + valid CHECK constraint values
+- **Voucher/reward flow**: PWA sends `voucher_code: string` and `reward_id: int` → backend `OrderCreate` schema → `create_order_from_cart` processes both → discounts applied → vouchers/rewards marked used
 
 ### Verification
 - **TypeScript**: 0 errors across all 3 portals
