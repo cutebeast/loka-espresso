@@ -303,6 +303,7 @@ export default function TimeClockPage() {
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
             Enter your PIN
           </div>
+          <form onSubmit={e => e.preventDefault()} style={{ display: "inline" }}>
           <input
             type="password"
             inputMode="numeric"
@@ -314,6 +315,7 @@ export default function TimeClockPage() {
             style={{ textAlign: "center", fontSize: 24, letterSpacing: 8, marginBottom: 16 }}
             autoFocus
           />
+          </form>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn btn-ghost flex-1" onClick={() => { setShowPin(false); setPin(""); setPendingAction(null); }}>
               Cancel

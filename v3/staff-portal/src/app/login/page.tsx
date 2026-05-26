@@ -205,9 +205,10 @@ export default function LoginPage() {
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder={t("login.email_placeholder")}
+                placeholder="Enter your email"
                 className="form-input"
               />
             </div>
@@ -233,7 +234,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={mode === "email" ? password : pin}
               onChange={e => mode === "email" ? setPassword(e.target.value) : setPin(e.target.value)}
-              placeholder={mode === "email" ? t("login.pin_placeholder") : "Enter 6-digit PIN"}
+              placeholder={mode === "email" ? "Enter your password" : "Enter 6-digit PIN"}
               maxLength={mode === "email" ? 50 : 6}
               className={`form-input ${mode === "name" ? "login-input-center" : ""}`}
             />

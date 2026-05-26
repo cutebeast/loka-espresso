@@ -159,7 +159,7 @@ export default function ProfilePage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
               {showPw ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <form onSubmit={e => e.preventDefault()} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <input
                     type="password"
                     value={currentPw}
@@ -182,7 +182,7 @@ export default function ProfilePage() {
                       Cancel
                     </button>
                   </div>
-                </div>
+                </form>
               ) : (
                 <button className="btn btn-ghost" onClick={() => setShowPw(true)} style={{ justifyContent: "flex-start" }}>
                   <Lock size={16} /> Change Password
@@ -191,7 +191,7 @@ export default function ProfilePage() {
             </div>
             <div>
               {showPin ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <form onSubmit={e => e.preventDefault()} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <input
                     type="password"
                     value={currentPin}
@@ -218,7 +218,7 @@ export default function ProfilePage() {
                       Cancel
                     </button>
                   </div>
-                </div>
+                </form>
               ) : (
                 <button className="btn btn-ghost" onClick={() => setShowPin(true)} style={{ justifyContent: "flex-start" }}>
                   <KeyRound size={16} /> Change PIN

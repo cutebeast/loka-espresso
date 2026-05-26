@@ -392,6 +392,7 @@ export default function WalletPage() {
                 </button>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <form onSubmit={e => e.preventDefault()} style={{ display: "contents" }}>
                   <input
                     type="password"
                     inputMode="numeric"
@@ -403,6 +404,7 @@ export default function WalletPage() {
                     style={{ textAlign: "center" }}
                     autoFocus
                   />
+                  </form>
                   <button
                     className="btn btn-primary w-full"
                     onClick={handleTopUp}
@@ -423,6 +425,7 @@ export default function WalletPage() {
                   <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
                     Enter your PIN to confirm
                   </div>
+                  <form onSubmit={e => e.preventDefault()} style={{ display: "contents" }}>
                   <input
                     type="password"
                     inputMode="numeric"
@@ -434,6 +437,7 @@ export default function WalletPage() {
                     style={{ textAlign: "center", fontSize: 24, letterSpacing: 8, marginBottom: 16 }}
                     autoFocus
                   />
+                  </form>
                   <div style={{ display: "flex", gap: 10 }}>
                     <button className="btn btn-ghost flex-1" onClick={() => { setShowRedeemPin(false); setRedeemPin(""); setPendingRedeem(null); }}>
                       Cancel
