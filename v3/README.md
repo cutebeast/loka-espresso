@@ -1,6 +1,6 @@
 # FNB Enterprise v3 — Loka Espresso
 
-> **Status**: Live | **Last Audit**: Round 12 deep-audit (2026-05-26) | **TS**: 0 errors | **Lint**: 0 warnings
+> **Status**: Live | **Last Audit**: Round 12 complete (2026-05-26) | **TS**: 0 errors | **Coverage**: 24/24 features
 
 ## Services
 
@@ -274,15 +274,25 @@ Second-pass deep audit across all 5 domains. **28 new bugs found, 25 fixed** (3 
   - Discounts deducted from total. Order `discount_amount`, `voucher_discount`, `reward_discount` fields populated. Used voucher/reward linked to order via `order_id`. Status log includes discount details.
   - All operations within a single DB transaction (cart row lock + voucher/reward `with_for_update()`).
 
-### Verification
-- **TypeScript**: 0 errors across all 3 portals
-- **ESLint**: 0 new errors (1 pre-existing admin, 4 pre-existing staff warnings)
-- **Python**: All backend + E2E files compile
-- **Backend**: All 8 AuditLog calls in 3 files use correct field names + valid CHECK constraint values
-- **Voucher/reward flow**: PWA sends `voucher_code: string` and `reward_id: int` → backend `OrderCreate` schema → `create_order_from_cart` processes both → discounts applied → vouchers/rewards marked used
+### PWA endpoint additions (4 — closing endpoint gaps)
+- **GET /menu/items**: Added public endpoint (global menu, no store_id). Removed `_getStoreId`/`setStoreIdGetter` workaround from PWA entirely.
+- **GET /menu/categories**: Added public endpoint. Was 404 from PWA.
+- **POST /promos/banners/{id}/claim**: Added proper backend endpoint — looks up `PromoBanner.voucher_id`, creates `CustomerVoucher` for customer. Removed broken `mapUrl()` → `/vouchers/apply` mapping.
+- **GET /content/products**: Fixed PWA to call correct endpoint (was calling `/content/information?content_type=product` which used wrong model).
+
+### PWA splash screen enhancements
+- `duration_ms` column on `SplashScreen` model + migration `f7g8h9i0j1k2`. Admin create/edit forms have duration field (ms input). `show_frequency` schema extended with `"always"` option. PWA reads duration from API (default 3000ms), respects frequency via localStorage/sessionStorage, shows "Skip →" button when dismissible. Text centering CSS fix. CSP `script-src` fixed (`'unsafe-inline' 'unsafe-eval'` added).
+
+### Daily check-in feature (new)
+- **Backend**: `POST /checkin` — awards loyalty points based on streak from `checkin.*` platform config (base_points + streak_increment + 7day_bonus). Creates `CustomerDailyCheckin` + `LoyaltyPointsLedger`. 409 if already checked in. `GET /checkin` — returns status, streak, config.
+- **PWA CheckinPage**: Streak bar (7-day visual). Reward tier display. Check-in button with submission feedback. Already-checked-in state. Linked from home wallet card "Daily Check-In" chip. Registered as `#checkin` page in SPA router.
+
+### Admin → PWA coverage audit
+Full cross-reference of all 24 admin-managed customer-facing content/marketing features against PWA pages and backend endpoints. **Zero gaps — 100% coverage**: Info Cards, Products, Events, System Pages, Splash, Promo Banners, Rewards, Vouchers, Surveys, Referrals, Check-ins, Campaigns, Promotions, Loyalty Tiers + Ledger, Orders, Reservations, Tables, Feedback, Notifications, Profile, Addresses, Payment Methods, Wallet.
 
 ### Verification
 - **TypeScript**: 0 errors across all 3 portals
-- **ESLint**: 0 new errors (1 pre-existing admin, 4 pre-existing staff warnings)
-- **Python**: All backend + E2E files compile
-- **Backend**: All 8 AuditLog calls in 3 files use correct field names + valid CHECK constraint values
+- **ESLint**: only pre-existing (1 admin error, 4 staff warnings)
+- **Python**: all backend + E2E files compile
+- **All 70+ PWA API calls**: cross-referenced against backend routes — 0 unmatched
+- **Live tests**: order flow (add→cart→place→history), check-in (streak + points 409 guard), rewards catalog, reservations, stores, addresses, promo banners — all pass with customer `+60123456789`
