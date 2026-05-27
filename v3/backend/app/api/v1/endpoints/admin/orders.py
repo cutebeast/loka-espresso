@@ -537,9 +537,25 @@ async def apply_order_reward(
     # Compute discount from reward catalog
     discount = 0.0
     if reward_cat and reward_cat.discount_value:
-        discount = float(reward_cat.discount_value)
+        dv = float(reward_cat.discount_value)
+        if reward_cat.reward_type == "percentage_discount":
+            order_base = float(order.items_subtotal or 0)
+            discount = round(order_base * dv / 100.0, 2)
+            if reward_cat.discount_max_amount:
+                discount = min(discount, float(reward_cat.discount_max_amount))
+        else:
+            discount = dv
     elif customer_reward.reward_snapshot:
-        discount = float(customer_reward.reward_snapshot.get("discount_value", 0) or 0)
+        snapshot_val = float(customer_reward.reward_snapshot.get("discount_value", 0) or 0)
+        snapshot_type = customer_reward.reward_snapshot.get("reward_type", "")
+        if snapshot_type == "percentage_discount":
+            order_base = float(order.items_subtotal or 0)
+            discount = round(order_base * snapshot_val / 100.0, 2)
+            snapshot_max = customer_reward.reward_snapshot.get("discount_max_amount")
+            if snapshot_max:
+                discount = min(discount, float(snapshot_max))
+        else:
+            discount = snapshot_val
 
     subtotal = float(order.items_subtotal or 0)
     discount = min(discount, subtotal)

@@ -104,8 +104,8 @@ export default function ItemEditPage() {
   const addGroup = () => setForm({...form, modifier_groups: [...(form.modifier_groups||[]), {group_name:"",selection_type:"single",min_selections:0,max_selections:1,is_required:false,options:[]}]});
   const updateGroup = (i:number, p:any) => { const g=[...(form.modifier_groups||[])]; g[i]={...g[i],...p}; setForm({...form,modifier_groups:g}); };
   const removeGroup = (i:number) => setForm({...form, modifier_groups: (form.modifier_groups||[]).filter((_:any,j:number)=>j!==i)});
-  const addOpt = (gi:number) => { const g=[...(form.modifier_groups||[])]; g[gi].options.push({option_name:"",price_adjustment:0,is_default:false,is_available:true}); setForm({...form,modifier_groups:g}); };
-  const updateOpt = (gi:number, oi:number, p:any) => { const g=[...(form.modifier_groups||[])]; g[gi].options[oi]={...g[gi].options[oi],...p}; setForm({...form,modifier_groups:g}); };
+  const addOpt = (gi:number) => { const g=[...(form.modifier_groups||[])]; g[gi]={...g[gi],options:[...g[gi].options,{option_name:"",price_adjustment:0,is_default:false,is_available:true}]}; setForm({...form,modifier_groups:g}); };
+  const updateOpt = (gi:number, oi:number, p:any) => { const g=[...(form.modifier_groups||[])]; const opts=[...g[gi].options]; opts[oi]={...opts[oi],...p}; g[gi]={...g[gi],options:opts}; setForm({...form,modifier_groups:g}); };
   const removeOpt = (gi:number, oi:number) => { const g=[...(form.modifier_groups||[])]; g[gi].options=g[gi].options.filter((_:any,j:number)=>j!==oi); setForm({...form,modifier_groups:g}); };
 
   const loadInventoryForStore = useCallback(async () => {
@@ -141,7 +141,7 @@ export default function ItemEditPage() {
     setMsg(`Regenerated ${c}`);setTimeout(()=>setMsg(""),2500);setRegen(false);
   };
 
-  const saveAllTr = async () => {setSavingTr(true);for(const f of TR_FIELDS){const t=tr[`${loc}:${f.key}`]||"";if(t)await upsertTr(f.key,loc,(form[f.key]||"").trim(),t);}setMsg("Translations saved");setTimeout(()=>setMsg(""),2000);setSavingTr(false);};
+  const saveAllTr = async () => {setSavingTr(true);try{for(const f of TR_FIELDS){const t=tr[`${loc}:${f.key}`]||"";if(t)await upsertTr(f.key,loc,(form[f.key]||"").trim(),t);}setMsg("Translations saved");setTimeout(()=>setMsg(""),2000);}catch(e){console.error(e);}finally{setSavingTr(false);}};
 
   const handleUpload = async () => {const f=fileRef.current?.files?.[0];if(!f)return;setUploading(true);try{const fd=new FormData();fd.append("file",f);const j=await api.upload("/upload/image",fd);setForm({...form,image_url:j.url||j.filename});if(fileRef.current)fileRef.current.value="";}catch(e){console.error(e);}finally{setUploading(false);}};
 

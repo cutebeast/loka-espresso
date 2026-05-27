@@ -59,9 +59,10 @@ export default function NotificationEditPage() {
     setMsg(`Regenerated ${c} fields`);setTimeout(()=>setMsg(""),2500);setRegen(false);
   };
 
-  const saveAllTr = async () => { setSavingTr(true);
+  const saveAllTr = async () => { setSavingTr(true); try {
     for(const f of TR_FIELDS){const t=tr[`${loc}:${f.key}`]||"";if(t)await upsertTr(f.key,loc,(form[f.key]||"").trim(),t);}
-    setMsg("Translations saved");setTimeout(()=>setMsg(""),2000);setSavingTr(false);
+    setMsg("Translations saved");setTimeout(()=>setMsg(""),2000);
+  } catch(e) { console.error(e); } finally { setSavingTr(false); }
   };
 
   if (loading) return <div style={{ padding: 32 }}>Loading...</div>;

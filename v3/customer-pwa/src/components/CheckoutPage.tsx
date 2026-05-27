@@ -241,7 +241,7 @@ export default function CheckoutPage() {
               const cust = item.customizations as CustomizationStructure | undefined;
               const tags = cust?.options?.map((o) => { const name = o.name || ''; const colonIdx = name.indexOf(': '); return colonIdx >= 0 ? name.slice(colonIdx + 2) : name; }) || [];
               return (
-                <div key={`${item.menu_item_id}-${JSON.stringify((item.customization_option_ids ?? []).sort())}`} className="co-order-item-row">
+                <div key={`${item.menu_item_id}-${JSON.stringify([...(item.customization_option_ids ?? [])].sort())}`} className="co-order-item-row">
                   <div className="co-order-item-thumb">{item.image_url && !brokenImages.has(`${item.menu_item_id}-${(item.customization_option_ids ?? []).join(',') || '0'}`) ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.name} loading="lazy" onError={() => setBrokenImages(prev => new Set(prev).add(`${item.menu_item_id}-${(item.customization_option_ids ?? []).join(',') || '0'}`))} /> : <Coffee size={18} color={LOKA.primary} />}</div>
                   <div className="co-order-item-info">
                     <div className="co-order-item-name">{item.name}</div>

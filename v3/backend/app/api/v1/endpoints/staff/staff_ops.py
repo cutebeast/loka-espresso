@@ -1166,11 +1166,58 @@ async def staff_report_waste(
         })
 
     if data.menu_item_id:
+        menu_result = await db.execute(
+            select(MenuItem).where(
+                MenuItem.id == data.menu_item_id,
+                MenuItem.is_available.is_(True),
+                MenuItem.deleted_at.is_(None),
+            )
+        )
+        menu_item = menu_result.scalar_one_or_none()
+        if not menu_item:
+            raise HTTPException(status_code=404, detail="Menu item not found")
+
+        # Deduct recipe components from inventory stock
+        recipes = menu_item.recipes or []
+        deducted_items = []
+        for recipe in recipes:
+            inv_id = recipe.get("inventory_item_id")
+            qty_per_unit = recipe.get("quantity_required", 0)
+            waste_factor = recipe.get("waste_factor", 0)
+            if not inv_id or qty_per_unit <= 0:
+                continue
+            total_qty = round(qty_per_unit * data.quantity * (1 + waste_factor), 4)
+
+            stock_result = await db.execute(
+                select(InventoryStock).where(
+                    InventoryStock.inventory_item_id == inv_id,
+                    InventoryStock.store_id == store_id,
+                )
+            )
+            stock_row = stock_result.scalar_one_or_none()
+            if stock_row:
+                new_stock = max(0, round(float(stock_row.current_stock) - total_qty, 4))
+                stock_row.current_stock = new_stock
+                stock_row.updated_at = now
+                movement = InventoryMovementLog(
+                    inventory_item_id=inv_id,
+                    store_id=store_id,
+                    movement_type="waste",
+                    quantity_delta=round(-total_qty, 4),
+                    stock_after=new_stock,
+                    reason=f"[Menu item waste: {menu_item.item_name}] {data.reason}",
+                )
+                db.add(movement)
+                deducted_items.append({"item_id": inv_id, "qty": total_qty})
+
         await db.commit()
 
         return APIResponse(data={
             "menu_item_id": data.menu_item_id,
+            "menu_item_name": menu_item.item_name,
             "wasted_quantity": data.quantity,
+            "reason": data.reason,
+            "deducted_items": deducted_items,
             "message": "Waste recorded for menu item",
         })
 

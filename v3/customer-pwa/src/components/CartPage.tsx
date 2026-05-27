@@ -228,7 +228,7 @@ export default function CartPage() {
             const tags = getCustomizationTags(item.customizations);
             return (
               <div
-                key={`${item.menu_item_id}-${JSON.stringify((item.customization_option_ids ?? []).sort())}`}
+                key={`${item.menu_item_id}-${JSON.stringify([...(item.customization_option_ids ?? [])].sort())}`}
                 className="cart-item-card"
               >
                 <div className="cart-item-thumb">

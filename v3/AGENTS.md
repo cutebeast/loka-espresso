@@ -748,3 +748,48 @@ Second audit pass after Round 14 initial fixes. **15 additional fixes across bac
 - **Admin pages**: 31/31 HTTP 200 (including 5 fixed pages)
 - **Staff pages**: 14/14 HTTP 200
 - **PWA**: 200 with fixed CSP + SW version matching
+
+
+## Round 15 Audit (2026-05-27)
+
+Full 5-domain audit. Every finding verified by reading source. **13 issues fixed — 3 false positives caught and reverted during self-review.**
+
+### HIGH — 4 fixes
+
+1. **Staff wastage menu item silently discarded** (`staff/staff_ops.py:1168-1175`): Menu item waste did nothing but `await db.commit()` and return fake success. Fixed: looks up menu item, deduces recipe components from inventory stock, creates movement logs.
+
+2. **Rewards MissingGreenlet** (`admin/rewards.py:172,250`): `list_reward_redemptions` and `list_my_rewards` accessed `CustomerReward.reward_catalog` without `selectinload` → MissingGreenlet crash in async mode. Added `.options(selectinload(CustomerReward.reward_catalog))`.
+
+3. **Voucher `float(None)` TypeError** (`admin/vouchers.py:224`): `maximum_discount` is `Mapped[Decimal | None]` — `float(None)` crashes `GET /vouchers/me`. Added `vd.maximum_discount is not None` guard.
+
+4. **Apply-reward wrong discount for percentage rewards** (`admin/orders.py:539-540`): Treated percentage rewards (e.g. `discount_value=10` = 10%) as flat RM 10. Added `reward_type` check: percentage → `order_base * dv / 100` with `discount_max_amount` cap, matching `services/order.py:268-272`.
+
+### MEDIUM — 5 fixes
+
+5. **Admin LTV displayed as wallet balance** (`customers/[id]/page.tsx:308`): "Adjust Wallet Credit" card showed customer's lifetime order value as wallet cash. Backend sends `wallet.balance` separately (customers.py:192). Replaced with descriptive label.
+
+6. **Admin modifier group state mutation** (`menu/items/[id]/page.tsx:107-108`): `addOpt` used `g[gi].options.push()` and `updateOpt` used `g[gi].options[oi] = ...` — both mutated state (same pattern fixed in surveys in R14 but missed here). Fixed with spreads.
+
+7. **Admin translation save stuck buttons** (`menu/items/[id]`, `notifications/[id]`): `saveAllTr` no try/catch → button permanently disabled on API failure (same fix applied to campaigns in R14 Deep Clean). Both files wrapped in try/finally.
+
+8. **PWA `.sort()` mutation** (`CartPage:231`, `CheckoutPage:244`): `(arr ?? []).sort()` mutated Zustand store array during React render. Fixed: `[...(arr ?? [])].sort()`.
+
+9. **Loyalty tier data silently lost** (`admin/loyalty.py:179`): `list_loyalty_accounts` query without `selectinload(LoyaltyAccount.current_tier)` — all accounts showed blank `tier_name=""`, `tier_key=None`. Added eager loading.
+
+### LOW — 4 fixes
+
+10. **E2E**: Missing cart assertion, `cleanup_registry`, `?store_id=` in `test_admin_shifts.py`
+11. **Staff STATUS_FLOW**: Missing `refunded`, `partially_refunded`, `disputed`, `cancelled_by_guest` — finalized orders showed misleading active buttons
+12. **Admin customers**: `page_size=` → `per_page=` in detail query params
+13. **PWA ProfilePage**: `statusClass` only checked `'cancelled'` — missed v3 `cancelled_by_customer`/`cancelled_by_merchant`
+
+### False positives — 3 caught and reverted
+
+- **PWA idbStorageReady `.catch()`**: `idbStorageReady` always resolves — wraps `_initPromise.then(() => true)` where `_initPromise` exhaustively guarded (idbStorage.ts:52,62). No rejection path. Reverted.
+- **Staff fetchRaw signal**: `fetchRaw` has zero callers — dead code. Reverted.
+- **Staff equipment URL leak**: `useEffect([previews])` cleanup revoked URLs on every file add, breaking preview functionality. Reverted.
+
+### Verify
+- **TypeScript**: 0 errors all 3 portals
+- **Python**: All backend files compile
+- **Self-review catch rate**: 3/16 (19%) false positives caught

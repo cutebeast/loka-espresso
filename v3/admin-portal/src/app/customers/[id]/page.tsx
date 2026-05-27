@@ -169,13 +169,13 @@ export default function CustomerDetailPage() {
   const fetchTab = useCallback(async (t: string, pg: number = 1) => {
     const SIZE = 10;
     if (t === "orders") {
-      const d = await api.getRaw<PaginatedResponse<OrderItem>>(`/admin/customers/${id}/orders?page=${pg}&page_size=${SIZE}`);
+      const d = await api.getRaw<PaginatedResponse<OrderItem>>(`/admin/customers/${id}/orders?page=${pg}&per_page=${SIZE}`);
       setOrders(d || emptyPaginated<OrderItem>());
     } else if (t === "loyalty") {
-      const d = await api.getRaw<PaginatedResponse<LoyaltyEventItem>>(`/admin/customers/${id}/loyalty-history?page=${pg}&page_size=${SIZE}`);
+      const d = await api.getRaw<PaginatedResponse<LoyaltyEventItem>>(`/admin/customers/${id}/loyalty-history?page=${pg}&per_page=${SIZE}`);
       setLoyalty(d || emptyPaginated<LoyaltyEventItem>());
     } else if (t === "wallet") {
-      const d = await api.getRaw<PaginatedResponse<WalletTxItem>>(`/admin/customers/${id}/wallet-history?page=${pg}&page_size=${SIZE}`);
+      const d = await api.getRaw<PaginatedResponse<WalletTxItem>>(`/admin/customers/${id}/wallet-history?page=${pg}&per_page=${SIZE}`);
       setWalletTx(d || emptyPaginated<WalletTxItem>());
     } else if (t === "vouchers") {
       const d = await api.getRaw<RewardsAndVouchers>(`/admin/customers/${id}/wallet`);
@@ -305,7 +305,7 @@ export default function CustomerDetailPage() {
           </div>
 
           <div className="card" style={{ padding: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><h4 style={{ margin: 0 }}>Adjust Wallet Credit</h4><span style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)" }}>RM {(c.lifetime_value||0).toFixed(2)}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><h4 style={{ margin: 0 }}>Adjust Wallet Credit</h4><span style={{ fontSize: 15, color: "var(--color-text-muted)" }}>Top-up or deduct wallet balance</span></div>
             <div style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 100 }}><label htmlFor="cust-mgmt-wallet-amt" style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Amount (+/-)</label><input id="cust-mgmt-wallet-amt" type="number" step="0.01" value={walletAmt} onChange={e => setWalletAmt(e.target.value)} placeholder="+/- RM" style={{ width: "100%" }}/></div>
               <div style={{ flex: 2, minWidth: 150 }}><label htmlFor="cust-mgmt-wallet-reason" style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>Reason</label><input id="cust-mgmt-wallet-reason" value={walletReason} onChange={e => setWalletReason(e.target.value)} placeholder="e.g. Refund" style={{ width: "100%" }}/></div>
@@ -335,7 +335,7 @@ export default function CustomerDetailPage() {
 
       {tab === "orders" && (
         <PaginatedTable<OrderItem> data={orders} cols={["Order #","Status","Total","Date"]} render={(o: OrderItem) => {
-          const sm: Record<string,string> = { pending: "badge-yellow", confirmed: "badge-blue", preparing: "badge-yellow", completed: "badge-green", cancelled: "badge-red" };
+          const sm: Record<string,string> = { pending: "badge-yellow", confirmed: "badge-blue", preparing: "badge-yellow", ready_for_pickup: "badge-green", out_for_delivery: "badge-blue", delivered: "badge-green", cancelled_by_customer: "badge-red", cancelled_by_merchant: "badge-red", cancelled_by_guest: "badge-red", refunded: "badge-purple", partially_refunded: "badge-yellow", disputed: "badge-orange" };
           return <><td style={{ fontSize: 11 }} className="font-mono">{o.order_number}</td><td><span className={`badge badge-sm ${sm[o.status ?? ""] || "badge-gray"}`}>{o.status?.replace(/_/g," ")}</span></td><td style={{ textAlign: "right" }}>{fmt(o.total_amount)}</td><td style={{ fontSize: 12 }}>{dt(o.created_at)}</td></>;
         }} onChange={(p: number) => fetchTab("orders", p)} />
       )}

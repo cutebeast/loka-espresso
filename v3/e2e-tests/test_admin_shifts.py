@@ -112,7 +112,7 @@ async def test_staff_shift_crud(
 
 @pytest.mark.asyncio
 async def test_kds_order_display(
-    client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int
+    client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int, cleanup_registry: dict
 ):
     """Kitchen Display System — verify orders appear and can be filtered.
 
@@ -144,15 +144,19 @@ async def test_kds_order_display(
     )
     assert r_reg.status_code in (200, 201), f"Register failed: {r_reg.status_code}"
     cust_data = r_reg.json()
+    cust_id = cust_data.get("profile", {}).get("id") or cust_data.get("id")
+    if cust_id:
+        cleanup_registry.setdefault("customers", []).append(cust_id)
     cust_token = cust_data["tokens"]["access_token"]
     cust_headers = {"Authorization": f"Bearer {cust_token}", "Content-Type": "application/json"}
 
     # Add item to cart and create order
-    await client.post(
-        f"{base_url}/cart/items",
+    r_cart = await client.post(
+        f"{base_url}/cart/items?store_id={store_id}",
         headers=cust_headers,
         json={"menu_item_id": menu_item_id, "quantity": 2},
     )
+    assert r_cart.status_code in (200, 201), f"Cart add failed: {r_cart.status_code}"
     r_order = await client.post(
         f"{base_url}/orders",
         headers=cust_headers,
@@ -161,6 +165,7 @@ async def test_kds_order_display(
     assert r_order.status_code in (200, 201), f"Order creation failed: {r_order.status_code}"
     order_data = r_order.json()["data"]
     order_id = order_data["id"]
+    cleanup_registry.setdefault("orders", []).append(order_id)
     order_number = order_data.get("order_number", f"#{order_id}")
 
     # 2. Admin confirms the order so it appears in KDS

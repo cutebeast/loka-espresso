@@ -108,8 +108,8 @@ export default function ProfilePage() {
 
   function statusClass(status: string) {
     const s = status.toLowerCase();
-    if (s === 'completed') return 'completed';
-    if (s === 'cancelled') return 'cancelled';
+    if (s === 'delivered' || s.startsWith('completed')) return 'completed';
+    if (s.startsWith('cancelled') || s.includes('cancelled')) return 'cancelled';
     return '';
   }
 

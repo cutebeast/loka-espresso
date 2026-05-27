@@ -170,16 +170,17 @@ async def list_reward_redemptions(
 
     stmt = (
         select(CustomerReward)
+        .options(selectinload(CustomerReward.reward_catalog))
         .where(CustomerReward.reward_catalog_id == reward_id)
         .order_by(CustomerReward.id.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
     result = await db.execute(stmt)
+    item_rows = result.unique().scalars().all()
     items = []
-    for row in result.scalars().all():
+    for row in item_rows:
         data = {c: getattr(row, c) for c in row.__table__.columns.keys()}
-        # Add reward_name from catalog if available
         data["reward_name"] = row.reward_catalog.reward_name if row.reward_catalog else None
         items.append(CustomerRewardOut.model_validate(data))
 
@@ -248,14 +249,16 @@ async def list_my_rewards(
 
     stmt = (
         select(CustomerReward)
+        .options(selectinload(CustomerReward.reward_catalog))
         .where(CustomerReward.customer_id == customer.id)
         .order_by(CustomerReward.id.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
     result = await db.execute(stmt)
+    item_rows = result.unique().scalars().all()
     items = []
-    for row in result.scalars().all():
+    for row in item_rows:
         data = {c: getattr(row, c) for c in row.__table__.columns.keys()}
         data["reward_name"] = row.reward_catalog.reward_name if row.reward_catalog else None
         items.append(CustomerRewardOut.model_validate(data))

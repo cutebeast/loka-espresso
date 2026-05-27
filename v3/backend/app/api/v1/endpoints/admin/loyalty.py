@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
 from app.services.translation import translate_single
@@ -176,7 +177,7 @@ async def list_loyalty_accounts(
     per_page: int = Query(20, ge=1, le=500),
 ):
     """List loyalty accounts with optional filters."""
-    base_stmt = select(LoyaltyAccount)
+    base_stmt = select(LoyaltyAccount).options(selectinload(LoyaltyAccount.current_tier))
     count_stmt = select(func.count(LoyaltyAccount.id))
 
     if customer_id is not None:

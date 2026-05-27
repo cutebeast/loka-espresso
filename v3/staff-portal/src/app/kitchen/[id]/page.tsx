@@ -20,6 +20,10 @@ const STATUS_FLOW: Record<string, { next: OrderStatus[]; label: string; color: B
   delivered: { next: [], label: "Delivered", color: "green" },
   cancelled_by_customer: { next: [], label: "Cancelled (Customer)", color: "red" },
   cancelled_by_merchant: { next: [], label: "Cancelled (Merchant)", color: "red" },
+  cancelled_by_guest: { next: [], label: "Cancelled (Guest)", color: "red" },
+  refunded: { next: [], label: "Refunded", color: "purple" },
+  partially_refunded: { next: [], label: "Partially Refunded", color: "yellow" },
+  disputed: { next: [], label: "Disputed", color: "orange" },
 };
 
 export default function KitchenDetailPage() {

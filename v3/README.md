@@ -1,6 +1,6 @@
 # FNB Enterprise v3 — Loka Espresso
 
-> **Status**: Live | **Last Audit**: Round 14 Deep Clean (2026-05-27) | **TS**: 0 errors | **Coverage**: 24/24 features | **Staff pages**: 14/14 | **Admin pages**: 31/31 | **E2E**: 24 test files
+> **Status**: Live | **Last Audit**: Round 15 (2026-05-27) | **TS**: 0 errors | **Coverage**: 24/24 features | **Staff pages**: 14/14 | **Admin pages**: 31/31 | **E2E**: 24 test files
 
 ## Services
 
@@ -446,3 +446,40 @@ Full 5-domain audit (admin, staff, PWA, backend, E2E). **23 issues found, 19 fix
 
 ### Verification
 - **TypeScript**: 0 errors all 3 portals | **ESLint**: 0 new | **Python**: syntax valid
+
+## Round 15 Audit (2026-05-27)
+
+Full 5-domain audit. Every finding verified by reading actual source code. **13 issues fixed — 3 false positives caught and reverted during self-review.**
+
+### HIGH — 4 fixed
+
+- **Staff wastage menu item** (`staff_ops.py:1168-1175`): Menu item waste (burnt/spilled/expired) was silently discarded — no record, no stock deduction, just `await db.commit()` and fake success message. Fixed to look up menu item, deduct recipe components from inventory stock, create movement logs.
+- **Rewards MissingGreenlet** (`rewards.py:172,250`): Two endpoints (`GET /rewards/{id}/redemptions`, `GET /rewards/me`) accessed `CustomerReward.reward_catalog` without `selectinload`, causing MissingGreenlet crashes in async SQLAlchemy. Added eager loading.
+- **Voucher `float(None)` TypeError** (`vouchers.py:224`): `maximum_discount` is `Mapped[Decimal | None]` (nullable). `float(None)` crashes `GET /vouchers/me`. Added null guard.
+- **Apply-reward percentage discount** (`orders.py:539-540`): `apply_order_reward` treated `percentage_discount` rewards as flat RM amounts (10% became RM 10 off instead of 10% of order). Added `reward_type` check with percentage math and `discount_max_amount` cap, matching `services/order.py` logic.
+
+### MEDIUM — 5 fixed
+
+- **Admin LTV as wallet balance** (`customers/[id]/page.tsx:308`): "Adjust Wallet Credit" card showed `lifetime_value` (total order spending) as if it were wallet cash balance. Fixed to show descriptive label — backend sends `wallet.balance` separately.
+- **Admin modifier state mutation** (`menu/items/[id]/page.tsx:107-108`): `addOpt` used `g[gi].options.push()` and `updateOpt` used `g[gi].options[oi] = ...` — both mutated state objects. Fixed with proper spread patterns (same bug pattern as surveys fix in R14).
+- **Admin translation save stuck** (`menu/items/[id]`, `notifications/[id]`): `saveAllTr` had no try/catch — button permanently disabled on API failure. Both files wrapped in try/finally.
+- **PWA `.sort()` mutation** (`CartPage.tsx:231`, `CheckoutPage.tsx:244`): `(item.customization_option_ids ?? []).sort()` mutated live Zustand array during React render. Fixed with `[...arr].sort()`.
+- **Loyalty tier data silent loss** (`loyalty.py:179`): `list_loyalty_accounts` queried `LoyaltyAccount` without `selectinload(LoyaltyAccount.current_tier)`. All accounts showed blank `tier_name=""`, `tier_key=None`. Added eager loading.
+
+### LOW — 4 fixed
+
+- **E2E**: Missing cart assertion, missing `cleanup_registry`, missing `?store_id=` on cart in `test_admin_shifts.py`
+- **Staff**: `STATUS_FLOW` missing entries for `refunded`, `partially_refunded`, `disputed`, `cancelled_by_guest` — finalized orders showed misleading "Confirm"/"Cancel" buttons
+- **Admin**: `page_size` → `per_page` in customer detail query params
+- **PWA**: `ProfilePage` `statusClass` didn't match v3 cancelled variants (`cancelled_by_customer` etc.) — order badges showed wrong color
+
+### False positives — 3 caught and reverted during self-review
+
+- **PWA idbStorageReady `.catch()`**: `idbStorageReady` is an IIFE wrapping `_initPromise.then(() => true)` where `_initPromise` always resolves (`.catch()` on line 62 of idbStorage.ts, `loadAllFromDB` always returns at minimum empty Map). No rejection path exists. Reverted.
+- **Staff `fetchRaw` signal**: `fetchRaw` has zero callers across the entire staff portal — dead code. Signal fix was noise. Reverted.
+- **Staff equipment URL leak**: `useEffect([previews])` cleanup with `urls.forEach(u => URL.revokeObjectURL(u))` fires on EVERY file selection, revoking previously-selected previews. Made preview functionality unusable. Reverted.
+
+### Verification
+- **TypeScript**: 0 errors across all 3 portals
+- **Python**: All changed files compile
+- **Self-review**: 3/16 (19%) caught and reverted before commit

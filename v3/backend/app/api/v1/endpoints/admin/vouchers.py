@@ -221,7 +221,7 @@ async def list_my_vouchers(
         item["discount_type"] = vd.voucher_type if vd else None
         item["discount_value"] = float(vd.discount_value) if vd else None
         item["min_spend"] = float(vd.minimum_order_value) if vd else None
-        item["max_discount"] = float(vd.maximum_discount) if vd else None
+        item["max_discount"] = float(vd.maximum_discount) if vd and vd.maximum_discount is not None else None
         item["voucher_title"] = vd.display_title if vd else None
         item["voucher_image_url"] = vd.image_url if vd else None
         if vd:
