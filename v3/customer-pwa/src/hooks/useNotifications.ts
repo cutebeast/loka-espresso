@@ -17,7 +17,7 @@ export function useNotifications() {
       const notifRes = await api.get('/notifications');
       const notifs = Array.isArray(notifRes.data) ? notifRes.data : [];
       setUnreadCount(notifs.filter((n: { is_read?: boolean }) => !n.is_read).length);
-    } catch { /* ignore */ }
+    } catch (err) { console.error("Failed to fetch notifications:", err); }
   }, [isAuthenticated]);
 
   return { unreadCount, fetchUnreadCount };

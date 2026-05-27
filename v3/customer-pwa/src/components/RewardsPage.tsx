@@ -31,7 +31,7 @@ export default function RewardsPage() {
     try {
       const res = await api.get('/rewards');
       setRewards(Array.isArray(res.data) ? res.data : []);
-    } catch { setRewards([]); }
+    } catch (err) { console.error('[RewardsPage] fetch failed:', err); setRewards([]); }
     finally { setLoading(false); }
   }, []);
 

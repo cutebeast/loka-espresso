@@ -267,7 +267,7 @@ async def update_order_status(
         order.confirmed_at = now
     elif status_value == "preparing":
         order.prepared_at = now
-    elif status_value in ("delivered", "completed"):
+    elif status_value == "delivered":
         order.completed_at = now
     elif status_value in ("cancelled_by_customer", "cancelled_by_merchant"):
         order.cancelled_at = now
@@ -597,8 +597,12 @@ async def pay_with_wallet(
     """Pay for an order using the customer's wallet credit."""
     amount = data.amount
 
-    # Load order
-    result = await db.execute(select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)))
+    # Load order with row lock to prevent concurrent payment race
+    result = await db.execute(
+        select(Order)
+        .where(Order.id == order_id, Order.deleted_at.is_(None))
+        .with_for_update()
+    )
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")

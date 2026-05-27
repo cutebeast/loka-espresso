@@ -1,6 +1,6 @@
 # FNB Enterprise v3 — Loka Espresso
 
-> **Status**: Live | **Last Audit**: Round 13 (2026-05-26) | **TS**: 0 errors | **Coverage**: 24/24 features | **Staff pages**: 13/13 | **Admin pages**: 17+/17+
+> **Status**: Live | **Last Audit**: Round 14 (2026-05-27) | **TS**: 0 errors | **Coverage**: 24/24 features | **Staff pages**: 13/13 | **Admin pages**: 17+/17+ | **E2E**: 24 test files
 
 ## Services
 
@@ -423,3 +423,26 @@ Full audit of admin, staff, PWA, backend, and E2E tests. All findings verified b
 cd v3/backend && python3 scripts/sync_translations_to_json.py
 ```
 Syncs DB → JSON files, bumps version, auto-rebuilds PWA, restarts PM2.
+
+## Round 14 Audit (2026-05-27)
+
+Full 5-domain audit (admin, staff, PWA, backend, E2E). **23 issues found, 19 fixed, 11 false positives dispelled.**
+
+### HIGH — 3 fixed
+- **AuditLog.action Literal crash** (`schemas/audit.py:12`): Pydantic Literal missing `apply_voucher`, `apply_reward`, `wallet_payment` — caused 500 errors viewing audit log. Added 3 missing values.
+- **E2E cancel order code** (`test_customer_order_lifecycle.py`): Expected HTTP 409, backend returns 400. Fixed both assertions.
+- **pay_with_wallet TOCTOU** (`orders.py:601`): Missing `.with_for_update()` on order read — concurrent payment race. Added row lock.
+
+### MEDIUM — 6 fixed
+- **Admin surveys state mutation**: `addOpt`/`updateOpt` mutated state via shallow copy. Fixed with spread/map.
+- **E2E**: Hardcoded store_id → fixture, missing cart assertion, fragile notifications assertion.
+- **PWA SSR crash**: `useA2HS.ts` `localStorage.getItem()` unguarded. Added `typeof window` check.
+
+### LOW — 10 fixed
+- Admin/Staff console.error added to catch blocks, useEffect cleanup in wastage
+- PWA: `"use client"` on 5 hooks, error logging on 8 silent catches, SplashScreen AbortController
+- Backend: dead `"completed"` code removed from orders.py
+- E2E: dead `_r_create` removed from reservations test
+
+### Verification
+- **TypeScript**: 0 errors all 3 portals | **ESLint**: 0 new | **Python**: syntax valid

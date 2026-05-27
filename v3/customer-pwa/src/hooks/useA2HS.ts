@@ -13,6 +13,7 @@ interface A2HSState {
 const STORAGE_KEY = 'loka-a2hs-dismissed';
 
 function getInitialDismissed(): boolean {
+  if (typeof window === 'undefined') return false;
   try {
     return !!localStorage.getItem(STORAGE_KEY);
   } catch { /* ignore */ }

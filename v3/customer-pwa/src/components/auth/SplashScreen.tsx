@@ -86,7 +86,8 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
   const [splashData, setSplashData] = useState<SplashData | null>(null);
 
   useEffect(() => {
-    api.get('/splash')
+    const abortCtrl = new AbortController();
+    api.get('/splash', { signal: abortCtrl.signal })
       .then((res: unknown) => {
         const axiosRes = res as { data?: SplashData };
         const d = axiosRes?.data || (res as SplashData);
@@ -109,7 +110,8 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
           markSplashShown(frequency);
         }
       })
-      .catch((err) => console.error('[Splash] Content fetch failed:', err));
+      .catch((err) => { if (err?.name !== 'AbortError') console.error('[Splash] Content fetch failed:', err); });
+    return () => abortCtrl.abort();
   }, [onFinish]);
 
   useEffect(() => {

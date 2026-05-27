@@ -59,7 +59,7 @@ let _initPromise: Promise<void> | null = null;
 export const idbStorageReady: Promise<boolean> = (() => {
   _initPromise = loadAllFromDB().then((loaded) => {
     loaded.forEach((value, key) => { memoryCache.set(key, value); });
-  }).catch(() => {});
+  }).catch((err) => { console.error("idbStorage init failed:", err); });
   return _initPromise.then(() => true);
 })();
 
@@ -88,8 +88,9 @@ export const idbStorage = {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       store.delete(name);
-    }).catch(() => {
-      try { localStorage.removeItem(name); } catch { /* swallow */ }
+    }).catch((err) => {
+      console.error("idbStorage remove failed:", err);
+      try { localStorage.removeItem(name); } catch { /* fallback also failed */ }
     });
   },
 };

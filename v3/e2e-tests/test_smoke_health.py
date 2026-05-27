@@ -49,12 +49,12 @@ async def test_admin_login(client: httpx.AsyncClient, base_url: str):
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
-async def test_staff_login_smoke(client: httpx.AsyncClient, base_url: str):
+async def test_staff_login_smoke(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Staff login succeeds with admin credentials (for staff endpoint)."""
     r = await client.post(f"{base_url}/staff/auth/login", json={
         "email": ADMIN_EMAIL,
         "password": ADMIN_PASSWORD,
-        "store_id": 1,
+        "store_id": store_id,
     })
     assert r.status_code == 200, f"Staff login failed: {r.text}"
     assert "access_token" in r.json()["tokens"]
@@ -79,9 +79,9 @@ async def test_get_public_menu(client: httpx.AsyncClient, base_url: str, store_i
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
-async def test_list_orders_smoke(client: httpx.AsyncClient, admin_headers: dict, base_url: str):
+async def test_list_orders_smoke(client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int):
     """Admin can list orders."""
-    r = await client.get(f"{base_url}/admin/orders?store_id=1&per_page=5", headers=admin_headers)
+    r = await client.get(f"{base_url}/admin/orders?store_id={store_id}&per_page=5", headers=admin_headers)
     assert r.status_code == 200
     data = r.json()["data"]
     assert "items" in data

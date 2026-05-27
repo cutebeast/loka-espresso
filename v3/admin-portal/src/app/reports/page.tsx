@@ -41,7 +41,7 @@ export default function ReportsPage() {
         customers: metrics.new_customers || 0,
         stores: metrics.active_stores || stores.length,
       });
-    } catch (err: any) { setError(err.message); }
+    } catch (err: any) { console.error("Failed to load reports:", err); setError(err.message); }
     finally { setLoading(false); }
   }, [selectedStore, dateFrom, dateTo]);
 

@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useCallback } from 'react';
 
 const FOCUSABLE_SELECTORS = [

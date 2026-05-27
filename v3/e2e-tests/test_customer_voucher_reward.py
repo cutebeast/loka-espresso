@@ -97,9 +97,10 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
         pytest.skip("No menu items available")
     menu_item_id = items_data[0]["id"]
 
-    await client.post(f"{base_url}/cart/items?store_id={store_id}", headers={
+    r_cart = await client.post(f"{base_url}/cart/items?store_id={store_id}", headers={
         "Authorization": f"Bearer {token}",
     }, json={"menu_item_id": menu_item_id, "quantity": 2})
+    assert r_cart.status_code == 200, f"Add to cart failed: {r_cart.text}"
 
     # Place order with voucher
     r_order = await client.post(f"{base_url}/orders", headers={

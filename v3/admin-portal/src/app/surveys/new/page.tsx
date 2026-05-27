@@ -17,8 +17,8 @@ export default function SurveyNewPage() {
   const addQ = () => { if (form.questions.length >= MAX_Q) return; setForm({...form, questions: [...form.questions, { question_text: "", question_type: "text_open", is_required: false, display_order: form.questions.length, options: [] } as SurveyQuestion]}); };
   const updateQ = (i:number,p:Partial<SurveyQuestion>) => { const q=[...form.questions]; const cur = q[i]; if (!cur) return; q[i]={...cur,...p,question_type:p.question_type||cur.question_type,options:p.question_type==="text_open"||p.question_type==="rating_scale"?[]:(p.options||cur.options)}; setForm({...form,questions:q}); };
   const removeQ = (i:number) => setForm({...form, questions: form.questions.filter((_,j)=>j!==i)});
-  const addOpt = (qi:number) => { const q=[...form.questions]; const cur = q[qi]; if (!cur) return; cur.options.push(""); setForm({...form,questions:q}); };
-  const updateOpt = (qi:number,oi:number,val:string) => { const q=[...form.questions]; const cur = q[qi]; if (!cur) return; cur.options[oi]=val; setForm({...form,questions:q}); };
+  const addOpt = (qi:number) => { const q=[...form.questions]; const cur = q[qi]; if (!cur) return; q[qi]={...cur,options:[...cur.options,""]}; setForm({...form,questions:q}); };
+  const updateOpt = (qi:number,oi:number,val:string) => { const q=[...form.questions]; const cur = q[qi]; if (!cur) return; q[qi]={...cur,options:cur.options.map((o:string,j:number)=>j===oi?val:o)}; setForm({...form,questions:q}); };
   const removeOpt = (qi:number,oi:number) => { const q=[...form.questions]; const cur = q[qi]; if (!cur) return; cur.options=cur.options.filter((_:string,j:number)=>j!==oi); setForm({...form,questions:q}); };
 
   const handleSubmit = async (e: React.FormEvent) => {

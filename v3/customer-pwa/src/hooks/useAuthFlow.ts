@@ -107,7 +107,7 @@ export function useAuthFlow() {
         }
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;
-        // Network error on mount — leave authDone=false, AuthFlow handles it
+        console.error('[AuthFlow] Session validation failed:', err);
       } finally {
         if (!cancelled) setIsLoading(false);
       }

@@ -9,7 +9,7 @@ from app.schemas.base import BaseSchema
 class AuditLogOut(BaseSchema):
     id: int
     principal_id: int | None = None
-    action: Literal["create", "read", "update", "delete", "export", "login", "logout", "approve", "reject", "transfer", "void"]
+    action: Literal["create", "read", "update", "delete", "export", "login", "logout", "approve", "reject", "transfer", "void", "apply_voucher", "apply_reward", "wallet_payment"]
     resource_type: str
     resource_id: int | None = None
     store_id: int | None = None

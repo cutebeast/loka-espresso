@@ -15,7 +15,7 @@ async function fetchAndSetUser() {
   try {
     const me = await api.get('/me');
     useAuthStore.getState().setUser(me.data as UserProfile);
-  } catch { /* user will be set on next load */ }
+  } catch (err) { console.error("Failed to fetch user profile:", err); }
 }
 
 export function usePhoneAuth() {

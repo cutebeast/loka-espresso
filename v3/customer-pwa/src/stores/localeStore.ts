@@ -20,12 +20,14 @@ export function readStoredLocale(): string | null {
     const parsed = JSON.parse(raw);
     const v = parsed?.state?.locale ?? parsed?.locale ?? null;
     return typeof v === 'string' && isValidLocale(v) ? v : null;
-  } catch { return null; }
+  } catch { /* parse error — treat as unset */
+    return null;
+  }
 }
 
 export function writeStoredLocale(locale: string) {
   if (typeof window === 'undefined') return;
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ state: { locale } })); } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ state: { locale } })); } catch (err) { console.error('[localeStore] write failed:', err); }
 }
 
 export function detectBrowserLocale(): string {
@@ -36,13 +38,13 @@ export function detectBrowserLocale(): string {
     if (lang.startsWith('zh')) return 'zh';
     if (lang.startsWith('ta')) return 'ta';
     if (lang.startsWith('tr')) return 'tr';
-  } catch {}
+  } catch { /* browser detection unavailable */ }
   return 'en';
 }
 
 export function applyLocaleToDOM(locale: string) {
   if (typeof document === 'undefined') return;
-  try { document.documentElement.lang = locale; } catch {}
+  try { document.documentElement.lang = locale; } catch { /* DOM not available */ }
 }
 
 /** Called by the React provider to sync the module-level variable. */

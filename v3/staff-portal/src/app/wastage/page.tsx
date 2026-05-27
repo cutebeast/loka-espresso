@@ -20,9 +20,11 @@ export default function WastagePage() {
   const [form, setForm] = useState({ menu_item_id: "", quantity: 0, reason: "", notes: "" });
 
   useEffect(() => {
+    let cancelled = false;
     api.getRaw<any>("/admin/menu/items?per_page=500")
-      .then(d => setMenuItems(Array.isArray(d) ? d : (d?.items || [])))
+      .then(d => { if (!cancelled) setMenuItems(Array.isArray(d) ? d : (d?.items || [])); })
       .catch((err) => { console.error("Failed to load menu items:", err); });
+    return () => { cancelled = true; };
   }, []);
 
   const handleSubmit = async () => {
@@ -44,6 +46,7 @@ export default function WastagePage() {
       setSuccess("Wastage reported successfully");
       setForm({ menu_item_id: "", quantity: 0, reason: "", notes: "" });
     } catch (e: unknown) {
+      console.error("Wastage submit failed:", e);
       setError(parseApiError(e, "Failed to submit wastage"));
     } finally {
       setSubmitting(false);
