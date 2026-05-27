@@ -15,7 +15,9 @@ export default function PromotionsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchBanners = useCallback(() => { api.get<{ items: Banner[] }>("/admin/promo-banners?per_page=100")
+  const fetchBanners = useCallback(() => {
+    setLoading(true);
+    api.get<{ items: Banner[] }>("/admin/promo-banners?per_page=100")
       .then(d => setBanners(Array.isArray(d) ? d : (d.items || [])))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false)); }, []);

@@ -211,7 +211,9 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
 
 async def cancel_payment(db: AsyncSession, payment_id: int) -> Payment:
     """Cancel a pending payment."""
-    result = await db.execute(select(Payment).where(Payment.id == payment_id))
+    result = await db.execute(
+        select(Payment).where(Payment.id == payment_id).with_for_update()
+    )
     payment = result.scalar_one_or_none()
     if payment is None:
         raise PaymentError("Payment not found", 404)

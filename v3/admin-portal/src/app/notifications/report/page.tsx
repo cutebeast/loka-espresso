@@ -10,12 +10,14 @@ export default function NotificationReportPage() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get<Stats>("/admin/notifications/stats").then(d => setStats(d)).catch((e)=>{console.error('notification stats:',e)}).finally(()=>setLoading(false));
+    api.get<Stats>("/admin/notifications/stats").then(d => setStats(d)).catch((e)=>{console.error('notification stats:',e);setError(e.message||'Failed to load stats');}).finally(()=>setLoading(false));
   }, []);
 
   if (loading) return <div style={{ padding: 32 }}>Loading...</div>;
+  if (error) return <div style={{ padding: 32 }}><div className="alert alert-error">{error}</div><button onClick={()=>router.push("/notifications")} className="btn btn-sm" style={{marginTop:12}}>Back to Notifications</button></div>;
 
   return (
     <div style={{ padding: 32 }}>

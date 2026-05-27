@@ -9,7 +9,7 @@ const swPath = path.join(__dirname, "..", "public", "sw.js");
 
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 const version = pkg.version || "0.1.0";
-const timestamp = Math.floor(Date.now() / 1000);
+const timestamp = Date.now();
 const cacheVersion = `v${version}.${timestamp}`;
 
 let sw = fs.readFileSync(swPath, "utf8");

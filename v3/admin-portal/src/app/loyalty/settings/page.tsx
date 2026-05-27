@@ -62,7 +62,7 @@ export default function LoyaltySettingsPage() {
                       />
                     </td>
                     <td>
-                      {saving === key ? "..." : <button onClick={() => {}} className="btn btn-sm btn-primary"><Save size={12}/> Save</button>}
+                      {saving === key ? "..." : <button onClick={() => {}} className="btn btn-sm btn-primary" title="Auto-saves on blur"><Save size={12}/> Save</button>}
                     </td>
                   </tr>
                 );

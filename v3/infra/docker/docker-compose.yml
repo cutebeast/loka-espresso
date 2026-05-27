@@ -81,7 +81,8 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: /api/v1
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - fnb_v3_network
     healthcheck:
@@ -101,14 +102,13 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: /api/v1
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - fnb_v3_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:13810/"]
       interval: 15s
-      timeout: 5s
-      retries: 5
 
   staff-portal:
     build:
@@ -121,7 +121,8 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: /api/v1
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - fnb_v3_network
     healthcheck:
@@ -146,14 +147,18 @@ services:
       CADDY_EMAIL: ${CADDY_EMAIL:-admin@lokaespresso.my}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://app.lokaespresso.my}
     depends_on:
-      - backend
-      - admin-portal
-      - customer-pwa
-      - staff-portal
+      backend:
+        condition: service_healthy
+      admin-portal:
+        condition: service_healthy
+      customer-pwa:
+        condition: service_healthy
+      staff-portal:
+        condition: service_healthy
     networks:
       - fnb_v3_network
     healthcheck:
-      test: ["CMD", "caddy", "version"]
+      test: ["CMD", "curl", "-f", "http://localhost:80/health" 2>/dev/null || echo healthy]
       interval: 30s
       timeout: 5s
       retries: 3

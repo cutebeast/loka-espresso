@@ -1,6 +1,6 @@
 # FNB Enterprise v3 — Loka Espresso
 
-> **Status**: Live | **Last Audit**: Round 14 (2026-05-27) | **TS**: 0 errors | **Coverage**: 24/24 features | **Staff pages**: 13/13 | **Admin pages**: 17+/17+ | **E2E**: 24 test files
+> **Status**: Live | **Last Audit**: Round 14 Deep Clean (2026-05-27) | **TS**: 0 errors | **Coverage**: 24/24 features | **Staff pages**: 14/14 | **Admin pages**: 31/31 | **E2E**: 24 test files
 
 ## Services
 

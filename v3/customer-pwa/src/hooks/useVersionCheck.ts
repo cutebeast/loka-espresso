@@ -19,7 +19,9 @@ export function useVersionCheck() {
     try {
       // Check for Service Worker updates (browser-native, no backend endpoint needed)
       const registration = await navigator.serviceWorker?.getRegistration();
-      if (registration?.waiting) {
+      if (!registration) return;
+      await registration.update();
+      if (registration.waiting) {
         // A new SW is already waiting — prompt user to refresh
         window.dispatchEvent(new CustomEvent('sw-update-available'));
       }

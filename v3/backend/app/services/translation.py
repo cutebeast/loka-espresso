@@ -1,4 +1,4 @@
-"""Translation service layer — DeepL integration, content merging, CRUD hooks."""
+"""Translation service layer — DeepL + DeepSeek v4 Pro integration, content merging, CRUD hooks."""
 
 import hashlib
 import logging
@@ -34,7 +34,6 @@ TRANSLATION_CONFIG_KEYS = [
     "integration.deepl_api_url",
     "integration.deepseek_api_key",
     "integration.deepseek_model",
-    "integration.minimax_api_key",
 ]
 
 _creds_cache: dict[str, str] | None = None
@@ -65,8 +64,7 @@ async def _get_translation_creds(db: AsyncSession | None = None) -> dict[str, st
             "deepl_key": rows.get("integration.deepl_api_key", ""),
             "deepl_url": rows.get("integration.deepl_api_url", "https://api-free.deepl.com/v2/translate"),
             "deepseek_key": rows.get("integration.deepseek_api_key", ""),
-            "deepseek_model": rows.get("integration.deepseek_model", "deepseek-v4-flash"),
-            "minimax_key": rows.get("integration.minimax_api_key", ""),
+            "deepseek_model": rows.get("integration.deepseek_model", "deepseek-v4-pro"),
         }
         _creds_cache_ts = now
     except Exception:
@@ -108,36 +106,6 @@ async def _call_deepl(text: str, target_locale: str) -> str | None:
         logger.error(f"DeepL API error: {e}")
         return None
 
-    return None
-
-
-async def _call_minimax(text: str, target_locale: str) -> str | None:
-    """Call MiniMax API (secondary fallback). Returns translated text or None."""
-    creds = await _get_translation_creds()
-    api_key = creds.get("minimax_key", "")
-    if not api_key:
-        return None
-    locale_names = {"ms": "Bahasa Melayu", "zh": "Simplified Chinese", "ta": "Tamil", "tr": "Turkish"}
-    lang = locale_names.get(target_locale, target_locale)
-    try:
-        async with AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                "https://api.minimax.chat/v1/text/chatcompletion_v2",
-                json={
-                    "model": "MiniMax-M2.7-highspeed",
-                    "messages": [{"role": "user", "content": f"Translate the following text to {lang}. Return ONLY the translated text, nothing else:\n\n{text}"}],
-                    "max_tokens": 2000,
-                    "temperature": 0.1,
-                },
-                headers={"Authorization": f"Bearer {api_key}"},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                choices = data.get("choices", [])
-                if choices:
-                    return choices[0].get("message", {}).get("content", "").strip()
-    except Exception:
-        pass
     return None
 
 
@@ -183,7 +151,7 @@ async def auto_translate_text(
     target_locale: str,
 ) -> tuple[str, bool]:
     """Auto-translate text with caching.
-    Primary: DeepL → Fallback: DeepSeek LLM → Last resort: keep English.
+    Primary: DeepL → Fallback: DeepSeek v4 Pro → Last resort: keep English.
     Returns (translated_text, was_cached)."""
     ctx = _get_cache_stats_ctx()
 
@@ -201,12 +169,9 @@ async def auto_translate_text(
     # Ensure creds are loaded from DB
     await _get_translation_creds(db)
 
-    # Try MiniMax first (supports all languages)
-    translated = await _call_minimax(text, target_locale)
-    # Fallback to DeepL (free: zh, tr only)
-    if translated is None:
-        translated = await _call_deepl(text, target_locale)
-    # Fallback to DeepSeek
+    # Try DeepL first (limited language support)
+    translated = await _call_deepl(text, target_locale)
+    # Fallback to DeepSeek v4 Pro (supports all languages)
     if translated is None:
         translated = await _call_deepseek(text, target_locale)
         if translated is not None:

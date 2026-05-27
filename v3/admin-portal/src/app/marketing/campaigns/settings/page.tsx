@@ -12,7 +12,6 @@ const KEYS = [
   { k: "integration.resend_from_email",      l: "Resend From Email",     section: "Resend Email", sensitive: false },
   { k: "integration.deepl_api_key",          l: "DeepL API Key",         section: "Translation APIs", sensitive: true },
   { k: "integration.deepl_api_url",          l: "DeepL API URL",         section: "Translation APIs", sensitive: false },
-  { k: "integration.minimax_api_key",        l: "MiniMax API Key",       section: "Translation APIs", sensitive: true },
   { k: "integration.deepseek_api_key",       l: "DeepSeek API Key",      section: "Translation APIs", sensitive: true },
   { k: "integration.deepseek_model",         l: "DeepSeek Model",        section: "Translation APIs", sensitive: false },
 ];
@@ -32,7 +31,6 @@ export default function CampaignSettingsPage() {
             c.config_key.startsWith("integration.twilio") ||
             c.config_key.startsWith("integration.resend") ||
             c.config_key.startsWith("integration.deepl") ||
-            c.config_key.startsWith("integration.minimax") ||
             c.config_key.startsWith("integration.deepseek")
           ) {
             m[c.config_key] = c.config_value;
@@ -84,7 +82,7 @@ export default function CampaignSettingsPage() {
               )}
               {section === "Translation APIs" && (
                 <div style={{ marginBottom: 12, padding: 10, background: "var(--color-bg-muted)", borderRadius: "var(--radius-sm)", fontSize: 12, color: "var(--color-text-muted)" }}>
-                  <strong>ℹ️</strong> MiniMax M2.7-highspeed (primary) translates all content. DeepL (zh,tr) and DeepSeek (ms,ta) are fallbacks.
+                  <strong>ℹ️</strong> DeepL translates zh + tr. DeepSeek v4 Pro handles all other locales (ms, ta) as fallback.
                 </div>
               )}
               <table className="data-table">

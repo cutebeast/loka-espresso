@@ -125,7 +125,7 @@ async def _deduct_stock_for_order(
             reason=f"Order {order.order_number} stock deduction",
             reference_type="order",
             reference_id=order.id,
-            unit_cost_at_movement=float(inv.unit_cost) if inv.unit_cost else None,
+            unit_cost_at_movement=float(inv.unit_cost) if inv.unit_cost is not None else None,
             movement_cost=float(qty_needed * Decimal(str(inv.unit_cost or 0))),
         ))
 

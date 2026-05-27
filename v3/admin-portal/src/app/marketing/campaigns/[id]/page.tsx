@@ -52,7 +52,23 @@ export default function CampaignEditPage() {
     setMsg(results.length > 0 ? `Regenerated ${results.length} ${locale.toUpperCase()} translations & saved` : "No translatable content"); setTimeout(() => setMsg(""), 2500); setRegen("");
   };
 
-  const saveAllTr = async (locale: string) => { setSaving(true); for (const f of TR_FIELDS) { const key = `${locale}:${f.key}`; const text = tr[key] || ""; if (text.trim()) await upsertTr(f.key, locale, form[f.key] || "", text); } setMsg(`All ${locale.toUpperCase()} translations saved`); setTimeout(() => setMsg(""), 2000); setSaving(false); };
+  const saveAllTr = async (locale: string) => {
+    setSaving(true);
+    try {
+      for (const f of TR_FIELDS) {
+        const key = `${locale}:${f.key}`;
+        const text = tr[key] || "";
+        if (text.trim()) await upsertTr(f.key, locale, form[f.key] || "", text);
+      }
+      setMsg(`All ${locale.toUpperCase()} translations saved`);
+      setTimeout(() => setMsg(""), 2000);
+    } catch (e) {
+      console.error("Save translations failed:", e);
+      setMsg("Failed to save translations");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) return <div style={{ padding: 32 }}><p>Loading...</p></div>;
 

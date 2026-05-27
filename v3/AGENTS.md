@@ -703,3 +703,48 @@ Full audit of all 5 domains (admin, staff, customer PWA, backend, e2e-tests). Co
 - **ESLint**: 0 new errors/warnings
 - **Python**: backend + E2E files syntax valid
 - **All HIGH/MEDIUM issues**: fixed and verified
+
+
+## Round 14 Deep Clean (2026-05-27) — Second-pass audit + MiniMax removal + infra fix
+
+Second audit pass after Round 14 initial fixes. **15 additional fixes across backend, admin, staff, PWA, infra.**
+
+### Translation provider consolidation
+- **Removed MiniMax** from translation service — DeepSeek v4 Pro is now the sole LLM fallback (DeepL primary for zh/tr). Updated `_get_translation_creds`, `auto_translate_text`, and config keys.
+- Default DeepSeek model changed from `deepseek-v4-flash` → `deepseek-v4-pro`.
+- Admin settings page: removed MiniMax API Key field, updated help text.
+
+### Critical infrastructure fix
+- **Created missing Caddyfile** (`infra/caddy/Caddyfile`) — Caddy container would fail to start without it. Routes `/api/v1/*` to backend, Host-based routing to 3 frontends, TLS-ready config.
+
+### Security headers (CSP hardening)
+- **PWA CSP**: Fixed invalid bare path `/api/v1` in `connect-src` → `https:` wildcard. Added `base-uri 'self'` and `form-action 'self'`.
+- **Staff CSP**: Added `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`, `Permissions-Policy`. HSTS upgraded to `max-age=63072000; includeSubDomains; preload` (matches admin).
+
+### Backend fixes (3)
+- **payment.py `cancel_payment`**: Added `.with_for_update()` row lock — missing from select.
+- **order.py `unit_cost`**: Fixed falsy check `if inv.unit_cost` → `if inv.unit_cost is not None`. `unit_cost=0` was incorrectly treated as None.
+- **AuditLogOut.action**: Already fixed in Round 14 (`apply_voucher`, `apply_reward`, `wallet_payment` added to Literal).
+
+### Admin portal fixes (5)
+- **products/page.tsx**: Guarded `Number(item.price).toFixed(2)` with `!isNaN()` check.
+- **notifications/report/page.tsx**: Added `error` state — API failure now shows error message instead of silent zeros.
+- **promotions/page.tsx**: Added `setLoading(true)` before fetch — was never showing loading state.
+- **campaigns/[id]/page.tsx**: `saveAllTr` now has try/finally — button no longer stuck disabled on translation save failure.
+- **loyalty/settings/page.tsx**: Added `title` attribute clarifying auto-save on blur behavior.
+
+### PWA fixes (2)
+- **Service worker cache timestamp**: `bump-sw-version.js` now uses `Date.now()` (milliseconds) matching `version.json` `builtAt`. Previously used seconds — mismatch caused install cache to be deleted on activate.
+- **useVersionCheck.ts**: Now calls `registration.update()` before checking for waiting worker. Old behavior only polled for already-waiting workers, never triggered new update fetch.
+
+### Infra hardening (3)
+- **Caddy healthcheck**: Changed from `caddy version` (only checks binary exists) to `curl -f http://localhost:80/health`.
+- **Frontend depends_on**: All 3 frontends + Caddy now use `condition: service_healthy` on backend/frontend dependencies instead of bare `depends_on`.
+- **Caddyfile**: Created with proper reverse-proxy routing, security headers, and TLS config.
+
+### Verification
+- **TypeScript**: 0 errors across all 3 portals
+- **Python**: All changed backend files syntax valid
+- **Admin pages**: 31/31 HTTP 200 (including 5 fixed pages)
+- **Staff pages**: 14/14 HTTP 200
+- **PWA**: 200 with fixed CSP + SW version matching

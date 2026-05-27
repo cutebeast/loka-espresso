@@ -1,0 +1,56 @@
+# FNB v3 Caddyfile — Reverse Proxy + TLS
+# Domains: *.loyaltysystem.uk
+
+{
+    email {$CADDY_EMAIL:admin@lokaespresso.my}
+    admin off
+}
+
+# Main app domain (Customer PWA)
+app.loyaltysystem.uk {
+    reverse_proxy /api/v1/* backend:13800
+    reverse_proxy /uploads/* backend:13800
+    reverse_proxy /manifest.json customer-pwa:13810
+    reverse_proxy /sw.js customer-pwa:13810
+    reverse_proxy /offline.html customer-pwa:13810
+    reverse_proxy /icon-* customer-pwa:13810
+    reverse_proxy customer-pwa:13810
+
+    encode gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+# Admin portal
+admin.loyaltysystem.uk {
+    reverse_proxy /api/v1/* backend:13800
+    reverse_proxy /uploads/* backend:13800
+    reverse_proxy admin-portal:3000
+
+    encode gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+# Staff portal
+staff.loyaltysystem.uk {
+    reverse_proxy /api/v1/* backend:13800
+    reverse_proxy /uploads/* backend:13800
+    reverse_proxy staff-portal:3000
+
+    encode gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
