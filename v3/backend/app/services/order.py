@@ -11,6 +11,7 @@ from decimal import Decimal
 
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
+from app.models.loyalty import LoyaltyAccount
 from app.models.menu import MenuItemRecipe
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.reward import CustomerReward, RewardCatalog
