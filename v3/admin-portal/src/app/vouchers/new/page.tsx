@@ -19,7 +19,7 @@ export default function VoucherNewPage() {
     max_global_uses: "" as string | number, minimum_order_value: 0,
     max_uses_per_customer: 1, short_description: "",
     long_description: "", how_to_redeem: "", terms_and_conditions: "",
-    promo_type: "generic", validity_days: "", is_active: true, customer_segments: [] as string[],
+    promo_type: "generic", validity_days: "", minimum_tier_id: null as number | null, is_active: true, customer_segments: [] as string[],
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,9 +75,6 @@ export default function VoucherNewPage() {
                 <option value="fixed_amount_off">Fixed Amount (RM)</option>
                 <option value="free_item">Free Item</option>
                 <option value="free_delivery">Free Delivery</option>
-                <option value="bundle_offer">Bundle Offer</option>
-                <option value="referral_reward">Referral Reward</option>
-                <option value="loyalty_exclusive">Loyalty Exclusive</option>
               </select>
             </div>
             <div className="df-field">
@@ -92,6 +89,16 @@ export default function VoucherNewPage() {
             <div className="df-field"><label className="df-label">Max Uses Per Customer</label><input type="number" min="1" value={form.max_uses_per_customer} onChange={e => setForm({ ...form, max_uses_per_customer: Number(e.target.value) })} /></div>
             <div className="df-field"><label className="df-label">Max Global Uses</label><input type="number" min="1" value={form.max_global_uses} onChange={e => setForm({ ...form, max_global_uses: e.target.value })} /><div className="df-hint">Leave empty for unlimited</div></div>
             <div className="df-field"><label className="df-label">Validity (days)</label><input type="number" value={form.validity_days} onChange={e => setForm({ ...form, validity_days: e.target.value })} /></div>
+            <div className="df-field">
+              <label className="df-label">Loyalty Tier Required</label>
+              <select value={form.minimum_tier_id ?? ""} onChange={e => setForm({ ...form, minimum_tier_id: e.target.value ? Number(e.target.value) : null })}>
+                <option value="">No restriction</option>
+                <option value="1">Silver</option>
+                <option value="2">Gold</option>
+                <option value="3">Platinum</option>
+              </select>
+              <div className="df-hint">Customer must be at least this tier to use</div>
+            </div>
             <div className="df-field">
               <label className="df-label">Promo Type</label>
               <select value={form.promo_type} onChange={e => setForm({ ...form, promo_type: e.target.value })}>

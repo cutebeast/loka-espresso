@@ -142,7 +142,6 @@ VoucherScope = Enum(
 
 VoucherType = Enum(
     "percentage_off", "fixed_amount_off", "free_delivery", "free_item",
-    "bundle_offer", "referral_reward", "loyalty_exclusive",
     name="voucher_type",
     native_enum=True,
     create_type=False,

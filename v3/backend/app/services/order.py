@@ -215,6 +215,17 @@ async def create_order_from_cart(
         if vd.valid_until and vd.valid_until < datetime.now(timezone.utc):
             raise OrderError("Voucher has expired", 400)
 
+        if vd.minimum_tier_id:
+            loyalty_result = await db.execute(
+                select(LoyaltyAccount).where(
+                    LoyaltyAccount.customer_id == customer_id
+                )
+            )
+            loyalty = loyalty_result.scalar_one_or_none()
+            tier_id = loyalty.current_tier_id if loyalty else None
+            if tier_id is None or tier_id < vd.minimum_tier_id:
+                raise OrderError("Your loyalty tier is not eligible for this voucher", 400)
+
         order_base = subtotal + modifier_sub  # voucher minimum order value checked against food+modifiers
         min_order = Decimal(str(vd.minimum_order_value or 0))
         if order_base < min_order:
@@ -229,7 +240,19 @@ async def create_order_from_cart(
             voucher_discount = Decimal(str(vd.discount_value))
         elif vd.voucher_type == "free_delivery":
             voucher_discount = delivery_fee if is_delivery else Decimal(0)
-        # free_item and other types not implemented for self-checkout
+        elif vd.voucher_type == "free_item":
+            if vd.menu_item_id:
+                target_item_ids = [vd.menu_item_id]
+            else:
+                # Free the lowest-priced item in cart
+                sorted_items = sorted(cart_items, key=lambda i: i.unit_price)
+                target_item_ids = [sorted_items[0].menu_item_id] if sorted_items else []
+            for li in cart_items:
+                if li.menu_item_id in target_item_ids:
+                    voucher_discount += Decimal(str(li.unit_price)) * li.quantity
+                    break
+            if vd.discount_max_amount and voucher_discount > Decimal(str(vd.discount_max_amount)):
+                voucher_discount = Decimal(str(vd.discount_max_amount))
 
         cv.status = "used"
         cv.order_id = None  # set after order flush

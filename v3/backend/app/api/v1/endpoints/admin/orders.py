@@ -430,6 +430,16 @@ async def apply_order_voucher(
     if subtotal < min_spend:
         raise HTTPException(status_code=400, detail=f"Minimum spend RM {min_spend:.2f} required")
 
+    if voucher_def and voucher_def.minimum_tier_id:
+        from app.models.loyalty import LoyaltyAccount
+        loyalty_result = await db.execute(
+            select(LoyaltyAccount).where(LoyaltyAccount.customer_id == order.customer_id)
+        )
+        loyalty = loyalty_result.scalar_one_or_none()
+        tier_id = loyalty.current_tier_id if loyalty else None
+        if tier_id is None or tier_id < voucher_def.minimum_tier_id:
+            raise HTTPException(status_code=400, detail="Customer's loyalty tier is not eligible for this voucher")
+
     # Compute discount
     discount = 0.0
     voucher_type = voucher_def.voucher_type if voucher_def else ""
@@ -444,8 +454,23 @@ async def apply_order_voucher(
         discount = discount_value
     elif voucher_type == "free_delivery":
         discount = float(order.delivery_fee or 0)
+    elif voucher_type == "free_item":
+        line_items_result = await db.execute(
+            select(OrderLineItem).where(OrderLineItem.order_id == order_id)
+        )
+        line_items = line_items_result.scalars().all()
+        if voucher_def.menu_item_id:
+            for li in line_items:
+                if li.menu_item_id == voucher_def.menu_item_id:
+                    discount = float(li.unit_price) * li.quantity
+                    break
+        elif line_items:
+            cheapest = min(line_items, key=lambda li: float(li.unit_price))
+            discount = float(cheapest.unit_price) * cheapest.quantity
+        max_disc = float(voucher_def.discount_max_amount or 0) if voucher_def else 0
+        if max_disc > 0:
+            discount = min(discount, max_disc)
     else:
-        # Fallback: treat as fixed amount
         discount = discount_value
 
     discount = min(discount, subtotal)

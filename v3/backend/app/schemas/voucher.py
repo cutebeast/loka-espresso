@@ -12,11 +12,11 @@ class VoucherDefinitionBase(BaseSchema):
     voucher_code: str = Field(..., max_length=50)
     voucher_type: Literal[
         "percentage_off", "fixed_amount_off", "free_delivery", "free_item",
-        "bundle_offer", "referral_reward", "loyalty_exclusive",
     ]
     scope: Literal["global", "store_specific", "category_specific", "item_specific", "customer_segment"] = "global"
     category_id: int | None = None
     menu_item_id: int | None = None
+    minimum_tier_id: int | None = None
     display_title: str = Field(..., max_length=100)
     description: str | None = None
     discount_value: float = Field(..., ge=0)
@@ -48,11 +48,11 @@ class VoucherDefinitionUpdate(BaseSchema):
     voucher_code: str | None = Field(None, max_length=50)
     voucher_type: Literal[
         "percentage_off", "fixed_amount_off", "free_delivery", "free_item",
-        "bundle_offer", "referral_reward", "loyalty_exclusive",
     ] | None = None
     scope: Literal["global", "store_specific", "category_specific", "item_specific", "customer_segment"] | None = None
     category_id: int | None = None
     menu_item_id: int | None = None
+    minimum_tier_id: int | None = None
     display_title: str | None = Field(None, max_length=100)
     description: str | None = None
     discount_value: float | None = Field(None, ge=0)

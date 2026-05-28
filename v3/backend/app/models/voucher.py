@@ -37,6 +37,9 @@ class VoucherDefinition(Base, SoftDeleteMixin, TimestampMixin):
     menu_item_id: Mapped[int | None] = mapped_column(
         ForeignKey("menu_items.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    minimum_tier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("loyalty_tiers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     display_title: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
@@ -71,7 +74,7 @@ class VoucherDefinition(Base, SoftDeleteMixin, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint(
-            "voucher_type IN ('percentage_off','fixed_amount_off','free_delivery','free_item','bundle_offer','referral_reward','loyalty_exclusive')",
+            "voucher_type IN ('percentage_off','fixed_amount_off','free_delivery','free_item')",
             name="ck_voucher_definitions_voucher_type",
         ),
         CheckConstraint(

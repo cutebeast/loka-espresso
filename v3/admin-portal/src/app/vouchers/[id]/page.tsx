@@ -239,9 +239,6 @@ export default function VoucherEditPage() {
                 <option value="fixed_amount_off">Fixed Amount (RM)</option>
                 <option value="free_item">Free Item</option>
                 <option value="free_delivery">Free Delivery</option>
-                <option value="bundle_offer">Bundle Offer</option>
-                <option value="referral_reward">Referral Reward</option>
-                <option value="loyalty_exclusive">Loyalty Exclusive</option>
               </select>
             </div>
             <div className="df-field">
