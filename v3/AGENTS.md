@@ -793,3 +793,87 @@ Full 5-domain audit. Every finding verified by reading source. **13 issues fixed
 - **TypeScript**: 0 errors all 3 portals
 - **Python**: All backend files compile
 - **Self-review catch rate**: 3/16 (19%) false positives caught
+
+
+## Round 15 Part 2 — Admin form gaps (2026-05-27)
+
+Deep audit of 90+ admin forms against backend schemas. **4 issues found and fixed — 0 false positives.**
+
+1. **Rewards `discount_value` missing** (`rewards/new`, `rewards/[id]`): No input for discount_value on percentage/fixed discount rewards. Added conditional inputs with discount_max_amount cap.
+
+2. **Voucher `customer_segments` type mismatch** (`vouchers/new`, `vouchers/[id]`): Form sent `string[]` but API expects `dict \| None`. Converted `string[]` → `dict` on save, `dict` → `string[]` on load. Was causing 422 on any segment selection.
+
+3. **Voucher types only 3 of 7** (`vouchers/new`, `vouchers/[id]`): Dropdown had only `percentage_off`, `fixed_amount_off`, `free_item`. Added `free_delivery`, `bundle_offer`, `referral_reward`, `loyalty_exclusive`.
+
+4. **Store `phone_number` and `postal_code` not required** (`stores/new`): Schema has `Field(...)` (required) but form labels lacked `*` and `required` attribute. Added.
+
+### Verify
+- **TypeScript**: 0 errors admin portal
+
+
+## Round 15 Part 3 — Voucher type cleanup + implementation (2026-05-28)
+
+**Schema & model**: Removed `bundle_offer`, `referral_reward`, `loyalty_exclusive` from Literal types, CHECK constraint, and VoucherType enum (7 → 4). Added `minimum_tier_id` FK to `loyalty_tiers` for loyalty gating.
+
+**Discount engine**: Implemented `free_item` voucher type in both `services/order.py` and `admin/orders.py`:
+- If `menu_item_id` set: frees that specific menu item
+- Otherwise: frees cheapest item in cart/order
+- Capped by `discount_max_amount`
+
+**Tier gating**: Added `minimum_tier_id` check before applying any voucher — customer's `current_tier_id >= minimum_tier_id` or raises 400.
+
+**Admin forms**: Removed 3 dead types from dropdowns. Added `minimum_tier_id` selector (Silver/Gold/Platinum) to voucher create form.
+
+**Migration**: `a95e997` — ALTER CHECK constraint + add `minimum_tier_id` column + FK + index.
+
+### Verify
+- **TypeScript**: 0 errors all portals
+- **Python**: All backend files compile
+- **E2E**: voucher discount flow passes (`voucher_discount=2.58` computed correctly)
+
+
+## Round 15 Part 4 — PWA consumption fixes (2026-05-28)
+
+Traced full consumption chain: admin creates reward/voucher → customer sees → redeems → applies to order. **3 broken paths found and fixed.**
+
+1. **CRITICAL — `/vouchers/validate` mapped to `/vouchers/apply`**: PWA `api.ts:88` sent validation requests to `/vouchers/apply`, which immediately marked voucher as "used". Created proper read-only `/vouchers/validate` endpoint that returns discount preview without consuming. Updated PWA mapping.
+
+2. **CRITICAL — `/wallet/me` returned only balance**: PWA checkout `VoucherRewardSelector` and `MyRewardsPage` read vouchers/rewards from `/wallet/me` but backend only returned `WalletOut` (balance only). Enhanced to query active `CustomerVoucher` + `CustomerReward` with full discount info.
+
+3. **MEDIUM — `reward_snapshot` missing `discount_value`**: Redeem stored only `{reward_name, reward_type}`. Checkout preview always showed RM 0.00. Added `discount_value` and `discount_max_amount` to snapshot.
+
+### Verify
+- **TypeScript**: 0 errors PWA
+- **Python**: All backend files compile
+- **Backend restart**: `__pycache__` cleared + `alembic upgrade head` applied migration
+
+
+## Round 16 (2026-05-28) — 6 fixes across backend, admin, PWA
+
+Full 5-domain audit of uncharted areas. **6 bugs found and fixed — 0 false positives.**
+
+### CRITICAL — backend (2)
+
+- **`public/content.py:125`** — `banner.store_id` crash on claim endpoint. `PromoBanner` model has no `store_id` column → `AttributeError`. Fixed to default `store_id=1`.
+- **`services/commerce.py:68`** — Referral loyalty credit reads `LoyaltyAccount` without `.with_for_update()`. Concurrent referrals for same customer lose updated balances. Added row lock.
+
+### MEDIUM — admin (4)
+
+- **`admins/page.tsx:51`** — `confirmPassword` leaked to admin register API payload → 422. Stripped via destructuring.
+- **`reservations/page.tsx:58`** — `party_size \|\| guest_count` falsy crash when `party_size=0`. Changed to `??`.
+- **`reservations/page.tsx:33`** — Silent PATCH failure on status update (no `setError`).
+- **`inventory/items/page.tsx:64`** — Unhandled async promise rejection on delete (no try/catch).
+
+### MEDIUM — PWA (2)
+
+- **`OrdersPage.tsx:107-131`** — `loadPastOrders` `useCallback([pastPage])` dependency loop: every load resets past orders to page 1. Removed `pastPage` from deps, uses closure-based state access.
+- **`ReservationsPage.tsx:96,106`** — Status checks used exact `'cancelled'` match → missed v3 `cancelled_by_guest`/`cancelled_by_merchant`. Changed to `startsWith('cancelled')`.
+
+### Verified clean — 13 files no bugs found
+
+Backend: `reservations.py`, `refunds.py`, `feedback.py`, `referrals.py`, `surveys.py`, `checkins.py`, `dashboard.py`, `public/menu.py`. Admin: `feedback/page.tsx`, `translations/page.tsx`, `admins/roles/page.tsx`. PWA: `useA2HS.ts`, `useNotifications.ts`, `SplashScreen.tsx`, `ReferralPage.tsx`, `localeStore.ts`.
+
+### Verify
+- **TypeScript**: 0 errors all 3 portals
+- **Python**: All changed files compile
+- **Services**: All 4 domains HTTPS 200

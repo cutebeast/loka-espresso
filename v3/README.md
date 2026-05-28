@@ -483,3 +483,40 @@ Full 5-domain audit. Every finding verified by reading actual source code. **13 
 - **TypeScript**: 0 errors across all 3 portals
 - **Python**: All changed files compile
 - **Self-review**: 3/16 (19%) caught and reverted before commit
+
+## Round 15 Part 2 — Admin form gaps (2026-05-27)
+
+Deep audit of 90+ admin forms against backend schemas. **4 fixes — 0 false positives.**
+
+- **Rewards `discount_value` missing**: No input for discount_value on percentage/fixed discount rewards. Added conditional inputs.
+- **Voucher `customer_segments` type mismatch**: Form sent `string[]`, API expects `dict`. Converted both ways on save/load.
+- **Voucher types dropdown incomplete**: Only 3 of 7 types shown. Added all.
+- **Store required fields**: `phone_number` and `postal_code` not marked required. Added `*` + `required` attr.
+
+## Round 15 Part 3 — Voucher type cleanup + free_item + tier gating (2026-05-28)
+
+Removed 3 dead voucher types (`bundle_offer`, `referral_reward`, `loyalty_exclusive`), implemented `free_item` discount (menu-item-specific or cheapest item, capped), added `minimum_tier_id` FK for loyalty tier gating. Migration `a95e997` applied. 8 files changed.
+
+## Round 15 Part 4 — PWA voucher/reward consumption fixes (2026-05-28)
+
+Found 3 broken paths in PWA consumption chain (admin creates → customer uses → order applies):
+1. `/vouchers/validate` mapped to `/vouchers/apply` (destroyed voucher before order) — created read-only validate endpoint
+2. `/wallet/me` returned only balance (MyRewardsPage permanently empty) — added active vouchers + rewards
+3. `reward_snapshot` missing `discount_value` (checkout preview always RM 0.00) — added to snapshot
+
+## Round 16 — 6 fixes across backend, admin, PWA (2026-05-28)
+
+Full audit of uncharted areas. **6 bugs fixed — 0 false positives.**
+
+### CRITICAL
+- **`PromoBanner` has no `store_id`** — claim endpoint crashes with AttributeError
+- **Referral loyalty credit race condition** — missing `with_for_update()` on points read
+
+### MEDIUM
+- **Admin**: `confirmPassword` leaked to API, `party_size || guest_count` falsy crash, silent error handlers
+- **PWA**: `loadPastOrders` dependency loop reset past orders every load, reservation status matched `'cancelled'` exact only
+
+### Verification
+- **TypeScript**: 0 errors all 3 portals
+- **Python**: All changed files compile
+- **Services**: All 4 domains HTTPS 200
