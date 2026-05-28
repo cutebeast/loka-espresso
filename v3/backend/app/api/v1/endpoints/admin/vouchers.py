@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
@@ -260,6 +260,68 @@ async def list_my_vouchers(
     )
 
 
+@public_router.post("/validate", response_model=APIResponse[dict])
+async def validate_voucher(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    request: Request,
+):
+    """Validate a voucher code and return discount preview without consuming it."""
+    body = await request.json()
+    voucher_code = body.get("voucher_code", "").strip()
+    order_total = float(body.get("order_total", 0) or 100.0)
+    if not voucher_code:
+        raise HTTPException(status_code=400, detail="voucher_code is required")
+
+    result = await db.execute(
+        select(CustomerVoucher, VoucherDefinition)
+        .join(VoucherDefinition, CustomerVoucher.voucher_definition_id == VoucherDefinition.id)
+        .where(
+            CustomerVoucher.voucher_code == voucher_code,
+            CustomerVoucher.customer_id == customer.id,
+            CustomerVoucher.status == "active",
+        )
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Voucher not found or not active")
+    cv, vd = row
+
+    now = datetime.now(timezone.utc)
+    if cv.expires_at and cv.expires_at < now:
+        raise HTTPException(status_code=400, detail="Voucher has expired")
+    if vd.valid_from and vd.valid_from > now:
+        raise HTTPException(status_code=400, detail="Voucher is not yet valid")
+    if vd.valid_until and vd.valid_until < now:
+        raise HTTPException(status_code=400, detail="Voucher has expired")
+
+    min_spend = float(vd.minimum_order_value or 0)
+    if order_total < min_spend:
+        raise HTTPException(status_code=400, detail=f"Minimum spend RM {min_spend:.2f} required")
+
+    if vd.voucher_type == "percentage_off":
+        discount = round(order_total * (float(vd.discount_value) / 100), 2)
+        if vd.discount_max_amount:
+            discount = min(discount, float(vd.discount_max_amount))
+    elif vd.voucher_type == "fixed_amount_off":
+        discount = float(vd.discount_value)
+    elif vd.voucher_type == "free_delivery":
+        discount = 5.0
+    elif vd.voucher_type == "free_item":
+        discount = order_total * 0.2
+    else:
+        discount = 0.0
+
+    return APIResponse(data={
+        "valid": True,
+        "voucher_code": voucher_code,
+        "discount_type": vd.voucher_type,
+        "discount_value": discount,
+        "display_title": vd.display_title,
+        "minimum_order_value": float(vd.minimum_order_value or 0),
+    })
+
+
 @public_router.post("/apply", response_model=APIResponse[CustomerVoucherOut])
 async def apply_voucher(
     customer: ActiveCustomer,
@@ -268,9 +330,11 @@ async def apply_voucher(
 ):
     """Apply a voucher to an order."""
     result = await db.execute(
-        select(CustomerVoucher).where(
-            CustomerVoucher.customer_id == customer.id,
+        select(CustomerVoucher, VoucherDefinition)
+        .join(VoucherDefinition, CustomerVoucher.voucher_definition_id == VoucherDefinition.id)
+        .where(
             CustomerVoucher.voucher_code == data.voucher_code,
+            CustomerVoucher.customer_id == customer.id,
             CustomerVoucher.status == "active",
         )
     )

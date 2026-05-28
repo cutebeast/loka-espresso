@@ -325,15 +325,14 @@ async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: AdminDeductR
 # Public endpoints
 # ---------------------------------------------------------------------------
 
-@public_router.get("/me", response_model=APIResponse[WalletOut])
+@public_router.get("/me", response_model=APIResponse[dict])
 async def get_my_wallet(
     customer: ActiveCustomer,
     db: DBDependency,
 ):
-    """Get current customer's wallet. Auto-creates if not found."""
+    """Get current customer's wallet, vouchers, and rewards. Auto-creates wallet if not found."""
     wallet = await _get_customer_wallet(db, customer.id)
     if wallet is None:
-        # Auto-create wallet for existing customers
         wallet = Wallet(
             customer_id=customer.id,
             currency_code=await _get_default_currency(db),
@@ -345,7 +344,63 @@ async def get_my_wallet(
         select(WalletLedgerEntry).where(WalletLedgerEntry.wallet_id == wallet.id)
     )
     ledger = ledger_result.scalars().all()
-    return APIResponse(data=_wallet_to_out(wallet, ledger))
+    wallet_data = _wallet_to_out(wallet, ledger).model_dump()
+
+    # Fetch active customer vouchers
+    from app.models.voucher import CustomerVoucher, VoucherDefinition
+    v_result = await db.execute(
+        select(CustomerVoucher, VoucherDefinition)
+        .join(VoucherDefinition, CustomerVoucher.voucher_definition_id == VoucherDefinition.id)
+        .where(
+            CustomerVoucher.customer_id == customer.id,
+            CustomerVoucher.status == "active",
+        )
+        .order_by(CustomerVoucher.expires_at.asc())
+    )
+    vouchers = []
+    for cv, vd in v_result.all():
+        vouchers.append({
+            "id": cv.id,
+            "code": cv.voucher_code,
+            "discount_type": vd.voucher_type,
+            "discount_value": float(vd.discount_value) if vd else None,
+            "min_spend": float(vd.minimum_order_value or 0) if vd else 0,
+            "max_discount": float(vd.discount_max_amount) if vd and vd.discount_max_amount else None,
+            "display_title": vd.display_title if vd else None,
+            "image_url": vd.image_url if vd else None,
+            "expires_at": cv.expires_at.isoformat() if cv.expires_at else None,
+            "status": cv.status,
+        })
+
+    # Fetch active customer rewards
+    from app.models.reward import CustomerReward, RewardCatalog
+    r_result = await db.execute(
+        select(CustomerReward, RewardCatalog)
+        .join(RewardCatalog, CustomerReward.reward_catalog_id == RewardCatalog.id)
+        .where(
+            CustomerReward.customer_id == customer.id,
+            CustomerReward.status == "active",
+        )
+        .order_by(CustomerReward.expires_at.asc())
+    )
+    rewards = []
+    for cr, rc in r_result.all():
+        rewards.append({
+            "id": cr.id,
+            "code": cr.redemption_code,
+            "reward_name": rc.reward_name if rc else None,
+            "reward_type": rc.reward_type if rc else None,
+            "discount_value": float(rc.discount_value) if rc and rc.discount_value else None,
+            "discount_max_amount": float(rc.discount_max_amount) if rc and rc.discount_max_amount else None,
+            "points_spent": cr.points_spent,
+            "expires_at": cr.expires_at.isoformat() if cr.expires_at else None,
+            "status": cr.status,
+            "reward_snapshot": cr.reward_snapshot,
+        })
+
+    wallet_data["rewards"] = rewards
+    wallet_data["vouchers"] = vouchers
+    return APIResponse(data=wallet_data)
 
 
 @public_router.get("/ledger/me", response_model=APIResponse[PaginatedResponse[WalletLedgerEntryOut]])

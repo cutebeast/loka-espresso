@@ -311,7 +311,7 @@ async def redeem_reward(
         redemption_code=uuid4().hex[:12].upper(),
         status="active",
         points_spent=reward.points_cost,
-        reward_snapshot={"reward_name": reward.reward_name, "reward_type": reward.reward_type},
+        reward_snapshot={"reward_name": reward.reward_name, "reward_type": reward.reward_type, "discount_value": float(reward.discount_value) if reward.discount_value is not None else None, "discount_max_amount": float(reward.discount_max_amount) if reward.discount_max_amount is not None else None},
         expires_at=datetime.now(timezone.utc) + timedelta(days=reward.validity_days),
     )
     db.add(customer_reward)

@@ -85,7 +85,7 @@ function mapUrl(url: string, _method?: string): string {
     '/checkout': '/orders',
     '/tables/scan': '/stores/tables/scan',
     '/config': '/config/bootstrap',
-    '/vouchers/validate': '/vouchers/apply',
+    '/vouchers/validate': '/vouchers/validate',
   };
   const exactMap: Record<string, string> = {
     '/auth/login': '/auth/login',
