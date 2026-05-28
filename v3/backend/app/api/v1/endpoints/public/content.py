@@ -122,7 +122,7 @@ async def claim_promo_banner(
     cv = CustomerVoucher(
         customer_id=customer.id,
         voucher_definition_id=vd.id,
-        store_id=banner.store_id or 1,
+        store_id=1,
         voucher_code=f"{vd.voucher_code}-{secrets.token_hex(4).upper()}",
         status="active",
         voucher_snapshot={

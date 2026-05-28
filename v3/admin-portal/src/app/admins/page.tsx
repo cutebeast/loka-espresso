@@ -48,7 +48,8 @@ export default function AdminUsersPage() {
 
     setSaving(true);
     try {
-      await api.post("/admin/auth/register", { ...form, role_id: form.role_id ? Number(form.role_id) : undefined });
+      const { confirmPassword, ...payload } = { ...form, role_id: form.role_id ? Number(form.role_id) : undefined };
+      await api.post("/admin/auth/register", payload);
       setShowForm(false);
       setForm({ email: "", display_name: "", password: "", confirmPassword: "", phone_number: "", role_id: "" });
       setMsg("Admin created");

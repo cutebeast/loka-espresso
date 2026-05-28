@@ -112,21 +112,25 @@ export default function OrdersPage() {
   const loadPastOrders = useCallback(async (reset = false) => {
     setLoadingPast(true);
     try {
-      const p = reset ? 1 : pastPage + 1;
-      const res = await api.get('/orders', { params: { page_size: 10, page: p } });
-      const items = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
-      const past = items.filter((o: Order) => !ACTIVE.includes(o.status?.toLowerCase()));
       if (reset) {
-        setAllPastOrders(past);
         setPastPage(1);
+        const res = await api.get('/orders', { params: { page_size: 10, page: 1 } });
+        const items = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
+        const past = items.filter((o: Order) => !ACTIVE.includes(o.status?.toLowerCase()));
+        setAllPastOrders(past);
+        setHasMorePast(past.length === 10);
       } else {
+        const nextPage = pastPage + 1;
+        const res = await api.get('/orders', { params: { page_size: 10, page: nextPage } });
+        const items = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
+        const past = items.filter((o: Order) => !ACTIVE.includes(o.status?.toLowerCase()));
         setAllPastOrders(prev => [...prev, ...past]);
-        setPastPage(p);
+        setPastPage(nextPage);
+        setHasMorePast(past.length === 10);
       }
-      setHasMorePast(past.length === 10);
     } catch (err) { console.error('[OrdersPage] Failed to load past orders:', err); }
     finally { setLoadingPast(false); }
-  }, [pastPage]);
+  }, []);
 
   useEffect(() => { loadPastOrders(true); }, [loadPastOrders]);
 

@@ -64,9 +64,11 @@ async def credit_referral_points(
     config = result.scalar_one_or_none()
     points = int(config.config_value) if config and config.config_value else 50
 
-    # Get or create referrer's loyalty account
+    # Get or create referrer's loyalty account (with row lock)
     result = await db.execute(
-        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == referrer_customer_id)
+        select(LoyaltyAccount).where(
+            LoyaltyAccount.customer_id == referrer_customer_id
+        ).with_for_update()
     )
     account = result.scalar_one_or_none()
     if not account:

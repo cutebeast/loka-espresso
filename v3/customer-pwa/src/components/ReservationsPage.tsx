@@ -93,7 +93,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
   const statusLabel = (status: string) => {
     const s = status.toLowerCase();
     if (s === 'confirmed') return t('reservations.status.confirmed');
-    if (s === 'cancelled') return t('reservations.status.cancelled');
+    if (s.startsWith('cancelled')) return t('reservations.status.cancelled');
     if (s === 'seated') return t('reservations.status.seated');
     if (s === 'completed') return t('reservations.status.completed');
     if (s === 'no_show') return t('reservations.status.noShow');
@@ -103,7 +103,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
   const statusClass = (status: string) => {
     const s = status.toLowerCase();
     if (s === 'confirmed' || s === 'seated') return 'status-confirmed';
-    if (s === 'cancelled' || s === 'no_show') return 'status-cancelled';
+    if (s.startsWith('cancelled') || s === 'no_show') return 'status-cancelled';
     return 'status-pending';
   };
 

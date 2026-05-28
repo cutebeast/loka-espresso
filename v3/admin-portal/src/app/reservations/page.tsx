@@ -55,7 +55,7 @@ export default function ReservationsPage() {
           {loading ? <tr><td colSpan={7} className="data-table-empty">Loading...</td></tr>
           : items.map(r => (<tr key={r.id}>
             <td><div style={{ fontWeight: 600 }}>{r.customer_name || "—"}</div>{r.customer_phone && <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{r.customer_phone}</div>}</td>
-            <td>{r.party_size || r.guest_count || "—"}</td>
+            <td>{r.party_size ?? r.guest_count ?? "—"}</td>
             <td style={{ fontSize: 12 }}>{r.reservation_date?.slice(0, 10)}</td>
             <td style={{ fontSize: 12 }}>{r.reservation_time || "—"}</td>
             <td>{r.store_name || "—"}</td>
