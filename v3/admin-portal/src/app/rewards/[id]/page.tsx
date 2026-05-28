@@ -30,6 +30,7 @@ interface Reward {
   image_url?: string;   points_cost: number; minimum_order_value?: number;
   validity_days?: number; how_to_redeem?: string; terms_and_conditions?: string;
   position?: number; image_gallery_urls?: string[]; gallery_video_url?: string; customer_segments?: string[]; is_active: boolean;
+  discount_value?: number; discount_max_amount?: number;
 }
 
 export default function RewardEditPage() {
@@ -68,6 +69,8 @@ export default function RewardEditPage() {
         points_cost: d.points_cost ?? 0,
         minimum_order_value: d.minimum_order_value ?? 0,
         validity_days: d.validity_days ?? 30,
+        discount_value: d.discount_value ?? 0,
+        discount_max_amount: d.discount_max_amount ?? 0,
         description: d.description || "",
         short_description: d.short_description || "",
         long_description: d.long_description || "",
@@ -248,6 +251,18 @@ export default function RewardEditPage() {
                 <option value="free_delivery">Free Delivery</option>
               </select>
             </div>
+            {(form.reward_type === "percentage_discount" || form.reward_type === "fixed_discount") && (<>
+              <div className="df-field">
+                <label className="df-label">{form.reward_type === "percentage_discount" ? "Discount %" : "Discount (RM)"}</label>
+                <input type="number" step={form.reward_type === "percentage_discount" ? "1" : "0.01"} min="0" value={form.discount_value} onChange={e => setForm({ ...form, discount_value: Number(e.target.value) })} />
+                {form.reward_type === "percentage_discount" && <div className="df-hint">e.g. enter 10 for 10% off</div>}
+              </div>
+              <div className="df-field">
+                <label className="df-label">Max Discount Cap (RM)</label>
+                <input type="number" step="0.01" min="0" value={form.discount_max_amount} onChange={e => setForm({ ...form, discount_max_amount: Number(e.target.value) })} />
+                <div className="df-hint">Optional — cap the total discount</div>
+              </div>
+            </>)}
             <div className="df-field">
               <label className="df-label">Min Order Value (RM)</label>
               <input type="number" step="0.01" value={form.minimum_order_value} onChange={e => setForm({ ...form, minimum_order_value: Number(e.target.value) })} />

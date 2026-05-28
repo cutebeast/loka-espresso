@@ -73,7 +73,12 @@ export default function VoucherEditPage() {
         how_to_redeem: d.how_to_redeem || "",
         terms_and_conditions: d.terms_and_conditions || "",
         is_active: d.is_active,
-        customer_segments: d.customer_segments||[],
+        customer_segments: (() => {
+          const cs = d.customer_segments;
+          if (Array.isArray(cs)) return cs;
+          if (cs && typeof cs === 'object') return Object.keys(cs);
+          return [];
+        })(),
       });
 
       // Load translations
@@ -106,6 +111,11 @@ export default function VoucherEditPage() {
     setSaving(true);
     try {
       const payload: Record<string, unknown> = { ...form };
+      // Convert string[] customer_segments to dict (API expects dict | None)
+      const segs = form.customer_segments as string[];
+      payload.customer_segments = segs && segs.length > 0
+        ? Object.fromEntries(segs.map((s: string) => [s, true]))
+        : null;
       if (!payload.max_global_uses) payload.max_global_uses = null;
       else payload.max_global_uses = Number(payload.max_global_uses);
       payload.validity_days = form.validity_days ? Number(form.validity_days) : null;
@@ -228,6 +238,10 @@ export default function VoucherEditPage() {
                 <option value="percentage_off">Percentage Off (%)</option>
                 <option value="fixed_amount_off">Fixed Amount (RM)</option>
                 <option value="free_item">Free Item</option>
+                <option value="free_delivery">Free Delivery</option>
+                <option value="bundle_offer">Bundle Offer</option>
+                <option value="referral_reward">Referral Reward</option>
+                <option value="loyalty_exclusive">Loyalty Exclusive</option>
               </select>
             </div>
             <div className="df-field">

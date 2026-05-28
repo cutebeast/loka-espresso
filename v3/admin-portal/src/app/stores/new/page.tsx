@@ -88,7 +88,7 @@ export default function NewStorePage() {
               <div className="df-field" style={{gridColumn:"1/-1"}}><label className={labelClass}>Address Line 2</label><input className={inputClass} value={form.address_line_2||""} onChange={e=>updateField("address_line_2",e.target.value)} /></div>
               <div className="df-field"><label className={labelClass}>City *</label><input required className={inputClass} value={form.city} onChange={e=>updateField("city",e.target.value)} /></div>
               <div className="df-field"><label className={labelClass}>State/Province</label><input className={inputClass} value={form.state_province||""} onChange={e=>updateField("state_province",e.target.value)} /></div>
-              <div className="df-field"><label className={labelClass}>Postal Code</label><input className={inputClass} value={form.postal_code} onChange={e=>updateField("postal_code",e.target.value)} /></div>
+              <div className="df-field"><label className={labelClass}>Postal Code *</label><input required className={inputClass} value={form.postal_code} onChange={e=>updateField("postal_code",e.target.value)} /></div>
               <div className="df-field"><label className={labelClass}>Country</label><input className={inputClass} value={form.country_code} onChange={e=>updateField("country_code",e.target.value)} /></div>
             </div>
           </div>
@@ -96,7 +96,7 @@ export default function NewStorePage() {
           {/* CONTACT */}
           <div className={sectionClass}><div className={sectionTitle}>Contact</div>
             <div className="df-grid">
-              <div className="df-field"><label className={labelClass}>Phone Number</label><input className={inputClass} value={form.phone_number} onChange={e=>updateField("phone_number",e.target.value)} /></div>
+              <div className="df-field"><label className={labelClass}>Phone Number *</label><input required className={inputClass} value={form.phone_number} onChange={e=>updateField("phone_number",e.target.value)} /></div>
               <div className="df-field"><label className={labelClass}>Email</label><input className={inputClass} value={form.email_address||""} onChange={e=>updateField("email_address",e.target.value)} /></div>
               <div className="df-field"><label className={labelClass}>Timezone</label><input className={inputClass} value={form.timezone} onChange={e=>updateField("timezone",e.target.value)} /></div>
               <div className="df-field"><label className={labelClass}>Currency</label><input className={inputClass} value={form.currency_code} onChange={e=>updateField("currency_code",e.target.value)} /></div>

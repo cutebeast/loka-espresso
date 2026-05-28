@@ -17,7 +17,8 @@ export default function RewardNewPage() {
 
   const [form, setForm] = useState({
     reward_name: "", reward_key: "", image_url: "", points_cost: 0,
-    reward_type: "free_item", description: "", short_description: "",
+    reward_type: "free_item", discount_value: 0, discount_max_amount: 0,
+    description: "", short_description: "",
     long_description: "", how_to_redeem: "", terms_and_conditions: "",
     minimum_order_value: 0, validity_days: 30, position: 0, customer_segments: [] as string[], is_active: true,
   });
@@ -83,6 +84,18 @@ export default function RewardNewPage() {
                 <option value="free_delivery">Free Delivery</option>
               </select>
             </div>
+            {(form.reward_type === "percentage_discount" || form.reward_type === "fixed_discount") && (<>
+              <div className="df-field">
+                <label className="df-label">{form.reward_type === "percentage_discount" ? "Discount %" : "Discount (RM)"}</label>
+                <input type="number" step={form.reward_type === "percentage_discount" ? "1" : "0.01"} min="0" value={form.discount_value} onChange={e => setForm({ ...form, discount_value: Number(e.target.value) })} />
+                {form.reward_type === "percentage_discount" && <div className="df-hint">e.g. enter 10 for 10% off</div>}
+              </div>
+              <div className="df-field">
+                <label className="df-label">Max Discount Cap (RM)</label>
+                <input type="number" step="0.01" min="0" value={form.discount_max_amount} onChange={e => setForm({ ...form, discount_max_amount: Number(e.target.value) })} />
+                <div className="df-hint">Optional — cap the total discount</div>
+              </div>
+            </>)}
             <div className="df-field">
               <label className="df-label">Min Order Value (RM)</label>
               <input type="number" step="0.01" value={form.minimum_order_value} onChange={e => setForm({ ...form, minimum_order_value: Number(e.target.value) })} />

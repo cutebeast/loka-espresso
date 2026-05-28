@@ -27,6 +27,11 @@ export default function VoucherNewPage() {
     setSaving(true);
     try {
       const payload: Record<string, unknown> = { ...form };
+      // Convert string[] customer_segments to dict (API expects dict | None)
+      const segs = form.customer_segments as string[];
+      payload.customer_segments = segs && segs.length > 0
+        ? Object.fromEntries(segs.map(s => [s, true]))
+        : null;
       // Convert percentage to fraction if percentage_off
       if (form.voucher_type === "percentage_off") {
         payload.discount_value = Number(form.discount_value) / 100;
@@ -69,6 +74,10 @@ export default function VoucherNewPage() {
                 <option value="percentage_off">Percentage Off (%)</option>
                 <option value="fixed_amount_off">Fixed Amount (RM)</option>
                 <option value="free_item">Free Item</option>
+                <option value="free_delivery">Free Delivery</option>
+                <option value="bundle_offer">Bundle Offer</option>
+                <option value="referral_reward">Referral Reward</option>
+                <option value="loyalty_exclusive">Loyalty Exclusive</option>
               </select>
             </div>
             <div className="df-field">
