@@ -9,7 +9,6 @@ from app.api.v1.deps import CurrentAdmin, DBDependency
 from app.models.checkin import CustomerDailyCheckin
 from app.models.customer import Customer
 from app.schemas.base import APIResponse, PaginatedResponse
-from app.schemas.base import APIResponse, PaginatedResponse
 
 router = APIRouter(prefix="/admin/checkins", tags=["admin — check-ins"])
 

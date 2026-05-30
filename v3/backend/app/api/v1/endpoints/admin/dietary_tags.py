@@ -48,7 +48,7 @@ async def update_tag(db: DBDependency, admin: CurrentAdmin, id: int, data: Dieta
     for field, value in update_data.items():
         setattr(tag, field, value)
     await db.commit()
-    await auto_translate_record(db, "dietary_tags", id, {"display_name": data.display_name or ""})
+    await auto_translate_record(db, "dietary_tags", id, {"display_name": tag.display_name or ""})
     return APIResponse(data={"id": tag.id, "display_name": tag.display_name, "message": "Updated"})
 
 

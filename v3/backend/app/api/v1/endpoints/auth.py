@@ -48,7 +48,7 @@ async def customer_register(db: DBDependency, data: CustomerRegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
-@limiter.limit("5/minute")
+@limiter.limit("15/minute")
 async def customer_login(request: Request, db: DBDependency, data: CustomerLoginRequest):
     """Login with email or phone (OTP-based / passwordless).
 

@@ -19,7 +19,7 @@ export default function SurveyNewPage() {
   const removeQ = (i:number) => setForm({...form, questions: form.questions.filter((_,j)=>j!==i)});
   const addOpt = (qi:number) => { const q=[...form.questions]; const cur = q[qi]; if (!cur) return; q[qi]={...cur,options:[...cur.options,""]}; setForm({...form,questions:q}); };
   const updateOpt = (qi:number,oi:number,val:string) => { const q=[...form.questions]; const cur = q[qi]; if (!cur) return; q[qi]={...cur,options:cur.options.map((o:string,j:number)=>j===oi?val:o)}; setForm({...form,questions:q}); };
-  const removeOpt = (qi:number,oi:number) => { const q=[...form.questions]; const cur = q[qi]; if (!cur) return; cur.options=cur.options.filter((_:string,j:number)=>j!==oi); setForm({...form,questions:q}); };
+  const removeOpt = (qi:number,oi:number) => { const q=[...form.questions]; const cur = q[qi]; if (!cur) return; q[qi]={...cur,options:cur.options.filter((_:string,j:number)=>j!==oi)}; setForm({...form,questions:q}); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

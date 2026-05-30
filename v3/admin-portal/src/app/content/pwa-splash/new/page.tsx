@@ -17,7 +17,7 @@ export default function SplashScreenNewPage() {
     try{const fd=new FormData();fd.append("file",f);const j=await api.upload("/upload/image",fd);const url=j.url||j.filename||"";setForm({...form,image_url:url});setImg(url);}catch(e:any){setError(e.message)}finally{setUploading(false)}; };
 
   const handleSubmit = async (e:React.FormEvent) => { e.preventDefault(); setSaving(true);
-    try{await api.post("/admin/content/splash-screens",form);router.push("/content/pwa-splash");}catch(e:any){setError(e.message)}finally{setSaving(false)}; };
+    try{await api.post("/admin/content/splash-screens",{...form,duration_ms:form.duration_ms?Number(form.duration_ms):undefined});router.push("/content/pwa-splash");}catch(e:any){setError(e.message)}finally{setSaving(false)}; };
 
   return (
     <div style={{padding:32}}>

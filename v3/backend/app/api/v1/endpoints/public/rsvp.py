@@ -18,7 +18,7 @@ async def rsvp_to_event(
 ):
     """RSVP to an event. Increments the event's rsvp_count if successful."""
     result = await db.execute(
-        select(EventCard).where(EventCard.id == event_id)
+        select(EventCard).where(EventCard.id == event_id).with_for_update()
     )
     event = result.scalar_one_or_none()
     if not event:

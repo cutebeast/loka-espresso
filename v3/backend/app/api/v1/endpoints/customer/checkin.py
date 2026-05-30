@@ -3,7 +3,7 @@
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.v1.deps import ActiveCustomer, DBDependency
 from app.models.checkin import CustomerDailyCheckin
@@ -34,11 +34,11 @@ async def daily_checkin(db: DBDependency, customer: ActiveCustomer):
     today = date.today()
     now = datetime.now(timezone.utc)
 
-    # Check if already checked in today
+    # Check if already checked in today (compare date portion only via func.date)
     existing = await db.execute(
         select(CustomerDailyCheckin).where(
             CustomerDailyCheckin.customer_id == customer.id,
-            CustomerDailyCheckin.checkin_date == today,
+            func.date(CustomerDailyCheckin.checkin_date) == today,
         )
     )
     if existing.scalar_one_or_none():
@@ -125,7 +125,7 @@ async def get_checkin_status(db: DBDependency, customer: ActiveCustomer):
     existing = await db.execute(
         select(CustomerDailyCheckin).where(
             CustomerDailyCheckin.customer_id == customer.id,
-            CustomerDailyCheckin.checkin_date == today,
+            func.date(CustomerDailyCheckin.checkin_date) == today,
         )
     )
     checked_in = existing.scalar_one_or_none()

@@ -49,6 +49,7 @@ from app.api.v1.endpoints.admin import promo_banners as admin_promo_banners
 from app.api.v1.endpoints.admin import content_sections as admin_content_sections
 from app.api.v1.endpoints.admin import splash_screens as admin_splash_screens
 from app.api.v1.endpoints.admin import checkins as admin_checkins
+from app.api.v1.endpoints.admin import hygiene as admin_hygiene
 from app.api.v1.endpoints.public import menu as public_menu
 from app.api.v1.endpoints.public import rsvp as public_rsvp
 from app.api.v1.endpoints.public import store as public_store
@@ -176,6 +177,7 @@ api_router.include_router(admin_promo_banners.router, tags=["admin — promo ban
 api_router.include_router(admin_content_sections.router, tags=["admin — content sections"])
 api_router.include_router(admin_splash_screens.router, tags=["admin — splash screens"])
 api_router.include_router(admin_checkins.router, tags=["admin — check-ins"])
+api_router.include_router(admin_hygiene.router, tags=["admin — hygiene"])
 
 # Reservations
 api_router.include_router(

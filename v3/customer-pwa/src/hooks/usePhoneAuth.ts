@@ -82,9 +82,12 @@ export function usePhoneAuth() {
       setIsNewUser(false);
       return true;
     } catch (err: unknown) {
-      if ((err as { response?: { status?: number } })?.response?.status === 404) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
         setIsNewUser(true);
         setStep('profile');
+      } else if (status === 429) {
+        setError(t('auth.tooManyAttempts'));
       } else {
         setError(getApiErrorMessage(err, t('auth.otpInvalidError')));
       }

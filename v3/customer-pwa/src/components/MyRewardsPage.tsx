@@ -140,7 +140,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
                 <div className="myrv-item-body">
                   <div className="myrv-voucher-source">{voucher.source || t('myRewards.promoVoucher')}</div>
                   <div className="myrv-voucher-discount">
-                    {voucher.discount_type === 'percentage' || voucher.discount_type === 'percent'
+                    {voucher.discount_type === 'percentage_off'
                       ? `${voucher.discount_value}% OFF`
                       : voucher.discount_type === 'free_item'
                         ? t('myRewards.freeItem')
@@ -191,7 +191,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
           <div className="myrv-sheet">
             <div className="myrv-sheet-handle" />
             <div className="myrv-sheet-title">
-              {selectedVoucher.discount_type === 'percentage' || selectedVoucher.discount_type === 'percent'
+              {selectedVoucher.discount_type === 'percentage_off'
                 ? `${selectedVoucher.discount_value}% OFF`
                 : selectedVoucher.discount_type === 'free_item'
                   ? t('myRewards.freeItem')

@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import SkeletonCard from "@/components/SkeletonCard";
 import {
   Armchair, CreditCard, CalendarCheck, Clock, UserCircle, Wallet,
-  ChefHat, ClipboardList, Wrench, Package, AlertTriangle
+  ChefHat, ClipboardList, Wrench, Package, AlertTriangle, Droplets, Trash2
 } from "lucide-react";
 
 interface DashboardData {
@@ -29,6 +29,8 @@ const ORDER_BUTTONS = [
 
 const OPS_BUTTONS = [
   { key: "equipment", label: "Equipment", icon: Wrench, badge: null, route: "/equipment", cls: "", desc: "Maintenance" },
+  { key: "grease-trap", label: "Grease Trap", icon: Droplets, badge: null, route: "/grease-trap", cls: "", desc: "Cleaning" },
+  { key: "garbage", label: "Garbage", icon: Trash2, badge: null, route: "/garbage", cls: "", desc: "Disposal" },
   { key: "inventory", label: "Inventory", icon: Package, badge: null, route: "/inventory", cls: "", desc: "Stock Count" },
   { key: "wastage", label: "Wastage", icon: AlertTriangle, badge: null, route: "/wastage", cls: "", desc: "Report Waste" },
 ];

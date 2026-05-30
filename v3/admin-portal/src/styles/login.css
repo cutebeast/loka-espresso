@@ -28,8 +28,8 @@
 
 .login-error {
   margin-bottom: 16px; padding: 10px 14px; border-radius: var(--radius-md);
-  background: var(--color-error-bg); border: 1px solid #FECACA;
-  color: #991B1B; font-size: 13px;
+  background: var(--color-error-bg); border: 1px solid #E08080;
+  color: #8A3535; font-size: 13px;
 }
 
 .login-field { margin-bottom: 20px; }

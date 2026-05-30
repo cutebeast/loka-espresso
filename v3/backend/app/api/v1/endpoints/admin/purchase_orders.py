@@ -189,7 +189,7 @@ async def create_purchase_order(
     lines_data = data.lines
     calculated_total = 0.0
     for line in lines_data:
-        line_total = line.line_total or (line.quantity_ordered * line.unit_cost)
+        line_total = line.line_total if line.line_total is not None else (line.quantity_ordered * line.unit_cost)
         calculated_total += line_total
 
     total_amount = data.total_amount if data.total_amount > 0 else calculated_total
@@ -209,7 +209,7 @@ async def create_purchase_order(
     await db.refresh(po)
 
     for line in lines_data:
-        line_total = line.line_total or (line.quantity_ordered * line.unit_cost)
+        line_total = line.line_total if line.line_total is not None else (line.quantity_ordered * line.unit_cost)
         db.add(
             PurchaseOrderLine(
                 purchase_order_id=po.id,

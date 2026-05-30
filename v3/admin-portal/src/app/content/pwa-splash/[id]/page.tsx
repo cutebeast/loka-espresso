@@ -37,7 +37,7 @@ load();
     try{const fd=new FormData();fd.append("file",f);const j=await api.upload("/upload/image",fd);const url=j.url||j.filename||"";setForm({...form,image_url:url});setImg(url);}catch (e) { console.error(e); }finally{setUploading(false)}; };
 
   const save = async () => { setSaving(true);
-    try{await api.patch(`/admin/content/splash-screens/${id}`,form);setMsg("Saved");setTimeout(()=>setMsg(""),2000);}catch (e) { console.error(e); }finally{setSaving(false)}; };
+    try{await api.patch(`/admin/content/splash-screens/${id}`,{...form,duration_ms:form.duration_ms?Number(form.duration_ms):undefined});setMsg("Saved");setTimeout(()=>setMsg(""),2000);}catch (e) { console.error(e); }finally{setSaving(false)}; };
 
   const upsertTr = async(field:string,locale:string,src:string,text:string)=>{
     try{const rt=await api.getRaw<any>(`/admin/translations?table_name=splash_screens&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);const ex=rt?.items?.[0];if(ex)await api.put(`/admin/translations/${ex.id}`,{translated_text:text});else await api.post("/admin/translations",{translation_key:`splash_screens.${id}.${field}`,locale,namespace:"content",translated_text:text,source_text:src,table_name:"splash_screens",record_id:Number(id),column_name:field});}catch (e) { console.error(e); }

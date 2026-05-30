@@ -231,7 +231,9 @@ async def get_loyalty_account(
     locale: str = Query("en"),
 ):
     """Get a loyalty account by ID."""
-    result = await db.execute(select(LoyaltyAccount).where(LoyaltyAccount.id == id))
+    result = await db.execute(
+        select(LoyaltyAccount).where(LoyaltyAccount.id == id).options(selectinload(LoyaltyAccount.current_tier))
+    )
     account = result.scalar_one_or_none()
     if account is None:
         raise HTTPException(

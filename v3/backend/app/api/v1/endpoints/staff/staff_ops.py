@@ -593,7 +593,6 @@ async def staff_change_password(request: Request, db: DBDependency, data: StaffC
     """Change staff password."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token: raise HTTPException(status_code=401, detail="Not authenticated")
-    secret = get_settings().jwt_secret
     try:
         payload = decode_token(token)
     except Exception:
@@ -957,6 +956,81 @@ async def report_equipment_status(
     })
 
 
+# ── Staff Hygiene Reports (grease trap + garbage disposal) ──
+
+from app.models.hygiene import HygieneReport
+
+
+@router.post("/staff/hygiene/grease-trap", status_code=status.HTTP_201_CREATED)
+async def report_grease_trap(
+    db: DBDependency,
+    staff: CurrentStaff,
+    description: str = Form("", max_length=500),
+    before_images: list[UploadFile] = File(default=[]),
+    after_images: list[UploadFile] = File(default=[]),
+):
+    """Staff reports grease trap cleaning with before and after images."""
+    store_id = staff.store_id if hasattr(staff, "store_id") else None
+    staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
+
+    before_urls = _save_uploaded_images(before_images) if before_images else []
+    after_urls = _save_uploaded_images(after_images) if after_images else []
+
+    report = HygieneReport(
+        store_id=store_id,
+        report_type="grease_trap",
+        description=description or None,
+        status="pending",
+        image_urls={"before": before_urls, "after": after_urls},
+        submitted_by=staff_name,
+    )
+    db.add(report)
+    await db.commit()
+    await db.refresh(report)
+
+    return APIResponse(data={
+        "id": report.id,
+        "report_type": report.report_type,
+        "status": report.status,
+        "image_urls": report.image_urls,
+        "message": "Grease trap report submitted successfully",
+    })
+
+
+@router.post("/staff/hygiene/garbage", status_code=status.HTTP_201_CREATED)
+async def report_garbage(
+    db: DBDependency,
+    staff: CurrentStaff,
+    description: str = Form("", max_length=500),
+    images: list[UploadFile] = File(default=[]),
+):
+    """Staff reports garbage disposal task completion with images."""
+    store_id = staff.store_id if hasattr(staff, "store_id") else None
+    staff_name = staff.display_name if hasattr(staff, "display_name") else f"Staff #{staff.id}"
+
+    image_urls = _save_uploaded_images(images) if images else []
+
+    report = HygieneReport(
+        store_id=store_id,
+        report_type="garbage_disposal",
+        description=description or None,
+        status="pending",
+        image_urls=image_urls,
+        submitted_by=staff_name,
+    )
+    db.add(report)
+    await db.commit()
+    await db.refresh(report)
+
+    return APIResponse(data={
+        "id": report.id,
+        "report_type": report.report_type,
+        "status": report.status,
+        "image_urls": report.image_urls,
+        "message": "Garbage disposal report submitted successfully",
+    })
+
+
 # ── Staff Inventory (view, update stock, report waste) ──
 
 from pydantic import BaseModel as PydanticBaseModel
@@ -1123,7 +1197,7 @@ async def staff_report_waste(
             select(InventoryStock).where(
                 InventoryStock.inventory_item_id == data.inventory_item_id,
                 InventoryStock.store_id == store_id,
-            )
+            ).with_for_update()
         )
         stock = stock_result.scalar_one_or_none()
         if stock is None:
@@ -1192,7 +1266,7 @@ async def staff_report_waste(
                 select(InventoryStock).where(
                     InventoryStock.inventory_item_id == inv_id,
                     InventoryStock.store_id == store_id,
-                )
+                ).with_for_update()
             )
             stock_row = stock_result.scalar_one_or_none()
             if stock_row:

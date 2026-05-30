@@ -124,7 +124,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
           <div className="flex flex-col gap-1.5">
             {availableVouchers.slice(0, 3).map(v => {
               const isSelected = selectedType === 'voucher' && selectedCode === v.code;
-              const discountVal = v.discount_type === 'percentage'
+              const discountVal = v.discount_type === 'percentage_off'
                 ? (subtotal * v.discount_value / 100)
                 : v.discount_value;
               return (
@@ -141,7 +141,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                   <div className="flex-1">
                     <p className="font-semibold text-text-primary vrs-code">{v.code}</p>
                     <p className="text-[11px] text-text-muted">
-                      {v.discount_type === 'percentage' ? t('checkout.percentageOff', { value: v.discount_value }) : t('checkout.amountOff', { amount: formatPrice(v.discount_value) })}
+                      {v.discount_type === 'percentage_off' ? t('checkout.percentageOff', { value: v.discount_value }) : t('checkout.amountOff', { amount: formatPrice(v.discount_value) })}
                       {v.min_spend ? t('checkout.minSpend', { amount: formatPrice(v.min_spend) }) : ''}
                     </p>
                   </div>

@@ -9,7 +9,7 @@ import {
   FileText, Bell, UserCircle, BarChart3,
   LayoutTemplate, ShoppingBag, Grid3X3,
   Star, Settings, Languages, TrendingUp, Wrench,
-  Shield,
+  Shield, ClipboardCheck,
 } from "lucide-react";
 import { adminLogout } from "@/lib/api";
 import { useBrand } from "./BrandProvider";
@@ -148,6 +148,7 @@ const navItems: NavItem[] = [
       { label: "Equipment List", href: "/equipment" },
       { label: "Reports Ledger", href: "/equipment/reports" },
     ] },
+  { label: "Hygiene", href: "/hygiene", icon: ClipboardCheck },
   {
     label: "Staff", href: "/staff", icon: Users,
     children: [
@@ -172,6 +173,7 @@ export default function Sidebar() {
     Content: pathname.startsWith("/content"),
     Inventory: pathname.startsWith("/inventory"),
     Equipment: pathname.startsWith("/equipment"),
+    Hygiene: pathname.startsWith("/hygiene"),
     Staff: pathname.startsWith("/staff"),
     Reservations: pathname.startsWith("/reservations"),
     "Customers List": pathname.startsWith("/customers"),

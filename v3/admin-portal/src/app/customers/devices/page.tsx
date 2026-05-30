@@ -13,7 +13,7 @@ export default function CustomerDevicesPage() {
   const fetchData = useCallback(() => { setLoading(true);
     getCustomerDevices({ platform: deviceTypeFilter || undefined, is_active: activeFilter === "" ? undefined : activeFilter === "true" })
       .then(data => setItems(data)).catch(err => setError(err.message)).finally(() => setLoading(false));
-  }, []);
+  }, [deviceTypeFilter, activeFilter]);
   useEffect(() => {(async () => {
  fetchData(); 
 })();}, [fetchData]);

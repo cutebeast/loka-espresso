@@ -536,6 +536,7 @@ function mapV3Response(url: string, data: any): any {
   // VOUCHERS
   // ============================================
   if (url.includes('/vouchers')) {
+    if (url.includes('/validate')) return unwrapped;
     return unwrapped.map((v: any) => ({
       ...v,
       voucher_id: v.voucher_definition_id || v.voucher_id,

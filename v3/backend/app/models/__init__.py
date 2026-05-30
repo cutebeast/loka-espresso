@@ -151,3 +151,4 @@ from app.models.equipment import (
     Equipment,
     EquipmentMaintenanceLog,
 )
+from app.models.hygiene import HygieneReport

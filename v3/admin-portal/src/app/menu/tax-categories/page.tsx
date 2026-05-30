@@ -27,7 +27,7 @@ export default function TaxCategoriesPage() {
             : items.map(item => (
               <tr key={item.id}>
                 <td style={{ fontWeight: 600 }}>{item.category_name}</td>
-                <td>{(item.rate * 100).toFixed(0)}%</td>
+                <td>{typeof item.rate === 'number' ? (item.rate * 100).toFixed(0) : 0}%</td>
                 <td><span className={`badge badge-sm ${item.is_active ? "badge-green" : "badge-gray"}`}>{item.is_active ? "Active" : "Inactive"}</span></td>
                 <td>
                   <button onClick={() => router.push(`/menu/tax-categories/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}><Edit2 size={14} /></button>

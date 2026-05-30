@@ -106,7 +106,7 @@ export default function ItemEditPage() {
   const removeGroup = (i:number) => setForm({...form, modifier_groups: (form.modifier_groups||[]).filter((_:any,j:number)=>j!==i)});
   const addOpt = (gi:number) => { const g=[...(form.modifier_groups||[])]; g[gi]={...g[gi],options:[...g[gi].options,{option_name:"",price_adjustment:0,is_default:false,is_available:true}]}; setForm({...form,modifier_groups:g}); };
   const updateOpt = (gi:number, oi:number, p:any) => { const g=[...(form.modifier_groups||[])]; const opts=[...g[gi].options]; opts[oi]={...opts[oi],...p}; g[gi]={...g[gi],options:opts}; setForm({...form,modifier_groups:g}); };
-  const removeOpt = (gi:number, oi:number) => { const g=[...(form.modifier_groups||[])]; g[gi].options=g[gi].options.filter((_:any,j:number)=>j!==oi); setForm({...form,modifier_groups:g}); };
+  const removeOpt = (gi:number, oi:number) => { const g=[...(form.modifier_groups||[])]; g[gi]={...g[gi],options:g[gi].options.filter((_:any,j:number)=>j!==oi)}; setForm({...form,modifier_groups:g}); };
 
   const loadInventoryForStore = useCallback(async () => {
     try{const d=await api.getRaw<any>("/admin/inventory/items?per_page=500");setInventoryItems(Array.isArray(d)?d:(d.items||[]));}catch(e){console.error(e);setInventoryItems([]);}

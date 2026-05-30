@@ -551,6 +551,7 @@ async def update_item(
             group = MenuModifierGroup(
                 menu_item_id=item.id,
                 group_name=group_data["group_name"],
+                display_order=group_data.get("display_order", 0),
                 selection_type=group_data.get("selection_type", "single"),
                 is_required=group_data.get("is_required", False),
                 min_selections=group_data.get("min_selections", 0),
@@ -562,6 +563,7 @@ async def update_item(
                 option = MenuModifierOption(
                     modifier_group_id=group.id,
                     option_name=opt_data["option_name"],
+                    display_order=opt_data.get("display_order", 0),
                     price_adjustment=opt_data.get("price_adjustment", 0),
                     is_default=opt_data.get("is_default", False),
                     is_available=opt_data.get("is_available", True),

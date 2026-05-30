@@ -59,7 +59,7 @@ load();
   // Option CRUD
   const addOpt = (qi:number)=>{const q=[...form.questions];q[qi]={...q[qi],options:[...q[qi].options,""]};setForm({...form,questions:q});};
   const updateOpt = (qi:number,oi:number,val:string)=>{const q=[...form.questions];q[qi]={...q[qi],options:q[qi].options.map((o:string,j:number)=>j===oi?val:o)};setForm({...form,questions:q});};
-  const removeOpt = (qi:number,oi:number)=>{const q=[...form.questions];q[qi].options=q[qi].options.filter((_:string,j:number)=>j!==oi);setForm({...form,questions:q});};
+  const removeOpt = (qi:number,oi:number)=>{const q=[...form.questions];q[qi]={...q[qi],options:q[qi].options.filter((_:string,j:number)=>j!==oi)};setForm({...form,questions:q});};
 
   const save = async () => { setSaving(true);
     try {

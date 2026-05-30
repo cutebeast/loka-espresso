@@ -311,7 +311,7 @@ async def process_webhook_event(
         return None
 
     result = await db.execute(
-        select(Payment).where(Payment.provider_transaction_id == transaction_id)
+        select(Payment).where(Payment.provider_transaction_id == transaction_id).with_for_update()
     )
     payment = result.scalar_one_or_none()
     if payment is None:

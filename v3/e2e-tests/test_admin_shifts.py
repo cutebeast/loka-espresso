@@ -144,9 +144,9 @@ async def test_kds_order_display(
     )
     assert r_reg.status_code in (200, 201), f"Register failed: {r_reg.status_code}"
     cust_data = r_reg.json()
-    cust_id = cust_data.get("profile", {}).get("id") or cust_data.get("id")
+    cust_id = cust_data.get("user_id")
     if cust_id:
-        cleanup_registry.setdefault("customers", []).append(cust_id)
+        cleanup_registry.setdefault("customers", []).append({"id": cust_id})
     cust_token = cust_data["tokens"]["access_token"]
     cust_headers = {"Authorization": f"Bearer {cust_token}", "Content-Type": "application/json"}
 
@@ -165,7 +165,7 @@ async def test_kds_order_display(
     assert r_order.status_code in (200, 201), f"Order creation failed: {r_order.status_code}"
     order_data = r_order.json()["data"]
     order_id = order_data["id"]
-    cleanup_registry.setdefault("orders", []).append(order_id)
+    cleanup_registry.setdefault("orders", []).append({"id": order_id})
     order_number = order_data.get("order_number", f"#{order_id}")
 
     # 2. Admin confirms the order so it appears in KDS

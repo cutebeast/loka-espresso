@@ -132,19 +132,19 @@ export default function NewStorePage() {
             {hours.map((h, i) => (
               <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, opacity: h.is_closed ? 0.5 : 1, flexWrap: "wrap" }}>
                 <span style={{ width: 40, fontSize: 13, fontWeight: 600 }}>{DAYS[i]}</span>
-                <input type="time" value={h.open_time || "00:00"} onChange={e => { const hh = [...hours]; const entry = hh[i]; if (!entry) return; entry.open_time = e.target.value; setHours(hh); }} className={inputClass} style={{ width: 120 }} disabled={h.is_closed || h.is_24_hours} />
+                <input type="time" value={h.open_time || "00:00"} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], open_time: e.target.value} as any; setHours(hh); }} className={inputClass} style={{ width: 120 }} disabled={h.is_closed || h.is_24_hours} />
                 <span style={{ fontSize: 12 }}>to</span>
-                <input type="time" value={h.close_time || "23:59"} onChange={e => { const hh = [...hours]; const entry = hh[i]; if (!entry) return; entry.close_time = e.target.value; setHours(hh); }} className={inputClass} style={{ width: 120 }} disabled={h.is_closed || h.is_24_hours} />
+                  <input type="time" value={h.close_time || "23:59"} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], close_time: e.target.value} as any; setHours(hh); }} className={inputClass} style={{ width: 120 }} disabled={h.is_closed || h.is_24_hours} />
                 <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}>
-                  <input type="checkbox" checked={h.is_closed} onChange={e => { const hh = [...hours]; const entry = hh[i]; if (!entry) return; entry.is_closed = e.target.checked; setHours(hh); }} /> Closed
+                    <input type="checkbox" checked={h.is_closed} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], is_closed: e.target.checked} as any; setHours(hh); }} /> Closed
                 </label>
                 <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}>
-                  <input type="checkbox" checked={h.is_24_hours} onChange={e => { const hh = [...hours]; const entry = hh[i]; if (!entry) return; entry.is_24_hours = e.target.checked; if (e.target.checked) { entry.open_time = "00:00"; entry.close_time = "23:59"; } setHours(hh); }} /> 24h
+                    <input type="checkbox" checked={h.is_24_hours} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], is_24_hours: e.target.checked} as any; if (e.target.checked) { hh[i] = {...hh[i], open_time: "00:00", close_time: "23:59"} as any; } setHours(hh); }} /> 24h
                 </label>
                 {!h.is_closed && (
                   <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}>
                     <span style={{ color: "var(--color-text-muted)" }}>Last order</span>
-                    <input type="time" value={h.last_order_time || ""} onChange={e => { const hh = [...hours]; const entry = hh[i]; if (!entry) return; entry.last_order_time = e.target.value; setHours(hh); }} className={inputClass} style={{ width: 100 }} />
+                      <input type="time" value={h.last_order_time || ""} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], last_order_time: e.target.value} as any; setHours(hh); }} className={inputClass} style={{ width: 100 }} />
                   </label>
                 )}
               </div>

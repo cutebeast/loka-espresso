@@ -206,7 +206,7 @@ async def create_order_from_cart(
             raise OrderError("Voucher has expired", 400)
         
         vd_result = await db.execute(
-            select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id)
+            select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id).with_for_update()
         )
         vd = vd_result.scalar_one_or_none()
         if vd is None or not vd.is_active:
@@ -278,7 +278,7 @@ async def create_order_from_cart(
             raise OrderError("Reward has expired", 400)
 
         rc_result = await db.execute(
-            select(RewardCatalog).where(RewardCatalog.id == cr.reward_catalog_id)
+            select(RewardCatalog).where(RewardCatalog.id == cr.reward_catalog_id).with_for_update()
         )
         rc = rc_result.scalar_one_or_none()
         if rc is None or not rc.is_active:

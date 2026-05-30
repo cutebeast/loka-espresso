@@ -137,7 +137,7 @@ async def create_movement(
         select(InventoryStock).where(
             InventoryStock.inventory_item_id == data.inventory_item_id,
             InventoryStock.store_id == data.store_id,
-        )
+        ).with_for_update()
     )
     stock = stock_result.scalar_one_or_none()
     if stock is None:

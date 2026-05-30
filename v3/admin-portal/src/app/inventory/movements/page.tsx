@@ -66,7 +66,7 @@ export default function InventoryMovementsPage() {
               <td style={{ fontWeight: 600 }}>{m.item_name || `#${m.inventory_item_id}`}</td>
               <td>{typeBadge(m.movement_type)}</td>
               <td style={{ textAlign: "center", fontWeight: 600, color: m.quantity_delta < 0 ? "var(--color-error)" : "var(--color-success)" }}>{m.quantity_delta > 0 ? `+${m.quantity_delta}` : m.quantity_delta}</td>
-              <td style={{ textAlign: "right" }}>{m.unit_cost_at_movement ? `RM ${Number(m.unit_cost_at_movement).toFixed(2)}` : "—"}</td>
+              <td style={{ textAlign: "right" }}>{m.unit_cost_at_movement != null ? `RM ${Number(m.unit_cost_at_movement).toFixed(2)}` : "—"}</td>
               <td style={{ fontSize: 12, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.reason || "—"}</td>
               <td style={{ fontSize: 12 }}>{m.created_at ? new Date(m.created_at).toLocaleDateString() : "—"}</td>
               <td style={{ fontSize: 12 }}>{m.performed_by_name || "—"}</td>

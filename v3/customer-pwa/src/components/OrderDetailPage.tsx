@@ -99,7 +99,7 @@ export default function OrderDetailPage() {
       return;
     }
     setCancelling(true);
-    try { await api.post(`/orders/${order.id}/cancel`); showToast(t('toast.orderCancelled'), 'info'); updateOrder(order.id, { status: 'cancelled' }); setOrder(o => o ? { ...o, status: 'cancelled' } : o); }
+    try { await api.post(`/orders/${order.id}/cancel`); showToast(t('toast.orderCancelled'), 'info'); updateOrder(order.id, { status: 'cancelled_by_customer' }); setOrder(o => o ? { ...o, status: 'cancelled_by_customer' } : o); }
     catch { showToast(t('toast.cancelFailed'), 'error'); }
     finally { setCancelling(false); }
   };
@@ -169,10 +169,10 @@ export default function OrderDetailPage() {
           <div className="od-status-wrap">
             <div className="od-status-label">{displayStatus}</div>
             <div className="text-xs text-muted mt-1">
-              {order.status === 'completed' ? t('orderDetail.enjoyOrder') : order.status === 'cancelled' ? t('orderDetail.orderCancelled') : t('orderDetail.orderProcessing')}
+              {order.status === 'completed' ? t('orderDetail.enjoyOrder') : (order.status || '').startsWith('cancelled') ? t('orderDetail.orderCancelled') : t('orderDetail.orderProcessing')}
             </div>
           </div>
-          {order.status !== 'cancelled' ? (
+          {!(order.status || '').startsWith('cancelled') ? (
             <div className="od-progress-track">
               {steps.map((step, i) => {
                 const done = i < current;

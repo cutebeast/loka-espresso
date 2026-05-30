@@ -83,6 +83,21 @@ async def credit_referral_points(
         await db.flush()
 
     # Credit points
+    if invitee_customer_id:
+        result = await db.execute(
+            select(ReferralEvent).where(
+                ReferralEvent.referrer_customer_id == referrer_customer_id,
+                ReferralEvent.invitee_customer_id == invitee_customer_id,
+                ReferralEvent.status == "converted",
+            )
+        )
+        referral = result.scalar_one_or_none()
+        if not referral:
+            await db.flush()
+            return 0
+        referral.status = "rewarded"
+        referral.reward_issued_at = datetime.now(timezone.utc)
+
     account.points_balance += points
     account.lifetime_points_earned += points
 
@@ -99,20 +114,6 @@ async def credit_referral_points(
         description=f"Referral bonus — invitee #{invitee_customer_id or '?'} joined",
     )
     db.add(ledger)
-
-    # Mark referral as rewarded
-    if invitee_customer_id:
-        result = await db.execute(
-            select(ReferralEvent).where(
-                ReferralEvent.referrer_customer_id == referrer_customer_id,
-                ReferralEvent.invitee_customer_id == invitee_customer_id,
-                ReferralEvent.status == "converted",
-            )
-        )
-        referral = result.scalar_one_or_none()
-        if referral:
-            referral.status = "rewarded"
-            referral.reward_issued_at = datetime.now(timezone.utc)
 
     await db.flush()
     return points

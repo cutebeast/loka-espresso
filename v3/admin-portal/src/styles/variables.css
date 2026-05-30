@@ -1,6 +1,7 @@
 /* ============================================
    LOKA Espresso — Design Tokens (v3)
-   All color/spacing/shadow/radius tokens in :root
+   Brand palette: warm Turkish coffee tones
+   Synced with PWA + design-system spec
    ============================================ */
 
 :root {
@@ -10,43 +11,48 @@
   --color-primary-deep: #1A2309;
   --color-primary-light: #4E6E20;
 
-  /* Accent */
+  /* Accent — Turkish Gold & Copper */
   --color-accent: #85B085;
   --color-accent-light: #A0C0A0;
   --color-accent-gold: #C9A84C;
-  --color-accent-copper: #9B6625;
-  --color-accent-brown: #57280D;
+  --color-accent-copper: #C4893A;
+  --color-accent-brown: #4A2210;
 
-  /* Backgrounds */
+  /* Backgrounds — Warm Parchment */
   --color-bg-page: #F2EEE6;
   --color-bg-card: #FFFDF8;
   --color-bg-muted: #E8E2D8;
   --color-bg-dark: #1E1B18;
   --color-bg-white: #FFFFFF;
+  --color-cream: #F5F0E6;
 
-  /* Borders */
+  /* Borders — Warm Cream */
   --color-border: #C4CED8;
   --color-border-light: #D5CCBE;
   --color-border-dark: #9BA8B8;
 
-  /* Text */
+  /* Text — Warm Tones */
   --color-text-primary: #1E1B18;
   --color-text-secondary: #4A4038;
   --color-text-muted: #8A8078;
   --color-text-light: #FFFFFF;
   --color-text-copper: #C4893A;
 
-  /* Status */
-  --color-success: #16A34A;
-  --color-success-bg: #F0FDF4;
-  --color-warning: #D97706;
-  --color-warning-bg: #FFFBEB;
-  --color-error: #DC2626;
-  --color-error-bg: #FEF2F2;
-  --color-info: #2563EB;
-  --color-info-bg: #EFF6FF;
+  /* Semantic — Warm Brand Tints */
+  --color-success: #7AAA7A;
+  --color-success-bg: #E8F2E8;
+  --color-success-light: #E8F2E8;
+  --color-warning: #C9A84C;
+  --color-warning-bg: #FDF5E6;
+  --color-warning-light: #FDF5E6;
+  --color-error: #C75050;
+  --color-error-bg: #FFEBEE;
+  --color-error-light: #FFEBEE;
+  --color-info: #5A707A;
+  --color-info-bg: #E8EFF3;
+  --color-info-light: #E8EFF3;
 
-  /* Sidebar */
+  /* Sidebar — Dark Olive */
   --sidebar-bg: #1E1B18;
   --sidebar-bg-hover: #2A2520;
   --sidebar-bg-active: rgba(59,74,26,0.35);
@@ -56,10 +62,10 @@
   --sidebar-border: rgba(255,255,255,0.08);
   --sidebar-icon-active: #C9A84C;
 
-  /* Shadows */
-  --shadow-sm: 0 2px 4px rgba(27,32,35,0.06);
-  --shadow-md: 0 4px 12px rgba(27,32,35,0.10);
-  --shadow-lg: 0 8px 24px rgba(27,32,35,0.14);
+  /* Shadows — Warm Brown Tint */
+  --shadow-sm: 0 2px 4px rgba(74,34,16,0.06);
+  --shadow-md: 0 4px 12px rgba(74,34,16,0.10);
+  --shadow-lg: 0 8px 24px rgba(74,34,16,0.14);
 
   /* Radii */
   --radius-sm: 6px;
@@ -77,5 +83,6 @@
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
 }
