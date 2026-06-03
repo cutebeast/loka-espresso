@@ -47,7 +47,7 @@ export default function OrderDetailPage() {
 
   const fetchOrder = useCallback(async (id: number) => {
     setLoading(true);
-    try { const res = await api.get(`/orders/${id}`); setOrder(res.data); setCurrentOrder(res.data); }
+    try { const res = await api.get(`/orders/${id}`); const o = { ...res.data, total: res.data.total_amount ?? res.data.total ?? 0 }; setOrder(o); setCurrentOrder(o); }
     catch { showToast(t('toast.loadOrderFailed'), 'error'); }
     finally { setLoading(false); }
   }, [setCurrentOrder, showToast, t]);

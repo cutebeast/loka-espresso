@@ -53,7 +53,8 @@ export default function MenuPage() {
       ]);
       const catData = catRes.data;
       const itemData = itemRes.data;
-      setCategories(Array.isArray(catData) ? catData : (catData?.categories || catData?.items || []));
+      const rawCats = Array.isArray(catData) ? catData : (catData?.categories || catData?.items || []);
+      setCategories(rawCats.map((c: Record<string, unknown>) => ({ ...c, name: (c.name || c.category_name || '') as string })));
       setMenuItems(Array.isArray(itemData) ? itemData : (itemData?.items || []));
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;

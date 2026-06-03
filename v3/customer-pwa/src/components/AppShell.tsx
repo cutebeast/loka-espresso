@@ -144,7 +144,7 @@ export default function AppShell() {
     if ((showStoreModal || showStorePicker) && stores.length === 0) {
       const controller = new AbortController();
       api.get('/content/stores', { signal: controller.signal })
-        .then((res) => setStores(res.data))
+        .then((res) => setStores((res.data || []).map((s: Record<string, unknown>) => ({ ...s, name: s.name || s.store_name || s.brand_name || '' }))))
         .catch((err) => {
           if ((err as { name?: string })?.name === 'CanceledError') return;
           console.error('[AppShell] Store list fetch failed:', err); showToast(t('toast.storesLoadFailed'), 'error');

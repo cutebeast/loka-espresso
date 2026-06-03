@@ -17,10 +17,21 @@ export function useVersionCheck() {
     checkInProgress.current = true;
 
     try {
-      // Check for Service Worker updates (browser-native, no backend endpoint needed)
+      // Check for Service Worker updates
       const registration = await navigator.serviceWorker?.getRegistration();
       if (!registration) return;
-      await registration.update();
+      try {
+        await registration.update();
+      } catch {
+        // registration.update() fails when the previous script URL is stale
+        // (Next.js hashed filenames change on rebuild). The SW itself is fine.
+        // Re-register with the current script to fix the stale reference.
+        try {
+          await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        } catch {
+          // Cannot re-register — likely the current SW is already active
+        }
+      }
       if (registration.waiting) {
         // A new SW is already waiting — prompt user to refresh
         window.dispatchEvent(new CustomEvent('sw-update-available'));

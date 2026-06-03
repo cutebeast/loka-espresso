@@ -33,7 +33,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
     try {
       const res = await api.get('/reservations');
       const data = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
-      setReservations(data);
+      setReservations(data.map((r: Record<string, unknown>) => ({ ...r, notes: r.special_requests || r.notes || '' })));
     } catch {
       setReservations([]);
     }

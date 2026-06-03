@@ -76,7 +76,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         const d = loyaltyRes.value.data;
         if (d) {
           set({
-            points: normalizeNumber(d.points_balance ?? d.points ?? get().points, get().points),
+            points: normalizeNumber(d.current_points ?? d.points_balance ?? d.points ?? get().points, get().points),
             tier: d.tier_name ?? d.tier ?? get().tier,
             tierId: normalizeNumber(d.tier_id ?? get().tierId, get().tierId),
           });

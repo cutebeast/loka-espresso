@@ -53,7 +53,8 @@ export default function OrdersPage() {
     setIsLoading(true);
     try {
       const res = await api.get('/orders', { params: { page_size: 20 } });
-      setOrders(Array.isArray(res.data) ? res.data : (res.data?.items ?? []));
+      const raw = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
+      setOrders(raw.map((o: Record<string, unknown>) => ({ ...o, total: o.total_amount ?? o.total ?? 0 })));
     } catch (err) { console.error('[OrdersPage] fetch failed:', err); showToast(t('toast.loadOrdersFailed'), 'error'); }
     finally { setIsLoading(false); }
   }, [setIsLoading, setOrders, showToast, t]);
