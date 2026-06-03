@@ -48,7 +48,7 @@ export default function AdminUsersPage() {
 
     setSaving(true);
     try {
-      const { confirmPassword, ...payload } = { ...form, role_id: form.role_id ? Number(form.role_id) : undefined };
+      const { confirmPassword: _cp, ...payload } = { ...form, role_id: form.role_id ? Number(form.role_id) : undefined };
       await api.post("/admin/auth/register", payload);
       setShowForm(false);
       setForm({ email: "", display_name: "", password: "", confirmPassword: "", phone_number: "", role_id: "" });

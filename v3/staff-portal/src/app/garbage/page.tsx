@@ -38,6 +38,7 @@ export default function GarbagePage() {
       const fd = new FormData();
       fd.set("description", desc.trim());
       for (const f of files) fd.append("images", f, f.name);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await api.upload<any>("/staff/hygiene/garbage", fd);
       setSuccess(true);
     } catch (e: unknown) {

@@ -67,7 +67,7 @@ export default function TranslationPage() {
       {tab === "staff" && <StaffTranslationsTab />}
 
       <div style={{ marginTop: 24, padding: 12, background: "var(--color-bg-muted)", borderRadius: "var(--radius-sm)", fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-        📦 <strong>How translations work:</strong> All three portals share the same <code>translations</code> table in the database. Translations are segmented by <code>namespace</code> (<code>pwa-ui</code>, <code>admin-ui</code>, <code>staff-ui</code>). The PWA fetches translations dynamically on startup and caches them locally for 24 hours. After generating translations, click <strong>"Sync to JSON"</strong> to write them to the PWA's static locale files for offline fallback.
+        📦 <strong>How translations work:</strong> All three portals share the same <code>translations</code> table in the database. Translations are segmented by <code>namespace</code> (<code>pwa-ui</code>, <code>admin-ui</code>, <code>staff-ui</code>). The PWA fetches translations dynamically on startup and caches them locally for 24 hours. After generating translations, click <strong>{`"Sync to JSON"`}</strong> to write them to the PWA&apos;s static locale files for offline fallback.
       </div>
     </div>
   );

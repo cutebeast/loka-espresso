@@ -21,6 +21,7 @@ export default function WastagePage() {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     api.getRaw<any>("/admin/menu/items?per_page=500")
       .then(d => { if (!cancelled) setMenuItems(Array.isArray(d) ? d : (d?.items || [])); })
       .catch((err) => { console.error("Failed to load menu items:", err); });

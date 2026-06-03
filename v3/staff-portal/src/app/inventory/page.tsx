@@ -38,6 +38,7 @@ export default function InventoryPage() {
     setLoading(true);
     setError("");
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = await api.getRaw<any>("/staff/inventory");
       setItems(Array.isArray(data) ? data : (data?.items || []));
     } catch (e: unknown) {

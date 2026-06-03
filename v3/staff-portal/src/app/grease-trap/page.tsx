@@ -43,6 +43,7 @@ export default function GreaseTrapPage() {
       fd.set("description", desc.trim());
       for (const f of beforeFiles) fd.append("before_images", f, f.name);
       for (const f of afterFiles) fd.append("after_images", f, f.name);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await api.upload<any>("/staff/hygiene/grease-trap", fd);
       setSuccess(true);
     } catch (e: unknown) {

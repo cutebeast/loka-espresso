@@ -19,6 +19,7 @@ async function fetchAndSetUser() {
       ...profile,
       addresses: raw?.addresses || [],
       referral_code: raw?.referral_code || profile?.referral_code || '',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
   } catch (err) { console.error("Failed to fetch user profile:", err); }
 }

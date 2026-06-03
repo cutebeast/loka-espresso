@@ -36,6 +36,7 @@ export default function EquipmentPage() {
     setLoading(true);
     setError("");
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = await api.getRaw<any>("/staff/equipment");
       setItems(Array.isArray(data) ? data : (data?.items || []));
     } catch (e: unknown) {
@@ -74,6 +75,7 @@ export default function EquipmentPage() {
       for (const f of reportFiles) {
         formData.append("images", f, f.name);
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await api.upload<any>(`/staff/equipment/${reporting}/report`, formData);
       setSuccess(`Report submitted — ${reportStatus}`);
       setReporting(null);
