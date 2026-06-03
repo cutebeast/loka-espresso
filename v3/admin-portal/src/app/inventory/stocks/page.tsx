@@ -38,7 +38,6 @@ export default function InventoryStocksPage() {
     api.getRaw<any>("/admin/stores?per_page=50").then(d => {
       const list = d.items || [];
       setStores(list);
-      if (list.length > 0) setStoreId(String(list[0].id));
     }).catch((e: any) => setError(e.message || "Failed to load stores"));
     api.getRaw<any>("/admin/inventory/categories?per_page=100").then(d => {
       setCategories(d.items || (Array.isArray(d) ? d : []));
@@ -135,6 +134,7 @@ export default function InventoryStocksPage() {
           onChange={e => setStoreId(e.target.value)}
           style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
         >
+          <option value="">Please Select a Store</option>
           {stores.map(s => (
             <option key={s.id} value={s.id}>{s.store_name}</option>
           ))}
@@ -151,7 +151,14 @@ export default function InventoryStocksPage() {
         </select>
       </div>
 
-      <div className="table-container" style={{ marginTop: 16 }}>
+      {!storeId ? (
+        <div style={{ textAlign: "center", padding: 60, color: "var(--color-text-muted)" }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: "0 auto 12px", opacity: 0.4 }}><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2" /></svg>
+          <p style={{ fontSize: 14 }}>Please select a store to view stock levels</p>
+        </div>
+      ) : (<>
+      <div className="table-header-bar"><span style={{ fontSize: 13, fontWeight: 600 }}>Stock Levels</span></div>
+      <div className="table-container" style={{ marginTop: 0 }}>
         <table className="data-table">
           <thead>
             <tr>
@@ -194,6 +201,7 @@ export default function InventoryStocksPage() {
           </tbody>
         </table>
       </div>
+      </>)}
 
       {editModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setEditModal(null)}>

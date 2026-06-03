@@ -103,27 +103,27 @@ export default function InventoryPage() {
   };
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
       <PageHeader
         title="Inventory"
         subtitle="Stock counts and adjustments"
-        back
         action={
           <button type="button" onClick={load} className="btn btn-ghost btn-sm" aria-label="Refresh" style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <RefreshCw size={16} /> Refresh
           </button>
         }
       />
-      {success && <Alert variant="success">{success}</Alert>}
-      {error && <Alert variant="error">{error}</Alert>}
+      {success && <Alert variant="success" onDismiss={() => setSuccess("")} autoDismiss={3000}>{success}</Alert>}
+      {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
 
       {/* Category Filter */}
       <div style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
         <Search size={14} style={{ color: "var(--color-text-muted)" }} />
         <select
+          className="form-input"
+          style={{ width: "auto", marginBottom: 0 }}
           value={catFilter}
           onChange={e => setCatFilter(e.target.value)}
-          style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
         >
           <option value="">All Categories ({items.length})</option>
           {categories.map(c => (
@@ -164,15 +164,15 @@ export default function InventoryPage() {
               {editingId === item.id ? (
                 <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input type="number" value={editStock} onChange={e => setEditStock(e.target.value)} style={{ width: 100, padding: "4px 8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: 13 }} />
+                    <input type="number" className="form-input" style={{ width: 100, marginBottom: 0 }} value={editStock} onChange={e => setEditStock(e.target.value)} />
                     <button type="button" onClick={() => handleUpdate(item.id)} disabled={updateSubmitting} className="btn btn-primary btn-sm">{updateSubmitting ? "..." : "Save"}</button>
                     <button type="button" onClick={cancelUpdate} className="btn btn-ghost btn-sm"><X size={14} /></button>
                   </div>
-                  <input type="text" value={editReason} onChange={e => setEditReason(e.target.value)} placeholder="Remark / reason for update" style={{ width: "100%", maxWidth: 300, padding: "4px 8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: 12 }} />
+                  <input type="text" className="form-input" style={{ maxWidth: 300, marginBottom: 0 }} value={editReason} onChange={e => setEditReason(e.target.value)} placeholder="Remark / reason for update" />
                 </div>
               ) : (
                 <div style={{ marginTop: 12 }}>
-                  <button type="button" onClick={() => openUpdate(item)} className="btn btn-sm" style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+                  <button type="button" onClick={() => openUpdate(item)} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
                     <Package size={14} /> Update Count
                   </button>
                 </div>

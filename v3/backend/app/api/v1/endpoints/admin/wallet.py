@@ -480,7 +480,7 @@ async def request_topup(
         entry_type="credit",
         amount=data.amount,
         running_balance=new_balance,
-        description=f"Top-up via payment method {data.payment_method_id}",
+        description=f"Top-up via {'payment method ' + str(data.payment_method_id) if data.payment_method_id else 'wallet add funds'}",
         reference_type="topup",
     )
     db.add(entry)

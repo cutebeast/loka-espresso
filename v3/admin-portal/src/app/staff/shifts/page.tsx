@@ -21,6 +21,7 @@ export default function StaffShiftsPage() {
   const [tplForm, setTplForm] = useState({ name: "", start_time: "", end_time: "", store_id: "" });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch((err: any) => { console.error("Failed to load stores:", err); });
@@ -28,7 +29,7 @@ export default function StaffShiftsPage() {
 
   useEffect(() => {
     if (!storeId) return;
-    api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch((err: any) => { console.error("Failed to load shifts:", err); }).finally(() => setLoading(false));
+    api.get<any>(`/admin/staff/shifts?store_id=${storeId}&per_page=200`).then(d => setItems(Array.isArray(d) ? d : (d.items || []))).catch((err: any) => { setError("Failed to load shifts"); console.error(err); }).finally(() => setLoading(false));
     api.get<any>(`/admin/staff/shift-templates?store_id=${storeId}`).then(d => setTemplates(Array.isArray(d) ? d : [])).catch((err: any) => { console.error("Failed to load templates:", err); });
     api.get<any>(`/admin/staff?store_id=${storeId}&per_page=200`).then(d => setStaffList(Array.isArray(d) ? d : (d.items || []))).catch((err: any) => { console.error("Failed to load staff list:", err); });
   }, [storeId]);
@@ -70,7 +71,7 @@ export default function StaffShiftsPage() {
 
       <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
         <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-          <option value="">Select Store</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
+          <option value="">Please Select a Store</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
       </div>
 
@@ -142,6 +143,9 @@ export default function StaffShiftsPage() {
         </div>
       )}
 
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div className="table-header-bar"><span style={{ fontSize: 13, fontWeight: 600 }}>Assignments</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>Staff</th><th>Shift Template</th><th>Date</th><th>Time</th><th></th></tr></thead>
         <tbody>

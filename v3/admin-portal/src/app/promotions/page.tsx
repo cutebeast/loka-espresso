@@ -12,7 +12,7 @@ const ACTION_TYPES = [{ value: "read_claim", label: "Read & Claim" }, { value: "
 export default function PromotionsPage() {
   const router = useRouter();
   const [banners, setBanners] = useState<Banner[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const fetchBanners = useCallback(() => {

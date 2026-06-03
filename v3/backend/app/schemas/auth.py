@@ -111,3 +111,4 @@ class AuthResponse(BaseSchema):
     user_id: int
     tokens: TokenPair
     profile: dict | None = None
+    is_new_user: bool = False

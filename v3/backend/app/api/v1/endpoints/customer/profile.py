@@ -1,13 +1,15 @@
 """Customer profile endpoints."""
 
-from fastapi import APIRouter, HTTPException, status
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from app.api.v1.deps import ActiveCustomer, DBDependency
+from app.core.config import get_settings
 from app.models.customer import Customer, CustomerAddress, CustomerDevice
 from app.schemas.base import APIResponse
 from app.schemas.customer import (
-    AvatarUpdateRequest,
     CustomerAddressCreate,
     CustomerAddressOut,
     CustomerAddressUpdate,
@@ -82,10 +84,34 @@ async def update_me_put(
 async def update_avatar(
     customer: ActiveCustomer,
     db: DBDependency,
-    data: AvatarUpdateRequest,
+    file: UploadFile,
 ):
-    """Update customer avatar URL."""
-    customer.avatar_url = data.avatar_url
+    """Upload customer avatar image."""
+    settings = get_settings()
+
+    # Validate file type
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/"):
+        raise HTTPException(400, detail="File must be an image")
+
+    # Validate file size
+    contents = await file.read()
+    max_bytes = settings.max_upload_size_bytes
+    if len(contents) > max_bytes:
+        raise HTTPException(400, detail=f"File too large (max {settings.max_upload_size_mb} MB)")
+
+    # Save file to shared uploads directory (served by Caddy)
+    # Save file using phone number (unique per customer) for stable avatar URL
+    phone_slug = (customer.phone_number or f"user_{customer.id}").replace("+", "").replace(" ", "")
+    ext = Path(file.filename or "avatar").suffix or ".png"
+    filename = f"avatar_{phone_slug}{ext}"
+    upload_dir = Path("/root/fnb-super-app/uploads/avatars")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    filepath = upload_dir / filename
+    filepath.write_bytes(contents)
+
+    # Update customer
+    customer.avatar_url = f"/uploads/avatars/{filename}"
     await db.commit()
     await db.refresh(customer)
     return APIResponse(data=CustomerProfileOut.model_validate(customer))

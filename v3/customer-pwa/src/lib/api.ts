@@ -15,6 +15,7 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  config.url = mapUrl(config.url || '', config.method?.toUpperCase());
   const rawLocale = typeof window !== 'undefined' ? localStorage.getItem('loka-locale') : null;
   if (rawLocale) {
     try {
@@ -716,8 +717,7 @@ let _refreshPromise: Promise<{ access_token?: string; refresh_token?: string }> 
 
 api.interceptors.response.use(
   (res) => {
-    const mappedUrl = mapUrl(res.config.url || '', res.config.method?.toUpperCase());
-    res.data = mapV3Response(mappedUrl, res.data);
+    res.data = mapV3Response(res.config.url || '', res.data);
     return res;
   },
   async (error) => {
@@ -765,12 +765,9 @@ api.interceptors.response.use(
   }
 );
 
-// Override request methods to apply URL mapping and param rewriting
+// Override request methods to apply param rewriting and method overrides
 const originalRequest = api.request.bind(api);
 api.request = function(config: any) {
-  if (config.url) {
-    config.url = mapUrl(config.url, config.method?.toUpperCase());
-  }
   if (config.params) {
     config.params = rewriteParams(config.url, config.params);
   }

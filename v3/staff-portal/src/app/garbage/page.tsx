@@ -50,8 +50,8 @@ export default function GarbagePage() {
       <div style={{ padding: 24 }}>
         <PageHeader title="Garbage Disposal" />
         <div style={{ textAlign: "center", padding: "60px 20px" }}>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--color-success-light, #d4edda)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-            <CheckCircle size={32} color="var(--color-success, #28a745)" />
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--color-success-light)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+            <CheckCircle size={32} style={{ color: "var(--color-success)" }} />
           </div>
           <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>Report Submitted</h2>
           <p style={{ color: "var(--color-text-muted)", margin: "0 0 24px" }}>Garbage disposal report has been submitted for admin review.</p>
@@ -64,11 +64,11 @@ export default function GarbagePage() {
   return (
     <div style={{ padding: 24 }}>
       <PageHeader title="Garbage Disposal" />
-      {error && <div style={{ marginBottom: 16 }}><Alert variant="error">{error}</Alert></div>}
+      {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
       <div style={{ maxWidth: 600 }}>
         <div className="card" style={{ padding: 20, marginBottom: 16 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>Notes (optional)</h3>
-          <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Any notes about the garbage takeout..." rows={3} style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-light)", fontSize: 14, resize: "vertical", fontFamily: "inherit" }} maxLength={500} />
+          <textarea className="form-input" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Any notes about the garbage takeout..." rows={3} maxLength={500} />
         </div>
         <div className="card" style={{ padding: 20, marginBottom: 16 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Task Images</h3>

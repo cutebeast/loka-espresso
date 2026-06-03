@@ -52,7 +52,6 @@ export default function TablesPage() {
         if (cancelled) return;
         const list = Array.isArray(data) ? data : [];
         setStores(list);
-        if (list.length > 0) setSelectedStore(list[0].id);
       })
       .catch((e) => { console.error('stores:', e); });
     return () => { cancelled = true; };
@@ -104,7 +103,7 @@ export default function TablesPage() {
       </div>
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
         <select value={selectedStore || ""} onChange={e => setSelectedStore(Number(e.target.value))} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-          <option value="" disabled>Select a store</option>
+          <option value="" disabled>Please Select a Store</option>
           {physicalStores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
       </div>

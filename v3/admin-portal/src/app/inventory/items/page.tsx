@@ -39,14 +39,15 @@ export default function InventoryItemsPage() {
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
-      <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="table-header-bar" style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}><span style={{ fontSize: 13, fontWeight: 600 }}>Items</span></div>
+      <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", padding: "8px 16px", background: "var(--color-bg-white)", border: "1px solid var(--color-border-light)", borderTop: "none" }}>
         <span style={{ fontSize: 13, fontWeight: 600 }}>Category:</span>
         <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ padding: "4px 12px", fontSize: 13, borderRadius: "var(--radius-sm)" }}>
           <option value="">All</option>{categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
         </select>
       </div>
 
-      <div className="table-container" style={{ marginTop: 16 }}>
+      <div className="table-container" style={{ marginTop: 0 }}>
         <table className="data-table">
           <thead><tr><th>Name</th><th>Code</th><th>Type</th><th>Category</th><th>Unit</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
@@ -61,7 +62,7 @@ export default function InventoryItemsPage() {
                 <td><span className={`badge badge-sm ${item.is_active?"badge-green":"badge-gray"}`}>{item.is_active?"Active":"Inactive"}</span></td>
                 <td>
                   <button onClick={()=>router.push(`/inventory/items/${item.id}`)} className="btn btn-ghost btn-sm" style={{color:"var(--color-info)",marginRight:4}}><Edit2 size={14}/></button>
-                  <button onClick={async()=>{if(confirm("Delete?")){await api.del(`/admin/inventory/items/${item.id}`);fetchData();}}} className="btn btn-ghost btn-sm" style={{color:"var(--color-error)"}}><Trash2 size={14}/></button>
+                  <button onClick={async()=>{if(confirm("Delete?")){try{await api.del(`/admin/inventory/items/${item.id}`);fetchData();}catch(e){console.error(e);}}}} className="btn btn-ghost btn-sm" style={{color:"var(--color-error)"}}><Trash2 size={14}/></button>
                 </td>
               </tr>
             ))}

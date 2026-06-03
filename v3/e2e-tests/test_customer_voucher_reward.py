@@ -17,7 +17,7 @@ MENU_ITEM_ID = None  # populated in test
 
 @pytest.mark.customer
 @pytest.mark.asyncio
-async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: str, store_id: int):
+async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: str, store_id: int, admin_token: str, admin_headers: dict):
     """Place order with a valid voucher_code — discount should be applied."""
     # Login as customer
     r_login = await client.post(f"{base_url}/auth/login", json={
@@ -27,18 +27,8 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
         pytest.skip("Customer not available")
     token = r_login.json().get("tokens", {}).get("access_token", "")
 
-    # Login as admin to create test voucher
-    r_admin = await client.post(f"{base_url}/admin/auth/login", json={
-        "email": ADMIN_EMAIL,
-        "password": ADMIN_PASSWORD,
-    })
-    assert r_admin.status_code == 200, f"Admin login failed: {r_admin.text}"
-    admin_token = r_admin.json().get("tokens", {}).get("access_token", "")
-
     # Create a voucher definition
-    vd = await client.post(f"{base_url}/admin/vouchers", headers={
-        "Authorization": f"Bearer {admin_token}",
-    }, json={
+    vd = await client.post(f"{base_url}/admin/vouchers", headers=admin_headers, json={
         "voucher_type": "fixed_amount_off",
         "display_title": "E2E Test Voucher",
         "discount_value": 5.00,
@@ -65,7 +55,7 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
             pytest.skip("Cannot determine customer ID from /me response")
         r_assign = await client.post(
             f"{base_url}/admin/customers/{cust_id}/award-voucher",
-            headers={"Authorization": f"Bearer {admin_token}"},
+            headers=admin_headers,
             json={"voucher_id": vd_id or 1, "reason": "E2E test assignment"},
         )
     else:

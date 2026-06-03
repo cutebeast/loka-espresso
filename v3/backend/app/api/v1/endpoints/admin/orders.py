@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import Field
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func, text, case
 from sqlalchemy.orm import joinedload
 
 from app.api.v1.deps import CurrentAdmin, DBDependency, get_staff_store_id_from_request, require_store_admin, _get_admin_store_ids, _get_admin_role_keys
@@ -666,14 +666,14 @@ async def pay_with_wallet(
         select(
             func.coalesce(
                 func.sum(
-                    func.case(
+                    case(
                         (WalletLedgerEntry.entry_type.in_(["credit", "release", "adjustment"]), WalletLedgerEntry.amount),
                         else_=0,
                     )
                 )
                 -
                 func.sum(
-                    func.case(
+                    case(
                         (WalletLedgerEntry.entry_type.in_(["debit", "hold"]), WalletLedgerEntry.amount),
                         else_=0,
                     )

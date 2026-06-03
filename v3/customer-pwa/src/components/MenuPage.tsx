@@ -47,18 +47,14 @@ export default function MenuPage() {
     setLoading(true);
     setLoadError(false);
     try {
-      const res = await api.get(`/menu/categories`, { signal });
-      const data = res.data;
-      if (data && typeof data === 'object' && data.categories) {
-        setCategories(Array.isArray(data.categories) ? data.categories : []);
-        setMenuItems(Array.isArray(data.items) ? data.items : []);
-      } else if (Array.isArray(data)) {
-        setCategories([]);
-        setMenuItems(data);
-      } else {
-        setCategories([]);
-        setMenuItems([]);
-      }
+      const [catRes, itemRes] = await Promise.all([
+        api.get(`/menu/categories`, { signal }),
+        api.get(`/menu/items`, { signal }),
+      ]);
+      const catData = catRes.data;
+      const itemData = itemRes.data;
+      setCategories(Array.isArray(catData) ? catData : (catData?.categories || catData?.items || []));
+      setMenuItems(Array.isArray(itemData) ? itemData : (itemData?.items || []));
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       setCategories([]);

@@ -111,18 +111,18 @@ export default function AllergenEditPage() {
       </div>
 
       {loc === "en" ? (
-        <div className="card" style={{ padding: 24, maxWidth: 500 }}>
+        <div className="card" style={{ padding: 24, maxWidth: 600 }}>
           <div className="df-grid">
-            <div className="df-field"><label className="form-label">Allergen Key</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.allergen_key || ""} onChange={e => setForm({ ...form, allergen_key: e.target.value })} disabled /></div>
-            <div className="df-field"><label className="form-label">Display Name *</label><input required className="w-full border rounded px-3 py-2 text-sm" value={form.display_name || ""} onChange={e => setForm({ ...form, display_name: e.target.value })} /></div>
-            <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="form-label">Description</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+            <div className="df-field"><label className="form-label">Allergen Key</label><input value={form.allergen_key || ""} onChange={e => setForm({ ...form, allergen_key: e.target.value })} disabled /></div>
+            <div className="df-field"><label className="form-label">Display Name *</label><input required value={form.display_name || ""} onChange={e => setForm({ ...form, display_name: e.target.value })} /></div>
+            <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="form-label">Description</label><input value={form.description || ""} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
             <div className="df-field">
               <label className="form-label">Severity</label>
-              <select className="w-full border rounded px-3 py-2 text-sm" value={form.severity || "high"} onChange={e => setForm({ ...form, severity: e.target.value })}>
+              <select value={form.severity || "high"} onChange={e => setForm({ ...form, severity: e.target.value })}>
                 {SEVERITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
-            <div className="df-field"><label className="form-label">Color</label><div style={{ display: "flex", alignItems: "center", gap: 8 }}><input type="color" value={form.color_hex || "#991B1B"} onChange={e => setForm({ ...form, color_hex: e.target.value })} style={{ width: 40, height: 36, border: "none", cursor: "pointer" }} /><input className="border rounded px-3 py-2 text-sm" style={{ flex: 1 }} value={form.color_hex || ""} onChange={e => setForm({ ...form, color_hex: e.target.value })} /></div></div>
+            <div className="df-field"><label className="form-label">Color</label><div style={{ display: "flex", alignItems: "center", gap: 8 }}><input type="color" value={form.color_hex || "#991B1B"} onChange={e => setForm({ ...form, color_hex: e.target.value })} style={{ width: 40, height: 36, border: "none", cursor: "pointer" }} /><input style={{ flex: 1 }} value={form.color_hex || ""} onChange={e => setForm({ ...form, color_hex: e.target.value })} /></div></div>
             <div className="df-field"><label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" checked={!!form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Active</label></div>
           </div>
           <div className="df-actions" style={{ marginTop: 16 }}>

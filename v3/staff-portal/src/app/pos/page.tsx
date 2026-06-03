@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Alert from "@/components/Alert";
 import SkeletonCard from "@/components/SkeletonCard";
+import EmptyState from "@/components/EmptyState";
 import PosSuccessScreen from "@/components/pos/PosSuccessScreen";
 import PosCheckoutPanel from "@/components/pos/PosCheckoutPanel";
 import PosModifierDrawer from "@/components/pos/PosModifierDrawer";
@@ -269,8 +270,8 @@ export default function PosPage() {
               </button>
             ))}
             {pos.filteredItems.length === 0 && (
-              <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 40, color: "var(--color-text-muted)" }}>
-                No items found.
+              <div style={{ gridColumn: "1/-1" }}>
+                <EmptyState icon={<Search size={48} />} title="No items found" description="Try changing the category or search term" />
               </div>
             )}
           </div>

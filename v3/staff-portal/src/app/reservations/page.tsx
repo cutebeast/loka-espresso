@@ -17,7 +17,7 @@ import Modal from "@/components/Modal";
 import {
   RefreshCw, CalendarDays, AlertCircle, CheckCircle2,
   LogIn, Check, X, UtensilsCrossed, Users,
-  Bell
+  Bell, Ban
 } from "lucide-react";
 
 const CANCELLED_STATUSES: ReservationStatus[] = ["cancelled_by_guest", "cancelled_by_merchant"];
@@ -274,9 +274,14 @@ export default function ReservationsPage() {
                           </button>
                         )}
                         {(res.status === "requested" || res.status === "confirmed") && (
-                          <button className="btn btn-sm btn-danger" onClick={() => handleUpdateStatus(res.id, "cancelled_by_merchant")} disabled={updatingId === res.id} aria-label="Cancel reservation">
-                            <X size={12} />
-                          </button>
+                          <>
+                            <button className="btn btn-sm btn-ghost" onClick={() => handleUpdateStatus(res.id, "no_show")} disabled={updatingId === res.id} aria-label="Mark no show" style={{ color: "var(--color-text-muted)" }}>
+                              <Ban size={12} /> No Show
+                            </button>
+                            <button className="btn btn-sm btn-danger" onClick={() => handleUpdateStatus(res.id, "cancelled_by_merchant")} disabled={updatingId === res.id} aria-label="Cancel reservation">
+                              <X size={12} />
+                            </button>
+                          </>
                         )}
                         {res.status === "seated" && (
                           <button className="btn btn-sm btn-primary" onClick={() => router.push(`/pos?table=${res.dining_table_id}&type=dine_in`)}>

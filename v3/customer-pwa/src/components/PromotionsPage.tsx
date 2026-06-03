@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import type { PromoBanner } from '@/lib/api';
 import { VoucherSection } from './promotions';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { Skeleton } from '@/components/ui';
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface BannerStatus {
@@ -199,6 +200,13 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
       </div>
 
       {/* Horizontal carousel */}
+      {loading && (
+        <div className="promotions-carousel-wrap">
+          <div className="promotions-carousel" style={{ gap: 12 }}>
+            {[1,2,3].map(i => <div key={i} style={{ minWidth: 260, height: 160, borderRadius: 12 }}><Skeleton className="skeleton" /></div>)}
+          </div>
+        </div>
+      )}
       {!loading && promotions.length > 0 && (
         <div className="promotions-carousel-wrap">
           <div className="promotions-carousel">

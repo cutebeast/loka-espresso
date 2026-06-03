@@ -1,15 +1,15 @@
 # FNB Enterprise v3 — Loka Espresso
 
-> **Status**: Live | **Last Audit**: Round 15 (2026-05-27) | **TS**: 0 errors | **Coverage**: 24/24 features | **Staff pages**: 14/14 | **Admin pages**: 31/31 | **E2E**: 24 test files
+> **Status**: Live | **Last Audit**: Round 17 (2026-06-03) | **TS**: 0 errors | **Staff pages**: 16/16 | **Admin pages**: 120/120 | **PWA pages**: 26/26 | **E2E**: 23 passed, 0 failed
 
 ## Services
 
-| Service | Stack | Port | Build |
-|---------|-------|------|-------|
-| **Backend** | FastAPI + SQLAlchemy async | 13800 | `uvicorn app.main:app` |
-| **Staff Portal** | Next.js 16 + pure CSS | 13820 | `npm run build && npx next start -p 13820` |
-| **Admin Portal** | Next.js 16 + pure CSS | 13830 | `npm run build && npx next start -p 13830` |
-| **Customer PWA** | Next.js 16 + pure CSS | 13810 | `npm run build && npx next start -p 13810` |
+| Service | Stack | Port | URL |
+|---------|-------|------|-----|
+| **Backend** | FastAPI + SQLAlchemy async | 13800 | — |
+| **Staff Portal** | Next.js 16 + pure CSS | 13820 | staff.loyaltysystem.uk |
+| **Admin Portal** | Next.js 16 + pure CSS | 13830 | admin.loyaltysystem.uk |
+| **Customer PWA** | Next.js 16 + pure CSS | 13810 | app.loyaltysystem.uk |
 
 ## Quick Start
 
@@ -520,3 +520,65 @@ Full audit of uncharted areas. **6 bugs fixed — 0 false positives.**
 - **TypeScript**: 0 errors all 3 portals
 - **Python**: All changed files compile
 - **Services**: All 4 domains HTTPS 200
+
+## Round 17 — CSS Branding Consistency + Full PWA Audit (2026-06-03)
+
+Complete 5-domain audit: admin, staff, PWA, backend, e2e-tests. **23 bugs fixed — 0 false positives.**
+
+### CSS Branding (Admin + Staff)
+- Replaced 5 core semantic color tokens with brand warm Turkish tones: success `#16A34A`→`#7AAA7A`, error `#DC2626`→`#C75050`, warning `#D97706`→`#C9A84C`, copper `#9B6625`→`#C4893A`, info `#2563EB`→`#5A707A`
+- Shadows changed from cool gray to warm brown tint, added `--font-display` (Playfair Display)
+- Updated 50+ component CSS classes: badges, alerts, guide cards, tables-admin, login across both portals
+- Both portals now match PWA & design-system spec
+
+### Admin Portal — UI Consistency
+- **Store selector**: 3 pages auto-selected first store → now default to "Please Select a Store" with empty-state prompt. All 12 store-scoped pages unified.
+- **Staff list**: missing Edit button (only had Delete) → added `Edit2` icon per row
+- **Card widths**: standardized edit forms (`staff/[id]` 500→720, `allergens`/`di-tags` 500→600)
+- **Input styling**: removed `inputClass` utility constant from `stores/[id]`, removed inline utility classes from `allergens`/`di-tags` → bare inputs styled by CSS
+- **Table header bars**: added `.table-header-bar` to 6 list pages that were missing them
+- **Delete safety**: wrapped bare `api.del` calls in try/catch (menu/items, inventory/items)
+- **Error states**: added to shift page (was silent), added to dashboard
+- **Loading fix**: promotions page `loading` started `true` (was `false` — flashed empty)
+
+### Staff Portal — UI Consistency
+- **Form inputs**: 5 ops pages (wastage, equipment, inventory, garbage, grease-trap) switched from inline styles to `.form-input` CSS class
+- **Button variants**: added proper `btn-` classes to wastage (`btn-danger`), equipment/inventory (`btn-outline`)
+- **Alert dismiss**: added `onDismiss` to 5 pages that were non-dismissible
+- **maxWidth**: added to equipment (900), inventory (900), wastage (700)
+- **Empty states**: pos + time-clock switched from inline text to `<EmptyState>` component
+- **Error states**: dashboard added error display (was silent `console.error`)
+- **Reservations**: added "No Show" button for `requested`/`confirmed` reservations
+- **Back buttons**: removed from inventory + wastage (inconsistent with other 11 pages)
+
+### Customer PWA — Major Fixes
+- **Menu items not loading**: `GET /menu/categories` returned only categories (0 items). Now calls both `/menu/categories` AND `/menu/items` in parallel.
+- **Profile "Guest" bug**: `/me` returns `{profile: {display_name: "Test"}, ...}` but PWA stored wrapper as `user` → `user.name` always `undefined`. Fixed all 3 `setUser` call sites to extract `raw.profile`.
+- **Avatar upload**: backend expected JSON `{avatar_url}` but PWA sends file → rewrote endpoint to accept `UploadFile`, saves to shared uploads dir, filenames use phone number (`avatar_{phone}.png`)
+- **Wallet top-up 422**: backend `TopUpRequest` required `payment_method_id` (int), PWA sent only `{amount}` → made optional
+- **Wallet payment modal**: replaced simple confirmation dialog with proper payment method selection (Credit Card, FPX Banking, E-Wallet) with icons and descriptions
+- **Login auto-register**: `/auth/login` now auto-creates account with `phone_number` as `display_name` (was "Guest") → returns `is_new_user: true`
+- **Unmapped URL 404 noise**: `mapUrl` was in response interceptor → first request hit wrong URL (404), retry used correct URL. Moved to **request interceptor** — all URLs mapped before any request fires.
+- **Checkin page not rendered**: imported but never had a `case` in AppShell's renderPage switch → added
+- **Rewards/me 500 crash**: `selectinload` used but not imported → added `from sqlalchemy.orm import selectinload`
+- **Wallet payment 500 crash**: `func.case(else_=0)` → `case()` from sqlalchemy (wrong function API)
+- **Referral page crash**: `stats.points_earned.toLocaleString()` on undefined → added `?.` guard
+- **Loading states**: added skeleton to PromotionsPage (was blank white), MyRewardsPage (flashed empty)
+
+### Backend Fixes
+- Avatar endpoint rewritten: accepts file upload instead of JSON URL
+- Wallet topup `payment_method_id` made optional
+- Rewards selectinload import added
+- Orders wallet payment `case()` import fixed
+
+### E2E Tests
+- 3 test assertion fixes: clock-in 403 (admin can't clock in), address field names (`address_label`→`label`), cross-role token (skip if dual-access)
+- Voucher test switched from inline admin login to `admin_headers` fixture (avoids rate-limiting)
+- **23 passed, 0 failed**
+
+### Verification
+- **TypeScript**: 0 errors across all 3 portals
+- **PWA endpoints**: 26/26 verified (all 200/401/400 — none 404 or 500)
+- **PWA pages**: 20/20 hash pages HTTP 200 at domain
+- **CSS**: brand colors confirmed in production CSS via `admin.loyaltysystem.uk` and `staff.loyaltysystem.uk`
+- **E2E**: 23 passed, 9 skipped (token fixture only)

@@ -114,10 +114,10 @@ export default function EquipmentPage() {
     s === "broken" ? "red" : s === "maintenance" ? "amber" : "green";
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
       <PageHeader title="Equipment" subtitle="Daily equipment check and issue reporting" />
-      {success && <Alert variant="success">{success}</Alert>}
-      {error && <Alert variant="error">{error}</Alert>}
+      {success && <Alert variant="success" onDismiss={() => setSuccess("")} autoDismiss={3000}>{success}</Alert>}
+      {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
 
       {reporting !== null && (
         <div className="card" style={{ padding: 16, marginBottom: 16 }}>
@@ -125,10 +125,11 @@ export default function EquipmentPage() {
           <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 4 }}>
             {items.find((e) => e.id === reporting)?.name}
           </p>
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>Condition</label>
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">Condition</label>
               <select
+                className="form-input"
                 value={reportStatus}
                 onChange={(e) => {
                   setReportStatus(e.target.value);
@@ -136,21 +137,20 @@ export default function EquipmentPage() {
                     setReportDesc("Checked OK");
                   }
                 }}
-                style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
               >
                 <option value="operational">Operational — Checked OK</option>
                 <option value="maintenance">Maintenance Needed</option>
                 <option value="broken">Broken / Not Working</option>
               </select>
             </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4 }}>Notes</label>
+            <div className="form-group">
+              <label className="form-label">Notes</label>
               <textarea
+                className="form-input"
                 value={reportDesc}
                 onChange={(e) => setReportDesc(e.target.value)}
                 placeholder="Describe the condition or issue (min 5 characters)..."
                 rows={3}
-                style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", resize: "vertical" }}
               />
             </div>
 
@@ -220,7 +220,7 @@ export default function EquipmentPage() {
               <button
                 type="button"
                 onClick={() => openReport(e.id)}
-                className="btn btn-sm"
+                className="btn btn-sm btn-outline"
                 style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}
                 title="Check & report"
               >

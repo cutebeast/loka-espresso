@@ -32,7 +32,8 @@ export default function MenuItemsPage() {
         <button onClick={() => router.push("/menu/items/new")} className="btn btn-primary btn-sm"><Plus size={16} /> Add Item</button>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
-      <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center" }}>
+      <div className="table-header-bar" style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}><span style={{ fontSize: 13, fontWeight: 600 }}>Items</span></div>
+      <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center", padding: "8px 16px", background: "var(--color-bg-white)", border: "1px solid var(--color-border-light)", borderTop: "none" }}>
         <label htmlFor="category-filter" style={{ fontSize: 13, fontWeight: 600 }}>Category:</label>
         <select id="category-filter" value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ padding: "4px 12px", fontSize: 13, borderRadius: "var(--radius-sm)" }}>
           <option value="">All ({items.length})</option>
@@ -65,7 +66,7 @@ export default function MenuItemsPage() {
                 <td><span className={`badge badge-sm ${item.is_available ? "badge-green" : "badge-gray"}`}>{item.is_available ? "Active" : "Inactive"}</span></td>
                 <td>
                   <button onClick={() => router.push(`/menu/items/${item.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}><Edit2 size={14} /></button>
-                  <button onClick={async () => { if (confirm("Delete?")) { await api.del(`/admin/menu/items/${item.id}`); const d = await api.getRaw<{items:any[]}>("/admin/menu/items?per_page=100"); setItems(d.items||[]); } }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                  <button onClick={async () => { if (confirm("Delete?")) { try { await api.del(`/admin/menu/items/${item.id}`); const d = await api.getRaw<{items:any[]}>("/admin/menu/items?per_page=100"); setItems(d.items||[]); } catch (e) { console.error(e); } } }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
                 </td>
               </tr>
             ))}

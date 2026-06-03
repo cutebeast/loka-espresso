@@ -9,6 +9,10 @@ import {
   Plus,
   Store,
   MapPin,
+  CreditCard,
+  Smartphone,
+  Building,
+  Shield,
 } from 'lucide-react';
 import { useWalletStore } from '@/stores/walletStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -34,6 +38,8 @@ export default function WalletPage() {
   const [toppingUp, setToppingUp] = useState(false);
   const [loadingTx, setLoadingTx] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<string>('');
 
   const fetchBalance = useCallback(async () => {
     if (!useAuthStore.getState().isAuthenticated) return;
@@ -84,7 +90,8 @@ export default function WalletPage() {
       showToast(t('wallet.minTopUp'), 'error');
       return;
     }
-    setShowConfirm(true);
+    setSelectedPayment('');
+    setShowPayment(true);
   };
 
   const executeTopUp = async () => {
@@ -238,6 +245,77 @@ export default function WalletPage() {
         </div>
         </GuestGate>
       </div>
+
+      {/* Payment Method Modal */}
+      {showPayment && (
+        <div className="profile-modal-overlay show" onClick={() => setShowPayment(false)}>
+          <div className="profile-modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <button className="profile-modal-close" onClick={() => setShowPayment(false)} style={{ position: 'absolute', right: 16, top: 16 }}>✕</button>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{t('wallet.paymentMethod')}</h3>
+            <p style={{ fontSize: 13, color: 'var(--loka-text-muted)', marginBottom: 20 }}>
+              {t('wallet.selectPaymentMethod')} — {formatPrice(getTopUpAmount() || 0)}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { id: 'card', icon: <CreditCard size={20} />, label: t('wallet.creditDebitCard'), desc: t('wallet.cardDesc') },
+                { id: 'fpx', icon: <Building size={20} />, label: t('wallet.fpxBanking'), desc: t('wallet.fpxDesc') },
+                { id: 'ewallet', icon: <Smartphone size={20} />, label: t('wallet.eWallet'), desc: t('wallet.eWalletDesc') },
+              ].map(method => (
+                <button
+                  key={method.id}
+                  onClick={() => setSelectedPayment(selectedPayment === method.id ? '' : method.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12,
+                    border: selectedPayment === method.id ? '2px solid var(--loka-primary)' : '1px solid var(--loka-border-light)',
+                    background: selectedPayment === method.id ? 'var(--loka-primary-light, rgba(59,74,26,0.08))' : 'var(--loka-bg-white)',
+                    cursor: 'pointer', textAlign: 'left', width: '100%',
+                  }}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: selectedPayment === method.id ? 'var(--loka-primary)' : 'var(--loka-bg-muted)',
+                    color: selectedPayment === method.id ? 'white' : 'var(--loka-text-muted)',
+                  }}>
+                    {method.icon}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{method.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--loka-text-muted)' }}>{method.desc}</div>
+                  </div>
+                  {selectedPayment === method.id && (
+                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--loka-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Shield size={12} color="white" />
+                    </div>
+                  )}
+                </button>
+              ))}
+
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: 10, borderRadius: 8,
+                background: 'var(--loka-warning-light, #FDF5E6)', marginTop: 4,
+              }}>
+                <Shield size={14} style={{ color: 'var(--loka-warning)', flexShrink: 0 }} />
+                <span style={{ fontSize: 11, color: 'var(--loka-text-muted)' }}>
+                  {t('wallet.paymentPlaceholder')}
+                </span>
+              </div>
+            </div>
+
+            <div className="profile-modal-btns" style={{ marginTop: 16 }}>
+              <button className="profile-modal-btn profile-modal-btn-cancel" onClick={() => setShowPayment(false)}>{t('common.cancel')}</button>
+              <button
+                className="profile-modal-btn profile-modal-btn-confirm"
+                onClick={() => { setShowPayment(false); executeTopUp(); }}
+                disabled={!selectedPayment || toppingUp}
+                style={{ opacity: !selectedPayment ? 0.5 : 1 }}
+              >
+                {toppingUp ? t('common.processing') : `${t('common.pay')} ${formatPrice(getTopUpAmount() || 0)}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Dialog */}
       {showConfirm && (

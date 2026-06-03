@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { usePolling } from "@/hooks/usePolling";
 import { api } from "@/lib/api";
 import SkeletonCard from "@/components/SkeletonCard";
+import Alert from "@/components/Alert";
 import {
   Armchair, CreditCard, CalendarCheck, Clock, UserCircle, Wallet,
   ChefHat, ClipboardList, Wrench, Package, AlertTriangle, Droplets, Trash2
@@ -44,12 +45,13 @@ export default function HomePage() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchData = async () => {
     try {
       const data = await api.get<DashboardData>("/staff/dashboard");
       if (data) setData(data);
-    } catch (e) { console.error("Dashboard fetch failed:", e); } finally { setLoading(false); }
+    } catch (e) { console.error("Dashboard fetch failed:", e); setError("Unable to load dashboard"); } finally { setLoading(false); }
   };
 
   usePolling(fetchData, [], { interval: 30000 });
@@ -69,6 +71,8 @@ export default function HomePage() {
 
       {loading ? (
         <SkeletonCard count={4} />
+      ) : error ? (
+        <Alert variant="error" onDismiss={() => { setError(""); fetchData(); }}>{error}</Alert>
       ) : (
         <>
           {/* Order Management */}

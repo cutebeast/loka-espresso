@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Edit2 } from "lucide-react";
 
 interface Staff { id: number; principal_id: number; display_name: string; email_address?: string; phone_number?: string; store_id: number; store_name?: string; has_pin: boolean; is_active: boolean; roles: { id: number; name: string }[]; }
 interface Store { id: number; store_name: string; }
@@ -78,6 +78,7 @@ export default function StaffPage() {
               </td>
               <td><span className={`badge badge-sm ${s.is_active ? "badge-green" : "badge-gray"}`}>{s.is_active ? "Active" : "Inactive"}</span></td>
               <td>
+                <button type="button" onClick={() => router.push(`/staff/${s.id}`)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-info)", marginRight: 4 }}><Edit2 size={14} /></button>
                 <button type="button" onClick={() => handleDelete(s.id)} disabled={deletingId === s.id} className="btn btn-ghost btn-sm" style={{ color: deletingId === s.id ? "var(--color-text-muted)" : "var(--color-error)" }}><Trash2 size={14} /></button>
               </td>
             </tr>

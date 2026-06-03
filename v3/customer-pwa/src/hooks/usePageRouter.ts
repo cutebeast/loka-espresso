@@ -14,7 +14,7 @@ const VALID_PAGES: PageId[] = [
 export const SUB_PAGES: PageId[] = [
   'cart', 'checkout', 'order-detail', 'wallet', 'history',
   'promotions', 'information', 'my-rewards', 'account-details',
-  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'events',
+  'payment-methods', 'saved-addresses', 'notifications', 'help-support', 'legal', 'settings', 'my-card', 'reservations', 'events', 'referral', 'checkin',
 ];
 
 const GUEST_RESTRICTED: PageId[] = ['profile', 'orders', 'wallet', 'checkout', 'payment-methods', 'notifications', 'my-rewards', 'account-details', 'saved-addresses', 'my-card', 'referral', 'order-detail', 'history', 'settings', 'reservations'];

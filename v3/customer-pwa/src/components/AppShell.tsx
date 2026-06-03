@@ -256,6 +256,7 @@ export default function AppShell() {
       case 'order-detail': return <LazyRenderer pageKey="order-detail" />;
       case 'reservations': return <LazyRenderer pageKey="reservations" onBack={onBackProfile} />;
       case 'events': return <LazyRenderer pageKey="events" onBack={onBackProfile} />;
+      case 'checkin': return <LazyRenderer pageKey="checkin" onBack={onBackHome} />;
       default: return <HomePage />;
     }
   }, [page, handleNavClick, user?.name, unreadCount, onNotificationClick, onQRScanClick, onBackHome, onBackProfile, pageParams]);

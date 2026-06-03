@@ -50,6 +50,7 @@ export default function StoresPage() {
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
+      <div className="table-header-bar"><span style={{ fontSize: 13, fontWeight: 600 }}>Stores</span></div>
       <div className="table-container">
         <table className="data-table">
           <thead><tr><th>Store</th><th>City</th><th>State</th><th>Postal</th><th>Country</th><th>Phone</th><th>Hours</th><th>Status</th><th>Actions</th></tr></thead>

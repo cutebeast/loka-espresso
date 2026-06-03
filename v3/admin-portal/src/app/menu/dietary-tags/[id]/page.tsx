@@ -59,19 +59,19 @@ load();
       <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "2px solid var(--color-border-light)", paddingBottom: 0 }}>{L.map(lc => (<button key={lc.code} onClick={() => setLoc(lc.code)} style={{ padding: "10px 20px", fontSize: 13, fontWeight: loc === lc.code ? 700 : 400, border: "none", borderBottom: loc === lc.code ? "3px solid var(--color-primary)" : "3px solid transparent", background: loc === lc.code ? "rgba(59,74,26,0.05)" : "transparent", cursor: "pointer", color: loc === lc.code ? "var(--color-primary)" : "var(--color-text-muted)", borderRadius: "4px 4px 0 0" }}>{lc.flag} {lc.label}</button>))}</div>
 
       {loc === "en" ? (
-        <div className="card" style={{ padding: 24, maxWidth: 500 }}>
+        <div className="card" style={{ padding: 24, maxWidth: 600 }}>
           <div className="df-grid">
-            <div className="df-field"><label className="form-label">Display Name *</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.display_name || ""} onChange={e => setForm({ ...form, display_name: e.target.value })} /></div>
-            <div className="df-field"><label className="form-label">Key</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.tag_key || ""} onChange={e => setForm({ ...form, tag_key: e.target.value })} /></div>
+            <div className="df-field"><label className="form-label">Display Name *</label><input value={form.display_name || ""} onChange={e => setForm({ ...form, display_name: e.target.value })} /></div>
+            <div className="df-field"><label className="form-label">Key</label><input value={form.tag_key || ""} onChange={e => setForm({ ...form, tag_key: e.target.value })} /></div>
             <div className="df-field" style={{ gridColumn: "1/-1" }}>
               <label className="form-label">Icon</label>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button type="button" onClick={() => setShowEmoji(!showEmoji)} style={{ fontSize: 22, width: 44, height: 44, border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", background: "white", cursor: "pointer" }}>{form.icon || "🥬"}</button>
-                <input className="border rounded px-3 py-2 text-sm" style={{ flex: 1 }} value={form.icon || ""} onChange={e => setForm({ ...form, icon: e.target.value })} placeholder="Or type emoji" />
+                <input style={{ flex: 1 }} value={form.icon || ""} onChange={e => setForm({ ...form, icon: e.target.value })} placeholder="Or type emoji" />
               </div>
               {showEmoji && (<div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4, padding: 8, background: "var(--color-bg-muted)", borderRadius: "var(--radius-sm)" }}>{EMOJIS.map(e => (<button key={e} type="button" onClick={() => { setForm({ ...form, icon: e }); setShowEmoji(false); }} style={{ fontSize: 20, width: 34, height: 34, border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", cursor: "pointer", background: form.icon === e ? "rgba(59,74,26,0.15)" : "white" }}>{e}</button>))}</div>)}
             </div>
-            <div className="df-field"><label className="form-label">Color</label><div style={{display:"flex",alignItems:"center",gap:8}}><input type="color" value={form.color_hex||"#22C55E"} onChange={e=>setForm({...form,color_hex:e.target.value})} style={{width:40,height:36,border:"none",cursor:"pointer"}}/><input className="border rounded px-3 py-2 text-sm" style={{flex:1}} value={form.color_hex||""} onChange={e=>setForm({...form,color_hex:e.target.value})}/></div></div>
+            <div className="df-field"><label className="form-label">Color</label><div style={{display:"flex",alignItems:"center",gap:8}}><input type="color" value={form.color_hex||"#22C55E"} onChange={e=>setForm({...form,color_hex:e.target.value})} style={{width:40,height:36,border:"none",cursor:"pointer"}}/><input style={{flex:1}} value={form.color_hex||""} onChange={e=>setForm({...form,color_hex:e.target.value})}/></div></div>
             <div className="df-field"><label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" checked={!!form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Active</label></div>
           </div>
           <div className="df-actions" style={{ marginTop: 16 }}><button type="button" onClick={() => r.push("/menu/dietary-tags")} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save"}</button></div>

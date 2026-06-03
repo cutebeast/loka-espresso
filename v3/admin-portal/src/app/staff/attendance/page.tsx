@@ -14,7 +14,7 @@ export default function StaffTimeEventsPage() {
   const [eventTypeFilter, setEventTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
 
-  useEffect(() => { api.getRaw<any>("/admin/stores?per_page=50").then(d => { const l = d.items||[]; setStores(l); if (l.length>0) setStoreId(String(l[0].id)); }).catch((e)=>{console.error('stores:',e)}); }, []);
+  useEffect(() => { api.getRaw<any>("/admin/stores?per_page=50").then(d => { const l = d.items||[]; setStores(l); }).catch((e)=>{console.error('stores:',e)}); }, []);
 
   const fetchData = useCallback(() => { setLoading(true);
     const qs = new URLSearchParams({ per_page: "50" }); if (storeId) qs.set("store_id", storeId); if (eventTypeFilter) qs.set("event_type", eventTypeFilter); if (dateFilter) { qs.set("date_from", dateFilter); qs.set("date_to", dateFilter); }
@@ -37,11 +37,17 @@ export default function StaffTimeEventsPage() {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
-        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select>
+        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">Please Select a Store</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}</select>
         <select value={eventTypeFilter} onChange={e => setEventTypeFilter(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}><option value="">All Types</option><option value="clock_in">Clock In</option><option value="clock_out">Clock Out</option><option value="start_break">Start Break</option><option value="end_break">End Break</option></select>
         <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />
       </div>
 
+      {!storeId ? (
+        <div style={{ textAlign: "center", padding: 60, color: "var(--color-text-muted)" }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: "0 auto 12px", opacity: 0.4 }}><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2" /></svg>
+          <p style={{ fontSize: 14 }}>Please select a store to view time events</p>
+        </div>
+      ) : (<>
       <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} events</span></div>
       <div className="table-container"><table className="data-table">
         <thead><tr><th>Staff</th><th>Event</th><th>Timestamp</th><th style={{ width: 80 }}>Status</th><th style={{ width: 80 }}>Actions</th></tr></thead>
@@ -58,6 +64,7 @@ export default function StaffTimeEventsPage() {
           ))}
         </tbody>
       </table></div>
+      </>)}
     </div>
   );
 }

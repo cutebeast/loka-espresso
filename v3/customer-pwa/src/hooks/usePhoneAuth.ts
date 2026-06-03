@@ -6,7 +6,6 @@ import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { normalizePhone } from '@/lib/phone';
 import api from '@/lib/api';
-import type { UserProfile } from '@/lib/api';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export type AuthStep = 'phone' | 'otp' | 'profile';
@@ -14,7 +13,13 @@ export type AuthStep = 'phone' | 'otp' | 'profile';
 async function fetchAndSetUser() {
   try {
     const me = await api.get('/me');
-    useAuthStore.getState().setUser(me.data as UserProfile);
+    const raw = me.data;
+    const profile = raw?.profile || raw;
+    useAuthStore.getState().setUser({
+      ...profile,
+      addresses: raw?.addresses || [],
+      referral_code: raw?.referral_code || profile?.referral_code || '',
+    } as any);
   } catch (err) { console.error("Failed to fetch user profile:", err); }
 }
 
@@ -79,18 +84,16 @@ export function usePhoneAuth() {
         if (tokens.refresh_token) localStorage.setItem('refreshToken', tokens.refresh_token);
       }
       await fetchAndSetUser();
+      const isNew = res.data?.is_new_user ?? false;
+      if (isNew) {
+        setIsNewUser(true);
+        setStep('profile');
+        return false;
+      }
       setIsNewUser(false);
       return true;
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 404) {
-        setIsNewUser(true);
-        setStep('profile');
-      } else if (status === 429) {
-        setError(t('auth.tooManyAttempts'));
-      } else {
-        setError(getApiErrorMessage(err, t('auth.otpInvalidError')));
-      }
+      setError(getApiErrorMessage(err, t('auth.otpInvalidError')));
       return false;
     } finally {
       setLoading(false);

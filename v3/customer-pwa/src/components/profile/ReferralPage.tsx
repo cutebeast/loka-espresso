@@ -131,7 +131,7 @@ export default function ReferralPage() {
                   <div className="referral-big-label">{t('referral.referrals')}</div>
                 </div>
                 <div className="referral-big-stat">
-                  <div className="referral-big-num">{stats.points_earned.toLocaleString()}</div>
+                  <div className="referral-big-num">{stats.points_earned?.toLocaleString() ?? "0"}</div>
                   <div className="referral-big-label">{t('referral.pointsEarned')}</div>
                 </div>
                 <div className="referral-big-stat">

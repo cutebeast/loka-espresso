@@ -8,6 +8,7 @@ import { usePolling } from "@/hooks/usePolling";
 import PageHeader from "@/components/PageHeader";
 import Alert from "@/components/Alert";
 import Card from "@/components/Card";
+import EmptyState from "@/components/EmptyState";
 import SkeletonCard from "@/components/SkeletonCard";
 import { Play, Pause, Coffee, LogOut, Timer, AlertCircle } from "lucide-react";
 
@@ -350,9 +351,7 @@ export default function TimeClockPage() {
       {/* Today's Events - simplified */}
       <Card title="Today">
         {events.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 24, color: "var(--color-text-muted)", fontSize: 14 }}>
-            No records yet.
-          </div>
+          <EmptyState icon={<Timer size={48} />} title="No records yet" description="Clock in to start tracking your time" />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {events.slice().reverse().map((evt) => (

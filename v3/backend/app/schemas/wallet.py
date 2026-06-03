@@ -46,7 +46,7 @@ class WalletLedgerEntryOut(WalletLedgerEntryBase):
 
 class TopUpRequest(BaseSchema):
     amount: float = Field(..., gt=0)
-    payment_method_id: int
+    payment_method_id: int | None = None
     return_url: str | None = Field(None, max_length=500)
 
 

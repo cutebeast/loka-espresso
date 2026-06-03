@@ -101,7 +101,9 @@ export function useAuthFlow() {
         if (token) {
           const userRes = await api.get('/me', { signal: abortCtrl.signal });
           if (!cancelled) {
-            setUser(userRes.data);
+            const raw = userRes.data;
+            const profile = raw?.profile || raw;
+            setUser({ ...profile, addresses: raw?.addresses || [], referral_code: raw?.referral_code || '' });
             setAuthDone(true);
           }
         }
@@ -124,7 +126,7 @@ export function useAuthFlow() {
         api.get('/wallet/me'),
         api.get('/stores'),
       ]);
-      if (profileRes.status === 'fulfilled') setUser(profileRes.value.data);
+      if (profileRes.status === 'fulfilled') { const raw = profileRes.value.data; const p = raw?.profile || raw; setUser({ ...p, addresses: raw?.addresses || [], referral_code: raw?.referral_code || '' }); }
       if (loyaltyRes.status === 'fulfilled') {
         const d = loyaltyRes.value.data;
         if (d?.points_balance != null) setPoints(Number(d.points_balance));

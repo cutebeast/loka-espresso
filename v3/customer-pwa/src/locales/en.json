@@ -67,7 +67,8 @@
     "promotion": "Promotion",
     "each": "each",
     "yourCode": "Your code",
-    "payOnline": "Pay Online"
+    "payOnline": "Pay Online",
+    "pay": "Pay"
   },
   "nav": {
     "home": "Home",
@@ -338,7 +339,16 @@
     "noTransactions": "No transactions yet",
     "confirmTopUp": "Confirm Top Up",
     "confirmTopUpMessage": "Top up {amount} to your wallet?",
-    "minTopUp": "Select or enter a valid amount (min RM 5)"
+    "minTopUp": "Select or enter a valid amount (min RM 5)",
+    "paymentMethod": "Payment Method",
+    "selectPaymentMethod": "Select a payment method to top up",
+    "creditDebitCard": "Credit / Debit Card",
+    "cardDesc": "Visa, Mastercard, Amex",
+    "fpxBanking": "FPX Online Banking",
+    "fpxDesc": "Maybank, CIMB, RHB, HLB, and more",
+    "eWallet": "E-Wallet",
+    "eWalletDesc": "Touch n Go, GrabPay, Boost, ShopeePay",
+    "paymentPlaceholder": "Payment integration coming soon — top-up will be processed directly for now."
   },
   "history": {
     "title": "Transaction History",

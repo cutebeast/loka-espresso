@@ -91,7 +91,17 @@ async def customer_login(request: Request, db: DBDependency, data: CustomerLogin
         raise HTTPException(status_code=400, detail="Email or phone required")
     
     customer = result.scalar_one_or_none()
-    if customer is None:
+    is_new = False
+    if customer is None and data.phone_number:
+        customer = await register_customer(
+            db,
+            CustomerRegisterRequest(
+                phone_number=data.phone_number,
+                display_name=data.phone_number,
+            ),
+        )
+        is_new = True
+    elif customer is None:
         raise HTTPException(status_code=404, detail="Account not found. Please register.")
     
     if not customer.is_active:
@@ -103,6 +113,7 @@ async def customer_login(request: Request, db: DBDependency, data: CustomerLogin
         user_id=customer.id,
         tokens=tokens,
         profile=CustomerProfileOut.model_validate(customer).model_dump(),
+        is_new_user=is_new,
     )
 
 

@@ -6,7 +6,6 @@ import { api } from "@/lib/api";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const inputClass = "w-full border rounded px-3 py-2 text-sm";
 const labelClass = "block text-xs font-semibold text-gray-500 uppercase mb-1";
 const sectionClass = "mb-6";
 const sectionTitle = "text-sm font-bold uppercase text-gray-400 border-b pb-1 mb-3";
@@ -300,7 +299,6 @@ export default function StoreEditPage() {
                         onChange={e => setForm({ ...form, [field.key]: e.target.value })}
                         maxLength={field.type === "country" ? 2 : undefined}
                         placeholder={field.type === "country" ? "e.g. MY" : ""}
-                        className={inputClass}
                       />
                     </div>
                   );
@@ -314,21 +312,21 @@ export default function StoreEditPage() {
             {hours.map((h, i) => (
               <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, opacity: h.is_closed ? 0.5 : 1, flexWrap: "wrap" }}>
                 <span style={{ width: 40, fontSize: 13, fontWeight: 600 }}>{DAYS[i]}</span>
-                <input type="time" value={h.open_time || "00:00"} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], open_time: e.target.value} as any; setHours(hh); }} className={inputClass} style={{ width: 120 }} disabled={h.is_closed || h.is_24_hours} />
+                <input type="time" value={h.open_time || "00:00"} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], open_time: e.target.value} as any; setHours(hh); }} className="" style={{ width: 120 }} disabled={h.is_closed || h.is_24_hours} />
                 <span style={{ fontSize: 12 }}>to</span>
-                <input type="time" value={h.close_time || "23:59"} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], close_time: e.target.value} as any; setHours(hh); }} className={inputClass} style={{ width: 120 }} disabled={h.is_closed || h.is_24_hours} />
+                <input type="time" value={h.close_time || "23:59"} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], close_time: e.target.value} as any; setHours(hh); }} className="" style={{ width: 120 }} disabled={h.is_closed || h.is_24_hours} />
                 <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}><input type="checkbox" checked={h.is_closed} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], is_closed: e.target.checked} as any; setHours(hh); }} /> Closed</label>
                 <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}><input type="checkbox" checked={h.is_24_hours} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], is_24_hours: e.target.checked} as any; if (e.target.checked) { hh[i] = {...hh[i], open_time: "00:00", close_time: "23:59"} as any; } setHours(hh); }} /> 24h</label>
                 {!h.is_closed && !h.is_24_hours && (
                   <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}>
                     <span style={{ color: "var(--color-text-muted)" }}>Last order</span>
-                    <input type="time" value={h.last_order_time || ""} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], last_order_time: e.target.value} as any; setHours(hh); }} className={inputClass} style={{ width: 100 }} />
+                    <input type="time" value={h.last_order_time || ""} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], last_order_time: e.target.value} as any; setHours(hh); }} className="" style={{ width: 100 }} />
                   </label>
                 )}
                 {!h.is_closed && h.is_24_hours && (
                   <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginLeft: 4 }}>
                     <span style={{ color: "var(--color-text-muted)" }}>Last order</span>
-                    <input type="time" value={h.last_order_time || ""} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], last_order_time: e.target.value} as any; setHours(hh); }} className={inputClass} style={{ width: 100 }} />
+                    <input type="time" value={h.last_order_time || ""} onChange={e => { const hh = [...hours]; hh[i] = {...hh[i], last_order_time: e.target.value} as any; setHours(hh); }} className="" style={{ width: 100 }} />
                   </label>
                 )}
               </div>
@@ -339,11 +337,11 @@ export default function StoreEditPage() {
             <div className={sectionTitle}>Special Hours (Holidays & Events)</div>
             {specialHours.map((sh: any, i: number) => (
               <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, flexWrap: "wrap", opacity: sh.is_closed ? 0.5 : 1 }}>
-                <input type="date" value={sh.special_date || ""} onChange={e => { const hh = [...specialHours]; hh[i] = {...hh[i], special_date: e.target.value} as any; setSpecialHours(hh); }} className={inputClass} style={{ width: 140 }} title="Date" />
-                <input type="text" value={sh.reason || ""} onChange={e => { const hh = [...specialHours]; hh[i] = {...hh[i], reason: e.target.value} as any; setSpecialHours(hh); }} className={inputClass} style={{ width: 100 }} placeholder="Reason" />
-                <input type="time" value={sh.open_time || ""} onChange={e => { const hh = [...specialHours]; hh[i] = {...hh[i], open_time: e.target.value} as any; setSpecialHours(hh); }} className={inputClass} style={{ width: 110 }} disabled={sh.is_closed} title="Open" />
+                <input type="date" value={sh.special_date || ""} onChange={e => { const hh = [...specialHours]; hh[i] = {...hh[i], special_date: e.target.value} as any; setSpecialHours(hh); }} className="" style={{ width: 140 }} title="Date" />
+                <input type="text" value={sh.reason || ""} onChange={e => { const hh = [...specialHours]; hh[i] = {...hh[i], reason: e.target.value} as any; setSpecialHours(hh); }} className="" style={{ width: 100 }} placeholder="Reason" />
+                <input type="time" value={sh.open_time || ""} onChange={e => { const hh = [...specialHours]; hh[i] = {...hh[i], open_time: e.target.value} as any; setSpecialHours(hh); }} className="" style={{ width: 110 }} disabled={sh.is_closed} title="Open" />
 				<span style={{ fontSize: 12 }}>to</span>
-                <input type="time" value={sh.close_time || ""} onChange={e => { const hh = [...specialHours]; hh[i] = {...hh[i], close_time: e.target.value} as any; setSpecialHours(hh); }} className={inputClass} style={{ width: 110 }} disabled={sh.is_closed} title="Close" />
+                <input type="time" value={sh.close_time || ""} onChange={e => { const hh = [...specialHours]; hh[i] = {...hh[i], close_time: e.target.value} as any; setSpecialHours(hh); }} className="" style={{ width: 110 }} disabled={sh.is_closed} title="Close" />
                 <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}><input type="checkbox" checked={sh.is_closed} onChange={e => { const hh = [...specialHours]; hh[i] = {...hh[i], is_closed: e.target.checked} as any; setSpecialHours(hh); }} /> Closed</label>
                 <button type="button" onClick={() => setSpecialHours(shs => shs.filter((_s, idx) => idx !== i))} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)", fontSize: 11 }}>Remove</button>
               </div>

@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import ActiveCustomer, CurrentAdmin, DBDependency, OptionalLocale
 from app.services.translation import merge_translations, translate_single

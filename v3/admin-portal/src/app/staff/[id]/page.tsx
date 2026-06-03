@@ -28,9 +28,9 @@ export default function EditStaffPage() {
 
   return (
     <div style={{ padding: 32 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}><button onClick={() => r.push("/staff")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button><div><h1 className="page-title" style={{ margin: 0 }}>{form.display_name || "Staff"}</h1></div></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}><button onClick={() => r.push("/staff")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button><div><h1 className="page-title" style={{ margin: 0 }}>{form.display_name || "Staff"}</h1><p className="page-subtitle" style={{ marginTop: 2 }}>Edit staff details</p></div></div>
       {msg && <div className="alert alert-success" style={{ marginBottom: 12 }}>{msg}</div>}
-      <div className="card" style={{ padding: 24, maxWidth: 500 }}>
+      <div className="card" style={{ padding: 24, maxWidth: 720 }}>
         <div className="df-grid">
           <div className="df-field"><label className="df-label">Name *</label><input required value={form.display_name} onChange={e => setForm({ ...form, display_name: e.target.value })} /></div>
           <div className="df-field"><label className="df-label">Employee ID *</label><input required value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })} /></div>

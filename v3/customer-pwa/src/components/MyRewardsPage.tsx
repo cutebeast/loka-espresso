@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Gift, Ticket, Clock, QrCode, Shield } from 'lucide-react';
+import { Skeleton } from '@/components/ui';
 import { useWalletStore } from '@/stores/walletStore';
 import type { UserReward, UserVoucher } from '@/lib/api';
 import { LOKA, resolveAssetUrl, formatPrice } from '@/lib/tokens';
@@ -22,6 +23,19 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
   const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'rewards');
   const [selectedReward, setSelectedReward] = useState<UserReward | null>(null);
   const [selectedVoucher, setSelectedVoucher] = useState<UserVoucher | null>(null);
+  const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    setLoading(true);
+    refreshWallet().finally(() => {
+      if (mountedRef.current) setLoading(false);
+    });
+    return () => { mountedRef.current = false; };
+  }, []);
+
+
 
   useEffect(() => {
     refreshWallet();
@@ -87,7 +101,11 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
       </div>
 
       <div className="myrv-owned-list">
-        {activeTab === 'rewards' ? (
+        {loading ? (
+          <div className="myrv-skeleton-list">
+            {[1,2,3].map(i => <div key={i} style={{ height: 80, borderRadius: 12, marginBottom: 12 }}><Skeleton className="skeleton" /></div>)}
+          </div>
+        ) : activeTab === 'rewards' ? (
           availableRewards.length === 0 ? (
             <div className="myrv-empty">
               <div className="myrv-empty-icon"><Gift size={40} color={LOKA.borderLight} /></div>

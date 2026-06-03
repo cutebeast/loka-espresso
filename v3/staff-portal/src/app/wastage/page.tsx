@@ -54,14 +54,13 @@ export default function WastagePage() {
   };
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 24, maxWidth: 700, margin: "0 auto" }}>
       <PageHeader
         title="Wastage Report"
         subtitle="Record F&B waste — burnt, spilled, expired, or damaged items"
-        back
       />
-      {success && <Alert variant="success">{success}</Alert>}
-      {error && <Alert variant="error">{error}</Alert>}
+      {success && <Alert variant="success" onDismiss={() => setSuccess("")} autoDismiss={3000}>{success}</Alert>}
+      {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
 
       <div className="card" style={{ padding: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
@@ -71,13 +70,13 @@ export default function WastagePage() {
           </span>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Menu Item</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="form-group">
+            <label className="form-label">Menu Item</label>
             <select
+              className="form-input"
               value={form.menu_item_id}
               onChange={e => setForm({ ...form, menu_item_id: e.target.value })}
-              style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: 14 }}
               required
             >
               <option value="">— Select menu item —</option>
@@ -86,25 +85,25 @@ export default function WastagePage() {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Quantity Wasted</label>
+            <div className="form-group">
+              <label className="form-label">Quantity Wasted</label>
               <input
+                className="form-input"
                 type="number"
                 min={1}
                 step={1}
                 placeholder="e.g. 3"
                 value={form.quantity || ""}
                 onChange={e => setForm({ ...form, quantity: Number(e.target.value) })}
-                style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: 14 }}
                 required
               />
             </div>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Reason</label>
+            <div className="form-group">
+              <label className="form-label">Reason</label>
               <select
+                className="form-input"
                 value={form.reason}
                 onChange={e => setForm({ ...form, reason: e.target.value })}
-                style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", fontSize: 14 }}
               >
                 <option value="">— Select —</option>
                 <option value="Burnt during preparation">Burnt during preparation</option>
@@ -117,14 +116,14 @@ export default function WastagePage() {
             </div>
           </div>
 
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>Additional Notes</label>
+          <div className="form-group">
+            <label className="form-label">Additional Notes</label>
             <textarea
+              className="form-input"
               value={form.notes}
               onChange={e => setForm({ ...form, notes: e.target.value })}
               placeholder="Supplementary details about this wastage..."
               rows={2}
-              style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)", resize: "vertical", fontSize: 14 }}
             />
           </div>
 
@@ -132,22 +131,7 @@ export default function WastagePage() {
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            style={{
-              marginTop: 8,
-              padding: "10px 20px",
-              background: "var(--color-error)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "var(--radius-sm)",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: submitting ? "not-allowed" : "pointer",
-              opacity: submitting ? 0.6 : 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
+            className="btn btn-danger"
           >
             <AlertTriangle size={16} />
             {submitting ? "Submitting..." : "Submit Wastage Report"}
