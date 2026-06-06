@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Edit2 } from "lucide-react";
 
@@ -22,6 +23,7 @@ interface StockRecord {
 }
 
 export default function InventoryStocksPage() {
+  const router = useRouter();
   const [stores, setStores] = useState<Store[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [storeId, setStoreId] = useState("");
@@ -30,9 +32,6 @@ export default function InventoryStocksPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [editModal, setEditModal] = useState<StockRecord | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [editForm, setEditForm] = useState({ current_stock: 0, reserved_stock: 0, reorder_level: 0, reorder_quantity: 0, par_level: 0, storage_location: "" });
 
   useEffect(() => {
     api.getRaw<any>("/admin/stores?per_page=50").then(d => {
@@ -86,36 +85,7 @@ export default function InventoryStocksPage() {
   }, [stocks, itemMap, catFilter]);
 
   const openEdit = (s: StockRecord) => {
-    setEditModal(s);
-    setEditForm({
-      current_stock: s.current_stock,
-      reserved_stock: s.reserved_stock,
-      reorder_level: s.reorder_level,
-      reorder_quantity: s.reorder_quantity,
-      par_level: s.par_level,
-      storage_location: s.storage_location || "",
-    });
-  };
-
-  const saveEdit = async () => {
-    if (!editModal) return;
-    setSaving(true);
-    try {
-      await api.patch(`/admin/inventory/stocks/${editModal.id}`, {
-        current_stock: Number(editForm.current_stock),
-        reserved_stock: Number(editForm.reserved_stock),
-        reorder_level: Number(editForm.reorder_level),
-        reorder_quantity: Number(editForm.reorder_quantity),
-        par_level: Number(editForm.par_level),
-        storage_location: editForm.storage_location || null,
-      });
-      setEditModal(null);
-      fetchStocks();
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setSaving(false);
-    }
+    router.push(`/inventory/stocks/${s.id}`);
   };
 
   return (
@@ -202,26 +172,6 @@ export default function InventoryStocksPage() {
         </table>
       </div>
       </>)}
-
-      {editModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setEditModal(null)}>
-          <div style={{ background: "var(--color-bg)", borderRadius: "var(--radius-md)", padding: 24, minWidth: 360, maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: "0 0 8px" }}>Edit Stock — {editModal.item_name}</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Current Stock</label><input type="number" step="0.01" value={editForm.current_stock} onChange={e => setEditForm(f => ({ ...f, current_stock: Number(e.target.value) }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
-              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Reserved Stock</label><input type="number" step="0.01" value={editForm.reserved_stock} onChange={e => setEditForm(f => ({ ...f, reserved_stock: Number(e.target.value) }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
-              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Reorder Level</label><input type="number" step="0.01" value={editForm.reorder_level} onChange={e => setEditForm(f => ({ ...f, reorder_level: Number(e.target.value) }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
-              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Reorder Quantity</label><input type="number" step="0.01" value={editForm.reorder_quantity} onChange={e => setEditForm(f => ({ ...f, reorder_quantity: Number(e.target.value) }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
-              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Par Level</label><input type="number" step="0.01" value={editForm.par_level} onChange={e => setEditForm(f => ({ ...f, par_level: Number(e.target.value) }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
-              <div><label style={{ fontSize: 12, fontWeight: 600 }}>Storage Location</label><input value={editForm.storage_location} onChange={e => setEditForm(f => ({ ...f, storage_location: e.target.value }))} style={{ width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></div>
-            </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-              <button type="button" onClick={() => setEditModal(null)} className="btn btn-ghost btn-sm">Cancel</button>
-              <button type="button" onClick={saveEdit} disabled={saving} className="btn btn-primary btn-sm">{saving ? "Saving..." : "Save"}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

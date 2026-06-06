@@ -119,7 +119,6 @@ async def admin_register(db: DBDependency, admin: CurrentAdmin, data: AdminRegis
 
     # Assign the resolved role
     if role_id:
-        from app.models.iam import RoleAssignment
         ra = RoleAssignment(assignee_id=new_admin.id, role_id=role_id, effective_from=datetime.now(timezone.utc), is_active=True)
         db.add(ra)
 

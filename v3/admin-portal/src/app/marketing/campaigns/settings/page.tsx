@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Save } from "lucide-react";
 
 const KEYS = [
   { k: "integration.twilio_account_sid",     l: "Twilio Account SID",    section: "Twilio SMS & WhatsApp", sensitive: false },
@@ -18,8 +18,11 @@ const KEYS = [
 
 export default function CampaignSettingsPage() {
   const [config, setConfig] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [isError, setIsError] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
   useEffect(() => {
@@ -27,27 +30,35 @@ export default function CampaignSettingsPage() {
       .then(d => {
         const m: Record<string, string> = {};
         (Array.isArray(d) ? d : []).forEach((c: any) => {
-          if (
-            c.config_key.startsWith("integration.twilio") ||
-            c.config_key.startsWith("integration.resend") ||
-            c.config_key.startsWith("integration.deepl") ||
-            c.config_key.startsWith("integration.deepseek")
-          ) {
+          if (c.config_key.startsWith("integration.")) {
             m[c.config_key] = c.config_value;
           }
         });
         setConfig(m);
+        setValues({ ...m });
       })
       .catch((e) => { console.error('campaign settings:', e); })
       .finally(() => setLoading(false));
   }, []);
 
   const save = async (key: string, val: string) => {
-    const qs = new URLSearchParams({ key, value: val });
-    await api.put(`/admin/config?${qs.toString()}`);
-    setConfig(prev => ({ ...prev, [key]: val }));
-    setMsg(`${key.replace("integration.twilio_", "")} updated`);
-    setTimeout(() => setMsg(""), 2000);
+    setSaving(key);
+    setIsError(false);
+    try {
+      const qs = new URLSearchParams({ key, value: val });
+      await api.put(`/admin/config?${qs.toString()}`);
+      setConfig(prev => ({ ...prev, [key]: val }));
+      showMsg(`${key.replace("integration.", "")} updated`);
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      showMsg(detail || "Failed to save", true);
+    } finally { setSaving(null); }
+  };
+
+  const showMsg = (text: string, error = false) => {
+    setMsg(text);
+    setIsError(error);
+    setTimeout(() => setMsg(""), 3000);
   };
 
   return (
@@ -56,12 +67,12 @@ export default function CampaignSettingsPage() {
       <p className="page-subtitle" style={{ marginBottom: 24 }}>
         Configure Twilio (SMS) and Resend (Email) API credentials for campaign delivery
       </p>
-      {msg && <div className="alert alert-success">{msg}</div>}
+      {msg && <div className={`alert ${isError ? "alert-error" : "alert-success"}`}>{msg}</div>}
 
       {loading ? (
         <p>Loading...</p>
       ) : (
-        <div className="card" style={{ maxWidth: 600 }}>
+        <div className="card" style={{ maxWidth: 700 }}>
           {(["Twilio SMS & WhatsApp", "Resend Email", "Translation APIs"] as string[]).map(section => (
             <div key={section} style={{ marginBottom: 24 }}>
               <h3 style={{ marginBottom: 12, fontSize: 15, fontWeight: 700 }}>{section}</h3>
@@ -86,48 +97,49 @@ export default function CampaignSettingsPage() {
                 </div>
               )}
               <table className="data-table">
-                <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+                <thead><tr><th>Setting</th><th>Value</th><th style={{width:70}}></th></tr></thead>
                 <tbody>
-                  {KEYS.filter(r => r.section === section).map(r => (
-                    <tr key={r.k}>
-                      <td style={{ fontWeight: 600 }}>{r.l}</td>
-                      <td>
-                        <form onSubmit={e => e.preventDefault()} style={{ display: "inline" }}>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input
-                            type={r.sensitive && !showToken ? "password" : "text"}
-                            defaultValue={config[r.k] || ""}
-                            onBlur={e => save(r.k, e.target.value)}
-                            placeholder={r.sensitive ? "••••••••••••••••" : r.l}
-                            style={{
-                              border: "1px solid var(--color-border-light)",
-                              borderRadius: "var(--radius-sm)",
-                              padding: "6px 10px",
-                              fontSize: 13,
-                              fontFamily: r.sensitive ? "monospace" : "inherit",
-                              width: r.sensitive ? 300 : 280,
-                            }}
-                          />
-                          {r.sensitive && (
-                            <button
-                              type="button"
-                              onClick={() => setShowToken(!showToken)}
-                              className="btn btn-ghost btn-sm"
-                              title={showToken ? "Hide" : "Show"}
-                            >
-                              {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                          )}
-                        </div>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
+                  {KEYS.filter(r => r.section === section).map(r => {
+                    const val = values[r.k] ?? config[r.k] ?? "";
+                    return (
+                      <tr key={r.k}>
+                        <td style={{ fontWeight: 600 }}>{r.l}</td>
+                        <td>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <input
+                              type={r.sensitive && !showToken ? "password" : "text"}
+                              value={val}
+                              onChange={e => setValues(prev => ({ ...prev, [r.k]: e.target.value }))}
+                              placeholder={r.sensitive ? "••••••••••••••••" : r.l}
+                              style={{
+                                border: "1px solid var(--color-border-light)",
+                                borderRadius: "var(--radius-sm)",
+                                padding: "6px 10px",
+                                fontSize: 13,
+                                fontFamily: r.sensitive ? "monospace" : "inherit",
+                                width: r.sensitive ? 300 : 280,
+                              }}
+                            />
+                            {r.sensitive && (
+                              <button type="button" onClick={() => setShowToken(!showToken)} className="btn btn-ghost btn-sm" title={showToken ? "Hide" : "Show"}>
+                                {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <button type="button" className="btn btn-sm btn-primary" onClick={() => save(r.k, val)} disabled={saving !== null}>
+                            <Save size={12}/> {saving === r.k ? "..." : "Save"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           ))}
-          <div style={{ padding: 10, background: "#FEF3C7", borderRadius: "var(--radius-sm)", fontSize: 12, color: "#92400E" }}>
+          <div style={{ padding: 10, background: "var(--color-warning-light)", borderRadius: "var(--radius-sm)", fontSize: 12, color: "var(--color-text-muted)" }}>
             <strong>⚠️</strong> After saving, send a test campaign to verify delivery. Check provider dashboards for logs.
           </div>
         </div>

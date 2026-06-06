@@ -12,57 +12,79 @@ const KEYS = [
 
 export default function LoyaltySettingsPage() {
   const [configs, setConfigs] = useState<Record<string, ConfigItem>>({});
+  const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState("");
+  const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => { 
     api.get<ConfigItem[]>("/admin/config").then(d => {
       const map: Record<string, ConfigItem> = {};
-      (Array.isArray(d) ? d : []).forEach((c: any) => { map[c.config_key] = c; });
+      const vals: Record<string, string> = {};
+      (Array.isArray(d) ? d : []).forEach((c: any) => {
+        map[c.config_key] = c;
+        vals[c.config_key] = c.config_value;
+      });
       setConfigs(map);
+      setValues(vals);
     }).catch((e)=>{console.error('loyalty config:',e)}).finally(() => setLoading(false));
   }, []);
 
   const save = async (key: string, value: string) => {
     setSaving(key);
+    setIsError(false);
     try {
       const qs = new URLSearchParams({ key, value });
       await api.put(`/admin/config?${qs.toString()}`);
-      setMsg(`${key} updated`);
-      setTimeout(() => setMsg(""), 2000);
-    } catch (e: any) { setMsg(e.message); }
-    finally { setSaving(""); }
+      setConfigs(prev => ({ ...prev, [key]: { ...prev[key], config_value: value } as ConfigItem }));
+      showMsg(`${key} updated`);
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      showMsg(detail || "Failed to save", true);
+    } finally { setSaving(null); }
   };
 
-  const get = (key: string) => configs[key];
+  const showMsg = (text: string, error = false) => {
+    setMsg(text);
+    setIsError(error);
+    setTimeout(() => setMsg(""), 3000);
+  };
 
   return (
     <div style={{ padding: 32 }}>
       <h1 className="page-title">Loyalty Settings</h1>
       <p className="page-subtitle" style={{ marginBottom: 24 }}>Points earning rules & welcome bonus</p>
-      {msg && <div className="alert alert-success">{msg}</div>}
+      {msg && <div className={`alert ${isError ? "alert-error" : "alert-success"}`}>{msg}</div>}
       {loading ? <p>Loading...</p> : (
         <div className="card" style={{ maxWidth: 500 }}>
           <table className="data-table">
             <thead><tr><th>Setting</th><th style={{ width: 150 }}>Value</th><th style={{ width: 80 }}></th></tr></thead>
             <tbody>
               {KEYS.map(key => {
-                const c = get(key);
+                const c = configs[key];
                 if (!c) return null;
+                const val = values[key] ?? c.config_value;
                 return (
                   <tr key={key}>
                     <td style={{ textTransform: "capitalize" }}>{key.replace("loyalty.","").replace(/_/g," ")}</td>
                     <td>
                       <input
                         type="number"
-                        defaultValue={c.config_value}
-                        onBlur={e => { if (e.target.value !== c.config_value) save(key, e.target.value); }}
+                        value={val}
+                        onChange={e => setValues(prev => ({ ...prev, [key]: e.target.value }))}
                         style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: 13, width: 100 }}
                       />
                     </td>
                     <td>
-                      {saving === key ? "..." : <button onClick={() => {}} className="btn btn-sm btn-primary" title="Auto-saves on blur"><Save size={12}/> Save</button>}
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        onClick={() => save(key, values[key] ?? c.config_value)}
+                        disabled={saving !== null}
+                      >
+                        <Save size={12}/> {saving === key ? "..." : "Save"}
+                      </button>
                     </td>
                   </tr>
                 );

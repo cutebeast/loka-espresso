@@ -4,8 +4,11 @@ import { api } from "@/lib/api";
 
 export default function CheckinSettingsPage() {
   const [config, setConfig] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     api.get<any[]>("/admin/config?prefix=checkin")
@@ -15,17 +18,34 @@ export default function CheckinSettingsPage() {
           m[c.config_key] = c.config_value;
         });
         setConfig(m);
+        setValues(m);
       })
       .catch((e) => { console.error('checkin config:', e); })
       .finally(() => setLoading(false));
   }, []);
 
-  const save = async (key: string, val: string) => {
-    const qs = new URLSearchParams({ key, value: val });
-    await api.put(`/admin/config?${qs.toString()}`);
-    setConfig(prev => ({ ...prev, [key]: val }));
-    setMsg(`${key}=${val}`);
-    setTimeout(() => setMsg(""), 2000);
+  const saveAll = async () => {
+    setSaving(true);
+    setIsError(false);
+    try {
+      for (const [key, val] of Object.entries(values)) {
+        if (val !== config[key]) {
+          const qs = new URLSearchParams({ key, value: val });
+          await api.put(`/admin/config?${qs.toString()}`);
+        }
+      }
+      setConfig({ ...values });
+      showMsg("Settings saved");
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      showMsg(detail || "Failed to save settings", true);
+    } finally { setSaving(false); }
+  };
+
+  const showMsg = (text: string, error = false) => {
+    setMsg(text);
+    setIsError(error);
+    setTimeout(() => setMsg(""), 3000);
   };
 
   const rules = [
@@ -41,7 +61,7 @@ export default function CheckinSettingsPage() {
       <p className="page-subtitle" style={{ marginBottom: 24 }}>
         Configure daily check-in rewards and streak bonuses
       </p>
-      {msg && <div className="alert alert-success">{msg}</div>}
+      {msg && <div className={`alert ${isError ? "alert-error" : "alert-success"}`}>{msg}</div>}
 
       {loading ? (
         <p>Loading...</p>
@@ -61,8 +81,8 @@ export default function CheckinSettingsPage() {
                   <td>
                     <input
                       type="number"
-                      defaultValue={config[r.k] || "0"}
-                      onBlur={e => save(r.k, e.target.value)}
+                      value={values[r.k] || "0"}
+                      onChange={e => setValues(prev => ({ ...prev, [r.k]: e.target.value }))}
                       style={{
                         border: "1px solid var(--color-border-light)",
                         borderRadius: "var(--radius-sm)",
@@ -76,6 +96,11 @@ export default function CheckinSettingsPage() {
               ))}
             </tbody>
           </table>
+          <div style={{ marginTop: 16 }}>
+            <button type="button" className="btn btn-primary" onClick={saveAll} disabled={saving}>
+              {saving ? "Saving..." : "Save Settings"}
+            </button>
+          </div>
           <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 8 }}>
             Example: 10 base + 10 increment × day → Day 1=10, Day 2=20, Day 3=30 ... Day 7=70 + 100 bonus = 170 total
           </p>

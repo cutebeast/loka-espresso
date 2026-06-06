@@ -73,7 +73,6 @@ export default function StoreSettingsPage() {
                         defaultValue={c.config_value}
                         data-key={key}
                         onChange={e => setInputValues(prev => ({ ...prev, [key]: e.target.value }))}
-                        onBlur={e => { if (e.target.value !== c.config_value) save(key, e.target.value); }}
                         onKeyDown={e => { if (e.key === "Enter") save(key, (e.target as HTMLInputElement).value); }}
                         style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: 13, width: "100%" }}
                       />
