@@ -201,53 +201,93 @@ def _ensure_baseline_data(base_url: str, _admin_token_session: str):
     """Create minimum test data via API if DB is blank (no stores exist).
 
     The seed_v3.py bootstrap only creates the admin account. Everything else —
-    stores, loyalty tiers, menu items — is created here via the admin API.
+    stores, loyalty tiers, menu items, test staff — is created here via the admin API.
     This keeps the seed minimal and tests self-contained.
     """
     admin_headers = {"Authorization": f"Bearer {_admin_token_session}", "Content-Type": "application/json"}
     created = False
+
+    # Unlock any locked staff accounts so PIN login tests don't hit 423
+    try:
+        import psycopg2
+        db_url = os.getenv("DATABASE_URL", "postgresql://fnb_user:fnb_pass@localhost:13334/fnb_enterprise_v3")
+        # Strip asyncpg prefix for sync connection
+        sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
+        conn = psycopg2.connect(sync_url)
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE staff_profiles SET locked_until = NULL, failed_login_count = 0 WHERE locked_until IS NOT NULL"
+        )
+        if cur.rowcount > 0:
+            logger.info("Unlocked %d staff account(s)", cur.rowcount)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed to unlock staff accounts: %s", e)
+
     try:
         with httpx.Client(timeout=15.0) as c:
-            # Check if stores exist
+            # ── Check/create stores ──
             r = c.get(f"{base_url}/admin/stores?per_page=1", headers=admin_headers)
+            stores_exist = False
             if r.status_code == 200:
                 data = r.json().get("data", r.json())
                 items = data.get("items", []) if isinstance(data, dict) else []
-                if len(items) > 0:
-                    logger.info("Baseline data exists — %d stores found, skipping creation", len(items))
-                    return
+                stores_exist = len(items) > 0
 
-            logger.info("No stores found — creating baseline test data via API...")
+            if not stores_exist:
+                logger.info("No stores found — creating baseline test data via API...")
 
-            # Create loyalty tiers
-            tiers = [
-                ("bronze",   "Bronze",   0,      1.0),
-                ("silver",   "Silver",   500,    1.1),
-                ("gold",     "Gold",     2000,   1.2),
-                ("platinum", "Platinum", 10000,  1.5),
-            ]
-            tier_ids = {}
-            for key, name, min_pts, mult in tiers:
-                r = c.post(f"{base_url}/admin/loyalty/tiers", headers=admin_headers, json={
-                    "tier_key": key, "display_name": name,
-                    "minimum_points": min_pts, "points_multiplier": mult,
-                    "color_hex": {"bronze":"#CD7F32","silver":"#C0C0C0","gold":"#FFD700","platinum":"#E5E4E2"}[key],
+                # Create loyalty tiers
+                tiers = [
+                    ("bronze",   "Bronze",   0,      1.0),
+                    ("silver",   "Silver",   500,    1.1),
+                    ("gold",     "Gold",     2000,   1.2),
+                    ("platinum", "Platinum", 10000,  1.5),
+                ]
+                tier_ids = {}
+                for key, name, min_pts, mult in tiers:
+                    r = c.post(f"{base_url}/admin/loyalty/tiers", headers=admin_headers, json={
+                        "tier_key": key, "display_name": name,
+                        "minimum_points": min_pts, "points_multiplier": mult,
+                        "color_hex": {"bronze":"#CD7F32","silver":"#C0C0C0","gold":"#FFD700","platinum":"#E5E4E2"}[key],
+                    })
+                    if r.status_code in (200, 201):
+                        tier_ids[key] = r.json().get("data", r.json()).get("id", 0)
+                        created = True
+
+                # Create stores
+                stores_data = [
+                    {"store_name": "Loka HQ", "store_code": "HQ001", "city": "Kuala Lumpur",
+                     "address_line_1": "1 Jalan Test", "phone_number": "+60123456789", "postal_code": "50000"},
+                    {"store_name": "Loka Bangsar", "store_code": "BS001", "city": "Kuala Lumpur",
+                     "address_line_1": "2 Jalan Test", "phone_number": "+60123456780", "postal_code": "59100"},
+                ]
+                for sd in stores_data:
+                    r = c.post(f"{base_url}/admin/stores", headers=admin_headers, json=sd)
+                    if r.status_code in (200, 201):
+                        created = True
+
+            # ── Ensure test staff with known PIN exists ──
+            r_staff = c.get(f"{base_url}/staff/auth/names", headers=admin_headers)
+            staff_list = r_staff.json().get("data", []) if r_staff.status_code == 200 else []
+            has_test_staff = any(s["display_name"] == "Test Staff" for s in staff_list)
+
+            if not has_test_staff:
+                logger.info("No 'Test Staff' found — creating test staff member...")
+                r_create = c.post(f"{base_url}/admin/staff", headers=admin_headers, json={
+                    "display_name": "Test Staff",
+                    "email": "teststaff@lokaespresso.my",
+                    "password": "TestStaff123!",
+                    "pin": "1234",
+                    "store_id": 1,
+                    "role": "cashier",
                 })
-                if r.status_code in (200, 201):
-                    tier_ids[key] = r.json().get("data", r.json()).get("id", 0)
+                if r_create.status_code in (200, 201):
+                    logger.info("Test staff created successfully")
                     created = True
-
-            # Create stores
-            stores_data = [
-                {"store_name": "Loka HQ", "store_code": "HQ001", "city": "Kuala Lumpur",
-                 "address_line_1": "1 Jalan Test", "phone_number": "+60123456789", "postal_code": "50000"},
-                {"store_name": "Loka Bangsar", "store_code": "BS001", "city": "Kuala Lumpur",
-                 "address_line_1": "2 Jalan Test", "phone_number": "+60123456780", "postal_code": "59100"},
-            ]
-            for sd in stores_data:
-                r = c.post(f"{base_url}/admin/stores", headers=admin_headers, json=sd)
-                if r.status_code in (200, 201):
-                    created = True
+                else:
+                    logger.warning("Failed to create test staff: %s", r_create.text)
 
             if created:
                 logger.info("Baseline test data created via API")

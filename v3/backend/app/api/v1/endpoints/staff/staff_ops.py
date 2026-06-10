@@ -75,7 +75,7 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
                 StaffProfile.is_active.is_(True),
             )
         )
-        staff = result.scalar_one_or_none()
+        staff = result.scalars().first()
         if not staff or not staff.pin_hash:
             raise HTTPException(status_code=401, detail="Staff not found or no PIN set")
 
@@ -571,7 +571,7 @@ async def staff_verify_pin(request: Request, db: DBDependency, staff: CurrentSta
         raise HTTPException(status_code=400, detail="PIN must be at least 4 digits")
 
     import bcrypt
-    if not staff.pin_hash:
+    if not hasattr(staff, "pin_hash") or not staff.pin_hash:
         return APIResponse(data={"valid": False, "message": "No PIN set"})
 
     try:

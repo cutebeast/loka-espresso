@@ -39,7 +39,7 @@ export default function CategoryEditPage() {
   const save = async () => {
     setSaving(true);
     try { await api.patch(`/admin/inventory/categories/${catId}`, form); setMsg("Saved"); setTimeout(()=>setMsg(""),2000); }
-    catch (e) { console.error(e); }
+    catch (e: any) { setMsg(e.message || "Save failed"); console.error(e); }
     finally { setSaving(false); }
   };
 

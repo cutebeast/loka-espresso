@@ -168,12 +168,16 @@ async def test_staff_login_and_token_refresh(
     staff_list = r.json().get("data", [])
     if not staff_list:
         pytest.skip("No seeded staff for login test")
-    staff = staff_list[0]
+
+    # Use the known test staff member created by conftest
+    staff = next((s for s in staff_list if s["display_name"] == "Test Staff"), None)
+    if not staff:
+        pytest.skip("Test Staff not found — baseline data may be missing")
 
     # Login
     r2 = await client.post(f"{base_url}/staff/auth/login", json={
         "display_name": staff["display_name"],
-        "password": "1234",  # default test PIN
+        "password": "1234",
         "store_id": staff.get("store_id", 1),
     })
     assert r2.status_code == 200

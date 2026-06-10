@@ -23,16 +23,20 @@ export default function NewItemPage() {
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [recipeStoreId, setRecipeStoreId] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    api.getRaw<any>("/admin/menu/categories?per_page=50").then(d => setCategories(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('categories:',e)});
-    api.getRaw<any>("/admin/menu/allergens").then(d => setAllergens(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('allergens:',e)});
-    api.getRaw<any>("/admin/dietary-tags?per_page=50").then(d => setDietaryTags(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('dietary-tags:',e)});
-    api.getRaw<any>("/admin/menu/tax-categories").then(d => setTaxCategories(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('tax-categories:',e)});
-    api.getRaw<any>("/admin/loyalty/tiers").then(d => setLoyaltyTiers(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('loyalty-tiers:',e)});
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('stores:',e)});
+    let cancelled = false;
+    const safeSet = <T,>(setter: (v: T) => void) => (v: T) => { if (!cancelled) setter(v); };
+    api.getRaw<any>("/admin/menu/categories?per_page=50").then(d => safeSet(setCategories)(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('categories:',e)});
+    api.getRaw<any>("/admin/menu/allergens").then(d => safeSet(setAllergens)(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('allergens:',e)});
+    api.getRaw<any>("/admin/dietary-tags?per_page=50").then(d => safeSet(setDietaryTags)(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('dietary-tags:',e)});
+    api.getRaw<any>("/admin/menu/tax-categories").then(d => safeSet(setTaxCategories)(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('tax-categories:',e)});
+    api.getRaw<any>("/admin/loyalty/tiers").then(d => safeSet(setLoyaltyTiers)(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('loyalty-tiers:',e)});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => safeSet(setStores)(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('stores:',e)});
+    return () => { cancelled = true; };
   }, []);
 
   const toggleTag = (type:"allergen"|"dietary", id:number) => {
@@ -65,18 +69,18 @@ export default function NewItemPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
     try {
-      if(!form.item_code) form.item_code = "ITM-"+Date.now().toString(36).toUpperCase().slice(-6);
-      const p:any = {...form};
+      const p:any = { ...form };
+      if(!p.item_code) p.item_code = "ITM-"+Date.now().toString(36).toUpperCase().slice(-6);
       p.base_price = Number(p.base_price) || 0;
       p.category_id = Number(p.category_id) || null;
       p.tax_category_id = Number(p.tax_category_id) || null;
       p.calories = p.calories ? Number(p.calories) : null;
-      p.prep_time_minutes = Number(p.prep_time_minutes) ?? 10;
+      p.prep_time_minutes = Number(p.prep_time_minutes) || 10;
       p.minimum_tier_id = p.minimum_tier_id ? Number(p.minimum_tier_id) : null;
       const r:any = await api.post("/admin/menu/items", p);
       const id = r?.data?.id || r?.id;
       if(id) router.push(`/menu/items/${id}`);
-    } catch (e) { console.error(e); } finally { setSaving(false); }
+    } catch (e: any) { setError(e.message || "Save failed"); console.error(e); } finally { setSaving(false); }
   };
 
   const Chip = ({label,icon,active,onClick}:{label:string;icon?:string;active:boolean;onClick:()=>void}) => (
@@ -85,6 +89,7 @@ export default function NewItemPage() {
 
   return (
     <div style={{padding:32}}>
+      {error && <div className="alert alert-error" style={{marginBottom:16}}>{error}</div>}
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><button onClick={()=>router.push("/menu/items")} className="btn btn-ghost btn-sm"><ArrowLeft size={18}/></button><h1 className="page-title" style={{margin:0}}>New Menu Item</h1></div>
       <form onSubmit={handleSubmit}>
         <div className="card" style={{padding:24,maxWidth:700}}>

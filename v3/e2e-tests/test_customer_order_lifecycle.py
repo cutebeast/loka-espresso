@@ -153,13 +153,14 @@ async def test_cannot_cancel_delivered_order(
     order_id = r_order.json()["data"]["id"]
     cleanup_registry["orders"].append({"id": order_id})
 
-    # Admin sets order to "delivered"
-    r_status = await client.patch(
-        f"{base_url}/admin/orders/{order_id}/status",
-        headers=admin_headers,
-        json={"status": "delivered"},
-    )
-    assert r_status.status_code == 200, f"Status update to delivered failed: {r_status.text}"
+    # Admin sets order to "delivered" via valid transitions
+    for status in ["confirmed", "preparing", "ready_for_pickup", "delivered"]:
+        r_status = await client.patch(
+            f"{base_url}/admin/orders/{order_id}/status",
+            headers=admin_headers,
+            json={"status": status},
+        )
+        assert r_status.status_code == 200, f"Status update to {status} failed: {r_status.text}"
 
     # Verify status
     r_check = await client.get(f"{base_url}/admin/orders/{order_id}", headers=admin_headers)

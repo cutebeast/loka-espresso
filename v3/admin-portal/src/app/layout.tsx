@@ -164,7 +164,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         setChecked(true);
       } catch (err) {
         console.error("Auth verification failed:", err);
-        if (!cancelled) setChecked(true);
+        if (!cancelled) { clearSession(); router.replace(ROUTES.LOGIN); }
       }
     };
 

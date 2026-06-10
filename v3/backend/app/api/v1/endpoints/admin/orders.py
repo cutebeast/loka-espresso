@@ -41,6 +41,20 @@ ORDER_STATUSES = [
     "cancelled_by_merchant", "refunded", "partially_refunded", "disputed",
 ]
 
+VALID_STATUS_TRANSITIONS: dict[str, list[str]] = {
+    "pending": ["confirmed", "preparing", "cancelled_by_customer", "cancelled_by_merchant"],
+    "confirmed": ["preparing", "ready_for_pickup", "out_for_delivery", "delivered", "cancelled_by_customer", "cancelled_by_merchant"],
+    "preparing": ["confirmed", "ready_for_pickup", "out_for_delivery", "delivered", "cancelled_by_merchant"],
+    "ready_for_pickup": ["confirmed", "preparing", "delivered", "cancelled_by_merchant"],
+    "out_for_delivery": ["confirmed", "preparing", "ready_for_pickup", "delivered", "cancelled_by_merchant"],
+    "delivered": ["confirmed", "preparing", "ready_for_pickup", "out_for_delivery", "refunded", "partially_refunded", "disputed", "cancelled_by_merchant"],
+    "cancelled_by_customer": ["confirmed", "preparing", "refunded"],
+    "cancelled_by_merchant": ["confirmed", "preparing", "refunded"],
+    "refunded": [],
+    "partially_refunded": [],
+    "disputed": ["refunded", "partially_refunded"],
+}
+
 
 @router.get("", response_model=APIResponse[PaginatedResponse[dict]])
 async def list_orders(
@@ -260,6 +274,15 @@ async def update_order_status(
     await require_store_admin(db, admin, order.store_id)
 
     from_status = order.status
+
+    # Validate status transition
+    if from_status != status_value:
+        allowed = VALID_STATUS_TRANSITIONS.get(from_status, [])
+        if status_value not in allowed:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Invalid status transition: {from_status} → {status_value}. Allowed from {from_status}: {allowed}",
+            )
 
     # Update timestamp based on status
     now = datetime.now(timezone.utc)

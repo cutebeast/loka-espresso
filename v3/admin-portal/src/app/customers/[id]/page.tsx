@@ -159,11 +159,15 @@ export default function CustomerDetailPage() {
   useEffect(() => {
     if (!isValidId) { setError("Invalid customer ID"); setLoading(false); return; }
     load();
-    api.get<VoucherOption[]>("/admin/vouchers?is_active=true&per_page=100").then(d => setVouchers(Array.isArray(d)?d:((d as unknown as {items: VoucherOption[]}).items||[]))).catch((e) => { console.error('vouchers preload:', e); });
+    let cancelled = false;
+    api.get<VoucherOption[]>("/admin/vouchers?is_active=true&per_page=100")
+      .then(d => { if (!cancelled) setVouchers(Array.isArray(d)?d:((d as unknown as {items: VoucherOption[]}).items||[])); })
+      .catch((e) => { console.error('vouchers preload:', e); });
+    return () => { cancelled = true; };
   }, [id, load, isValidId]);
 
   useEffect(() => {
-    if (c) { setForm({ display_name: c.display_name || "", phone_number: c.phone_number || "", email_address: c.email_address || "", date_of_birth: c.date_of_birth || "", is_active: c.is_active || true }); }
+    if (c) { setForm({ display_name: c.display_name || "", phone_number: c.phone_number || "", email_address: c.email_address || "", date_of_birth: c.date_of_birth || "", is_active: c.is_active ?? true }); }
   }, [c]);
 
   const fetchTab = useCallback(async (t: string, pg: number = 1) => {

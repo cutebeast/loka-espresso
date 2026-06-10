@@ -12,8 +12,9 @@ export default function NewCategoryPage() {
 
   const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setSaving(true);
     try {
-      if (!form.slug) form.slug = form.category_name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-      const r: any = await api.post("/admin/inventory/categories", { ...form });
+      const payload = { ...form };
+      if (!payload.slug) payload.slug = payload.category_name.toLowerCase().replace(/[^a-z0-9]/g, "-");
+      const r: any = await api.post("/admin/inventory/categories", payload);
       const id = r?.id;
       if (id) router.push(`/inventory/categories/${id}`);
       else router.push("/inventory/categories");

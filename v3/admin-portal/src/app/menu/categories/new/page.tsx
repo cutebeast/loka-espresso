@@ -8,15 +8,17 @@ export default function NewCategoryPage() {
   const router = useRouter();
   const [form, setForm] = useState({ category_name: "", slug: "", description: "", is_available: true });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault(); setSaving(true); setError("");
     try {
-      if (!form.slug) form.slug = form.category_name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-      const r: any = await api.post("/admin/menu/categories", form);
+      const payload = { ...form };
+      if (!payload.slug) payload.slug = payload.category_name.toLowerCase().replace(/[^a-z0-9]/g, "-");
+      const r: any = await api.post("/admin/menu/categories", payload);
       const id = r?.id;
       if (id) router.push(`/menu/categories/${id}`);
-    } catch (e) { console.error(e); }
+    } catch (e: any) { setError(e.message || "Save failed"); console.error(e); }
     finally { setSaving(false); }
   };
 
@@ -26,6 +28,7 @@ export default function NewCategoryPage() {
         <button onClick={() => router.push("/menu/categories")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
         <h1 className="page-title" style={{ margin: 0 }}>New Category</h1>
       </div>
+      {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
       <form onSubmit={handleSubmit}>
         <div className="card" style={{ padding: 24, maxWidth: 500 }}>
           <div className="df-grid">

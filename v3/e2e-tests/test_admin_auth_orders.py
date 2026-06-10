@@ -577,6 +577,7 @@ async def test_menu_item_create_read_update(
     # 2. CREATE menu item
     create_payload = {
         "item_name": f"E2E Test Item {ts}",
+        "item_code": f"E2E-{ts[:8].upper()}",
         "store_id": store_id,
         "category_id": category_id,
         "base_price": 12.50,

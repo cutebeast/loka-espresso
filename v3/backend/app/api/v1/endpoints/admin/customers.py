@@ -399,6 +399,14 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
     )
     default_store_id = store_result.scalar_one_or_none()
 
+    # Ensure the awarded voucher has a future expiry
+    now = datetime.now(timezone.utc)
+    fallback_expiry = now + timedelta(days=vd.validity_days or 30)
+    if vd.valid_until and vd.valid_until > now:
+        expires_at = vd.valid_until
+    else:
+        expires_at = fallback_expiry
+
     cv = CustomerVoucher(
         customer_id=customer_id,
         voucher_definition_id=voucher_id,
@@ -408,12 +416,12 @@ async def award_voucher(admin: CurrentAdmin, db: DBDependency, customer_id: int,
         voucher_code=f"ADMIN-{secrets.token_hex(4).upper()}",
         status="active",
         voucher_snapshot=snapshot,
-        expires_at=vd.valid_until or (datetime.now(timezone.utc) + timedelta(days=vd.validity_days or 30)),
+        expires_at=expires_at,
     )
     db.add(cv)
     await db.commit()
     await db.refresh(cv)
-    return APIResponse(data={"message": "Voucher awarded", "voucher_code": cv.voucher_code, "voucher_title": vd.display_title})
+    return APIResponse(data={"message": "Voucher awarded", "voucher_id": cv.id, "voucher_code": cv.voucher_code, "voucher_title": vd.display_title})
 
 
 @router.post("/{customer_id}/use-reward/{reward_id}", response_model=APIResponse[dict])

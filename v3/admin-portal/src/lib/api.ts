@@ -41,6 +41,7 @@ async function refreshToken(): Promise<boolean> {
 }
 
 function clearSession() {
+  if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
@@ -76,7 +77,7 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
           signal,
         });
         if (retry.ok) {
-          if (retry.status === 204) return {} as T;
+          if (retry.status === 204) return undefined as unknown as T;
           const ct = retry.headers.get("content-type");
           if (ct && ct.includes("application/json")) {
             const json = await retry.json();
@@ -103,7 +104,7 @@ async function request<T>(method: string, path: string, body?: unknown, timeoutM
     throw new Error("Session expired");
   }
   if (!res.ok) { const text = await res.text(); throw new Error(text || `Request failed: ${res.status}`); }
-  if (res.status === 204) return {} as T;
+  if (res.status === 204) return undefined as unknown as T;
   const ct = res.headers.get("content-type");
   if (ct && ct.includes("application/json")) {
     const json = await res.json();
@@ -263,7 +264,7 @@ export function isLoggedIn(): boolean { if (typeof window === "undefined") retur
 
 export interface Reservation { id: number; store_id: number; customer_id: number | null; dining_table_id?: number; party_size: number; reservation_date: string; reservation_time: string; duration_minutes?: number; status: string; }
 
-export interface LoyaltyAccount { id: number; customer_id: number; customer_name?: string | null; tier_id: number | null; tier_name?: string | null; tier?: any; current_points: number; lifetime_points: number; lifetime_points_earned?: number; lifetime_points_redeemed?: number; points_balance?: number; points_to_next_tier?: number | null; tier_multiplier?: number; current_tier_id?: number | null; last_activity_at?: string | null; last_activity?: any; last_tier_change_at?: string | null; }
+export interface LoyaltyAccount { id: number; customer_id: number; customer_name?: string | null; tier_id: number | null; tier_name?: string | null; tier?: any; color_hex?: string | null; current_points: number; lifetime_points: number; lifetime_points_earned?: number; lifetime_points_redeemed?: number; points_balance?: number; points_to_next_tier?: number | null; tier_multiplier?: number; current_tier_id?: number | null; last_activity_at?: string | null; last_activity?: any; last_tier_change_at?: string | null; }
 export function getLoyaltyAccounts() { return api.get<LoyaltyAccount[]>("/admin/loyalty/accounts"); }
 
 export interface LoyaltyLedgerEntry { id: number; loyalty_account_id: number; customer_id: number; customer_name?: string | null; event_type: string; points_delta: number; running_balance: number; created_at: string; }

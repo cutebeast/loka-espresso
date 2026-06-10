@@ -44,14 +44,19 @@ async def test_staff_login_pin_success(client: httpx.AsyncClient, base_url: str,
     staff_list = r.json().get("data", [])
     if not staff_list:
         pytest.skip("No seeded staff for login test")
-    staff = staff_list[0]
-    payload = {"display_name": staff["display_name"], "store_id": store_id, "password": "1234"}
+
+    # Use the known test staff member created by conftest
+    staff = next((s for s in staff_list if s["display_name"] == "Test Staff"), None)
+    if not staff:
+        pytest.skip("Test Staff not found — baseline data may be missing")
+
+    payload = {"display_name": staff["display_name"], "store_id": staff.get("store_id", store_id), "password": "1234"}
     r2 = await client.post(f"{base_url}/staff/auth/login", json=payload)
     assert r2.status_code == 200, f"Staff login failed: {r2.text}"
     data = r2.json()
     assert "tokens" in data
     assert "access_token" in data["tokens"]
-    assert data["profile"]["store_id"] == store_id
+    assert data["profile"]["store_id"] == staff.get("store_id", store_id)
 
 
 @pytest.mark.asyncio
@@ -205,12 +210,13 @@ async def test_staff_token_access_staff_endpoints(client: httpx.AsyncClient, bas
 @pytest.mark.asyncio
 async def test_staff_pin_verify_correct(client: httpx.AsyncClient, base_url: str, store_id: int):
     """POST /staff/auth/verify-pin returns valid=true for correct PIN."""
+    # Log in as Test Staff (has PIN 1234) instead of admin (no PIN)
     r = await client.post(f"{base_url}/staff/auth/login", json={
-        "email": ADMIN_EMAIL,
-        "password": ADMIN_PASSWORD,
+        "display_name": "Test Staff",
+        "password": "1234",
         "store_id": store_id,
     })
-    assert r.status_code == 200
+    assert r.status_code == 200, f"Staff login failed: {r.text}"
     token = r.json()["tokens"]["access_token"]
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 

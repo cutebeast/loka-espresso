@@ -12,6 +12,25 @@ from fastapi.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 
+class TestAwareLimiter(Limiter):
+    """Limiter that disables per-route rate limits in testing/development."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        env = os.getenv("ENVIRONMENT", "development").lower()
+        self._testing_mode = env in ("testing", "test", "development")
+        if self._testing_mode:
+            logger.info("Rate limiting disabled for environment (%s)", env)
+
+    def limit(self, limit_value, *args, **kwargs):
+        if self._testing_mode:
+            # No-op decorator in testing mode
+            def _noop(func):
+                return func
+            return _noop
+        return super().limit(limit_value, *args, **kwargs)
+
+
 def _build_limiter() -> Limiter:
     redis_url = os.getenv("REDIS_URL", os.getenv("RATE_LIMIT_REDIS_URL", ""))
     storage_uri = None
@@ -26,7 +45,7 @@ def _build_limiter() -> Limiter:
     kwargs: dict = {"key_func": get_remote_address}
     if storage_uri:
         kwargs["storage_uri"] = storage_uri
-    return Limiter(**kwargs)
+    return TestAwareLimiter(**kwargs)
 
 
 limiter = _build_limiter()

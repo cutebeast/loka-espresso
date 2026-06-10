@@ -84,6 +84,7 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
   const { t } = useTranslation();
   const reducedMotion = useReducedMotion();
   const [splashData, setSplashData] = useState<SplashData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const abortCtrl = new AbortController();
@@ -110,7 +111,8 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
           markSplashShown(frequency);
         }
       })
-      .catch((err) => { if (err?.name !== 'AbortError') console.error('[Splash] Content fetch failed:', err); });
+      .catch((err) => { if (err?.name !== 'AbortError') console.error('[Splash] Content fetch failed:', err); })
+      .finally(() => setLoading(false));
     return () => abortCtrl.abort();
   }, [onFinish]);
 
@@ -120,6 +122,18 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
     const timer = setTimeout(onFinish, duration);
     return () => clearTimeout(timer);
   }, [splashData?.image_url, onFinish, reducedMotion]);
+
+  // While fetching splash data, show a minimal loader so the fallback
+  // branded splash doesn't flash before the admin-managed splash appears.
+  if (loading) {
+    return (
+      <div className="splash-page-v2">
+        <div className="splash-page-inner-v2">
+          <SvgLogo reducedMotion={reducedMotion} />
+        </div>
+      </div>
+    );
+  }
 
   // Admin-managed splash with image
   if (splashData) {

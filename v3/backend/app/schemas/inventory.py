@@ -107,7 +107,7 @@ class InventoryItemOut(InventoryItemBase, TimestampedSchema):
 class SupplierBase(BaseSchema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    store_id: int
+    store_id: int | None = None
     supplier_name: str
     contact_person: str | None = None
     phone_number: str | None = Field(default=None, validation_alias="phone")

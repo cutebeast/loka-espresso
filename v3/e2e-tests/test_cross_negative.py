@@ -102,8 +102,10 @@ async def test_admin_login_invalid_password(client: httpx.AsyncClient, base_url:
 @pytest.mark.asyncio
 async def test_staff_login_wrong_pin(client: httpx.AsyncClient, base_url: str):
     """Staff login with wrong PIN returns 401."""
+    # Use the known test staff member; a wrong PIN should still return 401 (not 423)
+    # because this test runs before the lockout threshold is reached
     r = await client.post(f"{base_url}/staff/auth/login", json={
-        "display_name": "Staff One",
+        "display_name": "Test Staff",
         "store_id": 1,
         "password": "999999",
     })

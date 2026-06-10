@@ -119,10 +119,25 @@ async def claim_promo_banner(
         return APIResponse(data={"voucher_code": vd.voucher_code, "already_claimed": True})
 
     import secrets
+    # Determine store: prefer customer's last order store, else first active store
+    from app.models.order import Order
+    last_order = await db.execute(
+        select(Order.store_id)
+        .where(Order.customer_id == customer.id, Order.deleted_at.is_(None))
+        .order_by(Order.created_at.desc())
+        .limit(1)
+    )
+    last_store_id = last_order.scalar_one_or_none()
+    if last_store_id:
+        store_id = last_store_id
+    else:
+        first_store = await db.execute(select(Store.id).where(Store.is_active == True).limit(1))
+        store_id = first_store.scalar_one_or_none() or 1
+
     cv = CustomerVoucher(
         customer_id=customer.id,
         voucher_definition_id=vd.id,
-        store_id=1,
+        store_id=store_id,
         voucher_code=f"{vd.voucher_code}-{secrets.token_hex(4).upper()}",
         status="active",
         voucher_snapshot={

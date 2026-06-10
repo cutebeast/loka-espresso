@@ -124,11 +124,11 @@ export default function ItemEditPage() {
       pl.category_id = Number(pl.category_id) || null;
       pl.tax_category_id = Number(pl.tax_category_id) || null;
       pl.calories = pl.calories ? Number(pl.calories) : null;
-      pl.prep_time_minutes = Number(pl.prep_time_minutes) ?? 10;
+      pl.prep_time_minutes = Number(pl.prep_time_minutes) || 10;
       pl.minimum_tier_id = pl.minimum_tier_id ? Number(pl.minimum_tier_id) : null;
       await api.patch(`/admin/menu/items/${id}`, pl);
       setMsg("Saved"); setTimeout(()=>setMsg(""),2000);
-    } catch (e) { console.error(e); } finally { setSaving(false); }
+    } catch (e: any) { setMsg(e.message || "Save failed"); console.error(e); } finally { setSaving(false); }
   };
 
   const upsertTr = async(field:string,locale:string,src:string,text:string)=>{

@@ -83,13 +83,13 @@ export default function LoyaltyAccountsPage() {
                   style={{ cursor: "pointer" }}
                 >
                   <td style={{ fontWeight: 600 }}>{item.customer_name || `Customer #${item.customer_id}`}</td>
-                  <td>{tierBadge((item as any).tier_name || item.tier_name, (item as any).color_hex)}</td>
+                  <td>{tierBadge(item.tier_name || "", item.color_hex ?? undefined)}</td>
                   <td style={{ fontWeight: 600 }}>{item.points_balance ?? item.current_points ?? 0}</td>
-                  <td>{(item as any).lifetime_points_earned ?? item.lifetime_points ?? 0}</td>
-                  <td>{(item as any).lifetime_points_redeemed ?? 0}</td>
+                  <td>{item.lifetime_points_earned ?? item.lifetime_points ?? 0}</td>
+                  <td>{item.lifetime_points_redeemed ?? 0}</td>
                   <td style={{ fontSize: 12 }}>
-                    {(item as any).last_activity_at
-                      ? new Date((item as any).last_activity_at).toLocaleString()
+                    {item.last_activity_at
+                      ? new Date(item.last_activity_at).toLocaleString()
                       : item.last_activity
                         ? new Date(item.last_activity).toLocaleString()
                         : "—"}
