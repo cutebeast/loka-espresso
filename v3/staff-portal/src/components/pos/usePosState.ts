@@ -179,6 +179,7 @@ export function usePosState() {
           quantity: c.qty,
           modifier_ids: c.modifier_ids,
           notes: c.modifiers_label || undefined,
+          bundle_product_id: c.bundle_product_id || undefined,
         })),
         order_notes: cartHook.orderNotes,
       });
@@ -230,10 +231,20 @@ export function usePosState() {
     for (const comp of bp.components) {
       const menuItem = items.find(i => i.id === comp.menu_item_id);
       if (!menuItem) continue;
-      for (let q = 0; q < comp.default_quantity; q++) {
-        cartHook.addToCart(menuItem, {}, "", 1);
-      }
+      cartHook.addToCart(menuItem, {}, "", comp.default_quantity);
     }
+    // Tag latest cart items with bundle_product_id
+    const cart = cartHook.cart;
+    const addedCount = bp.components.reduce((s, c) => s + c.default_quantity, 0);
+    let tagged = 0;
+    const updatedCart = cart.map(ci => {
+      if (!ci.bundle_product_id && tagged < addedCount) {
+        tagged += ci.qty;
+        return { ...ci, bundle_product_id: bp.id };
+      }
+      return ci;
+    });
+    cartHook.setCart(updatedCart);
     setMsg(`${bp.title} added`);
   };
 

@@ -489,6 +489,7 @@ export interface CartItem {
   price: number;
   modifier_ids: number[];
   modifiers_label: string;
+  bundle_product_id?: number;
 }
 
 export interface Customer {
@@ -695,7 +696,7 @@ export function createPosOrder(payload: {
   customer_id?: number | null;
   dining_table_id?: number | null;
   order_type: string;
-  line_items: Array<{ menu_item_id: number; quantity: number; modifier_ids: number[]; notes?: string }>;
+  line_items: Array<{ menu_item_id: number; quantity: number; modifier_ids: number[]; notes?: string; bundle_product_id?: number }>;
   order_notes?: string;
 }) {
   return api.post<{ order_id: number; order_number: string; total: number; change?: number }>("/staff/pos/orders", payload);

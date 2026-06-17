@@ -111,6 +111,7 @@ class POSLineItem(BaseSchema):
     quantity: int = 1
     special_instructions: str | None = None
     modifier_ids: list[int] | None = None
+    bundle_product_id: int | None = None
 
 
 class POSPayment(BaseSchema):

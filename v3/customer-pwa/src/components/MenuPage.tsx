@@ -138,6 +138,7 @@ export default function MenuPage() {
         customizations: {},
         store_id: selectedStore?.id,
         customization_count: 0,
+        bundle_product_id: bp.id,
       });
     }
     showToast(`${bp.title} added to cart!`, 'success');

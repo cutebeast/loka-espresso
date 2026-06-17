@@ -89,12 +89,15 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
 
         customizationOptionIds.sort((a, b) => a - b);
 
-        const payload = {
+        const payload: Record<string, unknown> = {
           menu_item_id: desired.menu_item_id,
           quantity: desired.quantity,
           customization_option_ids: customizationOptionIds,
           store_id: desired.store_id,
         };
+        if (desired.bundle_product_id) {
+          payload.bundle_product_id = desired.bundle_product_id;
+        }
 
         await api.post('/cart/items', payload);
       }

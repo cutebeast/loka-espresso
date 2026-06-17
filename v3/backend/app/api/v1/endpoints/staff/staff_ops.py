@@ -4,6 +4,7 @@ import json
 import os
 import uuid
 from datetime import datetime, timezone, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile, status
@@ -731,6 +732,7 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
             modifier_total=modifier_total,
             selected_modifiers={"modifier_ids": modifier_ids},
             special_instructions=special,
+            bundle_product_id=li.bundle_product_id,
         ))
 
     # Compute fees from store config
@@ -745,6 +747,25 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
     tax_rate = float(config_map.get("order.tax_rate", 0) or 0)
     tax_amount = round(subtotal * tax_rate, 2)
     total = round(subtotal + service_charge + tax_amount, 2)
+
+    # ── Bundle discount ──
+    bundle_discount = 0.0
+    bundle_ids = set(li.bundle_product_id for li in line_items_data if hasattr(li, 'bundle_product_id') and li.bundle_product_id)
+    if bundle_ids:
+        from app.models.bundle_product import BundleProduct
+        for bid in bundle_ids:
+            if bid is None: continue
+            bdl = await db.get(BundleProduct, bid)
+            if not bdl or not bdl.is_active: continue
+            bundle_line_items = [l for l in line_items if l.bundle_product_id == bid]
+            comp_sum = sum(
+                (Decimal(str(l.unit_price)) + Decimal(str(l.modifier_total))) * l.quantity
+                for l in bundle_line_items
+            )
+            bd = float(comp_sum - Decimal(str(bdl.bundle_price)))
+            if bd > 0:
+                bundle_discount += bd
+        total = round(total - bundle_discount, 2)
 
     # Generate order number
     from uuid import uuid4
