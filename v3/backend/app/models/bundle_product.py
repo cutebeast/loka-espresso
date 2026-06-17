@@ -52,7 +52,7 @@ class BundleProductComponent(Base):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     bundle_product: Mapped["BundleProduct"] = relationship("BundleProduct", back_populates="components")
-    menu_item: Mapped["MenuItem"] = relationship("MenuItem", back_populates="bundle_components")
+    menu_item: Mapped["MenuItem"] = relationship("MenuItem", foreign_keys=[menu_item_id])
 
     modifier_overrides: Mapped[List["BundleComponentModifier"]] = relationship(
         "BundleComponentModifier", back_populates="component", cascade="all, delete-orphan"
