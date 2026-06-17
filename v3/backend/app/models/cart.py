@@ -71,6 +71,12 @@ class CartLineItem(Base):
     selected_modifiers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     modifier_total: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False, default=0)
     special_instructions: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    bundle_product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("bundle_products.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    bundle_component_id: Mapped[int | None] = mapped_column(
+        ForeignKey("bundle_product_components.id", ondelete="SET NULL"), nullable=True
+    )
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -80,6 +86,7 @@ class CartLineItem(Base):
     cart: Mapped["CustomerCart"] = relationship("CustomerCart", back_populates="line_items")
     menu_item: Mapped["MenuItem"] = relationship("MenuItem")
     menu_variant: Mapped["MenuVariant"] = relationship("MenuVariant")
+    bundle_product: Mapped["BundleProduct | None"] = relationship("BundleProduct")
 
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_cart_line_items_quantity"),

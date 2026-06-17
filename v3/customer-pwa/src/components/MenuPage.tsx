@@ -8,7 +8,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
 import api from '@/lib/api';
-import type { MenuItem } from '@/lib/api';
+import type { MenuItem, BundleProduct } from '@/lib/api';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
@@ -38,6 +38,7 @@ export default function MenuPage() {
   const [selectedDietaryTag, setSelectedDietaryTag] = useState<string | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
   const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
+  const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
 
   const sectionRefs = useRef<Map<number, HTMLElement | null>>(new Map());
   const navRef = useRef<HTMLDivElement>(null);
@@ -47,15 +48,17 @@ export default function MenuPage() {
     setLoading(true);
     setLoadError(false);
     try {
-      const [catRes, itemRes] = await Promise.all([
+      const [catRes, itemRes, bpRes] = await Promise.all([
         api.get(`/menu/categories`, { signal }),
         api.get(`/menu/items`, { signal }),
+        api.get(`/menu/bundle-products`, { signal }).catch(() => ({ data: [] })),
       ]);
       const catData = catRes.data;
       const itemData = itemRes.data;
       const rawCats = Array.isArray(catData) ? catData : (catData?.categories || catData?.items || []);
       setCategories(rawCats.map((c: Record<string, unknown>) => ({ ...c, name: (c.name || c.category_name || '') as string })));
       setMenuItems(Array.isArray(itemData) ? itemData : (itemData?.items || []));
+      setBundleProducts((bpRes as any)?.data || []);
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       setCategories([]);
@@ -123,6 +126,22 @@ export default function MenuPage() {
     });
     setCustomizeItem(null);
   }, [addItem, selectedStore?.id]);
+
+  const handleAddBundle = useCallback((bp: BundleProduct) => {
+    for (const comp of bp.components) {
+      addItem({
+        menu_item_id: comp.menu_item_id,
+        name: comp.menu_item_name || `Item #${comp.menu_item_id}`,
+        price: comp.menu_item_price ?? 0,
+        base_price: comp.menu_item_price ?? 0,
+        quantity: comp.default_quantity,
+        customizations: {},
+        store_id: selectedStore?.id,
+        customization_count: 0,
+      });
+    }
+    showToast(`${bp.title} added to cart!`, 'success');
+  }, [addItem, selectedStore?.id, showToast]);
 
   const debouncedSearch = useDebounce(searchQuery, 150);
 
@@ -244,6 +263,41 @@ export default function MenuPage() {
               {tag}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Bundle Products Section */}
+      {!showSearch && bundleProducts.length > 0 && (
+        <div className="menu-bundle-section">
+          <div className="menu-section-header">
+            <span style={{ fontSize: 15, fontWeight: 700 }}>Combo Deals</span>
+          </div>
+          <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "0 16px 8px" }}>
+            {bundleProducts.map(bp => (
+              <button
+                key={bp.id}
+                onClick={() => handleAddBundle(bp)}
+                style={{
+                  minWidth: 200, maxWidth: 220, background: "linear-gradient(135deg, #FDF8F0, #FFFDF8)",
+                  border: "1.5px solid var(--color-border-subtle)", borderRadius: 14, padding: 12,
+                  cursor: "pointer", textAlign: "left", flexShrink: 0,
+                  display: "flex", flexDirection: "column", gap: 6,
+                }}
+              >
+                {bp.image_url && (
+                  <img src={resolveAssetUrl(bp.image_url) || ''} alt={bp.title} style={{ width: "100%", height: 100, borderRadius: 10, objectFit: "cover" }} loading="lazy" />
+                )}
+                <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{bp.title}</div>
+                <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+                  {bp.components.map(c => c.menu_item_name).slice(0, 3).join(" + ")}{bp.components.length > 3 ? " ..." : ""}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "var(--color-primary)" }}>{formatPrice(bp.bundle_price)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>Combo</span>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

@@ -1106,6 +1106,38 @@ export interface SurveyResponse {
 export type PageId = 'home' | 'menu' | 'rewards' | 'cart' | 'checkout' | 'orders' | 'order-detail' | 'profile' | 'wallet' | 'history' | 'promotions' | 'information' | 'my-rewards' | 'account-details' | 'payment-methods' | 'saved-addresses' | 'notifications' | 'help-support' | 'legal' | 'settings' | 'my-card' | 'referral' | 'reservations' | 'events' | 'checkin';
 export type OrderMode = 'pickup' | 'delivery' | 'dine_in';
 
+export interface BundleProduct {
+  id: number;
+  bundle_type: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  bundle_price: number;
+  category_id: number | null;
+  display_order: number;
+  components: BundleProductComponent[];
+}
+
+export interface BundleProductComponent {
+  id: number;
+  menu_item_id: number;
+  menu_item_name: string | null;
+  menu_item_price: number | null;
+  menu_item_image_url: string | null;
+  default_quantity: number;
+  is_required: boolean;
+  is_swappable: boolean;
+  swap_group: number | null;
+  sort_order: number;
+  modifier_overrides: Array<{
+    id: number;
+    modifier_option_id: number;
+    modifier_option_name: string | null;
+    price_adjustment: number | null;
+    is_default: boolean;
+  }>;
+}
+
 export function cacheBust(url: string, ts?: number): string {
   if (!url) return url;
   const separator = url.includes('?') ? '&' : '?';

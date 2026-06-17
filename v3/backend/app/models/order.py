@@ -178,6 +178,9 @@ class OrderLineItem(Base):
     selected_modifiers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     special_instructions: Mapped[str | None] = mapped_column(String(255), nullable=True)
     fulfillment_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    bundle_product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("bundle_products.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     served_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     served_by: Mapped[int | None] = mapped_column(
         ForeignKey("staff_profiles.id", ondelete="SET NULL"), nullable=True, index=True
@@ -192,6 +195,7 @@ class OrderLineItem(Base):
     menu_item: Mapped["MenuItem"] = relationship("MenuItem")
     menu_variant: Mapped["MenuVariant"] = relationship("MenuVariant")
     server: Mapped["StaffProfile | None"] = relationship("StaffProfile")
+    bundle_product: Mapped["BundleProduct | None"] = relationship("BundleProduct")
 
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_order_line_items_quantity"),

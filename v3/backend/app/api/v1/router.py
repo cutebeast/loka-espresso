@@ -58,6 +58,7 @@ from app.api.v1.endpoints.staff import staff_ops as staff_operations
 from app.api.v1.endpoints.admin import scan as admin_scan
 from app.api.v1.endpoints.admin import pos as admin_pos
 from app.api.v1.endpoints.admin import equipment as admin_equipment
+from app.api.v1.endpoints.admin import bundle_products as admin_bundle_products
 
 api_router = APIRouter()
 
@@ -72,6 +73,7 @@ api_router.include_router(auth.router, tags=["authentication"])
 api_router.include_router(admin_auth.router, tags=["admin — authentication"])
 api_router.include_router(admin_stores.router, tags=["admin — stores"])
 api_router.include_router(admin_menu.router, tags=["admin — menu"])
+api_router.include_router(admin_bundle_products.router, tags=["admin — bundle products"])
 api_router.include_router(admin_inventory.router, tags=["admin — inventory"])
 
 # Time Events & Tips (must be before staff router to avoid /{staff_id} catching /time-events and /tips)

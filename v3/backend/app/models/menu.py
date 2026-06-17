@@ -105,6 +105,9 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     dietary_tag_links: Mapped[List["MenuItemDietaryTag"]] = relationship(
         "MenuItemDietaryTag", back_populates="menu_item", cascade="all, delete-orphan"
     )
+    bundle_components: Mapped[List["BundleProductComponent"]] = relationship(
+        "BundleProductComponent", back_populates="menu_item"
+    )
 
     __table_args__ = (
         CheckConstraint("base_price >= 0", name="ck_menu_items_base_price"),

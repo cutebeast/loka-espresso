@@ -41,6 +41,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Categories", href: "/menu/categories" },
       { label: "Items", href: "/menu/items" },
+      { label: "Bundle Products", href: "/menu/bundle-products" },
       { label: "Allergens", href: "/menu/allergens" },
       { label: "Dietary Tags", href: "/menu/dietary-tags" },
       { label: "Tax Categories", href: "/menu/tax-categories" },

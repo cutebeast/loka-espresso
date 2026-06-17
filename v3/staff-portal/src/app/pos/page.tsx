@@ -214,7 +214,43 @@ export default function PosPage() {
         {pos.loading ? (
           <SkeletonCard count={6} />
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
+          <div>
+            {/* Bundle Products Row */}
+            {pos.bundleProducts.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Combo Deals</div>
+                <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+                  {pos.bundleProducts.map(bp => (
+                    <button
+                      key={bp.id}
+                      onClick={() => pos.addBundleToCart(bp)}
+                      style={{
+                        minWidth: 200, maxWidth: 220, padding: 12,
+                        background: "linear-gradient(135deg, #FFFDF8, #FDF8F0)",
+                        border: "1.5px solid var(--color-border-subtle)", borderRadius: 12,
+                        cursor: "pointer", textAlign: "left", flexShrink: 0,
+                        display: "flex", flexDirection: "column", gap: 6,
+                      }}
+                    >
+                      {bp.image_url && (
+                        <div style={{ width: "100%", height: 100, borderRadius: 8, overflow: "hidden", background: "var(--color-bg-muted)" }}>
+                          <img src={bp.image_url} alt={bp.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                        </div>
+                      )}
+                      <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{bp.title}</div>
+                      <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+                        {bp.components.map(c => c.menu_item_name).slice(0, 3).join(" + ")}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontWeight: 700, fontSize: 15, color: "var(--color-primary)" }}>RM {Number(bp.bundle_price ?? 0).toFixed(2)}</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>Combo</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
             {pos.filteredItems.map((item) => (
               <button
                 key={item.id}
@@ -274,6 +310,7 @@ export default function PosPage() {
                 <EmptyState icon={<Search size={48} />} title="No items found" description="Try changing the category or search term" />
               </div>
             )}
+          </div>
           </div>
         )}
       </div>

@@ -22,7 +22,8 @@ class CartLineItemBase(BaseSchema):
 
 
 class CartLineItemCreate(CartLineItemBase):
-    pass
+    bundle_product_id: int | None = None
+    bundle_component_id: int | None = None
 
 
 class CartLineItemUpdate(BaseSchema):
@@ -44,6 +45,8 @@ class CartLineItemOut(BaseSchema):
     special_instructions: str | None
     item_name: str | None = None
     image_url: str | None = None
+    bundle_product_id: int | None = None
+    bundle_component_id: int | None = None
     added_at: datetime
 
 

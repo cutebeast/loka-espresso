@@ -184,6 +184,7 @@ class MenuPublicOut(BaseSchema):
     store_id: int
     categories: list[MenuCategoryOut]
     items: list[MenuItemPublicOut]
+    bundle_products: list[dict] = []
 
 
 # ── Tax Category ──

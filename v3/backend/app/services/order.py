@@ -18,6 +18,7 @@ from app.models.reward import CustomerReward, RewardCatalog
 from app.models.staff import TipAllocation
 from app.models.store import Store, StoreConfiguration
 from app.models.voucher import CustomerVoucher, VoucherDefinition
+from app.models.bundle_product import BundleProduct
 from app.schemas.order import OrderCreate
 
 
@@ -305,7 +306,25 @@ async def create_order_from_cart(
         rc.total_redemptions = (rc.total_redemptions or 0) + 1
         reward_used = cr
 
-    total_discount = voucher_discount + reward_discount
+    # ── Bundle Deal discount processing ──
+    bundle_discount = Decimal(0)
+    bundle_ids_in_cart = set(ci.bundle_product_id for ci in cart_items if ci.bundle_product_id)
+    for bid in bundle_ids_in_cart:
+        if bid is None:
+            continue
+        bundle = await db.get(BundleProduct, bid)
+        if not bundle or not bundle.is_active:
+            continue
+        bundle_items = [ci for ci in cart_items if ci.bundle_product_id == bid]
+        component_sum = sum(
+            (Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total))) * ci.quantity
+            for ci in bundle_items
+        )
+        bundle_disc = component_sum - Decimal(str(bundle.bundle_price))
+        if bundle_disc > 0:
+            bundle_discount += bundle_disc
+
+    total_discount = voucher_discount + reward_discount + bundle_discount
     total -= total_discount
     loyalty_points_earned = 0  # recalculated after discount
     if not voucher_used and not reward_used:
@@ -353,13 +372,14 @@ async def create_order_from_cart(
             order_id=order.id,
             menu_item_id=ci.menu_item_id,
             menu_variant_id=ci.menu_variant_id,
-            item_snapshot={},  # TODO: snapshot menu item details
+            item_snapshot={},
             quantity=ci.quantity,
             unit_price=ci.unit_price,
             modifier_total=ci.modifier_total,
             line_total=ci.line_total,
             selected_modifiers=ci.selected_modifiers,
             special_instructions=ci.special_instructions,
+            bundle_product_id=ci.bundle_product_id,
         )
         db.add(oli)
 
@@ -372,6 +392,8 @@ async def create_order_from_cart(
         reason_parts.append(f"voucher {data.voucher_code} applied ({float(voucher_discount):.2f})")
     if reward_used:
         reason_parts.append(f"reward #{data.reward_id} applied ({float(reward_discount):.2f})")
+    if bundle_discount > 0:
+        reason_parts.append(f"bundle discount ({float(bundle_discount):.2f})")
     status_log = OrderStatusLog(
         order_id=order.id,
         from_status=None,

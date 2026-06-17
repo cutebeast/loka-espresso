@@ -658,6 +658,35 @@ export function getMenuCategories(perPage = 50) {
   return api.get<Category[]>(`/admin/menu/categories?per_page=${perPage}`);
 }
 
+export interface BundleProduct {
+  id: number;
+  bundle_type: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  bundle_price: number;
+  category_id: number | null;
+  display_order: number;
+  components: BundleProductComponent[];
+}
+
+export interface BundleProductComponent {
+  id: number;
+  menu_item_id: number;
+  menu_item_name: string | null;
+  menu_item_price: number | null;
+  menu_item_image_url: string | null;
+  default_quantity: number;
+  is_required: boolean;
+  is_swappable: boolean;
+  swap_group: number | null;
+  sort_order: number;
+}
+
+export function getBundleProducts() {
+  return api.get<BundleProduct[]>("/menu/bundle-products");
+}
+
 export function searchCustomers(q: string) {
   return api.get<Customer[]>(`/admin/customers?search=${encodeURIComponent(q)}&per_page=10`);
 }

@@ -1,5 +1,7 @@
 """Public menu endpoints (no auth required)."""
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -16,6 +18,7 @@ from app.models.menu import (
     MenuModifierGroup,
     MenuVariant,
 )
+from app.models.bundle_product import BundleProduct, BundleProductComponent, BundleComponentModifier
 from app.schemas.base import APIResponse
 from app.schemas.menu import (
     AllergenOut,
@@ -130,10 +133,63 @@ async def get_store_menu(
 
     cat_outs = [MenuCategoryOut.model_validate(c) for c in categories]
 
+    # Fetch active bundle products
+    now = datetime.now(timezone.utc)
+    bp_result = await db.execute(
+        select(BundleProduct).where(
+            BundleProduct.is_active.is_(True),
+            BundleProduct.deleted_at.is_(None),
+            (BundleProduct.start_date.is_(None)) | (BundleProduct.start_date <= now),
+            (BundleProduct.end_date.is_(None)) | (BundleProduct.end_date >= now),
+        ).options(
+            selectinload(BundleProduct.components).selectinload(BundleProductComponent.menu_item),
+            selectinload(BundleProduct.components).selectinload(BundleProductComponent.modifier_overrides).selectinload(BundleComponentModifier.modifier_option),
+        ).order_by(BundleProduct.display_order.asc(), BundleProduct.id.desc())
+    )
+    bundle_products_out = []
+    for bp in bp_result.scalars().all():
+        bp_d = {
+            "id": bp.id,
+            "bundle_type": bp.bundle_type,
+            "title": bp.title,
+            "description": bp.description,
+            "image_url": bp.image_url,
+            "bundle_price": float(bp.bundle_price),
+            "category_id": bp.category_id,
+            "display_order": bp.display_order,
+            "components": []
+        }
+        for comp in bp.components:
+            item = comp.menu_item
+            bp_d["components"].append({
+                "id": comp.id,
+                "menu_item_id": comp.menu_item_id,
+                "menu_item_name": item.item_name if item else None,
+                "menu_item_price": float(item.base_price) if item else None,
+                "menu_item_image_url": item.image_url if item else None,
+                "default_quantity": comp.default_quantity,
+                "is_required": comp.is_required,
+                "is_swappable": comp.is_swappable,
+                "swap_group": comp.swap_group,
+                "sort_order": comp.sort_order,
+                "modifier_overrides": [
+                    {
+                        "id": mo.id,
+                        "modifier_option_id": mo.modifier_option_id,
+                        "modifier_option_name": mo.modifier_option.option_name if mo.modifier_option else None,
+                        "price_adjustment": float(mo.price_adjustment) if mo.price_adjustment is not None else None,
+                        "is_default": mo.is_default,
+                    }
+                    for mo in (comp.modifier_overrides or [])
+                ],
+            })
+        bundle_products_out.append(bp_d)
+
     menu_data = MenuPublicOut(
         store_id=store_id,
         categories=cat_outs,
         items=item_outs,
+        bundle_products=bundle_products_out,
     ).model_dump()
 
     await translate_menu_response(db, menu_data, locale)
@@ -262,3 +318,62 @@ async def get_menu_item(db: DBDependency, locale: OptionalLocale, item_id: int):
     await translate_single(db, item_dict, "menu_items", locale)
 
     return APIResponse(data=item_dict)
+
+
+@router.get("/bundle-products", response_model=APIResponse[list[dict]])
+async def list_bundle_products_public(
+    db: DBDependency,
+    locale: OptionalLocale,
+):
+    """List active bundle products for PWA menu display."""
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(BundleProduct).where(
+            BundleProduct.is_active.is_(True),
+            BundleProduct.deleted_at.is_(None),
+            (BundleProduct.start_date.is_(None)) | (BundleProduct.start_date <= now),
+            (BundleProduct.end_date.is_(None)) | (BundleProduct.end_date >= now),
+        ).options(
+            selectinload(BundleProduct.components).selectinload(BundleProductComponent.menu_item),
+            selectinload(BundleProduct.components).selectinload(BundleProductComponent.modifier_overrides).selectinload(BundleComponentModifier.modifier_option),
+        ).order_by(BundleProduct.display_order.asc(), BundleProduct.id.desc())
+    )
+    items = []
+    for bp in result.scalars().all():
+        bp_d = {
+            "id": bp.id,
+            "bundle_type": bp.bundle_type,
+            "title": bp.title,
+            "description": bp.description,
+            "image_url": bp.image_url,
+            "bundle_price": float(bp.bundle_price),
+            "category_id": bp.category_id,
+            "display_order": bp.display_order,
+            "components": []
+        }
+        for comp in bp.components:
+            item = comp.menu_item
+            bp_d["components"].append({
+                "id": comp.id,
+                "menu_item_id": comp.menu_item_id,
+                "menu_item_name": item.item_name if item else None,
+                "menu_item_price": float(item.base_price) if item else None,
+                "menu_item_image_url": item.image_url if item else None,
+                "default_quantity": comp.default_quantity,
+                "is_required": comp.is_required,
+                "is_swappable": comp.is_swappable,
+                "swap_group": comp.swap_group,
+                "sort_order": comp.sort_order,
+                "modifier_overrides": [
+                    {
+                        "id": mo.id,
+                        "modifier_option_id": mo.modifier_option_id,
+                        "modifier_option_name": mo.modifier_option.option_name if mo.modifier_option else None,
+                        "price_adjustment": float(mo.price_adjustment) if mo.price_adjustment is not None else None,
+                        "is_default": mo.is_default,
+                    }
+                    for mo in (comp.modifier_overrides or [])
+                ],
+            })
+        items.append(bp_d)
+    return APIResponse(data=items)

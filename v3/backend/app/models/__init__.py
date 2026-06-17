@@ -152,3 +152,8 @@ from app.models.equipment import (
     EquipmentMaintenanceLog,
 )
 from app.models.hygiene import HygieneReport
+from app.models.bundle_product import (
+    BundleProduct,
+    BundleProductComponent,
+    BundleComponentModifier,
+)

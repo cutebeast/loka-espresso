@@ -15,10 +15,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  getMenuItems, getMenuCategories, getTables, getOrders,
+  getMenuItems, getMenuCategories, getTables, getOrders, getBundleProducts,
   createPosOrder,
   type MenuItem, type Category, type Customer, type Table,
-  type Reward, type Voucher
+  type Reward, type Voucher, type BundleProduct
 } from "@/lib/api";
 import { usePosCart, type HeldOrder } from "./usePosCart";
 import { usePosCustomer } from "./usePosCustomer";
@@ -46,6 +46,7 @@ export function usePosState() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
+  const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
   const [activeCat, setActiveCat] = useState<number | null>(null);
   const [menuSearch, setMenuSearch] = useState("");
   const [menuSearchInput, setMenuSearchInput] = useState("");
@@ -93,10 +94,11 @@ export function usePosState() {
     let mounted = true;
     const load = async () => {
       try {
-        const [itemsData, catsData, tablesData] = await Promise.all([
+        const [itemsData, catsData, tablesData, bpData] = await Promise.all([
           getMenuItems(),
           getMenuCategories(),
           getTables(storeId).catch((err) => { console.error("Failed to load tables:", err); return []; }),
+          getBundleProducts().catch(() => []),
         ]);
         if (!mounted) return;
         setItems((Array.isArray(itemsData) ? itemsData : []).filter((i: { is_available?: boolean }) => i.is_available));
@@ -107,6 +109,7 @@ export function usePosState() {
           if (firstCat) setActiveCat(firstCat.id);
         }
         setTables(Array.isArray(tablesData) ? (tablesData as Table[]).filter((t) => t.is_active !== false) : []);
+        setBundleProducts(Array.isArray(bpData) ? bpData : []);
 
         if (checkoutOrderId) {
           await checkoutHook.loadCheckoutOrder(checkoutOrderId);
@@ -223,6 +226,17 @@ export function usePosState() {
     router.replace("/pos");
   };
 
+  const addBundleToCart = (bp: BundleProduct) => {
+    for (const comp of bp.components) {
+      const menuItem = items.find(i => i.id === comp.menu_item_id);
+      if (!menuItem) continue;
+      for (let q = 0; q < comp.default_quantity; q++) {
+        cartHook.addToCart(menuItem, {}, "", 1);
+      }
+    }
+    setMsg(`${bp.title} added`);
+  };
+
   // ── Return (backward-compatible interface) ──
   return {
     router,
@@ -232,6 +246,7 @@ export function usePosState() {
     items, setItems,
     tables, setTables,
     activeCat, setActiveCat,
+    bundleProducts, setBundleProducts,
     loading, setLoading,
     error, setError,
     msg, setMsg,
@@ -255,6 +270,7 @@ export function usePosState() {
     subtotal: cartHook.subtotal,
     holdOrder,
     recallOrder: cartHook.recallOrder,
+    addBundleToCart,
     newOrder,
 
     // Customer (from usePosCustomer)

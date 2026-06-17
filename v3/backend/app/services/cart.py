@@ -139,6 +139,8 @@ async def add_line_item(
             selected_modifiers={m.modifier_group_id: m.selected_option_ids for m in data.selected_modifiers},
             modifier_total=modifier_total,
             special_instructions=data.special_instructions,
+            bundle_product_id=data.bundle_product_id,
+            bundle_component_id=data.bundle_component_id,
         )
         db.add(line_item)
     
