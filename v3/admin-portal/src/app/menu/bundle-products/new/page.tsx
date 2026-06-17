@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Plus, Trash2, Upload, Save } from "lucide-react";
 
-interface MenuItemOption { id: number; item_name: string; base_price: number; }
+interface MenuItemOption { id: number; item_name: string; base_price: number; category_id: number; }
+interface CategoryOption { id: number; category_name: string; }
 
 export default function BundleProductNewPage() {
   const router = useRouter();
@@ -14,6 +15,8 @@ export default function BundleProductNewPage() {
   const [imagePreview, setImagePreview] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [menuItems, setMenuItems] = useState<MenuItemOption[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [selectedCat, setSelectedCat] = useState("");
 
   const [form, setForm] = useState({
     title: "", description: "", bundle_price: "", bundle_type: "combo",
@@ -29,7 +32,14 @@ export default function BundleProductNewPage() {
     api.getRaw<any>("/admin/menu/items?per_page=500")
       .then(d => setMenuItems((d?.items || [])))
       .catch((e) => { console.error('menu items:', e); });
+    api.getRaw<any>("/admin/menu/categories?per_page=100")
+      .then(d => setCategories((d?.items || [])))
+      .catch((e) => { console.error('menu categories:', e); });
   }, []);
+
+  const filteredItems = selectedCat
+    ? menuItems.filter(i => i.category_id === Number(selectedCat))
+    : menuItems;
 
   const handleUpload = async () => {
     const f = fileRef.current?.files?.[0]; if (!f) return; setUploading(true);
@@ -78,7 +88,7 @@ export default function BundleProductNewPage() {
   };
 
   return (
-    <div style={{ padding: 32 }}>
+    <div style={{ padding: 32, height: "100%", overflow: "auto" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
         <button onClick={() => router.push("/menu/bundle-products")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
         <div><h1 className="page-title" style={{ margin: 0 }}>New Bundle Product</h1><p className="page-subtitle" style={{ marginTop: 2 }}>Combo meal combining existing menu items at a special price</p></div>
@@ -109,11 +119,24 @@ export default function BundleProductNewPage() {
             <button type="button" onClick={addComponent} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: 4 }}><Plus size={14} /> Add</button>
           </div>
           {components.length === 0 && <p style={{ fontSize: 13, color: "var(--color-text-muted)" }}>No components added. Click "Add" to include menu items in this bundle.</p>}
+
+          {components.length > 0 && (
+            <div style={{ marginBottom: 12, background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", padding: "10px 14px" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Filter by category:</label>
+                <select value={selectedCat} onChange={e => setSelectedCat(e.target.value)} style={{ flex: 1, padding: "6px 10px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+                  <option value="">All categories ({menuItems.length} items)</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
           {components.map((c, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: "8px 12px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", flexWrap: "wrap" }}>
               <select value={c.menu_item_id} onChange={e => updateComponent(i, "menu_item_id", e.target.value)} style={{ flex: 1, minWidth: 180, padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
                 <option value="">— Select item —</option>
-                {menuItems.map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
+                {filteredItems.map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
               </select>
               <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(i, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
               <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={c.is_required} onChange={e => updateComponent(i, "is_required", e.target.checked)} /> Req</label>
