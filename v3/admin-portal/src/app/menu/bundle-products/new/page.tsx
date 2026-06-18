@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { ArrowLeft, Plus, Trash2, Upload, Save } from "lucide-react";
 
-interface MenuItemOption { id: number; item_name: string; base_price: number; category_id: number; }
+interface MenuItemOption { id: number; item_name: string; base_price: number; category_id: number; is_bundle_eligible: boolean; }
 interface CategoryOption { id: number; category_name: string; }
 
 export default function BundleProductNewPage() {
@@ -16,7 +16,6 @@ export default function BundleProductNewPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [menuItems, setMenuItems] = useState<MenuItemOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [selectedCat, setSelectedCat] = useState("");
 
   const [form, setForm] = useState({
     title: "", description: "", bundle_price: "", bundle_type: "combo",
@@ -24,21 +23,21 @@ export default function BundleProductNewPage() {
   });
 
   const [components, setComponents] = useState<Array<{
-    menu_item_id: string; default_quantity: number; is_required: boolean;
-    is_swappable: boolean; swap_group: string; sort_order: number;
+    menu_item_id: string; cat_filter: string; default_quantity: number;
+    is_required: boolean; is_swappable: boolean; swap_group: string; sort_order: number;
   }>>([]);
 
   useEffect(() => {
     api.getRaw<any>("/admin/menu/items?per_page=500")
-      .then(d => setMenuItems((d?.items || [])))
+      .then(d => setMenuItems((d?.items || []).filter((i: any) => i.is_bundle_eligible)))
       .catch((e) => { console.error('menu items:', e); });
     api.getRaw<any>("/admin/menu/categories?per_page=100")
       .then(d => setCategories((d?.items || [])))
       .catch((e) => { console.error('menu categories:', e); });
   }, []);
 
-  const filteredItems = selectedCat
-    ? menuItems.filter(i => i.category_id === Number(selectedCat))
+  const itemsForComponent = (catFilter: string) => catFilter
+    ? menuItems.filter(i => i.category_id === Number(catFilter))
     : menuItems;
 
   const handleUpload = async () => {
@@ -52,12 +51,17 @@ export default function BundleProductNewPage() {
     } catch (e: any) { setError(e.message); } finally { setUploading(false); }
   };
 
-  const addComponent = () => setComponents([...components, { menu_item_id: "", default_quantity: 1, is_required: true, is_swappable: false, swap_group: "", sort_order: components.length }]);
+  const addComponent = () => setComponents([...components, { menu_item_id: "", cat_filter: "", default_quantity: 1, is_required: true, is_swappable: false, swap_group: "", sort_order: components.length }]);
 
   const removeComponent = (idx: number) => setComponents(components.filter((_, i) => i !== idx));
 
   const updateComponent = (idx: number, field: string, value: any) => {
-    setComponents(components.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+    setComponents(components.map((c, i) => {
+      if (i !== idx) return c;
+      const next = { ...c, [field]: value };
+      if (field === "cat_filter") next.menu_item_id = "";
+      return next;
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -95,7 +99,7 @@ export default function BundleProductNewPage() {
       </div>
       {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
-      <div className="card" style={{ padding: 24, maxWidth: 800 }}>
+      <div className="card" style={{ padding: "24px 24px 400px 24px", maxWidth: 800 }}>
         <form onSubmit={handleSubmit}>
           <div className="df-grid">
             <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Title *</label><input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Snack Plate Combo" /></div>
@@ -120,23 +124,19 @@ export default function BundleProductNewPage() {
           </div>
           {components.length === 0 && <p style={{ fontSize: 13, color: "var(--color-text-muted)" }}>No components added. Click "Add" to include menu items in this bundle.</p>}
 
-          {components.length > 0 && (
-            <div style={{ marginBottom: 12, background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", padding: "10px 14px" }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Filter by category:</label>
-                <select value={selectedCat} onChange={e => setSelectedCat(e.target.value)} style={{ flex: 1, padding: "6px 10px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-                  <option value="">All categories ({menuItems.length} items)</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
-
           {components.map((c, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: "8px 12px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", flexWrap: "wrap" }}>
-              <select value={c.menu_item_id} onChange={e => updateComponent(i, "menu_item_id", e.target.value)} style={{ flex: 1, minWidth: 180, padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
+              <select
+                value={c.cat_filter}
+                onChange={e => updateComponent(i, "cat_filter", e.target.value)}
+                style={{ width: 130, padding: "6px 10px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
+              >
+                <option value="">All categories</option>
+                {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.category_name}</option>)}
+              </select>
+              <select value={c.menu_item_id} onChange={e => updateComponent(i, "menu_item_id", e.target.value)} style={{ flex: 1, minWidth: 160, padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
                 <option value="">— Select item —</option>
-                {filteredItems.map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
+                {itemsForComponent(c.cat_filter).map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
               </select>
               <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(i, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
               <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={c.is_required} onChange={e => updateComponent(i, "is_required", e.target.checked)} /> Req</label>

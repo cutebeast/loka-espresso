@@ -79,6 +79,7 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
     tax_category_id: Mapped[int | None] = mapped_column(
         ForeignKey("tax_categories.id", ondelete="SET NULL"), nullable=True
     )
+    is_bundle_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     category: Mapped["MenuCategory"] = relationship(
         "MenuCategory", back_populates="menu_items"

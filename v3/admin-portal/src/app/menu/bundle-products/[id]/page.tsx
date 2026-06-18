@@ -10,7 +10,7 @@ const LOCALES: { code: LocaleTab; label: string; flag: string }[] = [
 ];
 const TR_FIELDS = [{ key: "title", label: "Title" }, { key: "description", label: "Description" }];
 
-interface MenuItemOption { id: number; item_name: string; base_price: number; category_id: number; }
+interface MenuItemOption { id: number; item_name: string; base_price: number; category_id: number; is_bundle_eligible: boolean; }
 interface CategoryOption { id: number; category_name: string; }
 
 export default function BundleProductEditPage() {
@@ -25,7 +25,6 @@ export default function BundleProductEditPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [menuItems, setMenuItems] = useState<MenuItemOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [selectedCat, setSelectedCat] = useState("");
   const [form, setForm] = useState<Record<string, any>>({});
   const [tr, setTr] = useState<Record<string, string>>({});
   const [components, setComponents] = useState<Array<any>>([]);
@@ -37,9 +36,17 @@ export default function BundleProductEditPage() {
     try { const d = await api.getRaw<any>("/admin/menu/categories?per_page=100"); setCategories(d?.items || []); } catch (e) { console.error(e); }
   };
 
-  const filteredItems = selectedCat
-    ? menuItems.filter(i => i.category_id === Number(selectedCat))
-    : menuItems;
+  const itemsForComponent = (catFilter: string) => {
+    const selectedIds = new Set(components.map(c => Number(c.menu_item_id)).filter(Boolean));
+    const eligible = menuItems.filter((i: any) => i.is_bundle_eligible);
+    let pool = catFilter ? eligible.filter(i => i.category_id === Number(catFilter)) : eligible;
+    const missingIds = [...selectedIds].filter(id => id && !pool.some(i => i.id === id));
+    for (const mid of missingIds) {
+      const full = menuItems.find(i => i.id === mid);
+      if (full) pool = [...pool, full];
+    }
+    return pool;
+  };
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +60,7 @@ export default function BundleProductEditPage() {
       setComponents((d.components || []).map((c: any) => ({
         id: c.id,
         menu_item_id: String(c.menu_item_id || ""),
+        cat_filter: "",
         default_quantity: c.default_quantity ?? 1,
         is_required: c.is_required !== false,
         is_swappable: c.is_swappable || false,
@@ -96,9 +104,16 @@ export default function BundleProductEditPage() {
     } catch (e) { console.error(e); } finally { setSaving(false); }
   };
 
-  const addComponent = () => setComponents([...components, { menu_item_id: "", default_quantity: 1, is_required: true, is_swappable: false, swap_group: "", sort_order: components.length }]);
+  const addComponent = () => setComponents([...components, { menu_item_id: "", cat_filter: "", default_quantity: 1, is_required: true, is_swappable: false, swap_group: "", sort_order: components.length }]);
   const removeComponent = (idx: number) => setComponents(components.filter((_, i) => i !== idx));
-  const updateComponent = (idx: number, field: string, value: any) => setComponents(components.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+  const updateComponent = (idx: number, field: string, value: any) => {
+    setComponents(components.map((c, i) => {
+      if (i !== idx) return c;
+      const next = { ...c, [field]: value };
+      if (field === "cat_filter") next.menu_item_id = "";
+      return next;
+    }));
+  };
 
   const upsertTr = async (field: string, locale: string, src: string, text: string) => {
     const all = await api.getRaw<{ items: { id: number; translation_key?: string; translated_text?: string }[] }>(`/admin/translations?table_name=bundle_products&record_id=${id}&column_name=${field}&locale=${locale}&per_page=1`);
@@ -128,7 +143,7 @@ export default function BundleProductEditPage() {
         {LOCALES.map(l => <button key={l.code} onClick={() => setLoc(l.code)} style={{ padding: "10px 20px", fontSize: 13, fontWeight: loc === l.code ? 700 : 400, border: "none", borderBottom: loc === l.code ? "3px solid var(--color-primary)" : "3px solid transparent", background: loc === l.code ? "rgba(59,74,26,0.05)" : "transparent", cursor: "pointer", color: loc === l.code ? "var(--color-primary)" : "var(--color-text-muted)", borderRadius: "4px 4px 0 0" }}>{l.flag} {l.label}</button>)}
       </div>
 
-      {loc === "en" && <div className="card" style={{ padding: 24, maxWidth: 800 }}>
+      {loc === "en" && <div className="card" style={{ padding: "24px 24px 400px 24px", maxWidth: 800 }}>
         <h3 style={{ marginBottom: 20 }}>English (Source Content)</h3>
         <div className="df-grid">
           <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Title *</label><input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
@@ -147,22 +162,19 @@ export default function BundleProductEditPage() {
           <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Components</h3>
           <button type="button" onClick={addComponent} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: 4 }}><Plus size={14} /> Add</button>
         </div>
-        {components.length > 0 && (
-          <div style={{ marginBottom: 12, background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", padding: "10px 14px" }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Filter by category:</label>
-              <select value={selectedCat} onChange={e => setSelectedCat(e.target.value)} style={{ flex: 1, padding: "6px 10px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
-                <option value="">All categories ({menuItems.length} items)</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
-              </select>
-            </div>
-          </div>
-        )}
         {components.map((c, i) => (
-          <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: "8px 12px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", flexWrap: "wrap" }}>
-            <select value={c.menu_item_id} onChange={e => updateComponent(i, "menu_item_id", e.target.value)} style={{ flex: 1, minWidth: 180, padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
+            <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: "8px 12px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", flexWrap: "wrap" }}>
+              <select
+                value={c.cat_filter || ""}
+                onChange={e => updateComponent(i, "cat_filter", e.target.value)}
+                style={{ width: 130, padding: "6px 10px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
+              >
+                <option value="">All categories</option>
+                {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.category_name}</option>)}
+              </select>
+            <select value={c.menu_item_id} onChange={e => updateComponent(i, "menu_item_id", e.target.value)} style={{ flex: 1, minWidth: 160, padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
               <option value="">— Select item —</option>
-                {filteredItems.map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
+                {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
             </select>
             <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(i, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
             <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={c.is_required} onChange={e => updateComponent(i, "is_required", e.target.checked)} /> Req</label>

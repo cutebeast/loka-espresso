@@ -113,6 +113,7 @@ class MenuItemBase(BaseSchema):
     calories: int | None = Field(None, ge=0)
     minimum_tier_id: int | None = None
     tax_category_id: int | None = None
+    is_bundle_eligible: bool = False
 
 
 class MenuItemCreate(MenuItemBase):
@@ -136,6 +137,7 @@ class MenuItemUpdate(BaseSchema):
     minimum_tier_id: int | None = None
     dietary_tags: list[str] | None = None
     tax_category_id: int | None = None
+    is_bundle_eligible: bool | None = None
     category_id: int | None = None
     modifier_groups: list[dict] | None = None
     allergen_ids: list[int] | None = None

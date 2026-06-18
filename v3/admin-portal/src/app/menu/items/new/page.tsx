@@ -13,7 +13,7 @@ interface Store { id: number; store_name: string; }
 
 export default function NewItemPage() {
   const router = useRouter();
-  const [form, setForm] = useState<Record<string,any>>({ item_name:"", item_code:"", base_price:"", description:"", long_description:"", category_id:"", tax_category_id:"", allergen_ids:[] as number[], dietary_tag_ids:[] as number[], is_available:true, is_featured:false, calories:"", prep_time_minutes:"10", minimum_tier_id:"", modifier_groups:[] as any[], recipes:[] as any[] });
+  const [form, setForm] = useState<Record<string,any>>({ item_name:"", item_code:"", base_price:"", description:"", long_description:"", category_id:"", tax_category_id:"", allergen_ids:[] as number[], dietary_tag_ids:[] as number[], is_available:true, is_featured:false, is_bundle_eligible:false, calories:"", prep_time_minutes:"10", minimum_tier_id:"", modifier_groups:[] as any[], recipes:[] as any[] });
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [allergens, setAllergens] = useState<Allergen[]>([]);
   const [dietaryTags, setDietaryTags] = useState<DietaryTag[]>([]);
@@ -131,6 +131,7 @@ export default function NewItemPage() {
             </div>
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={form.is_available} onChange={e=>setForm({...form,is_available:e.target.checked})}/>Available</label></div>
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={form.is_featured} onChange={e=>setForm({...form,is_featured:e.target.checked})}/>Featured</label></div>
+            <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={form.is_bundle_eligible} onChange={e=>setForm({...form,is_bundle_eligible:e.target.checked})}/> Bundle Eligible</label></div>
 
             <div className="df-field" style={{gridColumn:"1/-1"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><label className="form-label" style={{margin:0}}>Add-ons / Modifiers</label><button type="button" onClick={addGroup} className="btn btn-sm btn-outline"><Plus size={14}/>Add</button></div>
