@@ -1,6 +1,6 @@
 # Design System
 
-> Source: `customer-app/src/styles/variables.css` + `customer-app/src/lib/tokens.ts`
+> Source: `customer-pwa/src/styles/variables.css` + `customer-pwa/src/lib/tokens.ts`
 
 ## Brand Colors — Turkish Premium
 
