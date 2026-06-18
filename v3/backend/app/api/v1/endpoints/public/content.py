@@ -132,7 +132,9 @@ async def claim_promo_banner(
         store_id = last_store_id
     else:
         first_store = await db.execute(select(Store.id).where(Store.is_active == True).limit(1))
-        store_id = first_store.scalar_one_or_none() or 1
+        store_id = first_store.scalar_one_or_none()
+        if store_id is None:
+            raise HTTPException(status_code=503, detail="No active stores configured")
 
     cv = CustomerVoucher(
         customer_id=customer.id,

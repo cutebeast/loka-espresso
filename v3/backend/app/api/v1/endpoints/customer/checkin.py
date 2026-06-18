@@ -113,7 +113,7 @@ async def daily_checkin(db: DBDependency, customer: ActiveCustomer):
         "streak_day": new_streak,
         "points_earned": points,
         "total_points": la.points_balance,
-        "next_bonus_day": 7 if new_streak < 7 else (new_streak + 7 - (new_streak % 7)) % 7 or 0,
+        "next_bonus_day": 7 if new_streak < 7 else (7 - (new_streak % 7)) or 7,
     })
 
 

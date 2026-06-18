@@ -46,9 +46,9 @@ export const useCartStore = create<CartState>()(
             }
             return stableStringify(c.customizations ?? null);
           };
-          const itemKey = `${item.menu_item_id}:${optIds(item)}`;
+          const itemKey = `${item.menu_item_id}:${optIds(item)}:${item.bundle_product_id ?? ''}`;
           const existingIdx = state.items.findIndex(
-            (c) => `${c.menu_item_id}:${optIds(c)}` === itemKey
+            (c) => `${c.menu_item_id}:${optIds(c)}:${c.bundle_product_id ?? ''}` === itemKey
           );
           if (existingIdx >= 0) {
             return {

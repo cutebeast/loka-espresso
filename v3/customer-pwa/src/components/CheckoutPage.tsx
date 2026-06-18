@@ -14,11 +14,13 @@ import { placeOrder } from '@/lib/cartSync';
 import TimeSlotPicker from '@/components/checkout/TimeSlotPicker';
 import DeliveryAddressCard from '@/components/checkout/DeliveryAddressCard';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
-import type { Order } from '@/lib/api';
+import type { Order, BundleProduct } from '@/lib/api';
 import { haversineKm } from '@/lib/geolocation';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
 import { useTranslation } from '@/hooks/useTranslation';
+import { previewCartDiscounts } from '@/lib/addonDeal';
+import api from '@/lib/api';
 
 interface CustomizationOption {
   id: number;
@@ -40,7 +42,7 @@ const ORDER_TYPES = [
 export default function CheckoutPage() {
   const { t } = useTranslation();
   const { items, getTotal, getItemCount, orderNote } = useCartStore();
-  const { orderMode, setOrderMode, selectedStore, setPage, showToast, checkoutDraft, setCheckoutDraft, clearCheckoutDraft, dineInSession } = useUIStore();
+  const { orderMode, setOrderMode, selectedStore, setPage, showToast, checkoutDraft, setCheckoutDraft, clearCheckoutDraft, dineInSession, menuItems } = useUIStore();
   const { balance, refreshWallet } = useWalletStore();
   const { config } = useConfigStore();
   const user = useAuthStore((s) => s.user);
@@ -63,10 +65,19 @@ export default function CheckoutPage() {
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const [showRewardSheet, setShowRewardSheet] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
+  const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
   const [draftSaved, setDraftSaved] = useState(false);
 
   useEffect(() => { refreshWallet(); }, [refreshWallet]);
   useEffect(() => { if (user && !checkoutDraft.recipientName && !recipientName) { setRecipientName(user.name || ''); setRecipientPhone(user.phone || ''); }   }, [user, checkoutDraft.recipientName, recipientName]);
+  // Fetch bundle products for discount preview
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/menu/bundle-products').then((res) => {
+      if (!cancelled) setBundleProducts(Array.isArray(res.data) ? res.data : (res.data?.items || []));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   // Migrate legacy drafts that stored voucher/reward without discountType
   const migratedDraft = useRef(false);
   useEffect(() => {
@@ -81,8 +92,10 @@ export default function CheckoutPage() {
 
   const subtotal = getTotal();
   const deliveryFee = orderMode === 'delivery' ? (selectedStore?.delivery_fee ?? config.delivery_fee) : 0;
-  const discount = discountValue;
-  const total = Math.max(0, subtotal + deliveryFee - discount);
+  const voucherDiscount = discountValue;
+  const bundleBreakdown = previewCartDiscounts(items, menuItems, bundleProducts);
+  const totalDiscount = voucherDiscount + bundleBreakdown.total;
+  const total = Math.max(0, subtotal + deliveryFee - totalDiscount);
   const itemCount = getItemCount();
   const requiresWallet = paymentMethod === 'wallet';
   const walletSufficient = balance >= total;
@@ -200,7 +213,7 @@ export default function CheckoutPage() {
         <div className="checkout-section">
           <div className="co-section-title">{t('checkout.voucherRewards')}</div>
           <button className="co-reward-card" onClick={() => setShowRewardSheet(true)}>
-            <div className="co-reward-left"><div className="co-reward-icon"><Tag size={16} color={LOKA.copper} /></div><span className="co-reward-text">{discountType ? `${discountType === 'voucher' ? t('checkout.voucher') : t('checkout.reward')} applied (-${formatPrice(discount)})` : t('checkout.applyVoucher')}</span></div>
+            <div className="co-reward-left"><div className="co-reward-icon"><Tag size={16} color={LOKA.copper} /></div><span className="co-reward-text">{discountType ? `${discountType === 'voucher' ? t('checkout.voucher') : t('checkout.reward')} applied (-${formatPrice(voucherDiscount)})` : t('checkout.applyVoucher')}</span></div>
             <ChevronRight size={16} color={LOKA.textMuted} />
           </button>
         </div>
@@ -256,7 +269,9 @@ export default function CheckoutPage() {
           <div className="co-summary-row"><span>{t('cart.subtotal')}</span><span>{formatPrice(subtotal)}</span></div>
           {deliveryFee > 0 && <div className="co-summary-row"><span>{t('cart.deliveryFee')}</span><span>{formatPrice(deliveryFee)}</span></div>}
           {deliveryFee === 0 && orderMode === 'delivery' && <div className="co-summary-row"><span>{t('cart.deliveryFee')}</span><span className="co-summary-free">{t('cart.free')}</span></div>}
-          {discount > 0 && <div className="co-summary-row"><span>{t('checkout.discount')}</span><span>-{formatPrice(discount)}</span></div>}
+          {voucherDiscount > 0 && <div className="co-summary-row"><span>{t('checkout.discount')}</span><span>-{formatPrice(voucherDiscount)}</span></div>}
+          {bundleBreakdown.bundleDiscount > 0 && <div className="co-summary-row"><span>{t('checkout.bundleDiscount')}</span><span>-{formatPrice(bundleBreakdown.bundleDiscount)}</span></div>}
+          {bundleBreakdown.addonDiscount > 0 && <div className="co-summary-row"><span>{t('checkout.addonDiscount')}</span><span>-{formatPrice(bundleBreakdown.addonDiscount)}</span></div>}
           <div className="co-summary-row total"><span>{t('cart.total')}</span><span>{formatPrice(total)}</span></div>
         </div>
       </div>

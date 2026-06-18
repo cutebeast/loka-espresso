@@ -11,6 +11,8 @@ import api from '@/lib/api';
 import type { MenuItem, BundleProduct } from '@/lib/api';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
+import AddonDealSheet from '@/components/menu/AddonDealSheet';
+import { bundleIdsInCart } from '@/lib/addonDeal';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 
 export default function MenuPage() {
@@ -28,6 +30,7 @@ export default function MenuPage() {
   } = useUIStore();
 
   const addItem = useCartStore((s) => s.addItem);
+  const cartItems = useCartStore((s) => s.items);
   const customerTierId = useWalletStore((s) => s.tierId);
 
   const [loading, setLoading] = useState(true);
@@ -39,6 +42,9 @@ export default function MenuPage() {
   const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
   const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
+  const [pendingAddonBundle, setPendingAddonBundle] = useState<BundleProduct | null>(null);
+
+  const activeBundleIds = useMemo(() => new Set(bundleIdsInCart(cartItems)), [cartItems]);
 
   const sectionRefs = useRef<Map<number, HTMLElement | null>>(new Map());
   const navRef = useRef<HTMLDivElement>(null);
@@ -141,8 +147,9 @@ export default function MenuPage() {
         bundle_product_id: bp.id,
       });
     }
-    showToast(`${bp.title} added to cart!`, 'success');
-  }, [addItem, selectedStore?.id, showToast]);
+    showToast(`${bp.title} ${t('menu.addedToCartToast')}`, 'success');
+    setPendingAddonBundle(bp);
+  }, [addItem, selectedStore?.id, showToast, t]);
 
   const debouncedSearch = useDebounce(searchQuery, 150);
 
@@ -271,7 +278,7 @@ export default function MenuPage() {
       {!showSearch && bundleProducts.length > 0 && (
         <div className="menu-bundle-section">
           <div className="menu-section-header">
-            <span style={{ fontSize: 15, fontWeight: 700 }}>Combo Deals</span>
+            <span style={{ fontSize: 15, fontWeight: 700 }}>{t('menu.comboDeals')}</span>
           </div>
           <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "0 16px 8px" }}>
             {bundleProducts.map(bp => (
@@ -294,7 +301,7 @@ export default function MenuPage() {
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
                   <span style={{ fontWeight: 700, fontSize: 15, color: "var(--color-primary)" }}>{formatPrice(bp.bundle_price)}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>Combo</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>{t('menu.comboBadge')}</span>
                 </div>
               </button>
             ))}
@@ -363,6 +370,17 @@ export default function MenuPage() {
                             <Crown size={10} style={{ display: 'inline', verticalAlign: 'middle' }} /> MEMBERS
                           </span>
                         )}
+                        {item.is_addon_deal_eligible && (() => {
+                          const isActive = (item.eligible_bundle_ids || []).some((bid) => activeBundleIds.has(bid));
+                          return (
+                            <span
+                              className={`menu-addon-badge ${isActive ? 'active' : ''}`}
+                              style={isActive ? undefined : { position: 'absolute', bottom: 4, left: 4, background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}
+                            >
+                              {item.addon_discount_type === 'percentage' ? `-${item.addon_discount_value ?? 0}%` : `-RM${item.addon_discount_value ?? 0}`} {t('menu.addonBadge')}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <div className="menu-product-info">
                         <div>
@@ -420,6 +438,12 @@ export default function MenuPage() {
           customizations={customizeItem.customization_options || []}
         />
       )}
+
+      <AddonDealSheet
+        bundle={pendingAddonBundle}
+        menuItems={menuItems}
+        onClose={() => setPendingAddonBundle(null)}
+      />
 
       <FloatingCartBar />
     </div>

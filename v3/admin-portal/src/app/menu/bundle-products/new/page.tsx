@@ -2,9 +2,9 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { ArrowLeft, Plus, Trash2, Upload, Save } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Save, ChevronUp, ChevronDown } from "lucide-react";
 
-interface MenuItemOption { id: number; item_name: string; base_price: number; category_id: number; is_bundle_eligible: boolean; }
+interface MenuItemOption { id: number; item_name: string; base_price: number; category_id: number; is_bundle_eligible?: boolean; }
 interface CategoryOption { id: number; category_name: string; }
 
 export default function BundleProductNewPage() {
@@ -29,7 +29,7 @@ export default function BundleProductNewPage() {
 
   useEffect(() => {
     api.getRaw<any>("/admin/menu/items?per_page=500")
-      .then(d => setMenuItems((d?.items || []).filter((i: any) => i.is_bundle_eligible)))
+      .then(d => setMenuItems((d?.items || []).filter((mi: any) => mi.is_bundle_eligible)))
       .catch((e) => { console.error('menu items:', e); });
     api.getRaw<any>("/admin/menu/categories?per_page=100")
       .then(d => setCategories((d?.items || [])))
@@ -54,6 +54,15 @@ export default function BundleProductNewPage() {
   const addComponent = () => setComponents([...components, { menu_item_id: "", cat_filter: "", default_quantity: 1, is_required: true, is_swappable: false, swap_group: "", sort_order: components.length }]);
 
   const removeComponent = (idx: number) => setComponents(components.filter((_, i) => i !== idx));
+
+  const moveComponent = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir;
+    if (target < 0 || target >= components.length) return;
+    const next = [...components];
+    [next[idx], next[target]] = [next[target]!, next[idx]!];
+    next.forEach((c, i) => { c.sort_order = i; });
+    setComponents(next);
+  };
 
   const updateComponent = (idx: number, field: string, value: any) => {
     setComponents(components.map((c, i) => {
@@ -87,7 +96,7 @@ export default function BundleProductNewPage() {
         })),
       };
       await api.post("/admin/menu/bundle-products", payload);
-      router.push("/menu/bundle-products");
+      router.push("/menu/bundle-products?created=1");
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }
   };
 
@@ -103,9 +112,9 @@ export default function BundleProductNewPage() {
         <form onSubmit={handleSubmit}>
           <div className="df-grid">
             <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Title *</label><input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Snack Plate Combo" /></div>
-            <div className="df-field"><label className="df-label">Bundle Type</label><select value={form.bundle_type} onChange={e => setForm({ ...form, bundle_type: e.target.value })}><option value="combo">Combo</option></select></div>
+            <div className="df-field"><label className="df-label">Bundle Type</label><select value={form.bundle_type} onChange={e => setForm({ ...form, bundle_type: e.target.value })}><option value="combo">Combo</option><option value="value_meal">Value Meal</option><option value="family_meal">Family Meal</option><option value="breakfast_set">Breakfast Set</option><option value="promotional">Promotional</option></select></div>
             <div className="df-field"><label className="df-label">Bundle Price (RM) *</label><input type="number" step="0.01" min="0" required value={form.bundle_price} onChange={e => setForm({ ...form, bundle_price: e.target.value })} placeholder="0.00" /></div>
-            <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Description</label><textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Marketing description for the combo" /></div>
+            <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Description</label><textarea rows={3} maxLength={500} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Marketing description for the combo" /></div>
             <div className="df-field" style={{ gridColumn: "1/-1" }}>
               <label className="df-label">Image</label>
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
@@ -114,7 +123,7 @@ export default function BundleProductNewPage() {
                 {imagePreview && <><img src={imagePreview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover" }} /><button type="button" onClick={() => { setForm({ ...form, image_url: "" }); setImagePreview(""); }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}>Clear</button></>}
               </div>
             </div>
-            <div className="df-field"><label className="df-label">Display Order</label><input type="number" value={form.display_order} onChange={e => setForm({ ...form, display_order: Number(e.target.value) })} /></div>
+            <div className="df-field"><label className="df-label">Display Order</label><input type="number" min="0" value={form.display_order} onChange={e => setForm({ ...form, display_order: Number(e.target.value) })} /></div>
             <div className="df-field"><label className="df-label" style={{ display: "flex", alignItems: "center", gap: 8 }}><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Active</label></div>
           </div>
 
@@ -122,7 +131,7 @@ export default function BundleProductNewPage() {
             <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Components</h3>
             <button type="button" onClick={addComponent} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: 4 }}><Plus size={14} /> Add</button>
           </div>
-          {components.length === 0 && <p style={{ fontSize: 13, color: "var(--color-text-muted)" }}>No components added. Click "Add" to include menu items in this bundle.</p>}
+          {components.length === 0 && <p style={{ fontSize: 13, color: "var(--color-text-muted)" }}>No components added. Click &ldquo;Add&rdquo; to include menu items in this bundle.</p>}
 
           {components.map((c, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: "8px 12px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", flexWrap: "wrap" }}>
@@ -139,9 +148,11 @@ export default function BundleProductNewPage() {
                 {itemsForComponent(c.cat_filter).map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
               </select>
               <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(i, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
-              <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={c.is_required} onChange={e => updateComponent(i, "is_required", e.target.checked)} /> Req</label>
-              <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={c.is_swappable} onChange={e => updateComponent(i, "is_swappable", e.target.checked)} /> Swap</label>
-              {c.is_swappable && <input type="number" value={c.swap_group} onChange={e => updateComponent(i, "swap_group", e.target.value)} placeholder="group" style={{ width: 60, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />}
+              <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }} title="Required component"><input type="checkbox" checked={c.is_required} onChange={e => updateComponent(i, "is_required", e.target.checked)} /> Required</label>
+              <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }} title="Customer can swap this for another item"><input type="checkbox" checked={c.is_swappable} onChange={e => updateComponent(i, "is_swappable", e.target.checked)} /> Swappable</label>
+              {c.is_swappable && <input type="number" value={c.swap_group} onChange={e => updateComponent(i, "swap_group", e.target.value)} placeholder="swap group" style={{ width: 70, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />}
+              <button type="button" onClick={() => moveComponent(i, -1)} disabled={i === 0} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === 0 ? 0.3 : 1 }} aria-label="Move up"><ChevronUp size={14} /></button>
+              <button type="button" onClick={() => moveComponent(i, 1)} disabled={i === components.length - 1} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === components.length - 1 ? 0.3 : 1 }} aria-label="Move down"><ChevronDown size={14} /></button>
               <button type="button" onClick={() => removeComponent(i)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
             </div>
           ))}

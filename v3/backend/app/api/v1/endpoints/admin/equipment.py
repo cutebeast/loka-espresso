@@ -186,9 +186,7 @@ async def create_equipment(
     db.add(item)
     await db.commit()
     await db.refresh(item)
-    out = {c.name: getattr(item, c.name) for c in item.__table__.columns}
-    out["maintenance_logs"] = []
-    return APIResponse(data=out)
+    return APIResponse(data=EquipmentOut.model_validate(item))
 
 
 @router.patch("/{equipment_id}", response_model=APIResponse[EquipmentOut])
@@ -213,9 +211,7 @@ async def update_equipment(
     item.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(item)
-    out = {c.name: getattr(item, c.name) for c in item.__table__.columns}
-    out["maintenance_logs"] = []
-    return APIResponse(data=out)
+    return APIResponse(data=EquipmentOut.model_validate(item))
 
 
 @router.delete("/{equipment_id}", response_model=APIResponse[dict])

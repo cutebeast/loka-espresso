@@ -25,6 +25,7 @@ import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import api from '@/lib/api';
 import type { MenuItem, CustomizationOption as ApiCustomOption } from '@/lib/api';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
+import AddonDealShelf from '@/components/menu/AddonDealShelf';
 
 interface CustomizationStructure {
   options?: Array<{ id: number; name: string; option_type: string; price_adjustment: number }>;
@@ -56,7 +57,7 @@ const ORDER_MODES = [
 export default function CartPage() {
   const { t } = useTranslation();
   const { items, updateQuantity, updateItem, getTotal, getItemCount, clearCart, orderNote, setOrderNote } = useCartStore();
-  const { orderMode, setOrderMode, selectedStore, dineInSession, setDineInSession, setPage, showToast, setShowStorePicker, setCheckoutDraft, isGuest, triggerSignIn } = useUIStore();
+  const { orderMode, setOrderMode, selectedStore, dineInSession, setDineInSession, setPage, showToast, setShowStorePicker, setCheckoutDraft, isGuest, triggerSignIn, menuItems } = useUIStore();
   const { config } = useConfigStore();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [editingItem, setEditingItem] = useState<number | null>(null); // cart item index
@@ -223,6 +224,9 @@ export default function CartPage() {
 
       {/* Scrollable items */}
       <div className="cart-scroll">
+        {/* Add-on deal suggestions (shown when a bundle is in cart) */}
+        <AddonDealShelf menuItems={menuItems} cartItems={items} />
+
         <AnimatePresence>
           {items.map((item, index) => {
             const tags = getCustomizationTags(item.customizations);

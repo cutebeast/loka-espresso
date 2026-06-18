@@ -23,6 +23,7 @@ export default function ItemEditPage() {
   const [dietaryTags,setDietaryTags] = useState<any[]>([]);
   const [taxCategories,setTaxCategories] = useState<any[]>([]);
   const [loyaltyTiers,setLoyaltyTiers] = useState<any[]>([]);
+  const [bundleProducts, setBundleProducts] = useState<any[]>([]);
   const [inventoryItems,setInventoryItems] = useState<any[]>([]);
   const [uploading,setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -34,6 +35,7 @@ export default function ItemEditPage() {
     try{const d=await api.getRaw<any>("/admin/dietary-tags?per_page=50");setDietaryTags(raw(d));}catch (e) { console.error(e); }
     try{const d=await api.getRaw<any>("/admin/menu/tax-categories");setTaxCategories(raw(d));}catch (e) { console.error(e); }
     try{const d=await api.getRaw<any>("/admin/loyalty/tiers");setLoyaltyTiers(raw(d));}catch (e) { console.error(e); }
+    try{const d=await api.getRaw<any>("/admin/menu/bundle-products?per_page=500");setBundleProducts(Array.isArray(d)?d:[]);}catch(e){console.error('bundles:',e);}
   }, []);
 
   const loadItem = useCallback(async () => {
@@ -48,6 +50,10 @@ export default function ItemEditPage() {
         dietary_tag_ids:(d.dietary_tags||[]).map((t:any)=>t.id||t.dietary_tag_id),
         is_available:d.is_available, is_featured:d.is_featured,
         is_bundle_eligible: d.is_bundle_eligible ?? false,
+        is_addon_deal_eligible: d.is_addon_deal_eligible ?? false,
+        addon_discount_type: d.addon_discount_type || "percentage",
+        addon_discount_value: d.addon_discount_value ?? "",
+        eligible_bundle_ids: (d.eligible_bundle_ids || []).map((b: any) => typeof b === "object" ? b.id : b),
         calories:d.calories??"", prep_time_minutes:d.prep_time_minutes??10,
         minimum_tier_id:d.minimum_tier_id??"",
         modifier_groups:d.modifier_groups||[], image_url:d.image_url||"",
@@ -118,6 +124,12 @@ export default function ItemEditPage() {
   const removeRecipe = (i:number) => setForm({...form, recipes: (form.recipes||[]).filter((_:any,j:number)=>j!==i)});
 
   const save = async () => {
+    if (form.is_addon_deal_eligible) {
+      const dv = Number(form.addon_discount_value);
+      if (!dv || dv <= 0) { setMsg("Add-on discount value must be greater than 0"); return; }
+      if (form.addon_discount_type === "percentage" && dv > 100) { setMsg("Percentage discount cannot exceed 100%"); return; }
+      if (!form.eligible_bundle_ids || form.eligible_bundle_ids.length === 0) { setMsg("Select at least one eligible combo for the add-on deal"); return; }
+    }
     setSaving(true);
     try {
       const pl:any = {...form};
@@ -183,6 +195,43 @@ export default function ItemEditPage() {
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={!!form.is_available} onChange={e=>setForm({...form,is_available:e.target.checked})}/>Available</label></div>
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={!!form.is_featured} onChange={e=>setForm({...form,is_featured:e.target.checked})}/>Featured</label></div>
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={!!form.is_bundle_eligible} onChange={e=>setForm({...form,is_bundle_eligible:e.target.checked})}/> Bundle Eligible</label></div>
+            <div className="df-field" style={{gridColumn:"1/-1"}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600}}>
+                <input type="checkbox" checked={!!form.is_addon_deal_eligible} onChange={e=>setForm({...form,is_addon_deal_eligible:e.target.checked})}/> Add-on Deal
+              </label>
+              <p style={{fontSize:11,color:"var(--color-text-muted)",margin:"4px 0 0 20px"}}>Discounted item when an eligible combo is in the cart (e.g. ice cream at 50% off with any value meal)</p>
+              {form.is_addon_deal_eligible && (
+                <div style={{marginTop:10,padding:12,background:"var(--color-bg-muted)",borderRadius:"var(--radius-md)",display:"flex",flexDirection:"column",gap:10}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <select value={form.addon_discount_type||"percentage"} onChange={e=>setForm({...form,addon_discount_type:e.target.value})} style={{padding:"6px 12px",fontSize:12,borderRadius:"var(--radius-sm)",border:"1px solid var(--color-border-light)",minWidth:90}}>
+                      <option value="percentage">% off</option>
+                      <option value="fixed">RM off</option>
+                    </select>
+                    <input type="number" min={0} step="any" placeholder="e.g. 50" value={form.addon_discount_value||""} onChange={e=>setForm({...form,addon_discount_value:e.target.value})} style={{width:80,padding:"6px 10px",fontSize:13,borderRadius:"var(--radius-sm)",border:"1px solid var(--color-border-light)"}} />
+                    <span style={{fontSize:12,color:"var(--color-text-muted)"}}>{form.addon_discount_type==="fixed"?"RM":"%"}</span>
+                  </div>
+                  {bundleProducts.length > 0 && (
+                    <div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                        <div style={{fontSize:11,fontWeight:600,color:"var(--color-text-muted)"}}>Eligible Combos:</div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button type="button" onClick={()=>setForm({...form,eligible_bundle_ids:bundleProducts.map((bp:any)=>bp.id)})} style={{fontSize:10,color:"var(--color-primary)",background:"none",border:"none",cursor:"pointer"}}>Select All</button>
+                          <button type="button" onClick={()=>setForm({...form,eligible_bundle_ids:[]})} style={{fontSize:10,color:"var(--color-text-muted)",background:"none",border:"none",cursor:"pointer"}}>Clear</button>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                        {bundleProducts.map((bp: any) => (
+                          <label key={bp.id} style={{display:"flex",alignItems:"center",gap:4,fontSize:12,padding:"3px 8px",borderRadius:"var(--radius-full)",background:(form.eligible_bundle_ids||[]).includes(bp.id)?"rgba(59,74,26,0.12)":"var(--color-bg-white)",border:(form.eligible_bundle_ids||[]).includes(bp.id)?"1.5px solid var(--color-primary)":"1px solid var(--color-border-light)",cursor:"pointer",whiteSpace:"nowrap"}}>
+                            <input type="checkbox" checked={(form.eligible_bundle_ids||[]).includes(bp.id)} onChange={e=>{const ids=[...(form.eligible_bundle_ids||[])];e.target.checked?ids.push(bp.id):ids.splice(ids.indexOf(bp.id),1);setForm({...form,eligible_bundle_ids:ids});}} style={{display:"none"}} />
+                            {bp.title}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="df-field" style={{gridColumn:"1/-1"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><label className="form-label" style={{margin:0}}>Add-ons / Modifiers</label><button type="button" onClick={addGroup} className="btn btn-sm btn-outline"><Plus size={14}/>Add</button></div>
               {(form.modifier_groups||[]).map((g:any,gi:number)=>(<div key={gi} style={{background:"var(--color-bg-muted)",borderRadius:"var(--radius-md)",padding:12,marginBottom:12,border:"1px solid var(--color-border-light)"}}><div style={{display:"flex",gap:8,marginBottom:8}}><input placeholder="Group name" value={g.group_name} onChange={e=>updateGroup(gi,{group_name:e.target.value})} style={{flex:1}}/><select value={g.selection_type} onChange={e=>updateGroup(gi,{selection_type:e.target.value})} style={{width:100}}><option value="single">Single</option><option value="multiple">Multiple</option></select><label style={{fontSize:12,display:"flex",alignItems:"center",gap:4}}><input type="checkbox" checked={g.is_required} onChange={e=>updateGroup(gi,{is_required:e.target.checked})}/>Req</label><button type="button" onClick={()=>removeGroup(gi)} className="btn btn-icon btn-ghost" style={{color:"var(--color-error)"}}><Trash2 size={14}/></button></div>{g.options.map((o:any,oi:number)=>(<div key={oi} style={{display:"flex",gap:6,marginBottom:4,paddingLeft:8}}><input placeholder="Option" value={o.option_name} onChange={e=>updateOpt(gi,oi,{option_name:e.target.value})} style={{flex:1}}/><span style={{fontSize:12,color:"var(--color-text-muted)"}}>+RM</span><input type="number" step="0.5" value={o.price_adjustment} onChange={e=>updateOpt(gi,oi,{price_adjustment:Number(e.target.value)})} style={{width:70}}/><button type="button" onClick={()=>removeOpt(gi,oi)} className="btn btn-ghost btn-sm" style={{color:"var(--color-error)"}}>✕</button></div>))}<button type="button" onClick={()=>addOpt(gi)} className="btn btn-ghost btn-sm" style={{fontSize:12,paddingLeft:8}}>+ Add Option</button></div>))}</div>
             {/* Recipe / Inventory Bridge */}

@@ -162,7 +162,8 @@
     "selectStoreBtn": "Select Store",
     "clearCart": "Clear Cart",
     "removeConfirm_one": "This will remove {count} item from your cart.",
-    "removeConfirm_other": "This will remove {count} items from your cart."
+    "removeConfirm_other": "This will remove {count} items from your cart.",
+    "addonShelfTitle": "Add-on deals for your combo"
   },
   "checkout": {
     "title": "Checkout",
@@ -245,7 +246,9 @@
     "notesPlaceholderDineIn": "e.g. Allergic to nuts",
     "dineInTableTitle": "Table {table} · {store}",
     "dineInOrder": "Dine-in order",
-    "changeTable": "Change"
+    "changeTable": "Change",
+    "bundleDiscount": "Combo discount",
+    "addonDiscount": "Add-on discount"
   },
   "orders": {
     "title": "Orders",
@@ -619,7 +622,17 @@
       "medium": "Medium",
       "large": "Large",
       "regular": "Regular"
-    }
+    },
+    "comboDeals": "Combo Deals",
+    "addonBadge": "ADD-ON",
+    "addedToCartToast": "added to cart!",
+    "addonSuggested": "Complete your combo",
+    "addonSuggestedSub": "Add these to {bundle} at a special price",
+    "addonSave": "Save {amount}",
+    "addonAdded": "{name} added",
+    "addonMaybeLater": "Maybe later",
+    "addonViewCart": "View cart",
+    "comboBadge": "Combo"
   },
   "notifications": {
     "markAllAsRead": "Mark All as Read",

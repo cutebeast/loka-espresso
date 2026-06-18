@@ -767,6 +767,32 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
                 bundle_discount += bd
         total = round(total - bundle_discount, 2)
 
+    # ── Add-on Deal discount ──
+    addon_discount = 0.0
+    if bundle_ids and line_items:
+        mi_ids = set(l.menu_item_id for l in line_items)
+        mi_result = await db.execute(select(MenuItem).where(MenuItem.id.in_(mi_ids)))
+        mis = {mi.id: mi for mi in mi_result.scalars().all()}
+        for l in line_items:
+            if l.bundle_product_id is not None:
+                continue
+            mi = mis.get(l.menu_item_id)
+            if not mi or not mi.is_addon_deal_eligible:
+                continue
+            if not mi.eligible_bundle_ids:
+                continue
+            if not bundle_ids.intersection(set(mi.eligible_bundle_ids)):
+                continue
+            line_unit = Decimal(str(l.unit_price)) + Decimal(str(l.modifier_total))
+            if mi.addon_discount_type == "percentage":
+                pct = Decimal(str(mi.addon_discount_value or 0)) / Decimal(100)
+                disc = float(round(line_unit * pct * l.quantity, 2))
+            else:
+                disc = float(Decimal(str(mi.addon_discount_value or 0)) * l.quantity)
+            disc = min(disc, float(line_unit * l.quantity))
+            addon_discount += disc
+        total = round(total - addon_discount, 2)
+
     # Generate order number
     from uuid import uuid4
     order_number = f"POS-{datetime.now(timezone.utc).strftime('%m%d')}-{uuid4().hex[:4].upper()}"
@@ -781,10 +807,12 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
         fulfillment_type={"dine_in":"dine_in_service","takeaway":"counter_pickup","delivery":"standard_delivery","drive_thru":"counter_pickup"}.get(order_type,"dine_in_service"),
         status="confirmed",
         payment_status="captured" if payment_data else "initiated",
-        item_count=len(line_items),
+        item_count=sum(li.quantity for li in line_items),
         items_subtotal=round(subtotal, 2),
         service_charge=service_charge,
         tax_amount=tax_amount,
+        discount_amount=round(bundle_discount + addon_discount, 4),
+        addon_discount=round(addon_discount, 4),
         total_amount=total,
         total_amount_currency=store.currency_code,
     )

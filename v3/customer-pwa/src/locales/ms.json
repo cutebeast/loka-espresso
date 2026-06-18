@@ -104,7 +104,8 @@
     "subtotal": "Jumlah separa",
     "tableInfo": "Jadual {tableNumber} · {storeName}",
     "title": "Keranjang anda",
-    "total": "Jumlah"
+    "total": "Jumlah",
+    "addonShelfTitle": "Tawaran tambahan untuk kombo anda"
   },
   "checkout": {
     "addDeliveryAddress": "Tambah alamat penghantaran",
@@ -187,7 +188,9 @@
     "voucherSelected": "Voucher terpilih:",
     "walletBalance": "Baki Dompet",
     "yourRewards": "Ganjaran Anda",
-    "yourVouchers": "Voucher Anda"
+    "yourVouchers": "Voucher Anda",
+    "bundleDiscount": "Diskaun kombo",
+    "addonDiscount": "Diskaun tambahan"
   },
   "common": {
     "add": "Tambah",
@@ -400,7 +403,17 @@
     "specialInstructions": "Arahan Khas",
     "specialInstructionsPlaceholder": "Arahan khas...",
     "title": "Tajuk",
-    "viewCart": "Lihat Keranjang"
+    "viewCart": "Lihat Keranjang",
+    "comboDeals": "Pakej Kombo",
+    "addonBadge": "TAMBAHAN",
+    "addedToCartToast": "ditambah ke troli!",
+    "addonSuggested": "Lengkapkan kombo anda",
+    "addonSuggestedSub": "Tambahkan ini ke {bundle} dengan harga istimewa",
+    "addonSave": "Jimat {amount}",
+    "addonAdded": "{name} ditambah",
+    "addonMaybeLater": "Mungkin kemudian",
+    "addonViewCart": "Lihat troli",
+    "comboBadge": "Kombo"
   },
   "myCard": {
     "brand": "LOKA Espresso",

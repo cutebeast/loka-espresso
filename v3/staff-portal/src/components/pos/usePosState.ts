@@ -109,7 +109,7 @@ export function usePosState() {
           if (firstCat) setActiveCat(firstCat.id);
         }
         setTables(Array.isArray(tablesData) ? (tablesData as Table[]).filter((t) => t.is_active !== false) : []);
-        setBundleProducts(Array.isArray(bpData) ? bpData : []);
+        setBundleProducts((Array.isArray(bpData) ? bpData : []).filter((bp: BundleProduct) => bp.is_active !== false));
 
         if (checkoutOrderId) {
           await checkoutHook.loadCheckoutOrder(checkoutOrderId);
@@ -139,7 +139,52 @@ export function usePosState() {
   const discountValue = discountType === "percentage"
     ? cartHook.subtotal * (discountAmount / 100)
     : discountAmount;
-  const total = Math.max(0, cartHook.subtotal - discountValue);
+
+  // Bundle + add-on discount preview (mirrors backend staff_ops.py logic)
+  const bundleDiscountPreview = (() => {
+    const cartBundleIds = new Set<number>();
+    for (const c of cartHook.cart) {
+      if (c.bundle_product_id) cartBundleIds.add(c.bundle_product_id);
+    }
+    if (cartBundleIds.size === 0) return { bundleDiscount: 0, addonDiscount: 0, total: 0 };
+
+    const bundleMap = new Map<number, BundleProduct>();
+    for (const bp of bundleProducts) bundleMap.set(bp.id, bp);
+
+    let bundleDiscount = 0;
+    for (const bid of cartBundleIds) {
+      const bp = bundleMap.get(bid);
+      if (!bp || bp.is_active === false) continue;
+      const bundleItems = cartHook.cart.filter((c) => c.bundle_product_id === bid);
+      const componentSum = bundleItems.reduce((s, c) => s + c.price * c.qty, 0);
+      const disc = componentSum - bp.bundle_price;
+      if (disc > 0) bundleDiscount += disc;
+    }
+
+    let addonDiscount = 0;
+    for (const c of cartHook.cart) {
+      if (c.bundle_product_id) continue;
+      const mi = items.find((i) => i.id === c.menu_item_id);
+      if (!mi || !mi.is_addon_deal_eligible) continue;
+      const eligibleIds = mi.eligible_bundle_ids;
+      if (!eligibleIds || eligibleIds.length === 0) continue;
+      if (!eligibleIds.some((bid) => cartBundleIds.has(bid))) continue;
+      const lineUnit = c.price;
+      const value = mi.addon_discount_value ?? 0;
+      let disc = 0;
+      if (mi.addon_discount_type === "percentage") {
+        disc = (lineUnit * value) / 100;
+      } else {
+        disc = value;
+      }
+      disc = Math.min(disc, lineUnit) * c.qty;
+      addonDiscount += Math.max(0, disc);
+    }
+
+    return { bundleDiscount, addonDiscount, total: bundleDiscount + addonDiscount };
+  })();
+
+  const total = Math.max(0, cartHook.subtotal - discountValue - bundleDiscountPreview.total);
   const tenderedVal = paymentMethod === "cash" && amountTendered ? parseFloat(amountTendered) : NaN;
   const change = !isNaN(tenderedVal) ? Math.max(0, tenderedVal - total) : 0;
 
@@ -228,24 +273,13 @@ export function usePosState() {
   };
 
   const addBundleToCart = (bp: BundleProduct) => {
+    let skipped = 0;
     for (const comp of bp.components) {
       const menuItem = items.find(i => i.id === comp.menu_item_id);
-      if (!menuItem) continue;
-      cartHook.addToCart(menuItem, {}, "", comp.default_quantity);
+      if (!menuItem || !menuItem.is_available) { skipped++; continue; }
+      cartHook.addToCart(menuItem, {}, "", comp.default_quantity, bp.id);
     }
-    // Tag latest cart items with bundle_product_id
-    const cart = cartHook.cart;
-    const addedCount = bp.components.reduce((s, c) => s + c.default_quantity, 0);
-    let tagged = 0;
-    const updatedCart = cart.map(ci => {
-      if (!ci.bundle_product_id && tagged < addedCount) {
-        tagged += ci.qty;
-        return { ...ci, bundle_product_id: bp.id };
-      }
-      return ci;
-    });
-    cartHook.setCart(updatedCart);
-    setMsg(`${bp.title} added`);
+    setMsg(skipped > 0 ? `${bp.title} added (${skipped} item${skipped > 1 ? "s" : ""} unavailable, skipped)` : `${bp.title} added`);
   };
 
   // ── Return (backward-compatible interface) ──
@@ -356,6 +390,7 @@ export function usePosState() {
     searchTimerRef,
     filteredItems,
     discountValue,
+    bundleDiscountPreview,
     total,
     tenderedVal,
     change,

@@ -104,7 +104,8 @@
     "subtotal": "Ara toplam",
     "tableInfo": "Tablo {tableNumber} · {storeName}",
     "title": "Sepetiniz",
-    "total": "Toplam"
+    "total": "Toplam",
+    "addonShelfTitle": "Kombon için ekleme fırsatları"
   },
   "checkout": {
     "addDeliveryAddress": "Teslimat adresi ekle",
@@ -187,7 +188,9 @@
     "voucherSelected": "Seçilen kupon:",
     "walletBalance": "Cüzdan Bakiyesi",
     "yourRewards": "Ödülleriniz",
-    "yourVouchers": "Kuponlarınız"
+    "yourVouchers": "Kuponlarınız",
+    "bundleDiscount": "Kombo indirimi",
+    "addonDiscount": "Ekleme indirimi"
   },
   "common": {
     "add": "Ekle",
@@ -400,7 +403,17 @@
     "specialInstructions": "Özel Talimatlar",
     "specialInstructionsPlaceholder": "özel talimatlar...",
     "title": "Başlık",
-    "viewCart": "Sepeti Görüntüle"
+    "viewCart": "Sepeti Görüntüle",
+    "comboDeals": "Kombo Fırsatları",
+    "addonBadge": "EKLEME",
+    "addedToCartToast": "sepete eklendi!",
+    "addonSuggested": "Kombonu tamamla",
+    "addonSuggestedSub": "Bunları özel fiyattan {bundle} sepetine ekle",
+    "addonSave": "{amount} tasarruf",
+    "addonAdded": "{name} eklendi",
+    "addonMaybeLater": "Belki sonra",
+    "addonViewCart": "Sepeti gör",
+    "comboBadge": "Kombo"
   },
   "myCard": {
     "brand": "LOKA Espresso",

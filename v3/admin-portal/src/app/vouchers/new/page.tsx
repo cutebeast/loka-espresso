@@ -32,12 +32,8 @@ export default function VoucherNewPage() {
       payload.customer_segments = segs && segs.length > 0
         ? Object.fromEntries(segs.map(s => [s, true]))
         : null;
-      // Convert percentage to fraction if percentage_off
-      if (form.voucher_type === "percentage_off") {
-        payload.discount_value = Number(form.discount_value) / 100;
-      } else {
-        payload.discount_value = Number(form.discount_value);
-      }
+      // Discount value stored as-is (percentage: 50 means 50%, backend divides by 100)
+      payload.discount_value = Number(form.discount_value);
       if (!payload.max_global_uses) payload.max_global_uses = null;
       else payload.max_global_uses = Number(payload.max_global_uses);
       payload.validity_days = form.validity_days ? Number(form.validity_days) : null;

@@ -104,7 +104,8 @@
     "subtotal": "小计",
     "tableInfo": "表格 {tableNumber} · {storeName}",
     "title": "您的购物车",
-    "total": "总计"
+    "total": "总计",
+    "addonShelfTitle": "套餐加购优惠"
   },
   "checkout": {
     "addDeliveryAddress": "添加收货地址",
@@ -187,7 +188,9 @@
     "voucherSelected": "已选定的优惠券：",
     "walletBalance": "钱包余额",
     "yourRewards": "您的奖励",
-    "yourVouchers": "您的优惠券"
+    "yourVouchers": "您的优惠券",
+    "bundleDiscount": "套餐折扣",
+    "addonDiscount": "加购折扣"
   },
   "common": {
     "add": "添加",
@@ -400,7 +403,17 @@
     "specialInstructions": "特别说明",
     "specialInstructionsPlaceholder": "特别说明...",
     "title": "标题",
-    "viewCart": "查看购物车"
+    "viewCart": "查看购物车",
+    "comboDeals": "套餐优惠",
+    "addonBadge": "加购",
+    "addedToCartToast": "已加入购物车！",
+    "addonSuggested": "完善您的套餐",
+    "addonSuggestedSub": "以特价将这些加入 {bundle}",
+    "addonSave": "省 {amount}",
+    "addonAdded": "已添加 {name}",
+    "addonMaybeLater": "以后再说",
+    "addonViewCart": "查看购物车",
+    "comboBadge": "套餐"
   },
   "myCard": {
     "brand": "LOKA 意式浓缩咖啡",

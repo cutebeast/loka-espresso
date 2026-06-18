@@ -111,6 +111,7 @@ class OrderOut(BaseSchema):
     discount_amount: float
     voucher_discount: float
     reward_discount: float
+    addon_discount: float
     tip_amount: float
     total_amount: float
     total_amount_currency: str

@@ -17,5 +17,3 @@ export function showFeatureToast(featureName: string) {
     );
   }
 }
-
-// TODO: Add an app-level listener for "pos:toast" events to display toast notifications.

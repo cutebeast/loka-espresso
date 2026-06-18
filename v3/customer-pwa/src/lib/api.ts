@@ -868,6 +868,10 @@ export interface MenuItem {
   allergens?: Array<{ display_name: string; severity: string; icon?: string }>;
   customization_count?: number;
   customization_options?: CustomizationOption[];
+  is_addon_deal_eligible?: boolean;
+  addon_discount_type?: string | null;
+  addon_discount_value?: number | null;
+  eligible_bundle_ids?: number[] | null;
 }
 
 export interface Reward {
@@ -1116,6 +1120,7 @@ export interface BundleProduct {
   bundle_price: number;
   category_id: number | null;
   display_order: number;
+  is_active: boolean;
   components: BundleProductComponent[];
 }
 

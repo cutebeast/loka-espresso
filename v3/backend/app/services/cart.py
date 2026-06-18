@@ -104,7 +104,7 @@ async def add_line_item(
     )
     
     line_total = (unit_price + modifier_total) * data.quantity
-    
+
     # Check if same item+variant+modifiers already exists
     import hashlib, json
     incoming_modifiers_raw = {m.modifier_group_id: m.selected_option_ids for m in data.selected_modifiers}
@@ -114,6 +114,7 @@ async def add_line_item(
             CartLineItem.cart_id == cart.id,
             CartLineItem.menu_item_id == data.menu_item_id,
             CartLineItem.menu_variant_id == data.menu_variant_id,
+            CartLineItem.bundle_product_id == data.bundle_product_id,
         )
     )
     existing_items = result.scalars().all()
@@ -128,6 +129,8 @@ async def add_line_item(
         existing.line_total = (existing.unit_price + existing.modifier_total) * existing.quantity
         if data.special_instructions:
             existing.special_instructions = data.special_instructions
+        if data.bundle_product_id is not None:
+            existing.bundle_product_id = data.bundle_product_id
     else:
         line_item = CartLineItem(
             cart_id=cart.id,

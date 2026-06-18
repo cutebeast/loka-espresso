@@ -105,7 +105,7 @@ async def update_avatar(
     phone_slug = (customer.phone_number or f"user_{customer.id}").replace("+", "").replace(" ", "")
     ext = Path(file.filename or "avatar").suffix or ".png"
     filename = f"avatar_{phone_slug}{ext}"
-    upload_dir = Path("/root/fnb-super-app/uploads/avatars")
+    upload_dir = settings.upload_dir / "avatars"
     upload_dir.mkdir(parents=True, exist_ok=True)
     filepath = upload_dir / filename
     filepath.write_bytes(contents)

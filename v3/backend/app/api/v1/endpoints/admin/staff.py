@@ -37,19 +37,15 @@ async def list_staff(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=500),
 ):
-    """List staff profiles for a store (paginated)."""
-    base_stmt = (
-        select(StaffProfile)
-        .where(StaffProfile.store_id == store_id)
-        .where(StaffProfile.deleted_at.is_(None))
-    )
+    """List staff profiles, optionally filtered by store (paginated)."""
+    base_stmt = select(StaffProfile).where(StaffProfile.deleted_at.is_(None))
+    if store_id is not None:
+        base_stmt = base_stmt.where(StaffProfile.store_id == store_id)
 
-    total_result = await db.execute(
-        select(func.count(StaffProfile.id)).where(
-            StaffProfile.store_id == store_id,
-            StaffProfile.deleted_at.is_(None),
-        )
-    )
+    total_stmt = select(func.count(StaffProfile.id)).where(StaffProfile.deleted_at.is_(None))
+    if store_id is not None:
+        total_stmt = total_stmt.where(StaffProfile.store_id == store_id)
+    total_result = await db.execute(total_stmt)
     total = total_result.scalar() or 0
 
     stmt = base_stmt.offset((page - 1) * per_page).limit(per_page)

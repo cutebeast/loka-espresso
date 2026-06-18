@@ -12,7 +12,7 @@ from decimal import Decimal
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
 from app.models.loyalty import LoyaltyAccount
-from app.models.menu import MenuItemRecipe
+from app.models.menu import MenuItem, MenuItemRecipe
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.reward import CustomerReward, RewardCatalog
 from app.models.staff import TipAllocation
@@ -324,7 +324,34 @@ async def create_order_from_cart(
         if bundle_disc > 0:
             bundle_discount += bundle_disc
 
-    total_discount = voucher_discount + reward_discount + bundle_discount
+    # ── Add-on Deal discount processing ──
+    addon_discount = Decimal(0)
+    if bundle_ids_in_cart:
+        all_menu_item_ids = set(ci.menu_item_id for ci in cart_items)
+        mi_result = await db.execute(
+            select(MenuItem).where(MenuItem.id.in_(all_menu_item_ids))
+        )
+        menu_items_map = {mi.id: mi for mi in mi_result.scalars().all()}
+        for ci in cart_items:
+            if ci.bundle_product_id is not None:
+                continue
+            mi = menu_items_map.get(ci.menu_item_id)
+            if not mi or not mi.is_addon_deal_eligible:
+                continue
+            if not mi.eligible_bundle_ids:
+                continue
+            if not bundle_ids_in_cart.intersection(set(mi.eligible_bundle_ids)):
+                continue
+            line_unit = Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total))
+            if mi.addon_discount_type == "percentage":
+                pct = Decimal(str(mi.addon_discount_value or 0)) / Decimal(100)
+                disc = round(line_unit * pct * ci.quantity, 2)
+            else:  # fixed
+                disc = Decimal(str(mi.addon_discount_value or 0)) * ci.quantity
+            disc = min(disc, line_unit * ci.quantity)
+            addon_discount += disc
+
+    total_discount = voucher_discount + reward_discount + bundle_discount + addon_discount
     total -= total_discount
     loyalty_points_earned = 0  # recalculated after discount
     if not voucher_used and not reward_used:
@@ -350,6 +377,7 @@ async def create_order_from_cart(
         discount_amount=float(total_discount),
         voucher_discount=float(voucher_discount),
         reward_discount=float(reward_discount),
+        addon_discount=float(addon_discount),
         tip_amount=float(tip),
         total_amount=float(total),
         total_amount_currency=store.currency_code,
@@ -394,6 +422,8 @@ async def create_order_from_cart(
         reason_parts.append(f"reward #{data.reward_id} applied ({float(reward_discount):.2f})")
     if bundle_discount > 0:
         reason_parts.append(f"bundle discount ({float(bundle_discount):.2f})")
+    if addon_discount > 0:
+        reason_parts.append(f"add-on deal discount ({float(addon_discount):.2f})")
     status_log = OrderStatusLog(
         order_id=order.id,
         from_status=None,

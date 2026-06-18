@@ -46,18 +46,18 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
       console.error('Failed to read server cart for sync');
     }
 
-  function cartItemKey(item: { menu_item_id: number; customization_option_ids?: number[] }): string {
+  function cartItemKey(item: { menu_item_id: number; customization_option_ids?: number[]; bundle_product_id?: number }): string {
     const optKey = item.customization_option_ids && item.customization_option_ids.length > 0
       ? JSON.stringify([...item.customization_option_ids].sort((a, b) => a - b))
       : '';
-    return `${item.menu_item_id}:${optKey}`;
+    return `${item.menu_item_id}:${optKey}:${item.bundle_product_id ?? ''}`;
   }
 
   const desiredMap = new Map(items.map(i => [cartItemKey(i), i]));
-  const serverMap = new Map(serverItems.map((i: ServerCartItem) => [cartItemKey({ menu_item_id: i.menu_item_id ?? i.item_id ?? 0, customization_option_ids: Array.isArray(i.customization_option_ids) ? i.customization_option_ids : undefined }), i]));
+  const serverMap = new Map(serverItems.map((i: ServerCartItem) => [cartItemKey({ menu_item_id: i.menu_item_id ?? i.item_id ?? 0, customization_option_ids: Array.isArray(i.customization_option_ids) ? i.customization_option_ids : undefined, bundle_product_id: typeof i.bundle_product_id === 'number' ? i.bundle_product_id : undefined }), i]));
 
   const desiredKeys = new Set(desiredMap.keys());
-  const toDelete = serverItems.filter((si: ServerCartItem) => !desiredKeys.has(cartItemKey({ menu_item_id: si.menu_item_id ?? si.item_id ?? 0, customization_option_ids: Array.isArray(si.customization_option_ids) ? si.customization_option_ids : undefined })));
+  const toDelete = serverItems.filter((si: ServerCartItem) => !desiredKeys.has(cartItemKey({ menu_item_id: si.menu_item_id ?? si.item_id ?? 0, customization_option_ids: Array.isArray(si.customization_option_ids) ? si.customization_option_ids : undefined, bundle_product_id: typeof si.bundle_product_id === 'number' ? si.bundle_product_id : undefined })));
   for (const item of toDelete) {
     try {
       await api.delete(`/cart/items/${item.id}`);

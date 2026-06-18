@@ -59,7 +59,7 @@ export default function VoucherEditPage() {
         voucher_code: d.voucher_code || "",
         display_title: d.display_title || "",
         voucher_type: d.voucher_type || "fixed_amount_off",
-        discount_value: d.voucher_type === "percentage_off" ? Math.round((d.discount_value || 0) * 100) : (d.discount_value || 0),
+        discount_value: d.discount_value || 0,
         minimum_order_value: d.minimum_order_value || 0,
         max_uses_per_customer: d.max_uses_per_customer || 1,
         max_global_uses: d.max_global_uses || "",
@@ -121,11 +121,8 @@ export default function VoucherEditPage() {
       payload.validity_days = form.validity_days ? Number(form.validity_days) : null;
       payload.max_uses_per_customer = Number(form.max_uses_per_customer) || 1;
       payload.minimum_order_value = Number(form.minimum_order_value) || 0;
-      if (form.voucher_type === "percentage_off") {
-        payload.discount_value = Number(form.discount_value) / 100;
-      } else {
-        payload.discount_value = Number(form.discount_value);
-      }
+      // Discount value stored as-is (percentage: 50 means 50%, backend divides by 100)
+      payload.discount_value = Number(form.discount_value);
       await api.put(`/admin/vouchers/${voucherId}`, payload);
       setMsg("Saved");
       setTimeout(() => setMsg(""), 2000);

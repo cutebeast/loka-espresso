@@ -119,18 +119,16 @@ async def test_api_customer_journey():
 
 def test_browser_customer_menu_renders(page):
     """Customer PWA homepage renders without errors."""
-    page.goto(f"{BASE_URL}/")
+    page.goto(f"{BASE_URL}/#home")
     page.wait_for_load_state("networkidle")
-    # Basic sanity: body should have content
     body = page.locator("body").inner_text()
     assert len(body) > 50, "Page body is empty — possible crash"
 
 
 def test_browser_customer_store_menu_renders(page):
     """Store menu page renders menu items."""
-    page.goto(f"{BASE_URL}/stores/1")
+    page.goto(f"{BASE_URL}/#menu")
     page.wait_for_load_state("networkidle")
-    # Look for some menu-related text or item container
     body = page.locator("body").inner_text()
     assert "menu" in body.lower() or "item" in body.lower() or "add" in body.lower(), \
         f"Menu page doesn't show expected content: {body[:200]}"

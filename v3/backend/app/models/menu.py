@@ -80,6 +80,10 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
         ForeignKey("tax_categories.id", ondelete="SET NULL"), nullable=True
     )
     is_bundle_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_addon_deal_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    addon_discount_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    addon_discount_value: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
+    eligible_bundle_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
     category: Mapped["MenuCategory"] = relationship(
         "MenuCategory", back_populates="menu_items"

@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { ArrowLeft, Plus, Trash2, Save, Upload, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Upload, RefreshCw, ChevronUp, ChevronDown } from "lucide-react";
 
 type LocaleTab = "en" | "ms" | "zh" | "ta" | "tr";
 const LOCALES: { code: LocaleTab; label: string; flag: string }[] = [
@@ -10,13 +10,14 @@ const LOCALES: { code: LocaleTab; label: string; flag: string }[] = [
 ];
 const TR_FIELDS = [{ key: "title", label: "Title" }, { key: "description", label: "Description" }];
 
-interface MenuItemOption { id: number; item_name: string; base_price: number; category_id: number; is_bundle_eligible: boolean; }
+interface MenuItemOption { id: number; item_name: string; base_price: number; category_id: number; is_bundle_eligible?: boolean; }
 interface CategoryOption { id: number; category_name: string; }
 
 export default function BundleProductEditPage() {
   const p = useParams(); const r = useRouter(); const id = p.id as string;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingTr, setSavingTr] = useState(false);
   const [loc, setLoc] = useState<LocaleTab>("en");
   const [regen, setRegen] = useState(false);
   const [msg, setMsg] = useState("");
@@ -36,16 +37,13 @@ export default function BundleProductEditPage() {
     try { const d = await api.getRaw<any>("/admin/menu/categories?per_page=100"); setCategories(d?.items || []); } catch (e) { console.error(e); }
   };
 
+  const selectedItemIds = new Set(components.map(c => Number(c.menu_item_id)).filter(Boolean));
+
   const itemsForComponent = (catFilter: string) => {
-    const selectedIds = new Set(components.map(c => Number(c.menu_item_id)).filter(Boolean));
-    const eligible = menuItems.filter((i: any) => i.is_bundle_eligible);
-    let pool = catFilter ? eligible.filter(i => i.category_id === Number(catFilter)) : eligible;
-    const missingIds = [...selectedIds].filter(id => id && !pool.some(i => i.id === id));
-    for (const mid of missingIds) {
-      const full = menuItems.find(i => i.id === mid);
-      if (full) pool = [...pool, full];
-    }
-    return pool;
+    const pool = catFilter
+      ? menuItems.filter(i => i.category_id === Number(catFilter))
+      : menuItems;
+    return pool.filter(i => i.is_bundle_eligible || selectedItemIds.has(i.id));
   };
 
   const load = useCallback(async () => {
@@ -85,6 +83,12 @@ export default function BundleProductEditPage() {
   };
 
   const handleSave = async () => {
+    if (!form.title) { setMsg("Title is required"); return; }
+    if (!form.bundle_price || Number(form.bundle_price) <= 0) { setMsg("Valid bundle price is required"); return; }
+    if (components.length === 0) { setMsg("At least one component is required"); return; }
+    for (let i = 0; i < components.length; i++) {
+      const c = components[i]; if (!c || !c.menu_item_id) { setMsg(`Component ${i + 1}: select a menu item`); return; }
+    }
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
@@ -101,11 +105,24 @@ export default function BundleProductEditPage() {
       };
       await api.patch(`/admin/menu/bundle-products/${id}`, payload);
       setMsg("Saved"); setTimeout(() => setMsg(""), 2000);
-    } catch (e) { console.error(e); } finally { setSaving(false); }
+    } catch (e: any) { setMsg(e.message || "Save failed"); } finally { setSaving(false); }
   };
 
   const addComponent = () => setComponents([...components, { menu_item_id: "", cat_filter: "", default_quantity: 1, is_required: true, is_swappable: false, swap_group: "", sort_order: components.length }]);
   const removeComponent = (idx: number) => setComponents(components.filter((_, i) => i !== idx));
+  const moveComponent = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir;
+    if (target < 0 || target >= components.length) return;
+    const next = [...components];
+    [next[idx], next[target]] = [next[target]!, next[idx]!];
+    next.forEach((c, i) => { c.sort_order = i; });
+    setComponents(next);
+  };
+  const handleDelete = async () => {
+    if (!confirm("Delete this bundle product? This cannot be undone.")) return;
+    try { await api.del(`/admin/menu/bundle-products/${id}`); r.push("/menu/bundle-products"); }
+    catch (e: any) { setMsg(e.message || "Failed to delete bundle"); }
+  };
   const updateComponent = (idx: number, field: string, value: any) => {
     setComponents(components.map((c, i) => {
       if (i !== idx) return c;
@@ -127,7 +144,7 @@ export default function BundleProductEditPage() {
     setMsg(results.length > 0 ? `Regenerated ${results.length} translations` : "No translatable content"); setTimeout(() => setMsg(""), 2500); setRegen(false);
   };
 
-  const saveAllTr = async (locale: string) => { setSaving(true); for (const f of TR_FIELDS) { const key = `${locale}:${f.key}`; const text = tr[key] || ""; if (text.trim()) await upsertTr(f.key, locale, form[f.key] || "", text); } setMsg(`Saved`); setTimeout(() => setMsg(""), 2000); setSaving(false); };
+  const saveAllTr = async (locale: string) => { setSavingTr(true); for (const f of TR_FIELDS) { const key = `${locale}:${f.key}`; const text = tr[key] || ""; if (text.trim()) await upsertTr(f.key, locale, form[f.key] || "", text); } setMsg(`Saved`); setTimeout(() => setMsg(""), 2000); setSavingTr(false); };
 
   if (loading) return <div style={{ padding: 32 }}><p>Loading...</p></div>;
 
@@ -147,14 +164,14 @@ export default function BundleProductEditPage() {
         <h3 style={{ marginBottom: 20 }}>English (Source Content)</h3>
         <div className="df-grid">
           <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Title *</label><input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
-          <div className="df-field"><label className="df-label">Bundle Type</label><select value={form.bundle_type} onChange={e => setForm({ ...form, bundle_type: e.target.value })}><option value="combo">Combo</option></select></div>
-          <div className="df-field"><label className="df-label">Bundle Price (RM) *</label><input type="number" step="0.01" min="0" value={form.bundle_price} onChange={e => setForm({ ...form, bundle_price: e.target.value })} /></div>
-          <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Description</label><textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+          <div className="df-field"><label className="df-label">Bundle Type</label><select value={form.bundle_type} onChange={e => setForm({ ...form, bundle_type: e.target.value })}><option value="combo">Combo</option><option value="value_meal">Value Meal</option><option value="family_meal">Family Meal</option><option value="breakfast_set">Breakfast Set</option><option value="promotional">Promotional</option></select></div>
+          <div className="df-field"><label className="df-label">Bundle Price (RM) *</label><input type="number" step="0.01" min="0" required value={form.bundle_price} onChange={e => setForm({ ...form, bundle_price: e.target.value })} /></div>
+          <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Description</label><textarea rows={3} maxLength={500} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
           <div className="df-field" style={{ gridColumn: "1/-1" }}>
             <label className="df-label">Image</label>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}><input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} style={{ display: "none" }} /><button type="button" onClick={() => fileRef.current?.click()} className="btn btn-sm btn-outline" disabled={uploading}><Upload size={14} /> {uploading ? "Uploading..." : "Upload Image"}</button>{img && <><img src={img} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover" }} /><button type="button" onClick={() => { setForm({ ...form, image_url: "" }); setImg(""); }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}>Clear</button></>}</div>
           </div>
-          <div className="df-field"><label className="df-label">Display Order</label><input type="number" value={form.display_order} onChange={e => setForm({ ...form, display_order: Number(e.target.value) })} /></div>
+          <div className="df-field"><label className="df-label">Display Order</label><input type="number" min="0" value={form.display_order} onChange={e => setForm({ ...form, display_order: Number(e.target.value) })} /></div>
           <div className="df-field"><label className="df-label" style={{ display: "flex", alignItems: "center", gap: 8 }}><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Active</label></div>
         </div>
 
@@ -162,6 +179,7 @@ export default function BundleProductEditPage() {
           <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Components</h3>
           <button type="button" onClick={addComponent} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: 4 }}><Plus size={14} /> Add</button>
         </div>
+        {components.length === 0 && <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 8 }}>No components added. Click &ldquo;Add&rdquo; to include menu items in this bundle.</p>}
         {components.map((c, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: "8px 12px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", flexWrap: "wrap" }}>
               <select
@@ -177,13 +195,16 @@ export default function BundleProductEditPage() {
                 {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
             </select>
             <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(i, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
-            <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={c.is_required} onChange={e => updateComponent(i, "is_required", e.target.checked)} /> Req</label>
-            <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={c.is_swappable} onChange={e => updateComponent(i, "is_swappable", e.target.checked)} /> Swap</label>
+            <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }} title="Required component"><input type="checkbox" checked={c.is_required} onChange={e => updateComponent(i, "is_required", e.target.checked)} /> Required</label>
+            <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }} title="Customer can swap this for another item"><input type="checkbox" checked={c.is_swappable} onChange={e => updateComponent(i, "is_swappable", e.target.checked)} /> Swappable</label>
+            {c.is_swappable && <input type="number" value={c.swap_group} onChange={e => updateComponent(i, "swap_group", e.target.value)} placeholder="swap group" style={{ width: 70, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />}
+            <button type="button" onClick={() => moveComponent(i, -1)} disabled={i === 0} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === 0 ? 0.3 : 1 }} aria-label="Move up"><ChevronUp size={14} /></button>
+            <button type="button" onClick={() => moveComponent(i, 1)} disabled={i === components.length - 1} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === components.length - 1 ? 0.3 : 1 }} aria-label="Move down"><ChevronDown size={14} /></button>
             <button type="button" onClick={() => removeComponent(i)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
           </div>
         ))}
 
-        <div className="df-actions" style={{ marginTop: 20 }}><button type="button" onClick={() => r.push("/menu/bundle-products")} className="btn btn-ghost">Cancel</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button></div>
+        <div className="df-actions" style={{ marginTop: 20 }}><button type="button" onClick={() => r.push("/menu/bundle-products")} className="btn btn-ghost">Cancel</button><button type="button" onClick={handleDelete} className="btn btn-ghost" style={{ color: "var(--color-error)", marginLeft: "auto", marginRight: 8 }}>Delete Bundle</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button></div>
       </div>}
 
       {loc !== "en" && <div className="card" style={{ padding: 24, maxWidth: 720 }}>
@@ -191,7 +212,7 @@ export default function BundleProductEditPage() {
         <div className="df-grid">
           {TR_FIELDS.map(f => { const k = `${loc}:${f.key}`; const t = tr[k] || ""; const s = form[f.key] || ""; const isLong = f.key === "description"; return <div className="df-field" key={f.key} style={isLong ? { gridColumn: "1/-1" } : {}}><label style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", display: "flex", justifyContent: "space-between" }}><span>{f.label}</span><span style={{ fontWeight: 400, fontStyle: "italic" }}>EN: {s?.slice(0, 30) || "—"}</span></label>{isLong ? <textarea rows={3} value={t} onChange={e => setTr(prev => ({ ...prev, [k]: e.target.value }))} style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: t ? "1px solid var(--color-border-light)" : "2px solid #FCD34D", borderRadius: "var(--radius-sm)", background: t ? "var(--color-bg-white)" : "#FFFBEB" }} placeholder={t ? "" : "—"} /> : <input value={t} onChange={e => setTr(prev => ({ ...prev, [k]: e.target.value }))} style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: t ? "1px solid var(--color-border-light)" : "2px solid #FCD34D", borderRadius: "var(--radius-sm)", background: t ? "var(--color-bg-white)" : "#FFFBEB" }} placeholder={t ? "" : "—"} />}</div>; })}
         </div>
-        <div style={{ marginTop: 20 }}><button onClick={() => saveAllTr(loc)} disabled={saving} className="btn btn-primary" style={{ fontSize: 13, padding: "10px 24px" }}><Save size={16} /> Save All Translations</button></div>
+        <div style={{ marginTop: 20 }}><button onClick={() => saveAllTr(loc)} disabled={savingTr} className="btn btn-primary" style={{ fontSize: 13, padding: "10px 24px" }}><Save size={16} /> {savingTr ? "Saving..." : "Save All Translations"}</button></div>
       </div>}
     </div>
   );

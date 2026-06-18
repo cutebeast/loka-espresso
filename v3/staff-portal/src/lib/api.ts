@@ -460,6 +460,10 @@ export interface MenuItem {
   modifier_groups?: ModifierGroup[];
   is_available: boolean;
   image_url?: string;
+  is_addon_deal_eligible?: boolean;
+  addon_discount_type?: string | null;
+  addon_discount_value?: number | null;
+  eligible_bundle_ids?: number[] | null;
 }
 
 export interface ModifierGroup {
@@ -668,6 +672,7 @@ export interface BundleProduct {
   bundle_price: number;
   category_id: number | null;
   display_order: number;
+  is_active: boolean;
   components: BundleProductComponent[];
 }
 

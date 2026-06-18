@@ -60,6 +60,7 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     voucher_discount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     reward_discount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    addon_discount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     tip_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
     total_amount_currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="USD")
@@ -144,6 +145,7 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
         CheckConstraint("discount_amount >= 0", name="ck_orders_discount_amount"),
         CheckConstraint("voucher_discount >= 0", name="ck_orders_voucher_discount"),
         CheckConstraint("reward_discount >= 0", name="ck_orders_reward_discount"),
+        CheckConstraint("addon_discount >= 0", name="ck_orders_addon_discount"),
         CheckConstraint("tip_amount >= 0", name="ck_orders_tip_amount"),
         CheckConstraint("total_amount >= 0", name="ck_orders_total_amount"),
         CheckConstraint("loyalty_points_earned >= 0", name="ck_orders_loyalty_points_earned"),

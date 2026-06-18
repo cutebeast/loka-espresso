@@ -114,6 +114,10 @@ class MenuItemBase(BaseSchema):
     minimum_tier_id: int | None = None
     tax_category_id: int | None = None
     is_bundle_eligible: bool = False
+    is_addon_deal_eligible: bool = False
+    addon_discount_type: str | None = None
+    addon_discount_value: float | None = None
+    eligible_bundle_ids: list | None = None
 
 
 class MenuItemCreate(MenuItemBase):
@@ -138,6 +142,10 @@ class MenuItemUpdate(BaseSchema):
     dietary_tags: list[str] | None = None
     tax_category_id: int | None = None
     is_bundle_eligible: bool | None = None
+    is_addon_deal_eligible: bool | None = None
+    addon_discount_type: str | None = None
+    addon_discount_value: float | None = None
+    eligible_bundle_ids: list | None = None
     category_id: int | None = None
     modifier_groups: list[dict] | None = None
     allergen_ids: list[int] | None = None
@@ -174,6 +182,10 @@ class MenuItemPublicOut(BaseSchema):
     is_featured: bool
     is_popular: bool
     display_order: int
+    is_addon_deal_eligible: bool = False
+    addon_discount_type: str | None = None
+    addon_discount_value: float | None = None
+    eligible_bundle_ids: list | None = None
     dietary_tags: list[str] | None = None
     allergens: list[AllergenOut] = []
     modifier_groups: list[MenuModifierGroupOut] = []

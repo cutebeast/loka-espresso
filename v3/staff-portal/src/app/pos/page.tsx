@@ -239,7 +239,7 @@ export default function PosPage() {
                       )}
                       <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{bp.title}</div>
                       <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-                        {bp.components.map(c => c.menu_item_name).slice(0, 3).join(" + ")}
+                        {bp.components.map(c => c.menu_item_name).slice(0, 3).join(" + ")}{bp.components.length > 3 ? ` +${bp.components.length - 3} more` : ""}
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={{ fontWeight: 700, fontSize: 15, color: "var(--color-primary)" }}>RM {Number(bp.bundle_price ?? 0).toFixed(2)}</span>
@@ -298,6 +298,21 @@ export default function PosPage() {
                       Custom
                     </span>
                   )}
+                  {item.is_addon_deal_eligible && (
+                    <span style={{
+                      position: "absolute",
+                      bottom: 6,
+                      left: 6,
+                      background: "var(--color-primary)",
+                      color: "#fff",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                    }}>
+                      {item.addon_discount_value ? (item.addon_discount_type === 'percentage' ? `-${item.addon_discount_value}%` : `-RM${item.addon_discount_value}`) : ""} ADD-ON
+                    </span>
+                  )}
                 </div>
                 <div style={{ padding: 12 }}>
                   <span style={{ fontSize: 14, fontWeight: 600, display: "block", marginBottom: 4, lineHeight: 1.3 }}>{item.item_name}</span>
@@ -315,6 +330,43 @@ export default function PosPage() {
         )}
       </div>
 
+      {/* Add-on Deal Suggestions (when a bundle is in cart) */}
+      {pos.cart.length > 0 && pos.bundleProducts.length > 0 && (() => {
+        const cartBundleIds = new Set(pos.cart.filter((c) => c.bundle_product_id).map((c) => c.bundle_product_id!));
+        if (cartBundleIds.size === 0) return null;
+        const addonSuggestions = pos.filteredItems.filter((item) =>
+          item.is_addon_deal_eligible &&
+          item.addon_discount_value &&
+          item.eligible_bundle_ids?.some((bid) => cartBundleIds.has(bid))
+        );
+        if (addonSuggestions.length === 0) return null;
+        return (
+          <div style={{ background: "var(--color-bg-muted)", borderTop: "1px solid var(--color-border-light)", padding: "8px 16px", flexShrink: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-text-muted)", marginBottom: 6 }}>ADD-ON DEALS</div>
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+              {addonSuggestions.slice(0, 8).map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => pos.handleItemClick(item)}
+                  style={{ minWidth: 120, maxWidth: 140, background: "var(--color-bg-card)", border: "1px solid var(--color-border-light)", borderRadius: 8, padding: 8, cursor: "pointer", textAlign: "left", flexShrink: 0 }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.25, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.item_name}</div>
+                  <div style={{ display: "flex", gap: 4, alignItems: "baseline" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--color-primary)" }}>
+                      RM {(item.addon_discount_type === "percentage"
+                        ? item.base_price * (1 - (item.addon_discount_value ?? 0) / 100)
+                        : Math.max(0, item.base_price - (item.addon_discount_value ?? 0))
+                      ).toFixed(2)}
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--color-text-muted)", textDecoration: "line-through" }}>RM {Number(item.base_price).toFixed(2)}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Cart Panel */}
       {pos.cart.length > 0 && (
         <div style={{ position: "sticky", bottom: 0, background: "var(--color-bg-card)", borderTop: "2px solid var(--color-border-light)", padding: "12px 16px", flexShrink: 0, boxShadow: "0 -4px 12px rgba(0,0,0,0.08)" }}>
@@ -326,21 +378,66 @@ export default function PosPage() {
             onChange={(e) => pos.setOrderNotes(e.target.value)}
           />
 
-          {pos.cart.map((c) => (
-            <div key={`${c.menu_item_id}-${(c.modifier_ids ?? []).join(',')}`} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "6px 0", borderBottom: "1px solid var(--color-border-light)" }}>
-              <span style={{ flex: 1, fontSize: 14 }}>
-                <span style={{ fontWeight: 600 }}>{c.name}</span>
-                {c.modifiers_label && <span style={{ fontSize: 12, color: "var(--color-text-muted)", display: "block", marginTop: 2 }}>{c.modifiers_label}</span>}
-              </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button className="btn btn-ghost btn-icon" style={{ width: 36, height: 36 }} onClick={() => pos.updateQty(c.menu_item_id, c.modifier_ids, -1)} aria-label="Decrease quantity"><Minus size={16} /></button>
-                <span style={{ minWidth: 28, textAlign: "center", fontSize: 16, fontWeight: 700 }}>{c.qty}</span>
-                <button className="btn btn-ghost btn-icon" style={{ width: 36, height: 36 }} onClick={() => pos.updateQty(c.menu_item_id, c.modifier_ids, 1)} aria-label="Increase quantity"><Plus size={16} /></button>
+          {/* Group cart items: standalone first, then bundle groups */}
+          {(() => {
+            const standalone = pos.cart.filter((c) => !c.bundle_product_id);
+            const bundleGroups = new Map<number, typeof pos.cart>();
+            for (const c of pos.cart) {
+              if (c.bundle_product_id) {
+                const arr = bundleGroups.get(c.bundle_product_id) || [];
+                arr.push(c);
+                bundleGroups.set(c.bundle_product_id, arr);
+              }
+            }
+            const renderCartItem = (c: typeof pos.cart[number], indent = false) => (
+              <div key={`${c.menu_item_id}-${(c.modifier_ids ?? []).join(',')}-${c.bundle_product_id ?? ''}`} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "6px 0", borderBottom: "1px solid var(--color-border-light)", paddingLeft: indent ? 16 : 0 }}>
+                <span style={{ flex: 1, fontSize: 14 }}>
+                  <span style={{ fontWeight: 600 }}>{c.name}</span>
+                  {c.modifiers_label && <span style={{ fontSize: 12, color: "var(--color-text-muted)", display: "block", marginTop: 2 }}>{c.modifiers_label}</span>}
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button className="btn btn-ghost btn-icon" style={{ width: 36, height: 36 }} onClick={() => pos.updateQty(c.menu_item_id, c.modifier_ids, -1)} aria-label="Decrease quantity"><Minus size={16} /></button>
+                  <span style={{ minWidth: 28, textAlign: "center", fontSize: 16, fontWeight: 700 }}>{c.qty}</span>
+                  <button className="btn btn-ghost btn-icon" style={{ width: 36, height: 36 }} onClick={() => pos.updateQty(c.menu_item_id, c.modifier_ids, 1)} aria-label="Increase quantity"><Plus size={16} /></button>
+                </div>
+                <span style={{ minWidth: 70, textAlign: "right", fontSize: 14, fontWeight: 700 }}>RM {((c.price ?? 0) * c.qty).toFixed(2)}</span>
+                <button className="btn btn-ghost btn-icon btn-sm" style={{ color: "var(--color-error)", width: 32, height: 32 }} onClick={() => pos.removeFromCart(c.menu_item_id, c.modifier_ids)} aria-label="Remove item"><Trash2 size={16} /></button>
               </div>
-              <span style={{ minWidth: 70, textAlign: "right", fontSize: 14, fontWeight: 700 }}>RM {((c.price ?? 0) * c.qty).toFixed(2)}</span>
-              <button className="btn btn-ghost btn-icon btn-sm" style={{ color: "var(--color-error)", width: 32, height: 32 }} onClick={() => pos.removeFromCart(c.menu_item_id, c.modifier_ids)} aria-label="Remove item"><Trash2 size={16} /></button>
+            );
+            return (
+              <>
+                {standalone.map((c) => renderCartItem(c, false))}
+                {Array.from(bundleGroups.entries()).map(([bpId, items]) => {
+                  const bp = pos.bundleProducts.find((b) => b.id === bpId);
+                  const componentSum = items.reduce((s, c) => s + c.price * c.qty, 0);
+                  const bundleDisc = bp ? Math.max(0, componentSum - bp.bundle_price) : 0;
+                  return (
+                    <div key={`bundle-${bpId}`} style={{ marginBottom: 8, background: "var(--color-bg-muted)", borderRadius: 8, padding: "8px 10px", border: "1px solid var(--color-border-light)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--color-primary)" }}>{bp?.title || `Combo #${bpId}`}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {bundleDisc > 0 && <span style={{ fontSize: 11, color: "var(--color-success)", fontWeight: 600 }}>-RM {bundleDisc.toFixed(2)}</span>}
+                          <button className="btn btn-ghost btn-icon btn-sm" style={{ color: "var(--color-error)", width: 28, height: 28 }} onClick={() => items.forEach((c) => pos.removeFromCart(c.menu_item_id, c.modifier_ids))} aria-label="Remove combo"><Trash2 size={14} /></button>
+                        </div>
+                      </div>
+                      {items.map((c) => renderCartItem(c, true))}
+                      <div style={{ textAlign: "right", fontSize: 12, color: "var(--color-text-muted)", marginTop: 2 }}>
+                        Combo price: <span style={{ fontWeight: 700, color: "var(--color-primary)" }}>RM {(bp?.bundle_price ?? 0).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            );
+          })()}
+          {/* Discount breakdown */}
+          {(pos.discountValue > 0 || pos.bundleDiscountPreview.total > 0) && (
+            <div style={{ marginTop: 4, marginBottom: 4, fontSize: 12, color: "var(--color-text-muted)" }}>
+              {pos.discountValue > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>Voucher/Reward discount</span><span>-RM {pos.discountValue.toFixed(2)}</span></div>}
+              {pos.bundleDiscountPreview.bundleDiscount > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>Combo discount</span><span>-RM {pos.bundleDiscountPreview.bundleDiscount.toFixed(2)}</span></div>}
+              {pos.bundleDiscountPreview.addonDiscount > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>Add-on discount</span><span>-RM {pos.bundleDiscountPreview.addonDiscount.toFixed(2)}</span></div>}
             </div>
-          ))}
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border-light)" }}>
             <div>
               <span style={{ fontSize: 18, fontWeight: 700 }}>RM {pos.total.toFixed(2)}</span>

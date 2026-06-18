@@ -968,7 +968,6 @@ async def transfer_table(
 
     old_table_id = order.dining_table_id
     order.dining_table_id = new_table_id
-    order.dining_table_number = new_table.table_number
     order.updated_at = datetime.now(timezone.utc)
 
     # Free old table

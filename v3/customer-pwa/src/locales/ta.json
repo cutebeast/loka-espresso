@@ -104,7 +104,8 @@
     "subtotal": "துணை மொத்தம்",
     "tableInfo": "மேசை {tableNumber} · {storeName}",
     "title": "உங்கள் கூடை",
-    "total": "மொத்தம்"
+    "total": "மொத்தம்",
+    "addonShelfTitle": "உங்கள் காம்போவுக்கான கூடுதல் டீல்கள்"
   },
   "checkout": {
     "addDeliveryAddress": "டெலிவரி முகவரியைச் சேர்க்கவும்",
@@ -187,7 +188,9 @@
     "voucherSelected": "வவுச்சர் தேர்ந்தெடுக்கப்பட்டது:",
     "walletBalance": "பணப்பை இருப்பு",
     "yourRewards": "உங்கள் வெகுமதிகள்",
-    "yourVouchers": "உங்கள் வவுச்சர்கள்"
+    "yourVouchers": "உங்கள் வவுச்சர்கள்",
+    "bundleDiscount": "காம்போ தள்ளை",
+    "addonDiscount": "கூடுதல் தள்ளை"
   },
   "common": {
     "add": "சேர்",
@@ -400,7 +403,17 @@
     "specialInstructions": "சிறப்பு அறிவுறுத்தல்கள்",
     "specialInstructionsPlaceholder": "சிறப்பு அறிவுறுத்தல்கள்...",
     "title": "தலைப்பு",
-    "viewCart": "கார்டைப் பார்க்க"
+    "viewCart": "கார்டைப் பார்க்க",
+    "comboDeals": "காம்போ டீல்கள்",
+    "addonBadge": "கூடுதல்",
+    "addedToCartToast": "வண்டியில் சேர்க்கப்பட்டது!",
+    "addonSuggested": "உங்கள் காம்போவை முடிக்கவும்",
+    "addonSuggestedSub": "{bundle} க்கு சிறப்பு விலையில் இவற்றைச் சேர்க்கவும்",
+    "addonSave": "{amount} சேமி",
+    "addonAdded": "{name} சேர்க்கப்பட்டது",
+    "addonMaybeLater": "பின்னர் இருக்கலாம்",
+    "addonViewCart": "வண்டியைக் காண்க",
+    "comboBadge": "காம்போ"
   },
   "myCard": {
     "brand": "லோகா எஸ்பிரெஸ்ஸோ",

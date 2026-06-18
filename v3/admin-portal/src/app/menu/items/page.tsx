@@ -57,7 +57,14 @@ export default function MenuItemsPage() {
                     {(item.dietary_tags || []).map((t: any) => <span key={t.id || t.dietary_tag_id} className="badge badge-sm badge-green" style={{ fontSize: 10 }}>{t.icon} {t.display_name}</span>)}
                   </div>
                 </td>
-                <td style={{ fontSize: 12 }}>{(item.modifier_groups || []).length ? `${item.modifier_groups.length} groups` : "—"}</td>
+                <td style={{ fontSize: 12 }}>
+                  {item.is_addon_deal_eligible && (
+                    <span className="badge badge-sm badge-amber" style={{ fontSize: 10, marginBottom: 4 }}>
+                      {item.addon_discount_type === "percentage" ? `-${Number(item.addon_discount_value || 0)}%` : `-RM${Number(item.addon_discount_value || 0).toFixed(2)}`} Add-on
+                    </span>
+                  )}
+                  {(item.modifier_groups || []).length ? <div>{item.modifier_groups.length} groups</div> : "—"}
+                </td>
                 <td style={{ fontSize: 12 }}>
                   {(item.recipes || []).length ? (
                     <span className="badge badge-sm badge-blue">{(item.recipes || []).length} components</span>

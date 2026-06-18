@@ -13,7 +13,8 @@ interface Store { id: number; store_name: string; }
 
 export default function NewItemPage() {
   const router = useRouter();
-  const [form, setForm] = useState<Record<string,any>>({ item_name:"", item_code:"", base_price:"", description:"", long_description:"", category_id:"", tax_category_id:"", allergen_ids:[] as number[], dietary_tag_ids:[] as number[], is_available:true, is_featured:false, is_bundle_eligible:false, calories:"", prep_time_minutes:"10", minimum_tier_id:"", modifier_groups:[] as any[], recipes:[] as any[] });
+  const [form, setForm] = useState<Record<string,any>>({ item_name:"", item_code:"", base_price:"", description:"", long_description:"", category_id:"", tax_category_id:"", allergen_ids:[] as number[], dietary_tag_ids:[] as number[], is_available:true, is_featured:false, is_bundle_eligible:false, is_addon_deal_eligible:false, addon_discount_type:"percentage", addon_discount_value:"", eligible_bundle_ids:[] as number[], calories:"", prep_time_minutes:"10", minimum_tier_id:"", modifier_groups:[] as any[], recipes:[] as any[] });
+  const [bundleProducts, setBundleProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [allergens, setAllergens] = useState<Allergen[]>([]);
   const [dietaryTags, setDietaryTags] = useState<DietaryTag[]>([]);
@@ -36,6 +37,7 @@ export default function NewItemPage() {
     api.getRaw<any>("/admin/menu/tax-categories").then(d => safeSet(setTaxCategories)(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('tax-categories:',e)});
     api.getRaw<any>("/admin/loyalty/tiers").then(d => safeSet(setLoyaltyTiers)(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('loyalty-tiers:',e)});
     api.getRaw<any>("/admin/stores?per_page=50").then(d => safeSet(setStores)(Array.isArray(d)?d:(d.items||[]))).catch((e)=>{console.error('stores:',e)});
+    api.getRaw<any>("/admin/menu/bundle-products?per_page=500").then(d => safeSet(setBundleProducts)(Array.isArray(d)?d:[])).catch((e)=>{console.error('bundles:',e)});
     return () => { cancelled = true; };
   }, []);
 
@@ -67,7 +69,14 @@ export default function NewItemPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault();
+    if (form.is_addon_deal_eligible) {
+      const dv = Number(form.addon_discount_value);
+      if (!dv || dv <= 0) { setError("Add-on discount value must be greater than 0"); return; }
+      if (form.addon_discount_type === "percentage" && dv > 100) { setError("Percentage discount cannot exceed 100%"); return; }
+      if (!form.eligible_bundle_ids || form.eligible_bundle_ids.length === 0) { setError("Select at least one eligible combo for the add-on deal"); return; }
+    }
+    setSaving(true);
     try {
       const p:any = { ...form };
       if(!p.item_code) p.item_code = "ITM-"+Date.now().toString(36).toUpperCase().slice(-6);
@@ -131,7 +140,44 @@ export default function NewItemPage() {
             </div>
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={form.is_available} onChange={e=>setForm({...form,is_available:e.target.checked})}/>Available</label></div>
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={form.is_featured} onChange={e=>setForm({...form,is_featured:e.target.checked})}/>Featured</label></div>
-            <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={form.is_bundle_eligible} onChange={e=>setForm({...form,is_bundle_eligible:e.target.checked})}/> Bundle Eligible</label></div>
+            <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={!!form.is_bundle_eligible} onChange={e=>setForm({...form,is_bundle_eligible:e.target.checked})}/> Bundle Eligible</label></div>
+            <div className="df-field" style={{gridColumn:"1/-1"}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600}}>
+                <input type="checkbox" checked={!!form.is_addon_deal_eligible} onChange={e=>setForm({...form,is_addon_deal_eligible:e.target.checked})}/> Add-on Deal
+              </label>
+              <p style={{fontSize:11,color:"var(--color-text-muted)",margin:"4px 0 0 20px"}}>Discounted item when an eligible combo is in the cart (e.g. ice cream at 50% off with any value meal)</p>
+              {form.is_addon_deal_eligible && (
+                <div style={{marginTop:10,padding:12,background:"var(--color-bg-muted)",borderRadius:"var(--radius-md)",display:"flex",flexDirection:"column",gap:10}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <select value={form.addon_discount_type||"percentage"} onChange={e=>setForm({...form,addon_discount_type:e.target.value})} style={{padding:"6px 12px",fontSize:12,borderRadius:"var(--radius-sm)",border:"1px solid var(--color-border-light)",minWidth:90}}>
+                      <option value="percentage">% off</option>
+                      <option value="fixed">RM off</option>
+                    </select>
+                    <input type="number" min={0} step="any" placeholder="e.g. 50" value={form.addon_discount_value||""} onChange={e=>setForm({...form,addon_discount_value:e.target.value})} style={{width:80,padding:"6px 10px",fontSize:13,borderRadius:"var(--radius-sm)",border:"1px solid var(--color-border-light)"}} />
+                    <span style={{fontSize:12,color:"var(--color-text-muted)"}}>{form.addon_discount_type==="fixed"?"RM":"%"}</span>
+                  </div>
+                  {bundleProducts.length > 0 && (
+                    <div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                        <div style={{fontSize:11,fontWeight:600,color:"var(--color-text-muted)"}}>Eligible Combos:</div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button type="button" onClick={()=>setForm({...form,eligible_bundle_ids:bundleProducts.map((bp:any)=>bp.id)})} style={{fontSize:10,color:"var(--color-primary)",background:"none",border:"none",cursor:"pointer"}}>Select All</button>
+                          <button type="button" onClick={()=>setForm({...form,eligible_bundle_ids:[]})} style={{fontSize:10,color:"var(--color-text-muted)",background:"none",border:"none",cursor:"pointer"}}>Clear</button>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                        {bundleProducts.map((bp: any) => (
+                          <label key={bp.id} style={{display:"flex",alignItems:"center",gap:4,fontSize:12,padding:"3px 8px",borderRadius:"var(--radius-full)",background:(form.eligible_bundle_ids||[]).includes(bp.id)?"rgba(59,74,26,0.12)":"var(--color-bg-white)",border:(form.eligible_bundle_ids||[]).includes(bp.id)?"1.5px solid var(--color-primary)":"1px solid var(--color-border-light)",cursor:"pointer",whiteSpace:"nowrap"}}>
+                            <input type="checkbox" checked={(form.eligible_bundle_ids||[]).includes(bp.id)} onChange={e=>{const ids=[...(form.eligible_bundle_ids||[])];e.target.checked?ids.push(bp.id):ids.splice(ids.indexOf(bp.id),1);setForm({...form,eligible_bundle_ids:ids});}} style={{display:"none"}} />
+                            {bp.title}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="df-field" style={{gridColumn:"1/-1"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><label className="form-label" style={{margin:0}}>Add-ons / Modifiers</label><button type="button" onClick={addGroup} className="btn btn-sm btn-outline"><Plus size={14}/>Add</button></div>
