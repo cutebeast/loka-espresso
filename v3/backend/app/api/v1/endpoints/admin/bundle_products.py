@@ -50,6 +50,15 @@ async def _get_or_create_bundle_category(db, bundle_type: str) -> int | None:
     return cat.id
 
 
+def _validate_pick_x_component_pool(pick_count, allow_duplicates, components):
+    if pick_count is not None and pick_count >= 1 and not allow_duplicates:
+        if len(components) < pick_count:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Pick-X requires at least {pick_count} items in the pool. Only {len(components)} provided.",
+            )
+
+
 def _build_component_out(comp: BundleProductComponent) -> dict:
     item = comp.menu_item
     return {
@@ -146,6 +155,9 @@ async def create_bundle_product(db: DBDependency, admin: CurrentAdmin, data: Bun
         pick_count=data.pick_count,
         allow_duplicates=data.allow_duplicates,
     )
+
+    _validate_pick_x_component_pool(data.pick_count, data.allow_duplicates, data.components)
+
     db.add(bp)
     await db.flush()
 
@@ -232,6 +244,12 @@ async def update_bundle_product(db: DBDependency, admin: CurrentAdmin, id: int, 
                     is_default=mod_in.is_default,
                 )
                 db.add(mod)
+
+    _validate_pick_x_component_pool(
+        getattr(bp, "pick_count", None),
+        getattr(bp, "allow_duplicates", False),
+        components_data if components_data is not None else [{"menu_item_id": c.menu_item_id} for c in bp.components],
+    )
 
     await db.commit()
     await auto_translate_record(db, "bundle_products", bp.id, {"title": bp.title or "", "description": bp.description or ""})

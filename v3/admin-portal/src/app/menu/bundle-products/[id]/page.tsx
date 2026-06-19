@@ -20,7 +20,8 @@ export default function BundleProductEditPage() {
   const [savingTr, setSavingTr] = useState(false);
   const [loc, setLoc] = useState<LocaleTab>("en");
   const [regen, setRegen] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [uploading, setUploading] = useState(false);
   const [img, setImg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -86,18 +87,18 @@ export default function BundleProductEditPage() {
 
   const handleSave = async () => {
     const isPickX = form.bundle_type === "pick_x";
-    if (!form.title) { setMsg("Title is required"); return; }
-    if (!form.bundle_price || Number(form.bundle_price) <= 0) { setMsg("Valid bundle price is required"); return; }
+    if (!form.title) { setError("Title is required"); return; }
+    if (!form.bundle_price || Number(form.bundle_price) <= 0) { setError("Valid bundle price is required"); return; }
     if (isPickX) {
       const pc = Number(form.pick_count);
-      if (!pc || pc < 1) { setMsg("Pick count must be at least 1"); return; }
-      if (!form.allow_duplicates && components.length < pc) { setMsg(`Need at least ${pc} items in the pool`); return; }
-      if (form.allow_duplicates && components.length < 1) { setMsg("At least one item required in the pool"); return; }
+      if (!pc || pc < 1) { setError("Pick count must be at least 1"); return; }
+      if (!form.allow_duplicates && components.length < pc) { setError(`Need at least ${pc} items in the pool`); return; }
+      if (form.allow_duplicates && components.length < 1) { setError("At least one item required in the pool"); return; }
     } else {
-      if (components.length === 0) { setMsg("At least one component is required"); return; }
+      if (components.length === 0) { setError("At least one component is required"); return; }
     }
     for (let i = 0; i < components.length; i++) {
-      const c = components[i]; if (!c || !c.menu_item_id) { setMsg(`Item ${i + 1}: select a menu item`); return; }
+      const c = components[i]; if (!c || !c.menu_item_id) { setError(`Item ${i + 1}: select a menu item`); return; }
     }
     setSaving(true);
     try {
@@ -126,8 +127,8 @@ export default function BundleProductEditPage() {
           modifier_overrides: [],
         }));
       await api.patch(`/admin/menu/bundle-products/${id}`, payload);
-      setMsg("Saved"); setTimeout(() => setMsg(""), 2000);
-    } catch (e: any) { setMsg(e.message || "Save failed"); } finally { setSaving(false); }
+      setSuccessMsg("Saved"); setTimeout(() => setSuccessMsg(""), 2000);
+    } catch (e: any) { setError(e.message || "Save failed"); } finally { setSaving(false); }
   };
 
   const addComponent = () => setComponents([...components, { menu_item_id: "", cat_filter: "", default_quantity: 1, is_required: true, is_swappable: false, swap_group: "", sort_order: components.length }]);
@@ -143,7 +144,7 @@ export default function BundleProductEditPage() {
   const handleDelete = async () => {
     if (!confirm("Delete this bundle product? This cannot be undone.")) return;
     try { await api.del(`/admin/menu/bundle-products/${id}`); r.push("/menu/bundle-products"); }
-    catch (e: any) { setMsg(e.message || "Failed to delete bundle"); }
+    catch (e: any) { setError(e.message || "Failed to delete bundle"); }
   };
   const updateComponent = (idx: number, field: string, value: any) => {
     setComponents(components.map((c, i) => {
@@ -163,10 +164,10 @@ export default function BundleProductEditPage() {
   const regenAll = async (locale: string) => { setRegen(true); const results: { field: string; text: string }[] = [];
     for (const f of TR_FIELDS) { const src = (form[f.key] || "").trim(); if (!src) continue; try { const r = await api.post<{ translated_text?: string }>("/admin/translations/translate", { text: src, target_locale: locale, source_locale: "en" }); if (r?.translated_text) { results.push({ field: f.key, text: r.translated_text }); setTr(prev => ({ ...prev, [`${locale}:${f.key}`]: r.translated_text! })); } } catch (e) { console.error(e); } }
     for (const r of results) { await upsertTr(r.field, locale, (form[r.field] || "").trim(), r.text); }
-    setMsg(results.length > 0 ? `Regenerated ${results.length} translations` : "No translatable content"); setTimeout(() => setMsg(""), 2500); setRegen(false);
+    setSuccessMsg(results.length > 0 ? `Regenerated ${results.length} translations` : "No translatable content"); setTimeout(() => setSuccessMsg(""), 2500); setRegen(false);
   };
 
-  const saveAllTr = async (locale: string) => { setSavingTr(true); for (const f of TR_FIELDS) { const key = `${locale}:${f.key}`; const text = tr[key] || ""; if (text.trim()) await upsertTr(f.key, locale, form[f.key] || "", text); } setMsg(`Saved`); setTimeout(() => setMsg(""), 2000); setSavingTr(false); };
+  const saveAllTr = async (locale: string) => { setSavingTr(true); for (const f of TR_FIELDS) { const key = `${locale}:${f.key}`; const text = tr[key] || ""; if (text.trim()) await upsertTr(f.key, locale, form[f.key] || "", text); } setSuccessMsg(`Saved`); setTimeout(() => setSuccessMsg(""), 2000); setSavingTr(false); };
 
   if (loading) return <div style={{ padding: 32 }}><p>Loading...</p></div>;
 
@@ -176,7 +177,8 @@ export default function BundleProductEditPage() {
         <button onClick={() => r.push("/menu/bundle-products")} className="btn btn-ghost btn-sm"><ArrowLeft size={18} /></button>
         <div><h1 className="page-title" style={{ margin: 0 }}>{form.title || "Bundle Product"}</h1><p className="page-subtitle" style={{ marginTop: 2 }}>Edit details & translations</p></div>
       </div>
-      {msg && <div className="alert alert-success" style={{ marginBottom: 12 }}>{msg}</div>}
+      {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
+      {successMsg && <div className="alert alert-success" style={{ marginBottom: 12 }}>{successMsg}</div>}
 
       <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "2px solid var(--color-border-light)", paddingBottom: 0 }}>
         {LOCALES.map(l => <button key={l.code} onClick={() => setLoc(l.code)} style={{ padding: "10px 20px", fontSize: 13, fontWeight: loc === l.code ? 700 : 400, border: "none", borderBottom: loc === l.code ? "3px solid var(--color-primary)" : "3px solid transparent", background: loc === l.code ? "rgba(59,74,26,0.05)" : "transparent", cursor: "pointer", color: loc === l.code ? "var(--color-primary)" : "var(--color-text-muted)", borderRadius: "4px 4px 0 0" }}>{l.flag} {l.label}</button>)}

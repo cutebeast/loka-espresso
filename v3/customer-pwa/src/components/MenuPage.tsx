@@ -304,7 +304,7 @@ export default function MenuPage() {
                 <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{bp.title}</div>
                 <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
                   {bp.pick_count && bp.pick_count > 0
-                    ? t('menu.pickXSubtitle', { count: bp.pick_count })
+                    ? `${t('menu.pickXSubtitle', { count: bp.pick_count })} for ${formatPrice(bp.bundle_price)}`
                     : `${bp.components.map(c => c.menu_item_name).slice(0, 3).join(" + ")}${bp.components.length > 3 ? " ..." : ""}`
                   }
                 </div>
