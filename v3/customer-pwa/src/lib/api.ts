@@ -1121,6 +1121,8 @@ export interface BundleProduct {
   category_id: number | null;
   display_order: number;
   is_active: boolean;
+  pick_count?: number | null;
+  allow_duplicates?: boolean;
   components: BundleProductComponent[];
 }
 

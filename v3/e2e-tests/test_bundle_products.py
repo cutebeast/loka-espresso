@@ -540,3 +540,187 @@ async def test_addon_deal_discount_applied(
             "eligible_bundle_ids": [],
         },
     )
+
+
+# ───────────────────────────────────────────────────────
+# Pick-X bundle flow
+# ───────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_pick_x_bundle_flow(
+    client: httpx.AsyncClient,
+    base_url: str,
+    admin_headers: dict,
+    store_id: int,
+):
+    """Create pick-X bundle, verify public exposure, add items, verify discount."""
+    item_id = await _ensure_menu_items(client, base_url, admin_headers, store_id)
+    if not item_id:
+        pytest.skip("No menu items available")
+
+    # Create a second menu item for the pool
+    r_item2 = await client.post(
+        f"{base_url}/admin/menu/items",
+        headers=admin_headers,
+        json={
+            "item_name": "E2E PickX Fries",
+            "item_code": "E2E-FRIES",
+            "base_price": 6.50,
+            "category_id": 1,
+            "is_available": True,
+        },
+    )
+    item2_id = r_item2.json().get("data", {}).get("id", 0) if r_item2.status_code in (200, 201) else 0
+    if not item2_id:
+        pytest.skip("Cannot create second menu item for pick-X pool")
+
+    # Create a pick-X bundle (pick_count=2, 2 items in pool)
+    r = await client.post(
+        f"{base_url}/admin/menu/bundle-products",
+        headers=admin_headers,
+        json={
+            "title": "E2E Pick 2 Combo",
+            "bundle_type": "pick_x",
+            "bundle_price": 12.00,
+            "pick_count": 2,
+            "allow_duplicates": False,
+            "is_active": True,
+            "components": [
+                {"menu_item_id": item_id, "default_quantity": 1, "is_required": True, "is_swappable": False, "swap_group": None, "sort_order": 0, "modifier_overrides": []},
+                {"menu_item_id": item2_id, "default_quantity": 1, "is_required": True, "is_swappable": False, "swap_group": None, "sort_order": 1, "modifier_overrides": []},
+            ],
+        },
+    )
+    assert r.status_code in (200, 201), f"Pick-X bundle create failed: {r.text}"
+
+    # Verify in public menu
+    r_pub = await client.get(f"{base_url}/menu/bundle-products")
+    assert r_pub.status_code == 200
+    bundles = r_pub.json().get("data", [])
+    pick_x_bp = next((b for b in bundles if b.get("bundle_type") == "pick_x"), None)
+    assert pick_x_bp is not None, "Pick-X bundle not found in public menu"
+    assert pick_x_bp.get("pick_count") == 2
+    assert pick_x_bp.get("allow_duplicates") == False
+
+    bp_id = pick_x_bp["id"]
+
+    # Customer auth
+    import uuid
+    phone = "+6016" + uuid.uuid4().hex[:7]
+    r_login = await client.post(f"{base_url}/auth/login", json={"phone_number": phone})
+    if r_login.status_code != 200:
+        pytest.skip("Customer auth not available")
+    token = r_login.json().get("tokens", {}).get("access_token", "")
+    cust_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+    # Add 2 items with bundle_product_id (customer picks 2 from pool)
+    for comp in pick_x_bp["components"][:2]:
+        r_add = await client.post(
+            f"{base_url}/cart/items?store_id={store_id}",
+            headers=cust_headers,
+            json={
+                "menu_item_id": comp["menu_item_id"],
+                "quantity": 1,
+                "selected_modifiers": [],
+                "bundle_product_id": bp_id,
+            },
+        )
+        assert r_add.status_code == 200, f"Add pick item failed: {r_add.text}"
+
+    # Create order
+    r_cart = await client.get(f"{base_url}/cart?store_id={store_id}", headers=cust_headers)
+    assert r_cart.status_code == 200
+    cart_id = r_cart.json().get("data", {}).get("id")
+    assert cart_id, "Cart not found"
+
+    r_order = await client.post(
+        f"{base_url}/orders",
+        headers=cust_headers,
+        json={
+            "store_id": store_id,
+            "cart_id": cart_id,
+            "order_type": "takeaway",
+            "fulfillment_type": "counter_pickup",
+        },
+    )
+    assert r_order.status_code in (200, 201), f"Order create failed: {r_order.text}"
+    order = r_order.json().get("data", {})
+    assert order.get("discount_amount", 0) > 0, (
+        f"Expected bundle_discount > 0 for pick-X (sum of 2 items > bundle_price 12.00). "
+        f"Got discount_amount={order.get('discount_amount')}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_pick_x_bundle_multi_instance(
+    client: httpx.AsyncClient,
+    base_url: str,
+    admin_headers: dict,
+    store_id: int,
+):
+    """Multi-instance pick-X: 4 items (2 sets of pick_count=2) → discount = 2 × (sum_per_set - price)."""
+    r = await client.get(f"{base_url}/menu/bundle-products")
+    bundles = r.json().get("data", [])
+    pick_x_bp = next((b for b in bundles if b.get("pick_count") == 2), None)
+    if not pick_x_bp:
+        pytest.skip("No pick-2 bundle found from previous test")
+
+    bp_id = pick_x_bp["id"]
+    comps = pick_x_bp.get("components", [])
+    if len(comps) < 2:
+        pytest.skip("Pick-X bundle needs at least 2 components")
+
+    comp1_price = comps[0].get("menu_item_price", 12.90)
+    comp2_price = comps[1].get("menu_item_price", 6.50)
+    sum_per_set = round(float(comp1_price) + float(comp2_price), 2)
+    bp_price = float(pick_x_bp["bundle_price"])
+    expected_disc = round((sum_per_set - bp_price) * 2, 2)
+
+    # Customer auth
+    import uuid
+    phone = "+6017" + uuid.uuid4().hex[:7]
+    r_login = await client.post(f"{base_url}/auth/login", json={"phone_number": phone})
+    if r_login.status_code != 200:
+        pytest.skip("Customer auth not available")
+    token = r_login.json().get("tokens", {}).get("access_token", "")
+    cust_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+    # Add 4 items (2 instances of each component)
+    for comp in comps[:2]:
+        for _ in range(2):
+            r_add = await client.post(
+                f"{base_url}/cart/items?store_id={store_id}",
+                headers=cust_headers,
+                json={
+                    "menu_item_id": comp["menu_item_id"],
+                    "quantity": 1,
+                    "selected_modifiers": [],
+                    "bundle_product_id": bp_id,
+                },
+            )
+            assert r_add.status_code == 200, f"Add multi-instance item failed: {r_add.text}"
+
+    # Create order
+    r_cart = await client.get(f"{base_url}/cart?store_id={store_id}", headers=cust_headers)
+    assert r_cart.status_code == 200
+    cart_id = r_cart.json().get("data", {}).get("id")
+    assert cart_id, "Cart not found"
+
+    r_order = await client.post(
+        f"{base_url}/orders",
+        headers=cust_headers,
+        json={
+            "store_id": store_id,
+            "cart_id": cart_id,
+            "order_type": "takeaway",
+            "fulfillment_type": "counter_pickup",
+        },
+    )
+    assert r_order.status_code in (200, 201), f"Multi-instance order failed: {r_order.text}"
+    order = r_order.json().get("data", {})
+
+    actual_disc = round(float(order.get("discount_amount", 0)), 2)
+    assert abs(actual_disc - expected_disc) < 0.06, (
+        f"Expected discount ≈ {expected_disc} (2 sets × {sum_per_set} - 2 × {bp_price}), "
+        f"got {actual_disc}"
+    )

@@ -752,7 +752,7 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
     bundle_discount = 0.0
     bundle_ids = set(li.bundle_product_id for li in line_items_data if hasattr(li, 'bundle_product_id') and li.bundle_product_id)
     if bundle_ids:
-        from app.models.bundle_product import BundleProduct
+        from app.models.bundle_product import BundleProduct, BundleProductComponent
         for bid in bundle_ids:
             if bid is None: continue
             bdl = await db.get(BundleProduct, bid)
@@ -762,9 +762,23 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
                 (Decimal(str(l.unit_price)) + Decimal(str(l.modifier_total))) * l.quantity
                 for l in bundle_line_items
             )
-            bd = float(comp_sum - Decimal(str(bdl.bundle_price)))
-            if bd > 0:
-                bundle_discount += bd
+
+            if bdl.pick_count and bdl.pick_count > 0:
+                items_per_set = bdl.pick_count
+            else:
+                comp_count = (await db.execute(
+                    select(func.count(BundleProductComponent.id))
+                    .where(BundleProductComponent.bundle_product_id == bid)
+                )).scalar() or 0
+                items_per_set = comp_count or 1
+
+            total_qty = sum(l.quantity for l in bundle_line_items)
+            num_sets = total_qty // items_per_set if items_per_set > 0 else 0
+
+            if num_sets > 0:
+                bd = float(comp_sum - (Decimal(str(bdl.bundle_price)) * num_sets))
+                if bd > 0:
+                    bundle_discount += bd
         total = round(total - bundle_discount, 2)
 
     # ── Add-on Deal discount ──

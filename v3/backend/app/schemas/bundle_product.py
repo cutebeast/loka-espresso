@@ -59,6 +59,8 @@ class BundleProductCreate(BaseSchema):
     max_per_order: int = Field(default=1, ge=1)
     image_gallery_urls: list | None = None
     gallery_video_url: str | None = None
+    pick_count: int | None = Field(default=None, ge=1)
+    allow_duplicates: bool = False
     components: list[BundleProductComponentIn] = []
 
 
@@ -76,6 +78,8 @@ class BundleProductUpdate(BaseSchema):
     max_per_order: int | None = Field(None, ge=1)
     image_gallery_urls: list | None = None
     gallery_video_url: str | None = None
+    pick_count: int | None = Field(default=None, ge=1)
+    allow_duplicates: bool | None = None
     components: list[BundleProductComponentIn] | None = None
 
 
@@ -95,5 +99,7 @@ class BundleProductOut(TimestampedSchema):
     max_per_order: int
     image_gallery_urls: list | None = None
     gallery_video_url: str | None = None
+    pick_count: int | None = None
+    allow_duplicates: bool = False
     deleted_at: datetime | None = None
     components: list[BundleProductComponentOut] = []

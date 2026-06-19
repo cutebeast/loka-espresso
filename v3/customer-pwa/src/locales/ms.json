@@ -413,7 +413,14 @@
     "addonAdded": "{name} ditambah",
     "addonMaybeLater": "Mungkin kemudian",
     "addonViewCart": "Lihat troli",
-    "comboBadge": "Kombo"
+    "comboBadge": "Kombo",
+    "pickXTitle": "Bina Kombo Anda",
+    "pickXSubtitle": "Pilih {count} item",
+    "pickXSelected": "{selected} / {count} dipilih",
+    "pickXAddToCart": "Tambah ke Troli",
+    "pickXMaxReached": "Maksimum dipilih. Keluarkan satu untuk pilih lain.",
+    "pickXMinRequired": "Pilih {count} item untuk teruskan",
+    "pickXBadge": "Pilih {count}"
   },
   "myCard": {
     "brand": "LOKA Espresso",

@@ -61,6 +61,7 @@ export function usePosState() {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<unknown>(null);
   const [successChange, setSuccessChange] = useState(0);
+  const [pickerBundle, setPickerBundle] = useState<BundleProduct | null>(null);
 
   // Runtime helpers
   const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
@@ -157,8 +158,18 @@ export function usePosState() {
       if (!bp || bp.is_active === false) continue;
       const bundleItems = cartHook.cart.filter((c) => c.bundle_product_id === bid);
       const componentSum = bundleItems.reduce((s, c) => s + c.price * c.qty, 0);
-      const disc = componentSum - bp.bundle_price;
-      if (disc > 0) bundleDiscount += disc;
+
+      const itemsPerSet = (bp.pick_count && bp.pick_count > 0)
+        ? bp.pick_count
+        : (bp.components?.length || 1);
+
+      const totalQty = bundleItems.reduce((s, c) => s + c.qty, 0);
+      const numSets = itemsPerSet > 0 ? Math.floor(totalQty / itemsPerSet) : 0;
+
+      if (numSets > 0) {
+        const disc = componentSum - bp.bundle_price * numSets;
+        if (disc > 0) bundleDiscount += disc;
+      }
     }
 
     let addonDiscount = 0;
@@ -273,6 +284,10 @@ export function usePosState() {
   };
 
   const addBundleToCart = (bp: BundleProduct) => {
+    if (bp.pick_count && bp.pick_count > 0) {
+      setPickerBundle(bp);
+      return;
+    }
     let skipped = 0;
     for (const comp of bp.components) {
       const menuItem = items.find(i => i.id === comp.menu_item_id);
@@ -280,6 +295,17 @@ export function usePosState() {
       cartHook.addToCart(menuItem, {}, "", comp.default_quantity, bp.id);
     }
     setMsg(skipped > 0 ? `${bp.title} added (${skipped} item${skipped > 1 ? "s" : ""} unavailable, skipped)` : `${bp.title} added`);
+  };
+
+  const handleBundlePickerAdd = (selections: Array<{ menu_item_id: number; quantity: number }>) => {
+    if (!pickerBundle) return;
+    for (const sel of selections) {
+      const menuItem = items.find(i => i.id === sel.menu_item_id);
+      if (!menuItem || !menuItem.is_available) continue;
+      cartHook.addToCart(menuItem, {}, "", sel.quantity, pickerBundle.id);
+    }
+    setMsg(`${pickerBundle.title} added`);
+    setPickerBundle(null);
   };
 
   // ── Return (backward-compatible interface) ──
@@ -316,6 +342,9 @@ export function usePosState() {
     holdOrder,
     recallOrder: cartHook.recallOrder,
     addBundleToCart,
+    pickerBundle,
+    setPickerBundle,
+    handleBundlePickerAdd,
     newOrder,
 
     // Customer (from usePosCustomer)

@@ -413,7 +413,14 @@
     "addonAdded": "已添加 {name}",
     "addonMaybeLater": "以后再说",
     "addonViewCart": "查看购物车",
-    "comboBadge": "套餐"
+    "comboBadge": "套餐",
+    "pickXTitle": "自选组合",
+    "pickXSubtitle": "选择 {count} 项",
+    "pickXSelected": "已选 {selected} / {count}",
+    "pickXAddToCart": "加入购物车",
+    "pickXMaxReached": "已达上限，请移除一项后再选",
+    "pickXMinRequired": "请选择 {count} 项以继续",
+    "pickXBadge": "选 {count} 项"
   },
   "myCard": {
     "brand": "LOKA 意式浓缩咖啡",

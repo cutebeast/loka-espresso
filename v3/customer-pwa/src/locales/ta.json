@@ -413,7 +413,14 @@
     "addonAdded": "{name} சேர்க்கப்பட்டது",
     "addonMaybeLater": "பின்னர் இருக்கலாம்",
     "addonViewCart": "வண்டியைக் காண்க",
-    "comboBadge": "காம்போ"
+    "comboBadge": "காம்போ",
+    "pickXTitle": "உங்கள் காம்போவை உருவாக்குங்கள்",
+    "pickXSubtitle": "{count} பொருட்களைத் தேர்வுசெய்க",
+    "pickXSelected": "{selected} / {count} தேர்ந்தெடுக்கப்பட்டது",
+    "pickXAddToCart": "கார்ட்டில் சேர்",
+    "pickXMaxReached": "அதிகபட்சம் தேர்ந்தெடுக்கப்பட்டது. மற்றொன்றைத் தேர்ந்தெடுக்க ஒன்றை அகற்றவும்.",
+    "pickXMinRequired": "தொடர {count} பொருட்களைத் தேர்ந்தெடுக்கவும்",
+    "pickXBadge": "{count} தேர்வு"
   },
   "myCard": {
     "brand": "லோகா எஸ்பிரெஸ்ஸோ",

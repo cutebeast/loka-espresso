@@ -632,7 +632,14 @@
     "addonAdded": "{name} added",
     "addonMaybeLater": "Maybe later",
     "addonViewCart": "View cart",
-    "comboBadge": "Combo"
+    "comboBadge": "Combo",
+    "pickXTitle": "Build Your Combo",
+    "pickXSubtitle": "Choose {count} items",
+    "pickXSelected": "{selected} / {count} selected",
+    "pickXAddToCart": "Add to Cart",
+    "pickXMaxReached": "Maximum selected. Remove one to pick another.",
+    "pickXMinRequired": "Select {count} items to continue",
+    "pickXBadge": "Pick {count}"
   },
   "notifications": {
     "markAllAsRead": "Mark All as Read",

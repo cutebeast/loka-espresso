@@ -29,6 +29,8 @@ class BundleProduct(Base, TimestampMixin, SoftDeleteMixin):
     max_per_order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     image_gallery_urls: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     gallery_video_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    pick_count: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    allow_duplicates: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     components: Mapped[List["BundleProductComponent"]] = relationship(
         "BundleProductComponent", back_populates="bundle_product", cascade="all, delete-orphan"

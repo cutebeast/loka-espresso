@@ -122,8 +122,18 @@ export function previewCartDiscounts(
       (sum, ci) => sum + ci.price * ci.quantity,
       0,
     );
-    const disc = componentSum - bp.bundle_price;
-    if (disc > 0) bundleDiscount += disc;
+
+    const itemsPerSet = (bp.pick_count && bp.pick_count > 0)
+      ? bp.pick_count
+      : (bp.components?.length || 1);
+
+    const totalQty = bundleItems.reduce((sum, ci) => sum + ci.quantity, 0);
+    const numSets = itemsPerSet > 0 ? Math.floor(totalQty / itemsPerSet) : 0;
+
+    if (numSets > 0) {
+      const disc = componentSum - bp.bundle_price * numSets;
+      if (disc > 0) bundleDiscount += disc;
+    }
   }
 
   const menuItemMap = new Map<number, MenuItem>();

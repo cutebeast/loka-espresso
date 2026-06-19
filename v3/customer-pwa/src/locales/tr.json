@@ -413,7 +413,14 @@
     "addonAdded": "{name} eklendi",
     "addonMaybeLater": "Belki sonra",
     "addonViewCart": "Sepeti gör",
-    "comboBadge": "Kombo"
+    "comboBadge": "Kombo",
+    "pickXTitle": "Kombonu Oluştur",
+    "pickXSubtitle": "{count} ürün seçin",
+    "pickXSelected": "{selected} / {count} seçildi",
+    "pickXAddToCart": "Sepete Ekle",
+    "pickXMaxReached": "Maksimum seçildi. Başka seçmek için birini kaldırın.",
+    "pickXMinRequired": "Devam etmek için {count} ürün seçin",
+    "pickXBadge": "{count} Seç"
   },
   "myCard": {
     "brand": "LOKA Espresso",

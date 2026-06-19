@@ -14,6 +14,7 @@ import PosModifierDrawer from "@/components/pos/PosModifierDrawer";
 import PosQrScannerModal from "@/components/pos/PosQrScannerModal";
 import PosHeldOrdersDrawer from "@/components/pos/PosHeldOrdersDrawer";
 import PosUnpaidOrdersDrawer from "@/components/pos/PosUnpaidOrdersDrawer";
+import BundlePickerModal from "@/components/pos/BundlePickerModal";
 import { usePosState } from "@/components/pos/usePosState";
 
 export default function PosPage() {
@@ -239,11 +240,16 @@ export default function PosPage() {
                       )}
                       <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{bp.title}</div>
                       <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-                        {bp.components.map(c => c.menu_item_name).slice(0, 3).join(" + ")}{bp.components.length > 3 ? ` +${bp.components.length - 3} more` : ""}
+                        {bp.pick_count && bp.pick_count > 0
+                          ? `Pick ${bp.pick_count} items`
+                          : `${bp.components.map(c => c.menu_item_name).slice(0, 3).join(" + ")}${bp.components.length > 3 ? ` +${bp.components.length - 3} more` : ""}`
+                        }
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={{ fontWeight: 700, fontSize: 15, color: "var(--color-primary)" }}>RM {Number(bp.bundle_price ?? 0).toFixed(2)}</span>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>Combo</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>
+                          {bp.pick_count && bp.pick_count > 0 ? `Pick ${bp.pick_count}` : 'Combo'}
+                        </span>
                       </div>
                     </button>
                   ))}
@@ -494,6 +500,14 @@ export default function PosPage() {
         orders={pos.unpaidOrders}
         loading={pos.unpaidLoading}
         onClose={() => pos.setShowUnpaid(false)}
+      />
+
+      <BundlePickerModal
+        open={pos.pickerBundle !== null}
+        bundle={pos.pickerBundle}
+        menuItems={pos.items}
+        onClose={() => pos.setPickerBundle(null)}
+        onAdd={pos.handleBundlePickerAdd}
       />
     </div>
   );

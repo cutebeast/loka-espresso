@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { Plus, Edit2, Trash2, Search } from "lucide-react";
 
-interface BundleProduct { id: number; title: string; bundle_type: string; bundle_price: number; image_url?: string | null; components_count?: number; components?: { menu_item_id: number }[]; category_name?: string; is_active: boolean; }
+interface BundleProduct { id: number; title: string; bundle_type: string; bundle_price: number; image_url?: string | null; components_count?: number; components?: { menu_item_id: number }[]; category_name?: string; is_active: boolean; pick_count?: number | null; }
 
 export default function BundleProductsPage() {
   const router = useRouter();
@@ -79,7 +79,7 @@ export default function BundleProductsPage() {
               <tr key={b.id} className="clickable" role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/menu/bundle-products/${b.id}`); } }} onClick={() => router.push(`/menu/bundle-products/${b.id}`)} style={{ cursor: "pointer" }}>
                 <td onClick={e => e.stopPropagation()}>{b.image_url ? <img src={b.image_url} alt={b.title} style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover" }} loading="lazy" /> : <div style={{ width: 36, height: 36, borderRadius: 6, background: "var(--color-bg-muted)" }} />}</td>
                 <td><div style={{ fontWeight: 600 }}>{b.title}</div></td>
-                <td><span className="badge badge-sm badge-blue">{b.bundle_type || "combo"}</span></td>
+                <td><span className="badge badge-sm badge-blue">{b.pick_count ? `Pick ${b.pick_count}` : (b.bundle_type || "combo")}</span></td>
                 <td style={{ fontSize: 12 }}>{b.components_count ?? b.components?.length ?? "—"} items</td>
                 <td style={{ textAlign: "right", fontWeight: 600 }}>RM {Number(b.bundle_price || 0).toFixed(2)}</td>
                 <td onClick={e => e.stopPropagation()}><span className={`badge badge-sm ${b.is_active ? "badge-green" : "badge-gray"}`}>{b.is_active ? "Active" : "Inactive"}</span></td>

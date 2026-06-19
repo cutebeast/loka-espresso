@@ -12,6 +12,7 @@ import type { MenuItem, BundleProduct } from '@/lib/api';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import AddonDealSheet from '@/components/menu/AddonDealSheet';
+import BundlePickerSheet from '@/components/menu/BundlePickerSheet';
 import { bundleIdsInCart } from '@/lib/addonDeal';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 
@@ -43,6 +44,7 @@ export default function MenuPage() {
   const [customizeItem, setCustomizeItem] = useState<MenuItem | null>(null);
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
   const [pendingAddonBundle, setPendingAddonBundle] = useState<BundleProduct | null>(null);
+  const [pickerBundle, setPickerBundle] = useState<BundleProduct | null>(null);
 
   const activeBundleIds = useMemo(() => new Set(bundleIdsInCart(cartItems)), [cartItems]);
 
@@ -134,6 +136,10 @@ export default function MenuPage() {
   }, [addItem, selectedStore?.id]);
 
   const handleAddBundle = useCallback((bp: BundleProduct) => {
+    if (bp.pick_count && bp.pick_count > 0) {
+      setPickerBundle(bp);
+      return;
+    }
     for (const comp of bp.components) {
       addItem({
         menu_item_id: comp.menu_item_id,
@@ -297,11 +303,18 @@ export default function MenuPage() {
                 )}
                 <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{bp.title}</div>
                 <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-                  {bp.components.map(c => c.menu_item_name).slice(0, 3).join(" + ")}{bp.components.length > 3 ? " ..." : ""}
+                  {bp.pick_count && bp.pick_count > 0
+                    ? t('menu.pickXSubtitle', { count: bp.pick_count })
+                    : `${bp.components.map(c => c.menu_item_name).slice(0, 3).join(" + ")}${bp.components.length > 3 ? " ..." : ""}`
+                  }
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
                   <span style={{ fontWeight: 700, fontSize: 15, color: "var(--color-primary)" }}>{formatPrice(bp.bundle_price)}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>{t('menu.comboBadge')}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>
+                    {bp.pick_count && bp.pick_count > 0
+                      ? t('menu.pickXBadge', { count: bp.pick_count })
+                      : t('menu.comboBadge')}
+                  </span>
                 </div>
               </button>
             ))}
@@ -438,12 +451,22 @@ export default function MenuPage() {
           customizations={customizeItem.customization_options || []}
         />
       )}
-
       <AddonDealSheet
         bundle={pendingAddonBundle}
         menuItems={menuItems}
         onClose={() => setPendingAddonBundle(null)}
       />
+
+      {pickerBundle && (
+        <BundlePickerSheet
+          bundle={pickerBundle}
+          onClose={() => setPickerBundle(null)}
+          onDone={(bp) => {
+            setPickerBundle(null);
+            setPendingAddonBundle(bp);
+          }}
+        />
+      )}
 
       <FloatingCartBar />
     </div>

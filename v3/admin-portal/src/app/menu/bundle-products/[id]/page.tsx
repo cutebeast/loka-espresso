@@ -53,6 +53,8 @@ export default function BundleProductEditPage() {
         title: d.title || "", description: d.description || "",
         bundle_price: d.bundle_price?.toString() || "", bundle_type: d.bundle_type || "combo",
         image_url: d.image_url || "", is_active: d.is_active, display_order: d.display_order ?? 0,
+        pick_count: d.pick_count?.toString() || "",
+        allow_duplicates: d.allow_duplicates || false,
       });
       setImg(d.image_url || "");
       setComponents((d.components || []).map((c: any) => ({
@@ -83,17 +85,38 @@ export default function BundleProductEditPage() {
   };
 
   const handleSave = async () => {
+    const isPickX = form.bundle_type === "pick_x";
     if (!form.title) { setMsg("Title is required"); return; }
     if (!form.bundle_price || Number(form.bundle_price) <= 0) { setMsg("Valid bundle price is required"); return; }
-    if (components.length === 0) { setMsg("At least one component is required"); return; }
+    if (isPickX) {
+      const pc = Number(form.pick_count);
+      if (!pc || pc < 1) { setMsg("Pick count must be at least 1"); return; }
+      if (!form.allow_duplicates && components.length < pc) { setMsg(`Need at least ${pc} items in the pool`); return; }
+      if (form.allow_duplicates && components.length < 1) { setMsg("At least one item required in the pool"); return; }
+    } else {
+      if (components.length === 0) { setMsg("At least one component is required"); return; }
+    }
     for (let i = 0; i < components.length; i++) {
-      const c = components[i]; if (!c || !c.menu_item_id) { setMsg(`Component ${i + 1}: select a menu item`); return; }
+      const c = components[i]; if (!c || !c.menu_item_id) { setMsg(`Item ${i + 1}: select a menu item`); return; }
     }
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
-        ...form, bundle_price: Number(form.bundle_price) || 0,
-        components: components.filter(c => !!c.menu_item_id).map(c => ({
+        title: form.title, description: form.description || "",
+        bundle_price: Number(form.bundle_price) || 0,
+        bundle_type: form.bundle_type,
+        image_url: form.image_url || undefined,
+        is_active: form.is_active,
+        display_order: form.display_order ?? 0,
+      };
+      if (isPickX) {
+        payload.pick_count = Number(form.pick_count);
+        payload.allow_duplicates = form.allow_duplicates;
+      } else {
+        payload.pick_count = null;
+        payload.allow_duplicates = false;
+      }
+      payload.components = components.filter(c => !!c.menu_item_id).map(c => ({
           menu_item_id: Number(c.menu_item_id),
           default_quantity: c.default_quantity,
           is_required: c.is_required,
@@ -101,8 +124,7 @@ export default function BundleProductEditPage() {
           swap_group: c.swap_group ? Number(c.swap_group) : null,
           sort_order: c.sort_order,
           modifier_overrides: [],
-        })),
-      };
+        }));
       await api.patch(`/admin/menu/bundle-products/${id}`, payload);
       setMsg("Saved"); setTimeout(() => setMsg(""), 2000);
     } catch (e: any) { setMsg(e.message || "Save failed"); } finally { setSaving(false); }
@@ -164,8 +186,49 @@ export default function BundleProductEditPage() {
         <h3 style={{ marginBottom: 20 }}>English (Source Content)</h3>
         <div className="df-grid">
           <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Title *</label><input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
-          <div className="df-field"><label className="df-label">Bundle Type</label><select value={form.bundle_type} onChange={e => setForm({ ...form, bundle_type: e.target.value })}><option value="combo">Combo</option><option value="value_meal">Value Meal</option><option value="family_meal">Family Meal</option><option value="breakfast_set">Breakfast Set</option><option value="promotional">Promotional</option></select></div>
+          <div className="df-field"><label className="df-label">Bundle Type</label><select value={form.bundle_type} onChange={e => setForm({ ...form, bundle_type: e.target.value })}><option value="combo">Combo</option><option value="value_meal">Value Meal</option><option value="family_meal">Family Meal</option><option value="breakfast_set">Breakfast Set</option><option value="promotional">Promotional</option><option value="pick_x">Pick-X (Build Your Own)</option></select></div>
           <div className="df-field"><label className="df-label">Bundle Price (RM) *</label><input type="number" step="0.01" min="0" required value={form.bundle_price} onChange={e => setForm({ ...form, bundle_price: e.target.value })} /></div>
+
+          {form.bundle_type === "pick_x" && (
+            <>
+              <div className="df-field">
+                <label className="df-label">Pick Count *</label>
+                <input type="number" min={1} step={1} required value={form.pick_count || ""} onChange={e => setForm({ ...form, pick_count: e.target.value })} placeholder="e.g. 3" />
+                <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Number of items the customer must select</span>
+              </div>
+              <div className="df-field">
+                <label className="df-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input type="checkbox" checked={form.allow_duplicates || false} onChange={e => setForm({ ...form, allow_duplicates: e.target.checked })} />
+                  Allow Duplicate Picks
+                </label>
+                <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Customer can pick the same item multiple times</span>
+                {(form.allow_duplicates) && (
+                  <span style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginTop: 2 }}>
+                    Max quantity per item = pick count ({form.pick_count || "?"})
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+          {form.bundle_type === "pick_x" && components.filter((c: any) => c.menu_item_id).length > 0 && (
+            <div className="df-field" style={{ gridColumn: "1/-1" }}>
+              <div style={{
+                background: "var(--color-warning-light, #FDF5E6)", border: "1px solid var(--color-warning, #C9A84C)",
+                borderRadius: "var(--radius-sm, 6px)", padding: "8px 12px", fontSize: 12,
+                color: "var(--color-text-secondary)", marginBottom: 8,
+              }}>
+                {(() => {
+                  const pickN = Number(form.pick_count) || 1;
+                  const prices = components.filter((c: any) => c.menu_item_id).map((c: any) => {
+                    const mi = menuItems.find((m: any) => m.id === Number(c.menu_item_id));
+                    return mi ? mi.base_price : 0;
+                  }).sort((a: number, b: number) => a - b);
+                  const cheapestSum = prices.slice(0, Math.min(pickN, prices.length)).reduce((s: number, p: number) => s + p, 0);
+                  return `Cheapest ${pickN} items total RM ${cheapestSum.toFixed(2)}. Set bundle price ≤ RM ${cheapestSum.toFixed(2)} for the deal to always apply.`;
+                })()}
+              </div>
+            </div>
+          )}
           <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Description</label><textarea rows={3} maxLength={500} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
           <div className="df-field" style={{ gridColumn: "1/-1" }}>
             <label className="df-label">Image</label>
@@ -176,10 +239,10 @@ export default function BundleProductEditPage() {
         </div>
 
         <div style={{ marginTop: 24, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Components</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{form.bundle_type === "pick_x" ? "Selectable Items Pool" : "Components"}</h3>
           <button type="button" onClick={addComponent} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: 4 }}><Plus size={14} /> Add</button>
         </div>
-        {components.length === 0 && <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 8 }}>No components added. Click &ldquo;Add&rdquo; to include menu items in this bundle.</p>}
+        {components.length === 0 && <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 8 }}>{form.bundle_type === "pick_x" ? "No items in pool. Click \"Add\" to include selectable items." : "No components added. Click \"Add\" to include menu items in this bundle."}</p>}
         {components.map((c, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: "8px 12px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", flexWrap: "wrap" }}>
               <select
@@ -195,9 +258,13 @@ export default function BundleProductEditPage() {
                 {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
             </select>
             <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(i, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
-            <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }} title="Required component"><input type="checkbox" checked={c.is_required} onChange={e => updateComponent(i, "is_required", e.target.checked)} /> Required</label>
-            <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }} title="Customer can swap this for another item"><input type="checkbox" checked={c.is_swappable} onChange={e => updateComponent(i, "is_swappable", e.target.checked)} /> Swappable</label>
-            {c.is_swappable && <input type="number" value={c.swap_group} onChange={e => updateComponent(i, "swap_group", e.target.value)} placeholder="swap group" style={{ width: 70, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />}
+            {form.bundle_type !== "pick_x" && (
+              <>
+                <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }} title="Required component"><input type="checkbox" checked={c.is_required} onChange={e => updateComponent(i, "is_required", e.target.checked)} /> Required</label>
+                <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }} title="Customer can swap this for another item"><input type="checkbox" checked={c.is_swappable} onChange={e => updateComponent(i, "is_swappable", e.target.checked)} /> Swappable</label>
+                {c.is_swappable && <input type="number" value={c.swap_group} onChange={e => updateComponent(i, "swap_group", e.target.value)} placeholder="swap group" style={{ width: 70, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />}
+              </>
+            )}
             <button type="button" onClick={() => moveComponent(i, -1)} disabled={i === 0} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === 0 ? 0.3 : 1 }} aria-label="Move up"><ChevronUp size={14} /></button>
             <button type="button" onClick={() => moveComponent(i, 1)} disabled={i === components.length - 1} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === components.length - 1 ? 0.3 : 1 }} aria-label="Move down"><ChevronDown size={14} /></button>
             <button type="button" onClick={() => removeComponent(i)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>

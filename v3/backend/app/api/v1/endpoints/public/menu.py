@@ -157,6 +157,8 @@ async def get_store_menu(
             "bundle_price": float(bp.bundle_price),
             "category_id": bp.category_id,
             "display_order": bp.display_order,
+            "pick_count": bp.pick_count,
+            "allow_duplicates": bp.allow_duplicates,
             "components": []
         }
         for comp in bp.components:
@@ -349,6 +351,8 @@ async def list_bundle_products_public(
             "bundle_price": float(bp.bundle_price),
             "category_id": bp.category_id,
             "display_order": bp.display_order,
+            "pick_count": bp.pick_count,
+            "allow_duplicates": bp.allow_duplicates,
             "components": []
         }
         for comp in bp.components:

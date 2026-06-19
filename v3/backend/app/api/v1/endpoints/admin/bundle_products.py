@@ -99,6 +99,8 @@ def _build_out(bp: BundleProduct) -> dict:
         "created_at": bp.created_at.isoformat() if bp.created_at else None,
         "updated_at": bp.updated_at.isoformat() if bp.updated_at else None,
         "deleted_at": bp.deleted_at.isoformat() if bp.deleted_at else None,
+        "pick_count": bp.pick_count,
+        "allow_duplicates": bp.allow_duplicates,
         "components": [_build_component_out(c) for c in (bp.components or [])],
     }
 
@@ -141,6 +143,8 @@ async def create_bundle_product(db: DBDependency, admin: CurrentAdmin, data: Bun
         max_per_order=data.max_per_order,
         image_gallery_urls=data.image_gallery_urls,
         gallery_video_url=data.gallery_video_url,
+        pick_count=data.pick_count,
+        allow_duplicates=data.allow_duplicates,
     )
     db.add(bp)
     await db.flush()

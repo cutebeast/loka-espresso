@@ -3,7 +3,7 @@
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -18,7 +18,7 @@ from app.models.reward import CustomerReward, RewardCatalog
 from app.models.staff import TipAllocation
 from app.models.store import Store, StoreConfiguration
 from app.models.voucher import CustomerVoucher, VoucherDefinition
-from app.models.bundle_product import BundleProduct
+from app.models.bundle_product import BundleProduct, BundleProductComponent
 from app.schemas.order import OrderCreate
 
 
@@ -54,7 +54,7 @@ async def _deduct_stock_for_order(
 
     `line_items` should be objects with `menu_item_id`, `menu_variant_id`, and `quantity` attributes.
     """
-    from sqlalchemy import select
+    from sqlalchemy import select, func
 
     recipe_needs: dict[int, Decimal] = {}
     for li in line_items:
@@ -320,9 +320,23 @@ async def create_order_from_cart(
             (Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total))) * ci.quantity
             for ci in bundle_items
         )
-        bundle_disc = component_sum - Decimal(str(bundle.bundle_price))
-        if bundle_disc > 0:
-            bundle_discount += bundle_disc
+
+        if bundle.pick_count and bundle.pick_count > 0:
+            items_per_set = bundle.pick_count
+        else:
+            comp_count = (await db.execute(
+                select(func.count(BundleProductComponent.id))
+                .where(BundleProductComponent.bundle_product_id == bid)
+            )).scalar() or 0
+            items_per_set = comp_count or 1
+
+        total_qty = sum(ci.quantity for ci in bundle_items)
+        num_sets = total_qty // items_per_set if items_per_set > 0 else 0
+
+        if num_sets > 0:
+            bundle_disc = component_sum - (Decimal(str(bundle.bundle_price)) * num_sets)
+            if bundle_disc > 0:
+                bundle_discount += bundle_disc
 
     # ── Add-on Deal discount processing ──
     addon_discount = Decimal(0)
