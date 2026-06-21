@@ -47,31 +47,31 @@ export default function BundlePickerSheet({ bundle, onClose, onDone }: BundlePic
 
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(item.menu_item_id)) {
-        next.delete(item.menu_item_id);
+      if (next.has(item.componentId)) {
+        next.delete(item.componentId);
       } else if (next.size < pickCount) {
-        next.add(item.menu_item_id);
+        next.add(item.componentId);
       }
       return next;
     });
   };
 
-  const incQty = (menuItemId: number) => {
+  const incQty = (componentId: number) => {
     if (!allowDuplicates) return;
     setQuantities((prev) => {
-      const cur = prev[menuItemId] || 0;
+      const cur = prev[componentId] || 0;
       if (totalSelected >= pickCount) return prev;
-      return { ...prev, [menuItemId]: cur + 1 };
+      return { ...prev, [componentId]: cur + 1 };
     });
   };
 
-  const decQty = (menuItemId: number) => {
+  const decQty = (componentId: number) => {
     if (!allowDuplicates) return;
     setQuantities((prev) => {
-      const cur = prev[menuItemId] || 0;
+      const cur = prev[componentId] || 0;
       if (cur <= 0) return prev;
-      const next = { ...prev, [menuItemId]: cur - 1 };
-      if (next[menuItemId] === 0) delete next[menuItemId];
+      const next = { ...prev, [componentId]: cur - 1 };
+      if (next[componentId] === 0) delete next[componentId];
       return next;
     });
   };
@@ -80,10 +80,10 @@ export default function BundlePickerSheet({ bundle, onClose, onDone }: BundlePic
     if (!canAdd) return;
 
     if (allowDuplicates) {
-      for (const [menuItemIdStr, qty] of Object.entries(quantities)) {
-        const menuItemId = Number(menuItemIdStr);
+      for (const [componentIdStr, qty] of Object.entries(quantities)) {
+        const componentId = Number(componentIdStr);
         if (qty <= 0) continue;
-        const item = poolItems.find((p) => p.menu_item_id === menuItemId);
+        const item = poolItems.find((p) => p.componentId === componentId);
         if (!item) continue;
         addItem({
           menu_item_id: item.menu_item_id,
@@ -95,11 +95,12 @@ export default function BundlePickerSheet({ bundle, onClose, onDone }: BundlePic
           store_id: selectedStore?.id,
           customization_count: 0,
           bundle_product_id: bundle.id,
+          bundle_component_id: item.componentId,
         });
       }
     } else {
-      for (const menuItemId of selectedIds) {
-        const item = poolItems.find((p) => p.menu_item_id === menuItemId);
+      for (const componentId of selectedIds) {
+        const item = poolItems.find((p) => p.componentId === componentId);
         if (!item) continue;
         addItem({
           menu_item_id: item.menu_item_id,
@@ -111,6 +112,7 @@ export default function BundlePickerSheet({ bundle, onClose, onDone }: BundlePic
           store_id: selectedStore?.id,
           customization_count: 0,
           bundle_product_id: bundle.id,
+          bundle_component_id: item.componentId,
         });
       }
     }
@@ -121,14 +123,14 @@ export default function BundlePickerSheet({ bundle, onClose, onDone }: BundlePic
 
   const progressPct = pickCount > 0 ? Math.round((totalSelected / pickCount) * 100) : 0;
 
-  const isItemSelected = (menuItemId: number) => {
-    if (allowDuplicates) return (quantities[menuItemId] || 0) > 0;
-    return selectedIds.has(menuItemId);
+  const isItemSelected = (componentId: number) => {
+    if (allowDuplicates) return (quantities[componentId] || 0) > 0;
+    return selectedIds.has(componentId);
   };
 
-  const isSelectable = (menuItemId: number) => {
+  const isSelectable = (componentId: number) => {
     if (allowDuplicates) return totalSelected < pickCount;
-    if (selectedIds.has(menuItemId)) return true;
+    if (selectedIds.has(componentId)) return true;
     return selectedIds.size < pickCount;
   };
 
@@ -188,9 +190,9 @@ export default function BundlePickerSheet({ bundle, onClose, onDone }: BundlePic
             <div className="bps-grid">
               {poolItems.map((item) => {
                 const imgSrc = resolveAssetUrl(item.image_url);
-                const selected = isItemSelected(item.menu_item_id);
-                const selectable = isSelectable(item.menu_item_id);
-                const qty = quantities[item.menu_item_id] || 0;
+                const selected = isItemSelected(item.componentId);
+                const selectable = isSelectable(item.componentId);
+                const qty = quantities[item.componentId] || 0;
 
                 return (
                   <div
@@ -224,7 +226,7 @@ export default function BundlePickerSheet({ bundle, onClose, onDone }: BundlePic
                         <button
                           className="bps-qty-btn"
                           disabled={qty <= 0}
-                          onClick={() => decQty(item.menu_item_id)}
+                          onClick={() => decQty(item.componentId)}
                           aria-label="Decrease quantity"
                         >
                           <Minus size={14} />
@@ -233,7 +235,7 @@ export default function BundlePickerSheet({ bundle, onClose, onDone }: BundlePic
                         <button
                           className="bps-qty-btn"
                           disabled={totalSelected >= pickCount}
-                          onClick={() => incQty(item.menu_item_id)}
+                          onClick={() => incQty(item.componentId)}
                           aria-label="Increase quantity"
                         >
                           <Plus size={14} />

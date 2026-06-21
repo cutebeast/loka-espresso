@@ -156,4 +156,5 @@ from app.models.bundle_product import (
     BundleProduct,
     BundleProductComponent,
     BundleComponentModifier,
+    BundleGroup,
 )

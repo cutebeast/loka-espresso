@@ -2,9 +2,10 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { Plus, Edit2, Trash2, Search } from "lucide-react";
 
-interface BundleProduct { id: number; title: string; bundle_type: string; bundle_price: number; image_url?: string | null; components_count?: number; components?: { menu_item_id: number }[]; category_name?: string; is_active: boolean; pick_count?: number | null; }
+interface BundleProduct { id: number; title: string; bundle_type: string; bundle_price: number; image_url?: string | null; components_count?: number; components?: { menu_item_id: number }[]; groups?: { pick_count: number; group_label: string }[]; category_name?: string; is_active: boolean; pick_count?: number | null; }
 
 export default function BundleProductsPage() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function BundleProductsPage() {
     setLoading(true);
     api.get<any[]>("/admin/menu/bundle-products?per_page=500")
       .then(d => setItems(d || []))
-      .catch(e => setError(e.message))
+      .catch((e: unknown) => setError(parseApiError(e, "Failed to load bundles")))
       .finally(() => setLoading(false));
   };
 
@@ -37,7 +38,7 @@ export default function BundleProductsPage() {
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this bundle product?")) return;
     try { await api.del(`/admin/menu/bundle-products/${id}`); fetchItems(); }
-    catch (e: any) { setError(e.message || "Failed to delete bundle"); }
+    catch (e: unknown) { setError(parseApiError(e, "Failed to delete bundle")); }
   };
 
   const filtered = items.filter(b => {

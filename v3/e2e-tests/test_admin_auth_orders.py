@@ -340,7 +340,7 @@ async def test_customer_address_crud(
     assert found, f"Created address {address_id} not found in address list"
 
     # UPDATE address
-    update_payload = {"address_label": "Office", "street_address": "456 Work Avenue"}
+    update_payload = {"label": "Office", "address_line_1": "456 Work Avenue"}
     try:
         r_update = await client.patch(
             f"{base_url}/me/addresses/{address_id}",
@@ -356,7 +356,8 @@ async def test_customer_address_crud(
         f"Address update failed: {r_update.status_code}: {r_update.text}"
     )
     updated = r_update.json().get("data", r_update.json())
-    assert updated.get("address_label") == "Office" or updated.get("id") == address_id
+    assert updated.get("label") == "Office"
+    assert updated.get("address_line_1") == "456 Work Avenue"
 
     # DELETE address
     try:

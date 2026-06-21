@@ -52,8 +52,8 @@ async def test_staff_shift_crud(
         "staff_id": staff_id,
         "store_id": store_id,
         "shift_date": tomorrow.isoformat(),
-        "planned_start": "08:00:00",
-        "planned_end": "16:00:00",
+        "planned_start": f"{tomorrow.isoformat()}T08:00:00",
+        "planned_end": f"{tomorrow.isoformat()}T16:00:00",
         "status": "scheduled",
         "notes": "E2E test shift",
     }
@@ -86,7 +86,7 @@ async def test_staff_shift_crud(
     r_update = await client.patch(
         f"{base_url}/admin/staff/{staff_id}/shifts/{shift_id}",
         headers=admin_headers,
-        json={"planned_end": "18:00:00"},
+        json={"planned_end": f"{tomorrow.isoformat()}T18:00:00"},
     )
     assert r_update.status_code == 200, f"Update shift failed: {r_update.status_code}: {r_update.text}"
 
@@ -135,10 +135,11 @@ async def test_kds_order_display(
 
     # Create a test customer
     ts = uuid.uuid4().hex[:8]
+    digits = ''.join(str(ord(ch) % 10) for ch in ts[:5])
     r_reg = await client.post(
         f"{base_url}/auth/register",
         json={
-            "phone_number": f"+601999{ts[:5]}",
+            "phone_number": f"+601999{digits}",
             "display_name": f"KDS Test {ts}",
         },
     )

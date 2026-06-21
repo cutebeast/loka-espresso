@@ -123,14 +123,77 @@ export function previewCartDiscounts(
       0,
     );
 
-    const itemsPerSet = (bp.pick_count && bp.pick_count > 0)
-      ? bp.pick_count
-      : (bp.components?.length || 1);
-
-    const totalQty = bundleItems.reduce((sum, ci) => sum + ci.quantity, 0);
-    const numSets = itemsPerSet > 0 ? Math.floor(totalQty / itemsPerSet) : 0;
+    let numSets = 0;
+    if (bp.bundle_type === 'multi_course' && bp.groups && bp.groups.length > 0) {
+      const componentGroupMap = new Map<number, { groupId: number; pickCount: number; minPick: number; maxPick: number }>();
+      for (const g of bp.groups) {
+        for (const comp of g.components || []) {
+          componentGroupMap.set(comp.id, { groupId: g.id, pickCount: g.pick_count, minPick: g.min_pick, maxPick: g.max_pick });
+        }
+      }
+      const groupQtys = new Map<number, number>();
+      for (const ci of bundleItems) {
+        const mapping = ci.bundle_component_id ? componentGroupMap.get(ci.bundle_component_id) : undefined;
+        if (mapping) {
+          groupQtys.set(mapping.groupId, (groupQtys.get(mapping.groupId) || 0) + ci.quantity);
+        }
+      }
+      let groupOk = true;
+      const setsPerGroup: number[] = [];
+      for (const g of bp.groups) {
+        const qty = groupQtys.get(g.id) || 0;
+        if (qty < g.min_pick || qty > g.max_pick) {
+          groupOk = false;
+          break;
+        }
+        setsPerGroup.push(Math.floor(qty / g.pick_count));
+      }
+      if (groupOk && setsPerGroup.length > 0) {
+        numSets = Math.min(...setsPerGroup);
+      }
+    } else if (bp.pick_count && bp.pick_count > 0) {
+      const qtyByComponent = new Map<number | string, number>();
+      for (const ci of bundleItems) {
+        const key = ci.bundle_component_id || ci.menu_item_id;
+        qtyByComponent.set(key, (qtyByComponent.get(key) || 0) + ci.quantity);
+      }
+      const distinctCount = qtyByComponent.size;
+      if (bp.allow_duplicates || distinctCount >= bp.pick_count) {
+        const maxByTotal = Math.floor(bundleItems.reduce((sum, ci) => sum + ci.quantity, 0) / bp.pick_count);
+        if (!bp.allow_duplicates) {
+          const maxByComponent = qtyByComponent.size > 0 ? Math.min(...qtyByComponent.values()) : 0;
+          numSets = Math.min(maxByTotal, maxByComponent);
+        } else {
+          numSets = maxByTotal;
+        }
+      }
+    } else {
+      // Standard / fixed bundles: require every component in default_quantity.
+      const compQty = new Map<number, number>();
+      for (const ci of bundleItems) {
+        if (ci.bundle_component_id) {
+          compQty.set(ci.bundle_component_id, (compQty.get(ci.bundle_component_id) || 0) + ci.quantity);
+        }
+      }
+      const setCounts: number[] = [];
+      let complete = true;
+      for (const comp of bp.components || []) {
+        const qty = compQty.get(comp.id) || 0;
+        const perSet = comp.default_quantity || 1;
+        if (qty < perSet) {
+          complete = false;
+          break;
+        }
+        setCounts.push(Math.floor(qty / perSet));
+      }
+      if (complete && setCounts.length > 0) {
+        numSets = Math.min(...setCounts);
+      }
+    }
 
     if (numSets > 0) {
+      const maxAllowed = bp.max_per_order ?? 1;
+      numSets = Math.min(numSets, maxAllowed);
       const disc = componentSum - bp.bundle_price * numSets;
       if (disc > 0) bundleDiscount += disc;
     }

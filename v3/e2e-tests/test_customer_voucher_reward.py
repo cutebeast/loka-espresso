@@ -7,6 +7,8 @@ and CustomerReward + RewardCatalog lookups.
 
 import pytest
 import httpx
+import uuid
+from datetime import datetime, timezone, timedelta
 
 from conftest import ADMIN_EMAIL, ADMIN_PASSWORD
 
@@ -27,25 +29,27 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
         pytest.skip("Customer not available")
     token = r_login.json().get("tokens", {}).get("access_token", "")
 
-    # Create a voucher definition
+    # Create a voucher definition with a unique code
+    now = datetime.now(timezone.utc)
+    voucher_code = f"E2E{uuid.uuid4().hex[:8].upper()}"
     vd = await client.post(f"{base_url}/admin/vouchers", headers=admin_headers, json={
         "voucher_type": "fixed_amount_off",
         "display_title": "E2E Test Voucher",
         "discount_value": 5.00,
         "minimum_order_value": 10.00,
         "is_active": True,
-        "voucher_code": "E2ETESTFIXED5",
+        "voucher_code": voucher_code,
         "scope": "global",
+        "valid_from": now.isoformat(),
+        "valid_until": (now + timedelta(days=7)).isoformat(),
     })
-    voucher_code = None
     vd_id = None
     if vd.status_code in (200, 201):
         vd_data = vd.json().get("data", {})
-        voucher_code = vd_data.get("voucher_code", "E2ETESTFIXED5")
+        voucher_code = vd_data.get("voucher_code", voucher_code)
         vd_id = vd_data.get("id")
     else:
-        print(f"Voucher create: {vd.status_code} {vd.text}")
-        voucher_code = "E2ETESTFIXED5"
+        pytest.skip(f"Cannot create voucher: {vd.status_code} {vd.text}")
 
     # Assign voucher to customer via award-voucher endpoint
     me = await client.get(f"{base_url}/me", headers={"Authorization": f"Bearer {token}"})

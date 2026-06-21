@@ -2,7 +2,10 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, Plus, Trash2, Save, Upload, RefreshCw, ChevronUp, ChevronDown } from "lucide-react";
+
+type Group = { id?: number; group_label: string; pick_count: number; min_pick: number; max_pick: number; sort_order: number; _origId?: number };
 
 type LocaleTab = "en" | "ms" | "zh" | "ta" | "tr";
 const LOCALES: { code: LocaleTab; label: string; flag: string }[] = [
@@ -30,6 +33,7 @@ export default function BundleProductEditPage() {
   const [form, setForm] = useState<Record<string, any>>({});
   const [tr, setTr] = useState<Record<string, string>>({});
   const [components, setComponents] = useState<Array<any>>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
 
   useEffect(() => { load(); loadRefs(); }, [id]);
 
@@ -56,18 +60,56 @@ export default function BundleProductEditPage() {
         image_url: d.image_url || "", is_active: d.is_active, display_order: d.display_order ?? 0,
         pick_count: d.pick_count?.toString() || "",
         allow_duplicates: d.allow_duplicates || false,
+        max_per_order: d.max_per_order?.toString() || "1",
       });
       setImg(d.image_url || "");
-      setComponents((d.components || []).map((c: any) => ({
-        id: c.id,
-        menu_item_id: String(c.menu_item_id || ""),
-        cat_filter: "",
-        default_quantity: c.default_quantity ?? 1,
-        is_required: c.is_required !== false,
-        is_swappable: c.is_swappable || false,
-        swap_group: c.swap_group ? String(c.swap_group) : "",
-        sort_order: c.sort_order ?? 0,
-      })));
+      const loadedGroups: Group[] = [];
+      const loadedComponents: any[] = [];
+      if (d.groups && Array.isArray(d.groups)) {
+        for (const g of d.groups) {
+          const groupIdx = loadedGroups.length;
+          loadedGroups.push({
+            id: g.id,
+            group_label: g.group_label || "",
+            pick_count: g.pick_count ?? 1,
+            min_pick: g.min_pick ?? 1,
+            max_pick: g.max_pick ?? 1,
+            sort_order: g.sort_order ?? groupIdx,
+            _origId: g.id,
+          });
+          if (g.components && Array.isArray(g.components)) {
+            for (const c of g.components) {
+              loadedComponents.push({
+                id: c.id,
+                menu_item_id: String(c.menu_item_id || ""),
+                cat_filter: "",
+                default_quantity: c.default_quantity ?? 1,
+                sort_order: c.sort_order ?? 0,
+                bundle_group_id: groupIdx,
+              });
+            }
+          }
+        }
+      }
+      // Build id->index map from real DB group IDs to array indices
+      const groupIdToIndex = new Map<number, number>();
+      loadedGroups.forEach((g, i) => { if (g._origId) groupIdToIndex.set(g._origId, i); });
+      if (d.components && Array.isArray(d.components)) {
+        for (const c of d.components) {
+          if (!loadedComponents.some((lc: any) => lc.id === c.id)) {
+            loadedComponents.push({
+              id: c.id,
+              menu_item_id: String(c.menu_item_id || ""),
+              cat_filter: "",
+              default_quantity: c.default_quantity ?? 1,
+              sort_order: c.sort_order ?? 0,
+              bundle_group_id: c.bundle_group_id != null && groupIdToIndex.has(c.bundle_group_id) ? groupIdToIndex.get(c.bundle_group_id) : null,
+            });
+          }
+        }
+      }
+      setGroups(loadedGroups);
+      setComponents(loadedComponents);
       const x: Record<string, string> = {};
       for (const lc of LOCALES) {
         if (lc.code === "en") continue;
@@ -87,9 +129,17 @@ export default function BundleProductEditPage() {
 
   const handleSave = async () => {
     const isPickX = form.bundle_type === "pick_x";
+    const isMultiCourse = form.bundle_type === "multi_course";
     if (!form.title) { setError("Title is required"); return; }
     if (!form.bundle_price || Number(form.bundle_price) <= 0) { setError("Valid bundle price is required"); return; }
-    if (isPickX) {
+    if (isMultiCourse) {
+      if (groups.length === 0) { setError("At least one group is required"); return; }
+      for (const [gi, g] of groups.entries()) {
+        if (!g.group_label.trim()) { setError("All groups must have a label"); return; }
+        if (!g.pick_count || g.pick_count < 1) { setError(`Group "${g.group_label}" needs a pick count >= 1`); return; }
+        if (groupComponents(gi).length === 0) { setError(`Group "${g.group_label}" must have at least one component`); return; }
+      }
+    } else if (isPickX) {
       const pc = Number(form.pick_count);
       if (!pc || pc < 1) { setError("Pick count must be at least 1"); return; }
       if (!form.allow_duplicates && components.length < pc) { setError(`Need at least ${pc} items in the pool`); return; }
@@ -109,6 +159,7 @@ export default function BundleProductEditPage() {
         image_url: form.image_url || undefined,
         is_active: form.is_active,
         display_order: form.display_order ?? 0,
+        max_per_order: Number(form.max_per_order) || 1,
       };
       if (isPickX) {
         payload.pick_count = Number(form.pick_count);
@@ -117,34 +168,71 @@ export default function BundleProductEditPage() {
         payload.pick_count = null;
         payload.allow_duplicates = false;
       }
-      payload.components = components.filter(c => !!c.menu_item_id).map(c => ({
+      payload.components = components.filter(c => !!c.menu_item_id).map(c => {
+        const entry: any = {
           menu_item_id: Number(c.menu_item_id),
           default_quantity: c.default_quantity,
-          is_required: c.is_required,
-          is_swappable: c.is_swappable,
-          swap_group: c.swap_group ? Number(c.swap_group) : null,
           sort_order: c.sort_order,
           modifier_overrides: [],
+        };
+        if (isMultiCourse && c.bundle_group_id !== null && c.bundle_group_id !== undefined) {
+          entry.bundle_group_id = c.bundle_group_id;
+        }
+        return entry;
+      });
+      if (isMultiCourse) {
+        payload.groups = groups.map((g, gi) => ({
+          group_label: g.group_label,
+          pick_count: g.pick_count,
+          min_pick: g.min_pick,
+          max_pick: g.max_pick,
+          sort_order: gi,
         }));
+      }
       await api.patch(`/admin/menu/bundle-products/${id}`, payload);
       setSuccessMsg("Saved"); setTimeout(() => setSuccessMsg(""), 2000);
-    } catch (e: any) { setError(e.message || "Save failed"); } finally { setSaving(false); }
+    } catch (e: unknown) { setError(parseApiError(e, "Save failed")); } finally { setSaving(false); }
   };
 
-  const addComponent = () => setComponents([...components, { menu_item_id: "", cat_filter: "", default_quantity: 1, is_required: true, is_swappable: false, swap_group: "", sort_order: components.length }]);
+  const addGroup = () => {
+    const gidx = groups.length;
+    setGroups([...groups, { group_label: "", pick_count: 1, min_pick: 1, max_pick: 1, sort_order: gidx }]);
+  };
+  const removeGroup = (gidx: number) => {
+    setGroups(groups.filter((_, i) => i !== gidx));
+    setComponents(components.map(c => {
+      if ((c.bundle_group_id ?? null) === gidx) return { ...c, bundle_group_id: null };
+      if ((c.bundle_group_id ?? null) !== null && (c.bundle_group_id ?? 0) > gidx) return { ...c, bundle_group_id: (c.bundle_group_id ?? 0) - 1 };
+      return c;
+    }));
+  };
+  const updateGroup = (gidx: number, field: string, value: any) => {
+    setGroups(groups.map((g, i) => {
+      if (i !== gidx) return g;
+      const next = { ...g, [field]: value };
+      if (field === "pick_count") { next.min_pick = value; next.max_pick = value; }
+      return next;
+    }));
+  };
+  const addComponent = (groupIdx?: number) => {
+    const c: any = { menu_item_id: "", cat_filter: "", default_quantity: 1, sort_order: components.length };
+    if (groupIdx !== undefined) c.bundle_group_id = groupIdx;
+    setComponents([...components, c]);
+  };
+  const groupComponents = (gidx: number) => components.filter((c: any) => (c.bundle_group_id ?? null) === gidx);
   const removeComponent = (idx: number) => setComponents(components.filter((_, i) => i !== idx));
   const moveComponent = (idx: number, dir: -1 | 1) => {
     const target = idx + dir;
     if (target < 0 || target >= components.length) return;
     const next = [...components];
     [next[idx], next[target]] = [next[target]!, next[idx]!];
-    next.forEach((c, i) => { c.sort_order = i; });
-    setComponents(next);
+    const sorted = next.map((c, i) => ({ ...c, sort_order: i }));
+    setComponents(sorted);
   };
   const handleDelete = async () => {
     if (!confirm("Delete this bundle product? This cannot be undone.")) return;
     try { await api.del(`/admin/menu/bundle-products/${id}`); r.push("/menu/bundle-products"); }
-    catch (e: any) { setError(e.message || "Failed to delete bundle"); }
+    catch (e: unknown) { setError(parseApiError(e, "Failed to delete bundle")); }
   };
   const updateComponent = (idx: number, field: string, value: any) => {
     setComponents(components.map((c, i) => {
@@ -161,13 +249,25 @@ export default function BundleProductEditPage() {
     else { await api.post("/admin/translations", { translation_key: `bundle_products.${id}.${field}`, locale, namespace: "bundle", translated_text: text, source_text: src, table_name: "bundle_products", record_id: Number(id), column_name: field }); }
   };
 
-  const regenAll = async (locale: string) => { setRegen(true); const results: { field: string; text: string }[] = [];
-    for (const f of TR_FIELDS) { const src = (form[f.key] || "").trim(); if (!src) continue; try { const r = await api.post<{ translated_text?: string }>("/admin/translations/translate", { text: src, target_locale: locale, source_locale: "en" }); if (r?.translated_text) { results.push({ field: f.key, text: r.translated_text }); setTr(prev => ({ ...prev, [`${locale}:${f.key}`]: r.translated_text! })); } } catch (e) { console.error(e); } }
-    for (const r of results) { await upsertTr(r.field, locale, (form[r.field] || "").trim(), r.text); }
-    setSuccessMsg(results.length > 0 ? `Regenerated ${results.length} translations` : "No translatable content"); setTimeout(() => setSuccessMsg(""), 2500); setRegen(false);
+  const regenAll = async (locale: string) => {
+    setRegen(true);
+    try {
+      const results: { field: string; text: string }[] = [];
+      for (const f of TR_FIELDS) { const src = (form[f.key] || "").trim(); if (!src) continue; try { const r = await api.post<{ translated_text?: string }>("/admin/translations/translate", { text: src, target_locale: locale, source_locale: "en" }); if (r?.translated_text) { results.push({ field: f.key, text: r.translated_text }); setTr(prev => ({ ...prev, [`${locale}:${f.key}`]: r.translated_text! })); } } catch (e) { console.error(e); } }
+      for (const r of results) {
+        try { await upsertTr(r.field, locale, (form[r.field] || "").trim(), r.text); } catch (e) { console.error(e); }
+      }
+      setSuccessMsg(results.length > 0 ? `Regenerated ${results.length} translations` : "No translatable content"); setTimeout(() => setSuccessMsg(""), 2500);
+    } finally { setRegen(false); }
   };
 
-  const saveAllTr = async (locale: string) => { setSavingTr(true); for (const f of TR_FIELDS) { const key = `${locale}:${f.key}`; const text = tr[key] || ""; if (text.trim()) await upsertTr(f.key, locale, form[f.key] || "", text); } setSuccessMsg(`Saved`); setTimeout(() => setSuccessMsg(""), 2000); setSavingTr(false); };
+  const saveAllTr = async (locale: string) => {
+    setSavingTr(true);
+    try {
+      for (const f of TR_FIELDS) { const key = `${locale}:${f.key}`; const text = tr[key] || ""; if (text.trim()) await upsertTr(f.key, locale, form[f.key] || "", text); }
+      setSuccessMsg(`Saved`); setTimeout(() => setSuccessMsg(""), 2000);
+    } finally { setSavingTr(false); }
+  };
 
   if (loading) return <div style={{ padding: 32 }}><p>Loading...</p></div>;
 
@@ -188,7 +288,7 @@ export default function BundleProductEditPage() {
         <h3 style={{ marginBottom: 20 }}>English (Source Content)</h3>
         <div className="df-grid">
           <div className="df-field" style={{ gridColumn: "1/-1" }}><label className="df-label">Title *</label><input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
-          <div className="df-field"><label className="df-label">Bundle Type</label><select value={form.bundle_type} onChange={e => setForm({ ...form, bundle_type: e.target.value })}><option value="combo">Combo</option><option value="value_meal">Value Meal</option><option value="family_meal">Family Meal</option><option value="breakfast_set">Breakfast Set</option><option value="promotional">Promotional</option><option value="pick_x">Pick-X (Build Your Own)</option></select></div>
+          <div className="df-field"><label className="df-label">Bundle Type</label><select value={form.bundle_type} onChange={e => setForm({ ...form, bundle_type: e.target.value })}><option value="combo">Combo</option><option value="value_meal">Value Meal</option><option value="family_meal">Family Meal</option><option value="breakfast_set">Breakfast Set</option><option value="promotional">Promotional</option><option value="pick_x">Pick-X (Build Your Own)</option><option value="multi_course">Multi-Course</option></select></div>
           <div className="df-field"><label className="df-label">Bundle Price (RM) *</label><input type="number" step="0.01" min="0" required value={form.bundle_price} onChange={e => setForm({ ...form, bundle_price: e.target.value })} /></div>
 
           {form.bundle_type === "pick_x" && (
@@ -237,41 +337,79 @@ export default function BundleProductEditPage() {
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}><input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} style={{ display: "none" }} /><button type="button" onClick={() => fileRef.current?.click()} className="btn btn-sm btn-outline" disabled={uploading}><Upload size={14} /> {uploading ? "Uploading..." : "Upload Image"}</button>{img && <><img src={img} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover" }} /><button type="button" onClick={() => { setForm({ ...form, image_url: "" }); setImg(""); }} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}>Clear</button></>}</div>
           </div>
           <div className="df-field"><label className="df-label">Display Order</label><input type="number" min="0" value={form.display_order} onChange={e => setForm({ ...form, display_order: Number(e.target.value) })} /></div>
+          <div className="df-field"><label className="df-label">Max Per Order</label><input type="number" min="1" step="1" value={form.max_per_order} onChange={e => setForm({ ...form, max_per_order: e.target.value })} /></div>
           <div className="df-field"><label className="df-label" style={{ display: "flex", alignItems: "center", gap: 8 }}><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Active</label></div>
         </div>
 
-        <div style={{ marginTop: 24, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{form.bundle_type === "pick_x" ? "Selectable Items Pool" : "Components"}</h3>
-          <button type="button" onClick={addComponent} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: 4 }}><Plus size={14} /> Add</button>
-        </div>
-        {components.length === 0 && <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 8 }}>{form.bundle_type === "pick_x" ? "No items in pool. Click \"Add\" to include selectable items." : "No components added. Click \"Add\" to include menu items in this bundle."}</p>}
-        {components.map((c, i) => (
-            <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: "8px 12px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", flexWrap: "wrap" }}>
-              <select
-                value={c.cat_filter || ""}
-                onChange={e => updateComponent(i, "cat_filter", e.target.value)}
-                style={{ width: 130, padding: "6px 10px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
-              >
-                <option value="">All categories</option>
-                {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.category_name}</option>)}
-              </select>
-            <select value={c.menu_item_id} onChange={e => updateComponent(i, "menu_item_id", e.target.value)} style={{ flex: 1, minWidth: 160, padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
-              <option value="">— Select item —</option>
-                {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
-            </select>
-            <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(i, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
-            {form.bundle_type !== "pick_x" && (
-              <>
-                <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }} title="Required component"><input type="checkbox" checked={c.is_required} onChange={e => updateComponent(i, "is_required", e.target.checked)} /> Required</label>
-                <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }} title="Customer can swap this for another item"><input type="checkbox" checked={c.is_swappable} onChange={e => updateComponent(i, "is_swappable", e.target.checked)} /> Swappable</label>
-                {c.is_swappable && <input type="number" value={c.swap_group} onChange={e => updateComponent(i, "swap_group", e.target.value)} placeholder="swap group" style={{ width: 70, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />}
-              </>
-            )}
-            <button type="button" onClick={() => moveComponent(i, -1)} disabled={i === 0} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === 0 ? 0.3 : 1 }} aria-label="Move up"><ChevronUp size={14} /></button>
-            <button type="button" onClick={() => moveComponent(i, 1)} disabled={i === components.length - 1} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === components.length - 1 ? 0.3 : 1 }} aria-label="Move down"><ChevronDown size={14} /></button>
-            <button type="button" onClick={() => removeComponent(i)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+        {form.bundle_type === "multi_course" ? (
+          <div style={{ marginTop: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Groups</h3>
+              <button type="button" onClick={addGroup} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: 4 }}><Plus size={14} /> Add Group</button>
+            </div>
+            {groups.length === 0 && <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 16 }}>No groups defined. Click &quot;Add Group&quot; to create selection groups.</p>}
+            {groups.map((g, gi) => (
+              <div key={gi} style={{ background: "var(--color-bg-muted)", borderRadius: 12, padding: 16, marginBottom: 16, border: "1px solid var(--color-border-light)" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+                  <input value={g.group_label} onChange={e => updateGroup(gi, "group_label", e.target.value)} placeholder="Group label (e.g. Choose Your Mains)" style={{ flex: 1, minWidth: 200, padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} />
+                  <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>Pick: <input type="number" min={1} step={1} value={g.pick_count} onChange={e => updateGroup(gi, "pick_count", Number(e.target.value))} style={{ width: 55, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
+                  <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>Max: <input type="number" min={1} step={1} value={g.max_pick} onChange={e => updateGroup(gi, "max_pick", Number(e.target.value))} style={{ width: 55, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
+                  <button type="button" onClick={() => removeGroup(gi)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                </div>
+                {g.max_pick > g.pick_count && <p style={{ fontSize: 11, color: "var(--color-info)", margin: "0 0 8px" }}>Extras allowed: up to {g.max_pick} items. Extra items are charged at full price.</p>}
+                <div style={{ borderTop: "1px solid var(--color-border-light)", paddingTop: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--color-text-muted)" }}>Group Items</div>
+                  {groupComponents(gi).map((c, i) => {
+                    const ci = components.indexOf(c);
+                    return (
+                      <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                        <select value={c.cat_filter || ""} onChange={e => updateComponent(ci, "cat_filter", e.target.value)} style={{ width: 130, padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+                          <option value="">All categories</option>
+                          {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.category_name}</option>)}
+                        </select>
+                        <select value={c.menu_item_id} onChange={e => updateComponent(ci, "menu_item_id", e.target.value)} style={{ flex: 1, padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
+                          <option value="">— Select item —</option>
+                          {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
+                        </select>
+                        <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(ci, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
+                        <button type="button" onClick={() => removeComponent(ci)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+                      </div>
+                    );
+                  })}
+                  <button type="button" onClick={() => addComponent(gi)} className="btn btn-ghost btn-sm" style={{ fontSize: 12, paddingLeft: 0 }}><Plus size={12} /> Add item to {g.group_label || "this group"}</button>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          <>
+            <div style={{ marginTop: 24, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{form.bundle_type === "pick_x" ? "Selectable Items Pool" : "Components"}</h3>
+              <button type="button" onClick={() => addComponent()} className="btn btn-sm btn-outline" style={{ display: "flex", alignItems: "center", gap: 4 }}><Plus size={14} /> Add</button>
+            </div>
+            {components.length === 0 && <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 8 }}>{form.bundle_type === "pick_x" ? "No items in pool. Click &quot;Add&quot; to include selectable items." : "No components added. Click &quot;Add&quot; to include menu items in this bundle."}</p>}
+            {components.map((c, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: "8px 12px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", flexWrap: "wrap" }}>
+                <select
+                  value={c.cat_filter || ""}
+                  onChange={e => updateComponent(i, "cat_filter", e.target.value)}
+                  style={{ width: 130, padding: "6px 10px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
+                >
+                  <option value="">All categories</option>
+                  {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.category_name}</option>)}
+                </select>
+                <select value={c.menu_item_id} onChange={e => updateComponent(i, "menu_item_id", e.target.value)} style={{ flex: 1, minWidth: 160, padding: "6px 10px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} required>
+                  <option value="">— Select item —</option>
+                  {itemsForComponent(c.cat_filter || "").map(m => <option key={m.id} value={m.id}>{m.item_name} (RM {Number(m.base_price || 0).toFixed(2)})</option>)}
+                </select>
+                <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>Qty: <input type="number" min={1} value={c.default_quantity} onChange={e => updateComponent(i, "default_quantity", Number(e.target.value))} style={{ width: 50, padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }} /></label>
+                <button type="button" onClick={() => moveComponent(i, -1)} disabled={i === 0} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === 0 ? 0.3 : 1 }} aria-label="Move up"><ChevronUp size={14} /></button>
+                <button type="button" onClick={() => moveComponent(i, 1)} disabled={i === components.length - 1} className="btn btn-ghost btn-sm" style={{ padding: "4px", opacity: i === components.length - 1 ? 0.3 : 1 }} aria-label="Move down"><ChevronDown size={14} /></button>
+                <button type="button" onClick={() => removeComponent(i)} className="btn btn-ghost btn-sm" style={{ color: "var(--color-error)" }}><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </>
+        )}
 
         <div className="df-actions" style={{ marginTop: 20 }}><button type="button" onClick={() => r.push("/menu/bundle-products")} className="btn btn-ghost">Cancel</button><button type="button" onClick={handleDelete} className="btn btn-ghost" style={{ color: "var(--color-error)", marginLeft: "auto", marginRight: 8 }}>Delete Bundle</button><button onClick={handleSave} disabled={saving} className="btn btn-primary"><Save size={16} /> {saving ? "Saving..." : "Save Changes"}</button></div>
       </div>}

@@ -284,9 +284,9 @@ async def redeem_reward(
     """Redeem a reward."""
     reward = await _get_reward_or_404(db, reward_id)
 
-    # Check customer's loyalty points
+    # Check customer's loyalty points (lock row to prevent race conditions)
     loyalty_result = await db.execute(
-        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer.id)
+        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer.id).with_for_update()
     )
     loyalty_account = loyalty_result.scalar_one_or_none()
     if loyalty_account is None:

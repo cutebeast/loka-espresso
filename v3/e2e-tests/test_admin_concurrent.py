@@ -52,8 +52,8 @@ async def test_concurrent_wallet_payments_integrity(
     item_1 = items[0]
     item_2 = items[1]
 
-    async def create_and_pay_order(item_id: int, amount: float) -> int:
-        """Create an order, add item, and pay via wallet — all in one flow."""
+    async def create_order(item_id: int) -> tuple[int, float]:
+        """Create an order with one item and return (order_id, total_amount)."""
         async with httpx.AsyncClient(timeout=30.0) as c:
             # Add to cart
             r = await c.post(
@@ -73,13 +73,14 @@ async def test_concurrent_wallet_payments_integrity(
                 "fulfillment_type": "counter_pickup",
             })
             assert r2.status_code == 201, f"Order create failed: {r2.text}"
-            return r2.json()["data"]["id"]
+            order_data = r2.json()["data"]
+            return order_data["id"], order_data["total_amount"]
 
     # Create two orders serially first (to have them ready)
-    order_ids = []
+    order_payments = []
     for item in [item_1, item_2]:
-        oid = await create_and_pay_order(item["id"], 10.00)
-        order_ids.append(oid)
+        oid, total = await create_order(item["id"])
+        order_payments.append((oid, total))
 
     # Now run two wallet payments concurrently against both orders
     async def wallet_pay(order_id: int, amount: float):
@@ -91,9 +92,10 @@ async def test_concurrent_wallet_payments_integrity(
             )
             return r.status_code, r.json() if r.status_code == 200 else None
 
+    expected_total = sum(p[1] for p in order_payments)
     r1, r2 = await asyncio.gather(
-        wallet_pay(order_ids[0], 30.00),
-        wallet_pay(order_ids[1], 40.00),
+        wallet_pay(order_payments[0][0], order_payments[0][1]),
+        wallet_pay(order_payments[1][0], order_payments[1][1]),
     )
 
     status1, _ = r1
@@ -101,15 +103,15 @@ async def test_concurrent_wallet_payments_integrity(
     assert status1 == 200, f"First wallet payment failed: {r1}"
     assert status2 == 200, f"Second wallet payment failed: {r2}"
 
-    # Verify final balance — total deducted should equal 70.00
+    # Verify final balance — total deducted should equal the sum of order totals
     r_detail = await client.get(f"{base_url}/admin/customers/{customer_id}", headers=admin_headers)
     assert r_detail.status_code == 200
     wallet_data = r_detail.json()["data"].get("wallet")
     current_balance = wallet_data["balance"] if wallet_data else 0.0
     # Allow for rounding tolerance
-    assert abs(current_balance - (initial_balance - 70.00)) < 0.01, \
-        f"Balance mismatch after concurrent payments: expected ~{initial_balance - 70.00}, got {current_balance}"
+    assert abs(current_balance - (initial_balance - expected_total)) < 0.01, \
+        f"Balance mismatch after concurrent payments: expected ~{initial_balance - expected_total}, got {current_balance}"
 
     # Cleanup orders
-    for oid in order_ids:
+    for oid, _ in order_payments:
         cleanup_registry["orders"].append({"id": oid})

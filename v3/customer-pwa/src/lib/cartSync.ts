@@ -13,6 +13,9 @@ interface ServerCartItem {
   menu_item_id?: number;
   item_id?: number;
   quantity: number;
+  bundle_product_id?: number | null;
+  bundle_component_id?: number | null;
+  customization_option_ids?: number[];
   [key: string]: unknown;
 }
 
@@ -37,7 +40,8 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
   _syncPromise = (async () => {
     let serverItems: ServerCartItem[] = [];
     try {
-      const res = await api.get('/cart');
+      const storeIdForCart = items[0]?.store_id || 1;
+      const res = await api.get('/cart', { params: { store_id: storeIdForCart } });
       if (res.status === 200) {
         const data = res.data;
         serverItems = Array.isArray(data) ? data : (data?.items ?? []);
@@ -46,21 +50,22 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
       console.error('Failed to read server cart for sync');
     }
 
-  function cartItemKey(item: { menu_item_id: number; customization_option_ids?: number[]; bundle_product_id?: number }): string {
+  function cartItemKey(item: { menu_item_id: number; customization_option_ids?: number[]; bundle_product_id?: number; bundle_component_id?: number }): string {
     const optKey = item.customization_option_ids && item.customization_option_ids.length > 0
       ? JSON.stringify([...item.customization_option_ids].sort((a, b) => a - b))
       : '';
-    return `${item.menu_item_id}:${optKey}:${item.bundle_product_id ?? ''}`;
+    return `${item.menu_item_id}:${optKey}:${item.bundle_product_id ?? ''}:${item.bundle_component_id ?? ''}`;
   }
 
   const desiredMap = new Map(items.map(i => [cartItemKey(i), i]));
-  const serverMap = new Map(serverItems.map((i: ServerCartItem) => [cartItemKey({ menu_item_id: i.menu_item_id ?? i.item_id ?? 0, customization_option_ids: Array.isArray(i.customization_option_ids) ? i.customization_option_ids : undefined, bundle_product_id: typeof i.bundle_product_id === 'number' ? i.bundle_product_id : undefined }), i]));
+  const serverMap = new Map(serverItems.map((i: ServerCartItem) => [cartItemKey({ menu_item_id: i.menu_item_id ?? i.item_id ?? 0, customization_option_ids: Array.isArray(i.customization_option_ids) ? i.customization_option_ids : undefined, bundle_product_id: typeof i.bundle_product_id === 'number' ? i.bundle_product_id : undefined, bundle_component_id: typeof i.bundle_component_id === 'number' ? i.bundle_component_id : undefined }), i]));
 
   const desiredKeys = new Set(desiredMap.keys());
-  const toDelete = serverItems.filter((si: ServerCartItem) => !desiredKeys.has(cartItemKey({ menu_item_id: si.menu_item_id ?? si.item_id ?? 0, customization_option_ids: Array.isArray(si.customization_option_ids) ? si.customization_option_ids : undefined, bundle_product_id: typeof si.bundle_product_id === 'number' ? si.bundle_product_id : undefined })));
+  const toDelete = serverItems.filter((si: ServerCartItem) => !desiredKeys.has(cartItemKey({ menu_item_id: si.menu_item_id ?? si.item_id ?? 0, customization_option_ids: Array.isArray(si.customization_option_ids) ? si.customization_option_ids : undefined, bundle_product_id: typeof si.bundle_product_id === 'number' ? si.bundle_product_id : undefined, bundle_component_id: typeof si.bundle_component_id === 'number' ? si.bundle_component_id : undefined })));
   for (const item of toDelete) {
     try {
-      await api.delete(`/cart/items/${item.id}`);
+      const storeId = items[0]?.store_id || 1;
+      await api.delete(`/cart/items/${item.id}`, { params: { store_id: storeId } });
     } catch (err) {
       console.error('Failed to delete cart item:', err);
     }
@@ -71,7 +76,7 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
     try {
       if (existing) {
         if (existing.quantity !== desired.quantity) {
-          await api.patch(`/cart/items/${existing.id}`, { quantity: desired.quantity });
+          await api.patch(`/cart/items/${existing.id}`, { quantity: desired.quantity }, { params: { store_id: desired.store_id } });
         }
       } else {
         const customizationOptionIds: number[] = [];
@@ -98,8 +103,11 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
         if (desired.bundle_product_id) {
           payload.bundle_product_id = desired.bundle_product_id;
         }
+        if (desired.bundle_component_id) {
+          payload.bundle_component_id = desired.bundle_component_id;
+        }
 
-        await api.post('/cart/items', payload);
+        await api.post('/cart/items', payload, { params: { store_id: desired.store_id } });
       }
     } catch (err) {
       console.error('Failed to sync cart item:', err);

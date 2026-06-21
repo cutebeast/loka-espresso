@@ -18,6 +18,21 @@ from app.services.cart import (
 )
 
 
+async def _load_cart_line_items(db, cart_id: int) -> list[CartLineItemOut]:
+    li_result = await db.execute(
+        select(CartLineItem)
+        .options(selectinload(CartLineItem.menu_item))
+        .where(CartLineItem.cart_id == cart_id)
+    )
+    line_items = []
+    for li in li_result.scalars().all():
+        li_out = CartLineItemOut.model_validate(li)
+        li_out.item_name = li.menu_item.item_name if li.menu_item else None
+        li_out.image_url = li.menu_item.image_url if li.menu_item else None
+        line_items.append(li_out)
+    return line_items
+
+
 def _build_cart_out(cart, line_items: list | None = None) -> CustomerCartOut:
     """Build CustomerCartOut from Cart model without lazy-loading relationships."""
     cols = {c.name: getattr(cart, c.name) for c in cart.__table__.columns}
@@ -41,19 +56,7 @@ async def get_cart(customer: ActiveCustomer, db: DBDependency, store_id: int = Q
     """Get or create cart for customer at a store."""
     cart = await get_or_create_cart(db, customer.id, store_id)
     await db.commit()
-    # Fetch line items with menu item data
-    li_result = await db.execute(
-        select(CartLineItem)
-        .options(selectinload(CartLineItem.menu_item))
-        .where(CartLineItem.cart_id == cart.id)
-    )
-    line_items = []
-    for li in li_result.scalars().all():
-        li_out = CartLineItemOut.model_validate(li)
-        li_out.item_name = li.menu_item.item_name if li.menu_item else None
-        li_out.image_url = li.menu_item.image_url if li.menu_item else None
-        line_items.append(li_out)
-    # Build cart output from columns to avoid lazy-loading the line_items relationship
+    line_items = await _load_cart_line_items(db, cart.id)
     cart_out = _build_cart_out(cart, line_items)
     return APIResponse(data=cart_out)
 
@@ -88,7 +91,8 @@ async def add_item(
         cart = await add_line_item(db, customer.id, store_id, data)
     except CartError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-    return APIResponse(data=_build_cart_out(cart))
+    line_items = await _load_cart_line_items(db, cart.id)
+    return APIResponse(data=_build_cart_out(cart, line_items))
 
 
 
@@ -104,7 +108,8 @@ async def update_item(
         cart = await update_line_item(db, customer.id, line_item_id, data)
     except CartError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-    return APIResponse(data=_build_cart_out(cart))
+    line_items = await _load_cart_line_items(db, cart.id)
+    return APIResponse(data=_build_cart_out(cart, line_items))
 
 
 
@@ -115,7 +120,8 @@ async def delete_item(customer: ActiveCustomer, db: DBDependency, line_item_id: 
         cart = await remove_line_item(db, customer.id, line_item_id)
     except CartError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
-    return APIResponse(data=_build_cart_out(cart))
+    line_items = await _load_cart_line_items(db, cart.id)
+    return APIResponse(data=_build_cart_out(cart, line_items))
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 async def empty_cart(customer: ActiveCustomer, db: DBDependency, store_id: int):
     """Clear all items from the cart."""

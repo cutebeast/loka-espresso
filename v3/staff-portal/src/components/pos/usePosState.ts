@@ -159,14 +159,78 @@ export function usePosState() {
       const bundleItems = cartHook.cart.filter((c) => c.bundle_product_id === bid);
       const componentSum = bundleItems.reduce((s, c) => s + c.price * c.qty, 0);
 
-      const itemsPerSet = (bp.pick_count && bp.pick_count > 0)
-        ? bp.pick_count
-        : (bp.components?.length || 1);
-
-      const totalQty = bundleItems.reduce((s, c) => s + c.qty, 0);
-      const numSets = itemsPerSet > 0 ? Math.floor(totalQty / itemsPerSet) : 0;
+      let numSets = 0;
+      if (bp.bundle_type === 'multi_course' && bp.groups && bp.groups.length > 0) {
+        const componentGroupMap = new Map<number, { groupId: number; pickCount: number; minPick: number; maxPick: number }>();
+        for (const g of bp.groups) {
+          for (const comp of g.components || []) {
+            componentGroupMap.set(comp.id, { groupId: g.id, pickCount: g.pick_count, minPick: g.min_pick, maxPick: g.max_pick });
+          }
+        }
+        const groupQtys = new Map<number, number>();
+        for (const c of bundleItems) {
+          const mapping = c.bundle_component_id ? componentGroupMap.get(c.bundle_component_id) : undefined;
+          if (mapping) {
+            groupQtys.set(mapping.groupId, (groupQtys.get(mapping.groupId) || 0) + c.qty);
+          }
+        }
+        let groupOk = true;
+        const setsPerGroup: number[] = [];
+        for (const g of bp.groups) {
+          const qty = groupQtys.get(g.id) || 0;
+          if (qty < g.min_pick || qty > g.max_pick) {
+            groupOk = false;
+            break;
+          }
+          setsPerGroup.push(Math.floor(qty / g.pick_count));
+        }
+        if (groupOk && setsPerGroup.length > 0) {
+          numSets = Math.min(...setsPerGroup);
+        }
+      } else if (bp.pick_count && bp.pick_count > 0) {
+        const qtyByComponent = new Map<number | string, number>();
+        for (const c of bundleItems) {
+          const key = c.bundle_component_id || c.menu_item_id;
+          qtyByComponent.set(key, (qtyByComponent.get(key) || 0) + c.qty);
+        }
+        const distinctCount = qtyByComponent.size;
+        if (bp.allow_duplicates || distinctCount >= bp.pick_count) {
+          const maxByTotal = Math.floor(bundleItems.reduce((s, c) => s + c.qty, 0) / bp.pick_count);
+          if (!bp.allow_duplicates) {
+            const maxByComponent = qtyByComponent.size > 0 ? Math.min(...qtyByComponent.values()) : 0;
+            numSets = Math.min(maxByTotal, maxByComponent);
+          } else {
+            numSets = maxByTotal;
+          }
+        }
+      } else {
+        // Standard / fixed bundles: require every component in default_quantity.
+        const compQty = new Map<number, number>();
+        for (const c of bundleItems) {
+          const cid = c.bundle_component_id;
+          if (cid) {
+            compQty.set(cid, (compQty.get(cid) || 0) + c.qty);
+          }
+        }
+        const setCounts: number[] = [];
+        let complete = true;
+        for (const comp of bp.components || []) {
+          const qty = compQty.get(comp.id) || 0;
+          const perSet = comp.default_quantity || 1;
+          if (qty < perSet) {
+            complete = false;
+            break;
+          }
+          setCounts.push(Math.floor(qty / perSet));
+        }
+        if (complete && setCounts.length > 0) {
+          numSets = Math.min(...setCounts);
+        }
+      }
 
       if (numSets > 0) {
+        const maxAllowed = bp.max_per_order ?? 1;
+        numSets = Math.min(numSets, maxAllowed);
         const disc = componentSum - bp.bundle_price * numSets;
         if (disc > 0) bundleDiscount += disc;
       }
@@ -223,10 +287,71 @@ export function usePosState() {
     if (isKitchenProcessingRef.current) return;
     if (cartHook.cart.length === 0) { setError("Cart is empty"); return; }
     if (cartHook.orderType === "dine_in" && !cartHook.tableId) { setError("Please assign a table for dine-in orders"); return; }
+
+    // Validate bundle completeness before sending
+    const bundleErrors: string[] = [];
+    const cartBundleIds = new Set(cartHook.cart.map((c) => c.bundle_product_id).filter((bid): bid is number => !!bid));
+    for (const bid of cartBundleIds) {
+      const bp = bundleProducts.find((b) => b.id === bid);
+      if (!bp) continue;
+      const items = cartHook.cart.filter((c) => c.bundle_product_id === bid);
+
+      if (bp.bundle_type === "multi_course" && bp.groups && bp.groups.length > 0) {
+        const compGroupMap = new Map<number, number>();
+        const groupSpec = new Map<number, { label: string; min: number; max: number; pick: number }>();
+        for (const g of bp.groups) {
+          for (const c of g.components || []) compGroupMap.set(c.id, g.id);
+          groupSpec.set(g.id, { label: g.group_label, min: g.min_pick, max: g.max_pick, pick: g.pick_count });
+        }
+        const groupQtys = new Map<number, number>();
+        for (const it of items) {
+          const gid = it.bundle_component_id ? compGroupMap.get(it.bundle_component_id) : undefined;
+          if (gid) groupQtys.set(gid, (groupQtys.get(gid) || 0) + it.qty);
+        }
+        for (const [gid, spec] of groupSpec) {
+          const qty = groupQtys.get(gid) || 0;
+          if (qty < spec.min || qty > spec.max) {
+            bundleErrors.push(`${bp.title}: ${spec.label} requires ${spec.min}-${spec.max} items (got ${qty})`);
+          }
+        }
+      } else if (bp.pick_count && bp.pick_count > 0) {
+        const totalQty = items.reduce((s, c) => s + c.qty, 0);
+        if (totalQty % bp.pick_count !== 0) {
+          bundleErrors.push(`${bp.title}: selections must be in multiples of ${bp.pick_count}`);
+        }
+        if (!bp.allow_duplicates) {
+          const distinct = new Set(items.map((c) => c.bundle_component_id || c.menu_item_id)).size;
+          if (distinct < bp.pick_count) {
+            bundleErrors.push(`${bp.title}: requires ${bp.pick_count} distinct choices`);
+          }
+        }
+      } else {
+        const compQtys = new Map<number, number>();
+        for (const it of items) {
+          if (it.bundle_component_id) compQtys.set(it.bundle_component_id, (compQtys.get(it.bundle_component_id) || 0) + it.qty);
+        }
+        for (const comp of bp.components || []) {
+          const qty = compQtys.get(comp.id) || 0;
+          const needed = comp.default_quantity || 1;
+          if (qty < needed) {
+            bundleErrors.push(`${bp.title}: missing ${comp.menu_item_name || "item"} (need ${needed}, got ${qty})`);
+          }
+        }
+      }
+    }
+    if (bundleErrors.length > 0) {
+      setError(`Complete the combo before sending:\n${bundleErrors.join("\n")}`);
+      return;
+    }
+
     isKitchenProcessingRef.current = true;
     setSaving(true);
     try {
+      const idempotencyKey = typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `pos-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const res = await createPosOrder({
+        store_id: storeId || undefined,
         customer_id: cartHook.selectedCustomer?.id || null,
         dining_table_id: cartHook.tableId || undefined,
         order_type: cartHook.orderType,
@@ -234,10 +359,12 @@ export function usePosState() {
           menu_item_id: c.menu_item_id,
           quantity: c.qty,
           modifier_ids: c.modifier_ids,
-          notes: c.modifiers_label || undefined,
+          special_instructions: c.modifiers_label || undefined,
           bundle_product_id: c.bundle_product_id || undefined,
+          bundle_component_id: c.bundle_component_id || undefined,
         })),
         order_notes: cartHook.orderNotes,
+        idempotency_key: idempotencyKey,
       });
       setResult(res);
       setState("done");
@@ -284,25 +411,34 @@ export function usePosState() {
   };
 
   const addBundleToCart = (bp: BundleProduct) => {
-    if (bp.pick_count && bp.pick_count > 0) {
+    if (bp.bundle_type === "multi_course" || (bp.pick_count && bp.pick_count > 0)) {
       setPickerBundle(bp);
       return;
     }
-    let skipped = 0;
+    const unavailable: string[] = [];
     for (const comp of bp.components) {
       const menuItem = items.find(i => i.id === comp.menu_item_id);
-      if (!menuItem || !menuItem.is_available) { skipped++; continue; }
-      cartHook.addToCart(menuItem, {}, "", comp.default_quantity, bp.id);
+      if (!menuItem || !menuItem.is_available) {
+        unavailable.push(comp.menu_item_name || menuItem?.item_name || `Item #${comp.menu_item_id}`);
+      }
     }
-    setMsg(skipped > 0 ? `${bp.title} added (${skipped} item${skipped > 1 ? "s" : ""} unavailable, skipped)` : `${bp.title} added`);
+    if (unavailable.length > 0) {
+      setError(`Cannot add ${bp.title}: ${unavailable.join(", ")} unavailable`);
+      return;
+    }
+    for (const comp of bp.components) {
+      const menuItem = items.find(i => i.id === comp.menu_item_id)!;
+      cartHook.addToCart(menuItem, {}, "", comp.default_quantity || 1, bp.id, comp.id);
+    }
+    setMsg(`${bp.title} added`);
   };
 
-  const handleBundlePickerAdd = (selections: Array<{ menu_item_id: number; quantity: number }>) => {
+  const handleBundlePickerAdd = (selections: Array<{ menu_item_id: number; quantity: number; bundle_component_id?: number }>) => {
     if (!pickerBundle) return;
     for (const sel of selections) {
       const menuItem = items.find(i => i.id === sel.menu_item_id);
       if (!menuItem || !menuItem.is_available) continue;
-      cartHook.addToCart(menuItem, {}, "", sel.quantity, pickerBundle.id);
+      cartHook.addToCart(menuItem, {}, "", sel.quantity, pickerBundle.id, sel.bundle_component_id);
     }
     setMsg(`${pickerBundle.title} added`);
     setPickerBundle(null);

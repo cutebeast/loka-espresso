@@ -24,6 +24,7 @@ class CartLineItemBase(BaseSchema):
 class CartLineItemCreate(CartLineItemBase):
     bundle_product_id: int | None = None
     bundle_component_id: int | None = None
+    customization_option_ids: list[int] | None = None  # legacy PWA format; converted to selected_modifiers
 
 
 class CartLineItemUpdate(BaseSchema):

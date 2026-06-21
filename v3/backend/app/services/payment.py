@@ -204,6 +204,25 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
         amount=payment.captured_amount,
         provider_response={"action": "capture", "simulated": True},
     )
+
+    # Update order payment status
+    order_result = await db.execute(
+        select(Order).where(Order.id == payment.order_id).with_for_update()
+    )
+    order = order_result.scalar_one_or_none()
+    if order:
+        total_captured = round(
+            sum(float(p.amount) for p in (await db.execute(
+                select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
+            )).scalars().all()) + float(payment.amount),
+            2,
+        )
+        if total_captured >= float(order.total_amount or 0) - 0.01:
+            order.payment_status = "captured"
+        else:
+            order.payment_status = "initiated"
+        order.updated_at = datetime.now(timezone.utc)
+
     await db.commit()
     await db.refresh(payment)
     return payment

@@ -53,7 +53,7 @@ export default function EquipmentReportsPage() {
   }, [storeFilter, typeFilter, dateFrom, dateTo, page]);
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : (d.items || []))).catch(() => {});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : (d.items || []))).catch((e: unknown) => console.error("equipment stores load:", e));
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);

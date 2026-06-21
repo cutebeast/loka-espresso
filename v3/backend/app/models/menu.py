@@ -57,7 +57,7 @@ class MenuItem(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     category_id: Mapped[int] = mapped_column(
-        ForeignKey("menu_categories.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("menu_categories.id", ondelete="CASCADE"), nullable=False, index=True
     )
     item_code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     item_name: Mapped[str] = mapped_column(String(100), nullable=False)

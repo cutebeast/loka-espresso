@@ -81,7 +81,9 @@ async def test_concurrent_same_order_wallet_payments(
         "fulfillment_type": "counter_pickup",
     })
     assert r_order.status_code == 201, f"Order creation failed: {r_order.text}"
-    order_id = r_order.json()["data"]["id"]
+    order_data = r_order.json()["data"]
+    order_id = order_data["id"]
+    payment_amount = float(order_data["total_amount"])
     cleanup_registry["orders"].append({"id": order_id})
 
     # Run two concurrent wallet payments on the SAME order
@@ -94,7 +96,6 @@ async def test_concurrent_same_order_wallet_payments(
             )
             return r.status_code, r.json() if r.status_code == 200 else r.text
 
-    payment_amount = 20.00
     r1_result, r2_result = await asyncio.gather(
         wallet_pay(order_id, payment_amount),
         wallet_pay(order_id, payment_amount),

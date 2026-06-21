@@ -54,7 +54,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev_password}@redis:6379/0
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required — minimum 32 characters}
       ENVIRONMENT: ${ENVIRONMENT:-production}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:13830,http://localhost:13810,http://localhost:13820}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://app.loyaltysystem.uk,https://admin.loyaltysystem.uk,https://staff.loyaltysystem.uk}
     volumes:
       - fnb_v3_uploads:/app/uploads
     depends_on:
@@ -109,6 +109,8 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:13810/"]
       interval: 15s
+      timeout: 5s
+      retries: 5
 
   staff-portal:
     build:
@@ -145,7 +147,6 @@ services:
       - fnb_v3_caddy_config:/config
     environment:
       CADDY_EMAIL: ${CADDY_EMAIL:-admin@lokaespresso.my}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://app.lokaespresso.my}
     depends_on:
       backend:
         condition: service_healthy
@@ -158,7 +159,7 @@ services:
     networks:
       - fnb_v3_network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:80/health 2>/dev/null || echo healthy"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/ >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

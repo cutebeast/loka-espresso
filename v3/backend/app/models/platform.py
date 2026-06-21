@@ -61,7 +61,7 @@ class AuditLog(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     principal_id: Mapped[int | None] = mapped_column(
-        ForeignKey("iam_principals.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("iam_principals.id", ondelete="SET NULL"), nullable=True, index=True
     )
     action: Mapped[str] = mapped_column(AuditAction, nullable=False)
     resource_type: Mapped[str] = mapped_column(String(50), nullable=False)

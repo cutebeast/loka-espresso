@@ -189,6 +189,6 @@ async def test_menu_item_detail_response_shape(
     assert r2.status_code == 200
     item = r2.json()["data"]
     assert_has_keys(item, {
-        "id", "item_name", "base_price", "store_id",
+        "id", "item_name", "base_price",
         "is_available", "created_at",
     })

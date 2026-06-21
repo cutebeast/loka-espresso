@@ -18,7 +18,7 @@ from app.models.menu import (
     MenuModifierGroup,
     MenuVariant,
 )
-from app.models.bundle_product import BundleProduct, BundleProductComponent, BundleComponentModifier
+from app.models.bundle_product import BundleProduct, BundleProductComponent, BundleComponentModifier, BundleGroup
 from app.schemas.base import APIResponse
 from app.schemas.menu import (
     AllergenOut,
@@ -31,6 +31,36 @@ from app.schemas.menu import (
 )
 
 router = APIRouter(prefix="/menu", tags=["public — menu"])
+
+
+def _build_comp_entry(comp: BundleProductComponent) -> dict:
+    item = comp.menu_item
+    return {
+        "id": comp.id,
+        "menu_item_id": comp.menu_item_id,
+        "bundle_group_id": comp.bundle_group_id,
+        "menu_item_name": item.item_name if item else None,
+        "menu_item_price": float(item.base_price) if item else None,
+        "menu_item_image_url": item.image_url if item else None,
+        "default_quantity": comp.default_quantity,
+        "sort_order": comp.sort_order,
+        "modifier_overrides": [
+            {
+                "id": mo.id,
+                "modifier_option_id": mo.modifier_option_id,
+                "modifier_option_name": mo.modifier_option.option_name if mo.modifier_option else None,
+                "price_adjustment": float(mo.price_adjustment) if mo.price_adjustment is not None else None,
+                "is_default": mo.is_default,
+            }
+            for mo in (comp.modifier_overrides or [])
+        ],
+    }
+
+
+def _component_available(comp: BundleProductComponent) -> bool:
+    """Return True if the component's menu item is present and sellable."""
+    item = comp.menu_item
+    return item is not None and item.is_available and item.deleted_at is None
 
 
 @router.get("/stores/{store_id}", response_model=APIResponse[MenuPublicOut])
@@ -133,7 +163,7 @@ async def get_store_menu(
 
     cat_outs = [MenuCategoryOut.model_validate(c) for c in categories]
 
-    # Fetch active bundle products
+    # Fetch active bundle products (global or scoped to this store)
     now = datetime.now(timezone.utc)
     bp_result = await db.execute(
         select(BundleProduct).where(
@@ -141,13 +171,51 @@ async def get_store_menu(
             BundleProduct.deleted_at.is_(None),
             (BundleProduct.start_date.is_(None)) | (BundleProduct.start_date <= now),
             (BundleProduct.end_date.is_(None)) | (BundleProduct.end_date >= now),
+            (BundleProduct.store_id.is_(None)) | (BundleProduct.store_id == store_id),
         ).options(
             selectinload(BundleProduct.components).selectinload(BundleProductComponent.menu_item),
             selectinload(BundleProduct.components).selectinload(BundleProductComponent.modifier_overrides).selectinload(BundleComponentModifier.modifier_option),
+            selectinload(BundleProduct.groups).selectinload(BundleGroup.components).selectinload(BundleProductComponent.menu_item),
+            selectinload(BundleProduct.groups).selectinload(BundleGroup.components).selectinload(BundleProductComponent.modifier_overrides).selectinload(BundleComponentModifier.modifier_option),
         ).order_by(BundleProduct.display_order.asc(), BundleProduct.id.desc())
     )
     bundle_products_out = []
     for bp in bp_result.scalars().all():
+        groups_dict = {}
+        standalone_components = []
+        for comp in (bp.components or []):
+            if not _component_available(comp):
+                continue
+            if comp.bundle_group_id and bp.groups:
+                groups_dict.setdefault(comp.bundle_group_id, []).append(comp)
+            else:
+                standalone_components.append(comp)
+
+        groups_out = []
+        for group in sorted(bp.groups or [], key=lambda g: g.sort_order):
+            group_comps = groups_dict.get(group.id, [])
+            groups_out.append({
+                "id": group.id,
+                "group_label": group.group_label,
+                "group_description": group.group_description,
+                "pick_count": group.pick_count,
+                "min_pick": group.min_pick,
+                "max_pick": group.max_pick,
+                "sort_order": group.sort_order,
+                "components": [
+                    _build_comp_entry(comp) for comp in sorted(group_comps, key=lambda c: c.sort_order)
+                ],
+            })
+
+        all_components = [c for g in groups_out for c in g["components"]] + [
+            _build_comp_entry(comp) for comp in sorted(standalone_components, key=lambda c: c.sort_order)
+        ]
+
+        # Hide bundles with no available components so customers cannot order
+        # incomplete/unavailable combos.
+        if not all_components:
+            continue
+
         bp_d = {
             "id": bp.id,
             "bundle_type": bp.bundle_type,
@@ -159,32 +227,10 @@ async def get_store_menu(
             "display_order": bp.display_order,
             "pick_count": bp.pick_count,
             "allow_duplicates": bp.allow_duplicates,
-            "components": []
+            "max_per_order": bp.max_per_order,
+            "components": all_components,
+            "groups": groups_out,
         }
-        for comp in bp.components:
-            item = comp.menu_item
-            bp_d["components"].append({
-                "id": comp.id,
-                "menu_item_id": comp.menu_item_id,
-                "menu_item_name": item.item_name if item else None,
-                "menu_item_price": float(item.base_price) if item else None,
-                "menu_item_image_url": item.image_url if item else None,
-                "default_quantity": comp.default_quantity,
-                "is_required": comp.is_required,
-                "is_swappable": comp.is_swappable,
-                "swap_group": comp.swap_group,
-                "sort_order": comp.sort_order,
-                "modifier_overrides": [
-                    {
-                        "id": mo.id,
-                        "modifier_option_id": mo.modifier_option_id,
-                        "modifier_option_name": mo.modifier_option.option_name if mo.modifier_option else None,
-                        "price_adjustment": float(mo.price_adjustment) if mo.price_adjustment is not None else None,
-                        "is_default": mo.is_default,
-                    }
-                    for mo in (comp.modifier_overrides or [])
-                ],
-            })
         bundle_products_out.append(bp_d)
 
     menu_data = MenuPublicOut(
@@ -326,22 +372,61 @@ async def get_menu_item(db: DBDependency, locale: OptionalLocale, item_id: int):
 async def list_bundle_products_public(
     db: DBDependency,
     locale: OptionalLocale,
+    store_id: int | None = Query(None),
 ):
     """List active bundle products for PWA menu display."""
     now = datetime.now(timezone.utc)
+    filters = [
+        BundleProduct.is_active.is_(True),
+        BundleProduct.deleted_at.is_(None),
+        (BundleProduct.start_date.is_(None)) | (BundleProduct.start_date <= now),
+        (BundleProduct.end_date.is_(None)) | (BundleProduct.end_date >= now),
+    ]
+    if store_id is not None:
+        filters.append((BundleProduct.store_id.is_(None)) | (BundleProduct.store_id == store_id))
     result = await db.execute(
-        select(BundleProduct).where(
-            BundleProduct.is_active.is_(True),
-            BundleProduct.deleted_at.is_(None),
-            (BundleProduct.start_date.is_(None)) | (BundleProduct.start_date <= now),
-            (BundleProduct.end_date.is_(None)) | (BundleProduct.end_date >= now),
-        ).options(
+        select(BundleProduct).where(*filters).options(
             selectinload(BundleProduct.components).selectinload(BundleProductComponent.menu_item),
             selectinload(BundleProduct.components).selectinload(BundleProductComponent.modifier_overrides).selectinload(BundleComponentModifier.modifier_option),
+            selectinload(BundleProduct.groups).selectinload(BundleGroup.components).selectinload(BundleProductComponent.menu_item),
+            selectinload(BundleProduct.groups).selectinload(BundleGroup.components).selectinload(BundleProductComponent.modifier_overrides).selectinload(BundleComponentModifier.modifier_option),
         ).order_by(BundleProduct.display_order.asc(), BundleProduct.id.desc())
     )
     items = []
     for bp in result.scalars().all():
+        groups_dict = {}
+        standalone_components = []
+        for comp in (bp.components or []):
+            if not _component_available(comp):
+                continue
+            if comp.bundle_group_id and bp.groups:
+                groups_dict.setdefault(comp.bundle_group_id, []).append(comp)
+            else:
+                standalone_components.append(comp)
+
+        groups_out = []
+        for group in sorted(bp.groups or [], key=lambda g: g.sort_order):
+            group_comps = groups_dict.get(group.id, [])
+            groups_out.append({
+                "id": group.id,
+                "group_label": group.group_label,
+                "group_description": group.group_description,
+                "pick_count": group.pick_count,
+                "min_pick": group.min_pick,
+                "max_pick": group.max_pick,
+                "sort_order": group.sort_order,
+                "components": [
+                    _build_comp_entry(comp) for comp in sorted(group_comps, key=lambda c: c.sort_order)
+                ],
+            })
+
+        all_components = [c for g in groups_out for c in g["components"]] + [
+            _build_comp_entry(comp) for comp in sorted(standalone_components, key=lambda c: c.sort_order)
+        ]
+
+        if not all_components:
+            continue
+
         bp_d = {
             "id": bp.id,
             "bundle_type": bp.bundle_type,
@@ -353,31 +438,9 @@ async def list_bundle_products_public(
             "display_order": bp.display_order,
             "pick_count": bp.pick_count,
             "allow_duplicates": bp.allow_duplicates,
-            "components": []
+            "max_per_order": bp.max_per_order,
+            "components": all_components,
+            "groups": groups_out,
         }
-        for comp in bp.components:
-            item = comp.menu_item
-            bp_d["components"].append({
-                "id": comp.id,
-                "menu_item_id": comp.menu_item_id,
-                "menu_item_name": item.item_name if item else None,
-                "menu_item_price": float(item.base_price) if item else None,
-                "menu_item_image_url": item.image_url if item else None,
-                "default_quantity": comp.default_quantity,
-                "is_required": comp.is_required,
-                "is_swappable": comp.is_swappable,
-                "swap_group": comp.swap_group,
-                "sort_order": comp.sort_order,
-                "modifier_overrides": [
-                    {
-                        "id": mo.id,
-                        "modifier_option_id": mo.modifier_option_id,
-                        "modifier_option_name": mo.modifier_option.option_name if mo.modifier_option else None,
-                        "price_adjustment": float(mo.price_adjustment) if mo.price_adjustment is not None else None,
-                        "is_default": mo.is_default,
-                    }
-                    for mo in (comp.modifier_overrides or [])
-                ],
-            })
         items.append(bp_d)
     return APIResponse(data=items)

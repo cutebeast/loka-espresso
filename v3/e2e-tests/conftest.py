@@ -174,11 +174,12 @@ def discovered_admin_id(base_url: str, _admin_token_session: str) -> str:
 
 
 @pytest.fixture(scope="session")
-def discovered_store_id(base_url: str) -> int:
+def discovered_store_id(base_url: str, _admin_token_session: str) -> int:
     """Dynamically discover the first store ID via /admin/stores."""
     try:
+        headers = {"Authorization": f"Bearer {_admin_token_session}", "Content-Type": "application/json"}
         with httpx.Client(timeout=10.0) as c:
-            r = c.get(f"{base_url}/stores")
+            r = c.get(f"{base_url}/admin/stores", headers=headers)
         if r.status_code == 200:
             data = r.json()
             inner = data.get("data", data)

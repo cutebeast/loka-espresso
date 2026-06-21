@@ -46,6 +46,9 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
         ForeignKey("dining_tables.id", ondelete="SET NULL"), nullable=True, index=True
     )
     order_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, unique=True, index=True
+    )
     order_type: Mapped[str] = mapped_column(OrderType, nullable=False)
     order_channel: Mapped[str] = mapped_column(OrderChannel, nullable=False, default="mobile_app")
     status: Mapped[str] = mapped_column(OrderStatus, nullable=False, default="pending")
@@ -183,6 +186,9 @@ class OrderLineItem(Base):
     bundle_product_id: Mapped[int | None] = mapped_column(
         ForeignKey("bundle_products.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    bundle_component_id: Mapped[int | None] = mapped_column(
+        ForeignKey("bundle_product_components.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     served_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     served_by: Mapped[int | None] = mapped_column(
         ForeignKey("staff_profiles.id", ondelete="SET NULL"), nullable=True, index=True
@@ -198,6 +204,7 @@ class OrderLineItem(Base):
     menu_variant: Mapped["MenuVariant"] = relationship("MenuVariant")
     server: Mapped["StaffProfile | None"] = relationship("StaffProfile")
     bundle_product: Mapped["BundleProduct | None"] = relationship("BundleProduct")
+    bundle_component: Mapped["BundleProductComponent | None"] = relationship("BundleProductComponent")
 
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_order_line_items_quantity"),

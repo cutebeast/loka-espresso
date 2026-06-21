@@ -40,7 +40,7 @@ export default function InventoryStocksPage() {
     }).catch((e: any) => setError(e.message || "Failed to load stores"));
     api.getRaw<any>("/admin/inventory/categories?per_page=100").then(d => {
       setCategories(d.items || (Array.isArray(d) ? d : []));
-    }).catch(() => {});
+    }).catch((e: unknown) => console.error("inventory stocks load:", e));
   }, []);
 
   useEffect(() => {

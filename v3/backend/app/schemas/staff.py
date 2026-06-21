@@ -112,6 +112,7 @@ class POSLineItem(BaseSchema):
     special_instructions: str | None = None
     modifier_ids: list[int] | None = None
     bundle_product_id: int | None = None
+    bundle_component_id: int | None = None
 
 
 class POSPayment(BaseSchema):
@@ -126,6 +127,7 @@ class POSOrderCreateRequest(BaseSchema):
     order_type: str = "dine_in"
     line_items: list[POSLineItem]
     payment: POSPayment | None = None
+    idempotency_key: str | None = None
 
 
 class StaffCreateRequest(BaseSchema):

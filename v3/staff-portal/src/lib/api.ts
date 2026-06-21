@@ -494,6 +494,7 @@ export interface CartItem {
   modifier_ids: number[];
   modifiers_label: string;
   bundle_product_id?: number;
+  bundle_component_id?: number;
 }
 
 export interface Customer {
@@ -675,19 +676,30 @@ export interface BundleProduct {
   is_active: boolean;
   pick_count?: number | null;
   allow_duplicates?: boolean;
+  max_per_order?: number;
+  components: BundleProductComponent[];
+  groups?: BundleGroup[];
+}
+
+export interface BundleGroup {
+  id: number;
+  group_label: string;
+  group_description: string | null;
+  pick_count: number;
+  min_pick: number;
+  max_pick: number;
+  sort_order: number;
   components: BundleProductComponent[];
 }
 
 export interface BundleProductComponent {
   id: number;
   menu_item_id: number;
+  bundle_group_id: number | null;
   menu_item_name: string | null;
   menu_item_price: number | null;
   menu_item_image_url: string | null;
   default_quantity: number;
-  is_required: boolean;
-  is_swappable: boolean;
-  swap_group: number | null;
   sort_order: number;
 }
 
@@ -700,11 +712,14 @@ export function searchCustomers(q: string) {
 }
 
 export function createPosOrder(payload: {
+  store_id?: number;
   customer_id?: number | null;
   dining_table_id?: number | null;
   order_type: string;
-  line_items: Array<{ menu_item_id: number; quantity: number; modifier_ids: number[]; notes?: string; bundle_product_id?: number }>;
+  line_items: Array<{ menu_item_id: number; quantity: number; modifier_ids: number[]; special_instructions?: string; bundle_product_id?: number; bundle_component_id?: number }>;
   order_notes?: string;
+  idempotency_key?: string;
+  payment?: { amount_tendered?: number; method?: string };
 }) {
   return api.post<{ order_id: number; order_number: string; total: number; change?: number }>("/staff/pos/orders", payload);
 }

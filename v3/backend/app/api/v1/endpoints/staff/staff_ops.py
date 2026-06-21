@@ -5,6 +5,7 @@ import os
 import uuid
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile, status
@@ -33,7 +34,7 @@ from app.schemas.staff import (
     StaffChangePinRequest,
     POSOrderCreateRequest,
 )
-from app.services.order import _deduct_stock_for_order
+from app.services.order import _compute_bundle_discount, _deduct_stock_for_order
 from app.core.config import get_settings
 from app.core.rate_limiter import limiter
 from app.core.security import hash_password, verify_password_staff, decode_token, create_access_token, create_refresh_token, verify_password
@@ -733,6 +734,7 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
             selected_modifiers={"modifier_ids": modifier_ids},
             special_instructions=special,
             bundle_product_id=li.bundle_product_id,
+            bundle_component_id=li.bundle_component_id,
         ))
 
     # Compute fees from store config
@@ -748,42 +750,25 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
     tax_amount = round(subtotal * tax_rate, 2)
     total = round(subtotal + service_charge + tax_amount, 2)
 
-    # ── Bundle discount ──
-    bundle_discount = 0.0
-    bundle_ids = set(li.bundle_product_id for li in line_items_data if hasattr(li, 'bundle_product_id') and li.bundle_product_id)
-    if bundle_ids:
-        from app.models.bundle_product import BundleProduct, BundleProductComponent
-        for bid in bundle_ids:
-            if bid is None: continue
-            bdl = await db.get(BundleProduct, bid)
-            if not bdl or not bdl.is_active: continue
-            bundle_line_items = [l for l in line_items if l.bundle_product_id == bid]
-            comp_sum = sum(
-                (Decimal(str(l.unit_price)) + Decimal(str(l.modifier_total))) * l.quantity
-                for l in bundle_line_items
-            )
-
-            if bdl.pick_count and bdl.pick_count > 0:
-                items_per_set = bdl.pick_count
-            else:
-                comp_count = (await db.execute(
-                    select(func.count(BundleProductComponent.id))
-                    .where(BundleProductComponent.bundle_product_id == bid)
-                )).scalar() or 0
-                items_per_set = comp_count or 1
-
-            total_qty = sum(l.quantity for l in bundle_line_items)
-            num_sets = total_qty // items_per_set if items_per_set > 0 else 0
-
-            if num_sets > 0:
-                bd = float(comp_sum - (Decimal(str(bdl.bundle_price)) * num_sets))
-                if bd > 0:
-                    bundle_discount += bd
-        total = round(total - bundle_discount, 2)
+    # ── Bundle discount (reuse customer order engine for consistency) ──
+    calc_items = [
+        SimpleNamespace(
+            bundle_product_id=li.bundle_product_id,
+            bundle_component_id=li.bundle_component_id,
+            menu_item_id=li.menu_item_id,
+            quantity=li.quantity,
+            unit_price=li.unit_price - li.modifier_total,
+            modifier_total=li.modifier_total,
+        )
+        for li in line_items
+    ]
+    bd_decimal, active_bundle_ids = await _compute_bundle_discount(db, calc_items)
+    bundle_discount = float(bd_decimal)
+    total = round(total - bundle_discount, 2)
 
     # ── Add-on Deal discount ──
     addon_discount = 0.0
-    if bundle_ids and line_items:
+    if active_bundle_ids and line_items:
         mi_ids = set(l.menu_item_id for l in line_items)
         mi_result = await db.execute(select(MenuItem).where(MenuItem.id.in_(mi_ids)))
         mis = {mi.id: mi for mi in mi_result.scalars().all()}
@@ -795,9 +780,9 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
                 continue
             if not mi.eligible_bundle_ids:
                 continue
-            if not bundle_ids.intersection(set(mi.eligible_bundle_ids)):
+            if not active_bundle_ids.intersection(set(mi.eligible_bundle_ids)):
                 continue
-            line_unit = Decimal(str(l.unit_price)) + Decimal(str(l.modifier_total))
+            line_unit = Decimal(str(l.unit_price))
             if mi.addon_discount_type == "percentage":
                 pct = Decimal(str(mi.addon_discount_value or 0)) / Decimal(100)
                 disc = float(round(line_unit * pct * l.quantity, 2))
@@ -806,6 +791,26 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
             disc = min(disc, float(line_unit * l.quantity))
             addon_discount += disc
         total = round(total - addon_discount, 2)
+
+    # Idempotent replay: return existing order for the same client key
+    if data.idempotency_key:
+        existing_order_r = await db.execute(
+            select(Order).where(Order.idempotency_key == data.idempotency_key)
+        )
+        existing_order = existing_order_r.scalar_one_or_none()
+        if existing_order:
+            replay_change = 0.0
+            if payment_data and existing_order.total_amount > 0 and payment_data.method == "cash":
+                tendered = float(payment_data.amount_tendered or 0)
+                replay_change = round(max(0, tendered - float(existing_order.total_amount)), 2)
+            return APIResponse(data={
+                "order_id": existing_order.id,
+                "order_number": existing_order.order_number,
+                "status": existing_order.status,
+                "total": float(existing_order.total_amount),
+                "change": replay_change,
+                "created_at": existing_order.created_at.isoformat(),
+            })
 
     # Generate order number
     from uuid import uuid4
@@ -816,6 +821,7 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
         store_id=store_id,
         dining_table_id=dining_table_id,
         order_number=order_number,
+        idempotency_key=data.idempotency_key,
         order_type=order_type,
         order_channel="pos",
         fulfillment_type={"dine_in":"dine_in_service","takeaway":"counter_pickup","delivery":"standard_delivery","drive_thru":"counter_pickup"}.get(order_type,"dine_in_service"),
@@ -846,12 +852,40 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
         # Create payment (skip if total is zero — e.g. complimentary orders)
         if payment_data and total > 0:
             amount_tendered = float(payment_data.amount_tendered or 0)
-            change = round(max(0, amount_tendered - total), 2)
+
+            # Map POS method to valid DB values
+            method_type_map = {
+                "cash": "cash",
+                "card": "credit_card",
+                "qr": "e_wallet",
+                "credit_card": "credit_card",
+                "debit_card": "debit_card",
+                "e_wallet": "e_wallet",
+            }
+            payment_method_type = method_type_map.get(payment_data.method, "cash")
+            provider_map = {"cash": "cash", "card": "stripe", "qr": "grabpay", "credit_card": "stripe", "debit_card": "stripe", "e_wallet": "grabpay"}
+            provider = provider_map.get(payment_data.method, "cash")
+
+            # Cash tender validation
+            if payment_data.method == "cash" and amount_tendered + 0.001 < total:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Insufficient cash tendered. Required: RM {total:.2f}, Tendered: RM {amount_tendered:.2f}",
+                )
+            change = round(max(0, amount_tendered - total), 2) if payment_data.method == "cash" else 0.0
+
+            idempotency_key = f"pos-order-{order.id}-{payment_method_type}-{total:.2f}"
+            dup = await db.execute(
+                select(Payment).where(Payment.idempotency_key == idempotency_key, Payment.status == "captured")
+            )
+            if dup.scalar_one_or_none():
+                raise HTTPException(status_code=409, detail="Duplicate payment request")
+
             payment = Payment(
                 order_id=order.id,
-                provider="cash",
-                payment_method_type=payment_data.method,
-                idempotency_key=f"pos-{uuid.uuid4().hex[:16]}",
+                provider=provider,
+                payment_method_type=payment_method_type,
+                idempotency_key=idempotency_key,
                 amount=total,
                 currency_code=store.currency_code,
                 status="captured",
@@ -1180,12 +1214,12 @@ async def staff_update_stock(
     if not item:
         raise HTTPException(status_code=404, detail="Inventory item not found")
 
-    # Find or create per-store stock record
+    # Find or create per-store stock record (lock row to prevent race conditions)
     stock_result = await db.execute(
         select(InventoryStock).where(
             InventoryStock.inventory_item_id == data.item_id,
             InventoryStock.store_id == store_id,
-        )
+        ).with_for_update()
     )
     stock = stock_result.scalar_one_or_none()
     if stock is None:

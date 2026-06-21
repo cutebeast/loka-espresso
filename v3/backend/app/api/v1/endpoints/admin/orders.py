@@ -329,6 +329,16 @@ async def process_order_payment(
         raise HTTPException(status_code=404, detail="Order not found")
     await require_store_admin(db, admin, order.store_id)
 
+    if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
+        raise HTTPException(status_code=400, detail="Cannot pay for a completed/cancelled order")
+
+    # Prevent overpayment: compute already-captured amount for this order
+    from app.models.payment import Payment
+    existing_payments = await db.execute(
+        select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
+    )
+    already_paid = round(sum(float(p.amount) for p in existing_payments.scalars().all()), 2)
+
     payment_method = data.payment_method
     amount_tendered = data.amount_tendered
     amount = data.amount if data.amount is not None else float(order.total_amount or 0)
@@ -338,8 +348,6 @@ async def process_order_payment(
 
     if amount < 0:
         raise HTTPException(status_code=400, detail="Payment amount cannot be negative")
-    if amount <= 0 and not discount_amount:
-        amount = float(order.total_amount or 0)
 
     # Apply discount if provided (compute from original amount to avoid compounding)
     computed_discount = discount_amount
@@ -349,28 +357,76 @@ async def process_order_payment(
             computed_discount = round(base_amount * discount_amount / 100, 2)
         order.discount_amount = float(order.discount_amount or 0) + computed_discount
 
-    net_amount = max(0, round(amount - computed_discount, 2))
-    change = round(max(0, amount_tendered - net_amount), 2)
+    # Adjust order total for discount and tip so remaining due is authoritative.
+    order.total_amount = max(0, round(float(order.total_amount or 0) - computed_discount + tip_amount, 2))
 
-    # Determine provider based on payment method
+    remaining_due = round(float(order.total_amount or 0) - already_paid, 2)
+
+    if amount <= 0 and remaining_due > 0:
+        amount = remaining_due
+
+    # Prevent double payment: reject if order is already fully paid
+    if already_paid > 0 and remaining_due <= 0:
+        raise HTTPException(status_code=400, detail=f"Order is already fully paid (RM {already_paid:.2f})")
+    if amount > remaining_due + 0.01:
+        raise HTTPException(status_code=400, detail=f"Payment amount exceeds remaining balance. Already paid: RM {already_paid:.2f}, Remaining: RM {remaining_due:.2f}")
+
+    net_amount = max(0, round(min(amount, remaining_due), 2))
+
+    # Cash tender validation
+    change = 0.0
+    if payment_method == "cash":
+        if amount_tendered + 0.001 < net_amount:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient cash tendered. Required: RM {net_amount:.2f}, Tendered: RM {amount_tendered:.2f}",
+            )
+        change = round(amount_tendered - net_amount, 2)
+
+    # Map POS methods to valid DB enum values
+    method_type_map = {
+        "cash": "cash",
+        "card": "credit_card",
+        "qr": "e_wallet",
+        "credit_card": "credit_card",
+        "debit_card": "debit_card",
+        "e_wallet": "e_wallet",
+    }
+    payment_method_type = method_type_map.get(payment_method, "cash")
     provider_map = {"cash": "cash", "card": "stripe", "qr": "grabpay", "credit_card": "stripe", "debit_card": "stripe", "e_wallet": "grabpay"}
     provider = provider_map.get(payment_method, "cash")
 
-    payment = Payment(
-        order_id=order.id,
-        provider=provider,
-        payment_method_type=payment_method,
-        amount=amount,
-        currency_code=order.total_amount_currency,
-        status="captured",
-        net_amount=net_amount,
-        idempotency_key=f"pos-payment-{order.id}-{uuid.uuid4().hex}",
+    # Idempotency: stable key. Reject duplicate captured payments.
+    idempotency_key = f"pos-payment-{order.id}-{payment_method}-{net_amount:.2f}"
+    dup_check = await db.execute(
+        select(Payment).where(Payment.idempotency_key == idempotency_key, Payment.status == "captured")
     )
-    db.add(payment)
+    if dup_check.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Duplicate payment request")
 
-    order.payment_status = "captured"
+    payment = None
+    if net_amount > 0:
+        payment = Payment(
+            order_id=order.id,
+            provider=provider,
+            payment_method_type=payment_method_type,
+            amount=net_amount,
+            currency_code=order.total_amount_currency,
+            status="captured",
+            net_amount=net_amount,
+            idempotency_key=idempotency_key,
+        )
+        db.add(payment)
+
     order.tip_amount = float(order.tip_amount or 0) + tip_amount
     order.updated_at = datetime.now(timezone.utc)
+
+    # Payment status reflects whether the order is fully paid
+    total_paid = already_paid + net_amount
+    if total_paid >= float(order.total_amount or 0) - 0.01:
+        order.payment_status = "captured"
+    else:
+        order.payment_status = "initiated"
 
     # Log status change
     log = OrderStatusLog(
@@ -505,6 +561,7 @@ async def apply_order_voucher(
 
     # Update order
     order.voucher_discount = round(float(order.voucher_discount or 0) + discount, 2)
+    order.discount_amount = round(float(order.discount_amount or 0) + discount, 2)
     order.total_amount = round(float(order.total_amount or 0) - discount, 2)
     order.updated_at = now
 
@@ -615,6 +672,7 @@ async def apply_order_reward(
 
     # Update order
     order.reward_discount = round(float(order.reward_discount or 0) + discount, 2)
+    order.discount_amount = round(float(order.discount_amount or 0) + discount, 2)
     order.total_amount = round(float(order.total_amount or 0) - discount, 2)
     order.updated_at = now
 
@@ -710,6 +768,19 @@ async def pay_with_wallet(
     if current_balance < amount:
         raise HTTPException(status_code=400, detail=f"Insufficient wallet balance. Available: RM {current_balance:.2f}")
 
+    # Prevent overpayment: compute already-captured amount for this order
+    from app.models.payment import Payment
+    payment_result = await db.execute(
+        select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
+    )
+    already_paid = round(sum(float(p.amount) for p in payment_result.scalars().all()), 2)
+    remaining_due = round(float(order.total_amount or 0) - already_paid, 2)
+    if amount > remaining_due:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Payment amount exceeds remaining balance. Remaining: RM {remaining_due:.2f}",
+        )
+
     new_balance = round(current_balance - amount, 2)
     now = datetime.now(timezone.utc)
 
@@ -725,8 +796,6 @@ async def pay_with_wallet(
     )
     db.add(ledger)
 
-    # Create payment record
-    from app.models.payment import Payment
     payment = Payment(
         order_id=order.id,
         provider="internal_wallet",
@@ -739,9 +808,9 @@ async def pay_with_wallet(
     )
     db.add(payment)
 
-    # Update order payment status if wallet covers full remaining total
-    remaining_total = float(order.total_amount or 0)
-    if amount >= remaining_total:
+    # Update order payment status if order is fully paid
+    new_total_paid = round(already_paid + amount, 2)
+    if new_total_paid >= float(order.total_amount or 0):
         order.payment_status = "captured"
     order.updated_at = now
 

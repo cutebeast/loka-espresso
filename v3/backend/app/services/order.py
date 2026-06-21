@@ -12,13 +12,13 @@ from decimal import Decimal
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
 from app.models.loyalty import LoyaltyAccount
-from app.models.menu import MenuItem, MenuItemRecipe
+from app.models.menu import MenuItem, MenuItemRecipe, MenuVariant
 from app.models.order import Order, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.reward import CustomerReward, RewardCatalog
 from app.models.staff import TipAllocation
 from app.models.store import Store, StoreConfiguration
 from app.models.voucher import CustomerVoucher, VoucherDefinition
-from app.models.bundle_product import BundleProduct, BundleProductComponent
+from app.models.bundle_product import BundleProduct, BundleProductComponent, BundleGroup
 from app.schemas.order import OrderCreate
 
 
@@ -29,6 +29,140 @@ class OrderError(Exception):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
+
+
+async def _compute_bundle_discount(db: AsyncSession, cart_items: list[CartLineItem]) -> tuple[Decimal, set[int]]:
+    """Compute bundle discount and return active bundle ids for add-on deals.
+
+    Validates component membership, active/deleted/date-window status, and
+    bundle-type constraints. Invalid configurations simply receive no bundle
+    discount. Discount sets are capped by ``max_per_order``.
+    """
+    bundle_discount = Decimal(0)
+    active_bundle_ids: set[int] = set()
+    bundle_ids_in_cart = {ci.bundle_product_id for ci in cart_items if ci.bundle_product_id}
+    if not bundle_ids_in_cart:
+        return bundle_discount, active_bundle_ids
+
+    now = datetime.now(timezone.utc)
+
+    for bid in bundle_ids_in_cart:
+        bundle = await db.get(BundleProduct, bid)
+        if not bundle or not bundle.is_active or bundle.deleted_at is not None:
+            continue
+        if (bundle.start_date and now < bundle.start_date) or (bundle.end_date and now > bundle.end_date):
+            continue
+
+        bundle_items = [ci for ci in cart_items if ci.bundle_product_id == bid]
+
+        # Load components for membership validation
+        components_result = await db.execute(
+            select(BundleProductComponent).where(
+                BundleProductComponent.bundle_product_id == bid
+            )
+        )
+        comp_map = {c.id: c for c in components_result.scalars().all()}
+        if not comp_map:
+            continue
+
+        membership_ok = True
+        for ci in bundle_items:
+            if ci.bundle_component_id:
+                comp = comp_map.get(ci.bundle_component_id)
+                if not comp or comp.menu_item_id != ci.menu_item_id:
+                    membership_ok = False
+                    break
+        if not membership_ok:
+            continue
+
+        component_sum = sum(
+            (Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total))) * ci.quantity
+            for ci in bundle_items
+        )
+        bundle_price = Decimal(str(bundle.bundle_price))
+
+        num_sets = 0
+        if bundle.bundle_type == "multi_course":
+            groups_result = await db.execute(
+                select(BundleGroup)
+                .where(BundleGroup.bundle_product_id == bid)
+                .options(selectinload(BundleGroup.components))
+                .order_by(BundleGroup.sort_order)
+            )
+            groups = groups_result.scalars().all()
+            if groups:
+                component_group_map = {}
+                for g in groups:
+                    for c in g.components:
+                        component_group_map[c.id] = g
+
+                group_qtys: dict[int, int] = {}
+                for ci in bundle_items:
+                    if ci.bundle_component_id and ci.bundle_component_id in component_group_map:
+                        gid = component_group_map[ci.bundle_component_id].id
+                        group_qtys[gid] = group_qtys.get(gid, 0) + ci.quantity
+
+                # Each group must satisfy its min/max pick constraints
+                group_ok = True
+                for g in groups:
+                    qty = group_qtys.get(g.id, 0)
+                    if qty < g.min_pick or qty > g.max_pick:
+                        group_ok = False
+                        break
+                if group_ok:
+                    pick_counts = [group_qtys.get(g.id, 0) // g.pick_count for g in groups if g.pick_count > 0]
+                    num_sets = min(pick_counts) if pick_counts else 0
+
+        elif bundle.bundle_type == "pick_x" and bundle.pick_count and bundle.pick_count > 0:
+            component_qtys: dict[int | str, int] = {}
+            for ci in bundle_items:
+                key = ci.bundle_component_id or ci.menu_item_id
+                component_qtys[key] = component_qtys.get(key, 0) + ci.quantity
+            distinct_count = len(component_qtys)
+
+            if bundle.allow_duplicates or distinct_count >= bundle.pick_count:
+                max_sets_by_total = sum(ci.quantity for ci in bundle_items) // bundle.pick_count
+                if not bundle.allow_duplicates:
+                    # Each distinct component may be used at most once per set
+                    max_sets_by_component = min(component_qtys.values()) if component_qtys else 0
+                    num_sets = min(max_sets_by_total, max_sets_by_component)
+                else:
+                    num_sets = max_sets_by_total
+
+        else:
+            # Standard / fixed / value / combo bundles: every required component
+            # must be present in the quantity needed per set (default_quantity).
+            required_ids = set(comp_map.keys())
+            qty_per_required: dict[int, int] = {cid: 0 for cid in required_ids}
+            for ci in bundle_items:
+                if ci.bundle_component_id and ci.bundle_component_id in qty_per_required:
+                    qty_per_required[ci.bundle_component_id] += ci.quantity
+                elif not ci.bundle_component_id:
+                    # Legacy fallback: match by menu_item_id
+                    for comp in comp_map.values():
+                        if comp.menu_item_id == ci.menu_item_id:
+                            qty_per_required[comp.id] += ci.quantity
+
+            set_counts = []
+            complete = True
+            for cid, comp in comp_map.items():
+                per_set = comp.default_quantity or 1
+                if qty_per_required[cid] < per_set:
+                    complete = False
+                    break
+                set_counts.append(qty_per_required[cid] // per_set)
+            if complete and set_counts:
+                num_sets = min(set_counts)
+
+        # Cap complete sets by max-per-order and apply discount
+        if num_sets > 0:
+            num_sets = min(num_sets, bundle.max_per_order)
+            active_bundle_ids.add(bid)
+            disc = component_sum - (bundle_price * num_sets)
+            if disc > 0:
+                bundle_discount += disc
+
+    return bundle_discount, active_bundle_ids
 
 
 def _build_order_out(order: Order):
@@ -183,7 +317,7 @@ async def create_order_from_cart(
     modifier_sub = sum(Decimal(str(i.modifier_total)) * i.quantity for i in cart_items)
     is_delivery = data.fulfillment_type in ("standard_delivery", "express_delivery", "third_party_delivery")
     tip = Decimal(str(data.tip_amount or 0))
-    total = subtotal + modifier_sub + (delivery_fee if is_delivery else Decimal(0)) + service_charge + tax_amount + tip
+    total = subtotal + (delivery_fee if is_delivery else Decimal(0)) + service_charge + tax_amount + tip
 
     # ── Voucher / Reward discount processing ──
     voucher_discount = Decimal(0)
@@ -228,7 +362,7 @@ async def create_order_from_cart(
             if tier_id is None or tier_id < vd.minimum_tier_id:
                 raise OrderError("Your loyalty tier is not eligible for this voucher", 400)
 
-        order_base = subtotal + modifier_sub  # voucher minimum order value checked against food+modifiers
+        order_base = subtotal  # cart subtotal already includes modifiers
         min_order = Decimal(str(vd.minimum_order_value or 0))
         if order_base < min_order:
             raise OrderError(f"Voucher requires minimum order of {float(min_order):.2f}", 400)
@@ -285,7 +419,7 @@ async def create_order_from_cart(
         if rc is None or not rc.is_active:
             raise OrderError("Reward catalog is no longer active", 400)
 
-        order_base = subtotal + modifier_sub
+        order_base = subtotal  # cart subtotal already includes modifiers
         min_order = Decimal(str(rc.minimum_order_value or 0))
         if order_base < min_order:
             raise OrderError(f"Reward requires minimum order of {float(min_order):.2f}", 400)
@@ -307,40 +441,11 @@ async def create_order_from_cart(
         reward_used = cr
 
     # ── Bundle Deal discount processing ──
-    bundle_discount = Decimal(0)
-    bundle_ids_in_cart = set(ci.bundle_product_id for ci in cart_items if ci.bundle_product_id)
-    for bid in bundle_ids_in_cart:
-        if bid is None:
-            continue
-        bundle = await db.get(BundleProduct, bid)
-        if not bundle or not bundle.is_active:
-            continue
-        bundle_items = [ci for ci in cart_items if ci.bundle_product_id == bid]
-        component_sum = sum(
-            (Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total))) * ci.quantity
-            for ci in bundle_items
-        )
-
-        if bundle.pick_count and bundle.pick_count > 0:
-            items_per_set = bundle.pick_count
-        else:
-            comp_count = (await db.execute(
-                select(func.count(BundleProductComponent.id))
-                .where(BundleProductComponent.bundle_product_id == bid)
-            )).scalar() or 0
-            items_per_set = comp_count or 1
-
-        total_qty = sum(ci.quantity for ci in bundle_items)
-        num_sets = total_qty // items_per_set if items_per_set > 0 else 0
-
-        if num_sets > 0:
-            bundle_disc = component_sum - (Decimal(str(bundle.bundle_price)) * num_sets)
-            if bundle_disc > 0:
-                bundle_discount += bundle_disc
+    bundle_discount, active_bundle_ids = await _compute_bundle_discount(db, cart_items)
 
     # ── Add-on Deal discount processing ──
     addon_discount = Decimal(0)
-    if bundle_ids_in_cart:
+    if active_bundle_ids:
         all_menu_item_ids = set(ci.menu_item_id for ci in cart_items)
         mi_result = await db.execute(
             select(MenuItem).where(MenuItem.id.in_(all_menu_item_ids))
@@ -354,7 +459,7 @@ async def create_order_from_cart(
                 continue
             if not mi.eligible_bundle_ids:
                 continue
-            if not bundle_ids_in_cart.intersection(set(mi.eligible_bundle_ids)):
+            if not active_bundle_ids.intersection(set(mi.eligible_bundle_ids)):
                 continue
             line_unit = Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total))
             if mi.addon_discount_type == "percentage":
@@ -366,10 +471,21 @@ async def create_order_from_cart(
             addon_discount += disc
 
     total_discount = voucher_discount + reward_discount + bundle_discount + addon_discount
+    total_discount = min(total_discount, total)  # never discount more than the order total
     total -= total_discount
-    loyalty_points_earned = 0  # recalculated after discount
-    if not voucher_used and not reward_used:
-        loyalty_points_earned = 0  # points from order subtotal (simplified)
+    # Compute loyalty points earned from order subtotal
+    # Read points-per-currency-unit from platform config (default: 1 point per RM1)
+    from app.models.platform import PlatformConfig
+    ppc_result = await db.execute(
+        select(PlatformConfig.config_value).where(PlatformConfig.config_key == "loyalty.points_per_currency")
+    )
+    ppc_val = ppc_result.scalar()
+    try:
+        points_per_currency = Decimal(str(ppc_val)) if ppc_val else Decimal("1")
+    except Exception:
+        points_per_currency = Decimal("1")
+    # Points earned on the pre-discount items subtotal (not on delivery/tax/tips)
+    loyalty_points_earned = int((Decimal(str(subtotal)) * points_per_currency).to_integral_value(rounding="ROUND_DOWN"))
 
     # Create order
     order = Order(
@@ -408,13 +524,58 @@ async def create_order_from_cart(
     if reward_used:
         reward_used.order_id = order.id
     
+    # Build item/variant snapshots
+    menu_item_ids = {ci.menu_item_id for ci in cart_items}
+    variant_ids = {ci.menu_variant_id for ci in cart_items if ci.menu_variant_id}
+    items_result = await db.execute(select(MenuItem).where(MenuItem.id.in_(menu_item_ids)))
+    items_map = {mi.id: mi for mi in items_result.scalars().all()}
+    variants_map = {}
+    if variant_ids:
+        variants_result = await db.execute(select(MenuVariant).where(MenuVariant.id.in_(variant_ids)))
+        variants_map = {mv.id: mv for mv in variants_result.scalars().all()}
+
+    # Load bundle display metadata for snapshots
+    bundle_ids = {ci.bundle_product_id for ci in cart_items if ci.bundle_product_id}
+    bundle_map: dict[int, BundleProduct] = {}
+    bundle_comp_map: dict[tuple[int, int], BundleProductComponent] = {}
+    bundle_group_map: dict[tuple[int, int], BundleGroup] = {}
+    if bundle_ids:
+        bp_result = await db.execute(select(BundleProduct).where(BundleProduct.id.in_(bundle_ids)))
+        bundle_map = {bp.id: bp for bp in bp_result.scalars().all()}
+        bcomp_result = await db.execute(
+            select(BundleProductComponent).where(BundleProductComponent.bundle_product_id.in_(bundle_ids))
+        )
+        bundle_comp_map = {(c.bundle_product_id, c.id): c for c in bcomp_result.scalars().all()}
+        bgroup_result = await db.execute(
+            select(BundleGroup).where(BundleGroup.bundle_product_id.in_(bundle_ids))
+        )
+        bundle_group_map = {(g.bundle_product_id, g.id): g for g in bgroup_result.scalars().all()}
+
     # Create order line items
     for ci in cart_items:
+        item = items_map.get(ci.menu_item_id)
+        variant = variants_map.get(ci.menu_variant_id) if ci.menu_variant_id else None
+        bundle = bundle_map.get(ci.bundle_product_id) if ci.bundle_product_id else None
+        comp = bundle_comp_map.get((ci.bundle_product_id, ci.bundle_component_id)) if ci.bundle_product_id and ci.bundle_component_id else None
+        group = bundle_group_map.get((comp.bundle_product_id, comp.bundle_group_id)) if comp and comp.bundle_group_id else None
+        item_snapshot = {
+            "item_name": item.item_name if item else None,
+            "item_code": item.item_code if item else None,
+            "image_url": item.image_url if item else None,
+            "base_price": float(item.base_price) if item else None,
+            "variant_name": variant.variant_name if variant else None,
+            "variant_price_adjustment": float(variant.price_adjustment) if variant else None,
+            "bundle_product_id": ci.bundle_product_id,
+            "bundle_component_id": ci.bundle_component_id,
+            "bundle_title": bundle.title if bundle else None,
+            "bundle_component_name": comp.menu_item.item_name if comp and comp.menu_item else None,
+            "bundle_group_label": group.group_label if group else None,
+        }
         oli = OrderLineItem(
             order_id=order.id,
             menu_item_id=ci.menu_item_id,
             menu_variant_id=ci.menu_variant_id,
-            item_snapshot={},
+            item_snapshot=item_snapshot,
             quantity=ci.quantity,
             unit_price=ci.unit_price,
             modifier_total=ci.modifier_total,
@@ -422,6 +583,7 @@ async def create_order_from_cart(
             selected_modifiers=ci.selected_modifiers,
             special_instructions=ci.special_instructions,
             bundle_product_id=ci.bundle_product_id,
+            bundle_component_id=ci.bundle_component_id,
         )
         db.add(oli)
 
@@ -465,6 +627,29 @@ async def create_order_from_cart(
             allocation_type="fixed",
         )
         db.add(tip)
+
+    # Award loyalty points to customer
+    if loyalty_points_earned > 0 and customer_id:
+        la_result = await db.execute(
+            select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id).with_for_update()
+        )
+        la = la_result.scalar_one_or_none()
+        if la:
+            from app.models.loyalty import LoyaltyPointsLedger
+            ledger = LoyaltyPointsLedger(
+                loyalty_account_id=la.id,
+                customer_id=customer_id,
+                event_type="order_earned",
+                points_delta=loyalty_points_earned,
+                running_balance=la.points_balance + loyalty_points_earned,
+                description=f"Points earned from order {order.order_number}",
+            )
+            db.add(ledger)
+            la.points_balance += loyalty_points_earned
+            la.lifetime_points_earned = (la.lifetime_points_earned or 0) + loyalty_points_earned
+            # Auto-upgrade tier if applicable
+            from app.services.commerce import _recalculate_tier
+            await _recalculate_tier(db, la)
 
     # Clear the cart
     for ci in cart_items:

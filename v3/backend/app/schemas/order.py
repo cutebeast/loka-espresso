@@ -20,6 +20,8 @@ class OrderLineItemOut(BaseSchema):
     line_total: float
     selected_modifiers: dict | list = {}
     special_instructions: str | None
+    bundle_product_id: int | None = None
+    bundle_component_id: int | None = None
     name: str | None = None
     image_url: str | None = None
     fulfillment_status: str | None

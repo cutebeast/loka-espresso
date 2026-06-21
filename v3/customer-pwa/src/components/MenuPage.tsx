@@ -13,6 +13,7 @@ import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import AddonDealSheet from '@/components/menu/AddonDealSheet';
 import BundlePickerSheet from '@/components/menu/BundlePickerSheet';
+import MultiCourseBundleSheet from '@/components/menu/MultiCourseBundleSheet';
 import { bundleIdsInCart } from '@/lib/addonDeal';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 
@@ -45,6 +46,7 @@ export default function MenuPage() {
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
   const [pendingAddonBundle, setPendingAddonBundle] = useState<BundleProduct | null>(null);
   const [pickerBundle, setPickerBundle] = useState<BundleProduct | null>(null);
+  const [multiCourseBundle, setMultiCourseBundle] = useState<BundleProduct | null>(null);
 
   const activeBundleIds = useMemo(() => new Set(bundleIdsInCart(cartItems)), [cartItems]);
 
@@ -56,17 +58,18 @@ export default function MenuPage() {
     setLoading(true);
     setLoadError(false);
     try {
+      const storeId = selectedStore?.id;
       const [catRes, itemRes, bpRes] = await Promise.all([
         api.get(`/menu/categories`, { signal }),
         api.get(`/menu/items`, { signal }),
-        api.get(`/menu/bundle-products`, { signal }).catch(() => ({ data: [] })),
+        api.get(`/menu/bundle-products`, { signal, params: storeId ? { store_id: storeId } : undefined }).catch(() => ({ data: [] })),
       ]);
       const catData = catRes.data;
       const itemData = itemRes.data;
       const rawCats = Array.isArray(catData) ? catData : (catData?.categories || catData?.items || []);
       setCategories(rawCats.map((c: Record<string, unknown>) => ({ ...c, name: (c.name || c.category_name || '') as string })));
       setMenuItems(Array.isArray(itemData) ? itemData : (itemData?.items || []));
-      setBundleProducts((bpRes as any)?.data || []);
+      setBundleProducts((bpRes as { data?: BundleProduct[] })?.data || []);
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       setCategories([]);
@@ -76,7 +79,7 @@ export default function MenuPage() {
     } finally {
       setLoading(false);
     }
-  }, [setCategories, setMenuItems, showToast, t]);
+  }, [setCategories, setMenuItems, showToast, t, selectedStore]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -136,21 +139,42 @@ export default function MenuPage() {
   }, [addItem, selectedStore?.id]);
 
   const handleAddBundle = useCallback((bp: BundleProduct) => {
+    if (bp.bundle_type === 'multi_course') {
+      setMultiCourseBundle(bp);
+      return;
+    }
     if (bp.pick_count && bp.pick_count > 0) {
       setPickerBundle(bp);
       return;
     }
+    // Fixed/standard bundles require every component to be available.
+    const unavailable: string[] = [];
     for (const comp of bp.components) {
+      const mi = menuItems.find((i) => i.id === comp.menu_item_id);
+      if (!mi?.is_available) {
+        unavailable.push(comp.menu_item_name || mi?.name || `Item #${comp.menu_item_id}`);
+      }
+    }
+    if (unavailable.length > 0) {
+      showToast(
+        `${t('menu.bundleIncompleteToast') || 'Bundle unavailable:'} ${unavailable.join(', ')}`,
+        'warning',
+      );
+      return;
+    }
+    for (const comp of bp.components) {
+      const mi = menuItems.find((i) => i.id === comp.menu_item_id)!;
       addItem({
         menu_item_id: comp.menu_item_id,
-        name: comp.menu_item_name || `Item #${comp.menu_item_id}`,
+        name: comp.menu_item_name || mi.name || `Item #${comp.menu_item_id}`,
         price: comp.menu_item_price ?? 0,
         base_price: comp.menu_item_price ?? 0,
-        quantity: comp.default_quantity,
+        quantity: comp.default_quantity || 1,
         customizations: {},
         store_id: selectedStore?.id,
         customization_count: 0,
         bundle_product_id: bp.id,
+        bundle_component_id: comp.id,
       });
     }
     showToast(`${bp.title} ${t('menu.addedToCartToast')}`, 'success');
@@ -299,13 +323,19 @@ export default function MenuPage() {
                 }}
               >
                 {bp.image_url && (
-                  <img src={resolveAssetUrl(bp.image_url) || ''} alt={bp.title} style={{ width: "100%", height: 100, borderRadius: 10, objectFit: "cover" }} loading="lazy" />
+                  <img
+                    src={resolveAssetUrl(bp.image_url) || ''}
+                    alt={bp.title}
+                    style={{ width: "100%", height: 100, borderRadius: 10, objectFit: "cover" }}
+                    loading="lazy"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
                 )}
                 <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{bp.title}</div>
                 <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
                   {bp.pick_count && bp.pick_count > 0
                     ? `${t('menu.pickXSubtitle', { count: bp.pick_count })} for ${formatPrice(bp.bundle_price)}`
-                    : `${bp.components.map(c => c.menu_item_name).slice(0, 3).join(" + ")}${bp.components.length > 3 ? " ..." : ""}`
+                    : `${bp.components.map(c => c.menu_item_name || t('menu.item') || 'Item').slice(0, 3).join(" + ")}${bp.components.length > 3 ? " ..." : ""}`
                   }
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
@@ -390,7 +420,7 @@ export default function MenuPage() {
                               className={`menu-addon-badge ${isActive ? 'active' : ''}`}
                               style={isActive ? undefined : { position: 'absolute', bottom: 4, left: 4, background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}
                             >
-                              {item.addon_discount_type === 'percentage' ? `-${item.addon_discount_value ?? 0}%` : `-RM${item.addon_discount_value ?? 0}`} {t('menu.addonBadge')}
+                              {item.addon_discount_type === 'percentage' ? `-${item.addon_discount_value ?? 0}%` : `-${formatPrice(item.addon_discount_value ?? 0)}`} {t('menu.addonBadge')}
                             </span>
                           );
                         })()}
@@ -463,6 +493,17 @@ export default function MenuPage() {
           onClose={() => setPickerBundle(null)}
           onDone={(bp) => {
             setPickerBundle(null);
+            setPendingAddonBundle(bp);
+          }}
+        />
+      )}
+
+      {multiCourseBundle && (
+        <MultiCourseBundleSheet
+          bundle={multiCourseBundle}
+          onClose={() => setMultiCourseBundle(null)}
+          onDone={(bp) => {
+            setMultiCourseBundle(null);
             setPendingAddonBundle(bp);
           }}
         />

@@ -669,6 +669,8 @@ function mapV3Response(url: string, data: any): any {
         customization_option_ids: ci.modifier_option_ids || ci.customization_option_ids || [],
         customization_count: ci.modifier_option_ids?.length || ci.customization_count || 0,
         image_url: ci.item_snapshot?.image_url || ci.image_url || null,
+        bundle_product_id: ci.bundle_product_id ?? undefined,
+        bundle_component_id: ci.bundle_component_id ?? undefined,
       }));
     }
     // Cart container
@@ -685,6 +687,8 @@ function mapV3Response(url: string, data: any): any {
         customization_option_ids: ci.modifier_option_ids || ci.customization_option_ids || [],
         customization_count: ci.modifier_option_ids?.length || ci.customization_count || 0,
         image_url: ci.item_snapshot?.image_url || ci.image_url || null,
+        bundle_product_id: ci.bundle_product_id ?? undefined,
+        bundle_component_id: ci.bundle_component_id ?? undefined,
       })),
       total_items: unwrapped.total_items ?? (unwrapped.items?.length || 0),
       total_amount: unwrapped.total_amount ?? unwrapped.subtotal ?? 0,
@@ -993,6 +997,7 @@ export interface CartItem {
   quantity: number;
   store_id?: number;
   bundle_product_id?: number;
+  bundle_component_id?: number;
   customizations?: Record<string, unknown>;
   customization_option_ids?: number[];
   customization_count?: number;
@@ -1123,19 +1128,30 @@ export interface BundleProduct {
   is_active: boolean;
   pick_count?: number | null;
   allow_duplicates?: boolean;
+  max_per_order?: number;
+  components: BundleProductComponent[];
+  groups?: BundleGroup[];
+}
+
+export interface BundleGroup {
+  id: number;
+  group_label: string;
+  group_description: string | null;
+  pick_count: number;
+  min_pick: number;
+  max_pick: number;
+  sort_order: number;
   components: BundleProductComponent[];
 }
 
 export interface BundleProductComponent {
   id: number;
   menu_item_id: number;
+  bundle_group_id: number | null;
   menu_item_name: string | null;
   menu_item_price: number | null;
   menu_item_image_url: string | null;
   default_quantity: number;
-  is_required: boolean;
-  is_swappable: boolean;
-  swap_group: number | null;
   sort_order: number;
   modifier_overrides: Array<{
     id: number;

@@ -6,6 +6,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.bundle_product import BundleProduct, BundleProductComponent
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.menu import MenuItem, MenuModifierOption, MenuVariant
 from app.schemas.cart import CartLineItemCreate, CartLineItemUpdate
@@ -90,6 +91,65 @@ async def _get_menu_item_price(
     return unit_price, modifier_total
 
 
+async def _validate_bundle_cart_item(
+    db: AsyncSession,
+    cart: CustomerCart,
+    data: CartLineItemCreate,
+    adding_quantity: int,
+):
+    """Validate bundle existence, active window, component membership and per-order limits."""
+    if data.bundle_product_id is None:
+        return
+
+    bundle_result = await db.execute(
+        select(BundleProduct).where(
+            BundleProduct.id == data.bundle_product_id,
+            BundleProduct.deleted_at.is_(None),
+        )
+    )
+    bundle = bundle_result.scalar_one_or_none()
+    if bundle is None:
+        raise CartError("Bundle product not found", 400)
+    if not bundle.is_active:
+        raise CartError("Bundle product is not active", 400)
+
+    now = datetime.now(timezone.utc)
+    if (bundle.start_date and now < bundle.start_date) or (bundle.end_date and now > bundle.end_date):
+        raise CartError("Bundle product is not currently available", 400)
+
+    if data.bundle_component_id is not None:
+        comp_result = await db.execute(
+            select(BundleProductComponent).where(
+                BundleProductComponent.id == data.bundle_component_id,
+                BundleProductComponent.bundle_product_id == data.bundle_product_id,
+            )
+        )
+        comp = comp_result.scalar_one_or_none()
+        if comp is None:
+            raise CartError("Bundle component does not belong to this bundle", 400)
+        if comp.menu_item_id != data.menu_item_id:
+            raise CartError("Bundle component menu item mismatch", 400)
+
+
+
+async def _convert_customization_option_ids(
+    db: AsyncSession,
+    menu_item_id: int,
+    option_ids: list[int] | None,
+) -> list:
+    """Convert legacy customization_option_ids into selected_modifiers shape."""
+    if not option_ids:
+        return []
+    result = await db.execute(
+        select(MenuModifierOption).where(MenuModifierOption.id.in_(option_ids))
+    )
+    options = result.scalars().all()
+    by_group: dict[int, list[int]] = {}
+    for opt in options:
+        by_group.setdefault(opt.modifier_group_id, []).append(opt.id)
+    return [{"modifier_group_id": gid, "selected_option_ids": oids} for gid, oids in by_group.items()]
+
+
 async def add_line_item(
     db: AsyncSession,
     customer_id: int,
@@ -98,16 +158,36 @@ async def add_line_item(
 ) -> CustomerCart:
     """Add a line item to the customer's cart."""
     cart = await get_or_create_cart(db, customer_id, store_id)
-    
+
+    # Validate item availability
+    item_result = await db.execute(select(MenuItem).where(MenuItem.id == data.menu_item_id))
+    item = item_result.scalar_one_or_none()
+    if item is None:
+        raise CartError("Menu item not found", 404)
+    if not item.is_available or item.deleted_at is not None:
+        raise CartError("Menu item is not available", 400)
+
+    await _validate_bundle_cart_item(db, cart, data, data.quantity)
+
+    # Normalize legacy customization option ids
+    selected_modifiers = data.selected_modifiers
+    if data.customization_option_ids and not selected_modifiers:
+        selected_modifiers = await _convert_customization_option_ids(
+            db, data.menu_item_id, data.customization_option_ids
+        )
+
     unit_price, modifier_total = await _get_menu_item_price(
-        db, data.menu_item_id, data.menu_variant_id, data.selected_modifiers
+        db, data.menu_item_id, data.menu_variant_id, selected_modifiers
     )
     
     line_total = (unit_price + modifier_total) * data.quantity
 
     # Check if same item+variant+modifiers already exists
     import hashlib, json
-    incoming_modifiers_raw = {m.modifier_group_id: m.selected_option_ids for m in data.selected_modifiers}
+    if selected_modifiers and isinstance(selected_modifiers[0], dict):
+        incoming_modifiers_raw = {m["modifier_group_id"]: m["selected_option_ids"] for m in selected_modifiers}
+    else:
+        incoming_modifiers_raw = {m.modifier_group_id: m.selected_option_ids for m in selected_modifiers}
     modifier_hash = hashlib.sha256(json.dumps(incoming_modifiers_raw, sort_keys=True).encode()).hexdigest()
     result = await db.execute(
         select(CartLineItem).where(
@@ -115,6 +195,7 @@ async def add_line_item(
             CartLineItem.menu_item_id == data.menu_item_id,
             CartLineItem.menu_variant_id == data.menu_variant_id,
             CartLineItem.bundle_product_id == data.bundle_product_id,
+            CartLineItem.bundle_component_id == data.bundle_component_id,
         )
     )
     existing_items = result.scalars().all()
@@ -139,7 +220,7 @@ async def add_line_item(
             quantity=data.quantity,
             unit_price=unit_price,
             line_total=line_total,
-            selected_modifiers={m.modifier_group_id: m.selected_option_ids for m in data.selected_modifiers},
+            selected_modifiers=incoming_modifiers_raw,
             modifier_total=modifier_total,
             special_instructions=data.special_instructions,
             bundle_product_id=data.bundle_product_id,
@@ -179,6 +260,20 @@ async def update_line_item(
         raise CartError("Not authorized", 403)
     
     if data.quantity is not None:
+        # Enforce bundle max_per_order on increase
+        if line_item.bundle_product_id is not None and data.quantity > line_item.quantity:
+            await _validate_bundle_cart_item(
+                db,
+                cart,
+                CartLineItemCreate(
+                    menu_item_id=line_item.menu_item_id,
+                    menu_variant_id=line_item.menu_variant_id,
+                    quantity=data.quantity - line_item.quantity,
+                    bundle_product_id=line_item.bundle_product_id,
+                    bundle_component_id=line_item.bundle_component_id,
+                ),
+                data.quantity - line_item.quantity,
+            )
         line_item.quantity = data.quantity
     if data.selected_modifiers is not None:
         line_item.selected_modifiers = {m.modifier_group_id: m.selected_option_ids for m in data.selected_modifiers}

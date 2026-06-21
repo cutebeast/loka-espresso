@@ -26,7 +26,7 @@ export function usePosCart(_storeId: number, crewName: string) {
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
   const [showHeld, setShowHeld] = useState(false);
 
-  const addToCart = useCallback((item: MenuItem, modifiers: Record<number, number[]> = {}, modifierLabel = "", qty = 1, bundleProductId?: number) => {
+  const addToCart = useCallback((item: MenuItem, modifiers: Record<number, number[]> = {}, modifierLabel = "", qty = 1, bundleProductId?: number, bundleComponentId?: number) => {
     const modPrice = Object.values(modifiers).flat().reduce((sum, modId) => {
       for (const g of item.modifier_groups || []) {
         const m = g.options.find((x) => x.id === modId);
@@ -40,14 +40,16 @@ export function usePosCart(_storeId: number, crewName: string) {
       const existing = prev.find(
         (c) => c.menu_item_id === item.id &&
         (c.bundle_product_id ?? undefined) === (bundleProductId ?? undefined) &&
+        (c.bundle_component_id ?? undefined) === (bundleComponentId ?? undefined) &&
         [...c.modifier_ids].sort((a, b) => a - b).join(',') === modifierIds.join(',')
       );
       if (existing) {
         return prev.map((c) =>
           c.menu_item_id === item.id &&
           (c.bundle_product_id ?? undefined) === (bundleProductId ?? undefined) &&
+          (c.bundle_component_id ?? undefined) === (bundleComponentId ?? undefined) &&
           [...c.modifier_ids].sort((a, b) => a - b).join(',') === modifierIds.join(',')
-            ? { ...c, qty: c.qty + qty, bundle_product_id: bundleProductId ?? c.bundle_product_id }
+            ? { ...c, qty: c.qty + qty, bundle_product_id: bundleProductId ?? c.bundle_product_id, bundle_component_id: bundleComponentId ?? c.bundle_component_id }
             : c
         );
       }
@@ -59,6 +61,7 @@ export function usePosCart(_storeId: number, crewName: string) {
         modifier_ids: modifierIds,
         modifiers_label: modifierLabel,
         bundle_product_id: bundleProductId,
+        bundle_component_id: bundleComponentId,
       }];
     });
   }, []);
@@ -89,17 +92,27 @@ export function usePosCart(_storeId: number, crewName: string) {
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(20);
   }, [modifierItem, selectedModifiers, modifierQty, addToCart]);
 
-  const removeFromCart = useCallback((menu_item_id: number, modifier_ids: number[]) => {
+  const removeFromCart = useCallback((menu_item_id: number, modifier_ids: number[], bundleProductId?: number, bundleComponentId?: number) => {
     const sorted = [...modifier_ids].sort((a, b) => a - b);
     setCart((prev) => prev.filter(
-      (c) => !(c.menu_item_id === menu_item_id && [...c.modifier_ids].sort((a, b) => a - b).join(',') === sorted.join(','))
+      (c) => !(
+        c.menu_item_id === menu_item_id &&
+        (c.bundle_product_id ?? undefined) === (bundleProductId ?? undefined) &&
+        (c.bundle_component_id ?? undefined) === (bundleComponentId ?? undefined) &&
+        [...c.modifier_ids].sort((a, b) => a - b).join(',') === sorted.join(',')
+      )
     ));
   }, []);
 
-  const updateQty = useCallback((menu_item_id: number, modifier_ids: number[], delta: number) => {
+  const updateQty = useCallback((menu_item_id: number, modifier_ids: number[], delta: number, bundleProductId?: number, bundleComponentId?: number) => {
     const sorted = [...modifier_ids].sort((a, b) => a - b);
     setCart((prev) => prev.map((c) => {
-      if (c.menu_item_id !== menu_item_id || [...c.modifier_ids].sort((a, b) => a - b).join(',') !== sorted.join(','))
+      if (
+        c.menu_item_id !== menu_item_id ||
+        (c.bundle_product_id ?? undefined) !== (bundleProductId ?? undefined) ||
+        (c.bundle_component_id ?? undefined) !== (bundleComponentId ?? undefined) ||
+        [...c.modifier_ids].sort((a, b) => a - b).join(',') !== sorted.join(',')
+      )
         return c;
       const newQty = Math.max(0, c.qty + delta);
       return newQty === 0 ? null : { ...c, qty: newQty };

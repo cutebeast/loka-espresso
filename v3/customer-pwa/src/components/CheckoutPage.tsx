@@ -75,7 +75,7 @@ export default function CheckoutPage() {
     let cancelled = false;
     api.get('/menu/bundle-products').then((res) => {
       if (!cancelled) setBundleProducts(Array.isArray(res.data) ? res.data : (res.data?.items || []));
-    }).catch(() => {});
+    }).catch((e: unknown) => console.error("Bundle products fetch failed:", e));
     return () => { cancelled = true; };
   }, []);
   // Migrate legacy drafts that stored voucher/reward without discountType

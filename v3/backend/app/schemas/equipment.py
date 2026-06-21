@@ -19,7 +19,7 @@ class EquipmentMaintenanceLogBase(BaseSchema):
 
 
 class EquipmentMaintenanceLogCreate(EquipmentMaintenanceLogBase):
-    equipment_id: int
+    equipment_id: int | None = None
 
 
 class EquipmentMaintenanceLogUpdate(BaseSchema):

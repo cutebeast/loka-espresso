@@ -1,6 +1,6 @@
 """Customer daily check-in endpoint for loyalty streak tracking."""
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
@@ -31,7 +31,7 @@ async def _get_checkin_config(db):
 @router.post("/checkin", response_model=APIResponse[dict])
 async def daily_checkin(db: DBDependency, customer: ActiveCustomer):
     """Customer daily check-in — awards loyalty points based on streak."""
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
     now = datetime.now(timezone.utc)
 
     # Check if already checked in today (compare date portion only via func.date)
@@ -44,9 +44,9 @@ async def daily_checkin(db: DBDependency, customer: ActiveCustomer):
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Already checked in today")
 
-    # Get customer's loyalty account
+    # Get customer's loyalty account (lock row to prevent race conditions)
     la_result = await db.execute(
-        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer.id)
+        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer.id).with_for_update()
     )
     la = la_result.scalar_one_or_none()
     if not la:
@@ -120,7 +120,7 @@ async def daily_checkin(db: DBDependency, customer: ActiveCustomer):
 @router.get("/checkin", response_model=APIResponse[dict])
 async def get_checkin_status(db: DBDependency, customer: ActiveCustomer):
     """Get current check-in status, streak, and rewards config."""
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
 
     existing = await db.execute(
         select(CustomerDailyCheckin).where(

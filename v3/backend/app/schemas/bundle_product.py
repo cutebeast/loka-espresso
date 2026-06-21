@@ -2,9 +2,40 @@
 
 from datetime import datetime
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from app.schemas.base import BaseSchema, TimestampedSchema
+
+
+class BundleGroupIn(BaseSchema):
+    group_label: str = Field(..., max_length=100)
+    group_description: str | None = None
+    pick_count: int = Field(default=1, ge=1)
+    min_pick: int = 0
+    max_pick: int = 1
+    sort_order: int = 0
+    client_id: str | int | None = None
+
+    @model_validator(mode="after")
+    def check_pick_bounds(self):
+        if self.min_pick < 0:
+            raise ValueError("min_pick must be >= 0")
+        if self.max_pick < self.min_pick:
+            raise ValueError("max_pick must be >= min_pick")
+        if not (self.min_pick <= self.pick_count <= self.max_pick):
+            raise ValueError("pick_count must be between min_pick and max_pick")
+        return self
+
+
+class BundleGroupOut(BaseSchema):
+    id: int
+    group_label: str
+    group_description: str | None = None
+    pick_count: int
+    min_pick: int
+    max_pick: int
+    sort_order: int
+    components: list["BundleProductComponentOut"] = []
 
 
 class BundleComponentModifierIn(BaseSchema):
@@ -23,10 +54,8 @@ class BundleComponentModifierOut(BaseSchema):
 
 class BundleProductComponentIn(BaseSchema):
     menu_item_id: int
+    bundle_group_id: int | None = None
     default_quantity: int = Field(default=1, ge=1)
-    is_required: bool = True
-    is_swappable: bool = False
-    swap_group: int | None = None
     sort_order: int = 0
     modifier_overrides: list[BundleComponentModifierIn] = []
 
@@ -34,13 +63,11 @@ class BundleProductComponentIn(BaseSchema):
 class BundleProductComponentOut(BaseSchema):
     id: int
     menu_item_id: int
+    bundle_group_id: int | None = None
     menu_item_name: str | None = None
     menu_item_price: float | None = None
     menu_item_image_url: str | None = None
     default_quantity: int
-    is_required: bool
-    is_swappable: bool
-    swap_group: int | None
     sort_order: int
     modifier_overrides: list[BundleComponentModifierOut] = []
 
@@ -52,6 +79,7 @@ class BundleProductCreate(BaseSchema):
     image_url: str | None = None
     bundle_price: float = Field(..., ge=0)
     category_id: int | None = None
+    store_id: int | None = None
     is_active: bool = True
     display_order: int = 0
     start_date: datetime | None = None
@@ -62,6 +90,7 @@ class BundleProductCreate(BaseSchema):
     pick_count: int | None = Field(default=None, ge=1)
     allow_duplicates: bool = False
     components: list[BundleProductComponentIn] = []
+    groups: list[BundleGroupIn] = []
 
 
 class BundleProductUpdate(BaseSchema):
@@ -71,6 +100,7 @@ class BundleProductUpdate(BaseSchema):
     image_url: str | None = None
     bundle_price: float | None = Field(None, ge=0)
     category_id: int | None = None
+    store_id: int | None = None
     is_active: bool | None = None
     display_order: int | None = None
     start_date: datetime | None = None
@@ -81,6 +111,7 @@ class BundleProductUpdate(BaseSchema):
     pick_count: int | None = Field(default=None, ge=1)
     allow_duplicates: bool | None = None
     components: list[BundleProductComponentIn] | None = None
+    groups: list[BundleGroupIn] | None = None
 
 
 class BundleProductOut(TimestampedSchema):
@@ -97,9 +128,11 @@ class BundleProductOut(TimestampedSchema):
     start_date: datetime | None = None
     end_date: datetime | None = None
     max_per_order: int
+    store_id: int | None = None
     image_gallery_urls: list | None = None
     gallery_video_url: str | None = None
     pick_count: int | None = None
     allow_duplicates: bool = False
     deleted_at: datetime | None = None
     components: list[BundleProductComponentOut] = []
+    groups: list[BundleGroupOut] = []

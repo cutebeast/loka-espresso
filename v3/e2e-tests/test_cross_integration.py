@@ -53,19 +53,20 @@ async def test_translation_all_locales_stores(client: httpx.AsyncClient, base_ur
 @pytest.mark.asyncio
 async def test_24h_store_returns_open_status(client: httpx.AsyncClient, base_url: str):
     """24h stores report as open during all hours regardless of time."""
+    from zoneinfo import ZoneInfo
     r = await client.get(f"{base_url}/stores")
     assert r.status_code == 200
     stores = r.json()["data"]["items"]
-    # DB convention: 0=Monday, 6=Sunday (matches Python datetime.weekday())
-    db_dow = datetime.now(timezone.utc).date().weekday()
-    # Find stores that are 24h TODAY
+    # Find stores that are 24h TODAY using each store's configured timezone
     stores_24h = []
     for s in stores:
+        tz = s.get("timezone") or "UTC"
+        now_local = datetime.now(ZoneInfo(tz))
+        db_dow = (now_local.date().weekday() + 1) % 7
         for h in s.get("operating_hours", []):
             if h.get("day_of_week") == db_dow and h.get("is_24_hours"):
-                # Verify the 24h flag is internally consistent
-                assert h.get("open_time") in ("00:00", "00:00:00") or h.get("is_closed") == False, \
-                    f"24h store {s['id']} should have 00:00 open_time or not be closed"
+                assert h.get("is_closed") is False, \
+                    f"24h store {s['id']} should not be marked closed"
                 stores_24h.append(s)
                 break
     if not stores_24h:

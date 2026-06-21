@@ -109,8 +109,9 @@ const APP_BASE = process.env.NEXT_PUBLIC_APP_URL || 'https://app.loyaltysystem.u
 export function resolveAssetUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads/')) return path;
   const relative = path.replace(/^\/uploads\//, '');
-  return `/api/v1/upload/files/${relative}`;
+  return `/uploads/${relative}`;
 }
 
 /** Resolve the app URL for deep links */
