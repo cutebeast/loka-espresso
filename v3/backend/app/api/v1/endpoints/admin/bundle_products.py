@@ -49,8 +49,9 @@ async def _get_or_create_bundle_category(db, bundle_type: str) -> int | None:
         slug=category_key,
         description="Combo meal bundles",
         is_available=True,
-        is_featured=True,
-        display_order=0,
+        is_featured=False,
+        category_type="combo",
+        display_order=99,
     )
     db.add(cat)
     await db.flush()

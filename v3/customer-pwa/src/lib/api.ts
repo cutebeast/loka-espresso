@@ -813,6 +813,7 @@ export interface Category {
   slug?: string;
   is_active?: boolean;
   display_order?: number;
+  category_type?: string;
 }
 
 export interface PromoBanner {

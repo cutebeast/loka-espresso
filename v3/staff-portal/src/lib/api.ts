@@ -484,6 +484,7 @@ export interface Modifier {
 export interface Category {
   id: number;
   category_name: string;
+  category_type?: string;
 }
 
 export interface CartItem {

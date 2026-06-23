@@ -152,7 +152,7 @@ async def list_categories(
     result = await db.execute(
         select(MenuCategory)
         .where(MenuCategory.deleted_at.is_(None))
-        .order_by(MenuCategory.display_order)
+        .order_by((MenuCategory.category_type != "combo"), MenuCategory.display_order, MenuCategory.id)
         .offset((page - 1) * per_page)
         .limit(per_page)
     )

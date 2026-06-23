@@ -105,10 +105,7 @@ export function usePosState() {
         setItems((Array.isArray(itemsData) ? itemsData : []).filter((i: { is_available?: boolean }) => i.is_available));
         const cats = Array.isArray(catsData) ? catsData : [];
         setCategories(cats);
-        if (cats.length > 0) {
-          const firstCat = cats[0];
-          if (firstCat) setActiveCat(firstCat.id);
-        }
+        // Default to "All" (null) — don't force-select the first category
         setTables(Array.isArray(tablesData) ? (tablesData as Table[]).filter((t) => t.is_active !== false) : []);
         setBundleProducts((Array.isArray(bpData) ? bpData : []).filter((bp: BundleProduct) => bp.is_active !== false));
 

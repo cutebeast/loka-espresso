@@ -305,13 +305,13 @@ export default function MenuPage() {
       )}
 
       {/* Bundle Products Section */}
-      {!showSearch && bundleProducts.length > 0 && (
+      {!showSearch && bundleProducts.length > 0 && (activeCategoryId === null || bundleProducts.some(bp => bp.category_id === activeCategoryId)) && (
         <div className="menu-bundle-section">
           <div className="menu-section-header">
             <span style={{ fontSize: 15, fontWeight: 700 }}>{t('menu.comboDeals')}</span>
           </div>
           <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "0 16px 8px" }}>
-            {bundleProducts.map(bp => (
+            {bundleProducts.filter(bp => activeCategoryId === null || bp.category_id === activeCategoryId).map(bp => (
               <button
                 key={bp.id}
                 onClick={() => handleAddBundle(bp)}

@@ -28,6 +28,11 @@ class MenuCategoryBase(BaseSchema):
     image_url: str | None = Field(None, max_length=500)
     is_available: bool = True
     is_featured: bool = False
+    category_type: str = Field(default="regular", pattern="^(regular|combo)$")
+    available_from_time: str | None = None
+    available_to_time: str | None = None
+    available_from_date: str | None = None
+    available_to_date: str | None = None
 
 
 class MenuCategoryCreate(MenuCategoryBase):
@@ -42,6 +47,11 @@ class MenuCategoryUpdate(BaseSchema):
     image_url: str | None = Field(None, max_length=500)
     is_available: bool | None = None
     is_featured: bool | None = None
+    category_type: str | None = Field(None, pattern="^(regular|combo)$")
+    available_from_time: str | None = None
+    available_to_time: str | None = None
+    available_from_date: str | None = None
+    available_to_date: str | None = None
     parent_category_id: int | None = None
 
 

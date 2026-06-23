@@ -6,6 +6,7 @@ from typing import List
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    Time,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
@@ -35,6 +37,23 @@ class MenuCategory(Base, TimestampMixin, SoftDeleteMixin):
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    category_type: Mapped[str] = mapped_column(String(20), nullable=False, default="regular")
+    available_from_time: Mapped[str | None] = mapped_column(Time, nullable=True)
+    available_to_time: Mapped[str | None] = mapped_column(Time, nullable=True)
+    available_from_date: Mapped[str | None] = mapped_column(Date, nullable=True)
+    available_to_date: Mapped[str | None] = mapped_column(Date, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("category_type IN ('regular','combo')", name="ck_menu_categories_category_type"),
+        CheckConstraint(
+            "(available_from_time IS NULL) OR (available_to_time IS NULL) OR (available_from_time < available_to_time)",
+            name="ck_menu_categories_time_window"
+        ),
+        CheckConstraint(
+            "(available_from_date IS NULL) OR (available_to_date IS NULL) OR (available_from_date <= available_to_date)",
+            name="ck_menu_categories_date_window"
+        ),
+    )
 
     parent_category: Mapped["MenuCategory | None"] = relationship(
         "MenuCategory",

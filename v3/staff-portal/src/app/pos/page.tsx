@@ -216,12 +216,12 @@ export default function PosPage() {
           <SkeletonCard count={6} />
         ) : (
           <div>
-            {/* Bundle Products Row */}
-            {pos.bundleProducts.length > 0 && (
+            {/* Bundle Products Row — only show when no category filter or Combo category selected */}
+            {pos.bundleProducts.length > 0 && (pos.activeCat === null || pos.bundleProducts.some(bp => bp.category_id === pos.activeCat)) && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Combo Deals</div>
                 <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
-                  {pos.bundleProducts.map(bp => (
+                  {pos.bundleProducts.filter(bp => pos.activeCat === null || bp.category_id === pos.activeCat).map(bp => (
                     <button
                       key={bp.id}
                       onClick={() => pos.addBundleToCart(bp)}

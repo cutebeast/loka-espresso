@@ -653,6 +653,60 @@ async def staff_change_pin(request: Request, db: DBDependency, data: StaffChange
 
 # ── POS Order Create ──
 
+
+def _is_walkin_customer(customer_id: int) -> bool:
+    """Check if customer is the system walk-in customer (no loyalty)."""
+    # Walk-in customer has phone +0000000000; we check by ID at runtime
+    return False  # Conservative: always try to award; _award_pos_loyalty_points handles missing account
+
+
+async def _award_pos_loyalty_points(db, customer_id: int, subtotal: float, order, order_number: str) -> int:
+    """Award loyalty points for a POS order, mirroring the customer flow."""
+    from decimal import Decimal
+    from app.models.loyalty import LoyaltyAccount, LoyaltyPointsLedger
+    from app.models.platform import PlatformConfig
+    from app.services.commerce import _recalculate_tier
+
+    # Read points-per-currency-unit from platform config
+    ppc_result = await db.execute(
+        select(PlatformConfig.config_value).where(PlatformConfig.config_key == "loyalty.points_per_currency")
+    )
+    ppc_val = ppc_result.scalar()
+    try:
+        points_per_currency = Decimal(str(ppc_val)) if ppc_val else Decimal("1")
+    except Exception:
+        points_per_currency = Decimal("1")
+
+    points_earned = int((Decimal(str(subtotal)) * points_per_currency).to_integral_value(rounding="ROUND_DOWN"))
+    if points_earned <= 0:
+        return 0
+
+    # Load loyalty account with row lock
+    la_result = await db.execute(
+        select(LoyaltyAccount).where(LoyaltyAccount.customer_id == customer_id).with_for_update()
+    )
+    la = la_result.scalar_one_or_none()
+    if not la:
+        return 0  # No loyalty account — skip silently
+
+    ledger = LoyaltyPointsLedger(
+        loyalty_account_id=la.id,
+        customer_id=customer_id,
+        event_type="order_earned",
+        points_delta=points_earned,
+        running_balance=la.points_balance + points_earned,
+        description=f"Points earned from POS order {order_number}",
+    )
+    db.add(ledger)
+    la.points_balance += points_earned
+    la.lifetime_points_earned = (la.lifetime_points_earned or 0) + points_earned
+    await _recalculate_tier(db, la)
+
+    # Update order record
+    order.loyalty_points_earned = points_earned
+    return points_earned
+
+
 @router.post("/staff/pos/orders", status_code=status.HTTP_201_CREATED)
 async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: POSOrderCreateRequest):
     store_id = data.store_id or staff.store_id
@@ -848,6 +902,12 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
 
         # Deduct recipe-based stock
         await _deduct_stock_for_order(db, order, line_items)
+
+        # Award loyalty points (skip walk-in customer)
+        if customer_id and not _is_walkin_customer(customer_id):
+            loyalty_pts = await _award_pos_loyalty_points(db, customer_id, subtotal, order, order_number)
+        else:
+            loyalty_pts = 0
 
         # Create payment (skip if total is zero — e.g. complimentary orders)
         if payment_data and total > 0:

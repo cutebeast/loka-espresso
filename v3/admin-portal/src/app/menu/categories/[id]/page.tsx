@@ -24,7 +24,15 @@ export default function CategoryEditPage() {
     setLoading(true);
     try {
       const d = await api.getRaw<any>(`/admin/menu/categories/${catId}`);
-      setForm({ category_name: d.category_name || "", slug: d.slug || "", description: d.description || "", is_available: d.is_available });
+      setForm({
+        category_name: d.category_name || "", slug: d.slug || "", description: d.description || "",
+        is_available: d.is_available,
+        category_type: d.category_type || "regular",
+        available_from_time: d.available_from_time || "",
+        available_to_time: d.available_to_time || "",
+        available_from_date: d.available_from_date || "",
+        available_to_date: d.available_to_date || "",
+      });
       const tr: Record<string,string> = {};
       for (const loc of LOCALES) {
         if (loc.code === "en") continue;
@@ -38,7 +46,13 @@ export default function CategoryEditPage() {
 
   const save = async () => {
     setSaving(true);
-    try { await api.patch(`/admin/menu/categories/${catId}`, form); setMsg("Saved"); setTimeout(()=>setMsg(""),2000); }
+    try {
+      const payload: Record<string, unknown> = { ...form };
+      if (!payload.available_from_time) payload.available_from_time = null;
+      if (!payload.available_to_time) payload.available_to_time = null;
+      if (!payload.available_from_date) payload.available_from_date = null;
+      if (!payload.available_to_date) payload.available_to_date = null;
+      await api.patch(`/admin/menu/categories/${catId}`, payload); setMsg("Saved"); setTimeout(()=>setMsg(""),2000); }
     catch (e: any) { setMsg(e.message || "Save failed"); console.error(e); }
     finally { setSaving(false); }
   };
@@ -98,7 +112,18 @@ export default function CategoryEditPage() {
             <div className="df-field"><label className="form-label">Name *</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.category_name||""} onChange={e=>setForm({...form,category_name:e.target.value})}/></div>
             <div className="df-field"><label className="form-label">Slug</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.slug||""} onChange={e=>setForm({...form,slug:e.target.value})}/></div>
             <div className="df-field" style={{gridColumn:"1/-1"}}><label className="form-label">Description</label><input className="w-full border rounded px-3 py-2 text-sm" value={form.description||""} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+            <div className="df-field"><label className="form-label">Category Type</label><select className="w-full border rounded px-3 py-2 text-sm" value={form.category_type||"regular"} onChange={e=>setForm({...form,category_type:e.target.value})}><option value="regular">Regular</option><option value="combo">Combo (shows first)</option></select></div>
             <div className="df-field"><label style={{display:"flex",alignItems:"center",gap:8,fontSize:13}}><input type="checkbox" checked={!!form.is_available} onChange={e=>setForm({...form,is_available:e.target.checked})}/>Active</label></div>
+          </div>
+          <div style={{marginTop:16,paddingTop:16,borderTop:"1px solid var(--color-border-light)"}}>
+            <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"var(--color-text-muted)"}}>Availability Window (optional)</div>
+            <div style={{fontSize:11,color:"var(--color-text-muted)",marginBottom:12}}>Leave empty to always show. Set time-of-day for breakfast/lunch combos, or date range for seasonal combos.</div>
+            <div className="df-grid">
+              <div className="df-field"><label className="form-label">Available From (time)</label><input type="time" className="w-full border rounded px-3 py-2 text-sm" value={form.available_from_time||""} onChange={e=>setForm({...form,available_from_time:e.target.value})}/></div>
+              <div className="df-field"><label className="form-label">Available To (time)</label><input type="time" className="w-full border rounded px-3 py-2 text-sm" value={form.available_to_time||""} onChange={e=>setForm({...form,available_to_time:e.target.value})}/></div>
+              <div className="df-field"><label className="form-label">Available From (date)</label><input type="date" className="w-full border rounded px-3 py-2 text-sm" value={form.available_from_date||""} onChange={e=>setForm({...form,available_from_date:e.target.value})}/></div>
+              <div className="df-field"><label className="form-label">Available To (date)</label><input type="date" className="w-full border rounded px-3 py-2 text-sm" value={form.available_to_date||""} onChange={e=>setForm({...form,available_to_date:e.target.value})}/></div>
+            </div>
           </div>
           <div className="df-actions" style={{marginTop:16}}><button type="button" onClick={()=>router.push("/menu/categories")} className="btn btn-ghost">Cancel</button><button onClick={save} disabled={saving} className="btn btn-primary"><Save size={16}/>{saving?"Saving...":"Save"}</button></div>
         </div>

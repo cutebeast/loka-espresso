@@ -33,6 +33,21 @@ from app.schemas.menu import (
 router = APIRouter(prefix="/menu", tags=["public — menu"])
 
 
+def _is_category_available_now(cat: MenuCategory, now_time, now_date) -> bool:
+    """Check if a category is available based on time-of-day and date windows."""
+    # Time-of-day window (e.g. breakfast 05:00-09:00)
+    if cat.available_from_time is not None and now_time < cat.available_from_time:
+        return False
+    if cat.available_to_time is not None and now_time > cat.available_to_time:
+        return False
+    # Seasonal date window (e.g. Christmas combo Dec 1-31)
+    if cat.available_from_date is not None and now_date < cat.available_from_date:
+        return False
+    if cat.available_to_date is not None and now_date > cat.available_to_date:
+        return False
+    return True
+
+
 def _build_comp_entry(comp: BundleProductComponent) -> dict:
     item = comp.menu_item
     return {
@@ -74,12 +89,25 @@ async def get_store_menu(
 ):
     """Get full public menu for a store."""
     # Fetch categories (global menu, not per-store)
+    now = datetime.now(timezone.utc)
+    now_time = now.time()
+    now_date = now.date()
     cat_stmt = select(MenuCategory).where(
         MenuCategory.is_available.is_(True),
         MenuCategory.deleted_at.is_(None),
-    ).order_by(MenuCategory.display_order)
+    ).order_by(
+        # Combo categories first, then by display_order
+        (MenuCategory.category_type != "combo"),
+        MenuCategory.display_order,
+        MenuCategory.id,
+    )
     cat_result = await db.execute(cat_stmt)
-    categories = cat_result.scalars().all()
+    all_categories = cat_result.scalars().all()
+    # Filter out categories outside their time/date availability window
+    categories = [
+        c for c in all_categories
+        if _is_category_available_now(c, now_time, now_date)
+    ]
 
     # Fetch items (global menu, not per-store)
     item_stmt = select(MenuItem).where(
@@ -289,14 +317,23 @@ async def list_menu_items(
 @router.get("/categories", response_model=APIResponse[dict])
 async def list_menu_categories(db: DBDependency, locale: OptionalLocale):
     """List global menu categories (no store_id required)."""
+    now_dt = datetime.now(timezone.utc)
+    now_time = now_dt.time()
+    now_date = now_dt.date()
     cat_stmt = select(MenuCategory).where(
         MenuCategory.is_available.is_(True),
         MenuCategory.deleted_at.is_(None),
-    ).order_by(MenuCategory.display_order)
+    ).order_by(
+        (MenuCategory.category_type != "combo"),
+        MenuCategory.display_order,
+        MenuCategory.id,
+    )
     cat_result = await db.execute(cat_stmt)
-    categories = cat_result.scalars().all()
+    all_cats = cat_result.scalars().all()
     result = []
-    for c in categories:
+    for c in all_cats:
+        if not _is_category_available_now(c, now_time, now_date):
+            continue
         d = {col.name: getattr(c, col.name) for col in c.__table__.columns}
         result.append(d)
     return APIResponse(data={"categories": result})
