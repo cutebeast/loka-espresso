@@ -3,7 +3,7 @@
 import { useCallback, useRef, useEffect, useState } from "react";
 import {
   Search, QrCode, Plus, Minus, Trash2,
-  Pause, Wallet, User, Send, ImageOff
+  Pause, Wallet, User, Send, ImageOff, LayoutGrid
 } from "lucide-react";
 import Alert from "@/components/Alert";
 import SkeletonCard from "@/components/SkeletonCard";
@@ -216,47 +216,43 @@ export default function PosPage() {
           <SkeletonCard count={6} />
         ) : (
           <div>
-            {/* Bundle Products Row — only show when no category filter or Combo category selected */}
-            {pos.bundleProducts.length > 0 && (pos.activeCat === null || pos.bundleProducts.some(bp => bp.category_id === pos.activeCat)) && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Combo Deals</div>
-                <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
-                  {pos.bundleProducts.filter(bp => pos.activeCat === null || bp.category_id === pos.activeCat).map(bp => (
-                    <button
-                      key={bp.id}
-                      onClick={() => pos.addBundleToCart(bp)}
-                      style={{
-                        minWidth: 200, maxWidth: 220, padding: 12,
-                        background: "linear-gradient(135deg, #FFFDF8, #FDF8F0)",
-                        border: "1.5px solid var(--color-border-subtle)", borderRadius: 12,
-                        cursor: "pointer", textAlign: "left", flexShrink: 0,
-                        display: "flex", flexDirection: "column", gap: 6,
-                      }}
-                    >
-                      {bp.image_url && (
-                        <div style={{ width: "100%", height: 100, borderRadius: 8, overflow: "hidden", background: "var(--color-bg-muted)" }}>
-                          <img src={bp.image_url} alt={bp.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
-                        </div>
-                      )}
-                      <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{bp.title}</div>
-                      <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-                        {bp.pick_count && bp.pick_count > 0
-                          ? `Pick ${bp.pick_count} items`
-                          : `${bp.components.map(c => c.menu_item_name || 'Item').slice(0, 3).join(" + ")}${bp.components.length > 3 ? ` +${bp.components.length - 3} more` : ""}`
-                        }
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontWeight: 700, fontSize: 15, color: "var(--color-primary)" }}>RM {Number(bp.bundle_price ?? 0).toFixed(2)}</span>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>
-                          {bp.pick_count && bp.pick_count > 0 ? `Pick ${bp.pick_count}` : 'Combo'}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
+            {/* Bundle products shown inline in the grid, like regular menu items */}
+            {pos.bundleProducts
+              .filter(bp => pos.activeCat === null || bp.category_id === pos.activeCat)
+              .map(bp => (
+                <button
+                  key={`bp-${bp.id}`}
+                  onClick={() => pos.addBundleToCart(bp)}
+                  className="card"
+                  style={{
+                    padding: 0, textAlign: "left", cursor: "pointer",
+                    border: "1px solid var(--color-border-light)",
+                    transition: "all 0.15s", overflow: "hidden",
+                    display: "flex", flexDirection: "column",
+                  }}
+                >
+                  <div style={{ width: "100%", height: 120, background: "var(--color-bg-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {bp.image_url
+                      ? <img src={bp.image_url} alt={bp.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                      : <LayoutGrid size={32} style={{ opacity: 0.25 }} />
+                    }
+                    <span style={{ position: "absolute", bottom: 6, right: 6, fontSize: 9, fontWeight: 700, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>
+                      {bp.pick_count && bp.pick_count > 0 ? `Pick ${bp.pick_count}` : 'COMBO'}
+                    </span>
+                  </div>
+                  <div style={{ padding: "8px 10px" }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>{bp.title}</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>
+                      {bp.pick_count && bp.pick_count > 0
+                        ? `Pick ${bp.pick_count} items`
+                        : `${(bp.components || []).map(c => c.menu_item_name || 'Item').slice(0, 3).join(" + ")}${(bp.components || []).length > 3 ? ` +${(bp.components || []).length - 3} more` : ""}`
+                      }
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "var(--color-primary)", marginTop: 4 }}>RM {Number(bp.bundle_price ?? 0).toFixed(2)}</div>
+                  </div>
+                </button>
+              ))}
             {pos.filteredItems.map((item) => (
               <button
                 key={item.id}

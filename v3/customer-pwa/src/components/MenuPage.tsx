@@ -305,7 +305,7 @@ export default function MenuPage() {
       )}
 
       {/* Bundle Products Section */}
-      {!showSearch && bundleProducts.length > 0 && (activeCategoryId === null || bundleProducts.some(bp => bp.category_id === activeCategoryId)) && (
+      {!showSearch && bundleProducts.length > 0 && activeCategoryId !== null && bundleProducts.some(bp => bp.category_id === activeCategoryId) && (
         <div className="menu-bundle-section">
           <div className="menu-section-header">
             <span style={{ fontSize: 15, fontWeight: 700 }}>{t('menu.comboDeals')}</span>
@@ -467,6 +467,39 @@ export default function MenuPage() {
                   );
                 })}
               </div>
+              {/* Bundle products for this category — shown inline like menu items */}
+              {bundleProducts.filter(bp => bp.category_id === category.id).length > 0 && (
+                <div className="menu-items-grid" style={{ marginTop: 8 }}>
+                  {bundleProducts.filter(bp => bp.category_id === category.id).map(bp => {
+                    const bpImg = resolveAssetUrl(bp.image_url);
+                    return (
+                      <div key={`bp-${bp.id}`} className="menu-product-card" onClick={() => handleAddBundle(bp)}>
+                        <div className="menu-product-img">
+                          {bpImg ? (
+                            <img src={bpImg} alt={bp.title} loading="lazy" className="menu-product-img-bg" />
+                          ) : (
+                            <div className="menu-img-fallback">
+                              <Coffee size={28} color={LOKA.border} strokeWidth={1.5} />
+                            </div>
+                          )}
+                          <span className="menu-img-badge" style={{ background: 'var(--color-success-light)', color: 'var(--color-success)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, left: 4 }}>
+                            {bp.pick_count && bp.pick_count > 0 ? t('menu.pickXBadge', { count: bp.pick_count }) : t('menu.comboBadge')}
+                          </span>
+                        </div>
+                        <div className="menu-product-info">
+                          <div className="menu-product-name">{bp.title}</div>
+                          <div className="menu-product-desc" style={{ fontSize: 11 }}>
+                            {bp.pick_count && bp.pick_count > 0
+                              ? t('menu.pickXSubtitle', { count: bp.pick_count })
+                              : `${(bp.components || []).slice(0, 3).map(c => c.menu_item_name || 'Item').join(" + ")}${(bp.components || []).length > 3 ? ` +${(bp.components || []).length - 3} more` : ""}`}
+                          </div>
+                          <div className="menu-product-price">{formatPrice(bp.bundle_price)}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ))
         )}
