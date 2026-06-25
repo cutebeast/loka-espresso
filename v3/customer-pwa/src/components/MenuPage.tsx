@@ -304,54 +304,6 @@ export default function MenuPage() {
         </div>
       )}
 
-      {/* Bundle Products Section */}
-      {!showSearch && bundleProducts.length > 0 && activeCategoryId !== null && bundleProducts.some(bp => bp.category_id === activeCategoryId) && (
-        <div className="menu-bundle-section">
-          <div className="menu-section-header">
-            <span style={{ fontSize: 15, fontWeight: 700 }}>{t('menu.comboDeals')}</span>
-          </div>
-          <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "0 16px 8px" }}>
-            {bundleProducts.filter(bp => activeCategoryId === null || bp.category_id === activeCategoryId).map(bp => (
-              <button
-                key={bp.id}
-                onClick={() => handleAddBundle(bp)}
-                style={{
-                  minWidth: 200, maxWidth: 220, background: "linear-gradient(135deg, #FDF8F0, #FFFDF8)",
-                  border: "1.5px solid var(--color-border-subtle)", borderRadius: 14, padding: 12,
-                  cursor: "pointer", textAlign: "left", flexShrink: 0,
-                  display: "flex", flexDirection: "column", gap: 6,
-                }}
-              >
-                {bp.image_url && (
-                  <img
-                    src={resolveAssetUrl(bp.image_url) || ''}
-                    alt={bp.title}
-                    style={{ width: "100%", height: 100, borderRadius: 10, objectFit: "cover" }}
-                    loading="lazy"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                  />
-                )}
-                <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{bp.title}</div>
-                <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-                  {bp.pick_count && bp.pick_count > 0
-                    ? `${t('menu.pickXSubtitle', { count: bp.pick_count })} for ${formatPrice(bp.bundle_price)}`
-                    : `${bp.components.map(c => c.menu_item_name || t('menu.item') || 'Item').slice(0, 3).join(" + ")}${bp.components.length > 3 ? " ..." : ""}`
-                  }
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                  <span style={{ fontWeight: 700, fontSize: 15, color: "var(--color-primary)" }}>{formatPrice(bp.bundle_price)}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--color-success)", background: "var(--color-success-light)", padding: "2px 8px", borderRadius: 20 }}>
-                    {bp.pick_count && bp.pick_count > 0
-                      ? t('menu.pickXBadge', { count: bp.pick_count })
-                      : t('menu.comboBadge')}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Product List */}
       <div className="menu-product-list scroll-container">
         {loading ? (
