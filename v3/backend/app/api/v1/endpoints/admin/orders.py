@@ -341,37 +341,41 @@ async def process_order_payment(
 
     payment_method = data.payment_method
     amount_tendered = data.amount_tendered
-    amount = data.amount if data.amount is not None else float(order.total_amount or 0)
+    amount = data.amount
     discount_amount = data.discount_amount
     discount_type = data.discount_type
     tip_amount = data.tip_amount
 
-    if amount < 0:
-        raise HTTPException(status_code=400, detail="Payment amount cannot be negative")
-
-    # Apply discount if provided (compute from original amount to avoid compounding)
-    computed_discount = discount_amount
+    # Recompute the expected total server-side; do not trust client-supplied amount/discount/tip.
+    current_total = round(float(order.total_amount or 0), 2)
+    computed_discount = 0.0
     if discount_amount > 0:
         if discount_type == "percentage":
-            base_amount = float(order.items_subtotal or amount)  # discount on original subtotal, not already-discounted amount
-            computed_discount = round(base_amount * discount_amount / 100, 2)
-        order.discount_amount = float(order.discount_amount or 0) + computed_discount
+            computed_discount = round(float(order.items_subtotal or 0) * discount_amount / 100, 2)
+        else:
+            computed_discount = round(discount_amount, 2)
+        computed_discount = min(computed_discount, current_total)
 
-    # Adjust order total for discount and tip so remaining due is authoritative.
-    order.total_amount = max(0, round(float(order.total_amount or 0) - computed_discount + tip_amount, 2))
+    if already_paid > 0 and (computed_discount > 0 or tip_amount > 0):
+        raise HTTPException(status_code=400, detail="Cannot apply discount or tip after a payment has already been made")
 
-    remaining_due = round(float(order.total_amount or 0) - already_paid, 2)
+    expected_total = max(0.0, round(current_total - computed_discount + tip_amount, 2))
+    if amount is not None and abs(round(amount, 2) - expected_total) > 0.01:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Payment amount does not match expected total. Expected: RM {expected_total:.2f}, Received: RM {amount:.2f}",
+        )
 
-    if amount <= 0 and remaining_due > 0:
-        amount = remaining_due
+    order.discount_amount = round(float(order.discount_amount or 0) + computed_discount, 2)
+    order.total_amount = expected_total
+
+    remaining_due = round(expected_total - already_paid, 2)
 
     # Prevent double payment: reject if order is already fully paid
     if already_paid > 0 and remaining_due <= 0:
         raise HTTPException(status_code=400, detail=f"Order is already fully paid (RM {already_paid:.2f})")
-    if amount > remaining_due + 0.01:
-        raise HTTPException(status_code=400, detail=f"Payment amount exceeds remaining balance. Already paid: RM {already_paid:.2f}, Remaining: RM {remaining_due:.2f}")
 
-    net_amount = max(0, round(min(amount, remaining_due), 2))
+    net_amount = max(0.0, round(remaining_due, 2))
 
     # Cash tender validation
     change = 0.0
@@ -878,7 +882,8 @@ async def add_order_line_item(
     if not menu_item:
         raise HTTPException(status_code=404, detail="Menu item not found")
 
-    price = data.unit_price if data.unit_price > 0 else float(menu_item.base_price or 0)
+    # Always derive price from the menu item; do not trust client-supplied unit_price.
+    price = float(menu_item.base_price or 0)
     total = round(price * data.quantity, 2)
 
     line_item = OrderLineItem(
@@ -888,7 +893,7 @@ async def add_order_line_item(
         quantity=data.quantity,
         unit_price=price,
         line_total=total,
-        selected_modifiers=data.modifier_ids or {},
+        selected_modifiers={},
         special_instructions=data.special_instructions,
     )
     db.add(line_item)
@@ -1021,14 +1026,19 @@ async def transfer_table(
     if order.dining_table_id == new_table_id:
         raise HTTPException(status_code=400, detail="Order is already assigned to this table")
 
+    # Lock both old and new tables to prevent concurrent transfers corrupting occupancy.
+    table_ids = [new_table_id]
+    if order.dining_table_id:
+        table_ids.append(order.dining_table_id)
     table_result = await db.execute(
         select(DiningTable).where(
-            DiningTable.id == new_table_id,
+            DiningTable.id.in_(table_ids),
             DiningTable.store_id == order.store_id,
             DiningTable.deleted_at.is_(None),
-        )
+        ).with_for_update()
     )
-    new_table = table_result.scalar_one_or_none()
+    locked_tables = {t.id: t for t in table_result.scalars().all()}
+    new_table = locked_tables.get(new_table_id)
     if not new_table:
         raise HTTPException(status_code=404, detail="Table not found in this store")
 
@@ -1041,8 +1051,7 @@ async def transfer_table(
 
     # Free old table
     if old_table_id:
-        old_result = await db.execute(select(DiningTable).where(DiningTable.id == old_table_id))
-        old_table = old_result.scalar_one_or_none()
+        old_table = locked_tables.get(old_table_id)
         if old_table:
             old_table.status = "available"
             old_table.active_order_id = None

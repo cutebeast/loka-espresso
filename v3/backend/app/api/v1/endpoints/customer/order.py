@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
@@ -38,12 +38,14 @@ class CustomerOrderCreateRequest(BaseModel):
     tip_amount: float | None = None
     table_id: int | None = None
     notes: str | None = None
+    idempotency_key: str | None = None
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
 @router.post("", response_model=APIResponse[OrderOut], status_code=status.HTTP_201_CREATED)
 async def create_order(
+    request: Request,
     customer: ActiveCustomer,
     db: DBDependency,
     raw_data: CustomerOrderCreateRequest,
@@ -79,6 +81,11 @@ async def create_order(
         cart = cart_result.scalar_one_or_none()
         if cart:
             raw_dict["cart_id"] = cart.id
+
+    # Idempotency key may be supplied in the request body or via the Idempotency-Key header
+    idempotency_key = raw_dict.get("idempotency_key") or request.headers.get("Idempotency-Key")
+    if idempotency_key:
+        raw_dict["idempotency_key"] = idempotency_key.strip()[:255]
 
     # Strip fields unknown to OrderCreate schema
     extra_keys = {

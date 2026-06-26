@@ -59,7 +59,7 @@ export default function EquipmentPage() {
   }, [storeFilter, statusFilter, page]);
 
   useEffect(() => {
-    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(()=>{});
+    api.getRaw<any>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d)?d:(d.items||[]))).catch(e => console.error("Failed to load stores list for equipment page", e));
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);

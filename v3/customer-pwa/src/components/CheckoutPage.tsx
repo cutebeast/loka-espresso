@@ -239,8 +239,9 @@ export default function CheckoutPage() {
             <div className="co-payment-info"><div className="co-payment-label">{t('checkout.cashOnDelivery')}</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div>
           </div>}
-          {config.payment_gateway_provider && (
-            <div className="co-payment-card" onClick={() => setPaymentMethod('gateway')}>
+          {/* Gateway payment is not yet fully wired on the client; hide the option until the PSP flow is implemented. */}
+          {false && config.payment_gateway_provider && (
+            <div className={`co-payment-card ${paymentMethod === 'gateway' ? 'selected' : ''}`} onClick={() => setPaymentMethod('gateway')}>
               <div className="co-payment-icon co-payment-icon-gateway"><Banknote size={14} color="#fff" /></div>
               <div className="co-payment-info"><div className="co-payment-label">{t('checkout.payOnline')}</div></div>
               <div className="co-payment-check"><CheckCircle2 size={12} /></div>

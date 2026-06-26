@@ -56,8 +56,8 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
   }, [isAuthenticated, onAuthDone]);
 
   const handlePhoneSubmit = useCallback(async (phoneValue: string) => {
-    await handleSendOtp(phoneValue);
-    setAuthStep('otp');
+    const sent = await handleSendOtp(phoneValue);
+    if (sent) setAuthStep('otp');
   }, [handleSendOtp]);
 
   const handleOTPSubmit = useCallback(async (code: string) => {

@@ -454,36 +454,13 @@ async def request_topup(
     db: DBDependency,
     data: TopUpRequest,
 ):
-    """Request a wallet top-up. Auto-creates wallet if needed."""
-    wallet = await _get_customer_wallet(db, customer.id)
-    if wallet is None:
-        wallet = Wallet(
-            customer_id=customer.id,
-            currency_code=await _get_default_currency(db),
-        )
-        db.add(wallet)
-        await db.commit()
-        await db.refresh(wallet)
+    """Request a wallet top-up.
 
-    r = await db.execute(
-        select(WalletLedgerEntry)
-        .where(WalletLedgerEntry.wallet_id == wallet.id)
-        .order_by(WalletLedgerEntry.id.desc())
-        .limit(1)
-        .with_for_update()
+    Online top-up is disabled until a real payment-provider flow is integrated.
+    Previously this endpoint credited the wallet immediately without verifying
+    payment, which allowed arbitrary balance inflation.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Online wallet top-up is not available until a payment provider is integrated. Please top up at a store.",
     )
-    last = r.scalar_one_or_none()
-    new_balance = (float(last.running_balance) if last else 0.0) + data.amount
-
-    entry = WalletLedgerEntry(
-        wallet_id=wallet.id,
-        entry_type="credit",
-        amount=data.amount,
-        running_balance=new_balance,
-        description=f"Top-up via {'payment method ' + str(data.payment_method_id) if data.payment_method_id else 'wallet add funds'}",
-        reference_type="topup",
-    )
-    db.add(entry)
-    await db.commit()
-    await db.refresh(entry)
-    return APIResponse(data={"message": "Top-up complete", "new_balance": new_balance})

@@ -30,6 +30,26 @@ export type PosState = "menu" | "payment" | "done";
 export type PaymentMethod = "cash" | "card" | "qr";
 export type { HeldOrder };
 
+/** Return the regular price of ``consumeQty`` bundle items, consuming the
+ *  highest unit-price lines first to maximize the customer-facing discount.
+ */
+function consumedItemsPrice(
+  items: Array<{ price: number; qty: number }>,
+  consumeQty: number,
+): number {
+  if (consumeQty <= 0 || items.length === 0) return 0;
+  const sorted = [...items].sort((a, b) => b.price - a.price);
+  let remaining = consumeQty;
+  let total = 0;
+  for (const it of sorted) {
+    if (remaining <= 0) break;
+    const take = Math.min(it.qty, remaining);
+    total += it.price * take;
+    remaining -= take;
+  }
+  return total;
+}
+
 export function usePosState() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -154,9 +174,9 @@ export function usePosState() {
       const bp = bundleMap.get(bid);
       if (!bp || bp.is_active === false) continue;
       const bundleItems = cartHook.cart.filter((c) => c.bundle_product_id === bid);
-      const componentSum = bundleItems.reduce((s, c) => s + c.price * c.qty, 0);
 
       let numSets = 0;
+      let bundledSum = 0;
       if (bp.bundle_type === 'multi_course' && bp.groups && bp.groups.length > 0) {
         const componentGroupMap = new Map<number, { groupId: number; pickCount: number; minPick: number; maxPick: number }>();
         for (const g of bp.groups) {
@@ -183,6 +203,13 @@ export function usePosState() {
         }
         if (groupOk && setsPerGroup.length > 0) {
           numSets = Math.min(...setsPerGroup);
+          numSets = Math.min(numSets, bp.max_per_order ?? 1);
+          for (const g of bp.groups) {
+            const groupItems = bundleItems.filter((ci) =>
+              ci.bundle_component_id && g.components?.some((c) => c.id === ci.bundle_component_id)
+            );
+            bundledSum += consumedItemsPrice(groupItems, numSets * g.pick_count);
+          }
         }
       } else if (bp.pick_count && bp.pick_count > 0) {
         const qtyByComponent = new Map<number | string, number>();
@@ -199,6 +226,8 @@ export function usePosState() {
           } else {
             numSets = maxByTotal;
           }
+          numSets = Math.min(numSets, bp.max_per_order ?? 1);
+          bundledSum = consumedItemsPrice(bundleItems, numSets * bp.pick_count);
         }
       } else {
         // Standard / fixed bundles: require every component in default_quantity.
@@ -222,13 +251,17 @@ export function usePosState() {
         }
         if (complete && setCounts.length > 0) {
           numSets = Math.min(...setCounts);
+          numSets = Math.min(numSets, bp.max_per_order ?? 1);
+          for (const comp of bp.components || []) {
+            const perSet = comp.default_quantity || 1;
+            const compItems = bundleItems.filter((ci) => ci.bundle_component_id === comp.id);
+            bundledSum += consumedItemsPrice(compItems, numSets * perSet);
+          }
         }
       }
 
-      if (numSets > 0) {
-        const maxAllowed = bp.max_per_order ?? 1;
-        numSets = Math.min(numSets, maxAllowed);
-        const disc = componentSum - bp.bundle_price * numSets;
+      if (numSets > 0 && bundledSum > 0) {
+        const disc = bundledSum - bp.bundle_price * numSets;
         if (disc > 0) bundleDiscount += disc;
       }
     }

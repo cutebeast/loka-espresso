@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.bundle_product import BundleProduct, BundleProductComponent
@@ -26,12 +27,16 @@ async def get_or_create_cart(
     customer_id: int,
     store_id: int,
 ) -> CustomerCart:
-    """Get existing cart or create new one for customer+store."""
+    """Get existing cart or create new one for customer+store.
+
+    Uses a row lock when the cart already exists to prevent concurrent
+    mutations from corrupting quantities or totals.
+    """
     result = await db.execute(
         select(CustomerCart).where(
             CustomerCart.customer_id == customer_id,
             CustomerCart.store_id == store_id,
-        )
+        ).with_for_update()
     )
     cart = result.scalar_one_or_none()
     if cart is None:
@@ -42,7 +47,18 @@ async def get_or_create_cart(
             subtotal=Decimal("0"),
         )
         db.add(cart)
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError:
+            # Another request created the cart concurrently; re-fetch with lock
+            await db.rollback()
+            result = await db.execute(
+                select(CustomerCart).where(
+                    CustomerCart.customer_id == customer_id,
+                    CustomerCart.store_id == store_id,
+                ).with_for_update()
+            )
+            cart = result.scalar_one()
     return cart
 
 
@@ -71,8 +87,9 @@ async def _get_menu_item_price(
         if variant:
             unit_price += Decimal(str(variant.price_adjustment))
     
-    # Calculate modifier total
+    # Calculate modifier total (batch option lookup to avoid N+1)
     modifier_total = Decimal("0")
+    all_option_ids: list[int] = []
     for mod in selected_modifiers:
         if hasattr(mod, 'selected_option_ids'):
             option_ids = mod.selected_option_ids or []
@@ -80,14 +97,15 @@ async def _get_menu_item_price(
             option_ids = mod.get("selected_option_ids", [])
         else:
             option_ids = []
-        for opt_id in option_ids:
-            opt_result = await db.execute(
-                select(MenuModifierOption).where(MenuModifierOption.id == opt_id)
-            )
-            opt = opt_result.scalar_one_or_none()
-            if opt:
-                modifier_total += Decimal(str(opt.price_adjustment))
-    
+        all_option_ids.extend(option_ids)
+
+    if all_option_ids:
+        opts_result = await db.execute(
+            select(MenuModifierOption).where(MenuModifierOption.id.in_(all_option_ids))
+        )
+        option_prices = {opt.id: Decimal(str(opt.price_adjustment)) for opt in opts_result.scalars().all()}
+        modifier_total = sum(option_prices.get(opt_id, Decimal(0)) for opt_id in all_option_ids)
+
     return unit_price, modifier_total
 
 
@@ -196,7 +214,7 @@ async def add_line_item(
             CartLineItem.menu_variant_id == data.menu_variant_id,
             CartLineItem.bundle_product_id == data.bundle_product_id,
             CartLineItem.bundle_component_id == data.bundle_component_id,
-        )
+        ).with_for_update()
     )
     existing_items = result.scalars().all()
     existing = None
@@ -246,14 +264,14 @@ async def update_line_item(
     result = await db.execute(
         select(CartLineItem).where(
             CartLineItem.id == line_item_id,
-        )
+        ).with_for_update()
     )
     line_item = result.scalar_one_or_none()
     if line_item is None:
         raise CartError("Line item not found", 404)
     
     cart_result = await db.execute(
-        select(CustomerCart).where(CustomerCart.id == line_item.cart_id)
+        select(CustomerCart).where(CustomerCart.id == line_item.cart_id).with_for_update()
     )
     cart = cart_result.scalar_one()
     if cart.customer_id != customer_id:
@@ -301,14 +319,14 @@ async def remove_line_item(
 ) -> CustomerCart:
     """Remove a line item from the cart."""
     result = await db.execute(
-        select(CartLineItem).where(CartLineItem.id == line_item_id)
+        select(CartLineItem).where(CartLineItem.id == line_item_id).with_for_update()
     )
     line_item = result.scalar_one_or_none()
     if line_item is None:
         raise CartError("Line item not found", 404)
     
     cart_result = await db.execute(
-        select(CustomerCart).where(CustomerCart.id == line_item.cart_id)
+        select(CustomerCart).where(CustomerCart.id == line_item.cart_id).with_for_update()
     )
     cart = cart_result.scalar_one()
     if cart.customer_id != customer_id:
@@ -332,7 +350,7 @@ async def clear_cart(
         select(CustomerCart).where(
             CustomerCart.customer_id == customer_id,
             CustomerCart.store_id == store_id,
-        )
+        ).with_for_update()
     )
     cart = result.scalar_one_or_none()
     if cart is None:
@@ -340,7 +358,7 @@ async def clear_cart(
     
     # Delete line items via explicit query (async-safe)
     li_result = await db.execute(
-        select(CartLineItem).where(CartLineItem.cart_id == cart.id)
+        select(CartLineItem).where(CartLineItem.cart_id == cart.id).with_for_update()
     )
     for item in li_result.scalars().all():
         await db.delete(item)

@@ -4,7 +4,7 @@ from typing import List
 
 from sqlalchemy import (
     BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey,
-    Integer, Numeric, String, Text,
+    Integer, Numeric, String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -102,6 +102,7 @@ class InventoryStock(Base, TimestampMixin):
     store: Mapped["Store"] = relationship("Store")
 
     __table_args__ = (
+        UniqueConstraint("inventory_item_id", "store_id", name="uq_inventory_stock_item_store"),
         CheckConstraint("current_stock >= 0", name="ck_inventory_stock_current_stock"),
         CheckConstraint("reserved_stock >= 0", name="ck_inventory_stock_reserved_stock"),
         CheckConstraint("reorder_level >= 0", name="ck_inventory_stock_reorder_level"),

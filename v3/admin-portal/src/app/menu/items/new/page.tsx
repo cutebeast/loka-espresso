@@ -168,7 +168,7 @@ export default function NewItemPage() {
                       <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                         {bundleProducts.map((bp: any) => (
                           <label key={bp.id} style={{display:"flex",alignItems:"center",gap:4,fontSize:12,padding:"3px 8px",borderRadius:"var(--radius-full)",background:(form.eligible_bundle_ids||[]).includes(bp.id)?"rgba(59,74,26,0.12)":"var(--color-bg-white)",border:(form.eligible_bundle_ids||[]).includes(bp.id)?"1.5px solid var(--color-primary)":"1px solid var(--color-border-light)",cursor:"pointer",whiteSpace:"nowrap"}}>
-                            <input type="checkbox" checked={(form.eligible_bundle_ids||[]).includes(bp.id)} onChange={e=>{const ids=[...(form.eligible_bundle_ids||[])];e.target.checked?ids.push(bp.id):ids.splice(ids.indexOf(bp.id),1);setForm({...form,eligible_bundle_ids:ids});}} style={{display:"none"}} />
+                            <input type="checkbox" checked={(form.eligible_bundle_ids||[]).includes(bp.id)} onChange={e=>{const ids=[...(form.eligible_bundle_ids||[])];if(e.target.checked){ids.push(bp.id);}else{ids.splice(ids.indexOf(bp.id),1);}setForm({...form,eligible_bundle_ids:ids});}} style={{display:"none"}} />
                             {bp.title}
                           </label>
                         ))}

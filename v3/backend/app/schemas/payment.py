@@ -75,6 +75,7 @@ class PaymentIntentRequest(BaseSchema):
     payment_method_type: str
     payment_method_id: int | None = None
     return_url: str | None = Field(None, max_length=500)
+    idempotency_key: str | None = Field(None, max_length=255)
 
 
 class RefundCreate(BaseSchema):

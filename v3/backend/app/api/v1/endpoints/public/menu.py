@@ -240,8 +240,11 @@ async def get_store_menu(
         ]
 
         # Hide bundles with no available components so customers cannot order
-        # incomplete/unavailable combos.
+        # incomplete/unavailable combos. For multi-course bundles, also hide if
+        # any group has no available components.
         if not all_components:
+            continue
+        if bp.groups and any(not groups_dict.get(group.id) for group in bp.groups):
             continue
 
         bp_d = {
@@ -462,6 +465,8 @@ async def list_bundle_products_public(
         ]
 
         if not all_components:
+            continue
+        if bp.groups and any(not groups_dict.get(group.id) for group in bp.groups):
             continue
 
         bp_d = {

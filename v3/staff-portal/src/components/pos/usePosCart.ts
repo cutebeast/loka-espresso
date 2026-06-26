@@ -27,7 +27,8 @@ export function usePosCart(_storeId: number, crewName: string) {
   const [showHeld, setShowHeld] = useState(false);
 
   const addToCart = useCallback((item: MenuItem, modifiers: Record<number, number[]> = {}, modifierLabel = "", qty = 1, bundleProductId?: number, bundleComponentId?: number) => {
-    const modPrice = Object.values(modifiers).flat().reduce((sum, modId) => {
+    const allModIds = Object.values(modifiers).flat();
+    const modPrice = allModIds.reduce((sum, modId) => {
       for (const g of item.modifier_groups || []) {
         const m = g.options.find((x) => x.id === modId);
         if (m) return sum + m.price_adjustment;

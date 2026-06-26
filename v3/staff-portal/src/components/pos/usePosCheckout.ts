@@ -78,6 +78,8 @@ export function usePosCheckout(checkoutOrderId: string | null) {
 
   const handleCheckoutWalletPayment = useCallback(async (amount: number) => {
     if (!checkoutOrderId) throw new Error("No order selected");
+    if (isPaymentProcessingRef.current) throw new Error("A payment is already in progress");
+    isPaymentProcessingRef.current = true;
     setApplyingDiscount(true);
     try {
       const res = await payWithWallet(checkoutOrderId, amount);
@@ -86,7 +88,7 @@ export function usePosCheckout(checkoutOrderId: string | null) {
       setCheckoutOrder(updated);
       if (checkoutCustomer) loadCheckoutCustomerData(checkoutCustomer);
       return res;
-    } finally { setApplyingDiscount(false); }
+    } finally { isPaymentProcessingRef.current = false; setApplyingDiscount(false); }
   }, [checkoutOrderId, checkoutCustomer, loadCheckoutCustomerData]);
 
   const handleCheckoutPayment = useCallback(async (
@@ -99,9 +101,10 @@ export function usePosCheckout(checkoutOrderId: string | null) {
     tipAmount: number = 0,
   ) => {
     if (isPaymentProcessingRef.current) throw new Error("Payment is already being processed — please wait");
+    if (!checkoutOrder) throw new Error("Order details not loaded");
     isPaymentProcessingRef.current = true;
     try {
-    const orderBase = checkoutOrder?.total_amount ?? 0;
+    const orderBase = checkoutOrder.total_amount ?? 0;
     const computedDisc = discountType === "percentage" ? orderBase * (manualDisc / 100) : manualDisc;
     const finalTotal = Math.max(0, orderBase - computedDisc - walletPaid);
     const tenderedNum = parseFloat(amountTendered || "");

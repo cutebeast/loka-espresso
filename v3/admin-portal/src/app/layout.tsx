@@ -5,6 +5,7 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { BrandProvider, useBrand } from "@/components/BrandProvider";
 import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
+import { setAuthCookieManual } from "@/lib/api";
 
 function isAdminLoggedIn(): boolean {
   if (typeof window === "undefined") return false;
@@ -37,6 +38,7 @@ async function refreshToken(): Promise<boolean> {
     if (data.tokens?.access_token) {
       localStorage.setItem(STORAGE_KEYS.TOKEN, data.tokens.access_token);
       if (data.tokens.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
+      setAuthCookieManual();
       return true;
     }
     return false;
@@ -47,6 +49,7 @@ function clearSession() {
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
+  document.cookie = `${STORAGE_KEYS.AUTH_COOKIE}=; Path=/; SameSite=Strict; Max-Age=0`;
 }
 
 function LayoutInner({ children }: { children: React.ReactNode }) {

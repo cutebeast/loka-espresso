@@ -4,6 +4,7 @@ import secrets
 from datetime import datetime, timezone
 
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -31,12 +32,41 @@ class OrderError(Exception):
         super().__init__(message)
 
 
+def _consumed_items_price(bundle_items: list, consume_qty: int) -> Decimal:
+    """Return the regular price of ``consume_qty`` bundle items.
+
+    Consumes the highest unit-total lines first to maximize the customer-facing
+    discount while staying deterministic.  ``bundle_items`` may be
+    ``CartLineItem`` objects or anything exposing ``quantity``, ``unit_price``
+    and ``modifier_total``.
+    """
+    if consume_qty <= 0 or not bundle_items:
+        return Decimal(0)
+    sorted_items = sorted(
+        bundle_items,
+        key=lambda ci: Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total)),
+        reverse=True,
+    )
+    remaining = consume_qty
+    total = Decimal(0)
+    for ci in sorted_items:
+        if remaining <= 0:
+            break
+        take = min(ci.quantity, remaining)
+        unit_total = Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total))
+        total += unit_total * take
+        remaining -= take
+    return total
+
+
 async def _compute_bundle_discount(db: AsyncSession, cart_items: list[CartLineItem]) -> tuple[Decimal, set[int]]:
     """Compute bundle discount and return active bundle ids for add-on deals.
 
     Validates component membership, active/deleted/date-window status, and
     bundle-type constraints. Invalid configurations simply receive no bundle
-    discount. Discount sets are capped by ``max_per_order``.
+    discount. Discount sets are capped by ``max_per_order``. Only the items
+    that actually form complete sets are discounted; extras are charged at
+    regular price.
     """
     bundle_discount = Decimal(0)
     active_bundle_ids: set[int] = set()
@@ -75,13 +105,10 @@ async def _compute_bundle_discount(db: AsyncSession, cart_items: list[CartLineIt
         if not membership_ok:
             continue
 
-        component_sum = sum(
-            (Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total))) * ci.quantity
-            for ci in bundle_items
-        )
         bundle_price = Decimal(str(bundle.bundle_price))
 
         num_sets = 0
+        bundled_sum = Decimal(0)
         if bundle.bundle_type == "multi_course":
             groups_result = await db.execute(
                 select(BundleGroup)
@@ -112,6 +139,13 @@ async def _compute_bundle_discount(db: AsyncSession, cart_items: list[CartLineIt
                 if group_ok:
                     pick_counts = [group_qtys.get(g.id, 0) // g.pick_count for g in groups if g.pick_count > 0]
                     num_sets = min(pick_counts) if pick_counts else 0
+                    num_sets = min(num_sets, bundle.max_per_order)
+                    for g in groups:
+                        group_lines = [
+                            ci for ci in bundle_items
+                            if ci.bundle_component_id and ci.bundle_component_id in {c.id for c in g.components}
+                        ]
+                        bundled_sum += _consumed_items_price(group_lines, num_sets * g.pick_count)
 
         elif bundle.bundle_type == "pick_x" and bundle.pick_count and bundle.pick_count > 0:
             component_qtys: dict[int | str, int] = {}
@@ -128,6 +162,8 @@ async def _compute_bundle_discount(db: AsyncSession, cart_items: list[CartLineIt
                     num_sets = min(max_sets_by_total, max_sets_by_component)
                 else:
                     num_sets = max_sets_by_total
+                num_sets = min(num_sets, bundle.max_per_order)
+                bundled_sum = _consumed_items_price(bundle_items, num_sets * bundle.pick_count)
 
         else:
             # Standard / fixed / value / combo bundles: every required component
@@ -153,12 +189,23 @@ async def _compute_bundle_discount(db: AsyncSession, cart_items: list[CartLineIt
                 set_counts.append(qty_per_required[cid] // per_set)
             if complete and set_counts:
                 num_sets = min(set_counts)
+                num_sets = min(num_sets, bundle.max_per_order)
+                for cid, comp in comp_map.items():
+                    per_set = comp.default_quantity or 1
+                    comp_lines = [
+                        ci for ci in bundle_items
+                        if ci.bundle_component_id == cid
+                        or (
+                            not ci.bundle_component_id
+                            and comp.menu_item_id == ci.menu_item_id
+                        )
+                    ]
+                    bundled_sum += _consumed_items_price(comp_lines, num_sets * per_set)
 
-        # Cap complete sets by max-per-order and apply discount
+        # Apply discount only for items that actually form complete sets
         if num_sets > 0:
-            num_sets = min(num_sets, bundle.max_per_order)
             active_bundle_ids.add(bid)
-            disc = component_sum - (bundle_price * num_sets)
+            disc = bundled_sum - (bundle_price * num_sets)
             if disc > 0:
                 bundle_discount += disc
 
@@ -190,17 +237,41 @@ async def _deduct_stock_for_order(
     """
     from sqlalchemy import select, func
 
-    recipe_needs: dict[int, Decimal] = {}
+    # Batch recipe lookup by (menu_item_id, menu_variant_id) to avoid N+1.
+    recipe_keys = set()
     for li in line_items:
-        menu_variant_id = getattr(li, "menu_variant_id", None)
+        mv_id = getattr(li, "menu_variant_id", None)
+        recipe_keys.add((li.menu_item_id, mv_id))
+
+    if recipe_keys:
+        menu_item_ids = {mid for mid, _ in recipe_keys}
+        menu_variant_ids = {mv_id for _, mv_id in recipe_keys if mv_id is not None}
         recipe_result = await db.execute(
             select(MenuItemRecipe).where(
-                MenuItemRecipe.menu_item_id == li.menu_item_id,
-                MenuItemRecipe.menu_variant_id == menu_variant_id if menu_variant_id else MenuItemRecipe.menu_variant_id.is_(None),
+                MenuItemRecipe.menu_item_id.in_(menu_item_ids),
+                (
+                    MenuItemRecipe.menu_variant_id.in_(menu_variant_ids)
+                    | MenuItemRecipe.menu_variant_id.is_(None)
+                ),
             )
         )
         recipes = recipe_result.scalars().all()
-        for rc in recipes:
+    else:
+        recipes = []
+
+    recipe_needs: dict[int, Decimal] = {}
+    recipe_map: dict[tuple[int, int | None], list[MenuItemRecipe]] = {}
+    for rc in recipes:
+        recipe_map.setdefault((rc.menu_item_id, rc.menu_variant_id), []).append(rc)
+
+    for li in line_items:
+        mv_id = getattr(li, "menu_variant_id", None)
+        # Prefer exact variant match; fallback to generic recipe if no variant-specific recipe exists.
+        key = (li.menu_item_id, mv_id)
+        li_recipes = recipe_map.get(key, [])
+        if mv_id is not None and not li_recipes:
+            li_recipes = recipe_map.get((li.menu_item_id, None), [])
+        for rc in li_recipes:
             if rc.quantity_required is None or li.quantity is None:
                 continue
             qty_needed = Decimal(str(rc.quantity_required)) * Decimal(li.quantity) * (Decimal(1) + Decimal(str(rc.waste_factor or 0)))
@@ -285,7 +356,19 @@ async def create_order_from_cart(
     
     if cart.item_count == 0:
         raise OrderError("Cart is empty", 400)
-    
+
+    # Idempotent replay: return an existing order created with the same key
+    if data.idempotency_key:
+        existing_result = await db.execute(
+            select(Order).where(Order.idempotency_key == data.idempotency_key)
+        )
+        existing_order = existing_result.scalar_one_or_none()
+        if existing_order:
+            # Ownership must match
+            if existing_order.customer_id != customer_id:
+                raise OrderError("Idempotency key belongs to another customer", 403)
+            return existing_order
+
     # Fetch store with active check
     store_result = await db.execute(
         select(Store).where(Store.id == cart.store_id, Store.is_active.is_(True), Store.deleted_at.is_(None))
@@ -514,9 +597,24 @@ async def create_order_from_cart(
         loyalty_points_earned=loyalty_points_earned,
         loyalty_points_redeemed=0,
         customer_notes=data.customer_notes,
+        idempotency_key=data.idempotency_key,
     )
     db.add(order)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        # Duplicate idempotency key from a concurrent request
+        await db.rollback()
+        if data.idempotency_key:
+            existing_result = await db.execute(
+                select(Order).where(Order.idempotency_key == data.idempotency_key)
+            )
+            existing_order = existing_result.scalar_one_or_none()
+            if existing_order:
+                if existing_order.customer_id != customer_id:
+                    raise OrderError("Idempotency key belongs to another customer", 403) from exc
+                return existing_order
+        raise
 
     # Link used voucher/reward to this order
     if voucher_used:
@@ -568,7 +666,7 @@ async def create_order_from_cart(
             "bundle_product_id": ci.bundle_product_id,
             "bundle_component_id": ci.bundle_component_id,
             "bundle_title": bundle.title if bundle else None,
-            "bundle_component_name": comp.menu_item.item_name if comp and comp.menu_item else None,
+            "bundle_component_name": item.item_name if item else None,
             "bundle_group_label": group.group_label if group else None,
         }
         oli = OrderLineItem(

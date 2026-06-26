@@ -1202,8 +1202,98 @@ async def test_bundle_max_per_order_cap(
     )
     assert r_order.status_code in (200, 201), f"Order create failed: {r_order.text}"
     order = r_order.json().get("data", {})
-    expected_disc = round(((12.00 + 12.00) * 2) - 18.00, 2)  # only one set discounted
+    expected_disc = round((12.00 + 12.00) - 18.00, 2)  # only one set discounted
     actual_disc = round(float(order.get("discount_amount", 0)), 2)
     assert abs(actual_disc - expected_disc) < 0.01, (
         f"Expected max_per_order=1 discount {expected_disc}, got {actual_disc}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_bundle_extra_quantities_only_discount_complete_sets(
+    client: httpx.AsyncClient,
+    base_url: str,
+    admin_headers: dict,
+    store_id: int,
+):
+    """Extra quantities beyond complete bundle sets must not be discounted."""
+    category_id = await _ensure_category_id(client, base_url, admin_headers)
+    item1_id = await _create_test_menu_item(client, base_url, admin_headers, "EXTRA-A", category_id, 12.00)
+    item2_id = await _create_test_menu_item(client, base_url, admin_headers, "EXTRA-B", category_id, 12.00)
+
+    r = await client.post(
+        f"{base_url}/admin/menu/bundle-products",
+        headers=admin_headers,
+        json={
+            "title": "E2E Extra Qty Combo",
+            "bundle_type": "combo",
+            "bundle_price": 18.00,
+            "is_active": True,
+            "max_per_order": 10,
+            "components": [
+                {"menu_item_id": item1_id, "default_quantity": 1, "sort_order": 0, "modifier_overrides": []},
+                {"menu_item_id": item2_id, "default_quantity": 1, "sort_order": 1, "modifier_overrides": []},
+            ],
+        },
+    )
+    assert r.status_code in (200, 201), f"Bundle create failed: {r.text}"
+    bp_id = r.json().get("data", {}).get("id")
+    r_detail = await client.get(f"{base_url}/admin/menu/bundle-products/{bp_id}", headers=admin_headers)
+    bp = r_detail.json().get("data", {})
+    comps = {c["menu_item_id"]: c["id"] for c in bp["components"]}
+
+    phone = _random_phone("+6025")
+    r_login = await client.post(f"{base_url}/auth/login", json={"phone_number": phone})
+    if r_login.status_code != 200:
+        pytest.skip("Customer auth not available")
+    token = r_login.json().get("tokens", {}).get("access_token", "")
+    cust_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+    # Add 3 of item1 and 1 of item2 → only 1 complete set
+    r_add = await client.post(
+        f"{base_url}/cart/items?store_id={store_id}",
+        headers=cust_headers,
+        json={
+            "menu_item_id": item1_id,
+            "quantity": 3,
+            "selected_modifiers": [],
+            "bundle_product_id": bp_id,
+            "bundle_component_id": comps[item1_id],
+        },
+    )
+    assert r_add.status_code == 200, f"Add extra item1 failed: {r_add.text}"
+
+    r_add = await client.post(
+        f"{base_url}/cart/items?store_id={store_id}",
+        headers=cust_headers,
+        json={
+            "menu_item_id": item2_id,
+            "quantity": 1,
+            "selected_modifiers": [],
+            "bundle_product_id": bp_id,
+            "bundle_component_id": comps[item2_id],
+        },
+    )
+    assert r_add.status_code == 200, f"Add item2 failed: {r_add.text}"
+
+    r_cart = await client.get(f"{base_url}/cart?store_id={store_id}", headers=cust_headers)
+    cart_id = r_cart.json().get("data", {}).get("id")
+
+    r_order = await client.post(
+        f"{base_url}/orders",
+        headers=cust_headers,
+        json={
+            "store_id": store_id,
+            "cart_id": cart_id,
+            "order_type": "takeaway",
+            "fulfillment_type": "counter_pickup",
+        },
+    )
+    assert r_order.status_code in (200, 201), f"Order create failed: {r_order.text}"
+    order = r_order.json().get("data", {})
+    # Only one complete set: (12+12) - 18 = 6.00
+    expected_disc = round((12.00 + 12.00) - 18.00, 2)
+    actual_disc = round(float(order.get("discount_amount", 0)), 2)
+    assert abs(actual_disc - expected_disc) < 0.01, (
+        f"Expected discount {expected_disc} for one complete set, got {actual_disc}"
     )

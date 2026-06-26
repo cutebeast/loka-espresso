@@ -16,6 +16,30 @@ import type { PageId } from '@/lib/api';
 
 const DISMISSED_KEY = 'loka-dismissed-popups';
 
+/** Validate and render a promotion action link. Blocks javascript:/data: URLs. */
+function SafeActionLink({ actionUrl, actionLabel }: { actionUrl: string; actionLabel: string }) {
+  const isInternal = actionUrl.startsWith('#');
+  const isAllowedExternal = /^https?:\/\//i.test(actionUrl);
+  if (!isInternal && !isAllowedExternal) return null;
+
+  return (
+    <a
+      href={actionUrl}
+      className="inline-block mt-3 px-5 py-2.5 rounded-full text-white text-sm font-semibold"
+      style={{ background: 'var(--loka-accent-gold, #C9A84C)' }}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (isInternal) {
+          e.preventDefault();
+          useUIStore.getState().setPage(actionUrl.replace('#', '') as PageId);
+        }
+      }}
+    >
+      {actionLabel}
+    </a>
+  );
+}
+
 async function getDismissedIds(): Promise<number[]> {
   try {
     const raw = await idbStorage.getItem(DISMISSED_KEY);
@@ -166,20 +190,10 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
                     </div>
                   ))}
                   {popup.action_url && popup.action_label && (
-                    <a
-                      href={popup.action_url}
-                      className="inline-block mt-3 px-5 py-2.5 rounded-full text-white text-sm font-semibold"
-                      style={{ background: 'var(--loka-accent-gold, #C9A84C)' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (popup.action_url?.startsWith('#')) {
-                          e.preventDefault();
-                          useUIStore.getState().setPage(popup.action_url.replace('#', '') as PageId);
-                        }
-                      }}
-                    >
-                      {popup.action_label}
-                    </a>
+                    <SafeActionLink
+                      actionUrl={popup.action_url}
+                      actionLabel={popup.action_label}
+                    />
                   )}
                 </div>
 

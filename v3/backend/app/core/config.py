@@ -62,20 +62,20 @@ class Settings(BaseSettings):
     @field_validator("jwt_secret")
     @classmethod
     def _validate_jwt_secret(cls, v: str, info) -> str:
-        """Validate JWT secret: minimum 32-byte length and no default in production."""
+        """Validate JWT secret: minimum 32-byte length and no default outside development."""
         if len(v.encode()) < 32:
             raise ValueError("JWT_SECRET must be at least 32 bytes")
         env = info.data.get("environment", "") if info.data else ""
-        if env == "production" and v == "super-secret-jwt-key-for-development-only-12345":
-            raise ValueError("Cannot use default JWT_SECRET in production. Set JWT_SECRET env var.")
+        if env and env.lower() != "development" and v == "super-secret-jwt-key-for-development-only-12345":
+            raise ValueError("Cannot use default JWT_SECRET outside development. Set JWT_SECRET env var.")
         return v
 
     @field_validator("database_url")
     @classmethod
-    def _reject_default_db_in_production(cls, v: str, info) -> str:
+    def _reject_default_db_outside_development(cls, v: str, info) -> str:
         env = info.data.get("environment", "") if info.data else ""
-        if env == "production" and "fnb_user:fnb_pass" in v:
-            raise ValueError("Cannot use default database credentials in production. Set DATABASE_URL env var.")
+        if env and env.lower() != "development" and "fnb_user:fnb_pass" in v:
+            raise ValueError("Cannot use default database credentials outside development. Set DATABASE_URL env var.")
         return v
 
     @model_validator(mode="after")
@@ -126,8 +126,9 @@ class Settings(BaseSettings):
         return self.max_upload_size_mb * 1024 * 1024
 
     # Webhooks
-    webhook_api_key: str = ""
-    webhook_signing_secret: str = ""
+    webhook_api_key: str | None = None
+    webhook_signing_secret: str | None = None
+    webhook_verify_in_dev: bool = False  # If true, webhook signatures are required even in development
 
     # MaxMind
     maxmind_account_id: str | None = None

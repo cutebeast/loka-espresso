@@ -1,6 +1,7 @@
 """Staff-facing operational endpoints (POS, dashboard, clock-in, PIN verify)."""
 
 import json
+import logging
 import os
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -39,6 +40,8 @@ from app.core.config import get_settings
 from app.core.rate_limiter import limiter
 from app.core.security import hash_password, verify_password_staff, decode_token, create_access_token, create_refresh_token, verify_password
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["staff — operations"])
 
 
@@ -48,11 +51,20 @@ router = APIRouter(tags=["staff — operations"])
 # ── Staff Auth (login, verify) ──
 
 @router.get("/staff/auth/names")
-async def staff_name_list(db: DBDependency, store_id: int | None = None):
-    """List staff display names for the login dropdown."""
-    q = select(StaffProfile.id, StaffProfile.display_name, Store.store_name).join(Store, StaffProfile.store_id == Store.id).where(StaffProfile.deleted_at.is_(None), StaffProfile.is_active.is_(True))
-    if store_id:
-        q = q.where(StaffProfile.store_id == store_id)
+@limiter.limit("10/minute")
+async def staff_name_list(request: Request, db: DBDependency, store_id: int):
+    """List staff display names for the login dropdown. Requires a store_id."""
+    if not store_id:
+        raise HTTPException(status_code=400, detail="store_id is required")
+    q = (
+        select(StaffProfile.id, StaffProfile.display_name, Store.store_name)
+        .join(Store, StaffProfile.store_id == Store.id)
+        .where(
+            StaffProfile.deleted_at.is_(None),
+            StaffProfile.is_active.is_(True),
+            StaffProfile.store_id == store_id,
+        )
+    )
     result = await db.execute(q.order_by(StaffProfile.display_name))
     items = [{"id": r[0], "display_name": r[1], "store_name": r[2]} for r in result.all()]
     return APIResponse(data=items)
@@ -541,6 +553,7 @@ async def staff_customer_search(db: DBDependency, admin: CurrentAdmin, request: 
     try:
         await _get_staff_profile(db, admin)
     except Exception:
+        logger.warning("staff_customer_search: staff profile lookup failed", exc_info=True)
         pass  # Continue with admin-only access
 
     q_clean = q.strip()
@@ -964,7 +977,28 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
                 snap.current_order_id = order.id
 
         await db.commit()
-    except (IntegrityError, HTTPException):
+    except IntegrityError as exc:
+        await db.rollback()
+        if data.idempotency_key:
+            existing_order_r = await db.execute(
+                select(Order).where(Order.idempotency_key == data.idempotency_key)
+            )
+            existing_order = existing_order_r.scalar_one_or_none()
+            if existing_order:
+                replay_change = 0.0
+                if payment_data and existing_order.total_amount > 0 and payment_data.method == "cash":
+                    tendered = float(payment_data.amount_tendered or 0)
+                    replay_change = round(max(0, tendered - float(existing_order.total_amount)), 2)
+                return APIResponse(data={
+                    "order_id": existing_order.id,
+                    "order_number": existing_order.order_number,
+                    "status": existing_order.status,
+                    "total": float(existing_order.total_amount),
+                    "change": replay_change,
+                    "created_at": existing_order.created_at.isoformat(),
+                })
+        raise
+    except HTTPException:
         await db.rollback()
         raise
 

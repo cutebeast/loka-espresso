@@ -1,6 +1,7 @@
 """Admin marketing campaign endpoints."""
 
 import asyncio
+import logging
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -21,6 +22,8 @@ from app.schemas.marketing import (
     MarketingCampaignUpdate,
 )
 from app.services.translation import auto_translate_record, delete_translations
+
+logger = logging.getLogger(__name__)
 
 admin_router = APIRouter(prefix="/admin/marketing", tags=["admin — marketing"])
 
@@ -66,6 +69,7 @@ async def _send_email_via_resend(
             resp = await client.post(url, json=payload, headers=headers)
             return resp.status_code in (200, 201)
     except Exception:
+        logger.error("Marketing email delivery failed via Resend", exc_info=True)
         return False
 async def _send_sms_via_twilio(
     account_sid: str, auth_token: str, from_number: str,
@@ -82,6 +86,7 @@ async def _send_sms_via_twilio(
             resp = await client.post(url, data=data, auth=auth)
             return resp.status_code == 201
     except Exception:
+        logger.error("Marketing SMS delivery failed via Twilio", exc_info=True)
         return False
 
 

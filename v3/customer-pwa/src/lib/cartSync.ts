@@ -28,6 +28,13 @@ function createIdempotencyKey(prefix: string): string {
 
 let _syncPromise: Promise<void> | null = null;
 
+export class CartSyncError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CartSyncError';
+  }
+}
+
 export async function syncCartToServer(items: CartItem[]): Promise<void> {
   if (typeof window === 'undefined') return;
   const token = localStorage.getItem('token');
@@ -38,81 +45,78 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
   }
 
   _syncPromise = (async () => {
-    let serverItems: ServerCartItem[] = [];
-    try {
-      const storeIdForCart = items[0]?.store_id || 1;
-      const res = await api.get('/cart', { params: { store_id: storeIdForCart } });
-      if (res.status === 200) {
-        const data = res.data;
-        serverItems = Array.isArray(data) ? data : (data?.items ?? []);
+    const storeIdForCart = items[0]?.store_id || 1;
+    const res = await api.get('/cart', { params: { store_id: storeIdForCart } });
+    const data = res.data;
+    const serverItems: ServerCartItem[] = Array.isArray(data) ? data : (data?.items ?? []);
+
+    function cartItemKey(item: { menu_item_id: number; customization_option_ids?: number[]; bundle_product_id?: number; bundle_component_id?: number }): string {
+      const optKey = item.customization_option_ids && item.customization_option_ids.length > 0
+        ? JSON.stringify([...item.customization_option_ids].sort((a, b) => a - b))
+        : '';
+      return `${item.menu_item_id}:${optKey}:${item.bundle_product_id ?? ''}:${item.bundle_component_id ?? ''}`;
+    }
+
+    const desiredMap = new Map(items.map(i => [cartItemKey(i), i]));
+    const serverMap = new Map(serverItems.map((i: ServerCartItem) => [cartItemKey({ menu_item_id: i.menu_item_id ?? i.item_id ?? 0, customization_option_ids: Array.isArray(i.customization_option_ids) ? i.customization_option_ids : undefined, bundle_product_id: typeof i.bundle_product_id === 'number' ? i.bundle_product_id : undefined, bundle_component_id: typeof i.bundle_component_id === 'number' ? i.bundle_component_id : undefined }), i]));
+
+    const desiredKeys = new Set(desiredMap.keys());
+    const toDelete = serverItems.filter((si: ServerCartItem) => !desiredKeys.has(cartItemKey({ menu_item_id: si.menu_item_id ?? si.item_id ?? 0, customization_option_ids: Array.isArray(si.customization_option_ids) ? si.customization_option_ids : undefined, bundle_product_id: typeof si.bundle_product_id === 'number' ? si.bundle_product_id : undefined, bundle_component_id: typeof si.bundle_component_id === 'number' ? si.bundle_component_id : undefined })));
+    const failures: string[] = [];
+    for (const item of toDelete) {
+      try {
+        await api.delete(`/cart/items/${item.id}`, { params: { store_id: storeIdForCart } });
+      } catch {
+        failures.push(`delete:${item.id}`);
       }
-    } catch {
-      console.error('Failed to read server cart for sync');
     }
 
-  function cartItemKey(item: { menu_item_id: number; customization_option_ids?: number[]; bundle_product_id?: number; bundle_component_id?: number }): string {
-    const optKey = item.customization_option_ids && item.customization_option_ids.length > 0
-      ? JSON.stringify([...item.customization_option_ids].sort((a, b) => a - b))
-      : '';
-    return `${item.menu_item_id}:${optKey}:${item.bundle_product_id ?? ''}:${item.bundle_component_id ?? ''}`;
-  }
+    for (const [key, desired] of desiredMap) {
+      const existing = serverMap.get(key);
+      try {
+        if (existing) {
+          if (existing.quantity !== desired.quantity) {
+            await api.patch(`/cart/items/${existing.id}`, { quantity: desired.quantity }, { params: { store_id: desired.store_id } });
+          }
+        } else {
+          const customizationOptionIds: number[] = [];
 
-  const desiredMap = new Map(items.map(i => [cartItemKey(i), i]));
-  const serverMap = new Map(serverItems.map((i: ServerCartItem) => [cartItemKey({ menu_item_id: i.menu_item_id ?? i.item_id ?? 0, customization_option_ids: Array.isArray(i.customization_option_ids) ? i.customization_option_ids : undefined, bundle_product_id: typeof i.bundle_product_id === 'number' ? i.bundle_product_id : undefined, bundle_component_id: typeof i.bundle_component_id === 'number' ? i.bundle_component_id : undefined }), i]));
-
-  const desiredKeys = new Set(desiredMap.keys());
-  const toDelete = serverItems.filter((si: ServerCartItem) => !desiredKeys.has(cartItemKey({ menu_item_id: si.menu_item_id ?? si.item_id ?? 0, customization_option_ids: Array.isArray(si.customization_option_ids) ? si.customization_option_ids : undefined, bundle_product_id: typeof si.bundle_product_id === 'number' ? si.bundle_product_id : undefined, bundle_component_id: typeof si.bundle_component_id === 'number' ? si.bundle_component_id : undefined })));
-  for (const item of toDelete) {
-    try {
-      const storeId = items[0]?.store_id || 1;
-      await api.delete(`/cart/items/${item.id}`, { params: { store_id: storeId } });
-    } catch (err) {
-      console.error('Failed to delete cart item:', err);
-    }
-  }
-
-  for (const [key, desired] of desiredMap) {
-    const existing = serverMap.get(key);
-    try {
-      if (existing) {
-        if (existing.quantity !== desired.quantity) {
-          await api.patch(`/cart/items/${existing.id}`, { quantity: desired.quantity }, { params: { store_id: desired.store_id } });
-        }
-      } else {
-        const customizationOptionIds: number[] = [];
-
-        if (desired.customizations && typeof desired.customizations === 'object') {
-          const cust = desired.customizations as CustomizationStructure;
-          if (cust.options && Array.isArray(cust.options)) {
-            for (const opt of cust.options) {
-              if (typeof opt.id === 'number') {
-                customizationOptionIds.push(opt.id);
+          if (desired.customizations && typeof desired.customizations === 'object') {
+            const cust = desired.customizations as CustomizationStructure;
+            if (cust.options && Array.isArray(cust.options)) {
+              for (const opt of cust.options) {
+                if (typeof opt.id === 'number') {
+                  customizationOptionIds.push(opt.id);
+                }
               }
             }
           }
-        }
 
-        customizationOptionIds.sort((a, b) => a - b);
+          customizationOptionIds.sort((a, b) => a - b);
 
-        const payload: Record<string, unknown> = {
-          menu_item_id: desired.menu_item_id,
-          quantity: desired.quantity,
-          customization_option_ids: customizationOptionIds,
-          store_id: desired.store_id,
-        };
-        if (desired.bundle_product_id) {
-          payload.bundle_product_id = desired.bundle_product_id;
-        }
-        if (desired.bundle_component_id) {
-          payload.bundle_component_id = desired.bundle_component_id;
-        }
+          const payload: Record<string, unknown> = {
+            menu_item_id: desired.menu_item_id,
+            quantity: desired.quantity,
+            customization_option_ids: customizationOptionIds,
+            store_id: desired.store_id,
+          };
+          if (desired.bundle_product_id) {
+            payload.bundle_product_id = desired.bundle_product_id;
+          }
+          if (desired.bundle_component_id) {
+            payload.bundle_component_id = desired.bundle_component_id;
+          }
 
-        await api.post('/cart/items', payload, { params: { store_id: desired.store_id } });
+          await api.post('/cart/items', payload, { params: { store_id: desired.store_id } });
+        }
+      } catch {
+        failures.push(`sync:${key}`);
       }
-    } catch (err) {
-      console.error('Failed to sync cart item:', err);
     }
-  }
+
+    if (failures.length > 0) {
+      throw new CartSyncError(`Cart sync failed for items: ${failures.join(', ')}`);
+    }
   })();
 
   try {
@@ -188,9 +192,12 @@ export async function placeOrder(params: {
 
   try {
     if (params.paymentMethod === 'wallet') {
+      const paymentKey = createIdempotencyKey('payment');
       const intentRes = await api.post('/payments/intent', {
         order_id: newOrder.id,
         payment_method: 'wallet',
+      }, {
+        headers: { 'Idempotency-Key': paymentKey },
       });
       const paymentId = intentRes.data?.id || intentRes.data?.payment_id;
       if (!paymentId) {

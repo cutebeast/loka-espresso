@@ -44,34 +44,39 @@ export function usePhoneAuth() {
     return fallback;
   }, []);
 
-  const handleSendOtp = useCallback(async (rawPhone: string, dialCode?: string) => {
+  const handleSendOtp = useCallback(async (rawPhone: string, dialCode?: string): Promise<boolean> => {
     const code = dialCode || countryCode;
     const digits = rawPhone.replace(/\D/g, '');
     if (digits.length < 7) {
       setError(t('auth.phoneInvalid'));
-      return;
+      return false;
     }
     const normalized = normalizePhone(rawPhone, code);
     setPhoneNumber(normalized);
     setStorePhone(normalized);
     setLoading(true);
     setError('');
+    let success = false;
     try {
       let sendFailed = false;
       try {
         await api.post('/auth/send-otp', { phone_number: normalized });
       } catch (err: unknown) {
         if ((err as { response?: { status?: number } })?.response?.status !== 404) {
-          showToast(t('auth.sendOtpFailed'), 'error');
+          showToast(getApiErrorMessage(err, t('auth.sendOtpFailed')), 'error');
           sendFailed = true;
         }
       }
-      if (!sendFailed) setStep('otp');
+      if (!sendFailed) {
+        setStep('otp');
+        success = true;
+      }
     } catch (err: unknown) {
       showToast(getApiErrorMessage(err, t('auth.sendOtpFailed')), 'error');
     } finally {
       setLoading(false);
     }
+    return success;
   }, [countryCode, setStorePhone, showToast, t, getApiErrorMessage]);
 
   const handleVerifyOtp = useCallback(async (code: string) => {

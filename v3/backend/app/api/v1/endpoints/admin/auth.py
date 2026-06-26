@@ -279,6 +279,21 @@ async def list_admin_users(db: DBDependency, admin: CurrentAdmin):
     return APIResponse(data=items)
 
 
+async def _require_system_admin(db: DBDependency, admin: CurrentAdmin):
+    """Raise 403 unless the current admin has the system_admin role."""
+    result = await db.execute(
+        select(IAMRole.role_key)
+        .join(RoleAssignment, RoleAssignment.role_id == IAMRole.id)
+        .where(
+            RoleAssignment.assignee_id == admin.id,
+            RoleAssignment.is_active.is_(True),
+            IAMRole.role_key == "system_admin",
+        )
+    )
+    if not result.first():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="System administrator access required")
+
+
 @router.get("/roles", response_model=APIResponse[list[dict]])
 async def list_roles(db: DBDependency, admin: CurrentAdmin):
     """List all IAM roles."""
@@ -289,7 +304,8 @@ async def list_roles(db: DBDependency, admin: CurrentAdmin):
 
 @router.post("/roles", response_model=APIResponse[dict], status_code=status.HTTP_201_CREATED)
 async def create_role(db: DBDependency, admin: CurrentAdmin, data: CreateRoleRequest):
-    """Create a new IAM role."""
+    """Create a new IAM role. Requires system_admin."""
+    await _require_system_admin(db, admin)
     result = await db.execute(select(IAMRole).where(IAMRole.role_key == (data.role_key or "").lower().replace(" ", "_")))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Role key already exists")
@@ -306,7 +322,8 @@ async def create_role(db: DBDependency, admin: CurrentAdmin, data: CreateRoleReq
 
 @router.put("/roles/{role_id}", response_model=APIResponse[dict])
 async def update_role(db: DBDependency, admin: CurrentAdmin, role_id: int, data: UpdateRoleRequest):
-    """Update an IAM role."""
+    """Update an IAM role. Requires system_admin."""
+    await _require_system_admin(db, admin)
     result = await db.execute(select(IAMRole).where(IAMRole.id == role_id))
     role = result.scalar_one_or_none()
     if not role:
@@ -321,7 +338,8 @@ async def update_role(db: DBDependency, admin: CurrentAdmin, role_id: int, data:
 
 @router.delete("/roles/{role_id}", response_model=APIResponse[dict])
 async def delete_role(db: DBDependency, admin: CurrentAdmin, role_id: int):
-    """Delete an IAM role and its assignments."""
+    """Delete an IAM role and its assignments. Requires system_admin."""
+    await _require_system_admin(db, admin)
     result = await db.execute(select(IAMRole).where(IAMRole.id == role_id))
     role = result.scalar_one_or_none()
     if not role:
@@ -354,7 +372,8 @@ async def get_role_permissions(db: DBDependency, admin: CurrentAdmin, role_id: i
 
 @router.put("/roles/{role_id}/permissions", response_model=APIResponse[dict])
 async def set_role_permissions(db: DBDependency, admin: CurrentAdmin, role_id: int, data: SetRolePermissionsRequest):
-    """Set permissions for a role (replaces all)."""
+    """Set permissions for a role (replaces all). Requires system_admin."""
+    await _require_system_admin(db, admin)
     from app.models.iam import IAMPermission, RolePermission
     # Verify role exists
     role_result = await db.execute(select(IAMRole).where(IAMRole.id == role_id))
@@ -391,7 +410,8 @@ async def change_admin_password(db: DBDependency, admin: CurrentAdmin, data: Cha
 
 @router.delete("/users/{user_id}", response_model=APIResponse[dict])
 async def delete_admin_user(db: DBDependency, admin: CurrentAdmin, user_id: int):
-    """Soft-delete an admin account. Cannot delete yourself."""
+    """Soft-delete an admin account. Cannot delete yourself. Requires system_admin."""
+    await _require_system_admin(db, admin)
     if admin.id == user_id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     result = await db.execute(

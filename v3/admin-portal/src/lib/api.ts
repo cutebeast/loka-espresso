@@ -33,6 +33,7 @@ async function refreshToken(): Promise<boolean> {
       if (data.tokens?.access_token) {
         localStorage.setItem(STORAGE_KEYS.TOKEN, data.tokens.access_token);
         if (data.tokens.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
+        setAuthCookie();
         return true;
       }
       return false;
@@ -40,11 +41,23 @@ async function refreshToken(): Promise<boolean> {
   } catch (e) { console.error("Token refresh failed:", e); return false; }
 }
 
+function setAuthCookie() {
+  if (typeof window === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${STORAGE_KEYS.AUTH_COOKIE}=1; Path=/; SameSite=Strict; Max-Age=604800${secure}`;
+}
+
+function clearAuthCookie() {
+  if (typeof window === "undefined") return;
+  document.cookie = `${STORAGE_KEYS.AUTH_COOKIE}=; Path=/; SameSite=Strict; Max-Age=0`;
+}
+
 function clearSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.ADMIN_EMAIL);
+  clearAuthCookie();
 }
 
 // NOTE: Bearer token auth is used — CSRF tokens are NOT needed.
@@ -256,11 +269,13 @@ export async function adminLogin(email: string, password: string) {
     localStorage.setItem(STORAGE_KEYS.TOKEN, token);
     if (data.tokens?.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
     if (data.profile?.email) localStorage.setItem(STORAGE_KEYS.ADMIN_EMAIL, data.profile.email);
+    setAuthCookie();
   }
   return data;
 }
 export function adminLogout() { clearSession(); }
 export function isLoggedIn(): boolean { if (typeof window === "undefined") return false; return !!localStorage.getItem(STORAGE_KEYS.TOKEN); }
+export function setAuthCookieManual() { setAuthCookie(); }
 
 export interface Reservation { id: number; store_id: number; customer_id: number | null; dining_table_id?: number; party_size: number; reservation_date: string; reservation_time: string; duration_minutes?: number; status: string; }
 

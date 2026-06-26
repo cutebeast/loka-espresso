@@ -91,6 +91,7 @@ class OrderCreate(BaseSchema):
     reward_id: int | None = None
     customer_notes: str | None = Field(None, max_length=500)
     tip_amount: float | None = Field(None, ge=0)
+    idempotency_key: str | None = Field(None, max_length=255)
 
 
 class OrderOut(BaseSchema):

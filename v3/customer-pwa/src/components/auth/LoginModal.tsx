@@ -143,8 +143,10 @@ export function LoginModal({ isOpen, onClose, onAuthDone }: LoginModalProps) {
 
   const handleResendOtp = async () => {
     if (resendTimer > 0) return;
-    showToast(t('auth.otpResent'), 'info');
-    setOtp(['', '', '', '', '', '']); otpRefs.current[0]?.focus();
+    setResendTimer(60);
+    await handleSendOtp(phoneValue, selectedCountry.dialCode);
+    setOtp(['', '', '', '', '', '']);
+    otpRefs.current[0]?.focus();
   };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {

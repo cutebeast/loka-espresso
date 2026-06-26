@@ -2,6 +2,7 @@ export const STORAGE_KEYS = {
   TOKEN: "token",
   REFRESH_TOKEN: "refreshToken",
   ADMIN_EMAIL: "adminEmail",
+  AUTH_COOKIE: "admin_auth",
 } as const;
 
 export const ROUTES = {

@@ -1,5 +1,6 @@
 """Admin and public loyalty endpoints."""
 
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -18,6 +19,8 @@ from app.schemas.loyalty import (
     LoyaltyTierBase,
     LoyaltyTierOut,
 )
+
+logger = logging.getLogger(__name__)
 
 loyalty_router = APIRouter()
 public_loyalty_router = APIRouter()
@@ -42,7 +45,7 @@ def _serialize_account(account: LoyaltyAccount) -> LoyaltyAccountOut:
             tier_key = tier.tier_key
             color_hex = tier.color_hex
     except Exception:
-        pass
+        logger.warning("_serialize_account: failed to load tier info for account %s", account.id, exc_info=True)
     return LoyaltyAccountOut(
         id=account.id,
         customer_id=account.customer_id,

@@ -82,8 +82,29 @@ async def create_payment_intent(
     payment_method_id: int | None,
     return_url: str | None,
     customer_id: int,
+    idempotency_key: str | None = None,
 ) -> tuple[Payment, dict]:
     """Create a payment intent for an order."""
+    key = (idempotency_key or "").strip()[:255]
+    if key:
+        existing = await db.execute(select(Payment).where(Payment.idempotency_key == key))
+        existing_payment = existing.scalar_one_or_none()
+        if existing_payment:
+            # Verify ownership before returning the cached intent
+            order_result = await db.execute(select(Order).where(Order.id == existing_payment.order_id))
+            existing_order = order_result.scalar_one_or_none()
+            if existing_order is None or existing_order.customer_id != customer_id:
+                raise PaymentError("Idempotency key belongs to another customer", 403)
+            # Rebuild a minimal provider response for the cached payment
+            provider_response = {"status": existing_payment.status, "payment_id": existing_payment.id}
+            if existing_payment.provider == "stripe":
+                provider_response["id"] = existing_payment.provider_transaction_id or f"pi_{existing_payment.id}"
+                provider_response["client_secret"] = f"{existing_payment.provider_transaction_id}_secret" if existing_payment.provider_transaction_id else None
+            elif existing_payment.provider in ("grabpay", "gcash", "alipay", "wechat_pay"):
+                provider_response["session_id"] = existing_payment.provider_transaction_id or f"session_{existing_payment.id}"
+                provider_response["redirect_url"] = return_url or existing_payment.extra_metadata.get("return_url") if existing_payment.extra_metadata else return_url
+            return existing_payment, provider_response
+
     # Verify order exists and belongs to customer
     order_result = await db.execute(
         select(Order).where(Order.id == order_id, Order.deleted_at.is_(None)).with_for_update()
@@ -102,7 +123,7 @@ async def create_payment_intent(
         payment_method_id=payment_method_id,
         provider=provider,
         provider_transaction_id=None,
-        idempotency_key=_generate_idempotency_key(),
+        idempotency_key=key or _generate_idempotency_key(),
         payment_method_type=payment_method_type,
         amount=order_amount,
         currency_code=order.total_amount_currency,

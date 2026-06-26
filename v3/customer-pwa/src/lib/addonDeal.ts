@@ -95,10 +95,30 @@ export interface CartDiscountBreakdown {
   total: number;
 }
 
+/** Return the regular price of ``consumeQty`` bundle items, consuming the
+ *  highest unit-price lines first to maximize the customer-facing discount.
+ */
+function consumedItemsPrice(
+  items: Array<{ price: number; quantity: number }>,
+  consumeQty: number,
+): number {
+  if (consumeQty <= 0 || items.length === 0) return 0;
+  const sorted = [...items].sort((a, b) => b.price - a.price);
+  let remaining = consumeQty;
+  let total = 0;
+  for (const it of sorted) {
+    if (remaining <= 0) break;
+    const take = Math.min(it.quantity, remaining);
+    total += it.price * take;
+    remaining -= take;
+  }
+  return total;
+}
+
 /**
  * Preview bundle + add-on discounts for the current cart.
- * Mirrors backend logic in services/order.py (bundle: component_sum - bundle_price;
- * addon: percentage/fixed per eligible non-bundle line, capped at line unit).
+ * Mirrors backend logic in services/order.py. Only the items that actually
+ * form complete sets are discounted; extras are charged at regular price.
  * Voucher/reward discounts are NOT included here (those come from the selector).
  */
 export function previewCartDiscounts(
@@ -118,12 +138,9 @@ export function previewCartDiscounts(
     const bp = bundleMap.get(bid);
     if (!bp || !bp.is_active) continue;
     const bundleItems = cartItems.filter((ci) => ci.bundle_product_id === bid);
-    const componentSum = bundleItems.reduce(
-      (sum, ci) => sum + ci.price * ci.quantity,
-      0,
-    );
 
     let numSets = 0;
+    let bundledSum = 0;
     if (bp.bundle_type === 'multi_course' && bp.groups && bp.groups.length > 0) {
       const componentGroupMap = new Map<number, { groupId: number; pickCount: number; minPick: number; maxPick: number }>();
       for (const g of bp.groups) {
@@ -150,6 +167,13 @@ export function previewCartDiscounts(
       }
       if (groupOk && setsPerGroup.length > 0) {
         numSets = Math.min(...setsPerGroup);
+        numSets = Math.min(numSets, bp.max_per_order ?? 1);
+        for (const g of bp.groups) {
+          const groupItems = bundleItems.filter((ci) =>
+            ci.bundle_component_id && g.components?.some((c) => c.id === ci.bundle_component_id)
+          );
+          bundledSum += consumedItemsPrice(groupItems, numSets * g.pick_count);
+        }
       }
     } else if (bp.pick_count && bp.pick_count > 0) {
       const qtyByComponent = new Map<number | string, number>();
@@ -166,6 +190,8 @@ export function previewCartDiscounts(
         } else {
           numSets = maxByTotal;
         }
+        numSets = Math.min(numSets, bp.max_per_order ?? 1);
+        bundledSum = consumedItemsPrice(bundleItems, numSets * bp.pick_count);
       }
     } else {
       // Standard / fixed bundles: require every component in default_quantity.
@@ -188,13 +214,17 @@ export function previewCartDiscounts(
       }
       if (complete && setCounts.length > 0) {
         numSets = Math.min(...setCounts);
+        numSets = Math.min(numSets, bp.max_per_order ?? 1);
+        for (const comp of bp.components || []) {
+          const perSet = comp.default_quantity || 1;
+          const compItems = bundleItems.filter((ci) => ci.bundle_component_id === comp.id);
+          bundledSum += consumedItemsPrice(compItems, numSets * perSet);
+        }
       }
     }
 
-    if (numSets > 0) {
-      const maxAllowed = bp.max_per_order ?? 1;
-      numSets = Math.min(numSets, maxAllowed);
-      const disc = componentSum - bp.bundle_price * numSets;
+    if (numSets > 0 && bundledSum > 0) {
+      const disc = bundledSum - bp.bundle_price * numSets;
       if (disc > 0) bundleDiscount += disc;
     }
   }

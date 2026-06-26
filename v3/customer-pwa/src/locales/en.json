@@ -351,7 +351,8 @@
     "fpxDesc": "Maybank, CIMB, RHB, HLB, and more",
     "eWallet": "E-Wallet",
     "eWalletDesc": "Touch n Go, GrabPay, Boost, ShopeePay",
-    "paymentPlaceholder": "Payment integration coming soon — top-up will be processed directly for now."
+    "paymentPlaceholder": "Payment integration coming soon — top-up will be processed directly for now.",
+    "onlineTopUpUnavailable": "Online top-up is not available until a payment provider is integrated. Please top up at a store."
   },
   "history": {
     "title": "Transaction History",

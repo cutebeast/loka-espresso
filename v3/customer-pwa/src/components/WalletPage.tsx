@@ -100,7 +100,12 @@ export default function WalletPage() {
     setShowConfirm(false);
     setToppingUp(true);
     try {
-      await api.post('/wallet/topup', { amount });
+      // Online top-up is not yet wired to a real payment provider.
+      if (selectedPayment !== 'offline') {
+        showToast(t('wallet.onlineTopUpUnavailable'), 'error');
+        return;
+      }
+      await api.post('/wallet/topup', { amount, payment_method: selectedPayment });
       showToast(t('toast.topUpSuccess', { amount: formatPrice(amount) }), 'success');
       await fetchBalance();
       await fetchTransactions();

@@ -77,6 +77,7 @@ async def _get_payment_or_404(db, payment_id: int) -> Payment:
 
 @router.post("/intent", response_model=APIResponse[PaymentIntentResponse], status_code=status.HTTP_201_CREATED)
 async def create_intent(
+    request: Request,
     customer: ActiveCustomer,
     db: DBDependency,
     raw_data: dict = Body(...),
@@ -94,6 +95,9 @@ async def create_intent(
             "cod": "cash",
             "gateway": "stripe",
         }.get(str(pm), str(pm))
+    idempotency_key = raw_data.get("idempotency_key") or request.headers.get("Idempotency-Key")
+    if idempotency_key:
+        raw_data["idempotency_key"] = str(idempotency_key).strip()[:255]
     data = PaymentIntentRequest(**raw_data)
 
     try:
@@ -105,6 +109,7 @@ async def create_intent(
             payment_method_id=data.payment_method_id,
             return_url=data.return_url,
             customer_id=customer.id,
+            idempotency_key=data.idempotency_key,
         )
     except PaymentError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
@@ -371,9 +376,10 @@ async def list_payments(
 def _verify_stripe_signature(payload_bytes: bytes, sig_header: str, secret: str) -> bool:
     if not secret:
         from app.core.config import get_settings
-        if get_settings().is_production:
+        settings = get_settings()
+        if settings.is_production or settings.webhook_verify_in_dev:
             import logging
-            logging.getLogger("payment").critical("Stripe webhook signing secret not configured in production")
+            logging.getLogger("payment").critical("Stripe webhook signing secret not configured")
             return False
         return True
     try:
@@ -396,9 +402,10 @@ def _verify_stripe_signature(payload_bytes: bytes, sig_header: str, secret: str)
 def _verify_grabpay_signature(payload_bytes: bytes, sig_header: str, secret: str) -> bool:
     if not secret:
         from app.core.config import get_settings
-        if get_settings().is_production:
+        settings = get_settings()
+        if settings.is_production or settings.webhook_verify_in_dev:
             import logging
-            logging.getLogger("payment").critical("GrabPay webhook signing secret not configured in production")
+            logging.getLogger("payment").critical("GrabPay webhook signing secret not configured")
             return False
         return True
     try:

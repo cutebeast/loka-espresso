@@ -37,14 +37,8 @@ export function usePosScanner(tables: Table[], onCustomerScan?: (customer: Custo
         (decodedText: string) => {
           if (qrScanMode === "customer") {
             const custMatch = decodedText.match(/loka:customer:(\d+)/);
-            let customerId: number | null = null;
-            if (custMatch && custMatch[1]) {
-              customerId = parseInt(custMatch[1], 10);
-            } else {
-              const rawId = parseInt(decodedText.trim(), 10);
-              if (!isNaN(rawId)) customerId = rawId;
-            }
-            if (customerId) {
+            const customerId = custMatch && custMatch[1] ? parseInt(custMatch[1], 10) : null;
+            if (customerId && customerId > 0) {
               const customer: Customer = { id: customerId, display_name: `Customer #${customerId}`, phone_number: "" };
               onCustomerScan?.(customer);
               setShowQrScanner(false);
