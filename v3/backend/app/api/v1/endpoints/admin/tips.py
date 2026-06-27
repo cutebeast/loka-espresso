@@ -96,7 +96,7 @@ async def list_tip_allocations(
         if a.staff and a.staff.store:
             out.store_id = a.staff.store.id
             out.store_name = a.staff.store.store_name
-        out.total_tip = a.tip_amount
+        out.total_tip = float(a.tip_amount)
         items_out.append(out)
 
     return APIResponse(
