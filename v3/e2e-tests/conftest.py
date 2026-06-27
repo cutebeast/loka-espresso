@@ -127,6 +127,50 @@ def admin_headers(admin_token: str) -> dict:
 
 
 @pytest.fixture(scope="session")
+def customer_account(base_url: str, cleanup_registry: dict) -> dict:
+    """Register a unique runtime customer for the E2E session."""
+    import uuid
+
+    suffix = uuid.uuid4().hex[:8]
+    email = f"e2e-runtime-{suffix}@test.com"
+    fingerprint = f"e2e-runtime-device-{suffix}"
+    with httpx.Client(timeout=15.0) as c:
+        r = c.post(
+            f"{base_url}/auth/register",
+            json={"email_address": email, "display_name": "E2E Runtime Customer", "device_fingerprint": fingerprint},
+        )
+        assert r.status_code in (200, 201), f"Customer registration failed: {r.text}"
+        data = r.json()
+        customer_id = data["user_id"]
+        token = data["tokens"]["access_token"]
+        cleanup_registry["customers"].append({"id": customer_id})
+        return {
+            "id": customer_id,
+            "email": email,
+            "token": token,
+            "headers": {"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        }
+
+
+@pytest.fixture(scope="session")
+def customer_headers(customer_account: dict) -> dict:
+    return customer_account["headers"]
+
+
+@pytest.fixture(scope="session")
+def staff_headers(base_url: str) -> dict:
+    """Authenticate as the seeded Test Staff using PIN."""
+    with httpx.Client(timeout=15.0) as c:
+        r = c.post(
+            f"{base_url}/staff/auth/login",
+            json={"display_name": "Test Staff", "store_id": 1, "password": "1234"},
+        )
+        assert r.status_code == 200, f"Staff login failed: {r.text}"
+        token = r.json()["tokens"]["access_token"]
+        return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+
+@pytest.fixture(scope="session")
 def store_id() -> int:
     """Default active store for tests."""
     return 1

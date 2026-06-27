@@ -43,7 +43,17 @@ webhook_router = APIRouter()
 
 def _build_payment_out(payment: Payment) -> PaymentOut:
     """Build PaymentOut from Payment model, handling column name mappings."""
-    payment_dict = {c.name: getattr(payment, c.key) for c in Payment.__table__.columns}
+    from decimal import Decimal
+
+    payment_dict: dict = {}
+    for c in Payment.__table__.columns:
+        if c.name == "metadata":
+            value = payment.extra_metadata
+        else:
+            value = getattr(payment, c.key)
+        if isinstance(value, Decimal):
+            value = float(value)
+        payment_dict[c.name] = value
     return PaymentOut.model_validate(payment_dict)
 
 

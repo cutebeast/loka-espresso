@@ -68,11 +68,11 @@ async def update_config(
             config.config_value = int(value)
         except (ValueError, TypeError):
             raise HTTPException(status_code=400, detail=f"Invalid integer for config key '{key}'")
-    elif vt == "float":
+    elif vt in ("float", "decimal"):
         try:
             config.config_value = float(value)
         except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail=f"Invalid float for config key '{key}'")
+            raise HTTPException(status_code=400, detail=f"Invalid number for config key '{key}'")
     elif vt == "boolean":
         config.config_value = value.lower() in ("true", "1", "yes")
     else:

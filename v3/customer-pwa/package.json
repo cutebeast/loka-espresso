@@ -6,7 +6,7 @@
     "prebuild": "node scripts/bump-sw-version.js && node scripts/generate-version.js",
     "dev": "next dev -p 13810",
     "build": "next build",
-    "start": "next start -p 13810",
+    "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {

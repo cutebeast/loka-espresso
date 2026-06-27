@@ -5,6 +5,8 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import Response
+from typing import Any
+
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
@@ -40,9 +42,9 @@ router = APIRouter(prefix="/admin/stores", tags=["admin — stores"])
 # ---------------------------------------------------------------------------
 
 class _StoreConfigurationOut(StoreConfigurationOut):
-    """Inline schema to match the DB model (JSONB dict)."""
+    """Inline schema to match the DB model (JSONB value may be scalar or dict)."""
 
-    config_value: dict
+    config_value: Any
 
 
 class StoreDetailOut(StoreOut):

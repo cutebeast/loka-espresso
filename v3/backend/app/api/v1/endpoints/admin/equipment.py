@@ -186,6 +186,10 @@ async def create_equipment(
     db.add(item)
     await db.commit()
     await db.refresh(item)
+    result = await db.execute(
+        select(Equipment).options(selectinload(Equipment.maintenance_logs)).where(Equipment.id == item.id)
+    )
+    item = result.scalar_one()
     return APIResponse(data=EquipmentOut.model_validate(item))
 
 
@@ -198,7 +202,9 @@ async def update_equipment(
 ):
     """Update equipment record."""
     result = await db.execute(
-        select(Equipment).where(Equipment.id == equipment_id, Equipment.is_active.is_(True))
+        select(Equipment)
+        .options(selectinload(Equipment.maintenance_logs))
+        .where(Equipment.id == equipment_id, Equipment.is_active.is_(True))
     )
     item = result.scalar_one_or_none()
     if item is None:
