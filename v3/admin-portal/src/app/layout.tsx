@@ -5,7 +5,7 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { BrandProvider, useBrand } from "@/components/BrandProvider";
 import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
-import { setAuthCookieManual } from "@/lib/api";
+import { setAuthCookieManual, BASE_URL } from "@/lib/api";
 
 function isAdminLoggedIn(): boolean {
   if (typeof window === "undefined") return false;
@@ -28,7 +28,7 @@ async function refreshToken(): Promise<boolean> {
     if (typeof window === "undefined") return false;
     const refresh = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
     if (!refresh) return false;
-    const res = await fetch("/api/admin/auth/refresh", {
+    const res = await fetch(`${BASE_URL}/admin/auth/refresh`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refresh }),
     });
@@ -128,13 +128,13 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       const currentToken = localStorage.getItem(STORAGE_KEYS.TOKEN) || token;
 
       try {
-        const res = await fetch("/api/admin/auth/me", { headers: { Authorization: `Bearer ${currentToken}` } });
+        const res = await fetch(`${BASE_URL}/admin/auth/me`, { headers: { Authorization: `Bearer ${currentToken}` } });
         if (cancelled) return;
 
         if (res.status === 401) {
           const refreshed = await refreshToken();
           if (refreshed) {
-            const retry = await fetch("/api/admin/auth/me", { headers: { Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.TOKEN) || ""}` } });
+            const retry = await fetch(`${BASE_URL}/admin/auth/me`, { headers: { Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.TOKEN) || ""}` } });
             if (cancelled) return;
             if (retry.status === 401) {
               clearSession();

@@ -166,13 +166,26 @@ async def list_voucher_redemptions(
 
     stmt = (
         select(CustomerVoucher)
+        .options(selectinload(CustomerVoucher.voucher_definition))
         .where(CustomerVoucher.voucher_definition_id == voucher_id)
         .order_by(CustomerVoucher.id.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
     result = await db.execute(stmt)
-    items = [CustomerVoucherOut.model_validate(v) for v in result.scalars().all()]
+    vouchers = result.unique().scalars().all()
+
+    items = []
+    for v in vouchers:
+        item = CustomerVoucherOut.model_validate(v).model_dump()
+        vd = v.voucher_definition
+        item["discount_type"] = vd.voucher_type if vd else None
+        item["discount_value"] = float(vd.discount_value) if vd else None
+        item["min_spend"] = float(vd.minimum_order_value) if vd else None
+        item["max_discount"] = float(vd.maximum_discount) if vd and vd.maximum_discount is not None else None
+        item["voucher_title"] = vd.display_title if vd else None
+        item["voucher_image_url"] = vd.image_url if vd else None
+        items.append(item)
 
     return APIResponse(
         data=PaginatedResponse(
@@ -330,8 +343,8 @@ async def apply_voucher(
 ):
     """Apply a voucher to an order."""
     result = await db.execute(
-        select(CustomerVoucher, VoucherDefinition)
-        .join(VoucherDefinition, CustomerVoucher.voucher_definition_id == VoucherDefinition.id)
+        select(CustomerVoucher)
+        .options(selectinload(CustomerVoucher.voucher_definition))
         .where(
             CustomerVoucher.voucher_code == data.voucher_code,
             CustomerVoucher.customer_id == customer.id,
@@ -351,4 +364,13 @@ async def apply_voucher(
 
     await db.commit()
     await db.refresh(voucher)
-    return APIResponse(data=CustomerVoucherOut.model_validate(voucher))
+
+    vd = voucher.voucher_definition
+    item = CustomerVoucherOut.model_validate(voucher).model_dump()
+    item["discount_type"] = vd.voucher_type if vd else None
+    item["discount_value"] = float(vd.discount_value) if vd else None
+    item["min_spend"] = float(vd.minimum_order_value) if vd else None
+    item["max_discount"] = float(vd.maximum_discount) if vd and vd.maximum_discount is not None else None
+    item["voucher_title"] = vd.display_title if vd else None
+    item["voucher_image_url"] = vd.image_url if vd else None
+    return APIResponse(data=item)

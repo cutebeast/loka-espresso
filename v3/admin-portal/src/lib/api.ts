@@ -1,7 +1,7 @@
  
 import { STORAGE_KEYS, API as API_CONST } from "./constants";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 function createAbortController(timeoutMs = API_CONST.DEFAULT_TIMEOUT_MS): { signal: AbortSignal; clear: () => void } {
   if (typeof AbortController === "undefined") return { signal: undefined as unknown as AbortSignal, clear: () => {} };

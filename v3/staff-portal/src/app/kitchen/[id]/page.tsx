@@ -20,7 +20,6 @@ const STATUS_FLOW: Record<string, { next: OrderStatus[]; label: string; color: B
   delivered: { next: [], label: "Delivered", color: "green" },
   cancelled_by_customer: { next: [], label: "Cancelled (Customer)", color: "red" },
   cancelled_by_merchant: { next: [], label: "Cancelled (Merchant)", color: "red" },
-  cancelled_by_guest: { next: [], label: "Cancelled (Guest)", color: "red" },
   refunded: { next: [], label: "Refunded", color: "purple" },
   partially_refunded: { next: [], label: "Partially Refunded", color: "yellow" },
   disputed: { next: [], label: "Disputed", color: "orange" },
@@ -162,7 +161,7 @@ export default function KitchenDetailPage() {
       )}
 
       {/* Table Transfer — dine-in only */}
-      {order.order_type === "dine_in" && order.dining_table_id && !["delivered", "cancelled_by_customer", "cancelled_by_merchant", "cancelled_by_guest", "refunded", "partially_refunded", "disputed"].includes(order.status) && (
+      {order.order_type === "dine_in" && order.dining_table_id && !["delivered", "cancelled_by_customer", "cancelled_by_merchant", "refunded", "partially_refunded", "disputed"].includes(order.status) && (
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>

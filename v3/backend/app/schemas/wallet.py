@@ -33,14 +33,13 @@ class WalletLedgerEntryBase(BaseSchema):
     amount: float = Field(..., gt=0)
     reference_type: str | None = Field(None, max_length=50)
     reference_id: int | None = None
-    note: str | None = None
+    description: str | None = None
 
 
 class WalletLedgerEntryOut(WalletLedgerEntryBase):
     id: int
     wallet_id: int
     running_balance: float
-    created_by: int | None = None
     created_at: datetime
 
 

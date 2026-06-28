@@ -339,7 +339,7 @@ export default function CustomerDetailPage() {
 
       {tab === "orders" && (
         <PaginatedTable<OrderItem> data={orders} cols={["Order #","Status","Total","Date"]} render={(o: OrderItem) => {
-          const sm: Record<string,string> = { pending: "badge-yellow", confirmed: "badge-blue", preparing: "badge-yellow", ready_for_pickup: "badge-green", out_for_delivery: "badge-blue", delivered: "badge-green", cancelled_by_customer: "badge-red", cancelled_by_merchant: "badge-red", cancelled_by_guest: "badge-red", refunded: "badge-purple", partially_refunded: "badge-yellow", disputed: "badge-orange" };
+          const sm: Record<string,string> = { pending: "badge-yellow", confirmed: "badge-blue", preparing: "badge-yellow", ready_for_pickup: "badge-green", out_for_delivery: "badge-blue", delivered: "badge-green", cancelled_by_customer: "badge-red", cancelled_by_merchant: "badge-red", refunded: "badge-purple", partially_refunded: "badge-yellow", disputed: "badge-orange" };
           return <><td style={{ fontSize: 11 }} className="font-mono">{o.order_number}</td><td><span className={`badge badge-sm ${sm[o.status ?? ""] || "badge-gray"}`}>{o.status?.replace(/_/g," ")}</span></td><td style={{ textAlign: "right" }}>{fmt(o.total_amount)}</td><td style={{ fontSize: 12 }}>{dt(o.created_at)}</td></>;
         }} onChange={(p: number) => fetchTab("orders", p)} />
       )}
