@@ -67,14 +67,14 @@ LoyaltyEventType = Enum(
 )
 
 NotificationPriority = Enum(
-    "critical", "high", "normal", "low",
+    "low", "normal", "high", "urgent",
     name="notification_priority",
     native_enum=True,
     create_type=False,
 )
 
 NotificationStatus = Enum(
-    "pending", "sent", "delivered", "read", "failed", "bounced",
+    "pending", "sent", "delivered", "read", "failed", "bounced", "unsubscribed",
     name="notification_status",
     native_enum=True,
     create_type=False,
