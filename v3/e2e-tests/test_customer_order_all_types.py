@@ -14,7 +14,21 @@ def _ensure_store_config(store_id: int, key: str, value: str):
         import psycopg2
     except ImportError:
         return
-    db_url = os.getenv("DATABASE_URL", "postgresql://fnb_user:fnb_pass@localhost:13334/fnb_enterprise_v3")
+
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        # Fall back to the backend .env file so rotated credentials are picked up.
+        backend_env = os.path.join(os.path.dirname(__file__), "..", "backend", ".env")
+        if os.path.exists(backend_env):
+            with open(backend_env, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("DATABASE_URL="):
+                        db_url = line.split("=", 1)[1]
+                        break
+    if not db_url:
+        db_url = "postgresql://fnb_user:fnb_pass@localhost:13334/fnb_enterprise_v3"
+
     sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
     conn = psycopg2.connect(sync_url)
     cur = conn.cursor()

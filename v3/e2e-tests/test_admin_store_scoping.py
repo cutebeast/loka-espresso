@@ -29,10 +29,11 @@ def _make_staff_token(admin_id: str, store_id: int, expiry_hours: int = 1) -> st
 
 
 def _make_admin_token(admin_id: str, expiry_hours: int = 1) -> str:
-    """Create an admin-type JWT (no store_id claim)."""
+    """Create an admin access JWT with the required admin_id claim."""
     now = datetime.now(timezone.utc)
     payload = {
         "sub": admin_id,
+        "admin_id": admin_id,
         "type": "access",
         "iat": now,
         "exp": now + timedelta(hours=expiry_hours),
@@ -84,17 +85,17 @@ async def test_staff_store2_cannot_access_store1_orders(
 
 
 @pytest.mark.asyncio
-async def test_staff_own_store_orders_allowed(
+async def test_staff_token_without_identity_rejected(
     client: httpx.AsyncClient, base_url: str, store_id: int, discovered_admin_id: str
 ):
-    """Staff token with store_id=1 CAN access orders from store_id=1."""
-    token_s1 = _make_staff_token(discovered_admin_id, store_id)  # "2" depends on seed admin data
+    """A raw staff token with no admin_id/staff_id claim must not satisfy CurrentAdmin."""
+    token_s1 = _make_staff_token(discovered_admin_id, store_id)
     headers_s1 = {"Authorization": f"Bearer {token_s1}", "Content-Type": "application/json"}
 
     r = await client.get(f"{base_url}/admin/orders?store_id={store_id}&per_page=5", headers=headers_s1)
-    assert r.status_code == 200, f"Staff should access own store orders, got {r.status_code}: {r.text}"
-    data = r.json()["data"]
-    assert "items" in data
+    assert r.status_code in (401, 403), (
+        f"Unverified staff token should be rejected from admin endpoints, got {r.status_code}: {r.text}"
+    )
 
 
 @pytest.mark.asyncio

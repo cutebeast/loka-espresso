@@ -255,7 +255,18 @@ def _ensure_baseline_data(base_url: str, _admin_token_session: str):
     # Unlock any locked staff accounts so PIN login tests don't hit 423
     try:
         import psycopg2
-        db_url = os.getenv("DATABASE_URL", "postgresql://fnb_user:fnb_pass@localhost:13334/fnb_enterprise_v3")
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            backend_env = os.path.join(os.path.dirname(__file__), "..", "backend", ".env")
+            if os.path.exists(backend_env):
+                with open(backend_env, "r") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("DATABASE_URL="):
+                            db_url = line.split("=", 1)[1]
+                            break
+        if not db_url:
+            db_url = "postgresql://fnb_user:fnb_pass@localhost:13334/fnb_enterprise_v3"
         # Strip asyncpg prefix for sync connection
         sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
         conn = psycopg2.connect(sync_url)
