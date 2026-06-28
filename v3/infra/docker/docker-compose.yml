@@ -141,7 +141,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ../../../infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - fnb_v3_uploads:/app/uploads:ro
       - fnb_v3_caddy_data:/data
       - fnb_v3_caddy_config:/config

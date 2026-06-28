@@ -9,6 +9,8 @@ from slowapi.errors import RateLimitExceeded
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from app.core.config import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,6 +35,8 @@ class TestAwareLimiter(Limiter):
 
 def _build_limiter() -> Limiter:
     redis_url = os.getenv("REDIS_URL", os.getenv("RATE_LIMIT_REDIS_URL", ""))
+    if not redis_url:
+        redis_url = get_settings().redis_url or ""
     storage_uri = None
     if redis_url:
         storage_uri = redis_url
