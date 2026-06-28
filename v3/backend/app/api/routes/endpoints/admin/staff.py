@@ -1,6 +1,6 @@
 """Admin staff management endpoints."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -253,12 +253,27 @@ async def create_shift_flat(db: DBDependency, admin: CurrentAdmin, data: ShiftFl
     profile_result = await db.execute(select(StaffProfile).where(StaffProfile.id == sid, StaffProfile.deleted_at.is_(None)))
     if profile_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Staff not found")
+
+    planned_start = data.planned_start
+    planned_end = data.planned_end
+    if data.shift_template_id is not None and (planned_start is None or planned_end is None):
+        template = await db.get(ShiftTemplate, data.shift_template_id)
+        if template is None:
+            raise HTTPException(status_code=404, detail="Shift template not found")
+        planned_start = datetime.combine(data.shift_date, template.start_time, tzinfo=timezone.utc)
+        planned_end = datetime.combine(data.shift_date, template.end_time, tzinfo=timezone.utc)
+        if planned_end <= planned_start:
+            planned_end += timedelta(days=1)
+
+    if planned_start is None or planned_end is None:
+        raise HTTPException(status_code=400, detail="planned_start and planned_end are required when no shift_template_id is provided")
+
     shift = StaffShift(
         store_id=data.store_id, staff_id=sid,
         shift_template_id=data.shift_template_id,
         shift_date=data.shift_date,
-        planned_start=data.planned_start,
-        planned_end=data.planned_end,
+        planned_start=planned_start,
+        planned_end=planned_end,
         status=data.status, notes=data.notes,
     )
     db.add(shift); await db.commit(); await db.refresh(shift)

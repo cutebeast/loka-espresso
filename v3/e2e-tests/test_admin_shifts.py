@@ -24,17 +24,7 @@ async def test_staff_shift_crud(
     4. Delete the shift
     5. Verify shift is removed
     """
-    # 1. List existing shifts
-    r_list = await client.get(
-        f"{base_url}/admin/staff/shifts?store_id={store_id}&per_page=10",
-        headers=admin_headers,
-    )
-    assert r_list.status_code == 200, f"List shifts failed: {r_list.status_code}: {r_list.text}"
-    data = r_list.json()["data"]
-    shifts_before = data.get("items", [])
-    initial_count = len(shifts_before)
-
-    # 2. Find an active staff member
+    # 1. Find an active staff member
     r_staff = await client.get(
         f"{base_url}/admin/staff?store_id={store_id}&per_page=1",
         headers=admin_headers,
@@ -45,6 +35,16 @@ async def test_staff_shift_crud(
     if not staff_items:
         pytest.skip("No staff members seeded for shift test")
     staff_id = staff_items[0]["id"]
+
+    # 2. List existing shifts for this staff member
+    r_list = await client.get(
+        f"{base_url}/admin/staff/shifts?store_id={store_id}&staff_id={staff_id}&per_page=200",
+        headers=admin_headers,
+    )
+    assert r_list.status_code == 200, f"List shifts failed: {r_list.status_code}: {r_list.text}"
+    data = r_list.json()["data"]
+    shifts_before = data.get("items", [])
+    initial_count = len(shifts_before)
 
     # 3. Create a shift for tomorrow
     tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).date()
@@ -73,7 +73,7 @@ async def test_staff_shift_crud(
 
     # 4. Verify shift appears in listing
     r_list2 = await client.get(
-        f"{base_url}/admin/staff/shifts?store_id={store_id}&per_page=50",
+        f"{base_url}/admin/staff/shifts?store_id={store_id}&staff_id={staff_id}&per_page=200",
         headers=admin_headers,
     )
     assert r_list2.status_code == 200
@@ -101,7 +101,7 @@ async def test_staff_shift_crud(
 
     # 7. Verify shift is removed
     r_list3 = await client.get(
-        f"{base_url}/admin/staff/shifts?store_id={store_id}&per_page=50",
+        f"{base_url}/admin/staff/shifts?store_id={store_id}&staff_id={staff_id}&per_page=200",
         headers=admin_headers,
     )
     assert r_list3.status_code == 200
@@ -215,3 +215,68 @@ async def test_kds_order_display(
         json={"status": "ready_for_pickup"},
     )
     assert r_ready.status_code == 200, f"Status update to ready failed: {r_ready.status_code}"
+
+
+@pytest.mark.asyncio
+async def test_shift_template_auto_compute_times(
+    client, admin_headers: dict, base_url: str, store_id: int
+):
+    """Create a shift template and assign a shift using only template + date."""
+    r_staff = await client.get(
+        f"{base_url}/admin/staff?store_id={store_id}&per_page=1",
+        headers=admin_headers,
+    )
+    if r_staff.status_code != 200:
+        pytest.skip("Staff listing not available")
+    staff_items = r_staff.json().get("data", {}).get("items", [])
+    if not staff_items:
+        pytest.skip("No staff members seeded for shift test")
+    staff_id = staff_items[0]["id"]
+
+    suffix = uuid.uuid4().hex[:6]
+    r_tpl = await client.post(
+        f"{base_url}/admin/staff/shift-templates",
+        headers=admin_headers,
+        json={
+            "store_id": store_id,
+            "name": f"E2E Template {suffix}",
+            "start_time": "09:00",
+            "end_time": "17:00",
+        },
+    )
+    assert r_tpl.status_code in (200, 201), f"Create template failed: {r_tpl.text}"
+    template_id = r_tpl.json()["data"]["id"]
+
+    tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).date().isoformat()
+    r_create = await client.post(
+        f"{base_url}/admin/staff/shifts",
+        headers=admin_headers,
+        json={
+            "staff_id": staff_id,
+            "store_id": store_id,
+            "shift_template_id": template_id,
+            "shift_date": tomorrow,
+            "status": "scheduled",
+        },
+    )
+    assert r_create.status_code in (200, 201), (
+        f"Create shift from template failed: {r_create.status_code}: {r_create.text}"
+    )
+    shift_id = r_create.json().get("data", r_create.json()).get("id")
+
+    r_list = await client.get(
+        f"{base_url}/admin/staff/shifts?store_id={store_id}&staff_id={staff_id}&per_page=200",
+        headers=admin_headers,
+    )
+    assert r_list.status_code == 200
+    shifts = r_list.json()["data"].get("items", [])
+    created = next((s for s in shifts if s["id"] == shift_id), None)
+    assert created is not None, "Newly created shift not found in listing"
+    assert created["start_time"] is not None
+    assert created["end_time"] is not None
+    assert created["template_name"] == f"E2E Template {suffix}"
+
+    await client.delete(
+        f"{base_url}/admin/staff/shifts/{shift_id}",
+        headers=admin_headers,
+    )

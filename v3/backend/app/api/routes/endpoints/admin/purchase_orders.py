@@ -341,8 +341,11 @@ async def receive_purchase_order(
     else:
         po.status = "partial"
 
-    po.actual_delivery = datetime.now(timezone.utc)
-    po.updated_at = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    # The DB enforces actual_delivery >= expected_delivery when set.
+    if po.expected_delivery is None or now >= po.expected_delivery:
+        po.actual_delivery = now
+    po.updated_at = now
 
     await db.commit()
     await db.refresh(po)

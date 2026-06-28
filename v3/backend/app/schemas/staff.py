@@ -145,8 +145,8 @@ class ShiftFlatCreate(BaseSchema):
     store_id: int
     shift_date: date
     shift_template_id: int | None = None
-    planned_start: datetime
-    planned_end: datetime
+    planned_start: datetime | None = None
+    planned_end: datetime | None = None
     status: str = "scheduled"
     notes: str | None = None
 
