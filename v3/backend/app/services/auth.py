@@ -2,6 +2,8 @@
 
 from datetime import datetime, timedelta, timezone
 
+from fastapi import HTTPException
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +37,31 @@ class AuthError(Exception):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
+
+
+async def blacklist_refresh_token(
+    db: AsyncSession,
+    jti: str | None,
+    principal_id: int,
+    payload: dict,
+    reason: str = "refresh_token_reuse",
+) -> None:
+    """Insert a refresh token JTI into the blacklist. Raises 401 if already blacklisted."""
+    if not jti:
+        return
+    exp_ts = payload.get("exp")
+    expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else datetime.now(timezone.utc) + timedelta(days=7)
+    stmt = pg_insert(TokenBlacklist).values(
+        jti=jti,
+        token_type="refresh",
+        principal_id=principal_id,
+        expires_at=expires_at,
+        reason=reason,
+    ).on_conflict_do_nothing(index_elements=["jti"])
+    result = await db.execute(stmt)
+    await db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(status_code=401, detail="Refresh token has already been used")
 
 
 async def register_customer(

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prebuild": "node scripts/bump-sw-version.js && node scripts/generate-version.js",
+    "prebuild": "node scripts/ensure-sw.js && node scripts/bump-sw-version.js && node scripts/generate-version.js",
     "dev": "next dev -p 13810",
     "build": "next build",
     "start": "next start",

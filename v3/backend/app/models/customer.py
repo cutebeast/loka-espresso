@@ -111,7 +111,7 @@ class Customer(Base, SoftDeleteMixin):
     __table_args__ = (
         # Regex CHECK constraints add overhead during batch imports — consider
         # deferring validation to application layer for high-volume CSV / ETL loads.
-        CheckConstraint("phone_number ~ '^\+?[0-9]{7,20}$'", name="ck_customers_phone_number"),
+        CheckConstraint(r"phone_number ~ '^\+?[0-9]{7,20}$'", name="ck_customers_phone_number"),
         CheckConstraint("preferred_language ~ '^[a-z]{2}(-[A-Z]{2})?$'", name="ck_customers_preferred_language"),
         CheckConstraint("referral_count >= 0", name="ck_customers_referral_count"),
         CheckConstraint("referral_earnings_total >= 0", name="ck_customers_referral_earnings_total"),

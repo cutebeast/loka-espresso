@@ -138,8 +138,15 @@ async def customer_logout(db: DBDependency, data: RefreshTokenRequest | None = N
     """
     if data and data.refresh_token:
         try:
-            from app.services.auth import _blacklist_refresh_token
-            await _blacklist_refresh_token(db, data.refresh_token)
+            from app.core.security import decode_token
+            from app.services.auth import blacklist_refresh_token
+            payload = decode_token(data.refresh_token)
+            if payload.get("type") != "refresh":
+                raise HTTPException(status_code=400, detail="Invalid token type")
+            jti = payload.get("jti")
+            await blacklist_refresh_token(db, jti, None, payload)
+        except HTTPException:
+            raise
         except Exception as e:
             logger.warning("Failed to blacklist refresh token: %s", str(e))
     return {"success": True, "message": "Logged out successfully"}

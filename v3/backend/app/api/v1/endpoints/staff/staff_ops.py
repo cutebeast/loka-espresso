@@ -35,6 +35,7 @@ from app.schemas.staff import (
     StaffChangePinRequest,
     POSOrderCreateRequest,
 )
+from app.services.auth import blacklist_refresh_token
 from app.services.order import _compute_bundle_discount, _deduct_stock_for_order
 from app.core.config import get_settings
 from app.core.rate_limiter import limiter
@@ -290,26 +291,6 @@ def _make_token(staff):
     return {"tokens": {"access_token": access, "refresh_token": refresh}, "profile": {"email": staff.email_address, "display_name": staff.display_name, "store_id": staff.store_id, "staff_id": staff.id}}
 
 
-async def _blacklist_refresh_token(db, jti: str | None, principal_id: int, payload: dict) -> None:
-    """Insert a refresh token JTI into the blacklist. Raises 401 if already blacklisted."""
-    if not jti:
-        return
-    from sqlalchemy.dialects.postgresql import insert as pg_insert
-    exp_ts = payload.get("exp")
-    expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else datetime.now(timezone.utc) + timedelta(days=7)
-    stmt = pg_insert(TokenBlacklist).values(
-        jti=jti,
-        token_type="refresh",
-        principal_id=principal_id,
-        expires_at=expires_at,
-        reason="refresh_token_reuse",
-    ).on_conflict_do_nothing(index_elements=["jti"])
-    result = await db.execute(stmt)
-    await db.commit()
-    if result.rowcount == 0:
-        raise HTTPException(status_code=401, detail="Refresh token has already been used")
-
-
 def _is_default_pin_hash(pin_hash) -> bool:
     """Check whether *pin_hash* is the hash of the default PIN '000000'.
     Result is cached per pin_hash value to avoid redundant bcrypt operations
@@ -370,7 +351,7 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
         if not staff or not staff.is_active:
             raise HTTPException(status_code=401, detail="Staff not found or inactive")
         # Revoke this refresh token so it cannot be reused (atomic)
-        await _blacklist_refresh_token(db, jti, staff.principal_id, payload)
+        await blacklist_refresh_token(db, jti, staff.principal_id, payload)
         return _make_token(staff)
 
     # Admin refresh (staff_id == 0)
@@ -386,7 +367,7 @@ async def staff_refresh_token(request: Request, db: DBDependency, data: StaffRef
             extra_claims={"staff_id": 0, "store_id": int(store_id or 0), "admin_id": admin.id, "admin_name": admin.display_name}
         )
         # Revoke this refresh token so it cannot be reused (atomic)
-        await _blacklist_refresh_token(db, jti, admin.principal_id, payload)
+        await blacklist_refresh_token(db, jti, admin.principal_id, payload)
         return {"tokens": {"access_token": access_token}, "profile": {"email": admin.email, "display_name": admin.display_name, "store_id": int(store_id or 0), "staff_id": 0}}
 
     raise HTTPException(status_code=401, detail="Invalid token")
