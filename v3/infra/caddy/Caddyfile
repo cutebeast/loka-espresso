@@ -1,20 +1,36 @@
 # FNB v3 Caddyfile — Reverse Proxy + TLS
-# Domains: *.loyaltysystem.uk
+# Domain values are injected via environment variables so the same image
+# can be deployed on the dev server (loyaltysystem.uk), production
+# (lokaespresso.com) or future brand servers without editing this file.
 
 {
     email {$CADDY_EMAIL:admin@lokaespresso.my}
     admin off
 }
 
-# Main app domain (Customer PWA)
-app.loyaltysystem.uk {
-    reverse_proxy /api/v1/* backend:13800
-    reverse_proxy /uploads/* backend:13800
-    reverse_proxy /manifest.json customer-pwa:13810
-    reverse_proxy /sw.js customer-pwa:13810
-    reverse_proxy /offline.html customer-pwa:13810
-    reverse_proxy /icon-* customer-pwa:13810
-    reverse_proxy customer-pwa:13810
+# Customer PWA
+{$APP_DOMAIN:app.loyaltysystem.uk} {
+    handle /api/v1/* {
+        reverse_proxy backend:13800
+    }
+    handle /uploads/* {
+        reverse_proxy backend:13800
+    }
+    handle /manifest.json {
+        reverse_proxy customer-pwa:13810
+    }
+    handle /sw.js {
+        reverse_proxy customer-pwa:13810
+    }
+    handle /offline.html {
+        reverse_proxy customer-pwa:13810
+    }
+    handle /icon-* {
+        reverse_proxy customer-pwa:13810
+    }
+    handle {
+        reverse_proxy customer-pwa:13810
+    }
 
     encode gzip
 
@@ -26,10 +42,16 @@ app.loyaltysystem.uk {
 }
 
 # Admin portal
-admin.loyaltysystem.uk {
-    reverse_proxy /api/v1/* backend:13800
-    reverse_proxy /uploads/* backend:13800
-    reverse_proxy admin-portal:3000
+{$ADMIN_DOMAIN:admin.loyaltysystem.uk} {
+    handle /api/v1/* {
+        reverse_proxy backend:13800
+    }
+    handle /uploads/* {
+        reverse_proxy backend:13800
+    }
+    handle {
+        reverse_proxy admin-portal:3000
+    }
 
     encode gzip
 
@@ -41,16 +63,60 @@ admin.loyaltysystem.uk {
 }
 
 # Staff portal
-staff.loyaltysystem.uk {
-    reverse_proxy /api/v1/* backend:13800
-    reverse_proxy /uploads/* backend:13800
-    reverse_proxy staff-portal:3000
+{$STAFF_DOMAIN:staff.loyaltysystem.uk} {
+    handle /api/v1/* {
+        reverse_proxy backend:13800
+    }
+    handle /uploads/* {
+        reverse_proxy backend:13800
+    }
+    handle {
+        reverse_proxy staff-portal:3000
+    }
 
     encode gzip
 
     header {
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+# Optional dedicated API domain
+{$API_DOMAIN:api.loyaltysystem.uk} {
+    reverse_proxy backend:13800
+
+    encode gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    @options {
+        method OPTIONS
+    }
+    header @options {
+        Access-Control-Allow-Origin {$CORS_ORIGINS:https://app.loyaltysystem.uk}
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization, Accept-Language"
+        Access-Control-Allow-Credentials "true"
+        Access-Control-Max-Age "86400"
+    }
+
+    request_body {
+        max_size 10MB
+    }
+}
+
+# Optional dedicated uploads domain
+{$UPLOADS_DOMAIN:uploads.loyaltysystem.uk} {
+    root * /app/uploads
+    file_server
+
+    header {
+        X-Content-Type-Options "nosniff"
         Referrer-Policy "strict-origin-when-cross-origin"
     }
 }
