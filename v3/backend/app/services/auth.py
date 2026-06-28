@@ -54,7 +54,7 @@ async def blacklist_refresh_token(
     stmt = pg_insert(TokenBlacklist).values(
         jti=jti,
         token_type="refresh",
-        principal_id=principal_id,
+        principal_id=None,  # avoid FK issues for deleted principals / customers
         expires_at=expires_at,
         reason=reason,
     ).on_conflict_do_nothing(index_elements=["jti"])
@@ -333,7 +333,7 @@ async def refresh_admin_tokens(
         stmt = pg_insert(TokenBlacklist).values(
             jti=jti,
             token_type="refresh",
-            principal_id=admin.principal_id,
+            principal_id=None,
             expires_at=expires_at,
             reason="refresh_token_reuse",
         ).on_conflict_do_nothing(index_elements=["jti"])
