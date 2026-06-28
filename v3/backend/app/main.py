@@ -8,7 +8,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
-from app.api.v1.router import api_router
+from app.api.routes.router import api_router
 from app.core.config import get_settings
 from app.core.database import engine
 from app.core.middleware import (
@@ -60,7 +60,7 @@ app.add_middleware(RequestLoggingMiddleware)
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
 # API routes
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router, prefix="/api")
 
 
 @app.get("/health", tags=["system"])

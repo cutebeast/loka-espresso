@@ -41,8 +41,8 @@ def fetch_backend_routes() -> set[str]:
     routes: set[str] = set()
 
     for path, methods in paths.items():
-        # Remove the /api/v1 prefix if present (we compare without it)
-        clean = path.removeprefix("/api/v1")
+        # Remove the /api prefix if present (we compare without it)
+        clean = path.removeprefix("/api")
         # Replace path params like {id} with a placeholder we can match against
         clean = re.sub(r"\{[^}]+\}", ":param", clean)
         routes.add(clean)
@@ -55,7 +55,7 @@ def fetch_backend_routes() -> set[str]:
 # Only match paths that appear as arguments to actual API call functions
 API_FN = r"(?:api\.(?:get|post|patch|del|put|upload|getRaw|fetchRaw|getPaginated)\s*\(\s*|fetch\s*\(\s*)"
 API_CALL_PATTERN = re.compile(
-    API_FN + r"""["'`](/api/v1)?(/[^"'` ]+)""",
+    API_FN + r"""["'`](/api)?(/[^"'` ]+)""",
 )
 
 def collect_frontend_calls(directory: Path) -> set[str]:
@@ -70,7 +70,7 @@ def collect_frontend_calls(directory: Path) -> set[str]:
             except Exception:
                 continue
             for match in API_CALL_PATTERN.finditer(content):
-                raw = match.group(2)  # the path part after /api/v1 or root /
+                raw = match.group(2)  # the path part after /api or root /
                 if raw.startswith("/"):
                     # Clean query params
                     path_only = raw.split("?")[0].split("#")[0]
@@ -189,7 +189,7 @@ def main() -> int:
         m for m in matched if m in backend_routes
     }
     # Remove health, docs, openapi etc
-    skip_backend = {"/health", "/openapi.json", "/docs", "/redoc", "/api/v1/health", "/api/v1/openapi.json"}
+    skip_backend = {"/health", "/openapi.json", "/docs", "/redoc", "/api/health", "/api/openapi.json"}
     real_backend_only = backend_only - skip_backend
     # Also remove routes that look like internal patterns
     real_backend_only = {r for r in real_backend_only if not r.startswith("/_")}

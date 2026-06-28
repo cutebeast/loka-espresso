@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 
-export const API_BASE = '/api/v1';
+export const API_BASE = '/api';
 
 const api = axios.create({
   baseURL: API_BASE,

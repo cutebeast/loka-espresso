@@ -12,7 +12,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:13800/api/v1")
+BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:13800/api")
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-for-development-only-12345")
 JWT_ALGORITHM = "HS256"
 

@@ -33,7 +33,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     let injectedLink: HTMLLinkElement | null = null;
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    fetch("/api/v1/staff/config/branding", {
+    fetch("/api/staff/config/branding", {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((r) => { if (!r.ok) throw new Error('branding fetch failed'); return r.json(); })
@@ -147,7 +147,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       const currentToken = localStorage.getItem("token") || token;
 
       try {
-        const res = await fetch("/api/v1/staff/auth/me", {
+        const res = await fetch("/api/staff/auth/me", {
           headers: { Authorization: `Bearer ${currentToken}` },
         });
 
@@ -157,7 +157,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           // Try refresh once more
           const refreshed = await apiRefreshToken();
           if (refreshed) {
-            const retry = await fetch("/api/v1/staff/auth/me", {
+            const retry = await fetch("/api/staff/auth/me", {
               headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
             });
             if (cancelled) return;

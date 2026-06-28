@@ -27,7 +27,7 @@ async function fetchTranslations(locale: string): Promise<Translations> {
 
   // Fetch from API
   try {
-    const res = await fetch(`/api/v1/public/translations/ui?locale=${locale}&namespace=staff-ui`);
+    const res = await fetch(`/api/public/translations/ui?locale=${locale}&namespace=staff-ui`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     const translations = json.data || json;

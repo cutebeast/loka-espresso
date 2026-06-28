@@ -15,7 +15,7 @@ import uuid
 pytestmark = [pytest.mark.customer, pytest.mark.browser]
 
 BASE_URL = "http://localhost:13810"
-API_URL = "http://localhost:13800/api/v1"
+API_URL = "http://localhost:13800/api"
 
 
 @pytest.fixture(scope="function")

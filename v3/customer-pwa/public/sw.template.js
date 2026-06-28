@@ -387,7 +387,7 @@ async function replayOrders() {
   const pendingOrders = await getPendingOrders();
   if (pendingOrders.length === 0) return;
 
-  const API_BASE = '/api/v1';
+  const API_BASE = '/api';
   const now = Date.now();
 
   for (const record of pendingOrders) {

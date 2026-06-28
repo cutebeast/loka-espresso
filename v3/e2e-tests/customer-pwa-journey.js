@@ -5,7 +5,7 @@
 const puppeteer = require('puppeteer');
 
 const BASE_URL = 'http://localhost:13810';
-const API_URL = 'http://localhost:13800/api/v1';
+const API_URL = 'http://localhost:13800/api';
 
 async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));

@@ -1,4 +1,4 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 function getAuthHeaders(): HeadersInit {
   if (typeof window === "undefined") return { "Content-Type": "application/json" };

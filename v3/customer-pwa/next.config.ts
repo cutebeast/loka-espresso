@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const API_PROXY = process.env.NEXT_PUBLIC_API_URL || "http://localhost:13800/api/v1";
+const API_PROXY = process.env.NEXT_PUBLIC_API_URL || "http://localhost:13800/api";
 
 const nextConfig: NextConfig = {
   // output: 'standalone', // disabled for 'next start' compatibility
@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/api/v1/:path*",
+        source: "/api/:path*",
         destination: `${API_PROXY}/:path*`,
       },
     ];

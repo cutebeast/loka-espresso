@@ -15,7 +15,7 @@ The **Loka Espresso FNB Super App v3** is a full-stack F&B ordering and loyalty 
 | Admin dashboard | Next.js 16 | https://admin.loyaltysystem.uk |
 | Staff POS + ops | Next.js 16 | https://staff.loyaltysystem.uk |
 | Customer PWA | Next.js 16 | https://app.loyaltysystem.uk |
-| Backend API | FastAPI + SQLAlchemy async | https://admin.loyaltysystem.uk/api/v1 |
+| Backend API | FastAPI + SQLAlchemy async | https://admin.loyaltysystem.uk/api |
 | Database | PostgreSQL 16 | Docker `fnb-v3-postgres` |
 | Cache / rate limit | Redis 7 | Docker `fnb-v3-redis` |
 | Reverse proxy | Caddy 2 | Host Caddy (PM2 mode) or Docker Caddy (full-Docker mode) |
@@ -99,10 +99,10 @@ All uploads are handled by the backend and served through the backend's `StaticF
 
 Endpoint mapping:
 
-- `POST /api/v1/upload/image` → `uploads/images/{uuid}.png`
-- `PUT /api/v1/me/avatar` → `uploads/avatars/avatar_user_{id}.png`
-- `POST /api/v1/staff/equipment/{id}/report` → `uploads/equipment/...`
-- `POST /api/v1/staff/hygiene/*` → `uploads/equipment/...`
+- `POST /api/upload/image` → `uploads/images/{uuid}.png`
+- `PUT /api/me/avatar` → `uploads/avatars/avatar_user_{id}.png`
+- `POST /api/staff/equipment/{id}/report` → `uploads/equipment/...`
+- `POST /api/staff/hygiene/*` → `uploads/equipment/...`
 
 **Verified 2026-06-28:**
 - Generic image upload returns 200 and the HTTPS URL is reachable.
