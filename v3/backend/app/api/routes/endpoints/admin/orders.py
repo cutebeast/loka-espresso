@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import Field
@@ -9,6 +10,7 @@ from sqlalchemy import select, func, text, case
 from sqlalchemy.orm import joinedload
 
 from app.api.routes.deps import CurrentAdmin, DBDependency, get_staff_store_id_from_request, require_store_admin, _get_admin_store_ids, _get_admin_role_keys
+from app.core.money import money_round, to_decimal
 from app.models.customer import Customer
 from app.models.order import Order, OrderAdjustment, OrderFulfillment, OrderLineItem, OrderStatusLog
 from app.models.menu import MenuItem
@@ -32,6 +34,7 @@ from app.schemas.order import (
     UpdateOrderStatusRequest,
 )
 from app.services.order import _build_order_out
+from app.services.platform_config import PlatformConfigService
 
 router = APIRouter(prefix="/admin/orders", tags=["admin — orders"])
 
@@ -332,60 +335,71 @@ async def process_order_payment(
     if order.status in ("delivered", "cancelled_by_customer", "cancelled_by_merchant"):
         raise HTTPException(status_code=400, detail="Cannot pay for a completed/cancelled order")
 
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
     # Prevent overpayment: compute already-captured amount for this order
-    from app.models.payment import Payment
     existing_payments = await db.execute(
         select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
     )
-    already_paid = round(sum(float(p.amount) for p in existing_payments.scalars().all()), 2)
+    already_paid = money_round(
+        sum(to_decimal(p.amount) for p in existing_payments.scalars().all()),
+        precision,
+        rounding_mode,
+    )
 
     payment_method = data.payment_method
-    amount_tendered = data.amount_tendered
-    amount = data.amount
-    discount_amount = data.discount_amount
+    amount_tendered = to_decimal(data.amount_tendered or 0)
+    amount = to_decimal(data.amount) if data.amount is not None else None
+    discount_amount = to_decimal(data.discount_amount or 0)
     discount_type = data.discount_type
-    tip_amount = data.tip_amount
+    tip_amount = to_decimal(data.tip_amount or 0)
 
     # Recompute the expected total server-side; do not trust client-supplied amount/discount/tip.
-    current_total = round(float(order.total_amount or 0), 2)
-    computed_discount = 0.0
+    current_total = money_round(to_decimal(order.total_amount), precision, rounding_mode)
+    computed_discount = Decimal(0)
     if discount_amount > 0:
         if discount_type == "percentage":
-            computed_discount = round(float(order.items_subtotal or 0) * discount_amount / 100, 2)
+            computed_discount = money_round(
+                to_decimal(order.items_subtotal) * discount_amount / Decimal(100),
+                precision,
+                rounding_mode,
+            )
         else:
-            computed_discount = round(discount_amount, 2)
+            computed_discount = money_round(discount_amount, precision, rounding_mode)
         computed_discount = min(computed_discount, current_total)
 
     if already_paid > 0 and (computed_discount > 0 or tip_amount > 0):
         raise HTTPException(status_code=400, detail="Cannot apply discount or tip after a payment has already been made")
 
-    expected_total = max(0.0, round(current_total - computed_discount + tip_amount, 2))
-    if amount is not None and abs(round(amount, 2) - expected_total) > 0.01:
+    expected_total = money_round(max(Decimal(0), current_total - computed_discount + tip_amount), precision, rounding_mode)
+    if amount is not None and abs(money_round(amount, precision, rounding_mode) - expected_total) > Decimal(0):
         raise HTTPException(
             status_code=400,
             detail=f"Payment amount does not match expected total. Expected: RM {expected_total:.2f}, Received: RM {amount:.2f}",
         )
 
-    order.discount_amount = round(float(order.discount_amount or 0) + computed_discount, 2)
+    order.discount_amount = money_round(to_decimal(order.discount_amount) + computed_discount, precision, rounding_mode)
     order.total_amount = expected_total
 
-    remaining_due = round(expected_total - already_paid, 2)
+    remaining_due = money_round(expected_total - already_paid, precision, rounding_mode)
 
     # Prevent double payment: reject if order is already fully paid
     if already_paid > 0 and remaining_due <= 0:
         raise HTTPException(status_code=400, detail=f"Order is already fully paid (RM {already_paid:.2f})")
 
-    net_amount = max(0.0, round(remaining_due, 2))
+    net_amount = max(Decimal(0), remaining_due)
 
     # Cash tender validation
-    change = 0.0
+    change = Decimal(0)
     if payment_method == "cash":
-        if amount_tendered + 0.001 < net_amount:
+        if amount_tendered < net_amount:
             raise HTTPException(
                 status_code=400,
                 detail=f"Insufficient cash tendered. Required: RM {net_amount:.2f}, Tendered: RM {amount_tendered:.2f}",
             )
-        change = round(amount_tendered - net_amount, 2)
+        change = money_round(amount_tendered - net_amount, precision, rounding_mode)
 
     # Map POS methods to valid DB enum values
     method_type_map = {
@@ -422,12 +436,12 @@ async def process_order_payment(
         )
         db.add(payment)
 
-    order.tip_amount = float(order.tip_amount or 0) + tip_amount
+    order.tip_amount = money_round(to_decimal(order.tip_amount) + tip_amount, precision, rounding_mode)
     order.updated_at = datetime.now(timezone.utc)
 
     # Payment status reflects whether the order is fully paid
-    total_paid = already_paid + net_amount
-    if total_paid >= float(order.total_amount or 0) - 0.01:
+    total_paid = money_round(already_paid + net_amount, precision, rounding_mode)
+    if total_paid >= to_decimal(order.total_amount):
         order.payment_status = "captured"
     else:
         order.payment_status = "initiated"
@@ -450,9 +464,9 @@ async def process_order_payment(
             "id": order.id,
             "order_number": order.order_number,
             "payment_status": order.payment_status,
-            "amount": net_amount,
-            "change": change,
-            "tip_amount": tip_amount,
+            "amount": float(net_amount),
+            "change": float(change),
+            "tip_amount": float(tip_amount),
             "payment_method": payment_method,
             "message": "Payment processed successfully",
         }
@@ -507,11 +521,15 @@ async def apply_order_voucher(
     if customer_voucher.expires_at and customer_voucher.expires_at < now:
         raise HTTPException(status_code=400, detail="Voucher has expired")
 
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
     # Validate minimum order value
-    subtotal = float(order.items_subtotal or 0)
-    min_spend = float(voucher_def.minimum_order_value or 0) if voucher_def else 0
+    subtotal = to_decimal(order.items_subtotal)
+    min_spend = to_decimal(voucher_def.minimum_order_value) if voucher_def else Decimal(0)
     if subtotal < min_spend:
-        raise HTTPException(status_code=400, detail=f"Minimum spend RM {min_spend:.2f} required")
+        raise HTTPException(status_code=400, detail=f"Minimum spend RM {float(min_spend):.2f} required")
 
     if voucher_def and voucher_def.minimum_tier_id:
         from app.models.loyalty import LoyaltyAccount
@@ -524,19 +542,19 @@ async def apply_order_voucher(
             raise HTTPException(status_code=400, detail="Customer's loyalty tier is not eligible for this voucher")
 
     # Compute discount
-    discount = 0.0
+    discount = Decimal(0)
     voucher_type = voucher_def.voucher_type if voucher_def else ""
-    discount_value = float(voucher_def.discount_value or 0) if voucher_def else 0
+    discount_value = to_decimal(voucher_def.discount_value) if voucher_def else Decimal(0)
 
     if voucher_type == "percentage_off":
-        discount = round(subtotal * (discount_value / 100), 2)
-        max_disc = float(voucher_def.discount_max_amount or 0) if voucher_def else 0
+        discount = money_round(subtotal * (discount_value / Decimal(100)), precision, rounding_mode)
+        max_disc = to_decimal(voucher_def.discount_max_amount) if voucher_def else Decimal(0)
         if max_disc > 0:
             discount = min(discount, max_disc)
     elif voucher_type == "fixed_amount_off":
         discount = discount_value
     elif voucher_type == "free_delivery":
-        discount = float(order.delivery_fee or 0)
+        discount = to_decimal(order.delivery_fee)
     elif voucher_type == "free_item":
         line_items_result = await db.execute(
             select(OrderLineItem).where(OrderLineItem.order_id == order_id)
@@ -545,12 +563,12 @@ async def apply_order_voucher(
         if voucher_def.menu_item_id:
             for li in line_items:
                 if li.menu_item_id == voucher_def.menu_item_id:
-                    discount = float(li.unit_price) * li.quantity
+                    discount = to_decimal(li.unit_price) * li.quantity
                     break
         elif line_items:
-            cheapest = min(line_items, key=lambda li: float(li.unit_price))
-            discount = float(cheapest.unit_price) * cheapest.quantity
-        max_disc = float(voucher_def.discount_max_amount or 0) if voucher_def else 0
+            cheapest = min(line_items, key=lambda li: to_decimal(li.unit_price))
+            discount = to_decimal(cheapest.unit_price) * cheapest.quantity
+        max_disc = to_decimal(voucher_def.discount_max_amount) if voucher_def else Decimal(0)
         if max_disc > 0:
             discount = min(discount, max_disc)
     else:
@@ -564,16 +582,16 @@ async def apply_order_voucher(
     customer_voucher.order_id = order_id
 
     # Update order
-    order.voucher_discount = round(float(order.voucher_discount or 0) + discount, 2)
-    order.discount_amount = round(float(order.discount_amount or 0) + discount, 2)
-    order.total_amount = round(float(order.total_amount or 0) - discount, 2)
+    order.voucher_discount = money_round(to_decimal(order.voucher_discount) + discount, precision, rounding_mode)
+    order.discount_amount = money_round(to_decimal(order.discount_amount) + discount, precision, rounding_mode)
+    order.total_amount = money_round(to_decimal(order.total_amount) - discount, precision, rounding_mode)
     order.updated_at = now
 
     # Create adjustment log
     adj = OrderAdjustment(
         order_id=order.id,
         adjustment_type="discount_override",
-        amount_delta=round(-discount, 2),
+        amount_delta=money_round(-discount, precision, rounding_mode),
         reason=f"Voucher applied: {voucher_code} ({voucher_def.display_title if voucher_def else voucher_type})",
         approved_by=admin.id,
     )
@@ -643,30 +661,34 @@ async def apply_order_reward(
     if customer_reward.expires_at and customer_reward.expires_at < now:
         raise HTTPException(status_code=400, detail="Reward has expired")
 
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
     # Compute discount from reward catalog
-    discount = 0.0
+    discount = Decimal(0)
     if reward_cat and reward_cat.discount_value:
-        dv = float(reward_cat.discount_value)
+        dv = to_decimal(reward_cat.discount_value)
         if reward_cat.reward_type == "percentage_discount":
-            order_base = float(order.items_subtotal or 0)
-            discount = round(order_base * dv / 100.0, 2)
+            order_base = to_decimal(order.items_subtotal)
+            discount = money_round(order_base * dv / Decimal(100), precision, rounding_mode)
             if reward_cat.discount_max_amount:
-                discount = min(discount, float(reward_cat.discount_max_amount))
+                discount = min(discount, to_decimal(reward_cat.discount_max_amount))
         else:
             discount = dv
     elif customer_reward.reward_snapshot:
-        snapshot_val = float(customer_reward.reward_snapshot.get("discount_value", 0) or 0)
+        snapshot_val = to_decimal(customer_reward.reward_snapshot.get("discount_value", 0))
         snapshot_type = customer_reward.reward_snapshot.get("reward_type", "")
         if snapshot_type == "percentage_discount":
-            order_base = float(order.items_subtotal or 0)
-            discount = round(order_base * snapshot_val / 100.0, 2)
+            order_base = to_decimal(order.items_subtotal)
+            discount = money_round(order_base * snapshot_val / Decimal(100), precision, rounding_mode)
             snapshot_max = customer_reward.reward_snapshot.get("discount_max_amount")
             if snapshot_max:
-                discount = min(discount, float(snapshot_max))
+                discount = min(discount, to_decimal(snapshot_max))
         else:
             discount = snapshot_val
 
-    subtotal = float(order.items_subtotal or 0)
+    subtotal = to_decimal(order.items_subtotal)
     discount = min(discount, subtotal)
 
     # Mark reward used
@@ -675,16 +697,16 @@ async def apply_order_reward(
     customer_reward.order_id = order_id
 
     # Update order
-    order.reward_discount = round(float(order.reward_discount or 0) + discount, 2)
-    order.discount_amount = round(float(order.discount_amount or 0) + discount, 2)
-    order.total_amount = round(float(order.total_amount or 0) - discount, 2)
+    order.reward_discount = money_round(to_decimal(order.reward_discount) + discount, precision, rounding_mode)
+    order.discount_amount = money_round(to_decimal(order.discount_amount) + discount, precision, rounding_mode)
+    order.total_amount = money_round(to_decimal(order.total_amount) - discount, precision, rounding_mode)
     order.updated_at = now
 
     # Create adjustment log
     adj = OrderAdjustment(
         order_id=order.id,
         adjustment_type="discount_override",
-        amount_delta=round(-discount, 2),
+        amount_delta=money_round(-discount, precision, rounding_mode),
         reason=f"Reward applied: {reward_cat.reward_name if reward_cat else customer_reward.redemption_code}",
         approved_by=admin.id,
     )
@@ -721,7 +743,11 @@ async def pay_with_wallet(
     data: PayWithWalletRequest,
 ):
     """Pay for an order using the customer's wallet credit."""
-    amount = data.amount
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    amount = to_decimal(data.amount)
 
     # Load order with row lock to prevent concurrent payment race
     result = await db.execute(
@@ -767,7 +793,7 @@ async def pay_with_wallet(
             )
         ).where(WalletLedgerEntry.wallet_id == wallet.id)
     )
-    current_balance = round(float(balance_result.scalar() or 0), 2)
+    current_balance = money_round(balance_result.scalar() or 0, precision, rounding_mode)
 
     if current_balance < amount:
         raise HTTPException(status_code=400, detail=f"Insufficient wallet balance. Available: RM {current_balance:.2f}")
@@ -777,15 +803,19 @@ async def pay_with_wallet(
     payment_result = await db.execute(
         select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
     )
-    already_paid = round(sum(float(p.amount) for p in payment_result.scalars().all()), 2)
-    remaining_due = round(float(order.total_amount or 0) - already_paid, 2)
+    already_paid = money_round(
+        sum(to_decimal(p.amount) for p in payment_result.scalars().all()),
+        precision,
+        rounding_mode,
+    )
+    remaining_due = money_round(to_decimal(order.total_amount) - already_paid, precision, rounding_mode)
     if amount > remaining_due:
         raise HTTPException(
             status_code=400,
             detail=f"Payment amount exceeds remaining balance. Remaining: RM {remaining_due:.2f}",
         )
 
-    new_balance = round(current_balance - amount, 2)
+    new_balance = money_round(current_balance - amount, precision, rounding_mode)
     now = datetime.now(timezone.utc)
 
     # Create ledger entry
@@ -813,8 +843,8 @@ async def pay_with_wallet(
     db.add(payment)
 
     # Update order payment status if order is fully paid
-    new_total_paid = round(already_paid + amount, 2)
-    if new_total_paid >= float(order.total_amount or 0):
+    new_total_paid = money_round(already_paid + amount, precision, rounding_mode)
+    if new_total_paid >= to_decimal(order.total_amount):
         order.payment_status = "captured"
     order.updated_at = now
 
@@ -824,7 +854,7 @@ async def pay_with_wallet(
         action="wallet_payment",
         resource_type="order",
         resource_id=order_id,
-        changes_summary={"amount": amount, "remaining_balance": new_balance, "customer_id": order.customer_id},
+        changes_summary={"amount": float(amount), "remaining_balance": float(new_balance), "customer_id": order.customer_id},
     ))
 
     await db.commit()
@@ -882,9 +912,13 @@ async def add_order_line_item(
     if not menu_item:
         raise HTTPException(status_code=404, detail="Menu item not found")
 
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
     # Always derive price from the menu item; do not trust client-supplied unit_price.
-    price = float(menu_item.base_price or 0)
-    total = round(price * data.quantity, 2)
+    price = to_decimal(menu_item.base_price)
+    total = money_round(price * data.quantity, precision, rounding_mode)
 
     line_item = OrderLineItem(
         order_id=order.id,
@@ -898,21 +932,32 @@ async def add_order_line_item(
     )
     db.add(line_item)
 
-    order.items_subtotal = float(order.items_subtotal or 0) + total
+    order.items_subtotal = to_decimal(order.items_subtotal) + total
     order.item_count = (order.item_count or 0) + data.quantity
-    order.total_amount = round(float(order.items_subtotal or 0) + float(order.modifier_subtotal or 0) + float(order.delivery_fee or 0) + float(order.service_charge or 0) + float(order.tax_amount or 0) - float(order.discount_amount or 0) - float(order.voucher_discount or 0) - float(order.reward_discount or 0), 2)
+    order.total_amount = money_round(
+        to_decimal(order.items_subtotal)
+        + to_decimal(order.modifier_subtotal)
+        + to_decimal(order.delivery_fee)
+        + to_decimal(order.service_charge)
+        + to_decimal(order.tax_amount)
+        - to_decimal(order.discount_amount)
+        - to_decimal(order.voucher_discount)
+        - to_decimal(order.reward_discount),
+        precision,
+        rounding_mode,
+    )
     order.updated_at = datetime.now(timezone.utc)
 
     log = OrderModificationLog(
         order_id=order.id,
         staff_id=admin.id,
         modification_type="add_item",
-        new_value={"menu_item_id": data.menu_item_id, "item_name": menu_item.item_name, "quantity": data.quantity, "unit_price": price},
+        new_value={"menu_item_id": data.menu_item_id, "item_name": menu_item.item_name, "quantity": data.quantity, "unit_price": float(price)},
     )
     db.add(log)
     await db.commit()
     await db.refresh(line_item)
-    return APIResponse(data={"id": line_item.id, "order_id": order.id, "item_name": line_item.item_snapshot.get("item_name"), "total": total}, status_code=201)
+    return APIResponse(data={"id": line_item.id, "order_id": order.id, "item_name": line_item.item_snapshot.get("item_name"), "total": float(total)}, status_code=201)
 
 
 @router.delete("/{order_id}/items/{line_item_id}", response_model=APIResponse[dict])
@@ -942,11 +987,26 @@ async def remove_order_line_item(
     if not line_item:
         raise HTTPException(status_code=404, detail="Line item not found")
 
-    removed_total = float(line_item.line_total or 0)
-    order.items_subtotal = float(order.items_subtotal or 0) - removed_total
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    removed_total = to_decimal(line_item.line_total)
+    order.items_subtotal = to_decimal(order.items_subtotal) - removed_total
     order.item_count = max(0, (order.item_count or 0) - (line_item.quantity or 1))
-    order.total_amount = round(float(order.items_subtotal or 0) + float(order.modifier_subtotal or 0) + float(order.delivery_fee or 0) + float(order.service_charge or 0) + float(order.tax_amount or 0) - float(order.discount_amount or 0) - float(order.voucher_discount or 0) - float(order.reward_discount or 0), 2)
-    order.total_amount = max(0, order.total_amount)
+    order.total_amount = money_round(
+        to_decimal(order.items_subtotal)
+        + to_decimal(order.modifier_subtotal)
+        + to_decimal(order.delivery_fee)
+        + to_decimal(order.service_charge)
+        + to_decimal(order.tax_amount)
+        - to_decimal(order.discount_amount)
+        - to_decimal(order.voucher_discount)
+        - to_decimal(order.reward_discount),
+        precision,
+        rounding_mode,
+    )
+    order.total_amount = max(Decimal(0), order.total_amount)
     order.updated_at = datetime.now(timezone.utc)
 
     log = OrderModificationLog(

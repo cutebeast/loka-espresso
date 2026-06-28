@@ -8,6 +8,8 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.money import money_round, to_decimal
+from app.services.platform_config import PlatformConfigService
 from app.models.order import Order
 from app.models.payment import Payment, PaymentEvent, Refund
 
@@ -58,7 +60,7 @@ async def _add_payment_event(
     payment: Payment,
     to_status: str,
     from_status: str | None = None,
-    amount: float | None = None,
+    amount: Decimal | float | None = None,
     provider_response: dict | None = None,
 ) -> PaymentEvent:
     """Record a payment lifecycle event."""
@@ -115,7 +117,7 @@ async def create_payment_intent(
     if order.customer_id != customer_id:
         raise PaymentError("Order does not belong to customer", 403)
 
-    order_amount = Decimal(str(order.total_amount))
+    order_amount = to_decimal(order.total_amount)
 
     # Create payment record
     payment = Payment(
@@ -279,7 +281,7 @@ async def cancel_payment(db: AsyncSession, payment_id: int) -> Payment:
 async def refund_payment(
     db: AsyncSession,
     payment_id: int,
-    amount: float,
+    amount: Decimal | float | str,
     reason: str,
     reason_category: str,
     approved_by: int | None,
@@ -295,14 +297,19 @@ async def refund_payment(
     if payment.status not in ("captured", "partially_refunded"):
         raise PaymentError(f"Cannot refund payment with status {payment.status}", 400)
 
-    max_refund = round(payment.captured_amount - payment.refunded_amount, 4)
-    if amount > max_refund:
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
+    refund_amount = to_decimal(amount)
+    max_refund = money_round(payment.captured_amount - payment.refunded_amount, precision, rounding_mode)
+    if refund_amount > max_refund:
         raise PaymentError(f"Refund amount exceeds available balance ({max_refund})", 400)
 
     refund = Refund(
         payment_id=payment_id,
         order_id=payment.order_id,
-        amount=amount,
+        amount=refund_amount,
         reason=reason,
         reason_category=reason_category,
         approved_by=approved_by,
@@ -313,7 +320,7 @@ async def refund_payment(
     await db.flush()
     await db.refresh(refund)
 
-    payment.refunded_amount = round(payment.refunded_amount + Decimal(str(amount)), 4)
+    payment.refunded_amount = money_round(payment.refunded_amount + refund_amount, precision, rounding_mode)
     payment.refund_count += 1
 
     if payment.refunded_amount >= payment.captured_amount:
@@ -329,7 +336,7 @@ async def refund_payment(
         payment,
         to_status=new_status,
         from_status=old_status,
-        amount=amount,
+        amount=refund_amount,
         provider_response={"action": "refund", "refund_id": refund.id, "simulated": True},
     )
     await db.commit()

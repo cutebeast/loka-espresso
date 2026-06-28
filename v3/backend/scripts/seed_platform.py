@@ -37,6 +37,8 @@ CONFIGS = [
     ("loyalty.welcome_bonus", "50", "integer", "all", False, True),
     ("notifications.retention_days", "30", "integer", "all", False, True),
     ("upload.max_size_mb", "10", "integer", "all", False, True),
+    ("accounting.decimal_places", "2", "integer", "all", False, True),
+    ("accounting.rounding_mode", '"ROUND_HALF_UP"', "string", "all", False, True),
 ]
 
 RETENTION_POLICIES = [

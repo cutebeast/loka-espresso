@@ -37,6 +37,8 @@ from app.schemas.staff import (
 )
 from app.services.auth import blacklist_refresh_token
 from app.services.order import _compute_bundle_discount, _deduct_stock_for_order
+from app.services.platform_config import PlatformConfigService
+from app.core.money import money_round, to_decimal
 from app.core.config import get_settings
 from app.core.rate_limiter import limiter
 from app.core.security import hash_password, verify_password_staff, decode_token, create_access_token, create_refresh_token, verify_password
@@ -741,8 +743,12 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
         if not table_r.scalar_one_or_none():
             raise HTTPException(status_code=400, detail=f"Dining table {dining_table_id} not found for store {store_id}")
 
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
     # Resolve prices and build line items
-    subtotal = 0.0
+    subtotal = Decimal(0)
     line_items = []
 
     for li in line_items_data:
@@ -757,8 +763,8 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
         if not menu_item.is_available:
             raise HTTPException(status_code=400, detail=f"{menu_item.item_name} is currently unavailable")
 
-        unit_price = float(menu_item.base_price or 0)
-        modifier_total = 0.0
+        unit_price = to_decimal(menu_item.base_price)
+        modifier_total = Decimal(0)
 
         modifier_ids = li.modifier_ids or []
         if modifier_ids:
@@ -766,10 +772,10 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
                 select(MenuModifierOption).where(MenuModifierOption.id.in_(modifier_ids))
             )
             for mod in mod_r.scalars().all():
-                modifier_total += float(mod.price_adjustment or 0)
+                modifier_total += to_decimal(mod.price_adjustment)
             unit_price += modifier_total
 
-        total_price = round(unit_price * qty, 2)
+        total_price = money_round(unit_price * qty, precision, rounding_mode)
         subtotal += total_price
 
         line_items.append(OrderLineItem(
@@ -793,10 +799,10 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
         )
     )
     config_map = {c.config_key: c.config_value for c in config_r.scalars().all()}
-    service_charge = float(config_map.get("order.service_charge", 0) or 0)
-    tax_rate = float(config_map.get("order.tax_rate", 0) or 0)
-    tax_amount = round(subtotal * tax_rate, 2)
-    total = round(subtotal + service_charge + tax_amount, 2)
+    service_charge = to_decimal(config_map.get("order.service_charge", 0))
+    tax_rate = to_decimal(config_map.get("order.tax_rate", 0))
+    tax_amount = money_round(subtotal * tax_rate, precision, rounding_mode)
+    total = money_round(subtotal + service_charge + tax_amount, precision, rounding_mode)
 
     # ── Bundle discount (reuse customer order engine for consistency) ──
     calc_items = [
@@ -810,12 +816,11 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
         )
         for li in line_items
     ]
-    bd_decimal, active_bundle_ids = await _compute_bundle_discount(db, calc_items)
-    bundle_discount = float(bd_decimal)
-    total = round(total - bundle_discount, 2)
+    bundle_discount, active_bundle_ids = await _compute_bundle_discount(db, calc_items)
+    total = money_round(total - bundle_discount, precision, rounding_mode)
 
     # ── Add-on Deal discount ──
-    addon_discount = 0.0
+    addon_discount = Decimal(0)
     if active_bundle_ids and line_items:
         mi_ids = set(l.menu_item_id for l in line_items)
         mi_result = await db.execute(select(MenuItem).where(MenuItem.id.in_(mi_ids)))
@@ -830,15 +835,15 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
                 continue
             if not active_bundle_ids.intersection(set(mi.eligible_bundle_ids)):
                 continue
-            line_unit = Decimal(str(l.unit_price))
+            line_unit = to_decimal(l.unit_price)
             if mi.addon_discount_type == "percentage":
-                pct = Decimal(str(mi.addon_discount_value or 0)) / Decimal(100)
-                disc = float(round(line_unit * pct * l.quantity, 2))
+                pct = to_decimal(mi.addon_discount_value) / Decimal(100)
+                disc = money_round(line_unit * pct * l.quantity, precision, rounding_mode)
             else:
-                disc = float(Decimal(str(mi.addon_discount_value or 0)) * l.quantity)
-            disc = min(disc, float(line_unit * l.quantity))
+                disc = to_decimal(mi.addon_discount_value) * l.quantity
+            disc = min(disc, line_unit * l.quantity)
             addon_discount += disc
-        total = round(total - addon_discount, 2)
+        total = money_round(total - addon_discount, precision, rounding_mode)
 
     # Idempotent replay: return existing order for the same client key
     if data.idempotency_key:
@@ -847,16 +852,16 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
         )
         existing_order = existing_order_r.scalar_one_or_none()
         if existing_order:
-            replay_change = 0.0
+            replay_change = Decimal(0)
             if payment_data and existing_order.total_amount > 0 and payment_data.method == "cash":
-                tendered = float(payment_data.amount_tendered or 0)
-                replay_change = round(max(0, tendered - float(existing_order.total_amount)), 2)
+                tendered = to_decimal(payment_data.amount_tendered)
+                replay_change = money_round(max(Decimal(0), tendered - to_decimal(existing_order.total_amount)), precision, rounding_mode)
             return APIResponse(data={
                 "order_id": existing_order.id,
                 "order_number": existing_order.order_number,
                 "status": existing_order.status,
                 "total": float(existing_order.total_amount),
-                "change": replay_change,
+                "change": float(replay_change),
                 "created_at": existing_order.created_at.isoformat(),
             })
 
@@ -876,11 +881,11 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
         status="confirmed",
         payment_status="captured" if payment_data else "initiated",
         item_count=sum(li.quantity for li in line_items),
-        items_subtotal=round(subtotal, 2),
+        items_subtotal=money_round(subtotal, precision, rounding_mode),
         service_charge=service_charge,
         tax_amount=tax_amount,
-        discount_amount=round(bundle_discount + addon_discount, 4),
-        addon_discount=round(addon_discount, 4),
+        discount_amount=money_round(bundle_discount + addon_discount, precision, rounding_mode),
+        addon_discount=money_round(addon_discount, precision, rounding_mode),
         total_amount=total,
         total_amount_currency=store.currency_code,
     )
@@ -905,7 +910,7 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
 
         # Create payment (skip if total is zero — e.g. complimentary orders)
         if payment_data and total > 0:
-            amount_tendered = float(payment_data.amount_tendered or 0)
+            amount_tendered = to_decimal(payment_data.amount_tendered or 0)
 
             # Map POS method to valid DB values
             method_type_map = {
@@ -921,12 +926,12 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
             provider = provider_map.get(payment_data.method, "cash")
 
             # Cash tender validation
-            if payment_data.method == "cash" and amount_tendered + 0.001 < total:
+            if payment_data.method == "cash" and amount_tendered < total:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Insufficient cash tendered. Required: RM {total:.2f}, Tendered: RM {amount_tendered:.2f}",
                 )
-            change = round(max(0, amount_tendered - total), 2) if payment_data.method == "cash" else 0.0
+            change = money_round(max(Decimal(0), amount_tendered - total), precision, rounding_mode) if payment_data.method == "cash" else Decimal(0)
 
             idempotency_key = f"pos-order-{order.id}-{payment_method_type}-{total:.2f}"
             dup = await db.execute(
@@ -966,16 +971,16 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
             )
             existing_order = existing_order_r.scalar_one_or_none()
             if existing_order:
-                replay_change = 0.0
+                replay_change = Decimal(0)
                 if payment_data and existing_order.total_amount > 0 and payment_data.method == "cash":
-                    tendered = float(payment_data.amount_tendered or 0)
-                    replay_change = round(max(0, tendered - float(existing_order.total_amount)), 2)
+                    tendered = to_decimal(payment_data.amount_tendered or 0)
+                    replay_change = money_round(max(Decimal(0), tendered - to_decimal(existing_order.total_amount)), precision, rounding_mode)
                 return APIResponse(data={
                     "order_id": existing_order.id,
                     "order_number": existing_order.order_number,
                     "status": existing_order.status,
                     "total": float(existing_order.total_amount),
-                    "change": replay_change,
+                    "change": float(replay_change),
                     "created_at": existing_order.created_at.isoformat(),
                 })
         raise
@@ -989,8 +994,8 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
         "order_id": order.id,
         "order_number": order.order_number,
         "status": order.status,
-        "total": total,
-        "change": change,
+        "total": float(total),
+        "change": float(change),
         "created_at": order.created_at.isoformat(),
     })
 

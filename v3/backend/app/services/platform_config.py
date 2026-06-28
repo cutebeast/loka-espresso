@@ -6,6 +6,7 @@ access with Redis fallback.
 """
 
 import json
+from decimal import Decimal
 from typing import Any, Optional
 
 from sqlalchemy import select
@@ -72,6 +73,26 @@ class PlatformConfigService:
             return default
         return str(val)
 
+    async def get_decimal(self, key: str, default: Decimal = Decimal("0")) -> Decimal:
+        val = await self.get(key, default)
+        if val is None:
+            return default
+        if isinstance(val, Decimal):
+            return val
+        try:
+            return Decimal(str(val))
+        except Exception:
+            return default
+
+    async def get_accounting_precision(self) -> int:
+        """Return the configured number of decimal places for money rounding."""
+        return await self.get_int("accounting.decimal_places", default=2)
+
+    async def get_accounting_rounding(self) -> str:
+        """Return the configured rounding mode for money rounding."""
+        mode = await self.get_str("accounting.rounding_mode", default="ROUND_HALF_UP")
+        return mode if mode in ("ROUND_HALF_UP", "ROUND_HALF_DOWN", "ROUND_HALF_EVEN", "ROUND_UP", "ROUND_DOWN") else "ROUND_HALF_UP"
+
     async def is_otp_bypass_enabled(self) -> bool:
         """Check if OTP bypass is active (DB-driven only)."""
         return await self.get_bool("otp.bypass_enabled", default=False)
@@ -98,6 +119,11 @@ class PlatformConfigService:
             if isinstance(raw, str):
                 return json.loads(raw)
             return raw
+        if value_type == "decimal":
+            try:
+                return Decimal(str(raw))
+            except Exception:
+                return Decimal("0")
         # string, encrypted
         return raw
 

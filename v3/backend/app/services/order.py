@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from decimal import Decimal
 
+from app.core.money import money_round, to_decimal
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.inventory import InventoryItem, InventoryMovementLog, InventoryStock
 from app.models.loyalty import LoyaltyAccount
@@ -21,6 +22,7 @@ from app.models.store import Store, StoreConfiguration
 from app.models.voucher import CustomerVoucher, VoucherDefinition
 from app.models.bundle_product import BundleProduct, BundleProductComponent, BundleGroup
 from app.schemas.order import OrderCreate
+from app.services.platform_config import PlatformConfigService
 
 
 class OrderError(Exception):
@@ -44,7 +46,7 @@ def _consumed_items_price(bundle_items: list, consume_qty: int) -> Decimal:
         return Decimal(0)
     sorted_items = sorted(
         bundle_items,
-        key=lambda ci: Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total)),
+        key=lambda ci: to_decimal(ci.unit_price) + to_decimal(ci.modifier_total),
         reverse=True,
     )
     remaining = consume_qty
@@ -53,7 +55,7 @@ def _consumed_items_price(bundle_items: list, consume_qty: int) -> Decimal:
         if remaining <= 0:
             break
         take = min(ci.quantity, remaining)
-        unit_total = Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total))
+        unit_total = to_decimal(ci.unit_price) + to_decimal(ci.modifier_total)
         total += unit_total * take
         remaining -= take
     return total
@@ -105,7 +107,7 @@ async def _compute_bundle_discount(db: AsyncSession, cart_items: list[CartLineIt
         if not membership_ok:
             continue
 
-        bundle_price = Decimal(str(bundle.bundle_price))
+        bundle_price = to_decimal(bundle.bundle_price)
 
         num_sets = 0
         bundled_sum = Decimal(0)
@@ -383,24 +385,34 @@ async def create_order_from_cart(
     )
     cart_items = items_result.scalars().all()
     
-    # Fetch store config for fees
+    # Fetch store config for fees and admin-configured accounting precision
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
     config_result = await db.execute(
         select(StoreConfiguration).where(
             StoreConfiguration.store_id == cart.store_id,
             StoreConfiguration.config_key.in_(["order.delivery_fee", "order.service_charge", "order.tax_rate"]),
         )
     )
-    config_map = {c.config_key: Decimal(str(c.config_value or 0)) for c in config_result.scalars().all()}
+    config_map = {c.config_key: to_decimal(c.config_value) for c in config_result.scalars().all()}
     delivery_fee = config_map.get("order.delivery_fee", Decimal(0))
     service_charge = config_map.get("order.service_charge", Decimal(0))
     tax_rate = config_map.get("order.tax_rate", Decimal(0))
-    subtotal = Decimal(str(cart.subtotal))
-    tax_amount = round(subtotal * tax_rate, 2)
+    subtotal = to_decimal(cart.subtotal)
+    tax_amount = money_round(subtotal * tax_rate, precision, rounding_mode)
 
-    modifier_sub = sum(Decimal(str(i.modifier_total)) * i.quantity for i in cart_items)
+    modifier_sub = sum(to_decimal(i.modifier_total) * i.quantity for i in cart_items)
     is_delivery = data.fulfillment_type in ("standard_delivery", "express_delivery", "third_party_delivery")
-    tip = Decimal(str(data.tip_amount or 0))
-    total = subtotal + (delivery_fee if is_delivery else Decimal(0)) + service_charge + tax_amount + tip
+    tip = to_decimal(data.tip_amount or 0)
+    total = (
+        subtotal
+        + (delivery_fee if is_delivery else Decimal(0))
+        + service_charge
+        + tax_amount
+        + tip
+    )
 
     # ── Voucher / Reward discount processing ──
     voucher_discount = Decimal(0)
@@ -422,7 +434,7 @@ async def create_order_from_cart(
             raise OrderError(f"Voucher is {cv.status}", 400)
         if cv.expires_at and cv.expires_at < datetime.now(timezone.utc):
             raise OrderError("Voucher has expired", 400)
-        
+
         vd_result = await db.execute(
             select(VoucherDefinition).where(VoucherDefinition.id == cv.voucher_definition_id).with_for_update()
         )
@@ -446,17 +458,17 @@ async def create_order_from_cart(
                 raise OrderError("Your loyalty tier is not eligible for this voucher", 400)
 
         order_base = subtotal  # cart subtotal already includes modifiers
-        min_order = Decimal(str(vd.minimum_order_value or 0))
+        min_order = to_decimal(vd.minimum_order_value)
         if order_base < min_order:
             raise OrderError(f"Voucher requires minimum order of {float(min_order):.2f}", 400)
 
         if vd.voucher_type == "percentage_off":
-            pct = Decimal(str(vd.discount_value)) / Decimal(100)
-            voucher_discount = round(order_base * pct, 2)
+            pct = to_decimal(vd.discount_value) / Decimal(100)
+            voucher_discount = money_round(order_base * pct, precision, rounding_mode)
             if vd.discount_max_amount is not None:
-                voucher_discount = min(voucher_discount, Decimal(str(vd.discount_max_amount)))
+                voucher_discount = min(voucher_discount, to_decimal(vd.discount_max_amount))
         elif vd.voucher_type == "fixed_amount_off":
-            voucher_discount = Decimal(str(vd.discount_value))
+            voucher_discount = to_decimal(vd.discount_value)
         elif vd.voucher_type == "free_delivery":
             voucher_discount = delivery_fee if is_delivery else Decimal(0)
         elif vd.voucher_type == "free_item":
@@ -464,14 +476,15 @@ async def create_order_from_cart(
                 target_item_ids = [vd.menu_item_id]
             else:
                 # Free the lowest-priced item in cart
-                sorted_items = sorted(cart_items, key=lambda i: i.unit_price)
+                sorted_items = sorted(cart_items, key=lambda i: to_decimal(i.unit_price))
                 target_item_ids = [sorted_items[0].menu_item_id] if sorted_items else []
             for li in cart_items:
                 if li.menu_item_id in target_item_ids:
-                    voucher_discount += Decimal(str(li.unit_price)) * li.quantity
+                    voucher_discount += to_decimal(li.unit_price) * li.quantity
                     break
-            if vd.discount_max_amount and voucher_discount > Decimal(str(vd.discount_max_amount)):
-                voucher_discount = Decimal(str(vd.discount_max_amount))
+            max_disc = to_decimal(vd.discount_max_amount)
+            if max_disc and voucher_discount > max_disc:
+                voucher_discount = max_disc
 
         cv.status = "used"
         cv.order_id = None  # set after order flush
@@ -503,17 +516,17 @@ async def create_order_from_cart(
             raise OrderError("Reward catalog is no longer active", 400)
 
         order_base = subtotal  # cart subtotal already includes modifiers
-        min_order = Decimal(str(rc.minimum_order_value or 0))
+        min_order = to_decimal(rc.minimum_order_value)
         if order_base < min_order:
             raise OrderError(f"Reward requires minimum order of {float(min_order):.2f}", 400)
 
         if rc.reward_type == "percentage_discount":
-            pct = Decimal(str(rc.discount_value or 0)) / Decimal(100)
-            reward_discount = round(order_base * pct, 2)
+            pct = to_decimal(rc.discount_value) / Decimal(100)
+            reward_discount = money_round(order_base * pct, precision, rounding_mode)
             if rc.discount_max_amount is not None:
-                reward_discount = min(reward_discount, Decimal(str(rc.discount_max_amount)))
+                reward_discount = min(reward_discount, to_decimal(rc.discount_max_amount))
         elif rc.reward_type == "fixed_discount":
-            reward_discount = Decimal(str(rc.discount_value or 0))
+            reward_discount = to_decimal(rc.discount_value)
         elif rc.reward_type == "free_delivery":
             reward_discount = delivery_fee if is_delivery else Decimal(0)
 
@@ -544,31 +557,31 @@ async def create_order_from_cart(
                 continue
             if not active_bundle_ids.intersection(set(mi.eligible_bundle_ids)):
                 continue
-            line_unit = Decimal(str(ci.unit_price)) + Decimal(str(ci.modifier_total))
+            line_unit = to_decimal(ci.unit_price) + to_decimal(ci.modifier_total)
             if mi.addon_discount_type == "percentage":
-                pct = Decimal(str(mi.addon_discount_value or 0)) / Decimal(100)
-                disc = round(line_unit * pct * ci.quantity, 2)
+                pct = to_decimal(mi.addon_discount_value) / Decimal(100)
+                disc = money_round(line_unit * pct * ci.quantity, precision, rounding_mode)
             else:  # fixed
-                disc = Decimal(str(mi.addon_discount_value or 0)) * ci.quantity
+                disc = to_decimal(mi.addon_discount_value) * ci.quantity
             disc = min(disc, line_unit * ci.quantity)
             addon_discount += disc
 
     total_discount = voucher_discount + reward_discount + bundle_discount + addon_discount
     total_discount = min(total_discount, total)  # never discount more than the order total
     total -= total_discount
+    total = money_round(total, precision, rounding_mode)
+
     # Compute loyalty points earned from order subtotal
     # Read points-per-currency-unit from platform config (default: 1 point per RM1)
-    from app.models.platform import PlatformConfig
-    ppc_result = await db.execute(
-        select(PlatformConfig.config_value).where(PlatformConfig.config_key == "loyalty.points_per_currency")
-    )
-    ppc_val = ppc_result.scalar()
+    ppc_val = await config_service.get("loyalty.points_per_currency")
     try:
-        points_per_currency = Decimal(str(ppc_val)) if ppc_val else Decimal("1")
+        points_per_currency = to_decimal(ppc_val) if ppc_val else Decimal("1")
     except Exception:
         points_per_currency = Decimal("1")
     # Points earned on the pre-discount items subtotal (not on delivery/tax/tips)
-    loyalty_points_earned = int((Decimal(str(subtotal)) * points_per_currency).to_integral_value(rounding="ROUND_DOWN"))
+    loyalty_points_earned = int(
+        (to_decimal(subtotal) * points_per_currency).to_integral_value(rounding="ROUND_DOWN")
+    )
 
     # Create order
     order = Order(
@@ -582,17 +595,17 @@ async def create_order_from_cart(
         status="pending",
         payment_status="initiated",
         item_count=cart.item_count,
-        items_subtotal=float(subtotal),
-        modifier_subtotal=float(modifier_sub),
-        delivery_fee=float(delivery_fee) if is_delivery else 0,
-        service_charge=float(service_charge),
-        tax_amount=float(tax_amount),
-        discount_amount=float(total_discount),
-        voucher_discount=float(voucher_discount),
-        reward_discount=float(reward_discount),
-        addon_discount=float(addon_discount),
-        tip_amount=float(tip),
-        total_amount=float(total),
+        items_subtotal=subtotal,
+        modifier_subtotal=modifier_sub,
+        delivery_fee=delivery_fee if is_delivery else Decimal(0),
+        service_charge=service_charge,
+        tax_amount=tax_amount,
+        discount_amount=total_discount,
+        voucher_discount=voucher_discount,
+        reward_discount=reward_discount,
+        addon_discount=addon_discount,
+        tip_amount=tip,
+        total_amount=total,
         total_amount_currency=store.currency_code,
         loyalty_points_earned=loyalty_points_earned,
         loyalty_points_redeemed=0,
@@ -712,7 +725,7 @@ async def create_order_from_cart(
         fulfillment = OrderFulfillment(
             order_id=order.id,
             status="pending_assignment",
-            delivery_fee_snapshot=float(order.delivery_fee),
+            delivery_fee_snapshot=order.delivery_fee,
         )
         db.add(fulfillment)
     
@@ -721,7 +734,7 @@ async def create_order_from_cart(
         tip = TipAllocation(
             order_id=order.id,
             staff_id=None,  # pooled tip, unassigned until distributed
-            tip_amount=float(data.tip_amount),
+            tip_amount=to_decimal(data.tip_amount),
             allocation_type="fixed",
         )
         db.add(tip)
@@ -753,7 +766,7 @@ async def create_order_from_cart(
     for ci in cart_items:
         await db.delete(ci)
     cart.item_count = 0
-    cart.subtotal = 0.0
+    cart.subtotal = Decimal("0")
     
     await db.commit()
     await db.refresh(order)

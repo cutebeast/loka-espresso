@@ -10,8 +10,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
+from app.core.money import money_round, to_decimal
 from app.models.platform import AuditLog
 from app.models.wallet import Wallet, WalletLedgerEntry
+from app.services.platform_config import PlatformConfigService
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.wallet import AdminTopupRequest, TopUpRequest, WalletLedgerEntryOut, WalletOut
 
@@ -195,6 +197,10 @@ async def adjust_wallet(
     data: WalletAdjustRequest,
 ):
     """Manually adjust wallet balance (credit/debit)."""
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
     wallet = await _get_wallet_or_404(db, wallet_id)
 
     # Get current running balance with row lock
@@ -206,17 +212,18 @@ async def adjust_wallet(
         .with_for_update()
     )
     last_entry = result.scalar_one_or_none()
-    current_balance = float(last_entry.running_balance) if last_entry else 0.0
+    current_balance = to_decimal(last_entry.running_balance) if last_entry else Decimal(0)
+    amount = to_decimal(data.amount)
 
     if data.entry_type == "debit":
-        new_balance = current_balance - data.amount
+        new_balance = money_round(current_balance - amount, precision, rounding_mode)
     else:
-        new_balance = current_balance + data.amount
+        new_balance = money_round(current_balance + amount, precision, rounding_mode)
 
     entry = WalletLedgerEntry(
         wallet_id=wallet_id,
         entry_type=data.entry_type,
-        amount=data.amount,
+        amount=amount,
         running_balance=new_balance,
         description=data.description or f"Manual {data.entry_type} by admin {admin.id}",
         reference_type="adjustment",
@@ -229,7 +236,7 @@ async def adjust_wallet(
         resource_id=wallet_id,
         principal_id=admin.id,
         severity="warning",
-        changes_summary={"amount": data.amount, "entry_type": data.entry_type, "new_balance": new_balance, "description": data.description},
+        changes_summary={"amount": float(amount), "entry_type": data.entry_type, "new_balance": float(new_balance), "description": data.description},
     ))
     await db.commit()
     await db.refresh(entry)
@@ -239,8 +246,12 @@ async def adjust_wallet(
 @admin_router.post("/topup", response_model=APIResponse[dict])
 async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: AdminTopupRequest):
     """Admin wallet top-up by customer_id."""
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
     customer_id = data.customer_id
-    amount = data.amount
+    amount = to_decimal(data.amount)
     reason = data.reason or "Admin top-up"
     if amount <= 0:
         raise HTTPException(400, "Amount must be positive")
@@ -258,7 +269,8 @@ async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: AdminTopupReq
         .with_for_update()
     )
     last = r.scalar_one_or_none()
-    new_balance = (float(last.running_balance) if last else 0.0) + amount
+    current_balance = to_decimal(last.running_balance) if last else Decimal(0)
+    new_balance = money_round(current_balance + amount, precision, rounding_mode)
 
     entry = WalletLedgerEntry(wallet_id=wallet.id, entry_type="credit", amount=amount, running_balance=new_balance, description=reason, reference_type="adjustment")
     db.add(entry)
@@ -268,9 +280,9 @@ async def admin_topup(db: DBDependency, admin: CurrentAdmin, data: AdminTopupReq
         resource_id=wallet.id,
         principal_id=admin.id,
         severity="warning",
-        changes_summary={"amount": amount, "reason": reason, "new_balance": new_balance},
+        changes_summary={"amount": float(amount), "reason": reason, "new_balance": float(new_balance)},
     )); await db.commit(); await db.refresh(entry)
-    return APIResponse(data={"message": "Top-up complete", "new_balance": new_balance})
+    return APIResponse(data={"message": "Top-up complete", "new_balance": float(new_balance)})
 
 
 @wallet_alias_router.post("/topup", response_model=APIResponse[dict])
@@ -289,8 +301,12 @@ class AdminDeductRequest(BaseModel):
 @admin_router.post("/deduct", response_model=APIResponse[dict])
 async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: AdminDeductRequest):
     """Admin wallet deduction by customer_id."""
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
     customer_id = data.customer_id
-    amount = data.amount
+    amount = to_decimal(data.amount)
     reason = data.reason or "Admin deduction"
 
     wallet = await _get_customer_wallet(db, customer_id)
@@ -304,9 +320,9 @@ async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: AdminDeductR
         .with_for_update()
     )
     last = r.scalar_one_or_none()
-    current = float(last.running_balance) if last else 0.0
+    current = to_decimal(last.running_balance) if last else Decimal(0)
     if current < amount: raise HTTPException(400, f"Insufficient balance: {current}")
-    new_balance = current - amount
+    new_balance = money_round(current - amount, precision, rounding_mode)
 
     entry = WalletLedgerEntry(wallet_id=wallet.id, entry_type="debit", amount=amount, running_balance=new_balance, description=reason, reference_type="adjustment")
     db.add(entry)
@@ -316,9 +332,9 @@ async def admin_deduct(db: DBDependency, admin: CurrentAdmin, data: AdminDeductR
         resource_id=wallet.id,
         principal_id=admin.id,
         severity="warning",
-        changes_summary={"amount": amount, "reason": reason, "new_balance": new_balance},
+        changes_summary={"amount": float(amount), "reason": reason, "new_balance": float(new_balance)},
     )); await db.commit(); await db.refresh(entry)
-    return APIResponse(data={"message": "Deducted", "new_balance": new_balance})
+    return APIResponse(data={"message": "Deducted", "new_balance": float(new_balance)})
 
 
 # ---------------------------------------------------------------------------

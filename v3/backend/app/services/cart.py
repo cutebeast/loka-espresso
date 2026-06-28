@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.money import to_decimal
 from app.models.bundle_product import BundleProduct, BundleProductComponent
 from app.models.cart import CartLineItem, CustomerCart
 from app.models.menu import MenuItem, MenuModifierOption, MenuVariant
@@ -67,7 +68,7 @@ async def _get_menu_item_price(
     menu_item_id: int,
     menu_variant_id: int | None,
     selected_modifiers: list[dict],
-) -> tuple[float, float]:
+) -> tuple[Decimal, Decimal]:
     """Calculate unit price and modifier total for a line item."""
     item_result = await db.execute(
         select(MenuItem).where(MenuItem.id == menu_item_id)
@@ -75,9 +76,9 @@ async def _get_menu_item_price(
     item = item_result.scalar_one_or_none()
     if item is None:
         raise CartError("Menu item not found", 404)
-    
-    unit_price = Decimal(str(item.base_price))
-    
+
+    unit_price = to_decimal(item.base_price)
+
     # Add variant price adjustment
     if menu_variant_id:
         variant_result = await db.execute(
@@ -85,8 +86,8 @@ async def _get_menu_item_price(
         )
         variant = variant_result.scalar_one_or_none()
         if variant:
-            unit_price += Decimal(str(variant.price_adjustment))
-    
+            unit_price += to_decimal(variant.price_adjustment)
+
     # Calculate modifier total (batch option lookup to avoid N+1)
     modifier_total = Decimal("0")
     all_option_ids: list[int] = []
@@ -103,7 +104,7 @@ async def _get_menu_item_price(
         opts_result = await db.execute(
             select(MenuModifierOption).where(MenuModifierOption.id.in_(all_option_ids))
         )
-        option_prices = {opt.id: Decimal(str(opt.price_adjustment)) for opt in opts_result.scalars().all()}
+        option_prices = {opt.id: to_decimal(opt.price_adjustment) for opt in opts_result.scalars().all()}
         modifier_total = sum(option_prices.get(opt_id, Decimal(0)) for opt_id in all_option_ids)
 
     return unit_price, modifier_total
@@ -378,5 +379,5 @@ async def _recalc_cart(db: AsyncSession, cart: CustomerCart) -> None:
     )
     items = result.scalars().all()
     cart.item_count = sum(i.quantity for i in items)
-    cart.subtotal = sum((Decimal(str(i.line_total)) for i in items), Decimal("0"))
+    cart.subtotal = sum((to_decimal(i.line_total) for i in items), Decimal("0"))
     cart.last_activity_at = datetime.now(timezone.utc)
