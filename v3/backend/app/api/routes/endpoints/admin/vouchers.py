@@ -1,6 +1,7 @@
 """Admin and public voucher endpoints."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
@@ -18,6 +19,8 @@ from app.schemas.voucher import (
     VoucherDefinitionUpdate,
 )
 from app.services.translation import auto_translate_record, delete_translations
+from app.core.money import money_round, to_decimal
+from app.services.platform_config import PlatformConfigService
 
 admin_router = APIRouter(prefix="/admin/vouchers", tags=["admin — vouchers"])
 public_router = APIRouter(prefix="/vouchers", tags=["vouchers"])
@@ -308,30 +311,36 @@ async def validate_voucher(
     if vd.valid_until and vd.valid_until < now:
         raise HTTPException(status_code=400, detail="Voucher has expired")
 
-    min_spend = float(vd.minimum_order_value or 0)
-    if order_total < min_spend:
-        raise HTTPException(status_code=400, detail=f"Minimum spend RM {min_spend:.2f} required")
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
 
+    order_total_dec = to_decimal(order_total)
+    min_spend = to_decimal(vd.minimum_order_value or 0)
+    if order_total_dec < min_spend:
+        raise HTTPException(status_code=400, detail=f"Minimum spend RM {float(min_spend):.2f} required")
+
+    discount_value_dec = to_decimal(vd.discount_value)
     if vd.voucher_type == "percentage_off":
-        discount = round(order_total * (float(vd.discount_value) / 100), 2)
-        if vd.discount_max_amount:
-            discount = min(discount, float(vd.discount_max_amount))
+        discount = money_round(order_total_dec * (discount_value_dec / Decimal(100)), precision, rounding_mode)
+        if vd.discount_max_amount is not None:
+            discount = min(discount, to_decimal(vd.discount_max_amount))
     elif vd.voucher_type == "fixed_amount_off":
-        discount = float(vd.discount_value)
+        discount = discount_value_dec
     elif vd.voucher_type == "free_delivery":
-        discount = 5.0
+        discount = to_decimal(5)
     elif vd.voucher_type == "free_item":
-        discount = order_total * 0.2
+        discount = money_round(order_total_dec * Decimal("0.2"), precision, rounding_mode)
     else:
-        discount = 0.0
+        discount = Decimal(0)
 
     return APIResponse(data={
         "valid": True,
         "voucher_code": voucher_code,
         "discount_type": vd.voucher_type,
-        "discount_value": discount,
+        "discount_value": float(discount),
         "display_title": vd.display_title,
-        "minimum_order_value": float(vd.minimum_order_value or 0),
+        "minimum_order_value": float(min_spend),
     })
 
 

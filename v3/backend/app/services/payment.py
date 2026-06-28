@@ -211,13 +211,17 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
     payment.status = "captured"
     payment.captured_amount = payment.amount
 
+    config_service = PlatformConfigService(db)
+    precision = await config_service.get_accounting_precision()
+    rounding_mode = await config_service.get_accounting_rounding()
+
     # Simulate fee calculation (e.g., 2.9% + 0.30 for card payments)
     if payment.provider in ("stripe", "adyen", "braintree", "paypal"):
-        fee = round(payment.captured_amount * Decimal("0.029") + Decimal("0.30"), 4)
+        fee = money_round(payment.captured_amount * Decimal("0.029") + Decimal("0.30"), precision, rounding_mode)
     else:
         fee = Decimal(0)
     payment.fee_amount = fee
-    payment.net_amount = round(payment.captured_amount - fee, 4)
+    payment.net_amount = money_round(payment.captured_amount - fee, precision, rounding_mode)
 
     await _add_payment_event(
         db,
@@ -234,13 +238,15 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
     )
     order = order_result.scalar_one_or_none()
     if order:
-        total_captured = round(
-            sum(float(p.amount) for p in (await db.execute(
-                select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
-            )).scalars().all()) + float(payment.amount),
-            2,
+        captured_payments = (await db.execute(
+            select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
+        )).scalars().all()
+        total_captured = money_round(
+            sum(to_decimal(p.amount) for p in captured_payments) + to_decimal(payment.amount),
+            precision,
+            rounding_mode,
         )
-        if total_captured >= float(order.total_amount or 0) - 0.01:
+        if total_captured >= to_decimal(order.total_amount or 0):
             order.payment_status = "captured"
         else:
             order.payment_status = "initiated"

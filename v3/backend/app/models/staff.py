@@ -69,7 +69,6 @@ class StaffProfile(Base, SoftDeleteMixin, TimestampMixin):
         ),
         CheckConstraint("hourly_rate >= 0", name="ck_staff_profiles_hourly_rate"),
         CheckConstraint("failed_login_count >= 0", name="ck_staff_profiles_failed_login_count"),
-        UniqueConstraint("display_name", "store_id", name="uq_staff_profiles_display_name_store_id"),
     )
 
 

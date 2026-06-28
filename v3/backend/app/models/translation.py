@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     BigInteger,
     DateTime,
+    Identity,
     String,
     Text,
     UniqueConstraint,
@@ -17,7 +18,7 @@ from app.models.base import Base
 class Translation(Base):
     __tablename__ = "translations"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     namespace: Mapped[str] = mapped_column(String(50), nullable=False, default="admin")
     translation_key: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     locale: Mapped[str] = mapped_column(String(5), nullable=False)
@@ -46,7 +47,7 @@ class TranslationCache(Base):
     __tablename__ = "translation_cache"
 
     id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True, autoincrement=True,
+        BigInteger, Identity(), primary_key=True,
     )
     source_text: Mapped[str] = mapped_column(Text, nullable=False)
     source_locale: Mapped[str] = mapped_column(String(5), nullable=False)
