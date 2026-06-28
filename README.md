@@ -1,61 +1,52 @@
 # FNB Super App — Loka Espresso
 
-Full-stack F&B ordering and loyalty platform. Active: **v3** (Round 17, 2026-06-03).
+Full-stack F&B ordering and loyalty platform. The active codebase is in `v3/`.
 
-| Component | Stack | URL |
-|-----------|-------|-----|
-| Backend API | FastAPI + SQLAlchemy async | — |
-| Admin Portal | Next.js 16 (120 pages) | admin.loyaltysystem.uk |
-| Staff Portal | Next.js 16 (16 pages) | staff.loyaltysystem.uk |
-| Customer PWA | Next.js 16 (26 pages) | app.loyaltysystem.uk |
-| Database | PostgreSQL 16 | — |
-| Reverse Proxy | Caddy | Auto HTTPS |
+| Component | Stack | Dev URL |
+|-----------|-------|---------|
+| Backend API | FastAPI + SQLAlchemy async | https://admin.loyaltysystem.uk/api/v1 |
+| Admin Portal | Next.js 16 | https://admin.loyaltysystem.uk |
+| Staff Portal | Next.js 16 | https://staff.loyaltysystem.uk |
+| Customer PWA | Next.js 16 | https://app.loyaltysystem.uk |
+| Database | PostgreSQL 16 | Docker `fnb-v3-postgres` |
+| Cache / Rate limit | Redis 7 | Docker `fnb-v3-redis` |
+| Reverse Proxy | Caddy 2 | Host Caddy + Docker-ready Caddyfile |
 
-All code is in `v3/`. TypeScript 0 errors. E2E 23 passed. All 3 domains HTTPS 200.
+## Current status
 
-## Quick Start
+See [`v3/docs/000-project-status.md`](v3/docs/000-project-status.md) for the full project status, deployment notes, domain setup, upload handling, test results, and recent cleanup.
+
+Highlights:
+- **182 passed, 17 skipped, 0 failed** in the E2E suite.
+- TypeScript strict: 0 errors across all 3 portals.
+- Root repository has been cleaned of legacy v1/v2 files; all active code stays in `v3/`.
+- Upload endpoints (avatars, item images, equipment photos) are verified and served correctly through the backend.
+- Docker Compose stack is domain-agnostic and ready for dev (`loyaltysystem.uk`), production (`lokaespresso.com`), and future brand servers.
+
+## Quick start
 
 ```bash
 cd v3
-# Backend
-cd backend && uvicorn app.main:app --reload --port 13800
 
-# Frontends (separate terminals)
-cd admin-portal && npm run dev     # → localhost:13830
-cd staff-portal && npm run dev     # → localhost:13820
-cd customer-pwa && npm run dev     # → localhost:13810
+# Backend (PM2 dev mode)
+cd backend && uvicorn app.main:app --host 0.0.0.0 --port 13800
 
-# E2E Tests
-cd e2e-tests && python3 -m pytest -v
+# Frontends (PM2 dev mode)
+cd admin-portal && npm run dev    # localhost:13830
+cd staff-portal && npm run dev    # localhost:13820
+cd customer-pwa && npm run dev    # localhost:13810
+
+# Tests
+cd e2e-tests && pytest -q
 ```
 
-## Structure
+## Full-Docker deployment
 
-```
-v3/
-├── backend/          # FastAPI (37 endpoint files, 24 models)
-├── admin-portal/     # Admin dashboard
-├── staff-portal/     # Staff POS + operations
-├── customer-pwa/     # Customer mobile PWA
-├── e2e-tests/        # Pytest API-level tests
-├── infra/            # Docker compose + Caddy
-├── docs/             # Documentation
-└── scripts/          # Seed scripts
+```bash
+cd v3/infra/docker
+cp .env.example .env
+# edit .env with secrets and domains for the target server
+docker compose up -d --build
 ```
 
-## Key Features
-
-- **Passwordless customer auth**: Phone + OTP, auto-register on first login
-- **POS terminal**: Full checkout with wallet, voucher, reward, tip entry
-- **Kitchen display**: Real-time kanban with audio alerts
-- **Table management**: QR codes, dine-in ordering
-- **Loyalty + wallet**: Points ledger with FIFO expiry, double-entry wallet
-- **Inventory**: Global catalog + per-store stock levels
-- **Translation system**: 5 languages (en/ms/zh/ta/tr), 6,975 records, live sync
-- **Pure CSS**: Brand design system with warm Turkish coffee palette
-
-## Documentation
-
-- [v3 README](v3/README.md) — full system overview with all 17 audit rounds
-- [AGENTS.md](AGENTS.md) — agent quick-reference
-- [Design System](v3/docs/070-design-system.md) — brand tokens and design spec
+See the status doc for multi-server domain configuration and operational commands.
