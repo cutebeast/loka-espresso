@@ -150,8 +150,6 @@ services:
       APP_DOMAIN: ${APP_DOMAIN:-app.loyaltysystem.uk}
       ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.loyaltysystem.uk}
       STAFF_DOMAIN: ${STAFF_DOMAIN:-staff.loyaltysystem.uk}
-      API_DOMAIN: ${API_DOMAIN:-api.loyaltysystem.uk}
-      UPLOADS_DOMAIN: ${UPLOADS_DOMAIN:-uploads.loyaltysystem.uk}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://app.loyaltysystem.uk}
     depends_on:
       backend:

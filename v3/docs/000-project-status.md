@@ -53,7 +53,7 @@ The **Loka Espresso FNB Super App v3** is a full-stack F&B ordering and loyalty 
 |-----------|---------------|-------|
 | PostgreSQL | Docker (`fnb-v3-postgres`) | Port `13334` mapped to host |
 | Redis | Docker (`fnb-v3-redis`) | Port `13335` mapped to host, password-protected |
-| Backend | PM2 (`v3-backend`) | Listens on `localhost:13800`, uses Docker Redis |
+| Backend | PM2 (`v3-backend`) | Runs in `v3/backend/.venv`, listens on `localhost:13800`, uses Docker Redis |
 | Admin portal | PM2 (`admin-portal-v3`) | Listens on `localhost:13830` |
 | Staff portal | PM2 (`staff-portal-v3`) | Listens on `localhost:13820` |
 | Customer PWA | PM2 (`customer-pwa-v3`) | Listens on `localhost:13810` |
@@ -81,8 +81,6 @@ The Caddyfile is domain-agnostic. Set these variables in `v3/infra/docker/.env` 
 APP_DOMAIN=app.loyaltysystem.uk          # or app.lokaespresso.com
 ADMIN_DOMAIN=admin.loyaltysystem.uk
 STAFF_DOMAIN=staff.loyaltysystem.uk
-API_DOMAIN=api.loyaltysystem.uk
-UPLOADS_DOMAIN=uploads.loyaltysystem.uk
 CADDY_EMAIL=admin@lokaespresso.my
 ```
 
@@ -134,6 +132,7 @@ TypeScript strict: 0 errors across all 3 portals.
 - Fixed payment list 500, equipment create/update 500, splash-screen `always` frequency.
 - Added modular seed scripts and expanded E2E coverage (content, marketing, refunds, tips, hygiene, etc.).
 - Wired backend to Docker Redis for distributed rate limiting.
+- Moved backend from system Python to a dedicated `v3/backend/.venv` virtual environment.
 - Made Docker/Caddy stack domain-agnostic for multi-server deployment.
 - Cleaned root-level legacy `infra/`, `scripts/`, `.github/workflows/ci.yml`, `.env.example`, and `uploads/`.
 - Removed duplicate customer-PWA CSS (`events-v2.css`) and archived `docs/_archive/`.
@@ -167,8 +166,7 @@ Key values to set per deployment:
 | Item | Status | Recommendation |
 |------|--------|----------------|
 | Disk usage 88% | Monitor | Clean PM2 logs and `.next/cache` periodically. Do not delete running `.next/` builds. |
-| Redis Python package | Installed with `--break-system-packages` | For production, deploy backend via its Dockerfile or a dedicated venv instead of system Python. |
-| Root domain `loyaltysystem.uk` | Cloudflare 526 | Add/update apex DNS + Caddy host config, or redirect apex to `app.loyaltysystem.uk`. |
+| Python environment | Backend now uses `v3/backend/.venv` | For full-Docker deployments the backend Dockerfile uses its own venv. |
 | Full-Docker switch | Ready | Validate on staging before replacing PM2 on production. |
 
 ---
@@ -176,6 +174,9 @@ Key values to set per deployment:
 ## 10. Quick commands
 
 ```bash
+# Start backend with the ecosystem file
+pm2 start /root/fnb-super-app/v3/backend/ecosystem.config.js
+
 # Restart backend with current .env
 pm2 restart v3-backend
 
