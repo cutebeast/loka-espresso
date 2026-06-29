@@ -326,7 +326,7 @@ self.addEventListener('message', (event) => {
     return;
   }
 
-  if (data === 'SKIP_WAITING') {
+  if (data === 'SKIP_WAITING' || (data && data.type === 'SKIP_WAITING')) {
     self.skipWaiting();
     return;
   }

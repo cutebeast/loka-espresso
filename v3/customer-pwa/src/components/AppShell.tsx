@@ -273,9 +273,10 @@ export default function AppShell() {
           <span className="sw-update-text">{t('common.newVersionAvailable')}</span>
           <button
             className="sw-update-btn"
-            onClick={() => {
-              if (navigator.serviceWorker?.controller) {
-                navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+            onClick={async () => {
+              const registration = await navigator.serviceWorker?.getRegistration();
+              if (registration?.waiting) {
+                registration.waiting.postMessage('SKIP_WAITING');
               }
               window.location.reload();
             }}
