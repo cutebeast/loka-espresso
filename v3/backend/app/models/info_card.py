@@ -129,6 +129,10 @@ class PromoBanner(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    voucher: Mapped["VoucherDefinition | None"] = relationship("VoucherDefinition")
+    survey: Mapped["SurveyDefinition | None"] = relationship("SurveyDefinition")
+
+
 class ContentSection(Base):
     __tablename__ = "content_sections"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

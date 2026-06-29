@@ -1,4 +1,4 @@
-"""E2E Test Suite: Inventory operations — suppliers and purchase orders."""
+"""E2E Test Suite: Inventory operations — suppliers, purchase orders and items."""
 
 import pytest
 import uuid
@@ -161,3 +161,73 @@ async def test_purchase_order_lifecycle(
     )
     assert r_detail.status_code == 200
     assert r_detail.json()["data"]["status"] == "received"
+
+
+@pytest.mark.asyncio
+async def test_inventory_item_relationship_fields(
+    client, admin_headers: dict, base_url: str, store_id: int
+):
+    """Inventory item list exposes category_name, supplier_name and stock."""
+    # Need a category
+    r_cats = await client.get(
+        f"{base_url}/admin/inventory/categories?per_page=1",
+        headers=admin_headers,
+    )
+    assert r_cats.status_code == 200
+    categories = r_cats.json()["data"].get("items", [])
+    if not categories:
+        pytest.skip("No inventory categories seeded")
+    category_id = categories[0]["id"]
+
+    # Need a supplier
+    suffix = uuid.uuid4().hex[:8]
+    r_sup = await client.post(
+        f"{base_url}/admin/inventory/suppliers",
+        headers=admin_headers,
+        json={
+            "store_id": store_id,
+            "supplier_name": f"E2E Item Supplier {suffix}",
+            "phone_number": "+60111111111",
+            "lead_time_days": 3,
+        },
+    )
+    assert r_sup.status_code in (200, 201)
+    supplier_id = r_sup.json()["data"]["id"]
+
+    # Create an inventory item
+    r_create = await client.post(
+        f"{base_url}/admin/inventory/items",
+        headers=admin_headers,
+        json={
+            "item_code": f"E2E-{suffix}",
+            "item_name": f"E2E Inventory Item {suffix}",
+            "unit_of_measure": "kg",
+            "unit_cost": 12.5,
+            "category_id": category_id,
+            "supplier_id": supplier_id,
+            "item_type": "fnb",
+        },
+    )
+    assert r_create.status_code in (200, 201), (
+        f"Create item failed: {r_create.status_code}: {r_create.text}"
+    )
+    item = r_create.json()["data"]
+    item_id = item["id"]
+
+    try:
+        # List items and verify enriched fields
+        r_list = await client.get(
+            f"{base_url}/admin/inventory/items?store_id={store_id}&per_page=200",
+            headers=admin_headers,
+        )
+        assert r_list.status_code == 200
+        items = r_list.json()["data"].get("items", [])
+        found = next((i for i in items if i["id"] == item_id), None)
+        assert found is not None, "Created item not found in list"
+        assert found.get("category_name") == categories[0]["category_name"]
+        assert found.get("supplier_name") == f"E2E Item Supplier {suffix}"
+    finally:
+        await client.delete(
+            f"{base_url}/admin/inventory/items/{item_id}",
+            headers=admin_headers,
+        )

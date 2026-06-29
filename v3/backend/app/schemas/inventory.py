@@ -101,6 +101,8 @@ class InventoryStockOut(InventoryStockBase, TimestampedSchema):
 
 class InventoryItemOut(InventoryItemBase, TimestampedSchema):
     id: int
+    category_name: str | None = None
+    supplier_name: str | None = None
     stock: InventoryStockOut | None = None
 
 

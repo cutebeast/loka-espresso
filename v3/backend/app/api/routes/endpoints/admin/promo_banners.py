@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.info_card import PromoBanner
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/admin/promo-banners", tags=["admin — promo banners
 
 @router.get("", response_model=APIResponse[PaginatedResponse[PromoBannerOut]])
 async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=500)):
-    base = select(PromoBanner)
+    base = select(PromoBanner).options(selectinload(PromoBanner.voucher), selectinload(PromoBanner.survey))
     cnt = select(func.count(PromoBanner.id))
     total = (await db.execute(cnt)).scalar() or 0
     result = await db.execute(base.order_by(PromoBanner.id.desc()).offset((page-1)*per_page).limit(per_page))
@@ -27,6 +28,8 @@ async def list_items(db: DBDependency, admin: CurrentAdmin, page: int = Query(1,
             v = getattr(r, c)
             if isinstance(v, datetime): d[c] = v.isoformat()
             else: d[c] = v
+        d["voucher_display_title"] = r.voucher.display_title if r.voucher else None
+        d["survey_name"] = r.survey.survey_name if r.survey else None
         items.append(d)
     return APIResponse(data=PaginatedResponse(items=items, total=total, page=page, per_page=per_page, total_pages=(total+per_page-1)//per_page if per_page else 0))
 

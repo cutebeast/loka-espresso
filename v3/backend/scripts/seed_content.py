@@ -58,7 +58,7 @@ CAMPAIGNS = [
 ]
 
 PROMO_BANNERS = [
-    ("Welcome Offer", "Get 10% off your first order", "voucher", None),
+    ("Welcome Offer", "Get 10% off your first order", "read_claim", None),
 ]
 
 SURVEYS = [
@@ -348,7 +348,12 @@ async def seed():
         print(f"  Upserted {len(CAMPAIGNS)} campaign(s)")
 
         # Promo banners
-        for title, desc, action_type, voucher_id in PROMO_BANNERS:
+        voucher_row = await db.execute(
+            text("SELECT id FROM voucher_definitions WHERE voucher_code = 'WELCOME10' LIMIT 1")
+        )
+        welcome_voucher_id = voucher_row.scalar_one_or_none()
+
+        for title, desc, action_type, _ in PROMO_BANNERS:
             existing = await db.execute(
                 text("SELECT id FROM promo_banners WHERE title = :title"),
                 {"title": title},
@@ -359,18 +364,19 @@ async def seed():
                         UPDATE promo_banners
                         SET short_description = :description,
                             action_type = :action_type,
+                            voucher_id = :voucher_id,
                             is_active = true
                         WHERE title = :title
                     """),
-                    {"title": title, "description": desc, "action_type": action_type},
+                    {"title": title, "description": desc, "action_type": action_type, "voucher_id": welcome_voucher_id},
                 )
             else:
                 await db.execute(
                     text("""
-                        INSERT INTO promo_banners (title, short_description, action_type, is_active)
-                        VALUES (:title, :description, :action_type, true)
+                        INSERT INTO promo_banners (title, short_description, action_type, voucher_id, is_active)
+                        VALUES (:title, :description, :action_type, :voucher_id, true)
                     """),
-                    {"title": title, "description": desc, "action_type": action_type},
+                    {"title": title, "description": desc, "action_type": action_type, "voucher_id": welcome_voucher_id},
                 )
         print(f"  Upserted {len(PROMO_BANNERS)} promo banner(s)")
 

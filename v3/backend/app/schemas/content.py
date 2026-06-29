@@ -241,6 +241,8 @@ class PromoBannerUpdate(BaseSchema):
 
 class PromoBannerOut(PromoBannerBase, TimestampedSchema):
     id: int
+    voucher_display_title: str | None = None
+    survey_name: str | None = None
 
 
 # ── Content Sections ──

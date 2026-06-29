@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.inventory import InventoryCategory, InventoryItem, InventoryStock, Supplier
@@ -169,8 +170,13 @@ async def list_items(
     per_page: int = Query(20, ge=1, le=500),
 ):
     """List global inventory items (optionally filtered by category, with stock for a store)."""
-    base_stmt = select(InventoryItem).where(
-        InventoryItem.deleted_at.is_(None),
+    base_stmt = (
+        select(InventoryItem)
+        .options(
+            selectinload(InventoryItem.category),
+            selectinload(InventoryItem.supplier),
+        )
+        .where(InventoryItem.deleted_at.is_(None))
     )
     if category_id is not None:
         base_stmt = base_stmt.where(InventoryItem.category_id == category_id)
@@ -204,7 +210,11 @@ async def list_items(
         data=PaginatedResponse(
             items=[
                 InventoryItemOut.model_validate(i).model_copy(
-                    update={"stock": InventoryStockOut.model_validate(stock_by_item[i.id]) if i.id in stock_by_item else None}
+                    update={
+                        "category_name": i.category.category_name if i.category else None,
+                        "supplier_name": i.supplier.supplier_name if i.supplier else None,
+                        "stock": InventoryStockOut.model_validate(stock_by_item[i.id]) if i.id in stock_by_item else None,
+                    }
                 )
                 for i in items
             ],
