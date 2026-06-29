@@ -42,9 +42,22 @@ export default function SavedAddressesPage() {
 
   const fetchAddresses = () => {
     setLoading(true);
-    api.get('/users/me/addresses')
+    api.get('/me/addresses')
       .then((res) => {
-        const list = Array.isArray(res.data) ? [...res.data] : [];
+        const raw = Array.isArray(res.data) ? res.data : [];
+        const list: Address[] = raw.map((a: Record<string, unknown>) => ({
+          id: a.id as number,
+          label: (a.label || '') as string,
+          address: (a.address_line_1 || '') as string,
+          apartment: undefined,
+          building: (a.address_line_2 || '') as string | undefined,
+          city: (a.city || '') as string | undefined,
+          postcode: (a.postal_code || '') as string | undefined,
+          state: (a.state_province || '') as string | undefined,
+          lat: (a.latitude as number) ?? undefined,
+          lng: (a.longitude as number) ?? undefined,
+          is_default: (a.is_default as boolean) ?? false,
+        }));
         const order = ['Home', 'Office', 'Other'];
         list.sort((a: Address, b: Address) => order.indexOf(a.label) - order.indexOf(b.label));
         setAddresses(list);
@@ -80,16 +93,20 @@ export default function SavedAddressesPage() {
     if (!unit.trim() && !line1.trim()) { showToast(t('toast.addressRequired'), 'error'); return; }
     setSaving(true);
     const payload: Record<string, unknown> = {
-      label: formLabel, address: line1.trim(), apartment: unit.trim() || undefined,
-      building: line2.trim() || undefined, city: city.trim() || undefined,
-      postcode: postcode.trim() || undefined, state: state,
+      label: formLabel,
+      address_line_1: line1.trim(),
+      address_line_2: line2.trim() || undefined,
+      city: city.trim() || undefined,
+      state_province: state,
+      postal_code: postcode.trim() || undefined,
+      country_code: 'MY',
     };
     try {
       if (editingId) {
-        await api.put(`/users/me/addresses/${editingId}`, payload);
+        await api.put(`/me/addresses/${editingId}`, payload);
         showToast(t('toast.addressUpdated'), 'success');
       } else {
-        await api.post('/users/me/addresses', payload);
+        await api.post('/me/addresses', payload);
         showToast(t('toast.addressSaved'), 'success');
       }
       setModalOpen(false);
@@ -100,7 +117,7 @@ export default function SavedAddressesPage() {
 
   const handleDelete = async (id: number) => {
     try {
-      await api.delete(`/users/me/addresses/${id}`);
+      await api.delete(`/me/addresses/${id}`);
       showToast(t('toast.addressDeleted'), 'success');
       setDeleteTarget(null);
       fetchAddresses();
@@ -108,8 +125,8 @@ export default function SavedAddressesPage() {
   };
 
   const getDistance = (addr: Address): string | null => {
-    if (!addr.lat || !addr.lng || !selectedStore?.lat || !selectedStore?.lng) return null;
-    const km = haversineKm(addr.lat, addr.lng, selectedStore.lat, selectedStore.lng);
+    if (!addr.lat || !addr.lng || !selectedStore?.latitude || !selectedStore?.longitude) return null;
+    const km = haversineKm(addr.lat, addr.lng, selectedStore.latitude, selectedStore.longitude);
     const min = Math.round((km / 30) * 60);
     const distance = km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km';
     return t('savedAddresses.distance', { distance, minutes: min });

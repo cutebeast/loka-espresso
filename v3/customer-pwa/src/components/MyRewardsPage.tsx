@@ -5,7 +5,7 @@ import { ArrowLeft, Gift, Ticket, Clock, QrCode, Shield } from 'lucide-react';
 import { Skeleton } from '@/components/ui';
 import { useWalletStore } from '@/stores/walletStore';
 import type { UserReward, UserVoucher } from '@/lib/api';
-import { LOKA, resolveAssetUrl, formatPrice } from '@/lib/tokens';
+import { LOKA, formatPrice } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getLocale } from '@/stores/localeStore';
 
@@ -118,11 +118,7 @@ export default function MyRewardsPage({ onBack, initialTab }: MyRewardsPageProps
               return (
                 <div key={reward.id} className="myrv-owned-card" onClick={() => setSelectedReward(reward)}>
                   <div className="myrv-item-thumb">
-                    {reward.reward_image_url ? (
-                      <img src={resolveAssetUrl(reward.reward_image_url) ?? undefined} alt={reward.reward_name || 'Reward image'} loading="lazy" />
-                    ) : (
-                      <Gift size={24} />
-                    )}
+                    <Gift size={24} />
                   </div>
                   <div className="myrv-item-body">
                     <div className="myrv-item-title">{reward.reward_name}</div>

@@ -8,7 +8,8 @@ import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
 import api from '@/lib/api';
-import type { MenuItem, BundleProduct } from '@/lib/api';
+import type { MenuItem, BundleProduct, MenuCategory } from '@/lib/api';
+import { deriveCustomizationOptions } from '@/lib/storeHelpers';
 import FloatingCartBar from '@/components/menu/FloatingCartBar';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import AddonDealSheet from '@/components/menu/AddonDealSheet';
@@ -67,7 +68,7 @@ export default function MenuPage() {
       const catData = catRes.data;
       const itemData = itemRes.data;
       const rawCats = Array.isArray(catData) ? catData : (catData?.categories || catData?.items || []);
-      setCategories(rawCats.map((c: Record<string, unknown>) => ({ ...c, name: (c.name || c.category_name || '') as string })));
+      setCategories(rawCats as MenuCategory[]);
       setMenuItems(Array.isArray(itemData) ? itemData : (itemData?.items || []));
       setBundleProducts((bpRes as { data?: BundleProduct[] })?.data || []);
     } catch (err: unknown) {
@@ -116,17 +117,17 @@ export default function MenuPage() {
   }, [categories, menuItems]);
 
   const openItem = useCallback((item: MenuItem) => {
-    if ((item.customization_count ?? 0) > 0) {
+    if ((item.modifier_groups?.length ?? 0) > 0) {
       setCustomizeItem(item);
       return;
     }
-    addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, base_price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id, customization_count: item.customization_count ?? 0 });
+    addItem({ menu_item_id: item.id, name: item.item_name, price: item.base_price, base_price: item.base_price, quantity: 1, customizations: {}, store_id: selectedStore?.id, customization_count: item.modifier_groups?.length ?? 0 });
   }, [addItem, selectedStore?.id]);
 
   const handleCustomizeAdd = useCallback((item: MenuItem, quantity: number, selectedOptions: { id: number; name: string; price_adjustment: number }[], totalPrice: number) => {
     addItem({
       menu_item_id: item.id,
-      name: item.name,
+      name: item.item_name,
       price: totalPrice,
       base_price: item.base_price,
       quantity,
@@ -152,7 +153,7 @@ export default function MenuPage() {
     for (const comp of bp.components) {
       const mi = menuItems.find((i) => i.id === comp.menu_item_id);
       if (!mi?.is_available) {
-        unavailable.push(comp.menu_item_name || mi?.name || `Item #${comp.menu_item_id}`);
+        unavailable.push(comp.menu_item_name || mi?.item_name || `Item #${comp.menu_item_id}`);
       }
     }
     if (unavailable.length > 0) {
@@ -166,7 +167,7 @@ export default function MenuPage() {
       const mi = menuItems.find((i) => i.id === comp.menu_item_id)!;
       addItem({
         menu_item_id: comp.menu_item_id,
-        name: comp.menu_item_name || mi.name || `Item #${comp.menu_item_id}`,
+        name: comp.menu_item_name || mi.item_name || `Item #${comp.menu_item_id}`,
         price: comp.menu_item_price ?? 0,
         base_price: comp.menu_item_price ?? 0,
         quantity: comp.default_quantity || 1,
@@ -184,7 +185,7 @@ export default function MenuPage() {
   const debouncedSearch = useDebounce(searchQuery, 150);
 
   const filteredItems = useMemo(() => menuItems.filter((item) => {
-    const matchesSearch = !debouncedSearch || item.name.toLowerCase().includes(debouncedSearch.toLowerCase());
+    const matchesSearch = !debouncedSearch || item.item_name.toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchesDietary = !selectedDietaryTag || (item.dietary_tags && item.dietary_tags.some((t: string) => t.toLowerCase() === selectedDietaryTag.toLowerCase()));
     const hasTierAccess = !item.minimum_tier_id || customerTierId >= item.minimum_tier_id;
     return matchesSearch && matchesDietary && hasTierAccess && item.is_available;
@@ -204,7 +205,7 @@ export default function MenuPage() {
     .map((cat) => ({ category: cat, items: filteredItems.filter((item) => item.category_id === cat.id) }))
     .filter((group) => group.items.length > 0), [categories, filteredItems]);
 
-  const allCats = useMemo(() => [{ id: null as number | null, name: t('menu.all') }, ...categories.map((c) => ({ id: c.id, name: c.name }))], [categories, t]);
+  const allCats = useMemo(() => [{ id: null as number | null, name: t('menu.all') }, ...categories.map((c) => ({ id: c.id, name: c.category_name }))], [categories, t]);
 
   const scrollToCategory = useCallback((categoryId: number | null) => {
     setActiveCategoryId(categoryId);
@@ -337,7 +338,7 @@ export default function MenuPage() {
               <div className="menu-category-header">
                 <div className="menu-category-accent" />
                 <h2 className="menu-category-title">
-                  {category.name}
+                  {category.category_name}
                 </h2>
               </div>
               <div className="menu-items-grid">
@@ -351,7 +352,7 @@ export default function MenuPage() {
                     >
                       <div className="menu-product-img">
                         {imgSrc && !brokenImages.has(item.id) ? (
-                          <img src={imgSrc} alt={item.name} loading="lazy" width="160" height="160" className="menu-product-img-bg" onError={() => { setBrokenImages(prev => new Set(prev).add(item.id)); }} />
+                          <img src={imgSrc} alt={item.item_name} loading="lazy" width="160" height="160" className="menu-product-img-bg" onError={() => { setBrokenImages(prev => new Set(prev).add(item.id)); }} />
                         ) : (
                           <div className="menu-img-fallback">
                             <Coffee size={28} color={LOKA.border} strokeWidth={1.5} />
@@ -379,7 +380,7 @@ export default function MenuPage() {
                       </div>
                       <div className="menu-product-info">
                         <div>
-                          <div className="menu-product-name">{item.name}</div>
+                          <div className="menu-product-name">{item.item_name}</div>
                           {item.description && (
                             <div className="menu-product-desc">{item.description}</div>
                           )}
@@ -463,7 +464,7 @@ export default function MenuPage() {
           isOpen={customizeItem !== null}
           onClose={() => setCustomizeItem(null)}
           onAdd={handleCustomizeAdd}
-          customizations={customizeItem.customization_options || []}
+          customizations={deriveCustomizationOptions(customizeItem)}
         />
       )}
       <AddonDealSheet

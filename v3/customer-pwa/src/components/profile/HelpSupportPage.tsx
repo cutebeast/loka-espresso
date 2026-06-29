@@ -27,8 +27,8 @@ export default function HelpSupportPage() {
   const { t } = useTranslation();
   const storeId = selectedStore?.id;
 
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
+  const [name, setName] = useState(user?.display_name || '');
+  const [email, setEmail] = useState(user?.email_address || '');
   const [phone, setPhone] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -50,8 +50,8 @@ export default function HelpSupportPage() {
       await api.post('/feedback', {
         store_id: storeId ?? undefined,
         rating: 5,
-        comment: `Subject: ${subject}\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nMessage: ${message}`,
-        tags: [subject],
+        title: subject,
+        body: `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\nMessage: ${message}`,
       });
       setShowSuccess(true);
       setSubject('');

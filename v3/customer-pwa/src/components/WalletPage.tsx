@@ -20,6 +20,7 @@ import { GuestGate } from '@/components/auth/GuestGate';
 import { useUIStore } from '@/stores/uiStore';
 import { Skeleton } from '@/components/ui';
 import api from '@/lib/api';
+import type { LedgerEntry } from '@/lib/api';
 import { formatPrice, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useConfigStore } from '@/stores/configStore';
@@ -53,8 +54,9 @@ export default function WalletPage() {
   const fetchTransactions = useCallback(async () => {
     setLoadingTx(true);
     try {
-      const res = await api.get('/wallet/transactions', { params: { page_size: 20 } });
-      setTransactions(Array.isArray(res.data) ? res.data : []);
+      const res = await api.get('/wallet/ledger/me', { params: { per_page: 20 } });
+      const data = res.data as { items?: LedgerEntry[] } | LedgerEntry[] | undefined;
+      setTransactions(Array.isArray(data) ? data : (data?.items ?? []));
     } catch (err) { console.error('[WalletPage] Failed to fetch transactions:', err);
       // keep existing
     } finally {

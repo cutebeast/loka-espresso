@@ -7,6 +7,22 @@ import api from '@/lib/api';
 import { LOKA, formatPrice } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 
+function parseRewardInfo(name: string): { discount_value: number; discount_type: 'percentage_off' | 'amount_off' | 'free_item'; description: string } {
+  const normalized = (name || '').toLowerCase();
+  const percentMatch = normalized.match(/(\d+(?:\.\d+)?)\s*%/);
+  if (percentMatch && percentMatch[1]) {
+    return { discount_value: parseFloat(percentMatch[1]), discount_type: 'percentage_off', description: name };
+  }
+  const amountMatch = normalized.match(/rm?\s*(\d+(?:\.\d+)?)/);
+  if (amountMatch && amountMatch[1]) {
+    return { discount_value: parseFloat(amountMatch[1]), discount_type: 'amount_off', description: name };
+  }
+  if (normalized.includes('free')) {
+    return { discount_value: 0, discount_type: 'free_item', description: name };
+  }
+  return { discount_value: 0, discount_type: 'amount_off', description: name };
+}
+
 interface VoucherRewardSelectorProps {
   subtotal: number;
   selectedType: 'none' | 'voucher' | 'reward';
@@ -20,17 +36,6 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [voucherError, setVoucherError] = useState('');
-
-  const parseRewardSnapshot = useCallback((snapshot: string | null | undefined): { discount_value?: number; description?: string } => {
-    if (!snapshot) return {};
-    try {
-      const parsed = JSON.parse(snapshot);
-      if (typeof parsed === 'object' && parsed !== null) return parsed;
-      return {};
-    } catch {
-      return {};
-    }
-  }, []);
 
   const availableVouchers = vouchers.filter(v => v.status === 'available');
   const availableRewards = rewards.filter(r => r.status === 'available');
@@ -123,14 +128,14 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
           </p>
           <div className="flex flex-col gap-1.5">
             {availableVouchers.slice(0, 3).map(v => {
-              const isSelected = selectedType === 'voucher' && selectedCode === v.code;
+              const isSelected = selectedType === 'voucher' && selectedCode === v.voucher_code;
               const discountVal = v.discount_type === 'percentage_off'
                 ? (subtotal * v.discount_value / 100)
                 : v.discount_value;
               return (
                 <button
                   key={v.id}
-                  onClick={() => handleSelectVoucher(v.code, Math.min(discountVal, v.max_discount || Infinity))}
+                  onClick={() => handleSelectVoucher(v.voucher_code, Math.min(discountVal, v.max_discount || Infinity))}
                   className={`flex items-center gap-2.5 py-2.5 px-3 rounded-xl cursor-pointer text-left ${isSelected ? 'vrs-voucher-btn-selected' : 'vrs-voucher-btn'}`}
                 >
                   <div
@@ -139,7 +144,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                     {isSelected && <CheckCircle2 size={12} color={LOKA.white} />}
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-text-primary vrs-code">{v.code}</p>
+                    <p className="font-semibold text-text-primary vrs-code">{v.voucher_code}</p>
                     <p className="text-[11px] text-text-muted">
                       {v.discount_type === 'percentage_off' ? t('checkout.percentageOff', { value: v.discount_value }) : t('checkout.amountOff', { amount: formatPrice(v.discount_value) })}
                       {v.min_spend ? t('checkout.minSpend', { amount: formatPrice(v.min_spend) }) : ''}
@@ -176,7 +181,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                 <button
                   key={r.id}
                   onClick={() => {
-                    const snap = parseRewardSnapshot(r.reward_snapshot);
+                    const snap = parseRewardInfo(r.reward_name);
                     const discountValue = snap.discount_value || 0;
                     handleSelectReward(r.id, discountValue);
                   }}
@@ -189,7 +194,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-text-primary vrs-code">{r.reward_name}</p>
-                    <p className="text-[11px] text-text-muted">{parseRewardSnapshot(r.reward_snapshot).description || t('checkout.rewardFallback')}</p>
+                    <p className="text-[11px] text-text-muted">{parseRewardInfo(r.reward_name).description || t('checkout.rewardFallback')}</p>
                   </div>
                   <Gift size={14} color={LOKA.copper} />
                 </button>

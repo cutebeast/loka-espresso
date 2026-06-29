@@ -128,7 +128,7 @@ export default function ItemCustomizeSheet({
           onClick={onClose}
           className="ics-overlay"
           role="dialog"
-          aria-label={item?.name || 'Customize item'}
+          aria-label={item?.item_name || 'Customize item'}
         >
           <motion.div
             initial={{ y: '100%' }}
@@ -145,7 +145,7 @@ export default function ItemCustomizeSheet({
             {/* Image */}
             <div className="ics-image-wrap">
               {imgSrc ? (
-                <img src={imgSrc} alt={item.name} loading="lazy" className="ics-image" />
+                <img src={imgSrc} alt={item.item_name} loading="lazy" className="ics-image" />
               ) : (
                 <div className="ics-image-fallback">
                   <Coffee size={56} color={LOKA.brown} strokeWidth={1.2} />
@@ -158,7 +158,7 @@ export default function ItemCustomizeSheet({
 
             <div className="ics-scroll">
               <div className="ics-body">
-                <h2 className="ics-title">{item.name}</h2>
+                <h2 className="ics-title">{item.item_name}</h2>
                 <p className="ics-desc">{item.description}</p>
                 {item.calories != null && item.calories > 0 && (
                   <p className="ics-calories" style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>

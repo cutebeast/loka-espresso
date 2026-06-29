@@ -30,7 +30,7 @@ export default function HomePage() {
     setLoadingFeatured(true);
     try {
       const res = await api.get(`/menu/items`, {
-        params: { featured: true, available_only: true, limit: 10 },
+        params: { is_featured: true, is_available: true, limit: 10 },
         signal,
       });
       // v3 returns { items: [...], categories: [...] } from /menu/stores/{store_id}
@@ -42,7 +42,7 @@ export default function HomePage() {
       }
       if (list.length === 0) {
         const all = await api.get(`/menu/items`, {
-          params: { available_only: true, limit: 8 },
+          params: { is_available: true, limit: 8 },
           signal,
         });
         if (all.data && typeof all.data === 'object' && all.data.items) {
@@ -128,7 +128,7 @@ export default function HomePage() {
   }, [loadFeatured, loadBanners, loadInfoCards]);
 
   const handleAddToCart = (item: MenuItem) => {
-    addItem({ menu_item_id: item.id, name: item.name, price: item.base_price, base_price: item.base_price, quantity: 1, image_url: item.image_url ?? undefined, customizations: {}, store_id: selectedStore?.id, customization_count: item.customization_count ?? 0 });
+    addItem({ menu_item_id: item.id, name: item.item_name, price: item.base_price, base_price: item.base_price, quantity: 1, image_url: item.image_url ?? undefined, customizations: {}, store_id: selectedStore?.id, customization_count: item.modifier_groups?.length ?? 0 });
   };
 
   const pageVariants = {

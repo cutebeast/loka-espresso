@@ -16,8 +16,9 @@ interface LegalSection {
 interface LegalContent {
   id: number;
   title: string;
-  long_description: string | null;
-  sections: LegalSection[] | null;
+  body_text: string | null;
+  long_description?: string | null;
+  sections?: LegalSection[] | null;
   content_type: string;
   updated_at: string | null;
 }
@@ -76,7 +77,9 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
     ? content.sections
     : content?.long_description
       ? [{ heading: content.title, body: content.long_description }]
-      : [];
+      : content?.body_text
+        ? [{ heading: content.title, body: content.body_text }]
+        : [];
 
   const filtered = search.trim()
     ? sections.map(s => ({

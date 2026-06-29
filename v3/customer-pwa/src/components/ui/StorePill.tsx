@@ -23,7 +23,7 @@ export function StorePill({ store, distance, onClick }: StorePillProps) {
     >
       <MapPin size={12} className="text-copper shrink-0" />
       <span className="truncate">
-        {store?.name || 'Select store'}
+        {store?.store_name || 'Select store'}
       </span>
       {distance && (
         <span className="opacity-60 shrink-0">· {distance}</span>

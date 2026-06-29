@@ -80,15 +80,19 @@ export default function NotificationsPage() {
   const [retentionDays, setRetentionDays] = useState(30);
 
   useEffect(() => {
-    api.get('/config').then((res) => {
-      const v = parseInt(res.data?.notification_retention_days, 10);
+    api.get('/config/bootstrap').then((res) => {
+      const v = parseInt((res.data as Record<string, unknown> | undefined)?.notification_retention_days as string, 10);
       if (!isNaN(v) && v > 0) setRetentionDays(v);
     }).catch((err) => console.error('[Notifications] Config fetch failed:', err));
   }, []);
 
   const fetchNotifications = useCallback(() => {
-    api.get('/notifications')
-      .then((res) => setNotifications(Array.isArray(res.data) ? res.data : []))
+    api.get('/notifications/me')
+      .then((res) => {
+        const data = res.data as { items?: Array<{ id: number; title: string; body?: string; message_type?: string; is_read: boolean; created_at?: string }> } | Array<{ id: number; title: string; body?: string; message_type?: string; is_read: boolean; created_at?: string }> | undefined;
+        const items = Array.isArray(data) ? data : (data?.items ?? []);
+        setNotifications(items.map((n) => ({ id: n.id, title: n.title, body: n.body, type: n.message_type, is_read: n.is_read, created_at: n.created_at })));
+      })
       .catch((err) => { console.error('[Notifications] Fetch failed:', err); setNotifications([]); })
       .finally(() => setLoading(false));
   }, []);
@@ -97,7 +101,7 @@ export default function NotificationsPage() {
 
   const handleMarkRead = async (id: number) => {
     try {
-      await api.put(`/notifications/${id}/read`);
+      await api.patch(`/notifications/me/${id}/read`);
       setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
     } catch { console.error('[Notifications] Failed to mark read'); }
   };
@@ -110,7 +114,7 @@ export default function NotificationsPage() {
     try {
       // Sequential to avoid flooding the API; if one fails, stop and show error
       for (const n of unread) {
-        await api.put(`/notifications/${n.id}/read`);
+        await api.patch(`/notifications/me/${n.id}/read`);
       }
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch { showToast(t('toast.notificationReadFailed'), 'error'); }

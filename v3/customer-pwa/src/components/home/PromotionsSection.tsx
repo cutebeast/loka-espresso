@@ -31,7 +31,7 @@ const ProductCard = memo(function ProductCard({
         )}
       </div>
       <div className="product-info">
-        <div className="product-name">{item.name}</div>
+        <div className="product-name">{item.item_name}</div>
         <div className="product-price" ref={priceRef}>{formatPrice(item.base_price)}</div>
         <button className="add-btn" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
           <Plus size={12} strokeWidth={2.5} /> {t('home.add')}

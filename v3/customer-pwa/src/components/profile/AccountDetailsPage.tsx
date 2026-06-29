@@ -17,27 +17,29 @@ export default function AccountDetailsPage() {
   const { setPage, showToast } = useUIStore();
   const { t } = useTranslation();
 
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
+  const [name, setName] = useState(user?.display_name || '');
+  const [email, setEmail] = useState(user?.email_address || '');
   const [dob, setDob] = useState(user?.date_of_birth || '');
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const initials = user?.name?.charAt(0)?.toUpperCase() || 'U';
+  const initials = user?.display_name?.charAt(0)?.toUpperCase() || 'U';
   const avatarUrl = user?.avatar_url ? resolveAssetUrl(user.avatar_url) : null;
   const memberSince = user?.created_at
     ? new Date(user.created_at).toLocaleDateString(getLocale(), { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
 
   useEffect(() => {
-    api.get('/users/me').then((res) => {
+    api.get('/me').then((res) => {
       if (res.data) {
-        setUser(res.data);
-        setName(res.data.name || '');
-        setEmail(res.data.email || '');
-        setDob(res.data.date_of_birth || '');
+        const raw = res.data as { profile?: typeof res.data } | typeof res.data;
+        const profile = 'profile' in raw && raw.profile ? raw.profile : raw;
+        setUser(profile as typeof res.data);
+        setName((profile as { display_name?: string }).display_name || '');
+        setEmail((profile as { email_address?: string }).email_address || '');
+        setDob((profile as { date_of_birth?: string }).date_of_birth || '');
       }
     }).catch((err) => console.error('[AccountDetails] Profile fetch failed:', err));
   }, [setUser]);
@@ -49,9 +51,9 @@ export default function AccountDetailsPage() {
     }
     setSaving(true);
     try {
-      const res = await api.put('/users/me', {
-        name: name.trim(),
-        email: email.trim() || undefined,
+      const res = await api.put('/me', {
+        display_name: name.trim(),
+        email_address: email.trim() || undefined,
         date_of_birth: dob || undefined,
       });
       setUser(res.data);
@@ -72,7 +74,7 @@ export default function AccountDetailsPage() {
     try {
       const form = new FormData();
       form.append('file', file);
-      const res = await api.put('/users/me/avatar', form, {
+      const res = await api.put('/me/avatar', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setUser(res.data);
@@ -173,7 +175,7 @@ export default function AccountDetailsPage() {
             <input
               type="tel"
               className="ad-form-input ad-form-input-muted"
-              value={user?.phone || ''}
+              value={user?.phone_number || ''}
               readOnly
             />
           </div>

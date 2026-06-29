@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Transaction, UserReward, UserVoucher } from '@/lib/api';
+import type { LedgerEntry, UserReward, UserVoucher, LoyaltySummary, WalletData } from '@/lib/api';
 import api from '@/lib/api';
 
 function normalizeNumber(value: unknown, fallback = 0): number {
@@ -7,13 +7,9 @@ function normalizeNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function extractCashBalance(data: { cash?: unknown; balance?: unknown } | null | undefined): number {
+function extractCashBalance(data: WalletData | null | undefined): number {
   if (!data) return 0;
-  const cashValue = data.cash;
-  if (cashValue && typeof cashValue === 'object' && 'balance' in cashValue) {
-    return normalizeNumber((cashValue as { balance?: unknown }).balance, 0);
-  }
-  return normalizeNumber(data.balance ?? cashValue ?? 0, 0);
+  return normalizeNumber(data.balance ?? 0, 0);
 }
 
 interface WalletState {
@@ -23,7 +19,7 @@ interface WalletState {
   tierId: number;
   rewards: UserReward[];
   vouchers: UserVoucher[];
-  transactions: Transaction[];
+  transactions: LedgerEntry[];
   isLoading: boolean;
   setBalance: (balance: number) => void;
   setPoints: (points: number) => void;
@@ -31,7 +27,7 @@ interface WalletState {
   setTierId: (tierId: number) => void;
   setRewards: (rewards: UserReward[]) => void;
   setVouchers: (vouchers: UserVoucher[]) => void;
-  setTransactions: (transactions: Transaction[]) => void;
+  setTransactions: (transactions: LedgerEntry[]) => void;
   setIsLoading: (isLoading: boolean) => void;
   refreshWallet: () => Promise<void>;
   resetAll: () => void;
@@ -58,12 +54,12 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     set({ isLoading: true });
     try {
       const [walletRes, loyaltyRes] = await Promise.allSettled([
-        api.get('/me/wallet'),
-        api.get('/loyalty/balance'),
+        api.get('/wallet/me'),
+        api.get('/loyalty/me'),
       ]);
 
       if (walletRes.status === 'fulfilled') {
-        const data = walletRes.value.data;
+        const data = walletRes.value.data as WalletData | undefined;
         if (data) {
           set({
             balance: extractCashBalance(data),
@@ -73,11 +69,11 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         }
       }
       if (loyaltyRes.status === 'fulfilled') {
-        const d = loyaltyRes.value.data;
+        const d = loyaltyRes.value.data as LoyaltySummary | undefined;
         if (d) {
           set({
-            points: normalizeNumber(d.current_points ?? d.points_balance ?? d.points ?? get().points, get().points),
-            tier: d.tier_name ?? d.tier ?? get().tier,
+            points: normalizeNumber(d.current_points ?? get().points, get().points),
+            tier: d.tier_name ?? get().tier,
             tierId: normalizeNumber(d.tier_id ?? get().tierId, get().tierId),
           });
         }

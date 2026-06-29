@@ -131,8 +131,6 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
   if (!popup) return null;
   const imageUrl = resolveAssetUrl(popup.image_url);
   const isVideo = popup.image_url && /\.(mp4|webm)($|\?)/i.test(popup.image_url);
-  const visibleSections = (popup.sections || []).filter(s => s.visible !== false);
-
   // If no image/video, don't show anything
   if (!imageUrl) return null;
 
@@ -178,17 +176,6 @@ export default function PromotionPopup({ splashMode = false }: PromotionPopupPro
                   {(popup.short_description || popup.long_description) && (
                     <p className="text-white/80 text-sm mb-4 leading-relaxed">{popup.long_description || popup.short_description}</p>
                   )}
-                  {visibleSections.length > 0 && visibleSections.map((s, i) => (
-                    <div key={i} style={{ marginBottom: i < visibleSections.length - 1 ? 12 : 0 }}>
-                      {s.title && <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 4 }}>{s.title}</div>}
-                      {s.body && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5 }}>{s.body}</p>}
-                      {s.list && s.list.length > 0 && (
-                        <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>
-                          {s.list.map((item, j) => <li key={j} style={{ marginBottom: 2 }}>{item}</li>)}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
                   {popup.action_url && popup.action_label && (
                     <SafeActionLink
                       actionUrl={popup.action_url}

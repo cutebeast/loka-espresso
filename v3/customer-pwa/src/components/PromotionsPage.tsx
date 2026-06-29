@@ -119,13 +119,11 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
     }
     setSubmittingSurvey(true);
     try {
-      const answers = surveyQuestions.map((q) => {
-        const ans: Record<string, unknown> = { question_id: q.id };
-        if (q.question_type === 'rating') ans.rating_value = Number(surveyAnswers[q.id]);
-        else if (q.question_type === 'single_choice' || q.question_type === 'dropdown') ans.choice_value = surveyAnswers[q.id];
-        else ans.text_value = surveyAnswers[q.id];
-        return ans;
-      });
+      const answers = surveyQuestions.map((q) => ({
+        question_id: q.id,
+        answer_value: surveyAnswers[q.id] != null ? String(surveyAnswers[q.id]) : '',
+        answer_detail: {},
+      }));
       const res = await api.post(`/surveys/${selectedPromo.survey_id}/submit`, { answers });
       if (res.data?.success === false) {
         showToast(res.data.message || t('promotions.alreadySubmitted'), 'info');

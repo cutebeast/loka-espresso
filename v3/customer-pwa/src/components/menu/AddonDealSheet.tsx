@@ -30,16 +30,16 @@ export default function AddonDealSheet({ bundle, menuItems, onClose }: AddonDeal
   const handleAdd = (item: MenuItem) => {
     addItem({
       menu_item_id: item.id,
-      name: item.name,
+      name: item.item_name,
       price: item.base_price,
       base_price: item.base_price,
       quantity: 1,
       customizations: {},
       store_id: selectedStore?.id,
-      customization_count: item.customization_count ?? 0,
+      customization_count: item.modifier_groups?.length ?? 0,
     });
     setAddedIds((prev) => new Set(prev).add(item.id));
-    showToast(t('menu.addonAdded', { name: item.name }), 'success');
+    showToast(t('menu.addonAdded', { name: item.item_name }), 'success');
   };
 
   const viewCart = () => {
@@ -94,13 +94,13 @@ export default function AddonDealSheet({ bundle, menuItems, onClose }: AddonDeal
                   <div key={item.id} className="ads-item-card">
                     <div className="ads-item-img">
                       {imgSrc ? (
-                        <img src={imgSrc} alt={item.name} loading="lazy" />
+                        <img src={imgSrc} alt={item.item_name} loading="lazy" />
                       ) : (
                         <Coffee size={20} color={LOKA.border} />
                       )}
                     </div>
                     <div className="ads-item-info">
-                      <div className="ads-item-name">{item.name}</div>
+                      <div className="ads-item-name">{item.item_name}</div>
                       {item.description && (
                         <div className="ads-item-desc">{item.description}</div>
                       )}

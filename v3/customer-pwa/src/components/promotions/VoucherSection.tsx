@@ -25,7 +25,7 @@ interface SurveyQuestion {
   sort_order: number;
 }
 
-function formatDate(d: string | null) {
+function formatDate(d: string | null | undefined) {
   if (!d) return '';
   return new Date(d).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' });
 }
@@ -248,15 +248,15 @@ export default function VoucherSection({
           </>
         )}
 
-        {!isSurvey && selectedPromo.terms && selectedPromo.terms.length > 0 && (
+        {!isSurvey && selectedPromo.terms_and_conditions && selectedPromo.terms_and_conditions.length > 0 && (
           <>
             <div className="rd-section-title">
               <List size={16} /> {t('promotions.terms')}
             </div>
             <ul className="rd-terms-list">
-              {selectedPromo.terms.map((t, i) => (
+              {selectedPromo.terms_and_conditions.map((term, i) => (
                 <li key={i}>
-                  <Circle size={10} fill="currentColor" /> {t}
+                  <Circle size={10} fill="currentColor" /> {term}
                 </li>
               ))}
             </ul>

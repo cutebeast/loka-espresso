@@ -99,17 +99,17 @@ export interface CartDiscountBreakdown {
  *  highest unit-price lines first to maximize the customer-facing discount.
  */
 function consumedItemsPrice(
-  items: Array<{ price: number; quantity: number }>,
+  items: Array<{ unit_price?: number; line_total?: number; price?: number; quantity: number }>,
   consumeQty: number,
 ): number {
   if (consumeQty <= 0 || items.length === 0) return 0;
-  const sorted = [...items].sort((a, b) => b.price - a.price);
+  const sorted = [...items].sort((a, b) => (b.unit_price ?? b.line_total ?? b.price ?? 0) - (a.unit_price ?? a.line_total ?? a.price ?? 0));
   let remaining = consumeQty;
   let total = 0;
   for (const it of sorted) {
     if (remaining <= 0) break;
     const take = Math.min(it.quantity, remaining);
-    total += it.price * take;
+    total += (it.unit_price ?? it.line_total ?? it.price ?? 0) * take;
     remaining -= take;
   }
   return total;
@@ -241,7 +241,7 @@ export function previewCartDiscounts(
       const eligibleIds = mi.eligible_bundle_ids;
       if (!eligibleIds || eligibleIds.length === 0) continue;
       if (!eligibleIds.some((bid) => cartBundleIds.has(bid))) continue;
-      const lineUnit = ci.price;
+      const lineUnit = ci.price ?? ci.base_price ?? 0;
       const value = mi.addon_discount_value ?? 0;
       let disc = 0;
       if (mi.addon_discount_type === 'percentage') {

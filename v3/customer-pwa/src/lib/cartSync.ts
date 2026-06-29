@@ -1,5 +1,5 @@
 import api from './api';
-import type { CartItem } from './api';
+import type { CartItem, Cart, CartLineItem } from './api';
 import { useCartStore } from '@/stores/cartStore';
 import { useWalletStore } from '@/stores/walletStore';
 
@@ -9,14 +9,13 @@ interface CustomizationStructure {
 }
 
 interface ServerCartItem {
-  id: number;
+  id?: number;
   menu_item_id?: number;
   item_id?: number;
   quantity: number;
   bundle_product_id?: number | null;
   bundle_component_id?: number | null;
   customization_option_ids?: number[];
-  [key: string]: unknown;
 }
 
 function createIdempotencyKey(prefix: string): string {
@@ -47,8 +46,8 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
   _syncPromise = (async () => {
     const storeIdForCart = items[0]?.store_id || 1;
     const res = await api.get('/cart', { params: { store_id: storeIdForCart } });
-    const data = res.data;
-    const serverItems: ServerCartItem[] = Array.isArray(data) ? data : (data?.items ?? []);
+    const data = res.data as Cart | CartLineItem[] | undefined;
+    const serverItems: ServerCartItem[] = Array.isArray(data) ? data : (data?.line_items ?? []);
 
     function cartItemKey(item: { menu_item_id: number; customization_option_ids?: number[]; bundle_product_id?: number; bundle_component_id?: number }): string {
       const optKey = item.customization_option_ids && item.customization_option_ids.length > 0
@@ -170,10 +169,10 @@ export async function placeOrder(params: {
     orderPayload.delivery_address = params.deliveryAddress;
   }
   if (params.orderType === 'dine_in' && params.tableId) {
-    orderPayload.table_id = params.tableId;
+    orderPayload.dining_table_id = params.tableId;
   }
   if (params.notes) {
-    orderPayload.notes = params.notes;
+    orderPayload.customer_notes = params.notes;
   }
   if (params.recipientName) {
     orderPayload.recipient_name = params.recipientName;
@@ -206,9 +205,8 @@ export async function placeOrder(params: {
       }
       const confirmRes = await api.post(`/payments/${paymentId}/confirm`, {});
       newOrder.payment_status = confirmRes.data?.status || 'paid';
-      newOrder.points_earned = confirmRes.data?.points_earned ?? newOrder.points_earned;
       newOrder.loyalty_points_earned = confirmRes.data?.points_earned ?? newOrder.loyalty_points_earned;
-      if (newOrder.order_type === 'pickup' || newOrder.order_type === 'delivery') {
+      if (newOrder.order_type === 'takeaway' || newOrder.order_type === 'delivery') {
         newOrder.status = 'confirmed';
       }
     }

@@ -15,6 +15,7 @@ import { usePageRouter } from '@/hooks/usePageRouter';
 import { useNotifications } from '@/hooks/useNotifications';
 import { resolveAppUrl } from '@/lib/tokens';
 import { getBrowserLocation } from '@/lib/geolocation';
+import type { PaginatedResponse } from '@/lib/api';
 import { registerCartSyncListeners } from '@/lib/cartSync';
 import OfflineBanner from '@/components/shared/OfflineBanner';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
@@ -143,8 +144,12 @@ export default function AppShell() {
   useEffect(() => {
     if ((showStoreModal || showStorePicker) && stores.length === 0) {
       const controller = new AbortController();
-      api.get('/content/stores', { signal: controller.signal })
-        .then((res) => setStores((res.data || []).map((s: Record<string, unknown>) => ({ ...s, name: s.name || s.store_name || s.brand_name || '' }))))
+      api.get('/stores', { signal: controller.signal })
+        .then((res) => {
+          const data = res.data as StoreType[] | PaginatedResponse<StoreType>;
+          const list = Array.isArray(data) ? data : (data?.items ?? []);
+          setStores(list);
+        })
         .catch((err) => {
           if ((err as { name?: string })?.name === 'CanceledError') return;
           console.error('[AppShell] Store list fetch failed:', err); showToast(t('toast.storesLoadFailed'), 'error');
@@ -203,7 +208,7 @@ export default function AppShell() {
           onNavigate={handleNavClick}
           header={
             <HomeHeader
-              userName={user?.name}
+              userName={user?.display_name}
               unreadNotifications={unreadCount}
               onNotificationClick={onNotificationClick}
               onQRScanClick={onQRScanClick}
@@ -259,7 +264,7 @@ export default function AppShell() {
       case 'checkin': return <LazyRenderer pageKey="checkin" onBack={onBackHome} />;
       default: return <HomePage />;
     }
-  }, [page, handleNavClick, user?.name, unreadCount, onNotificationClick, onQRScanClick, onBackHome, onBackProfile, pageParams]);
+  }, [page, handleNavClick, user?.display_name, unreadCount, onNotificationClick, onQRScanClick, onBackHome, onBackProfile, pageParams]);
 
   return (
     <div className="app-container">
@@ -434,7 +439,7 @@ export default function AppShell() {
                 return;
               }
               try {
-                const res = await api.post('/tables/scan', { store_slug: storeSlug, table_id: tableId, qr_token: qrToken });
+                const res = await api.post('/stores/tables/scan', { store_slug: storeSlug, table_id: tableId, qr_token: qrToken });
                 const data = res.data;
                 const { setOrderMode, setDineInSession, setSelectedStore: setStore } = useUIStore.getState();
                 setDineInSession({
@@ -447,8 +452,9 @@ export default function AppShell() {
                 setOrderMode('dine_in');
                 let found = stores.find((s) => s.id === data.store_id);
                 if (!found) {
-                  const storeRes = await api.get('/content/stores');
-                  const storeList: StoreType[] = storeRes.data;
+                  const storeRes = await api.get('/stores');
+                  const storeData = storeRes.data as StoreType[] | PaginatedResponse<StoreType>;
+                  const storeList = Array.isArray(storeData) ? storeData : (storeData?.items ?? []);
                   if (storeList.length > 0) setStores(storeList);
                   found = storeList.find((s) => s.id === data.store_id);
                 }

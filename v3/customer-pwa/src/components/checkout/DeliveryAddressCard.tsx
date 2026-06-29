@@ -50,8 +50,21 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
   /* Fetch */
   const fetchSaved = async () => {
     if (!user) return;
-    const r = await api.get('/users/me/addresses').catch((err) => { console.error('[DeliveryAddress] Fetch failed:', err); return { data: [] as SavedAddress[] }; });
-    if (Array.isArray(r.data)) setSaved(r.data);
+    const r = await api.get('/me/addresses').catch((err) => { console.error('[DeliveryAddress] Fetch failed:', err); return { data: [] as SavedAddress[] }; });
+    if (Array.isArray(r.data)) {
+      setSaved(r.data.map((a: Record<string, unknown>) => ({
+        id: a.id as number,
+        label: (a.label || '') as string,
+        address: (a.address_line_1 || '') as string,
+        apartment: undefined,
+        building: (a.address_line_2 || '') as string | undefined,
+        city: (a.city || '') as string | undefined,
+        postcode: (a.postal_code || '') as string | undefined,
+        state: (a.state_province || '') as string | undefined,
+        lat: (a.latitude as number) ?? undefined,
+        lng: (a.longitude as number) ?? undefined,
+      })));
+    }
   };
   useEffect(() => { fetchSaved(); }, [user]);
 
@@ -59,8 +72,8 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
   useEffect(() => {
     if (!value?.address && !dismissed.current) {
       const t = setTimeout(() => {
-        setName(user?.name || '');
-        setPhone(user?.phone || '');
+        setName(user?.display_name || '');
+        setPhone(user?.phone_number || '');
         setOpen(true);
       }, 100);
       return () => clearTimeout(t);
@@ -111,8 +124,8 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
       return value?.address?.includes(s.address) || value?.address?.includes(sFull);
     });
     setLabel(match?.label || LABELS[0]);
-    setName(user?.name || '');
-    setPhone(user?.phone || '');
+    setName(user?.display_name || '');
+    setPhone(user?.phone_number || '');
     setErr('');
     setOpen(true);
   };
@@ -136,19 +149,21 @@ export default function DeliveryAddressCard({ value, onChange }: Props) {
     try {
       const payload: Record<string, unknown> = {
         label,
-        address: line1.trim(),
-        apartment: unit.trim() || undefined,
-        building: line2.trim() || undefined,
+        recipient_name: user?.display_name || '',
+        recipient_phone: user?.phone_number || '',
+        address_line_1: line1.trim(),
+        address_line_2: line2.trim() || undefined,
         city: city.trim() || undefined,
-        postcode: postcode.trim() || undefined,
-        state,
-        lat: lat ?? undefined,
-        lng: lng ?? undefined,
+        state_province: state,
+        postal_code: postcode.trim() || undefined,
+        country_code: 'MY',
+        latitude: lat ?? undefined,
+        longitude: lng ?? undefined,
       };
       if (savedForLabel) {
-        await api.put(`/users/me/addresses/${savedForLabel.id}`, payload);
+        await api.put(`/me/addresses/${savedForLabel.id}`, payload);
       } else {
-        await api.post('/users/me/addresses', { ...payload });
+        await api.post('/me/addresses', { ...payload });
       }
       await fetchSaved();
     } catch (e) {

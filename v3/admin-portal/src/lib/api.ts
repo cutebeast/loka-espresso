@@ -16,29 +16,41 @@ function getAuthHeaders(): HeadersInit {
   return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
-async function refreshToken(): Promise<boolean> {
-  try {
-    if (typeof window === "undefined") return false;
-    const refresh = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-    if (!refresh) return false;
-    const { signal, clear } = createAbortController();
+let _refreshPromise: Promise<boolean> | null = null;
+
+export async function refreshToken(): Promise<boolean> {
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
     try {
-      const res = await fetch(`${BASE_URL}/admin/auth/refresh`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, signal,
-        body: JSON.stringify({ refresh_token: refresh }),
-      });
-      if (!res.ok) return false;
-      const json = await res.json();
-      const data = json.data || json;
-      if (data.tokens?.access_token) {
-        localStorage.setItem(STORAGE_KEYS.TOKEN, data.tokens.access_token);
-        if (data.tokens.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
-        setAuthCookie();
-        return true;
-      }
-      return false;
-    } finally { clear(); }
-  } catch (e) { console.error("Token refresh failed:", e); return false; }
+      if (typeof window === "undefined") return false;
+      const refresh = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+      if (!refresh) return false;
+      const { signal, clear } = createAbortController();
+      try {
+        const res = await fetch(`${BASE_URL}/admin/auth/refresh`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, signal,
+          body: JSON.stringify({ refresh_token: refresh }),
+        });
+        if (!res.ok) return false;
+        const json = await res.json();
+        const data = json.data || json;
+        if (data.tokens?.access_token) {
+          localStorage.setItem(STORAGE_KEYS.TOKEN, data.tokens.access_token);
+          if (data.tokens.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
+          setAuthCookie();
+          return true;
+        }
+        return false;
+      } finally { clear(); }
+    } catch (e) { console.error("Token refresh failed:", e); return false; }
+  })();
+
+  try {
+    return await _refreshPromise;
+  } finally {
+    _refreshPromise = null;
+  }
 }
 
 function setAuthCookie() {

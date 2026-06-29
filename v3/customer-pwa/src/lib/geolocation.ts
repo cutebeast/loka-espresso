@@ -50,9 +50,10 @@ function createTimeoutSignal(ms: number): AbortSignal {
 export async function detectIPLocation(): Promise<IPLocation | null> {
   try {
     const { default: api } = await import('@/lib/api');
-    const res = await api.get('/content/location', { timeout: 5000 });
-    if (res.data?.lat && res.data?.lng) {
-      return { lat: res.data.lat, lng: res.data.lng };
+    const res = await api.get('/stores?per_page=1', { timeout: 5000 });
+    const first = Array.isArray(res.data) ? res.data[0] : res.data?.items?.[0];
+    if (first?.latitude != null && first?.longitude != null) {
+      return { lat: first.latitude, lng: first.longitude };
     }
   } catch {
     // Backend unavailable — try direct ip-api
@@ -81,21 +82,21 @@ export function findNearestStore(
   userLoc: IPLocation,
 ): Store | null {
   const physicalStores = stores.filter(
-    (s) => s.is_active && s.id !== 0 && s.lat != null && s.lng != null,
+    (s) => s.is_active && s.id !== 0 && s.latitude != null && s.longitude != null,
   );
 
   if (physicalStores.length === 0) return null;
 
   let nearest = physicalStores[0];
   if (!nearest) return null;
-  let minDist = haversineKm(userLoc.lat, userLoc.lng, nearest.lat!, nearest.lng!);
+  let minDist = haversineKm(userLoc.lat, userLoc.lng, nearest.latitude!, nearest.longitude!);
 
   for (let i = 1; i < physicalStores.length; i++) {
     const store = physicalStores[i];
     if (!store) continue;
     const d = haversineKm(
       userLoc.lat, userLoc.lng,
-      store.lat!, store.lng!,
+      store.latitude!, store.longitude!,
     );
     if (d < minDist) {
       minDist = d;
@@ -152,7 +153,7 @@ export async function getDistanceToStore(
   store: Store,
   preferBrowserLocation = true
 ): Promise<string | null> {
-  if (store.lat == null || store.lng == null) return null;
+  if (store.latitude == null || store.longitude == null) return null;
   
   let userLoc: IPLocation | null = null;
   
@@ -166,7 +167,7 @@ export async function getDistanceToStore(
   
   if (!userLoc) return null;
   
-  const dist = haversineKm(userLoc.lat, userLoc.lng, store.lat, store.lng);
+  const dist = haversineKm(userLoc.lat, userLoc.lng, store.latitude, store.longitude);
   
   if (dist < 1) {
     return `${(dist * 1000).toFixed(0)}m`;
@@ -191,9 +192,9 @@ export async function getStoresWithDistance(
     return stores.map(s => ({ ...s, distance: '', distanceKm: Infinity }));
   }
   return stores
-    .filter(s => s.id !== 0 && s.lat != null && s.lng != null)
+    .filter(s => s.id !== 0 && s.latitude != null && s.longitude != null)
     .map(s => {
-      const distKm = haversineKm(userLoc!.lat, userLoc!.lng, s.lat!, s.lng!);
+      const distKm = haversineKm(userLoc!.lat, userLoc!.lng, s.latitude!, s.longitude!);
       const distance = distKm < 1 
         ? `${(distKm * 1000).toFixed(0)}m` 
         : `${distKm.toFixed(1)}km`;

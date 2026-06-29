@@ -100,7 +100,7 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
   /* ── Detail view ── */
   if (selectedCard) {
     const img = resolveCardImage(selectedCard);
-    const gallery = (selectedCard.gallery_urls || []).map(resolveAssetUrl).filter(Boolean) as string[];
+    const gallery = (selectedCard.image_gallery_urls || []).map(resolveAssetUrl).filter(Boolean) as string[];
     const allImages = img ? [img, ...gallery] : gallery;
     const tag = tagLabel(selectedCard.content_type);
 
@@ -159,32 +159,16 @@ export default function InformationPage({ onBack, preselectedId, preselectedSlug
 
           <div className="info-detail-meta">
             <span className="info-detail-meta-item">
-              <Clock size={16} /> {estimateReadTime(selectedCard.long_description || (selectedCard.sections || []).map(s => s.body || '').join(' '))}
+              <Clock size={16} /> {estimateReadTime(selectedCard.long_description || selectedCard.short_description)}
             </span>
             <span className="info-detail-meta-item">
               <Star size={16} /> {tag}
             </span>
           </div>
 
-          {(selectedCard.sections || []).filter(s => s.visible !== false).length > 0 ? (
-            <div className="info-detail-sections">
-              {(selectedCard.sections || []).filter(s => s.visible !== false).map((section, i) => (
-                <div key={i} className="info-detail-section">
-                  {section.title && <h3 className="info-section-title">{section.title}</h3>}
-                  {section.body && <p className="info-section-body">{section.body}</p>}
-                  {section.list && section.list.length > 0 && (
-                    <ul className="info-section-list">
-                      {section.list.map((item, j) => <li key={j}>{item}</li>)}
-                    </ul>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="info-detail-desc">
-              {selectedCard.long_description || selectedCard.short_description || 'No content available.'}
-            </p>
-          )}
+          <p className="info-detail-desc">
+            {selectedCard.long_description || selectedCard.short_description || 'No content available.'}
+          </p>
         </div>
 
         <div className="info-detail-footer">

@@ -58,15 +58,34 @@ export default function ReferralPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [codeRes, statsRes] = await Promise.all([
-          api.get('/referral/code'),
-          api.get('/referral/stats'),
+        const [meRes, refsRes] = await Promise.all([
+          api.get('/me'),
+          api.get('/referrals/me'),
         ]);
-        setStats({ ...codeRes.data, ...statsRes.data });
+        const rawMe = meRes.data as { referral_code?: string; referral_count?: number; referral_earnings_total?: number; profile?: { referral_code?: string; referral_count?: number; referral_earnings_total?: number } } | undefined;
+        const profile = rawMe?.profile;
+        const refsData = refsRes.data as { items?: Array<{ invitee_name?: string | null; status?: string; created_at?: string }> } | Array<{ invitee_name?: string | null; status?: string; created_at?: string }> | undefined;
+        const refs = Array.isArray(refsData) ? refsData : (refsData?.items ?? []);
+        const referrals = profile?.referral_count ?? rawMe?.referral_count ?? refs.length;
+        const pointsEarned = profile?.referral_earnings_total ?? rawMe?.referral_earnings_total ?? 0;
+        setStats({
+          code: profile?.referral_code ?? rawMe?.referral_code ?? '',
+          referrals,
+          points_earned: pointsEarned,
+          reward_paid: pointsEarned > 0,
+          total_invited: refs.length,
+          paid_rewards: refs.filter((r) => r.status === 'rewarded' || r.status === 'converted').length,
+          invited_users: refs.map((r) => ({
+            name: r.invitee_name ?? t('referral.unknown'),
+            joined_at: r.created_at ?? '',
+            order_count: 0,
+            reward_paid: r.status === 'rewarded' || r.status === 'converted',
+          })),
+        });
       } catch { showToast(t('toast.referralLoadFailed'), 'error'); }
       finally { setLoading(false); }
     })();
-  }, []);
+  }, [t]);
 
   const referralLink = stats?.code
     ? `${resolveAppUrl('/')}?ref=${stats.code}`
@@ -95,7 +114,7 @@ export default function ReferralPage() {
     } catch { /* cancelled */ }
   };
 
-  const initials = user?.name?.charAt(0)?.toUpperCase() || 'U';
+  const initials = user?.display_name?.charAt(0)?.toUpperCase() || 'U';
 
   return (
     <div className="referral-screen">
@@ -119,7 +138,7 @@ export default function ReferralPage() {
               <div className="referral-stats-top">
                 <div className="referral-stats-avatar">{initials}</div>
                 <div>
-                  <div className="referral-stats-name">{user?.name || t('referral.member')}</div>
+                  <div className="referral-stats-name">{user?.display_name || t('referral.member')}</div>
                   <div className="referral-stats-sub">
                     {partnerYear ? t('referral.partnerSince', { year: partnerYear }) : t('referral.unknown')}
                   </div>

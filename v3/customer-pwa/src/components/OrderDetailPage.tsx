@@ -47,7 +47,7 @@ export default function OrderDetailPage() {
 
   const fetchOrder = useCallback(async (id: number) => {
     setLoading(true);
-    try { const res = await api.get(`/orders/${id}`); const o = { ...res.data, total: res.data.total_amount ?? res.data.total ?? 0 }; setOrder(o); setCurrentOrder(o); }
+    try { const res = await api.get(`/orders/${id}`); const o = res.data as Order; setOrder(o); setCurrentOrder(o); }
     catch { showToast(t('toast.loadOrderFailed'), 'error'); }
     finally { setLoading(false); }
   }, [setCurrentOrder, showToast, t]);
@@ -77,12 +77,12 @@ export default function OrderDetailPage() {
       for (const item of items) {
         const cartItem: CartItem = {
           menu_item_id: item.menu_item_id || item.item_id,
-          name: item.name || item.item_name || '',
-          price: item.price || item.unit_price || 0,
+          name: item.item_name || '',
+          price: item.unit_price || 0,
           quantity: item.quantity || 1,
-          customization_option_ids: item.customization_option_ids || [],
-          customizations: item.customizations || {},
-          customization_count: item.customization_count ?? 0,
+          customization_option_ids: item.modifier_option_ids || item.customization_option_ids || [],
+          customizations: item.selected_modifiers || item.customizations || {},
+          customization_count: (item.modifier_option_ids || item.customization_option_ids || []).length,
         };
         useCartStore.getState().addItem(cartItem);
       }
@@ -115,11 +115,11 @@ export default function OrderDetailPage() {
       t('orderDetail.shareStatus', { status: statusLabel !== statusKey ? statusLabel : order.status }),
       '',
       t('orderDetail.shareItems'),
-      ...(order.items?.map(i => t('orderDetail.shareItemLine', { name: i.name, quantity: i.quantity, price: formatPrice((i.price ?? i.unit_price ?? 0) * i.quantity) })) || []),
+      ...(order.line_items?.map(i => t('orderDetail.shareItemLine', { name: i.item_name, quantity: i.quantity, price: formatPrice((i.unit_price || i.line_total || 0) * i.quantity) })) || []),
       '',
-      ...(order.subtotal != null ? [t('orderDetail.shareSubtotal', { amount: formatPrice(order.subtotal) })] : []),
+      ...(order.items_subtotal != null ? [t('orderDetail.shareSubtotal', { amount: formatPrice(order.items_subtotal) })] : []),
       ...((order.delivery_fee ?? 0) > 0 ? [t('orderDetail.shareDelivery', { amount: formatPrice(order.delivery_fee ?? 0) })] : []),
-      t('orderDetail.shareTotal', { amount: formatPrice(order.total) }),
+      t('orderDetail.shareTotal', { amount: formatPrice(order.total_amount) }),
     ];
     const text = lines.join('\n');
     if (navigator.share) navigator.share({ title: t('orderDetail.orderNumber', { number: order.order_number }), text }).catch((err) => console.error('[OrderDetail] Share failed:', err));
@@ -244,18 +244,18 @@ export default function OrderDetailPage() {
         {/* Items */}
         <div className="od-section">
           <div className="od-section-title">{t('orderDetail.orderItems')}</div>
-          {order.items?.map((item, i) => {
-            const price = Number(item.price ?? item.unit_price ?? 0);
-            const meta = typeof item.customizations === 'object' && item.customizations
-              ? ((item.customizations as Record<string, unknown>)?.options as Array<{ name?: string }>)?.map((o) => { const n = o.name || ''; const px = n.indexOf(': '); return px >= 0 ? n.slice(px + 2) : n; })?.join(' · ') || ''
+          {order.line_items?.map((item, i) => {
+            const price = Number(item.unit_price ?? item.line_total ?? 0);
+            const meta = typeof item.selected_modifiers === 'object' && item.selected_modifiers
+              ? ((item.selected_modifiers as Record<string, unknown>)?.options as Array<{ name?: string }>)?.map((o) => { const n = o.name || ''; const px = n.indexOf(': '); return px >= 0 ? n.slice(px + 2) : n; })?.join(' · ') || ''
               : '';
             return (
               <div key={item.id ?? i} className="od-item-row">
                 <div className="od-item-thumb">
-                  {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.name || 'Menu item'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={18} color={LOKA.primary} />}
+                  {item.image_url ? <img src={resolveAssetUrl(item.image_url) || ''} alt={item.item_name || 'Menu item'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={18} color={LOKA.primary} />}
                 </div>
                 <div className="od-item-details">
-                  <div className="od-item-name">{item.name}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</div>
+                  <div className="od-item-name">{item.item_name}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</div>
                   {meta && <div className="od-item-meta">{meta}</div>}
                 </div>
                 <div className="od-item-price">{formatPrice(price * item.quantity)}</div>
@@ -263,10 +263,10 @@ export default function OrderDetailPage() {
             );
           })}
           <div className="od-summary-divider">
-            {order.subtotal != null && <div className="od-summary-row"><span className="od-summary-label">{t('cart.subtotal')}</span><span className="od-summary-value">{formatPrice(order.subtotal)}</span></div>}
+            {order.items_subtotal != null && <div className="od-summary-row"><span className="od-summary-label">{t('cart.subtotal')}</span><span className="od-summary-value">{formatPrice(order.items_subtotal)}</span></div>}
             {(order.delivery_fee ?? 0) > 0 && <div className="od-summary-row"><span className="od-summary-label">{t('orderDetail.deliveryFee')}</span><span className="od-summary-value">{formatPrice(order.delivery_fee ?? 0)}</span></div>}
-            {(order.discount ?? 0) > 0 && <div className="od-summary-row"><span className="od-summary-label">{t('orderDetail.discount')}</span><span className="od-summary-value">-{formatPrice(order.discount ?? 0)}</span></div>}
-            <div className="od-summary-total"><span>{t('cart.total')}</span><span>{formatPrice(order.total)}</span></div>
+            {(order.discount_amount ?? 0) > 0 && <div className="od-summary-row"><span className="od-summary-label">{t('orderDetail.discount')}</span><span className="od-summary-value">-{formatPrice(order.discount_amount ?? 0)}</span></div>}
+            <div className="od-summary-total"><span>{t('cart.total')}</span><span>{formatPrice(order.total_amount)}</span></div>
           </div>
         </div>
 
@@ -275,7 +275,7 @@ export default function OrderDetailPage() {
           <div className="od-section-title">{t('orderDetail.payment')}</div>
           <div className="od-payment-row">
             <div className="od-payment-icon">{order.payment_method === 'wallet' ? 'L' : order.payment_method?.toUpperCase()?.slice(0, 4) || 'COD'}</div>
-            <div className="od-payment-text">{order.payment_method === 'wallet' ? t('orderDetail.lokaWallet') : order.payment_method === 'cod' ? t('checkout.cashOnDelivery') : order.payment_method === 'pay_at_store' ? t('checkout.payAtStore') : order.payment_method} — {formatPrice(order.total)}</div>
+            <div className="od-payment-text">{order.payment_method === 'wallet' ? t('orderDetail.lokaWallet') : order.payment_method === 'cod' ? t('checkout.cashOnDelivery') : order.payment_method === 'pay_at_store' ? t('checkout.payAtStore') : order.payment_method} — {formatPrice(order.total_amount)}</div>
           </div>
         </div>
 

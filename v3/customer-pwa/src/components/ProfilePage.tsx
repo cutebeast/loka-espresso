@@ -66,16 +66,16 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!useAuthStore.getState().isAuthenticated) return;
-    api.get('/orders?page_size=3')
+    api.get('/orders?per_page=3')
       .then((res) => {
         const data: Order[] = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
         setRecentOrders(data.slice(0, 3).map((o) => ({
           id: o.id,
-          items: o.items?.map((i) => i.name).filter(Boolean).join(', ') || t('profile.orderNumber', { id: o.id }),
+          items: o.line_items?.map((i) => i.item_name).filter(Boolean).join(', ') || t('profile.orderNumber', { id: o.id }),
           date: o.created_at ? new Date(o.created_at).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' }) : '',
           status: o.status || 'Completed',
-          total: o.total || 0,
-          imageUrl: o.items?.[0]?.image_url ? resolveAssetUrl(o.items[0].image_url) : null,
+          total: o.total_amount || 0,
+          imageUrl: o.line_items?.[0]?.image_url ? resolveAssetUrl(o.line_items[0].image_url) : null,
         })));
       })
       .catch((err) => { console.error('[Profile] Recent orders fetch failed:', err); setRecentOrders([]); });
@@ -86,7 +86,7 @@ export default function ProfilePage() {
     setShowLogout(false);
   };
 
-  const initials = user?.name?.charAt(0)?.toUpperCase() || 'U';
+  const initials = user?.display_name?.charAt(0)?.toUpperCase() || 'U';
 
   const menuItems = [
     { id: 'rewards', icon: Gift, label: t('profile.myRewards'), iconClass: 'profile-icon-reward', onClick: () => setPage('my-rewards', { initialTab: 'rewards' }) },
@@ -135,8 +135,8 @@ export default function ProfilePage() {
           <div className="profile-user-card" onClick={() => setPage('account-details')}>
             <div className="profile-avatar">{initials}</div>
             <div className="profile-user-info">
-              <div className="profile-user-name">{user?.name || t('profile.guest')}</div>
-              <div className="profile-user-phone">{user?.phone || t('profile.noPhone')}</div>
+              <div className="profile-user-name">{user?.display_name || t('profile.guest')}</div>
+              <div className="profile-user-phone">{user?.phone_number || t('profile.noPhone')}</div>
               <div className={`profile-tier-badge ${(tier || 'Bronze').toLowerCase()}`}>
                 <Crown size={12} /> {t('profile.tierMember', { tier })}
               </div>

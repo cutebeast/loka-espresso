@@ -7,7 +7,7 @@ import { haptic } from '@/lib/haptics';
 import { useUIStore } from '@/stores/uiStore';
 import { useConfigStore } from '@/stores/configStore';
 import api from '@/lib/api';
-import type { Reward } from '@/lib/api';
+import type { RewardCatalogItem } from '@/lib/api';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -19,9 +19,9 @@ export default function RewardsPage() {
   const { setPage, showToast } = useUIStore();
   const tiers = useConfigStore((s) => s.tiers);
   const [activeTab, setActiveTab] = useState<Tab>('rewards');
-  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [rewards, setRewards] = useState<RewardCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+  const [selectedReward, setSelectedReward] = useState<RewardCatalogItem | null>(null);
   const [redeeming, setRedeeming] = useState<number | null>(null);
   const [redemptionCode, setRedemptionCode] = useState<string | null>(null);
   const [redemptionSuccess, setRedemptionSuccess] = useState(false);
@@ -29,15 +29,16 @@ export default function RewardsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/rewards');
-      setRewards(Array.isArray(res.data) ? res.data : []);
+      const res = await api.get('/rewards/catalog');
+      const data = res.data as { items?: RewardCatalogItem[] } | RewardCatalogItem[];
+      setRewards(Array.isArray(data) ? data : (data?.items ?? []));
     } catch (err) { console.error('[RewardsPage] fetch failed:', err); setRewards([]); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleRedeem = async (reward: Reward) => {
+  const handleRedeem = async (reward: RewardCatalogItem) => {
     if (useUIStore.getState().isGuest) { useUIStore.getState().triggerSignIn(); return; }
     if (points < reward.points_cost) { showToast(t('rewards.insufficientPoints'), 'error'); return; }
     setRedeeming(reward.id);
@@ -76,11 +77,11 @@ export default function RewardsPage() {
     return (
       <div className="rd-fullscreen" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div className="detail-hero">
-          {img ? <img src={img} alt={selectedReward.name} loading="lazy" /> : <Gift size={48} color="white" />}
+          {img ? <img src={img} alt={selectedReward.reward_name} loading="lazy" /> : <Gift size={48} color="white" />}
           <button className="rd-back-btn" onClick={() => setSelectedReward(null)} style={{ position: 'absolute', top: 12, left: 12 }}><ArrowLeft size={20} /></button>
         </div>
         <div className="detail-body">
-          <h1 className="detail-title">{selectedReward.name}</h1>
+          <h1 className="detail-title">{selectedReward.reward_name}</h1>
           <div className="detail-points-row">
             <span className="detail-points-pill"><Crown size={14} /> {selectedReward.points_cost.toLocaleString()} {t('common.pointsAbbr')}</span>
             <span className="detail-stock-pill"><Circle size={8} fill={LOKA.danger} /> {t('rewards.limitedStock')}</span>
@@ -88,19 +89,19 @@ export default function RewardsPage() {
           {selectedReward.short_description && (
             <p className="rd-desc">{selectedReward.short_description}</p>
           )}
-          {selectedReward.terms && selectedReward.terms.length > 0 && (
+          {selectedReward.terms_and_conditions && selectedReward.terms_and_conditions.length > 0 && (
             <>
               <div className="rd-section-title"><List size={16} /> {t('rewards.termsConditions')}</div>
               <ul className="rd-terms-list">
-                {selectedReward.terms.map((term, i) => (
+                {selectedReward.terms_and_conditions.map((term, i) => (
                   <li key={i}><Circle size={10} fill="currentColor" /> {term}</li>
                 ))}
               </ul>
             </>
           )}
-          {(selectedReward.long_description || selectedReward.description) && selectedReward.short_description !== (selectedReward.long_description || selectedReward.description) && (
+          {selectedReward.long_description && selectedReward.short_description !== selectedReward.long_description && (
             <div className="detail-full-desc">
-              {selectedReward.long_description || selectedReward.description}
+              {selectedReward.long_description}
             </div>
           )}
         </div>
@@ -178,11 +179,11 @@ export default function RewardsPage() {
               return (
                 <div key={reward.id} className="reward-card-improved" onClick={() => setSelectedReward(reward)}>
                   <div className="reward-thumb">
-                    {img ? <img src={img} alt={reward.name || 'Reward'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Gift size={24} color={LOKA.border} />}
+                    {img ? <img src={img} alt={reward.reward_name || 'Reward'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Gift size={24} color={LOKA.border} />}
                   </div>
                   <div className="reward-info">
                     <div className="reward-points-tag">{reward.points_cost.toLocaleString()} {t('common.pointsAbbr')}</div>
-                    <div className="reward-name">{reward.name}</div>
+                    <div className="reward-name">{reward.reward_name}</div>
                     <div className="reward-desc">{reward.short_description || ''}</div>
                   </div>
                   <div className="reward-chevron"><ChevronRight size={16} /></div>

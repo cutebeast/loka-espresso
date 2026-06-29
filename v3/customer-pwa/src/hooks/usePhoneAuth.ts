@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { normalizePhone } from '@/lib/phone';
 import api from '@/lib/api';
+import type { UserProfile } from '@/lib/api';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export type AuthStep = 'phone' | 'otp' | 'profile';
@@ -13,14 +14,14 @@ export type AuthStep = 'phone' | 'otp' | 'profile';
 async function fetchAndSetUser() {
   try {
     const me = await api.get('/me');
-    const raw = me.data;
-    const profile = raw?.profile || raw;
+    const raw = me.data as { profile?: UserProfile; addresses?: UserProfile['addresses']; referral_code?: string } | UserProfile;
+    const profile = ('profile' in raw && raw.profile) ? raw.profile : raw as UserProfile;
+    const addresses = ('addresses' in raw && raw.addresses) ? raw.addresses : profile.addresses;
     useAuthStore.getState().setUser({
       ...profile,
-      addresses: raw?.addresses || [],
-      referral_code: raw?.referral_code || profile?.referral_code || '',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+      addresses: addresses || [],
+      referral_code: ('referral_code' in raw && raw.referral_code) ? raw.referral_code : (profile.referral_code || ''),
+    });
   } catch (err) { console.error("Failed to fetch user profile:", err); }
 }
 
@@ -84,7 +85,7 @@ export function usePhoneAuth() {
     setError('');
     try {
       const res = await api.post('/auth/login', { phone_number: phoneNumber, otp_code: code });
-      const tokens = res.data?.tokens || (res.data as { data?: { tokens?: { access_token?: string; refresh_token?: string } } })?.data?.tokens;
+      const tokens = res.data?.tokens as { access_token?: string; refresh_token?: string } | undefined;
       if (tokens?.access_token) {
         localStorage.setItem('token', tokens.access_token);
         if (tokens.refresh_token) localStorage.setItem('refreshToken', tokens.refresh_token);

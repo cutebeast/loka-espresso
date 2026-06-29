@@ -5,7 +5,7 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { BrandProvider, useBrand } from "@/components/BrandProvider";
 import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
-import { setAuthCookieManual, BASE_URL } from "@/lib/api";
+import { refreshToken, BASE_URL } from "@/lib/api";
 
 function isAdminLoggedIn(): boolean {
   if (typeof window === "undefined") return false;
@@ -21,28 +21,6 @@ function parseJwtExp(token: string): number | null {
     const json = JSON.parse(atob(base64));
     return json.exp ? json.exp * 1000 : null;
   } catch (e) { console.error("Failed to parse JWT:", e); return null; }
-}
-
-async function refreshToken(): Promise<boolean> {
-  try {
-    if (typeof window === "undefined") return false;
-    const refresh = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-    if (!refresh) return false;
-    const res = await fetch(`${BASE_URL}/admin/auth/refresh`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refresh }),
-    });
-    if (!res.ok) return false;
-    const json = await res.json();
-    const data = json.data || json;
-    if (data.tokens?.access_token) {
-      localStorage.setItem(STORAGE_KEYS.TOKEN, data.tokens.access_token);
-      if (data.tokens.refresh_token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh_token);
-      setAuthCookieManual();
-      return true;
-    }
-    return false;
-  } catch (e) { console.error("Token refresh failed:", e); return false; }
 }
 
 function clearSession() {

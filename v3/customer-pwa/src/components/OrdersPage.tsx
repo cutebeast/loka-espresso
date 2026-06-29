@@ -52,9 +52,9 @@ export default function OrdersPage() {
     if (!useAuthStore.getState().isAuthenticated) return;
     setIsLoading(true);
     try {
-      const res = await api.get('/orders', { params: { page_size: 20 } });
+      const res = await api.get('/orders', { params: { per_page: 20 } });
       const raw = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
-      setOrders(raw.map((o: Record<string, unknown>) => ({ ...o, total: o.total_amount ?? o.total ?? 0 })));
+      setOrders(raw);
     } catch (err) { console.error('[OrdersPage] fetch failed:', err); showToast(t('toast.loadOrdersFailed'), 'error'); }
     finally { setIsLoading(false); }
   }, [setIsLoading, setOrders, showToast, t]);
@@ -90,12 +90,12 @@ export default function OrdersPage() {
       for (const item of items) {
         const cartItem: CartItem = {
           menu_item_id: item.menu_item_id || item.item_id,
-          name: item.name || item.item_name || '',
-          price: item.price || item.unit_price || 0,
+          name: item.item_name || '',
+          price: item.unit_price || 0,
           quantity: item.quantity || 1,
-          customization_option_ids: item.customization_option_ids || [],
-          customizations: item.customizations || {},
-          customization_count: item.customization_count ?? 0,
+          customization_option_ids: item.modifier_option_ids || item.customization_option_ids || [],
+          customizations: item.selected_modifiers || item.customizations || {},
+          customization_count: (item.modifier_option_ids || item.customization_option_ids || []).length,
         };
         useCartStore.getState().addItem(cartItem);
       }
@@ -115,14 +115,14 @@ export default function OrdersPage() {
     try {
       if (reset) {
         setPastPage(1);
-        const res = await api.get('/orders', { params: { page_size: 10, page: 1 } });
+        const res = await api.get('/orders', { params: { per_page: 10, page: 1 } });
         const items = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
         const past = items.filter((o: Order) => !ACTIVE.includes(o.status?.toLowerCase()));
         setAllPastOrders(past);
         setHasMorePast(past.length === 10);
       } else {
         const nextPage = pastPage + 1;
-        const res = await api.get('/orders', { params: { page_size: 10, page: nextPage } });
+        const res = await api.get('/orders', { params: { per_page: 10, page: nextPage } });
         const items = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
         const past = items.filter((o: Order) => !ACTIVE.includes(o.status?.toLowerCase()));
         setAllPastOrders(prev => [...prev, ...past]);
@@ -174,7 +174,7 @@ export default function OrdersPage() {
             </div>
             {activeOrders.map(order => {
               const step = activeStepIdx(order.status);
-              const itemList = order.items?.map(i => i.name).join(', ') || '';
+              const itemList = order.line_items?.map(i => i.item_name).join(', ') || '';
               return (
                 <div key={order.id} className="orders-active-card" onClick={() => openDetail(order)}>
                   <div className="orders-active-header">
@@ -196,7 +196,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="orders-active-items">{itemList}</div>
                   <div className="orders-active-footer">
-                    <span className="orders-active-total">{formatPrice(order.total)}</span>
+                    <span className="orders-active-total">{formatPrice(order.total_amount)}</span>
                     <button className="orders-track-btn" onClick={e => { e.stopPropagation(); openDetail(order); }}>{t('orders.trackOrder')}</button>
                   </div>
                 </div>
@@ -215,18 +215,18 @@ export default function OrdersPage() {
             </div>
             {pastOrdersDisplay.map(order => {
               const badge = getStatusBadge(order.status);
-              const firstItem = order.items?.[0];
-              const itemPreview = order.items?.map(i => i.name).slice(0, 2).join(', ') || '';
+              const firstItem = order.line_items?.[0];
+              const itemPreview = order.line_items?.map(i => i.item_name).slice(0, 2).join(', ') || '';
               return (
                 <div key={order.id} className="orders-past-card" onClick={() => openDetail(order)}>
                   <div className="orders-past-thumb">
-                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt={firstItem.name || 'Order item'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={20} color={LOKA.primary} />}
+                    {firstItem?.image_url ? <img src={resolveAssetUrl(firstItem.image_url) || ''} alt={firstItem.item_name || 'Order item'} loading="lazy" className="w-full h-full object-cover rounded-xl" /> : <Coffee size={20} color={LOKA.primary} />}
                   </div>
                   <div className="orders-past-info">
                     <div className="orders-past-number">{t('orders.orderNumber', { number: order.order_number })}</div>
                     <div className="orders-past-date">{formatDate(order.created_at)} · {itemPreview}</div>
                     <div className="orders-past-bottom">
-                      <span className="orders-past-total">{formatPrice(order.total)}</span>
+                      <span className="orders-past-total">{formatPrice(order.total_amount)}</span>
                       <div className="flex gap-2 items-center">
                         <span className={`orders-status-badge ${badge.cls}`}>{badge.label}</span>
                         <button className="orders-reorder-btn" onClick={e => { e.stopPropagation(); handleReorder(order); }}><RotateCcw size={12} /> {t('orders.reorder')}</button>

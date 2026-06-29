@@ -24,7 +24,7 @@ export default function MyCardPage() {
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.get('/users/me')
+    api.get('/me')
       .then((res) => {
         const created = res.data?.created_at;
         if (created) {
@@ -90,7 +90,7 @@ export default function MyCardPage() {
                 )}
               </div>
               <div className="mycard-member-info">
-                <div className="mycard-member-name">{user?.name || t('myCard.member')}</div>
+                <div className="mycard-member-name">{user?.display_name || t('myCard.member')}</div>
                 <div className="mycard-member-id">{memberId}</div>
               </div>
             </div>

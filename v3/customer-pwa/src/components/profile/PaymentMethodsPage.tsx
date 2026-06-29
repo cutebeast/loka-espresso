@@ -27,7 +27,19 @@ export default function PaymentMethodsPage() {
 
   useEffect(() => {
     api.get('/payments/methods')
-      .then((res) => setMethods(Array.isArray(res.data) ? res.data : []))
+      .then((res) => {
+        const raw = Array.isArray(res.data) ? res.data : [];
+        setMethods(raw.map((m: Record<string, unknown>) => ({
+          id: m.id as number,
+          type: (m.method_type as string) || (m.type as string) || '',
+          provider: (m.provider as string) || (m.card_brand as string) || '',
+          last4: (m.card_last_four as string) || (m.last4 as string) || '',
+          expiry: (m.card_expiry_month && m.card_expiry_year)
+            ? `${m.card_expiry_month}/${String(m.card_expiry_year).slice(-2)}`
+            : (m.expiry as string) || undefined,
+          is_default: (m.is_default as boolean) ?? false,
+        })));
+      })
       .catch((err) => { console.error('[PaymentMethods] Fetch failed:', err); setMethods([]); })
       .finally(() => setLoading(false));
   }, []);

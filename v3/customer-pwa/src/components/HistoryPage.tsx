@@ -61,11 +61,13 @@ export default function HistoryPage() {
     setLoading(true);
     try {
       if (activeTab === 'loyalty') {
-        const res = await api.get('/loyalty/history', { params: { page_size: 50 }, signal });
-        setLoyaltyHistory(Array.isArray(res.data) ? res.data : []);
+        const res = await api.get('/loyalty/ledger/me', { params: { per_page: 50 }, signal });
+        const data = res.data as { items?: LoyaltyHistoryEntry[] } | LoyaltyHistoryEntry[];
+        setLoyaltyHistory(Array.isArray(data) ? data : (data?.items ?? []));
       } else {
-        const res = await api.get('/wallet/transactions', { params: { page_size: 50 }, signal });
-        const txs = Array.isArray(res.data) ? res.data : [];
+        const res = await api.get('/wallet/ledger/me', { params: { per_page: 50 }, signal });
+        const data = res.data as { items?: Transaction[] } | Transaction[] | undefined;
+        const txs = Array.isArray(data) ? data : (data?.items ?? []);
         setWalletHistory(txs);
         setWalletTransactions(txs);
       }
@@ -99,8 +101,8 @@ export default function HistoryPage() {
   const groupOrder = ['today', 'yesterday', 'thisWeek', 'thisMonth', 'earlier'];
 
   /* Summary stats */
-  const loyaltyEarned = loyaltyHistory.filter(t => (t.points || 0) > 0).reduce((s, t) => s + (t.points || 0), 0);
-  const loyaltyRedeemed = loyaltyHistory.filter(t => (t.points || 0) < 0).reduce((s, t) => s + Math.abs(t.points || 0), 0);
+  const loyaltyEarned = loyaltyHistory.filter(t => (t.points_delta || 0) > 0).reduce((s, t) => s + (t.points_delta || 0), 0);
+  const loyaltyRedeemed = loyaltyHistory.filter(t => (t.points_delta || 0) < 0).reduce((s, t) => s + Math.abs(t.points_delta || 0), 0);
   const walletIn = walletHistory.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
   const walletOut = walletHistory.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
   const nowMonth = new Date().toLocaleDateString(getLocale(), { month: 'long', year: 'numeric' });
@@ -185,8 +187,8 @@ export default function HistoryPage() {
               <div key={group}>
                 <div className="history-date-group">{t('common.' + group)}</div>
                 {items.map((item, idx) => {
-                  const isPositive = activeTab === 'loyalty' ? ((item as LoyaltyHistoryEntry).points || 0) > 0 : (item as Transaction).amount > 0;
-                  const type = (item.type || '').toLowerCase();
+                  const isPositive = activeTab === 'loyalty' ? ((item as LoyaltyHistoryEntry).points_delta || 0) > 0 : (item as Transaction).amount > 0;
+                  const type = ((item as Transaction).entry_type || (item as LoyaltyHistoryEntry).event_type || '').toLowerCase();
                   const IconComp = CATEGORY_ICONS[type];
                   if (!IconComp) return null;
                   const catLabel = categoryLabel(type);
@@ -207,7 +209,7 @@ export default function HistoryPage() {
                       <div className="history-tx-right">
                         <div className={`history-tx-amount ${isPositive ? 'credit' : 'debit'}`}>
                           {activeTab === 'loyalty'
-                            ? `${isPositive ? '+' : '−'}${Math.abs((item as LoyaltyHistoryEntry).points || 0).toLocaleString()} ${t('common.pointsAbbr')}`
+                            ? `${isPositive ? '+' : '−'}${Math.abs((item as LoyaltyHistoryEntry).points_delta || 0).toLocaleString()} ${t('common.pointsAbbr')}`
                             : `${isPositive ? '+' : '−'}${formatPrice(Math.abs((item as Transaction).amount || 0))}`}
                         </div>
                       </div>

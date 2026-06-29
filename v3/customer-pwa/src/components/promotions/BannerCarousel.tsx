@@ -7,7 +7,7 @@ import { TypePill } from '@/components/shared';
 import { resolveAssetUrl } from '@/lib/tokens';
 import type { PromoBanner } from '@/lib/api';
 
-function getDaysLeftKey(end: string | null): { key: string; params?: Record<string, number> } {
+function getDaysLeftKey(end: string | null | undefined): { key: string; params?: Record<string, number> } {
   if (!end) return { key: 'promotions.ongoing' };
   const diff = Math.ceil((new Date(end).getTime() - Date.now()) / 86400000);
   if (diff <= 0) return { key: 'promotions.ended' };
@@ -15,7 +15,7 @@ function getDaysLeftKey(end: string | null): { key: string; params?: Record<stri
   return { key: 'promotions.daysLeft', params: { count: diff } };
 }
 
-function getTagVariant(t: string | null): 'offer' | 'survey' | 'limited' | 'system' {
+function getTagVariant(t: string | null | undefined): 'offer' | 'survey' | 'limited' | 'system' {
   if (t === 'survey') return 'survey';
   if (t === 'detail') return 'offer';
   return 'system';

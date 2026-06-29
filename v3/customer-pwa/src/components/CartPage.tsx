@@ -24,6 +24,7 @@ import { useConfigStore } from '@/stores/configStore';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import api from '@/lib/api';
 import type { MenuItem, CustomizationOption as ApiCustomOption } from '@/lib/api';
+import { deriveCustomizationOptions } from '@/lib/storeHelpers';
 import ItemCustomizeSheet from '@/components/menu/ItemCustomizeSheet';
 import AddonDealShelf from '@/components/menu/AddonDealShelf';
 
@@ -66,7 +67,7 @@ export default function CartPage() {
   const [editLoading, setEditLoading] = useState(false);
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const subtotal = getTotal();
-  const deliveryFee = orderMode === 'delivery' ? (selectedStore?.delivery_fee ?? config.delivery_fee) : 0;
+  const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
   const total = subtotal + deliveryFee;
   const itemCount = getItemCount();
   const belowDeliveryMinimum = orderMode === 'delivery' && config.min_order_delivery > 0 && subtotal < config.min_order_delivery;
@@ -90,17 +91,16 @@ export default function CartPage() {
       // via the /menu/stores/{store_id} endpoint. Try the dedicated endpoint first,
       // but fall back to using the menu items already loaded.
       try {
-        const res = await api.get(`/menu/items/${item.menu_item_id}/customizations`);
-        const options = Array.isArray(res.data) ? res.data : 
-          (res.data && res.data.items ? res.data.items : []);
-        setEditOptions(options);
+        const res = await api.get(`/menu/items/${item.menu_item_id}`);
+        const menuItem = res.data as MenuItem | undefined;
+        setEditOptions(menuItem ? deriveCustomizationOptions(menuItem) : []);
       } catch {
         // Fallback: use menu items already in state
         const { menuItems } = useUIStore.getState();
         const menuItem = menuItems.find((mi: MenuItem) => mi.id === item.menu_item_id);
-        setEditOptions(menuItem?.customization_options || []);
+        setEditOptions(menuItem ? deriveCustomizationOptions(menuItem) : []);
       }
-      setEditItem({ id: item.menu_item_id, name: item.name, base_price: item.base_price ?? item.price, category_id: 0 } as MenuItem);
+      setEditItem({ id: item.menu_item_id, item_name: item.name, base_price: item.base_price ?? item.price, category_id: 0 } as unknown as MenuItem);
       setEditingItem(index);
     } catch { showToast(t('toast.genericError'), 'error'); }
     finally { setEditLoading(false); }
@@ -177,7 +177,7 @@ export default function CartPage() {
               <span className="cart-emoji"><Store size={16} /></span>
             </div>
             <div className="cart-context-text">
-              <p className="cart-context-title">{selectedStore?.name || t('cart.selectStore')}</p>
+              <p className="cart-context-title">{selectedStore?.store_name || t('cart.selectStore')}</p>
               <p className="cart-context-sub">{orderMode === 'pickup' ? t('cart.mode.pickup') : t('cart.mode.delivery')}</p>
             </div>
             <button

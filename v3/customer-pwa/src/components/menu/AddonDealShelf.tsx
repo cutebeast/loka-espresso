@@ -29,16 +29,16 @@ export default function AddonDealShelf({ menuItems, cartItems, bundleProducts }:
   const handleAdd = (item: MenuItem) => {
     addItem({
       menu_item_id: item.id,
-      name: item.name,
+      name: item.item_name,
       price: item.base_price,
       base_price: item.base_price,
       quantity: 1,
       customizations: {},
       store_id: selectedStore?.id,
-      customization_count: item.customization_count ?? 0,
+      customization_count: item.modifier_groups?.length ?? 0,
     });
     setAddedIds((prev) => new Set(prev).add(item.id));
-    showToast(t('menu.addonAdded', { name: item.name }), 'success');
+    showToast(t('menu.addonAdded', { name: item.item_name }), 'success');
   };
 
   if (suggestions.length === 0) return null;
@@ -57,13 +57,13 @@ export default function AddonDealShelf({ menuItems, cartItems, bundleProducts }:
             <div key={item.id} className="ads-shelf-card">
               <div className="ads-shelf-img">
                 {imgSrc ? (
-                  <img src={imgSrc} alt={item.name} loading="lazy" />
+                  <img src={imgSrc} alt={item.item_name} loading="lazy" />
                 ) : (
                   <Coffee size={16} color={LOKA.border} />
                 )}
               </div>
               <div className="ads-shelf-info">
-                <div className="ads-shelf-name">{item.name}</div>
+                <div className="ads-shelf-name">{item.item_name}</div>
                 <div className="ads-shelf-price-row">
                   <span className="ads-shelf-price-new">{formatPrice(preview.discountedUnitPrice)}</span>
                   <span className="ads-shelf-price-old">{formatPrice(preview.unitPrice)}</span>
@@ -73,7 +73,7 @@ export default function AddonDealShelf({ menuItems, cartItems, bundleProducts }:
                 className={`ads-shelf-add-btn ${isAdded ? 'added' : ''}`}
                 onClick={() => !isAdded && handleAdd(item)}
                 disabled={isAdded}
-                aria-label={t('common.add') + ' ' + item.name}
+                aria-label={t('common.add') + ' ' + item.item_name}
               >
                 {isAdded ? <Check size={14} /> : <Plus size={14} />}
               </button>

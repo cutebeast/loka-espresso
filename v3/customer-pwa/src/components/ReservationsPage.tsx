@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import type { Reservation, Store } from '@/lib/api';
+import { formatStoreAddress } from '@/lib/storeHelpers';
 import { GuestGate } from '@/components/auth/GuestGate';
 
 interface ReservationsPageProps {
@@ -33,7 +34,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
     try {
       const res = await api.get('/reservations');
       const data = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
-      setReservations(data.map((r: Record<string, unknown>) => ({ ...r, notes: r.special_requests || r.notes || '' })));
+      setReservations(data);
     } catch {
       setReservations([]);
     }
@@ -70,7 +71,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
         reservation_date: formDate,
         reservation_time: formTime,
         party_size: Number(formPartySize),
-        notes: formNotes || undefined,
+        special_requests: formNotes || undefined,
       });
       setShowForm(false);
       await fetchReservations();
@@ -155,9 +156,9 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
               <div key={r.id} className="bg-bg-card rounded-2xl p-4 shadow-card border border-border-subtle">
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <p className="font-bold text-text-primary">{r.store_name || stores.find((s) => s.id === r.store_id)?.name || t('orderDetail.storeId', { id: r.store_id })}</p>
+                    <p className="font-bold text-text-primary">{r.store_name || stores.find((s) => s.id === r.store_id)?.store_name || t('orderDetail.storeId', { id: r.store_id })}</p>
                     <p className="text-xs text-text-muted flex items-center gap-1 mt-1">
-                      <MapPin size={12} /> {stores.find((s) => s.id === r.store_id)?.address || ''}
+                      <MapPin size={12} /> {stores.find((s) => s.id === r.store_id) ? formatStoreAddress(stores.find((s) => s.id === r.store_id)!) : ''}
                     </p>
                   </div>
                   <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusClass(r.status)}`}>
@@ -169,7 +170,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
                   <span className="flex items-center gap-1"><Clock size={14} /> {r.reservation_time}</span>
                   <span className="flex items-center gap-1"><Users size={14} /> {r.party_size}</span>
                 </div>
-                {r.notes && <p className="text-xs text-text-muted mt-2 italic">{r.notes}</p>}
+                {r.special_requests && <p className="text-xs text-text-muted mt-2 italic">{r.special_requests}</p>}
                 {(r.status === 'requested' || r.status === 'confirmed') && (
                   <button onClick={() => handleCancel(r.id)} className="mt-3 text-xs text-danger flex items-center gap-1">
                     <Trash2 size={12} /> {t('common.cancel') || 'Cancel'}
@@ -205,7 +206,7 @@ export default function ReservationsPage({ onBack }: ReservationsPageProps) {
                   <label className="text-xs font-semibold text-primary uppercase tracking-wider mb-1 block">{t('reservations.store') || 'Store'}</label>
                   <select value={formStoreId} onChange={(e) => setFormStoreId(e.target.value)} className="w-full bg-bg-light rounded-xl px-4 py-3 border border-border-subtle focus:border-primary outline-none text-base text-text-primary">
                     {stores.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
+                      <option key={s.id} value={s.id}>{s.store_name}</option>
                     ))}
                   </select>
                 </div>

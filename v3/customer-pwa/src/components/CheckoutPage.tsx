@@ -16,6 +16,7 @@ import DeliveryAddressCard from '@/components/checkout/DeliveryAddressCard';
 import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import type { Order, BundleProduct } from '@/lib/api';
 import { haversineKm } from '@/lib/geolocation';
+import { formatStoreAddress } from '@/lib/storeHelpers';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -69,7 +70,7 @@ export default function CheckoutPage() {
   const [draftSaved, setDraftSaved] = useState(false);
 
   useEffect(() => { refreshWallet(); }, [refreshWallet]);
-  useEffect(() => { if (user && !checkoutDraft.recipientName && !recipientName) { setRecipientName(user.name || ''); setRecipientPhone(user.phone || ''); }   }, [user, checkoutDraft.recipientName, recipientName]);
+  useEffect(() => { if (user && !checkoutDraft.recipientName && !recipientName) { setRecipientName(user.display_name || ''); setRecipientPhone(user.phone_number || ''); }   }, [user, checkoutDraft.recipientName, recipientName]);
   // Fetch bundle products for discount preview
   useEffect(() => {
     let cancelled = false;
@@ -91,7 +92,7 @@ export default function CheckoutPage() {
   }, [checkoutDraft.voucherCode, checkoutDraft.rewardCode, discountCode, discountType]);
 
   const subtotal = getTotal();
-  const deliveryFee = orderMode === 'delivery' ? (selectedStore?.delivery_fee ?? config.delivery_fee) : 0;
+  const deliveryFee = orderMode === 'delivery' ? config.delivery_fee : 0;
   const voucherDiscount = discountValue;
   const bundleBreakdown = previewCartDiscounts(items, menuItems, bundleProducts);
   const totalDiscount = voucherDiscount + bundleBreakdown.total;
@@ -102,12 +103,12 @@ export default function CheckoutPage() {
 
   // Delivery radius: check distance from store to delivery address (not user location)
   const deliveryOutOfRange = useMemo(() => {
-    if (orderMode !== 'delivery' || !selectedStore?.lat || !selectedStore?.lng || !deliveryAddress?.lat || !deliveryAddress?.lng) return false;
+    if (orderMode !== 'delivery' || !selectedStore?.latitude || !selectedStore?.longitude || !deliveryAddress?.lat || !deliveryAddress?.lng) return false;
     const radius = selectedStore.delivery_radius_km;
     if (radius == null || radius <= 0) return false;
-    const dist = haversineKm(selectedStore.lat, selectedStore.lng, deliveryAddress.lat, deliveryAddress.lng);
+    const dist = haversineKm(selectedStore.latitude, selectedStore.longitude, deliveryAddress.lat, deliveryAddress.lng);
     return dist > radius;
-  }, [orderMode, selectedStore?.lat, selectedStore?.lng, selectedStore?.delivery_radius_km, deliveryAddress?.lat, deliveryAddress?.lng]);
+  }, [orderMode, selectedStore?.latitude, selectedStore?.longitude, selectedStore?.delivery_radius_km, deliveryAddress?.lat, deliveryAddress?.lng]);
 
   const saveDraft = () => {
     setCheckoutDraft({ orderMode, selectedStore, deliveryAddress, pickupTime, paymentMethod, notes: orderNote, discountType, discountCode, recipientName, recipientPhone, deliveryInstructions: deliveryInstr });
@@ -185,7 +186,7 @@ export default function CheckoutPage() {
         {(orderMode === 'pickup' || orderMode === 'delivery') && selectedStore && (
           <div className="checkout-section">
             <div className="co-section-title">{t('checkout.store')}</div>
-            <div className="co-store-info"><div className="co-store-icon"><Store size={16} /></div><div><div className="co-store-name">{selectedStore.name}</div><div className="co-store-address">{selectedStore.address}</div></div></div>
+            <div className="co-store-info"><div className="co-store-icon"><Store size={16} /></div><div><div className="co-store-name">{selectedStore.store_name}</div><div className="co-store-address">{formatStoreAddress(selectedStore)}</div></div></div>
           </div>
         )}
         {orderMode === 'delivery' && (

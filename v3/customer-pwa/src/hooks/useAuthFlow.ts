@@ -8,7 +8,7 @@ import { useWalletStore } from '@/stores/walletStore';
 import { useConfigStore } from '@/stores/configStore';
 import api from '@/lib/api';
 import { autoDetectStore } from '@/lib/geolocation';
-import type { PageId, Store as StoreType, CartItem } from '@/lib/api';
+import type { PageId, Store as StoreType, CartItem, UserProfile } from '@/lib/api';
 
 const PUBLIC_PAGES: PageId[] = [
   'home', 'menu', 'promotions', 'information', 'legal', 'cart', 'rewards', 'help-support', 'settings',
@@ -101,9 +101,10 @@ export function useAuthFlow() {
         if (token) {
           const userRes = await api.get('/me', { signal: abortCtrl.signal });
           if (!cancelled) {
-            const raw = userRes.data;
-            const profile = raw?.profile || raw;
-            setUser({ ...profile, addresses: raw?.addresses || [], referral_code: raw?.referral_code || '' });
+            const raw = userRes.data as { profile?: UserProfile; addresses?: UserProfile['addresses']; referral_code?: string } | UserProfile;
+            const profile = ('profile' in raw && raw.profile) ? raw.profile : raw as UserProfile;
+            const addresses = ('addresses' in raw && raw.addresses) ? raw.addresses : profile.addresses;
+            setUser({ ...profile, addresses: addresses || [], referral_code: ('referral_code' in raw && raw.referral_code) ? raw.referral_code : (profile.referral_code || '') });
             setAuthDone(true);
           }
         }
@@ -126,18 +127,24 @@ export function useAuthFlow() {
         api.get('/wallet/me'),
         api.get('/stores'),
       ]);
-      if (profileRes.status === 'fulfilled') { const raw = profileRes.value.data; const p = raw?.profile || raw; setUser({ ...p, addresses: raw?.addresses || [], referral_code: raw?.referral_code || '' }); }
+      if (profileRes.status === 'fulfilled') {
+        const raw = profileRes.value.data as { profile?: UserProfile; addresses?: UserProfile['addresses']; referral_code?: string } | UserProfile;
+        const p = ('profile' in raw && raw.profile) ? raw.profile : raw as UserProfile;
+        const addresses = ('addresses' in raw && raw.addresses) ? raw.addresses : p.addresses;
+        setUser({ ...p, addresses: addresses || [], referral_code: ('referral_code' in raw && raw.referral_code) ? raw.referral_code : (p.referral_code || '') });
+      }
       if (loyaltyRes.status === 'fulfilled') {
         const d = loyaltyRes.value.data;
-        if (d?.points_balance != null) setPoints(Number(d.points_balance));
-        if (d?.tier) setTier(d.tier);
+        if (d?.current_points != null) setPoints(Number(d.current_points));
+        if (d?.tier_name) setTier(d.tier_name);
       }
       if (walletRes.status === 'fulfilled') {
         const d = walletRes.value.data;
         if (d?.balance != null) setBalance(Number(d.balance));
       }
       if (storesRes.status === 'fulfilled') {
-        const list: StoreType[] = storesRes.value.data;
+        const storeData = storesRes.value.data as StoreType[] | { items?: StoreType[] } | undefined;
+        const list: StoreType[] = Array.isArray(storeData) ? storeData : (storeData?.items ?? []);
         setStores(list);
       }
       refreshWallet();

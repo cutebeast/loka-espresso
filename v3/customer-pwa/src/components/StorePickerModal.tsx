@@ -6,6 +6,7 @@ import { Store, MapPin, Check, X, Clock, Navigation, Search } from 'lucide-react
 import { getStoresWithDistance } from '@/lib/geolocation';
 import { resolveAssetUrl, LOKA } from '@/lib/tokens';
 import type { Store as StoreType } from '@/lib/api';
+import { formatStoreAddress } from '@/lib/storeHelpers';
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface StorePickerModalProps {
@@ -30,7 +31,7 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
     .filter((s) => {
       if (!storeSearch.trim()) return true;
       const q = storeSearch.trim().toLowerCase();
-      return s.name.toLowerCase().includes(q) || (s.address || '').toLowerCase().includes(q);
+      return s.store_name.toLowerCase().includes(q) || (formatStoreAddress(s) || '').toLowerCase().includes(q);
     });
 
   return (
@@ -79,8 +80,8 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
         </div>
         {/* Store image hero */}
         <div className="store-picker-hero">
-          {selectedStore?.image_url ? (
-            <img src={resolveAssetUrl(selectedStore.image_url) || undefined} alt={selectedStore.name} className="store-picker-hero-img" />
+          {selectedStore?.logo_url ? (
+            <img src={resolveAssetUrl(selectedStore.logo_url) || undefined} alt={selectedStore.store_name} className="store-picker-hero-img" />
           ) : (
             <Store size={48} strokeWidth={1} className="store-picker-hero-fallback" />
           )}
@@ -124,8 +125,8 @@ export default function StorePickerModal({ stores, selectedStore, userLocation, 
                   <Store size={18} className="store-picker-item-icon" strokeWidth={2} />
                 </div>
                 <div className="store-picker-item-info">
-                  <div className="store-picker-item-name">{store.name}</div>
-                  {store.address && <div className="store-picker-item-address">{store.address}</div>}
+                  <div className="store-picker-item-name">{store.store_name}</div>
+                  {formatStoreAddress(store) && <div className="store-picker-item-address">{formatStoreAddress(store)}</div>}
                   <span className="store-picker-item-status">{t('storePicker.openNow')}</span>
                   {store.pickup_lead_minutes != null && (
                     <div className="store-picker-pickup-badge">
