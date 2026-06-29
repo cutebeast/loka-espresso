@@ -93,6 +93,28 @@ BUNDLES = [
             {"item_code": "CRO", "default_quantity": 1},
         ],
     },
+    {
+        "title": "Breakfast Combo",
+        "slug": "breakfast-combo",
+        "bundle_type": "combo",
+        "bundle_price": 18.00,
+        "max_per_order": 3,
+        "components": [
+            {"item_code": "LAT", "default_quantity": 1},
+            {"item_code": "MUF", "default_quantity": 1},
+        ],
+    },
+    {
+        "title": "Coffee Duo",
+        "slug": "coffee-duo",
+        "bundle_type": "combo",
+        "bundle_price": 14.00,
+        "max_per_order": 2,
+        "components": [
+            {"item_code": "ESP", "default_quantity": 1},
+            {"item_code": "LAT", "default_quantity": 1},
+        ],
+    },
 ]
 
 

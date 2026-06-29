@@ -22,6 +22,7 @@ from seed_content import seed as seed_content
 from seed_staff import seed as seed_staff
 from seed_customers import seed as seed_customers
 from seed_operational import seed as seed_operational
+from seed_orders import seed as seed_orders
 
 
 PARTS = {
@@ -35,10 +36,11 @@ PARTS = {
     "staff": seed_staff,
     "customers": seed_customers,
     "operational": seed_operational,
+    "orders": seed_orders,
 }
 
 # Dependency order for the default --all run
-ORDER = ["iam", "platform", "stores", "inventory", "menu", "loyalty", "content", "staff", "customers", "operational"]
+ORDER = ["iam", "platform", "stores", "inventory", "menu", "loyalty", "content", "staff", "customers", "operational", "orders"]
 
 
 def _expand_parts(parts_arg: str) -> list[str]:
