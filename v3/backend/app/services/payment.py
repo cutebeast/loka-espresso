@@ -93,7 +93,7 @@ async def _create_stripe_intent(
     params: dict = {
         "amount": _to_cents(payment.amount),
         "currency": payment.currency_code.lower(),
-        "automatic_payment_methods": {"enabled": True},
+        "automatic_payment_methods": {"enabled": True, "allow_redirects": "never"},
         "metadata": {
             "order_id": payment.order_id,
             "payment_id": payment.id,
@@ -510,6 +510,7 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
         amount=payment.captured_amount,
         provider_response={"action": "capture", "simulated": not (payment.provider == "stripe" and stripe_enabled)},
     )
+    await db.flush()
     await _sync_order_payment_status(db, payment)
 
     await db.commit()
@@ -684,6 +685,7 @@ async def process_webhook_event(
             precision = await config_service.get_accounting_precision()
             rounding_mode = await config_service.get_accounting_rounding()
             await _apply_capture_fees(payment, precision, rounding_mode)
+            await db.flush()
             await _sync_order_payment_status(db, payment)
 
         await _add_payment_event(
