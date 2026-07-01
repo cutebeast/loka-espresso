@@ -33,11 +33,6 @@ def _generate_idempotency_key() -> str:
     return f"fnb-{uuid4().hex}"
 
 
-def _stripe_enabled() -> bool:
-    """Return True when a real Stripe secret key is configured."""
-    return bool(get_settings().stripe_secret_key)
-
-
 def _to_cents(amount: Decimal) -> int:
     """Convert a decimal amount to the smallest currency unit (cents)."""
     return int((amount * Decimal(100)).to_integral_value(rounding=ROUND_HALF_UP))
@@ -48,19 +43,53 @@ def _from_cents(cents: int) -> Decimal:
     return Decimal(cents) / Decimal(100)
 
 
-def _stripe_api_key() -> str | None:
-    return get_settings().stripe_secret_key
+async def _get_stripe_secret_key(db: AsyncSession) -> str | None:
+    """Read Stripe secret key from platform_config, falling back to .env."""
+    value = await PlatformConfigService(db).get_str("stripe.secret_key", default="")
+    if value:
+        return value
+    return get_settings().stripe_secret_key or None
+
+
+async def _get_stripe_publishable_key(db: AsyncSession) -> str | None:
+    """Read Stripe publishable key from platform_config, falling back to .env."""
+    value = await PlatformConfigService(db).get_str("stripe.publishable_key", default="")
+    if value:
+        return value
+    return get_settings().stripe_publishable_key or None
+
+
+async def _get_stripe_webhook_secret(db: AsyncSession) -> str | None:
+    """Read Stripe webhook secret from platform_config, falling back to .env."""
+    value = await PlatformConfigService(db).get_str("stripe.webhook_secret", default="")
+    if value:
+        return value
+    return get_settings().stripe_webhook_secret or None
+
+
+async def _stripe_enabled(db: AsyncSession) -> bool:
+    """Return True when a real Stripe secret key is configured."""
+    return bool(await _get_stripe_secret_key(db))
+
+
+async def get_payment_gateway_config(db: AsyncSession) -> dict:
+    """Return public payment gateway configuration (no secrets)."""
+    secret = await _get_stripe_secret_key(db)
+    publishable = await _get_stripe_publishable_key(db)
+    return {"stripe_enabled": bool(secret), "stripe_publishable_key": publishable or ""}
+
+
+async def get_stripe_webhook_secret(db: AsyncSession) -> str | None:
+    """Return the configured Stripe webhook secret, preferring platform_config over .env."""
+    return await _get_stripe_webhook_secret(db)
 
 
 async def _create_stripe_intent(
     payment: Payment,
-    return_url: str | None,
     idempotency_key: str,
+    api_key: str,
 ) -> dict:
     """Create a real Stripe PaymentIntent."""
-    api_key = _stripe_api_key()
-    assert api_key is not None
-
     params: dict = {
         "amount": _to_cents(payment.amount),
         "currency": payment.currency_code.lower(),
@@ -90,10 +119,8 @@ async def _create_stripe_intent(
     }
 
 
-async def _retrieve_stripe_intent(payment: Payment) -> stripe.PaymentIntent:
+async def _retrieve_stripe_intent(payment: Payment, api_key: str) -> stripe.PaymentIntent:
     """Retrieve a Stripe PaymentIntent by its provider transaction id."""
-    api_key = _stripe_api_key()
-    assert api_key is not None
     assert payment.provider_transaction_id is not None
 
     try:
@@ -108,10 +135,8 @@ async def _retrieve_stripe_intent(payment: Payment) -> stripe.PaymentIntent:
         raise PaymentError(f"Stripe error: {exc.user_message or str(exc)}", 502) from exc
 
 
-async def _capture_stripe_intent(payment: Payment) -> stripe.PaymentIntent:
+async def _capture_stripe_intent(payment: Payment, api_key: str) -> stripe.PaymentIntent:
     """Capture an authorized Stripe PaymentIntent."""
-    api_key = _stripe_api_key()
-    assert api_key is not None
     assert payment.provider_transaction_id is not None
 
     try:
@@ -126,10 +151,8 @@ async def _capture_stripe_intent(payment: Payment) -> stripe.PaymentIntent:
         raise PaymentError(f"Stripe error: {exc.user_message or str(exc)}", 402) from exc
 
 
-async def _cancel_stripe_intent(payment: Payment) -> stripe.PaymentIntent:
+async def _cancel_stripe_intent(payment: Payment, api_key: str) -> stripe.PaymentIntent:
     """Cancel a Stripe PaymentIntent."""
-    api_key = _stripe_api_key()
-    assert api_key is not None
     assert payment.provider_transaction_id is not None
 
     try:
@@ -139,7 +162,7 @@ async def _cancel_stripe_intent(payment: Payment) -> stripe.PaymentIntent:
                 api_key=api_key,
             )
         )
-    except stripe.error.InvalidRequestError as exc:
+    except InvalidRequestError as exc:
         # Already-canceled intents can be treated as voided.
         if "already canceled" in str(exc).lower() or "canceled" in str(exc).lower():
             return stripe.PaymentIntent.construct_from(
@@ -153,10 +176,12 @@ async def _cancel_stripe_intent(payment: Payment) -> stripe.PaymentIntent:
         raise PaymentError(f"Stripe error: {exc.user_message or str(exc)}", 402) from exc
 
 
-async def _create_stripe_refund(payment: Payment, amount: Decimal) -> stripe.Refund:
+async def _create_stripe_refund(
+    payment: Payment,
+    amount: Decimal,
+    api_key: str,
+) -> stripe.Refund:
     """Create a real Stripe refund."""
-    api_key = _stripe_api_key()
-    assert api_key is not None
     assert payment.provider_transaction_id is not None
 
     params: dict = {
@@ -249,8 +274,10 @@ async def create_payment_intent(
             # Rebuild a minimal provider response for the cached payment
             provider_response = {"status": existing_payment.status, "payment_id": existing_payment.id}
             if existing_payment.provider == "stripe":
-                if _stripe_enabled() and existing_payment.provider_transaction_id:
-                    stripe_intent = await _retrieve_stripe_intent(existing_payment)
+                stripe_enabled = await _stripe_enabled(db)
+                if stripe_enabled and existing_payment.provider_transaction_id:
+                    api_key = await _get_stripe_secret_key(db)
+                    stripe_intent = await _retrieve_stripe_intent(existing_payment, api_key)
                     provider_response = {
                         "id": stripe_intent.id,
                         "client_secret": stripe_intent.client_secret,
@@ -294,7 +321,7 @@ async def create_payment_intent(
         refund_count=0,
         fee_amount=Decimal(0),
         net_amount=Decimal(0),
-        extra_metadata={"return_url": return_url, "simulated": not (provider == "stripe" and _stripe_enabled())},
+        extra_metadata={"return_url": return_url, "simulated": not (provider == "stripe" and await _stripe_enabled(db))},
     )
     db.add(payment)
     await db.flush()
@@ -303,8 +330,9 @@ async def create_payment_intent(
     # Provider API call
     provider_response: dict
     if provider == "stripe":
-        if _stripe_enabled():
-            provider_response = await _create_stripe_intent(payment, return_url, payment.idempotency_key)
+        if await _stripe_enabled(db):
+            api_key = await _get_stripe_secret_key(db)
+            provider_response = await _create_stripe_intent(payment, payment.idempotency_key, api_key)
         else:
             provider_response = _simulate_stripe_intent(payment)
         payment.provider_transaction_id = provider_response["id"]
@@ -344,8 +372,9 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
 
     old_status = payment.status
 
-    if payment.provider == "stripe" and _stripe_enabled():
-        intent = await _retrieve_stripe_intent(payment)
+    if payment.provider == "stripe" and await _stripe_enabled(db):
+        api_key = await _get_stripe_secret_key(db)
+        intent = await _retrieve_stripe_intent(payment, api_key)
         if intent.status == "succeeded":
             config_service = PlatformConfigService(db)
             precision = await config_service.get_accounting_precision()
@@ -454,10 +483,12 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
 
     old_status = payment.status
 
-    if payment.provider == "stripe" and _stripe_enabled():
-        intent = await _retrieve_stripe_intent(payment)
+    stripe_enabled = await _stripe_enabled(db)
+    if payment.provider == "stripe" and stripe_enabled:
+        api_key = await _get_stripe_secret_key(db)
+        intent = await _retrieve_stripe_intent(payment, api_key)
         if intent.status == "requires_capture":
-            intent = await _capture_stripe_intent(payment)
+            intent = await _capture_stripe_intent(payment, api_key)
         elif intent.status != "succeeded":
             raise PaymentError(f"Cannot capture Stripe PaymentIntent with status {intent.status}", 400)
         payment.status = "captured"
@@ -477,7 +508,7 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
         to_status="captured",
         from_status=old_status,
         amount=payment.captured_amount,
-        provider_response={"action": "capture", "simulated": not (payment.provider == "stripe" and _stripe_enabled())},
+        provider_response={"action": "capture", "simulated": not (payment.provider == "stripe" and stripe_enabled)},
     )
     await _sync_order_payment_status(db, payment)
 
@@ -498,8 +529,10 @@ async def cancel_payment(db: AsyncSession, payment_id: int) -> Payment:
     if payment.status not in ("initiated", "pending_authorization", "authorized"):
         raise PaymentError(f"Cannot cancel payment with status {payment.status}", 400)
 
-    if payment.provider == "stripe" and _stripe_enabled() and payment.provider_transaction_id:
-        await _cancel_stripe_intent(payment)
+    stripe_enabled = await _stripe_enabled(db)
+    if payment.provider == "stripe" and stripe_enabled and payment.provider_transaction_id:
+        api_key = await _get_stripe_secret_key(db)
+        await _cancel_stripe_intent(payment, api_key)
 
     old_status = payment.status
     payment.status = "voided"
@@ -509,7 +542,7 @@ async def cancel_payment(db: AsyncSession, payment_id: int) -> Payment:
         payment,
         to_status="voided",
         from_status=old_status,
-        provider_response={"action": "cancel", "simulated": not (payment.provider == "stripe" and _stripe_enabled())},
+        provider_response={"action": "cancel", "simulated": not (payment.provider == "stripe" and stripe_enabled)},
     )
     await db.commit()
     await db.refresh(payment)
@@ -547,8 +580,10 @@ async def refund_payment(
     provider_refund_id = f"re_sim_{uuid4().hex}"
     refund_status = "pending"
 
-    if payment.provider == "stripe" and _stripe_enabled():
-        stripe_refund = await _create_stripe_refund(payment, refund_amount)
+    stripe_enabled = await _stripe_enabled(db)
+    if payment.provider == "stripe" and stripe_enabled:
+        api_key = await _get_stripe_secret_key(db)
+        stripe_refund = await _create_stripe_refund(payment, refund_amount, api_key)
         provider_refund_id = stripe_refund.id
         refund_status = "completed" if stripe_refund.status in ("succeeded", "pending") else "pending"
 
@@ -583,7 +618,7 @@ async def refund_payment(
         to_status=new_status,
         from_status=old_status,
         amount=refund_amount,
-        provider_response={"action": "refund", "refund_id": refund.id, "simulated": not (payment.provider == "stripe" and _stripe_enabled())},
+        provider_response={"action": "refund", "refund_id": refund.id, "simulated": not (payment.provider == "stripe" and stripe_enabled)},
     )
     await db.commit()
     await db.refresh(refund)

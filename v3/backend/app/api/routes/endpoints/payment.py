@@ -27,6 +27,8 @@ from app.services.payment import (
     capture_payment,
     confirm_payment,
     create_payment_intent,
+    get_payment_gateway_config,
+    get_stripe_webhook_secret,
     process_webhook_event,
     refund_payment,
 )
@@ -190,6 +192,14 @@ async def cancel(
 # ---------------------------------------------------------------------------
 # Customer payment methods (MUST be before /{payment_id} to avoid route clash)
 # ---------------------------------------------------------------------------
+
+
+@router.get("/config", response_model=APIResponse[dict])
+async def payment_gateway_config(
+    db: DBDependency,
+):
+    """Return public payment gateway configuration (no secret keys)."""
+    return APIResponse(data=await get_payment_gateway_config(db))
 
 
 def _safe_payment_method_dict(pm: PaymentMethod) -> dict:
@@ -447,14 +457,15 @@ async def stripe_webhook(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Stripe-Signature header")
 
     payload_bytes = await request.body()
+    webhook_secret = await get_stripe_webhook_secret(db)
 
-    if settings.stripe_webhook_secret:
+    if webhook_secret:
         try:
             event = await anyio.to_thread.run_sync(
                 stripe.Webhook.construct_event,
                 payload_bytes,
                 sig_header,
-                settings.stripe_webhook_secret,
+                webhook_secret,
             )
         except (ValueError, SignatureVerificationError) as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature") from exc
