@@ -4,6 +4,9 @@ import hmac
 import hashlib
 import json
 
+import anyio
+import stripe
+from stripe._error import SignatureVerificationError
 from fastapi import APIRouter, Body, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
@@ -444,13 +447,30 @@ async def stripe_webhook(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Stripe-Signature header")
 
     payload_bytes = await request.body()
-    if not _verify_stripe_signature(payload_bytes, sig_header, settings.webhook_signing_secret):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature")
 
-    try:
-        payload = json.loads(payload_bytes)
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
+    if settings.stripe_webhook_secret:
+        try:
+            event = await anyio.to_thread.run_sync(
+                stripe.Webhook.construct_event,
+                payload_bytes,
+                sig_header,
+                settings.stripe_webhook_secret,
+            )
+        except (ValueError, SignatureVerificationError) as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature") from exc
+        payload = {"type": event.type, "data": {"object": event.data.object.to_dict()}}
+    else:
+        if settings.is_production or settings.webhook_verify_in_dev:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Stripe webhook signing secret not configured",
+            )
+        if not _verify_stripe_signature(payload_bytes, sig_header, settings.webhook_signing_secret):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature")
+        try:
+            payload = json.loads(payload_bytes)
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
 
     try:
         payment = await process_webhook_event(db, "stripe", payload)

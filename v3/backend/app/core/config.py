@@ -134,6 +134,11 @@ class Settings(BaseSettings):
     maxmind_account_id: str | None = None
     maxmind_license_key: str | None = None
 
+    # Stripe
+    stripe_secret_key: str | None = None
+    stripe_publishable_key: str | None = None
+    stripe_webhook_secret: str | None = None
+
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
