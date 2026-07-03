@@ -6,30 +6,44 @@ Requires customer auth (phone number login).
 
 import pytest
 import httpx
+import uuid
+import random
 
 from conftest import ADMIN_EMAIL, ADMIN_PASSWORD
 
 
-CUSTOMER_PHONE = "+60123456789"
+def _unique_phone() -> str:
+    return f"+6012{random.randint(10000000, 99999999)}"
+
+
+_checkin_phone: str | None = None
+
+
+def _get_checkin_phone() -> str:
+    global _checkin_phone
+    if _checkin_phone is None:
+        _checkin_phone = _unique_phone()
+    return _checkin_phone
 
 
 @pytest.mark.customer
 @pytest.mark.asyncio
 async def test_checkin_first_time(client: httpx.AsyncClient, base_url: str):
     """Customer logs in and performs first check-in — day 1, 10 base points."""
-    # Login / register
+    # Login / register with a unique phone to avoid state pollution from shared numbers
+    customer_phone = _get_checkin_phone()
     r_login = await client.post(f"{base_url}/auth/login", json={
-        "phone_number": CUSTOMER_PHONE,
+        "phone_number": customer_phone,
     })
     if r_login.status_code != 200:
         r_reg = await client.post(f"{base_url}/auth/register", json={
-            "phone_number": CUSTOMER_PHONE,
+            "phone_number": customer_phone,
             "display_name": "E2E Checkin Tester",
         })
         if r_reg.status_code not in (200, 201, 409):
             pytest.skip(f"Cannot register/login customer: {r_reg.status_code} {r_reg.text}")
         r_login = await client.post(f"{base_url}/auth/login", json={
-            "phone_number": CUSTOMER_PHONE,
+            "phone_number": customer_phone,
         })
 
     assert r_login.status_code == 200, f"Login failed: {r_login.text}"
@@ -63,9 +77,20 @@ async def test_checkin_first_time(client: httpx.AsyncClient, base_url: str):
 @pytest.mark.asyncio
 async def test_checkin_double_prevents_duplicate(client: httpx.AsyncClient, base_url: str):
     """Second check-in on same day must return 409."""
+    customer_phone = _get_checkin_phone()
     r_login = await client.post(f"{base_url}/auth/login", json={
-        "phone_number": CUSTOMER_PHONE,
+        "phone_number": customer_phone,
     })
+    if r_login.status_code != 200:
+        r_reg = await client.post(f"{base_url}/auth/register", json={
+            "phone_number": customer_phone,
+            "display_name": "E2E Checkin Tester",
+        })
+        if r_reg.status_code not in (200, 201, 409):
+            pytest.skip(f"Cannot register/login customer: {r_reg.status_code} {r_reg.text}")
+        r_login = await client.post(f"{base_url}/auth/login", json={
+            "phone_number": customer_phone,
+        })
     if r_login.status_code != 200:
         pytest.skip("Customer not available")
     token = r_login.json().get("tokens", {}).get("access_token", "")
@@ -87,9 +112,20 @@ async def test_checkin_double_prevents_duplicate(client: httpx.AsyncClient, base
 @pytest.mark.asyncio
 async def test_checkin_status_returns_config(client: httpx.AsyncClient, base_url: str):
     """GET /checkin returns config with reward tiers."""
+    customer_phone = _get_checkin_phone()
     r_login = await client.post(f"{base_url}/auth/login", json={
-        "phone_number": CUSTOMER_PHONE,
+        "phone_number": customer_phone,
     })
+    if r_login.status_code != 200:
+        r_reg = await client.post(f"{base_url}/auth/register", json={
+            "phone_number": customer_phone,
+            "display_name": "E2E Checkin Tester",
+        })
+        if r_reg.status_code not in (200, 201, 409):
+            pytest.skip(f"Cannot register/login customer: {r_reg.status_code} {r_reg.text}")
+        r_login = await client.post(f"{base_url}/auth/login", json={
+            "phone_number": customer_phone,
+        })
     if r_login.status_code != 200:
         pytest.skip("Customer not available")
     token = r_login.json().get("tokens", {}).get("access_token", "")

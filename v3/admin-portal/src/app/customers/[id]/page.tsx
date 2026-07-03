@@ -87,8 +87,8 @@ interface RewardItem {
 interface VoucherItem {
   id: number | string;
   redemption_code?: string;
-  voucher_title?: string;
-  voucher_code?: string;
+  title?: string;
+  code?: string;
   status?: string;
   expires_at?: string;
 }
@@ -365,7 +365,7 @@ export default function CustomerDetailPage() {
         <h4>Active Vouchers ({rewardsVouchers.vouchers?.length||0})</h4>
         <div className="table-container"><table className="data-table"><thead><tr><th>Code</th><th>Title</th><th>Status</th><th>Expires</th></tr></thead><tbody>
           {(rewardsVouchers.vouchers||[]).length === 0 ? <tr><td colSpan={4} className="data-table-empty">None</td></tr>
-          : rewardsVouchers.vouchers.map((v: VoucherItem) => (<tr key={v.id}><td style={{ fontSize: 11 }} className="font-mono">{v.redemption_code}</td><td>{v.voucher_title || v.voucher_code}</td><td><span className="badge badge-sm badge-blue">{v.status}</span></td><td style={{ fontSize: 12 }}>{dt(v.expires_at)}</td></tr>))}
+          : rewardsVouchers.vouchers.map((v: VoucherItem) => (<tr key={v.id}><td style={{ fontSize: 11 }} className="font-mono">{v.code || v.redemption_code}</td><td>{v.title || v.code}</td><td><span className="badge badge-sm badge-blue">{v.status}</span></td><td style={{ fontSize: 12 }}>{dt(v.expires_at)}</td></tr>))}
         </tbody></table></div>
       </>)}
 

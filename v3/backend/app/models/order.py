@@ -70,6 +70,8 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     loyalty_points_earned: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     loyalty_points_redeemed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     customer_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    delivery_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pickup_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     staff_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_ip: Mapped[str | None] = mapped_column(INET, nullable=True)
     device_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)

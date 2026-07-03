@@ -5,8 +5,6 @@ import { Save } from "lucide-react";
 
 export default function ReferralSettingsPage() {
   const [points, setPoints] = useState("50");
-  const [minOrders, setMinOrders] = useState("1");
-  const [minSpend, setMinSpend] = useState("0");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
@@ -17,8 +15,6 @@ export default function ReferralSettingsPage() {
       const map: Record<string, string> = {};
       (Array.isArray(d) ? d : []).forEach((c: any) => { map[c.config_key] = c.config_value; });
       setPoints(map["loyalty.referral_reward_points"] || "50");
-      setMinOrders(map["loyalty.referral_min_orders"] || "1");
-      setMinSpend(map["loyalty.referral_min_spend"] || "0");
     }).catch((e)=>{console.error('referral config:',e)}).finally(() => setLoading(false));
   }, []);
 
@@ -53,16 +49,7 @@ export default function ReferralSettingsPage() {
               <td><input type="number" value={points} onChange={e => setPoints(e.target.value)} style={{border:"1px solid var(--color-border-light)",borderRadius:"var(--radius-sm)",padding:"4px 8px",fontSize:13,width:80}} /></td>
               <td><button type="button" className="btn btn-sm btn-primary" onClick={() => save("loyalty.referral_reward_points", points)} disabled={saving !== null}><Save size={12}/> Save</button></td>
             </tr>
-            <tr>
-              <td>Min Orders to Qualify</td>
-              <td><input type="number" value={minOrders} onChange={e => setMinOrders(e.target.value)} style={{border:"1px solid var(--color-border-light)",borderRadius:"var(--radius-sm)",padding:"4px 8px",fontSize:13,width:80}} /></td>
-              <td><button type="button" className="btn btn-sm btn-primary" onClick={() => save("loyalty.referral_min_orders", minOrders)} disabled={saving !== null}><Save size={12}/> Save</button></td>
-            </tr>
-            <tr>
-              <td>Min Spend to Qualify (RM)</td>
-              <td><input type="number" step="0.01" value={minSpend} onChange={e => setMinSpend(e.target.value)} style={{border:"1px solid var(--color-border-light)",borderRadius:"var(--radius-sm)",padding:"4px 8px",fontSize:13,width:80}} /></td>
-              <td><button type="button" className="btn btn-sm btn-primary" onClick={() => save("loyalty.referral_min_spend", minSpend)} disabled={saving !== null}><Save size={12}/> Save</button></td>
-            </tr>
+
           </tbody></table>
         </div>
       )}

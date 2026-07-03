@@ -81,7 +81,7 @@ NotificationStatus = Enum(
 )
 
 PaymentMethodType = Enum(
-    "credit_card", "debit_card", "e_wallet", "bank_transfer", "cash", "crypto", "buy_now_pay_later",
+    "credit_card", "debit_card", "e_wallet", "bank_transfer", "cash", "crypto", "buy_now_pay_later", "qr_pay",
     name="payment_method_type",
     native_enum=True,
     create_type=False,
@@ -89,7 +89,7 @@ PaymentMethodType = Enum(
 
 PaymentProvider = Enum(
     "stripe", "adyen", "braintree", "paypal", "cash", "store_credit", "internal_wallet",
-    "grabpay", "gcash", "alipay", "wechat_pay",
+    "grabpay", "gcash", "alipay", "wechat_pay", "hitpay",
     name="payment_provider",
     native_enum=True,
     create_type=False,

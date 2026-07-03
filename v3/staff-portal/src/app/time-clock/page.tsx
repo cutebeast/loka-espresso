@@ -37,7 +37,7 @@ const ACTIONS: Record<ShiftStatus, ActionConfig> = {
     action: clockIn,
   },
   in: {
-    key: "start_break",
+    key: "break_start",
     label: "START BREAK",
     sublabel: "Tap for break time",
     icon: Coffee,
@@ -47,7 +47,7 @@ const ACTIONS: Record<ShiftStatus, ActionConfig> = {
     action: startBreak,
   },
   break: {
-    key: "end_break",
+    key: "break_end",
     label: "END BREAK",
     sublabel: "Tap to resume work",
     icon: Pause,

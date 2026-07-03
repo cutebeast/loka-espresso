@@ -36,7 +36,7 @@ interface AuthFlowProps {
 
 export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
   const { t } = useTranslation();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isNewUser } = useAuthStore();
   const { showToast } = useUIStore();
   const reducedMotion = useReducedMotion();
   const {
@@ -67,6 +67,9 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
       if (success) {
         onAuthDone();
         setAuthStep('done');
+      } else if (isNewUser) {
+        setAuthStep('profile');
+        return;
       }
     } catch (err: unknown) {
       const message = getApiErrorMessage(err, t('toast.verificationFailed'));
@@ -74,7 +77,7 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
     } finally {
       setLoadingAuth(false);
     }
-  }, [handleVerifyOtp, onAuthDone, getApiErrorMessage, showToast, t]);
+  }, [handleVerifyOtp, onAuthDone, isNewUser, getApiErrorMessage, showToast, t]);
 
   const handleResendOTP = useCallback(async () => {
     try {

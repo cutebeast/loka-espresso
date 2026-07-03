@@ -219,6 +219,11 @@ def _build_order_out(order: Order):
     Shared utility used by admin and customer order endpoints."""
     from app.schemas.order import OrderOut
     order_dict = {c: getattr(order, c) for c in order.__table__.columns.keys()}
+    # Merge fulfillment fields when the relationship is available.
+    if order.fulfillment:
+        order_dict.setdefault("delivery_address", order.fulfillment.delivery_address_snapshot)
+        order_dict.setdefault("recipient_name", order.fulfillment.recipient_name)
+        order_dict.setdefault("recipient_phone", order.fulfillment.recipient_phone)
     return OrderOut.model_validate(order_dict)
 
 
@@ -610,6 +615,8 @@ async def create_order_from_cart(
         loyalty_points_earned=loyalty_points_earned,
         loyalty_points_redeemed=0,
         customer_notes=data.customer_notes,
+        delivery_instructions=data.delivery_instructions,
+        pickup_time=data.pickup_time,
         idempotency_key=data.idempotency_key,
     )
     db.add(order)
@@ -722,10 +729,16 @@ async def create_order_from_cart(
     
     # Create fulfillment record for delivery/pickup
     if data.fulfillment_type in ("standard_delivery", "express_delivery", "third_party_delivery", "counter_pickup", "curbside_pickup"):
+        delivery_snapshot = None
+        if data.delivery_address:
+            delivery_snapshot = data.delivery_address if isinstance(data.delivery_address, dict) else {"address": data.delivery_address}
         fulfillment = OrderFulfillment(
             order_id=order.id,
             status="pending_assignment",
             delivery_fee_snapshot=order.delivery_fee,
+            delivery_address_snapshot=delivery_snapshot,
+            recipient_name=data.recipient_name,
+            recipient_phone=data.recipient_phone,
         )
         db.add(fulfillment)
     

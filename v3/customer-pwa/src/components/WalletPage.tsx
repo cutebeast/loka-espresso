@@ -102,17 +102,15 @@ export default function WalletPage() {
     setShowConfirm(false);
     setToppingUp(true);
     try {
-      // Online top-up is not yet wired to a real payment provider.
-      if (selectedPayment !== 'offline') {
-        showToast(t('wallet.onlineTopUpUnavailable'), 'error');
+      const res = await api.post('/wallet/topup/checkout', {
+        amount,
+        return_url: typeof window !== 'undefined' ? `${window.location.origin}/wallet` : undefined,
+      });
+      if (res.data?.checkout_url) {
+        window.location.href = res.data.checkout_url;
         return;
       }
-      await api.post('/wallet/topup', { amount, payment_method: selectedPayment });
-      showToast(t('toast.topUpSuccess', { amount: formatPrice(amount) }), 'success');
-      await fetchBalance();
-      await fetchTransactions();
-      setSelectedAmount(null);
-      setCustomAmount('');
+      throw new Error('No checkout URL returned');
     } catch (err) { console.error('[WalletPage] Top-up failed:', err);
       showToast(t('toast.topUpFailed'), 'error');
     } finally {

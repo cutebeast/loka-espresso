@@ -126,7 +126,7 @@ def admin_headers(admin_token: str) -> dict:
     return {"Authorization": f"Bearer {admin_token}", "Content-Type": "application/json"}
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def customer_account(base_url: str, cleanup_registry: dict) -> dict:
     """Register a unique runtime customer for the E2E session."""
     import uuid
@@ -152,7 +152,7 @@ def customer_account(base_url: str, cleanup_registry: dict) -> dict:
         }
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def customer_headers(customer_account: dict) -> dict:
     return customer_account["headers"]
 

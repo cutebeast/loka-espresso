@@ -79,7 +79,7 @@ export default function StaffRolesPage() {
 
   return (
     <div style={{ padding: 24 }}>
-      <div className="page-header"><div><h1 className="page-title">Staff Roles</h1><p className="page-subtitle">{roles.length} roles · controls staff.loyaltysystem.uk access</p></div><button type="button" onClick={() => { setShowForm(true); setForm({ display_name: "", description: "", role_key: "" }); }} className="btn btn-primary btn-sm"><Plus size={14} /> Create Role</button></div>
+      <div className="page-header"><div><h1 className="page-title">Staff Roles</h1><p className="page-subtitle">{roles.length} roles · controls staff portal access</p></div><button type="button" onClick={() => { setShowForm(true); setForm({ display_name: "", description: "", role_key: "" }); }} className="btn btn-primary btn-sm"><Plus size={14} /> Create Role</button></div>
       {msg && <div className={`alert ${msg.includes("Failed") ? "alert-error" : "alert-success"}`} style={{ marginBottom: 12 }}>{msg}</div>}
 
       {(showForm || editingId) && (
@@ -99,7 +99,7 @@ export default function StaffRolesPage() {
       {assigningRole && (
         <div className="card" style={{ padding: 20, marginBottom: 16, maxWidth: 700 }}>
           <h3 style={{ display: "flex", alignItems: "center", gap: 6 }}><ShieldCheck size={18} /> Staff Portal Permissions — {roles.find(r => r.id === assigningRole)?.display_name}</h3>
-          <p style={{ fontSize: 12, opacity: 0.5, marginBottom: 16 }}>What this role can do on staff.loyaltysystem.uk</p>
+          <p style={{ fontSize: 12, opacity: 0.5, marginBottom: 16 }}>What this role can do on the staff portal</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {STAFF_PERM_GROUPS.map(group => {
               const groupPerms = permissions.filter(p => group.resources.includes(p.resource));

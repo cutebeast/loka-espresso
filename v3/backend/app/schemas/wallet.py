@@ -54,3 +54,16 @@ class AdminTopupRequest(BaseSchema):
     amount: float = Field(..., gt=0)
     reason: str | None = Field(None, max_length=255)
     payment_method_id: int | None = None
+
+
+class WalletTopupCheckoutRequest(BaseSchema):
+    amount: float = Field(..., gt=0)
+    return_url: str | None = Field(None, max_length=500)
+
+
+class WalletTopupCheckoutResponse(BaseSchema):
+    session_id: int
+    checkout_url: str
+    amount: float
+    currency_code: str
+    status: str

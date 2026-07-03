@@ -2,13 +2,36 @@
 
 These are the Caddy site configs used when the v3 stack runs as PM2 services on the host, with Docker providing only PostgreSQL and Redis.
 
+## Environment variables
+
+The configs are domain-agnostic. Set these environment variables before reloading Caddy, or create a `.env` file next to this README and source it in your Caddy startup script.
+
+| Variable | Default | Description |
+|---|---|---|
+| `APP_DOMAIN` | `app.loyaltysystem.uk` | Customer PWA domain |
+| `ADMIN_DOMAIN` | `admin.loyaltysystem.uk` | Admin portal domain |
+| `STAFF_DOMAIN` | `staff.loyaltysystem.uk` | Staff portal domain |
+| `TLS_CERT_PATH` | `/etc/ssl/certs/loyaltysystem-origin.pem` | TLS certificate path |
+| `TLS_KEY_PATH` | `/etc/ssl/private/loyaltysystem-origin.key` | TLS private key path |
+
+For `lokaespresso.com` you only need to set:
+
+```bash
+export APP_DOMAIN=app.lokaespresso.com
+export ADMIN_DOMAIN=admin.lokaespresso.com
+export STAFF_DOMAIN=staff.lokaespresso.com
+# Either provide your own cert, or remove/comment the tls lines to use Caddy auto-TLS
+export TLS_CERT_PATH=/etc/ssl/certs/lokaespresso-origin.pem
+export TLS_KEY_PATH=/etc/ssl/private/lokaespresso-origin.key
+```
+
 ## Files
 
-- `fnb-app.conf` — `app.loyaltysystem.uk` (customer PWA)
-- `fnb-admin.conf` — `admin.loyaltysystem.uk` (admin portal)
-- `fnb-staff.conf` — `staff.loyaltysystem.uk` (staff portal)
+- `fnb-app.conf` — customer PWA (`{$APP_DOMAIN}`)
+- `fnb-admin.conf` — admin portal (`{$ADMIN_DOMAIN}`)
+- `fnb-staff.conf` — staff portal (`{$STAFF_DOMAIN}`)
 
-`loyaltysystem.uk` / `www.loyaltysystem.uk` are **not** part of this project.
+`lokaespresso.com` / `www.lokaespresso.com` branding is configured through the environment above.
 
 ## Install
 
@@ -32,16 +55,8 @@ All `/uploads/*` requests are proxied to the backend (`localhost:13800`). The ba
 
 ## TLS / Cloudflare
 
-These configs use a Cloudflare Origin CA certificate:
-
-```caddy
-tls /etc/ssl/certs/loyaltysystem-origin.pem /etc/ssl/private/loyaltysystem-origin.key {
-    protocols tls1.2
-}
-```
-
-For a new server or brand, replace the certificate paths or let Caddy auto-generate TLS. Ensure Cloudflare SSL/TLS mode is set to **Full (strict)** and purge Cloudflare cache after any Caddy change.
+By default these configs use a Cloudflare Origin CA certificate. For a new server or brand, replace the certificate paths in the environment variables or let Caddy auto-generate TLS. Ensure Cloudflare SSL/TLS mode is set to **Full (strict)** and purge Cloudflare cache after any Caddy change.
 
 ## Production (`lokaespresso.com`)
 
-For production, copy these files and replace `loyaltysystem.uk` with `lokaespresso.com` (or use Caddy env vars). Alternatively, switch to the full-Docker stack in `v3/infra/docker/docker-compose.yml`, which is already domain-agnostic.
+For production, set the environment variables above to the `lokaespresso.com` subdomains and reload Caddy. Alternatively, switch to the full-Docker stack in `v3/infra/docker/docker-compose.yml`, which is already domain-agnostic.

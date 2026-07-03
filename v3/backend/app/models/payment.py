@@ -66,11 +66,11 @@ class Payment(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint(
-            "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet','grabpay','gcash','alipay','wechat_pay')",
+            "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet','grabpay','gcash','alipay','wechat_pay','hitpay')",
             name="ck_payments_provider",
         ),
         CheckConstraint(
-            "payment_method_type IN ('credit_card','debit_card','e_wallet','bank_transfer','cash','crypto','buy_now_pay_later')",
+            "payment_method_type IN ('credit_card','debit_card','e_wallet','bank_transfer','cash','crypto','buy_now_pay_later','qr_pay')",
             name="ck_payments_payment_method_type",
         ),
         CheckConstraint("amount > 0", name="ck_payments_amount"),
@@ -136,11 +136,11 @@ class PaymentMethod(Base, TimestampMixin, SoftDeleteMixin):
 
     __table_args__ = (
         CheckConstraint(
-            "method_type IN ('credit_card','debit_card','e_wallet','bank_transfer','cash','crypto','buy_now_pay_later')",
+            "method_type IN ('credit_card','debit_card','e_wallet','bank_transfer','cash','crypto','buy_now_pay_later','qr_pay')",
             name="ck_payment_methods_method_type",
         ),
         CheckConstraint(
-            "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet','grabpay','gcash','alipay','wechat_pay')",
+            "provider IN ('stripe','adyen','braintree','paypal','cash','store_credit','internal_wallet','grabpay','gcash','alipay','wechat_pay','hitpay')",
             name="ck_payment_methods_provider",
         ),
         CheckConstraint("card_last_four ~ '^[0-9]{4}$'", name="ck_payment_methods_card_last_four"),

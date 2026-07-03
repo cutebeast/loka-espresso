@@ -10,7 +10,7 @@ Usage:
     python3 scripts/seed_v3.py
 
 Environment variables:
-    SEED_ADMIN_EMAIL  — admin login email (default: admin@lokaespresso.my)
+    SEED_ADMIN_EMAIL  — admin login email (default: admin@loyaltysystem.uk)
     SEED_ADMIN_PASS   — admin login password (default: admin123)
     DATABASE_URL      — async DB connection string
 """

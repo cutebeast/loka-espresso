@@ -3,6 +3,7 @@
 import hmac
 import hashlib
 import json
+import uuid
 
 import anyio
 import stripe
@@ -12,8 +13,11 @@ from sqlalchemy import func, select
 
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
 from app.models.payment import Payment, PaymentMethod, Refund
+from app.services.platform_config import PlatformConfigService
 from app.schemas.base import APIResponse, PaginatedResponse
 from app.schemas.payment import (
+    CheckoutSessionRequest,
+    CheckoutSessionResponse,
     PaymentIntentRequest,
     PaymentIntentResponse,
     PaymentMethodOut,
@@ -21,6 +25,7 @@ from app.schemas.payment import (
     RefundCreate,
     RefundOut,
 )
+from app.services.hitpay import verify_hitpay_signature
 from app.services.payment import (
     PaymentError,
     cancel_payment,
@@ -109,7 +114,23 @@ async def create_intent(
             "pay_at_store": "cash",
             "cod": "cash",
             "gateway": "stripe",
+            "hitpay": "hitpay",
         }.get(str(pm), str(pm))
+    # Map legacy/customer-facing payment method names to valid DB enum values.
+    method_type = raw_data.get("payment_method_type") or raw_data.get("payment_method")
+    if method_type:
+        raw_data["payment_method_type"] = {
+            "wallet": "e_wallet",
+            "internal_wallet": "e_wallet",
+            "cash": "cash",
+            "pay_at_store": "cash",
+            "cod": "cash",
+            "gateway": "credit_card",
+            "stripe": "credit_card",
+            "card": "credit_card",
+            "credit_card": "credit_card",
+            "hitpay": "qr_pay",
+        }.get(str(method_type), str(method_type))
     idempotency_key = raw_data.get("idempotency_key") or request.headers.get("Idempotency-Key")
     if idempotency_key:
         raw_data["idempotency_key"] = str(idempotency_key).strip()[:255]
@@ -137,6 +158,71 @@ async def create_intent(
             payment_id=payment.id,
             client_secret=client_secret,
             redirect_url=redirect_url,
+            status=payment.status,
+            amount=float(payment.amount),
+            currency_code=payment.currency_code,
+        )
+    )
+
+
+@router.post("/checkout", response_model=APIResponse[CheckoutSessionResponse], status_code=status.HTTP_201_CREATED)
+async def create_checkout_session(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    data: CheckoutSessionRequest,
+):
+    """Create a Stripe Checkout session for an order (customer-facing redirect flow)."""
+    from app.models.order import Order
+
+    order_result = await db.execute(
+        select(Order).where(Order.id == data.order_id, Order.deleted_at.is_(None)).with_for_update()
+    )
+    order = order_result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    if order.customer_id != customer.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    if order.payment_status in ("captured", "settled", "paid"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order is already paid")
+
+    from decimal import Decimal
+
+    payment = Payment(
+        order_id=order.id,
+        provider="stripe",
+        payment_method_type="credit_card",
+        amount=order.total_amount,
+        currency_code=order.total_amount_currency,
+        status="pending_authorization",
+        net_amount=Decimal(0),
+        idempotency_key=f"customer-checkout-{order.id}-{uuid.uuid4().hex}",
+    )
+    db.add(payment)
+    await db.flush()
+    await db.refresh(payment)
+
+    config_service = PlatformConfigService(db)
+    app_public_url = await config_service.get_app_public_url()
+    base_return = (data.return_url or f"{app_public_url}/order-detail").rstrip("/")
+    success_url = f"{base_return}?order_id={order.id}&status=success"
+    cancel_url = f"{base_return}?order_id={order.id}&status=cancel"
+
+    try:
+        checkout = await create_stripe_checkout_session(db, payment, order, success_url=success_url, cancel_url=cancel_url, customer_id=order.customer_id)
+    except PaymentError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    payment.provider_transaction_id = checkout["id"]
+    order.payment_status = "pending_authorization"
+    await db.commit()
+    await db.refresh(payment)
+
+    return APIResponse(
+        data=CheckoutSessionResponse(
+            payment_id=payment.id,
+            checkout_url=checkout["url"],
             status=payment.status,
             amount=float(payment.amount),
             currency_code=payment.currency_code,
@@ -476,7 +562,17 @@ async def stripe_webhook(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Stripe webhook signing secret not configured",
             )
-        if not _verify_stripe_signature(payload_bytes, sig_header, settings.webhook_signing_secret):
+        stripe_secret = settings.stripe_webhook_secret
+        if not stripe_secret:
+            # In dev, without a signing secret, still require a syntactically valid header.
+            if settings.is_production or settings.webhook_verify_in_dev:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Stripe webhook signing secret not configured",
+                )
+            # Development-only: accept the event but log a warning.
+            logger.warning("Stripe webhook accepted in dev without signature verification")
+        elif not _verify_stripe_signature(payload_bytes, sig_header, stripe_secret):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature")
         try:
             payload = json.loads(payload_bytes)
@@ -515,6 +611,51 @@ async def grabpay_webhook(
 
     try:
         payment = await process_webhook_event(db, "grabpay", payload)
+    except PaymentError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    return APIResponse(data={"received": True, "payment_id": payment.id if payment else None})
+
+
+@webhook_router.post("/hitpay", response_model=APIResponse[dict])
+async def hitpay_webhook(
+    db: DBDependency,
+    request: Request,
+):
+    """HitPay v2 webhook handler."""
+    sig_header = request.headers.get("Hitpay-Signature")
+    if not sig_header:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing Hitpay-Signature header")
+
+    payload_bytes = await request.body()
+    config_service = PlatformConfigService(db)
+    salt = (
+        await config_service.get_str("hitpay.salt", default="")
+        or await config_service.get_str("hitpay.webhook_secret", default="")
+    )
+    if not salt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="HitPay salt/webhook_secret not configured",
+        )
+
+    if not verify_hitpay_signature(payload_bytes, sig_header, salt):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid HitPay signature")
+
+    try:
+        body = json.loads(payload_bytes)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON") from exc
+
+    event_type = request.headers.get("Hitpay-Event-Type") or body.get("status", "completed")
+    event_object = request.headers.get("Hitpay-Event-Object") or "payment_request"
+    if event_type and not event_type.startswith(event_object):
+        event_type = f"{event_object}.{event_type}"
+
+    payload = {"type": event_type, "data": {"object": body}}
+
+    try:
+        payment = await process_webhook_event(db, "hitpay", payload)
     except PaymentError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 

@@ -19,6 +19,7 @@ import { haversineKm } from '@/lib/geolocation';
 import { formatStoreAddress } from '@/lib/storeHelpers';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import VoucherRewardSelector from '@/components/checkout/VoucherRewardSelector';
+import StripePaymentSheet from '@/components/stripe/StripePaymentSheet';
 import { useTranslation } from '@/hooks/useTranslation';
 import { previewCartDiscounts } from '@/lib/addonDeal';
 import api from '@/lib/api';
@@ -58,9 +59,10 @@ export default function CheckoutPage() {
   const [discountType, setDiscountType] = useState<'voucher' | 'reward' | null>(checkoutDraft.discountType ?? null);
   const [discountCode, setDiscountCode] = useState(checkoutDraft.discountCode || '');
   const [discountValue, setDiscountValue] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash' | 'gateway'>(
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'pay_at_store' | 'cod' | 'cash' | 'gateway' | 'hitpay'>(
     checkoutDraft.paymentMethod || (orderMode === 'dine_in' ? 'pay_at_store' : 'wallet')
   );
+  const [hitpayEnabled, setHitpayEnabled] = useState(false);
   const [notes, _setNotes] = useState(checkoutDraft.notes || orderNote || '');
   const [placing, setPlacing] = useState(false);
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
@@ -68,8 +70,24 @@ export default function CheckoutPage() {
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
   const [draftSaved, setDraftSaved] = useState(false);
+  const [gatewayOrder, setGatewayOrder] = useState<Order | null>(null);
+  const [gatewayIntent, setGatewayIntent] = useState<{ paymentId: number; clientSecret: string } | null>(null);
+  const [stripePublishableKey, setStripePublishableKey] = useState('');
+  const [stripeReady, setStripeReady] = useState(false);
 
   useEffect(() => { refreshWallet(); }, [refreshWallet]);
+  useEffect(() => {
+    api.get('/payments/config')
+      .then((res) => {
+        const cfg = res.data || {};
+        if (cfg.stripe_publishable_key) {
+          setStripePublishableKey(cfg.stripe_publishable_key);
+          setStripeReady(true);
+        }
+        setHitpayEnabled(!!cfg.hitpay_enabled);
+      })
+      .catch((e: unknown) => console.error('[Checkout] payment config failed:', e));
+  }, []);
   useEffect(() => { if (user && !checkoutDraft.recipientName && !recipientName) { setRecipientName(user.display_name || ''); setRecipientPhone(user.phone_number || ''); }   }, [user, checkoutDraft.recipientName, recipientName]);
   // Fetch bundle products for discount preview
   useEffect(() => {
@@ -138,6 +156,42 @@ export default function CheckoutPage() {
         rewardRedemptionCode: discountType === 'reward' ? discountCode : undefined,
         tableId: dineInSession?.tableId,
       });
+      if (paymentMethod === 'gateway') {
+        if (!stripeReady || !stripePublishableKey) {
+          throw new Error('Online payment is not ready');
+        }
+        const intentRes = await api.post('/payments/intent', {
+          order_id: result.id,
+          provider: 'stripe',
+          payment_method: 'gateway',
+        });
+        const data = intentRes.data;
+        if (!data?.client_secret || !data?.payment_id) {
+          throw new Error('Unable to start payment');
+        }
+        setGatewayOrder(result);
+        setGatewayIntent({ paymentId: data.payment_id, clientSecret: data.client_secret });
+        setPlacing(false);
+        return;
+      }
+      if (paymentMethod === 'hitpay') {
+        if (!hitpayEnabled) {
+          throw new Error('HitPay is not available');
+        }
+        const intentRes = await api.post('/payments/intent', {
+          order_id: result.id,
+          provider: 'hitpay',
+          payment_method: 'hitpay',
+        });
+        const data = intentRes.data;
+        if (!data?.redirect_url || !data?.payment_id) {
+          throw new Error('Unable to start HitPay payment');
+        }
+        // Redirect to the HitPay hosted checkout; the customer returns to the
+        // order detail page with ?status=completed|canceled.
+        window.location.href = data.redirect_url;
+        return;
+      }
       clearCheckoutDraft();
       haptic('success');
       setPage('order-detail', { orderId: result.id });
@@ -240,11 +294,17 @@ export default function CheckoutPage() {
             <div className="co-payment-info"><div className="co-payment-label">{t('checkout.cashOnDelivery')}</div></div>
             <div className="co-payment-check"><CheckCircle2 size={12} /></div>
           </div>}
-          {/* Gateway payment is not yet fully wired on the client; hide the option until the PSP flow is implemented. */}
-          {false && config.payment_gateway_provider && (
+          {stripeReady && (
             <div className={`co-payment-card ${paymentMethod === 'gateway' ? 'selected' : ''}`} onClick={() => setPaymentMethod('gateway')}>
               <div className="co-payment-icon co-payment-icon-gateway"><Banknote size={14} color="#fff" /></div>
-              <div className="co-payment-info"><div className="co-payment-label">{t('checkout.payOnline')}</div></div>
+              <div className="co-payment-info"><div className="co-payment-label">Pay Online (Card / FPX / GrabPay)</div></div>
+              <div className="co-payment-check"><CheckCircle2 size={12} /></div>
+            </div>
+          )}
+          {hitpayEnabled && (
+            <div className={`co-payment-card ${paymentMethod === 'hitpay' ? 'selected' : ''}`} onClick={() => setPaymentMethod('hitpay')}>
+              <div className="co-payment-icon co-payment-icon-gateway"><QrCode size={14} color="#fff" /></div>
+              <div className="co-payment-info"><div className="co-payment-label">Pay Online (DuitNow / TnG / Boost / ShopeePay)</div></div>
               <div className="co-payment-check"><CheckCircle2 size={12} /></div>
             </div>
           )}
@@ -293,6 +353,31 @@ export default function CheckoutPage() {
       <div className="sheet-body">
         <VoucherRewardSelector subtotal={subtotal} selectedType={discountType || 'none'} selectedCode={discountCode}
           onChange={(type, code, val) => { setDiscountType(type === 'none' ? null : type); setDiscountCode(code || ''); setDiscountValue(val || 0); }} />
+      </div>
+    </BottomSheet>
+    <BottomSheet isOpen={!!gatewayIntent} onClose={() => { setGatewayIntent(null); setGatewayOrder(null); }} title={t('checkout.payOnline')}>
+      <div className="sheet-body">
+        {gatewayIntent && gatewayOrder && stripePublishableKey && (
+          <StripePaymentSheet
+            clientSecret={gatewayIntent.clientSecret}
+            paymentId={gatewayIntent.paymentId}
+            orderId={gatewayOrder.id}
+            publishableKey={stripePublishableKey}
+            onSuccess={() => {
+              clearCheckoutDraft();
+              haptic('success');
+              setGatewayIntent(null);
+              setGatewayOrder(null);
+              setPage('order-detail', { orderId: gatewayOrder.id });
+            }}
+            onCancel={() => {
+              setGatewayIntent(null);
+              setGatewayOrder(null);
+              showToast(t('toast.paymentCancelled'), 'info');
+            }}
+            onError={(msg) => { showToast(msg, 'error'); }}
+          />
+        )}
       </div>
     </BottomSheet>
     </>

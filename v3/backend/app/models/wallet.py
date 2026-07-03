@@ -74,3 +74,28 @@ class WalletLedgerEntry(Base):
         ),
         Index("idx_wallet_ledger_entries_created_at", "created_at"),
     )
+
+
+class WalletTopupSession(Base):
+    __tablename__ = "wallet_topup_sessions"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    customer_id: Mapped[int] = mapped_column(
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    currency_code: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="USD")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    provider: Mapped[str] = mapped_column(String(20), nullable=False, default="stripe")
+    provider_session_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','completed','failed','cancelled')",
+            name="ck_wallet_topup_sessions_status",
+        ),
+    )

@@ -16,6 +16,7 @@ const SECTIONS: { title: string; description: string; prefix: string }[] = [
   { title: "Notifications", description: "Retention and delivery settings", prefix: "notifications." },
   { title: "Upload", description: "File upload limits", prefix: "upload." },
   { title: "Reservation", description: "SMS/WhatsApp confirmation & default duration", prefix: "reservation." },
+  { title: "Payments / Stripe", description: "Stripe keys and Checkout redirect URLs", prefix: "stripe." },
 ];
 
 function ConfigRow({ item, onSave, saving }: { item: ConfigItem; onSave: (item: ConfigItem, newValue: string) => void; saving: string | null }) {
@@ -34,7 +35,7 @@ function ConfigRow({ item, onSave, saving }: { item: ConfigItem; onSave: (item: 
           ) : (
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               <input
-                type={item.value_type === "integer" || item.value_type === "decimal" ? "number" : "text"}
+                type={item.is_sensitive ? "password" : item.value_type === "integer" || item.value_type === "decimal" ? "number" : "text"}
                 step={item.value_type === "decimal" ? "0.1" : "1"}
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}

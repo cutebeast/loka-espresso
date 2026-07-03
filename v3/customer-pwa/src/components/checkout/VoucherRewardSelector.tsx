@@ -128,14 +128,14 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
           </p>
           <div className="flex flex-col gap-1.5">
             {availableVouchers.slice(0, 3).map(v => {
-              const isSelected = selectedType === 'voucher' && selectedCode === v.voucher_code;
+              const isSelected = selectedType === 'voucher' && selectedCode === v.code;
               const discountVal = v.discount_type === 'percentage_off'
                 ? (subtotal * v.discount_value / 100)
                 : v.discount_value;
               return (
                 <button
                   key={v.id}
-                  onClick={() => handleSelectVoucher(v.voucher_code, Math.min(discountVal, v.max_discount || Infinity))}
+                  onClick={() => handleSelectVoucher(v.code, Math.min(discountVal, v.max_discount || Infinity))}
                   className={`flex items-center gap-2.5 py-2.5 px-3 rounded-xl cursor-pointer text-left ${isSelected ? 'vrs-voucher-btn-selected' : 'vrs-voucher-btn'}`}
                 >
                   <div
@@ -144,7 +144,7 @@ export default function VoucherRewardSelector({ subtotal, selectedType, selected
                     {isSelected && <CheckCircle2 size={12} color={LOKA.white} />}
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-text-primary vrs-code">{v.voucher_code}</p>
+                    <p className="font-semibold text-text-primary vrs-code">{v.code}</p>
                     <p className="text-[11px] text-text-muted">
                       {v.discount_type === 'percentage_off' ? t('checkout.percentageOff', { value: v.discount_value }) : t('checkout.amountOff', { amount: formatPrice(v.discount_value) })}
                       {v.min_spend ? t('checkout.minSpend', { amount: formatPrice(v.min_spend) }) : ''}

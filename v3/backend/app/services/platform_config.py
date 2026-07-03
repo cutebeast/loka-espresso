@@ -107,6 +107,21 @@ class PlatformConfigService:
     async def get_otp_max_send_per_hour(self) -> int:
         return await self.get_int("otp.max_send_per_hour", default=5)
 
+    async def _get_public_url(self, key: str) -> str:
+        url = (await self.get_str(key, default="")).strip().rstrip("/")
+        if not url:
+            raise ValueError(f"{key} is not configured in platform_config")
+        return url
+
+    async def get_app_public_url(self) -> str:
+        return await self._get_public_url("app.public_url")
+
+    async def get_admin_public_url(self) -> str:
+        return await self._get_public_url("admin.public_url")
+
+    async def get_staff_public_url(self) -> str:
+        return await self._get_public_url("staff.public_url")
+
     def _cast_value(self, raw: Any, value_type: str) -> Any:
         if value_type == "boolean":
             return str(raw).lower() in ("true", "1", "yes", "on")

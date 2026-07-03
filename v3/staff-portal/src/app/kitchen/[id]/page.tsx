@@ -110,8 +110,8 @@ export default function KitchenDetailPage() {
     return (
       <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
         <Alert variant="error">{error || "Order not found"}</Alert>
-        <button className="btn btn-primary" onClick={() => router.push("/kitchen")} style={{ marginTop: 16 }}>
-          <ArrowLeft size={16} /> Back to Kitchen
+        <button className="btn btn-primary" onClick={() => router.push("/orders")} style={{ marginTop: 16 }}>
+          <ArrowLeft size={16} /> Back to Orders
         </button>
       </div>
     );
@@ -124,7 +124,7 @@ export default function KitchenDetailPage() {
       <PageHeader
         title={order.order_number}
         subtitle={`${order.customer_name || "Walk-in"} · ${dt(order.created_at)}`}
-       
+        back="/orders"
         action={<Badge variant={flow.color}>{flow.label}</Badge>}
       />
 

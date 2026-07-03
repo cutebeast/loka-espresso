@@ -50,7 +50,7 @@ export default function ProfilePage() {
     if (!newPw || newPw.length < 6) { setMsg("Password must be at least 6 characters"); setIsError(true); return; }
     setSaving(true);
     try {
-      await api.post("/staff/auth/change-password", { current_password: currentPw, password: newPw });
+      await api.post("/staff/auth/change-password", { current_password: currentPw, new_password: newPw });
       setMsg("Password updated");
       setIsError(false);
       setShowPw(false);
@@ -68,7 +68,7 @@ export default function ProfilePage() {
     if (!newPin || newPin.length < 4) { setMsg("PIN must be at least 4 digits"); setIsError(true); return; }
     setSaving(true);
     try {
-      await api.post("/staff/auth/change-pin", { current_pin: currentPin, pin: newPin });
+      await api.post("/staff/auth/change-pin", { current_pin: currentPin, new_pin: newPin });
       setMsg("PIN updated");
       setIsError(false);
       setShowPin(false);

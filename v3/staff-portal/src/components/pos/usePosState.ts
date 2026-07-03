@@ -26,9 +26,16 @@ import { usePosCheckout } from "./usePosCheckout";
 import { usePosScanner } from "./usePosScanner";
 
 export type PosMode = "new_order" | "checkout";
-export type PosState = "menu" | "payment" | "done";
-export type PaymentMethod = "cash" | "card" | "qr";
+export type PosState = "menu" | "payment" | "qr_payment" | "done";
+export type PaymentMethod = "cash" | "card" | "stripe_qr";
 export type { HeldOrder };
+
+export interface QrPaymentState {
+  paymentUrl: string;
+  orderId: string;
+  orderNumber?: string;
+  total: number;
+}
 
 /** Return the regular price of ``consumeQty`` bundle items, consuming the
  *  highest unit-price lines first to maximize the customer-facing discount.
@@ -81,6 +88,7 @@ export function usePosState() {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<unknown>(null);
   const [successChange, setSuccessChange] = useState(0);
+  const [qrPayment, setQrPayment] = useState<QrPaymentState | null>(null);
   const [pickerBundle, setPickerBundle] = useState<BundleProduct | null>(null);
 
   // Runtime helpers
@@ -408,16 +416,49 @@ export function usePosState() {
     setSaving(true);
     try {
       const walletPaid = checkoutHook.checkoutDiscountsApplied.wallet || 0;
+      const orderBase = checkoutHook.checkoutOrder?.total_amount ?? 0;
+      const discountBase = (checkoutHook.checkoutOrder as any)?.items_subtotal ?? orderBase;
+      const manualDisc = discountType === "percentage" ? discountBase * (discountAmount / 100) : discountAmount;
+      const checkoutTotal = Math.max(0, orderBase - manualDisc + tipAmount - walletPaid);
+      // If wallet (or a 100% discount) covers the whole bill, there is no remaining charge.
+      if (checkoutTotal <= 0) {
+        setResult({ order_id: checkoutOrderId, total: 0, message: "Paid with wallet" });
+        setSuccessChange(0);
+        setState("done");
+        return;
+      }
       const res = await checkoutHook.handleCheckoutPayment(
-        checkoutOrderId, paymentMethod, discountAmount, discountType, walletPaid, amountTendered, tipAmount
+        checkoutOrderId, paymentMethod, discountAmount, discountType, amountTendered, tipAmount
       );
+      const resRecord = res as Record<string, unknown>;
+      if (resRecord.payment_url && typeof resRecord.payment_url === "string") {
+        setQrPayment({
+          paymentUrl: resRecord.payment_url,
+          orderId: checkoutOrderId,
+          orderNumber: (resRecord.order_number as string | undefined) || checkoutHook.checkoutOrder?.order_number,
+          total: (resRecord.total as number | undefined) || total,
+        });
+        setState("qr_payment");
+        return;
+      }
       setResult(res);
-      const serverTotal = (res as Record<string, unknown>).total as number | undefined;
+      const serverTotal = resRecord.total as number | undefined;
       const actualChange = !isNaN(tenderedVal) ? Math.max(0, tenderedVal - (serverTotal ?? total)) : 0;
       setSuccessChange(actualChange);
       setState("done");
     } catch (e: unknown) { setError((e as Error).message); } finally { isCheckoutProcessingRef.current = false; setSaving(false); }
   };
+
+  const cancelQrPayment = useCallback(() => {
+    setQrPayment(null);
+    setState("payment");
+  }, []);
+
+  const completeQrPayment = useCallback((finalResult: unknown) => {
+    setQrPayment(null);
+    setResult(finalResult);
+    setState("done");
+  }, []);
 
   const holdOrder = () => {
     const held = cartHook.holdOrder();
@@ -578,6 +619,9 @@ export function usePosState() {
     saving, setSaving,
     result, setResult,
     successChange,
+    qrPayment, setQrPayment,
+    cancelQrPayment,
+    completeQrPayment,
 
     // Derived
     menuSearch, setMenuSearch,

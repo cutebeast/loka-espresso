@@ -33,7 +33,7 @@ export default function PosSuccessScreen({ mode, result, total, change, paymentM
       <h2 style={{ margin: "0 0 4px" }}>{mode === "checkout" ? "Payment Successful" : "Order Sent to Kitchen"}</h2>
       <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>#{result.order_number || result.order_id}</p>
       <p style={{ fontSize: 13, opacity: 0.7, margin: "4px 0 0" }}>
-        {mode === "checkout" ? `${paymentMethod.toUpperCase()}` : "Kitchen notified"} · Total: RM {(result.total ?? total).toFixed(2)}
+        {mode === "checkout" ? `${paymentMethod === "stripe_qr" ? "QR" : paymentMethod.toUpperCase()}` : "Kitchen notified"} · Total: RM {(result.total ?? total).toFixed(2)}
       </p>
       {change > 0 && <p style={{ fontSize: 13, opacity: 0.7 }}>Change: RM {change.toFixed(2)}</p>}
 

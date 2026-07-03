@@ -6,7 +6,6 @@ import Alert from "@/components/Alert";
 import Drawer from "@/components/Drawer";
 import NumericKeypad from "@/components/NumericKeypad";
 import { X, QrCode, User, Gift, CreditCard, Banknote, Smartphone } from "lucide-react";
-import { showFeatureToast } from "@/lib/featureFlags";
 import { type Customer, type CustomerWallet } from "@/lib/api";
 import { PaymentMethod } from "./usePosState";
 
@@ -84,10 +83,11 @@ export default function PosCheckoutPanel({
   const rewardDisc = Number(order.reward_discount ?? 0);
   const originalTotal = (order.total_amount || order.total || 0);
   const orderBase = order.total_amount || order.total || 0;
-  const manualDisc = discountType === "percentage" ? orderBase * (discountAmount / 100) : discountAmount;
+  // Backend applies percentage discounts to items_subtotal.
+  const discountBase = (order as any).items_subtotal || orderBase;
+  const manualDisc = discountType === "percentage" ? discountBase * (discountAmount / 100) : discountAmount;
   const walletPaid = discountsApplied.wallet || 0;
-  const remainingTotal = Math.max(0, (order.total_amount || order.total || 0) - manualDisc);
-  const checkoutTotal = Math.max(0, remainingTotal - walletPaid);
+  const checkoutTotal = Math.max(0, orderBase - manualDisc + tipAmount - walletPaid);
 
   const discountPresets = discountType === "percentage" ? [5, 10, 15, 20] : [5, 10, 20, 50];
 
@@ -228,10 +228,10 @@ export default function PosCheckoutPanel({
       <div className="card" style={{ marginBottom: 16 }}>
         <h4 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700 }}>Payment</h4>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          {(["cash", "card", "qr"] as PaymentMethod[]).map((m) => (
+          {(["cash", "card", "stripe_qr"] as PaymentMethod[]).map((m) => (
             <button key={m} className={`btn flex-1 ${paymentMethod === m ? "btn-primary" : "btn-ghost"}`} onClick={() => onSetPaymentMethod(m)}>
               {m === "cash" ? <Banknote size={16} /> : m === "card" ? <CreditCard size={16} /> : <Smartphone size={16} />}
-              {m.toUpperCase()}
+              {m === "stripe_qr" ? "QR" : m.toUpperCase()}
             </button>
           ))}
         </div>
@@ -266,16 +266,11 @@ export default function PosCheckoutPanel({
           </div>
         )}
 
-        {paymentMethod === "qr" && (
+        {paymentMethod === "stripe_qr" && (
           <div style={{ textAlign: "center", padding: 24 }}>
             <Smartphone size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <p style={{ fontSize: 16, fontWeight: 600 }}>Show QR to Customer</p>
-            <p style={{ fontSize: 13, color: "var(--color-text-muted)" }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => showFeatureToast("QR Payment Gateway")}>Payment gateway QR integration pending</button>
-            </p>
-            <div style={{ width: 200, height: 200, margin: "16px auto", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <QrCode size={64} style={{ opacity: 0.2 }} />
-            </div>
+            <p style={{ fontSize: 16, fontWeight: 600 }}>Stripe QR Payment</p>
+            <p style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Confirm to generate a QR code for the customer to scan and pay.</p>
           </div>
         )}
       </div>

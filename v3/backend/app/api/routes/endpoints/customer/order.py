@@ -24,6 +24,7 @@ from app.schemas.order import (
     OrderStatusLogOut,
 )
 from app.services.order import OrderError, create_order_from_cart, get_customer_orders, _build_order_out
+from app.services.payment import cancel_pending_order_payments
 
 
 class CustomerOrderCreateRequest(BaseModel):
@@ -59,11 +60,23 @@ async def create_order(
         order_type = "takeaway"
     raw_dict["order_type"] = order_type
 
+    # Map order_type to fulfillment_type so delivery/pickup metadata is honored.
+    fulfillment_map = {
+        "dine_in": "dine_in_service",
+        "takeaway": "counter_pickup",
+        "delivery": "standard_delivery",
+        "drive_thru": "counter_pickup",
+    }
+    if not raw_dict.get("fulfillment_type"):
+        raw_dict["fulfillment_type"] = fulfillment_map.get(order_type, "counter_pickup")
+
     # Accept legacy PWA field names
     if raw_dict.get("notes") and "customer_notes" not in raw_dict:
         raw_dict["customer_notes"] = raw_dict["notes"]
     if raw_dict.get("table_id") and "dining_table_id" not in raw_dict:
         raw_dict["dining_table_id"] = raw_dict["table_id"]
+    if raw_dict.get("delivery_address") and isinstance(raw_dict["delivery_address"], str):
+        raw_dict["delivery_address"] = {"address": raw_dict["delivery_address"]}
 
     # Validate store_id is present and valid
     store_id = raw_dict.get("store_id")
@@ -89,8 +102,7 @@ async def create_order(
 
     # Strip fields unknown to OrderCreate schema
     extra_keys = {
-        "payment_method", "payment_method_id", "pickup_time", "delivery_address",
-        "recipient_name", "recipient_phone", "delivery_instructions",
+        "payment_method", "payment_method_id",
         "checkout_token", "reward_redemption_code", "item_id",
         "notes", "table_id",
     }
@@ -143,8 +155,14 @@ async def cancel_order(
     await db.execute(text("SET LOCAL app.current_actor_type = 'customer'"))
     order.status = "cancelled_by_customer"
     order.cancelled_at = datetime.now(timezone.utc)
+    await db.flush()
+    cancelled_payment_ids = await cancel_pending_order_payments(db, order.id)
     await db.commit()
-    return APIResponse(data={"order_id": order.id, "status": "cancelled_by_customer"})
+    return APIResponse(data={
+        "order_id": order.id,
+        "status": "cancelled_by_customer",
+        "cancelled_payment_ids": cancelled_payment_ids,
+    })
 
 
 @router.post("/{order_id}/reorder", response_model=APIResponse[dict])

@@ -19,6 +19,6 @@ export const BRANDING = {
 } as const;
 
 export const VERSION_URLS = {
-  staff: process.env.NEXT_PUBLIC_STAFF_VERSION_URL || "https://staff.loyaltysystem.uk/version.json",
-  customer: process.env.NEXT_PUBLIC_CUSTOMER_VERSION_URL || "https://app.loyaltysystem.uk/version.json",
+  staff: process.env.NEXT_PUBLIC_STAFF_VERSION_URL || "",
+  customer: process.env.NEXT_PUBLIC_CUSTOMER_VERSION_URL || "",
 } as const;

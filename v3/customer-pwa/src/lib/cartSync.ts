@@ -80,6 +80,7 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
         } else {
           const customizationOptionIds: number[] = [];
 
+          let specialInstructions: string | undefined;
           if (desired.customizations && typeof desired.customizations === 'object') {
             const cust = desired.customizations as CustomizationStructure;
             if (cust.options && Array.isArray(cust.options)) {
@@ -88,6 +89,9 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
                   customizationOptionIds.push(opt.id);
                 }
               }
+            }
+            if (cust.note && typeof cust.note === 'string') {
+              specialInstructions = cust.note;
             }
           }
 
@@ -99,6 +103,9 @@ export async function syncCartToServer(items: CartItem[]): Promise<void> {
             customization_option_ids: customizationOptionIds,
             store_id: desired.store_id,
           };
+          if (specialInstructions) {
+            payload.special_instructions = specialInstructions;
+          }
           if (desired.bundle_product_id) {
             payload.bundle_product_id = desired.bundle_product_id;
           }
@@ -134,7 +141,7 @@ export async function placeOrder(params: {
   notes?: string;
   voucherCode?: string;
   rewardRedemptionCode?: string;
-  paymentMethod: 'wallet' | 'cash' | 'pay_at_store' | 'cod' | 'gateway';
+  paymentMethod: 'wallet' | 'cash' | 'pay_at_store' | 'cod' | 'gateway' | 'hitpay';
   recipientName?: string;
   recipientPhone?: string;
   deliveryInstructions?: string;
@@ -147,7 +154,7 @@ export async function placeOrder(params: {
     store_id: params.storeId,
     order_type: params.orderType,
     payment_method: params.paymentMethod,
-    status: (params.paymentMethod === 'wallet' || params.paymentMethod === 'gateway')
+    status: (params.paymentMethod === 'wallet' || params.paymentMethod === 'gateway' || params.paymentMethod === 'hitpay')
       ? 'awaiting_payment'
       : 'pending',
   };

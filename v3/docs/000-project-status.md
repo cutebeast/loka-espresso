@@ -12,10 +12,10 @@ The **Loka Espresso FNB Super App v3** is a full-stack F&B ordering and loyalty 
 
 | Layer | Stack | Live URL (dev) |
 |-------|-------|----------------|
-| Admin dashboard | Next.js 16 | https://admin.loyaltysystem.uk |
-| Staff POS + ops | Next.js 16 | https://staff.loyaltysystem.uk |
-| Customer PWA | Next.js 16 | https://app.loyaltysystem.uk |
-| Backend API | FastAPI + SQLAlchemy async | https://admin.loyaltysystem.uk/api |
+| Admin dashboard | Next.js 16 | https://admin.lokaespresso.com |
+| Staff POS + ops | Next.js 16 | https://staff.lokaespresso.com |
+| Customer PWA | Next.js 16 | https://app.lokaespresso.com |
+| Backend API | FastAPI + SQLAlchemy async | https://admin.lokaespresso.com/api |
 | Database | PostgreSQL 16 | Docker `fnb-v3-postgres` |
 | Cache / rate limit | Redis 7 | Docker `fnb-v3-redis` |
 | Reverse proxy | Caddy 2 | Host Caddy (PM2 mode) or Docker Caddy (full-Docker mode) |
@@ -78,13 +78,13 @@ pm2 stop v3-backend admin-portal-v3 staff-portal-v3 customer-pwa-v3
 The Caddyfile is domain-agnostic. Set these variables in `v3/infra/docker/.env` per server:
 
 ```bash
-APP_DOMAIN=app.loyaltysystem.uk          # or app.lokaespresso.com
-ADMIN_DOMAIN=admin.loyaltysystem.uk
-STAFF_DOMAIN=staff.loyaltysystem.uk
+APP_DOMAIN=app.lokaespresso.com
+ADMIN_DOMAIN=admin.lokaespresso.com
+STAFF_DOMAIN=staff.lokaespresso.com
 CADDY_EMAIL=admin@lokaespresso.my
 ```
 
-The host Caddy configs (`/etc/caddy/sites/fnb-*.conf`) currently hardcode `loyaltysystem.uk`. For a new server, update those files or switch to the Docker Caddy stack.
+The host Caddy configs (`infra/host-caddy/fnb-*.conf`) use environment variables (`APP_DOMAIN`, `ADMIN_DOMAIN`, `STAFF_DOMAIN`) with the old dev server as a fallback. For a new server, set those variables (see `infra/host-caddy/.env.example`) or switch to the Docker Caddy stack.
 
 ---
 

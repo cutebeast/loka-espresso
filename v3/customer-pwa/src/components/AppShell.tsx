@@ -115,7 +115,12 @@ export default function AppShell() {
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [swUpdateAvailable, setSwUpdateAvailable] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [appHost, setAppHost] = useState('');
   const prevRequestSignIn = useRef(requestSignIn);
+
+  useEffect(() => {
+    setAppHost(window.location.host);
+  }, []);
 
   const onNotificationClick = useCallback(() => {
     if (isGuest) triggerSignIn(); else setPage('notifications');
@@ -282,6 +287,18 @@ export default function AppShell() {
               const registration = await navigator.serviceWorker?.getRegistration();
               if (registration?.waiting) {
                 registration.waiting.postMessage('SKIP_WAITING');
+                // Wait for the new service worker to activate before reloading
+                // so the next page load is served by the updated worker.
+                await Promise.race([
+                  new Promise<void>((resolve) => {
+                    const onControllerChange = () => {
+                      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+                      resolve();
+                    };
+                    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+                  }),
+                  new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+                ]);
               }
               window.location.reload();
             }}
@@ -330,7 +347,7 @@ export default function AppShell() {
                     />
                     <div>
                       <p className="a2hs-app-name">LOKA Espresso</p>
-                      <p className="a2hs-app-url">app.loyaltysystem.uk</p>
+                      <p className="a2hs-app-url">{appHost}</p>
                     </div>
                   </div>
                   <div className="a2hs-btn-row">

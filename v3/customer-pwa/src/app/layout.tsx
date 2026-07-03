@@ -5,7 +5,7 @@ import { LocaleProviderWrapper } from "@/components/LocaleProviderWrapper";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://app.loyaltysystem.uk"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://app.lokaespresso.com"),
   title: "LOKA Espresso",
   description: "Artisan Coffee · Community · Culture",
   manifest: "/manifest.json",

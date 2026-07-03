@@ -18,8 +18,8 @@ interface VersionInfo {
 const SERVICES = [
   { key: "backend", name: "Backend API", icon: Server, url: "/api/admin/system/version" },
   { key: "admin", name: "Admin Portal", icon: Monitor, url: "/version.json" },
-  { key: "staff", name: "Staff Portal", icon: Globe, url: VERSION_URLS.staff },
-  { key: "customer", name: "Customer PWA", icon: Smartphone, url: VERSION_URLS.customer },
+  ...(VERSION_URLS.staff ? [{ key: "staff", name: "Staff Portal", icon: Globe, url: VERSION_URLS.staff }] : []),
+  ...(VERSION_URLS.customer ? [{ key: "customer", name: "Customer PWA", icon: Smartphone, url: VERSION_URLS.customer }] : []),
 ];
 
 function formatDate(ts: number | null): string {

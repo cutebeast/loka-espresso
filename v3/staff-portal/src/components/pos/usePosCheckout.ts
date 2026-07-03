@@ -96,7 +96,6 @@ export function usePosCheckout(checkoutOrderId: string | null) {
     paymentMethod: string,
     manualDisc: number,
     discountType: "percentage" | "fixed",
-    walletPaid: number,
     amountTendered: string,
     tipAmount: number = 0,
   ) => {
@@ -105,20 +104,27 @@ export function usePosCheckout(checkoutOrderId: string | null) {
     isPaymentProcessingRef.current = true;
     try {
     const orderBase = checkoutOrder.total_amount ?? 0;
-    const computedDisc = discountType === "percentage" ? orderBase * (manualDisc / 100) : manualDisc;
-    const finalTotal = Math.max(0, orderBase - computedDisc - walletPaid);
+    const discountBase = checkoutOrder.items_subtotal ?? orderBase;
+    const computedDisc = discountType === "percentage" ? discountBase * (manualDisc / 100) : manualDisc;
+    // amount is the full order total after discount + tip; the backend subtracts already-paid wallet.
+    const expectedTotal = Math.max(0, orderBase - computedDisc + tipAmount);
     const tenderedNum = parseFloat(amountTendered || "");
-    await updateOrderPayment(orderId, {
+    const res = await updateOrderPayment(orderId, {
       payment_method: paymentMethod,
       amount_tendered: paymentMethod === "cash" && !isNaN(tenderedNum) && tenderedNum > 0
         ? tenderedNum
-        : finalTotal,
-      amount: finalTotal,
+        : 0,
+      amount: expectedTotal,
       discount_amount: computedDisc,
       discount_type: discountType,
       tip_amount: tipAmount,
     });
-    return { order_id: orderId, order_number: checkoutOrder?.order_number, total: finalTotal };
+    return {
+      order_id: orderId,
+      order_number: checkoutOrder?.order_number,
+      total: expectedTotal,
+      ...(res || {}),
+    };
     } finally { isPaymentProcessingRef.current = false; }
   }, [checkoutOrder]);
 

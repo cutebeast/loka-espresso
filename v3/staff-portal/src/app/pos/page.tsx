@@ -9,6 +9,7 @@ import Alert from "@/components/Alert";
 import SkeletonCard from "@/components/SkeletonCard";
 import EmptyState from "@/components/EmptyState";
 import PosSuccessScreen from "@/components/pos/PosSuccessScreen";
+import PosQrPaymentScreen from "@/components/pos/PosQrPaymentScreen";
 import PosCheckoutPanel from "@/components/pos/PosCheckoutPanel";
 import PosModifierDrawer from "@/components/pos/PosModifierDrawer";
 import PosQrScannerModal from "@/components/pos/PosQrScannerModal";
@@ -48,6 +49,21 @@ export default function PosPage() {
         change={pos.successChange}
         paymentMethod={pos.paymentMethod}
         onNewOrder={pos.newOrder}
+      />
+    );
+  }
+
+  // ── QR Payment Screen ──
+  if (pos.state === "qr_payment" && pos.qrPayment) {
+    return (
+      <PosQrPaymentScreen
+        paymentUrl={pos.qrPayment.paymentUrl}
+        orderId={pos.qrPayment.orderId}
+        orderNumber={pos.qrPayment.orderNumber}
+        total={pos.qrPayment.total}
+        onComplete={pos.completeQrPayment}
+        onCancel={pos.cancelQrPayment}
+        onError={(message) => pos.setError(message)}
       />
     );
   }

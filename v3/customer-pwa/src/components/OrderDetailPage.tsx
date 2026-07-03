@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, RotateCcw, XCircle, Share2, MapPin, Phone, Coffee, Check, User, Truck, Utensils, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, RotateCcw, XCircle, Share2, MapPin, Phone, Coffee, Check, User, Truck, Utensils, ShoppingBag, CreditCard } from 'lucide-react';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import StripePaymentSheet from '@/components/stripe/StripePaymentSheet';
 import { useOrderStore } from '@/stores/orderStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useCartStore } from '@/stores/cartStore';
@@ -43,7 +45,14 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(false);
   const [reordering, setReordering] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [processingReturn, setProcessingReturn] = useState(false);
+  const [paySheetOpen, setPaySheetOpen] = useState(false);
+  const [payIntent, setPayIntent] = useState<{ paymentId: number; clientSecret: string } | null>(null);
+  const [stripePublishableKey, setStripePublishableKey] = useState('');
+  const [hitpayEnabled, setHitpayEnabled] = useState(false);
   const orderId = pageParams.orderId ?? currentOrder?.id ?? null;
+  const returnStatus = pageParams.status as string | undefined;
+  const returnPaymentId = pageParams.paymentId as string | undefined;
 
   const fetchOrder = useCallback(async (id: number) => {
     setLoading(true);
@@ -56,6 +65,51 @@ export default function OrderDetailPage() {
     if (!orderId) { setPage('orders'); return; }
     if (!order || order.id !== orderId) fetchOrder(orderId);
   }, [orderId]);
+
+  useEffect(() => {
+    api.get('/payments/config')
+      .then((res) => {
+        const cfg = res.data || {};
+        if (cfg.stripe_publishable_key) setStripePublishableKey(cfg.stripe_publishable_key);
+        setHitpayEnabled(!!cfg.hitpay_enabled);
+      })
+      .catch((e: unknown) => console.error('[OrderDetail] payment config failed:', e));
+  }, []);
+
+  // Handle Stripe PaymentElement return (success / cancel)
+  useEffect(() => {
+    if (!orderId || !returnPaymentId || processingReturn) return;
+    const paymentId = parseInt(returnPaymentId, 10);
+    if (Number.isNaN(paymentId)) return;
+    setProcessingReturn(true);
+
+    const handleReturn = async () => {
+      try {
+        if (returnStatus === 'success' || returnStatus === 'completed') {
+          await api.post(`/payments/${paymentId}/confirm`, {});
+          showToast(t('toast.paymentSuccessful'), 'success');
+        } else if (returnStatus === 'cancel' || returnStatus === 'canceled' || returnStatus === 'failed') {
+          await api.post(`/payments/${paymentId}/cancel`, {});
+          showToast(t('toast.paymentCancelled'), 'info');
+        }
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('toast.paymentFailed');
+        showToast(msg, 'error');
+      } finally {
+        // Remove status/paymentId from URL so we don't reprocess on refresh
+        if (typeof window !== 'undefined') {
+          const newHash = `order-detail?orderId=${orderId}`;
+          if (window.location.hash !== `#${newHash}`) {
+            window.location.hash = newHash;
+          }
+        }
+        await fetchOrder(orderId);
+        setProcessingReturn(false);
+      }
+    };
+
+    handleReturn();
+  }, [orderId, returnPaymentId, returnStatus, processingReturn, fetchOrder, showToast, t]);
 
   const handleReorder = async () => {
     if (!order?.store_id) { showToast(t('toast.cannotReorder'), 'error'); return; }
@@ -102,6 +156,33 @@ export default function OrderDetailPage() {
     try { await api.post(`/orders/${order.id}/cancel`); showToast(t('toast.orderCancelled'), 'info'); updateOrder(order.id, { status: 'cancelled_by_customer' }); setOrder(o => o ? { ...o, status: 'cancelled_by_customer' } : o); }
     catch { showToast(t('toast.cancelFailed'), 'error'); }
     finally { setCancelling(false); }
+  };
+
+  const canPayOnline = order && (
+    (order.status?.toLowerCase() === 'awaiting_payment' || order.status?.toLowerCase() === 'pending') ||
+    ['pending', 'initiated', 'pending_authorization'].includes(order.payment_status?.toLowerCase() || '')
+  );
+
+  const handleInitiatePayment = async () => {
+    if (!order) return;
+    try {
+      if (stripePublishableKey) {
+        const res = await api.post('/payments/intent', { order_id: order.id, provider: 'stripe', payment_method: 'gateway' });
+        const data = res.data;
+        if (!data?.client_secret || !data?.payment_id) throw new Error('Unable to start payment');
+        setPayIntent({ paymentId: data.payment_id, clientSecret: data.client_secret });
+        setPaySheetOpen(true);
+      } else if (hitpayEnabled) {
+        const res = await api.post('/payments/intent', { order_id: order.id, provider: 'hitpay', payment_method: 'hitpay' });
+        const data = res.data;
+        if (!data?.redirect_url || !data?.payment_id) throw new Error('Unable to start payment');
+        window.location.href = data.redirect_url;
+      } else {
+        throw new Error('No online payment provider available');
+      }
+    } catch (e: unknown) {
+      showToast((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || t('toast.paymentFailed'), 'error');
+    }
   };
 
   const handleShare = () => {
@@ -190,6 +271,11 @@ export default function OrderDetailPage() {
             </div>
           ) : (
             <div className="od-cancelled-banner">{t('orderDetail.orderCancelled')}</div>
+          )}
+          {canPayOnline && (
+            <button onClick={handleInitiatePayment} className="w-full mt-4 rounded-xl bg-[#C8A46E] px-4 py-3 text-sm font-semibold text-black flex items-center justify-center gap-2">
+              <CreditCard size={16} /> {t('orderDetail.payNow')}
+            </button>
           )}
         </div>
 
@@ -295,6 +381,30 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </div>
+      <BottomSheet isOpen={paySheetOpen} onClose={() => setPaySheetOpen(false)} title={t('checkout.payOnline')}>
+        <div className="sheet-body">
+          {payIntent && order && stripePublishableKey && (
+            <StripePaymentSheet
+              clientSecret={payIntent.clientSecret}
+              paymentId={payIntent.paymentId}
+              orderId={order.id}
+              publishableKey={stripePublishableKey}
+              onSuccess={() => {
+                setPaySheetOpen(false);
+                setPayIntent(null);
+                showToast(t('toast.paymentSuccessful'), 'success');
+                if (orderId) fetchOrder(orderId);
+              }}
+              onCancel={() => {
+                setPaySheetOpen(false);
+                setPayIntent(null);
+                showToast(t('toast.paymentCancelled'), 'info');
+              }}
+              onError={(msg) => showToast(msg, 'error')}
+            />
+          )}
+        </div>
+      </BottomSheet>
     </div>
   );
 }

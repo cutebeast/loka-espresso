@@ -8,12 +8,16 @@ and CustomerReward + RewardCatalog lookups.
 import pytest
 import httpx
 import uuid
+import random
 from datetime import datetime, timezone, timedelta
 
 from conftest import ADMIN_EMAIL, ADMIN_PASSWORD
 
 
-CUSTOMER_PHONE = "+60123456789"
+def _unique_phone() -> str:
+    return f"+6012{random.randint(10000000, 99999999)}"
+
+
 MENU_ITEM_ID = None  # populated in test
 
 
@@ -21,10 +25,22 @@ MENU_ITEM_ID = None  # populated in test
 @pytest.mark.asyncio
 async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: str, store_id: int, admin_token: str, admin_headers: dict):
     """Place order with a valid voucher_code — discount should be applied."""
-    # Login as customer
+    # Login / register with a unique phone to avoid shared-number state pollution
+    customer_phone = _unique_phone()
     r_login = await client.post(f"{base_url}/auth/login", json={
-        "phone_number": CUSTOMER_PHONE,
+        "phone_number": customer_phone,
     })
+    if r_login.status_code != 200:
+        r_reg = await client.post(f"{base_url}/auth/register", json={
+            "phone_number": customer_phone,
+            "email_address": f"e2e-{uuid.uuid4().hex[:8]}@test.com",
+            "display_name": "E2E Voucher Customer",
+        })
+        if r_reg.status_code not in (200, 201, 409):
+            pytest.skip(f"Cannot register/login customer: {r_reg.status_code} {r_reg.text}")
+        r_login = await client.post(f"{base_url}/auth/login", json={
+            "phone_number": customer_phone,
+        })
     if r_login.status_code != 200:
         pytest.skip("Customer not available")
     token = r_login.json().get("tokens", {}).get("access_token", "")
@@ -120,9 +136,21 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
 @pytest.mark.asyncio
 async def test_voucher_discount_field_in_order_response(client: httpx.AsyncClient, base_url: str, store_id: int):
     """GET /orders/{id} includes voucher_discount and reward_discount fields."""
+    customer_phone = _unique_phone()
     r_login = await client.post(f"{base_url}/auth/login", json={
-        "phone_number": CUSTOMER_PHONE,
+        "phone_number": customer_phone,
     })
+    if r_login.status_code != 200:
+        r_reg = await client.post(f"{base_url}/auth/register", json={
+            "phone_number": customer_phone,
+            "email_address": f"e2e-{uuid.uuid4().hex[:8]}@test.com",
+            "display_name": "E2E Voucher Customer",
+        })
+        if r_reg.status_code not in (200, 201, 409):
+            pytest.skip(f"Cannot register/login customer: {r_reg.status_code} {r_reg.text}")
+        r_login = await client.post(f"{base_url}/auth/login", json={
+            "phone_number": customer_phone,
+        })
     if r_login.status_code != 200:
         pytest.skip("Customer not available")
     token = r_login.json().get("tokens", {}).get("access_token", "")

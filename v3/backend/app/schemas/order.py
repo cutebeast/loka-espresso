@@ -90,6 +90,11 @@ class OrderCreate(BaseSchema):
     voucher_code: str | None = Field(None, max_length=50)
     reward_id: int | None = None
     customer_notes: str | None = Field(None, max_length=500)
+    delivery_instructions: str | None = Field(None, max_length=500)
+    pickup_time: datetime | None = None
+    delivery_address: dict | str | None = None
+    recipient_name: str | None = Field(None, max_length=100)
+    recipient_phone: str | None = Field(None, max_length=20)
     tip_amount: float | None = Field(None, ge=0)
     idempotency_key: str | None = Field(None, max_length=255)
 
@@ -121,6 +126,11 @@ class OrderOut(BaseSchema):
     loyalty_points_earned: int
     loyalty_points_redeemed: int
     customer_notes: str | None
+    delivery_instructions: str | None
+    pickup_time: datetime | None
+    delivery_address: dict | str | None = None
+    recipient_name: str | None = None
+    recipient_phone: str | None = None
     staff_notes: str | None
     source_ip: str | None
     device_fingerprint: str | None

@@ -90,7 +90,7 @@ const navItems: NavItem[] = [
     label: "Settings", href: "/settings", icon: Settings,
     children: [
       { label: "App Settings", href: "/settings" },
-      { label: "Reservation Settings", href: "/settings/reservations" },
+      { label: "Payment Gateway", href: "/settings/payment-gateway" },
       { label: "Version Control", href: "/settings/version-control" },
     ],
   },

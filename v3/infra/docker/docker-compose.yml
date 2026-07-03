@@ -54,8 +54,8 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-production}
       APP_NAME: ${APP_NAME:-FNB Enterprise v3}
       DEBUG: ${DEBUG:-false}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://app.loyaltysystem.uk,https://admin.loyaltysystem.uk,https://staff.loyaltysystem.uk}
-      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-app.loyaltysystem.uk,admin.loyaltysystem.uk,staff.loyaltysystem.uk}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://app.lokaespresso.com,https://admin.lokaespresso.com,https://staff.lokaespresso.com}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-app.lokaespresso.com,admin.lokaespresso.com,staff.lokaespresso.com}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-10}
       WEBHOOK_API_KEY: ${WEBHOOK_API_KEY:-}
@@ -151,10 +151,10 @@ services:
       - fnb_v3_caddy_config:/config
     environment:
       CADDY_EMAIL: ${CADDY_EMAIL:-admin@lokaespresso.my}
-      APP_DOMAIN: ${APP_DOMAIN:-app.loyaltysystem.uk}
-      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.loyaltysystem.uk}
-      STAFF_DOMAIN: ${STAFF_DOMAIN:-staff.loyaltysystem.uk}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://app.loyaltysystem.uk}
+      APP_DOMAIN: ${APP_DOMAIN:-app.lokaespresso.com}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.lokaespresso.com}
+      STAFF_DOMAIN: ${STAFF_DOMAIN:-staff.lokaespresso.com}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://app.lokaespresso.com}
     depends_on:
       backend:
         condition: service_healthy

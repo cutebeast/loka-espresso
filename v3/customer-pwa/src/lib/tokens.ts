@@ -103,7 +103,12 @@ export function formatPrice(val: number | string): string {
   return `${symbol} ${n.toFixed(2)}`;
 }
 
-const APP_BASE = process.env.NEXT_PUBLIC_APP_URL || 'https://app.loyaltysystem.uk';
+// Use the current browser origin for deep links so the PWA works on any domain.
+// NEXT_PUBLIC_APP_URL can override this for server-side rendering.
+const APP_BASE =
+  (typeof window !== 'undefined' ? window.location.origin : undefined) ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  '';
 
 /** Resolve an asset path to a same-origin API URL to avoid CSP issues. */
 export function resolveAssetUrl(path: string | null | undefined): string | null {

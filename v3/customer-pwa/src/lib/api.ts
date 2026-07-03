@@ -419,7 +419,7 @@ export interface UserReward {
 export interface UserVoucher {
   id: number;
   voucher_definition_id: number;
-  voucher_code: string;
+  code: string;
   status: 'available' | 'used' | 'expired' | 'active';
   expires_at: string;
   source?: string;

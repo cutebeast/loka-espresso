@@ -34,6 +34,7 @@ from app.schemas.order import (
     UpdateOrderStatusRequest,
 )
 from app.services.order import _build_order_out
+from app.services.payment import PaymentError, cancel_pending_order_payments, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
 
 router = APIRouter(prefix="/admin/orders", tags=["admin — orders"])
@@ -339,12 +340,18 @@ async def process_order_payment(
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
 
-    # Prevent overpayment: compute already-captured amount for this order
+    # Prevent overpayment: compute already-captured amount for this order.
+    # Prefer the order's captured_amount aggregate; fall back to summing captured payments.
     existing_payments = await db.execute(
         select(Payment).where(Payment.order_id == order.id, Payment.status == "captured")
     )
-    already_paid = money_round(
+    captured_from_payments = money_round(
         sum(to_decimal(p.amount) for p in existing_payments.scalars().all()),
+        precision,
+        rounding_mode,
+    )
+    already_paid = money_round(
+        max(to_decimal(order.captured_amount or 0), captured_from_payments),
         precision,
         rounding_mode,
     )
@@ -357,12 +364,13 @@ async def process_order_payment(
     tip_amount = to_decimal(data.tip_amount or 0)
 
     # Recompute the expected total server-side; do not trust client-supplied amount/discount/tip.
+    # order.total_amount is the current amount due before this POS payment.
     current_total = money_round(to_decimal(order.total_amount), precision, rounding_mode)
     computed_discount = Decimal(0)
     if discount_amount > 0:
         if discount_type == "percentage":
             computed_discount = money_round(
-                to_decimal(order.items_subtotal) * discount_amount / Decimal(100),
+                to_decimal(order.items_subtotal or order.total_amount) * discount_amount / Decimal(100),
                 precision,
                 rounding_mode,
             )
@@ -370,8 +378,8 @@ async def process_order_payment(
             computed_discount = money_round(discount_amount, precision, rounding_mode)
         computed_discount = min(computed_discount, current_total)
 
-    if already_paid > 0 and (computed_discount > 0 or tip_amount > 0):
-        raise HTTPException(status_code=400, detail="Cannot apply discount or tip after a payment has already been made")
+    if already_paid > 0 and computed_discount > 0:
+        raise HTTPException(status_code=400, detail="Cannot apply discount after a payment has already been made")
 
     expected_total = money_round(max(Decimal(0), current_total - computed_discount + tip_amount), precision, rounding_mode)
     if amount is not None and abs(money_round(amount, precision, rounding_mode) - expected_total) > Decimal(0):
@@ -380,8 +388,9 @@ async def process_order_payment(
             detail=f"Payment amount does not match expected total. Expected: RM {expected_total:.2f}, Received: RM {amount:.2f}",
         )
 
-    order.discount_amount = money_round(to_decimal(order.discount_amount) + computed_discount, precision, rounding_mode)
+    order.discount_amount = money_round(to_decimal(order.discount_amount or 0) + computed_discount, precision, rounding_mode)
     order.total_amount = expected_total
+    order.tip_amount = money_round(to_decimal(order.tip_amount or 0) + tip_amount, precision, rounding_mode)
 
     remaining_due = money_round(expected_total - already_paid, precision, rounding_mode)
 
@@ -390,6 +399,9 @@ async def process_order_payment(
         raise HTTPException(status_code=400, detail=f"Order is already fully paid (RM {already_paid:.2f})")
 
     net_amount = max(Decimal(0), remaining_due)
+
+    # If wallet fully covered the bill, there is nothing left to capture.
+    fully_paid_by_wallet = net_amount <= 0
 
     # Cash tender validation
     change = Decimal(0)
@@ -406,13 +418,23 @@ async def process_order_payment(
         "cash": "cash",
         "card": "credit_card",
         "qr": "e_wallet",
+        "stripe_qr": "qr_pay",
         "credit_card": "credit_card",
         "debit_card": "debit_card",
         "e_wallet": "e_wallet",
     }
     payment_method_type = method_type_map.get(payment_method, "cash")
-    provider_map = {"cash": "cash", "card": "stripe", "qr": "grabpay", "credit_card": "stripe", "debit_card": "stripe", "e_wallet": "grabpay"}
+    provider_map = {
+        "cash": "cash",
+        "card": "stripe",
+        "qr": "grabpay",
+        "stripe_qr": "stripe",
+        "credit_card": "stripe",
+        "debit_card": "stripe",
+        "e_wallet": "grabpay",
+    }
     provider = provider_map.get(payment_method, "cash")
+    is_stripe_qr = payment_method == "stripe_qr"
 
     # Idempotency: stable key. Reject duplicate captured payments.
     idempotency_key = f"pos-payment-{order.id}-{payment_method}-{net_amount:.2f}"
@@ -423,6 +445,7 @@ async def process_order_payment(
         raise HTTPException(status_code=409, detail="Duplicate payment request")
 
     payment = None
+    payment_url: str | None = None
     if net_amount > 0:
         payment = Payment(
             order_id=order.id,
@@ -430,21 +453,39 @@ async def process_order_payment(
             payment_method_type=payment_method_type,
             amount=net_amount,
             currency_code=order.total_amount_currency,
-            status="captured",
-            net_amount=net_amount,
+            status="pending_authorization" if is_stripe_qr else "captured",
+            net_amount=Decimal(0) if is_stripe_qr else net_amount,
             idempotency_key=idempotency_key,
         )
         db.add(payment)
+        await db.flush()
+        await db.refresh(payment)
 
-    order.tip_amount = money_round(to_decimal(order.tip_amount) + tip_amount, precision, rounding_mode)
+        if is_stripe_qr:
+            order.payment_status = "pending_authorization"
+            try:
+                checkout = await create_stripe_checkout_session(db, payment, order, customer_id=order.customer_id)
+            except PaymentError as exc:
+                await db.rollback()
+                raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+            payment.provider_transaction_id = checkout["id"]
+            payment_url = checkout["url"]
+        else:
+            # Record the captured amount on the order for idempotent balance tracking.
+            order.captured_amount = money_round(to_decimal(order.captured_amount or 0) + net_amount, precision, rounding_mode)
+
     order.updated_at = datetime.now(timezone.utc)
 
     # Payment status reflects whether the order is fully paid
-    total_paid = money_round(already_paid + net_amount, precision, rounding_mode)
-    if total_paid >= to_decimal(order.total_amount):
+    if not is_stripe_qr:
+        total_paid = money_round(to_decimal(order.captured_amount or 0), precision, rounding_mode)
+        if total_paid >= to_decimal(order.total_amount):
+            order.payment_status = "captured"
+        elif total_paid > 0:
+            order.payment_status = "initiated"
+
+    if fully_paid_by_wallet:
         order.payment_status = "captured"
-    else:
-        order.payment_status = "initiated"
 
     # Log status change
     log = OrderStatusLog(
@@ -459,18 +500,20 @@ async def process_order_payment(
     await db.commit()
     await db.refresh(order)
 
-    return APIResponse(
-        data={
-            "id": order.id,
-            "order_number": order.order_number,
-            "payment_status": order.payment_status,
-            "amount": float(net_amount),
-            "change": float(change),
-            "tip_amount": float(tip_amount),
-            "payment_method": payment_method,
-            "message": "Payment processed successfully",
-        }
-    )
+    response_data: dict = {
+        "id": order.id,
+        "order_number": order.order_number,
+        "payment_status": order.payment_status,
+        "amount": float(net_amount),
+        "change": float(change),
+        "tip_amount": float(tip_amount),
+        "payment_method": payment_method,
+        "message": "Payment processed successfully",
+    }
+    if payment_url:
+        response_data["payment_url"] = payment_url
+
+    return APIResponse(data=response_data)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -843,7 +886,8 @@ async def pay_with_wallet(
     db.add(payment)
 
     # Update order payment status if order is fully paid
-    new_total_paid = money_round(already_paid + amount, precision, rounding_mode)
+    order.captured_amount = money_round(to_decimal(order.captured_amount or 0) + amount, precision, rounding_mode)
+    new_total_paid = money_round(to_decimal(order.captured_amount), precision, rounding_mode)
     if new_total_paid >= to_decimal(order.total_amount):
         order.payment_status = "captured"
     order.updated_at = now
@@ -1058,8 +1102,15 @@ async def cancel_order_staff(
         actor_id=admin.id,
     )
     db.add(log)
+    await db.flush()
+    cancelled_payment_ids = await cancel_pending_order_payments(db, order.id)
     await db.commit()
-    return APIResponse(data={"id": order.id, "order_number": order.order_number, "status": "cancelled_by_merchant"})
+    return APIResponse(data={
+        "id": order.id,
+        "order_number": order.order_number,
+        "status": "cancelled_by_merchant",
+        "cancelled_payment_ids": cancelled_payment_ids,
+    })
 
 
 @router.patch("/{order_id}/transfer-table", response_model=APIResponse[dict])

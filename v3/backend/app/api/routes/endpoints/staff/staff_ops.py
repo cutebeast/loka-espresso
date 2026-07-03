@@ -37,6 +37,7 @@ from app.schemas.staff import (
 )
 from app.services.auth import blacklist_refresh_token
 from app.services.order import _compute_bundle_discount, _deduct_stock_for_order
+from app.services.payment import PaymentError, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
 from app.core.money import money_round, to_decimal
 from app.core.config import get_settings
@@ -909,6 +910,7 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
             loyalty_pts = 0
 
         # Create payment (skip if total is zero — e.g. complimentary orders)
+        payment_url: str | None = None
         if payment_data and total > 0:
             amount_tendered = to_decimal(payment_data.amount_tendered or 0)
 
@@ -917,13 +919,23 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
                 "cash": "cash",
                 "card": "credit_card",
                 "qr": "e_wallet",
+                "stripe_qr": "qr_pay",
                 "credit_card": "credit_card",
                 "debit_card": "debit_card",
                 "e_wallet": "e_wallet",
             }
             payment_method_type = method_type_map.get(payment_data.method, "cash")
-            provider_map = {"cash": "cash", "card": "stripe", "qr": "grabpay", "credit_card": "stripe", "debit_card": "stripe", "e_wallet": "grabpay"}
+            provider_map = {
+                "cash": "cash",
+                "card": "stripe",
+                "qr": "grabpay",
+                "stripe_qr": "stripe",
+                "credit_card": "stripe",
+                "debit_card": "stripe",
+                "e_wallet": "grabpay",
+            }
             provider = provider_map.get(payment_data.method, "cash")
+            is_stripe_qr = payment_data.method == "stripe_qr"
 
             # Cash tender validation
             if payment_data.method == "cash" and amount_tendered < total:
@@ -940,6 +952,7 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
             if dup.scalar_one_or_none():
                 raise HTTPException(status_code=409, detail="Duplicate payment request")
 
+            payment_status = "pending_authorization" if is_stripe_qr else "captured"
             payment = Payment(
                 order_id=order.id,
                 provider=provider,
@@ -947,10 +960,22 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
                 idempotency_key=idempotency_key,
                 amount=total,
                 currency_code=store.currency_code,
-                status="captured",
-                net_amount=total,
+                status=payment_status,
+                net_amount=total if not is_stripe_qr else Decimal(0),
             )
             db.add(payment)
+            await db.flush()
+            await db.refresh(payment)
+
+            if is_stripe_qr:
+                order.payment_status = "pending_authorization"
+                try:
+                    checkout = await create_stripe_checkout_session(db, payment, order)
+                except PaymentError as exc:
+                    await db.rollback()
+                    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+                payment.provider_transaction_id = checkout["id"]
+                payment_url = checkout["url"]
 
         # Update table status if dine-in
         if dining_table_id and order_type == "dine_in":
@@ -990,14 +1015,18 @@ async def staff_pos_create_order(db: DBDependency, staff: CurrentStaff, data: PO
 
     await db.refresh(order)
 
-    return APIResponse(data={
+    response_data = {
         "order_id": order.id,
         "order_number": order.order_number,
         "status": order.status,
         "total": float(total),
         "change": float(change),
         "created_at": order.created_at.isoformat(),
-    })
+    }
+    if payment_url:
+        response_data["payment_url"] = payment_url
+
+    return APIResponse(data=response_data)
 
 
 # ── Staff Equipment (check & report) ──

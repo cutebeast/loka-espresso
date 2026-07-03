@@ -109,6 +109,7 @@ from app.models.loyalty import (
 from app.models.wallet import (
     Wallet,
     WalletLedgerEntry,
+    WalletTopupSession,
 )
 from app.models.reward import (
     RewardCatalog,

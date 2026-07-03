@@ -31,6 +31,7 @@ export function useAuthFlow() {
   const requestSignIn = useUIStore((s) => s.requestSignIn);
   const pendingArticleId = useRef<number | null>(null);
   const pendingArticleSlug = useRef<string | null>(null);
+  const pendingPromoId = useRef<number | null>(null);
   const pendingGuestPage = useRef<PageId | null>(null);
   const savedGuestCart = useRef<CartItem[] | null>(null);
 
@@ -54,10 +55,20 @@ export function useAuthFlow() {
       setPage('information', { selectedInfoSlug: slug });
     }
 
-    if (article || slug) {
+    const promo = params.get('promo');
+    if (promo) {
+      const id = parseInt(promo, 10);
+      if (!isNaN(id)) {
+        pendingPromoId.current = id;
+        setPage('promotions', { preselectedId: id });
+      }
+    }
+
+    if (article || slug || promo) {
       const url = new URL(window.location.href);
       url.searchParams.delete('article');
       url.searchParams.delete('slug');
+      url.searchParams.delete('promo');
       window.history.replaceState({}, '', url.toString());
     }
   }, [setPage]);

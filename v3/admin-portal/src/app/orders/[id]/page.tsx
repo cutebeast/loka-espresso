@@ -2,7 +2,17 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, type OrderDetail } from "@/lib/api";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
+
+interface Payment {
+  id: number;
+  provider: string;
+  status: string;
+  amount: number;
+  captured_amount: number;
+  refunded_amount: number;
+  currency_code: string;
+}
 
 const STATUS_FLOW: Record<string, string[]> = {
   pending: ["confirmed", "cancelled_by_merchant"],
@@ -21,9 +31,18 @@ export default function OrderDetailPage() {
   const [reason, setReason] = useState("");
   const [updating, setUpdating] = useState(false);
   const [msg, setMsg] = useState("");
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [refundLoading, setRefundLoading] = useState<number | null>(null);
+  const [refundAmounts, setRefundAmounts] = useState<Record<number, string>>({});
+  const [refundReasons, setRefundReasons] = useState<Record<number, string>>({});
 
   const load = useCallback(async () => {
     return api.get<OrderDetail>(`/admin/orders/${id}`);
+  }, [id]);
+
+  const loadPayments = useCallback(async () => {
+    const res = await api.getRaw<{ items: Payment[] }>(`/payments?order_id=${id}`);
+    setPayments(res.items || []);
   }, [id]);
 
   useEffect(() => {
@@ -32,13 +51,39 @@ export default function OrderDetailPage() {
       .then((data) => { if (!cancelled) setOrder(data); })
       .catch((e: any) => { if (!cancelled) setError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
+    loadPayments().catch((e: any) => console.error("Failed to load payments:", e));
     return () => { cancelled = true; };
-  }, [load]);
+  }, [load, loadPayments]);
 
   const update = async (status: string) => { setUpdating(true);
     try { await api.patch(`/admin/orders/${id}/status`, { status, reason: reason || undefined }); setMsg(`Updated to ${status.replace(/_/g, " ")}`); setReason(""); setOrder(await load()); }
     catch (e: any) { setError(e.message); }
     finally { setUpdating(false); }
+  };
+
+  const handleRefund = async (payment: Payment) => {
+    const amount = parseFloat(refundAmounts[payment.id] || "0");
+    if (!amount || amount <= 0) { setError("Refund amount must be greater than 0"); return; }
+    const available = (payment.captured_amount || 0) - (payment.refunded_amount || 0);
+    if (amount > available + 0.001) { setError(`Refund amount cannot exceed ${fmt(available)}`); return; }
+    setRefundLoading(payment.id);
+    setError("");
+    try {
+      await api.post(`/payments/${payment.id}/refund`, {
+        amount,
+        reason: refundReasons[payment.id] || "Refund from admin",
+        reason_category: "customer_request",
+      });
+      setMsg(`Refund of ${fmt(amount)} processed`);
+      setRefundAmounts((prev) => ({ ...prev, [payment.id]: "" }));
+      setRefundReasons((prev) => ({ ...prev, [payment.id]: "" }));
+      await loadPayments();
+      setOrder(await load());
+    } catch (e: any) {
+      setError(e.response?.data?.detail || e.message || "Refund failed");
+    } finally {
+      setRefundLoading(null);
+    }
   };
 
   const fmt = (v: number) => `RM ${Number(v || 0).toFixed(2)}`;
@@ -111,6 +156,67 @@ export default function OrderDetailPage() {
           </tbody>
         </table></div>
       </>)}
+
+      {payments.length > 0 && (
+        <>
+          <h4 style={{ marginBottom: 8 }}>Payments</h4>
+          <div className="table-container" style={{ marginBottom: 20 }}>
+            <table className="data-table">
+              <thead><tr><th>Provider</th><th>Status</th><th style={{ textAlign: "right" }}>Amount</th><th style={{ textAlign: "right" }}>Captured</th><th style={{ textAlign: "right" }}>Refunded</th><th style={{ width: 220 }}>Refund</th></tr></thead>
+              <tbody>
+                {payments.map((p) => {
+                  const available = (p.captured_amount || 0) - (p.refunded_amount || 0);
+                  const canRefund = available > 0.001 && ["captured", "partially_refunded"].includes(p.status);
+                  return (
+                    <tr key={p.id}>
+                      <td style={{ textTransform: "capitalize", fontSize: 12 }}>{p.provider}</td>
+                      <td>{sb(p.status)}</td>
+                      <td style={{ textAlign: "right" }}>{fmt(p.amount)}</td>
+                      <td style={{ textAlign: "right" }}>{fmt(p.captured_amount)}</td>
+                      <td style={{ textAlign: "right" }}>{fmt(p.refunded_amount)}</td>
+                      <td>
+                        {canRefund ? (
+                          <div style={{ display: "flex", gap: 6, flexDirection: "column" }}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <input
+                                type="number"
+                                min={0.01}
+                                step={0.01}
+                                max={available}
+                                placeholder={`Max ${fmt(available)}`}
+                                value={refundAmounts[p.id] || ""}
+                                onChange={(e) => setRefundAmounts((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                                style={{ width: 90, padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-error"
+                                disabled={refundLoading === p.id}
+                                onClick={() => handleRefund(p)}
+                              >
+                                <RotateCcw size={12} /> {refundLoading === p.id ? "..." : "Refund"}
+                              </button>
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Refund reason"
+                              value={refundReasons[p.id] || ""}
+                              onChange={(e) => setRefundReasons((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                              style={{ padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}
+                            />
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {(order.status_log || []).length > 0 && (<>
         <h4 style={{ marginBottom: 8 }}>Status Log</h4>

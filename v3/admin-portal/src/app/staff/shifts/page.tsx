@@ -38,7 +38,13 @@ export default function StaffShiftsPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.post("/admin/staff/shifts", form);
+      await api.post("/admin/staff/shifts", {
+        staff_id: Number(form.staff_id),
+        shift_template_id: form.shift_template_id ? Number(form.shift_template_id) : null,
+        shift_date: form.shift_date,
+        store_id: Number(storeId),
+        status: "scheduled",
+      });
       setShowForm(false);
       setForm({ staff_id: "", shift_template_id: "", shift_date: "" });
       // refresh

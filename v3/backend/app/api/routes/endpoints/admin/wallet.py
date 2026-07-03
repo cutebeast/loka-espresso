@@ -12,10 +12,17 @@ from sqlalchemy.orm import selectinload
 from app.api.routes.deps import ActiveCustomer, CurrentAdmin, DBDependency
 from app.core.money import money_round, to_decimal
 from app.models.platform import AuditLog
-from app.models.wallet import Wallet, WalletLedgerEntry
+from app.models.wallet import Wallet, WalletLedgerEntry, WalletTopupSession
 from app.services.platform_config import PlatformConfigService
 from app.schemas.base import APIResponse, PaginatedResponse
-from app.schemas.wallet import AdminTopupRequest, TopUpRequest, WalletLedgerEntryOut, WalletOut
+from app.schemas.wallet import (
+    AdminTopupRequest,
+    TopUpRequest,
+    WalletLedgerEntryOut,
+    WalletOut,
+    WalletTopupCheckoutRequest,
+    WalletTopupCheckoutResponse,
+)
 
 admin_router = APIRouter(prefix="/admin/wallets", tags=["admin — wallets"])
 wallet_alias_router = APIRouter(prefix="/admin/wallet", tags=["admin — wallets"])
@@ -460,6 +467,58 @@ async def get_my_ledger(
             page=page,
             per_page=per_page,
             total_pages=(total + per_page - 1) // per_page,
+        )
+    )
+
+
+@public_router.post("/topup/checkout", response_model=APIResponse[WalletTopupCheckoutResponse], status_code=status.HTTP_201_CREATED)
+async def create_wallet_topup_checkout(
+    customer: ActiveCustomer,
+    db: DBDependency,
+    data: WalletTopupCheckoutRequest,
+):
+    """Create a Stripe Checkout session for an online wallet top-up."""
+    from app.services.payment import PaymentError, create_wallet_topup_checkout_session
+
+    amount = to_decimal(data.amount)
+    currency = await _get_default_currency(db)
+
+    session = WalletTopupSession(
+        customer_id=customer.id,
+        amount=amount,
+        currency_code=currency,
+        status="pending",
+        provider="stripe",
+    )
+    db.add(session)
+    await db.flush()
+    await db.refresh(session)
+
+    config_service = PlatformConfigService(db)
+    app_public_url = await config_service.get_app_public_url()
+    base_return = (data.return_url or f"{app_public_url}/wallet").rstrip("/")
+    success_url = f"{base_return}?topup_session={session.id}&status=success"
+    cancel_url = f"{base_return}?topup_session={session.id}&status=cancel"
+
+    try:
+        checkout = await create_wallet_topup_checkout_session(
+            db, session.id, customer.id, amount, currency, success_url=success_url, cancel_url=cancel_url
+        )
+    except PaymentError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    session.provider_session_id = checkout["id"]
+    await db.commit()
+    await db.refresh(session)
+
+    return APIResponse(
+        data=WalletTopupCheckoutResponse(
+            session_id=session.id,
+            checkout_url=checkout["url"],
+            amount=float(session.amount),
+            currency_code=session.currency_code,
+            status=session.status,
         )
     )
 

@@ -124,7 +124,7 @@ export default function PromotionsPage({ onBack, preselectedId }: PromotionsPage
         answer_value: surveyAnswers[q.id] != null ? String(surveyAnswers[q.id]) : '',
         answer_detail: {},
       }));
-      const res = await api.post(`/surveys/${selectedPromo.survey_id}/submit`, { answers });
+      const res = await api.post(`/surveys/${selectedPromo.survey_id}/responses`, { answers });
       if (res.data?.success === false) {
         showToast(res.data.message || t('promotions.alreadySubmitted'), 'info');
         setSurveyCompleted(true);

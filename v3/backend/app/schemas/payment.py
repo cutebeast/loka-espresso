@@ -93,6 +93,19 @@ class PaymentIntentResponse(BaseSchema):
     currency_code: str
 
 
+class CheckoutSessionRequest(BaseSchema):
+    order_id: int
+    return_url: str | None = Field(None, max_length=500)
+
+
+class CheckoutSessionResponse(BaseSchema):
+    payment_id: int
+    checkout_url: str
+    status: str
+    amount: float
+    currency_code: str
+
+
 class PaymentWebhookPayload(BaseSchema):
     event_type: str
     provider: str
