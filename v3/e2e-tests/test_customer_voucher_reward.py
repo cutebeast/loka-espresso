@@ -154,21 +154,38 @@ async def test_voucher_discount_field_in_order_response(client: httpx.AsyncClien
     if r_login.status_code != 200:
         pytest.skip("Customer not available")
     token = r_login.json().get("tokens", {}).get("access_token", "")
+    cust_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
-    # Get latest order
-    r_orders = await client.get(f"{base_url}/orders", params={"per_page": 1}, headers={
-        "Authorization": f"Bearer {token}",
-    })
-    assert r_orders.status_code == 200
-    orders = r_orders.json().get("data", {})
-    order_list = orders.get("items", orders.get("results", []))
-    if not order_list:
-        pytest.skip("No orders available")
-    order_id = order_list[0].get("id")
+    # Ensure the customer has at least one order by creating one on the fly.
+    r_items = await client.get(f"{base_url}/menu/items", params={"store_id": store_id, "limit": 5})
+    assert r_items.status_code == 200
+    menu_items = r_items.json().get("data", {}).get("items", r_items.json().get("data", []))
+    if not menu_items:
+        pytest.skip("No menu items available to create an order")
+    item_id = menu_items[0]["id"]
 
-    r_detail = await client.get(f"{base_url}/orders/{order_id}", headers={
-        "Authorization": f"Bearer {token}",
-    })
+    r_cart = await client.post(
+        f"{base_url}/cart/items?store_id={store_id}",
+        headers=cust_headers,
+        json={"menu_item_id": item_id, "quantity": 1, "selected_modifiers": []},
+    )
+    assert r_cart.status_code in (200, 201), f"Add to cart failed: {r_cart.text}"
+    cart_id = r_cart.json().get("data", {}).get("id")
+
+    r_order = await client.post(
+        f"{base_url}/orders",
+        headers=cust_headers,
+        json={
+            "store_id": store_id,
+            "cart_id": cart_id,
+            "order_type": "takeaway",
+            "fulfillment_type": "counter_pickup",
+        },
+    )
+    assert r_order.status_code in (200, 201), f"Order creation failed: {r_order.text}"
+    order_id = r_order.json().get("data", {}).get("id")
+
+    r_detail = await client.get(f"{base_url}/orders/{order_id}", headers=cust_headers)
     assert r_detail.status_code == 200
     detail = r_detail.json().get("data", {})
     assert "voucher_discount" in detail

@@ -453,17 +453,41 @@ async def test_bundle_add_all_components_succeeds(
     store_id: int,
 ):
     """Adding all components of a multi-component bundle should succeed (C3 fix)."""
-    r = await client.get(f"{base_url}/admin/menu/bundle-products?per_page=1", headers=admin_headers)
+    r = await client.get(f"{base_url}/admin/menu/bundle-products?per_page=50", headers=admin_headers)
     if r.status_code != 200:
         pytest.skip("Bundle list not available")
     bundles = r.json().get("data", [])
-    if not bundles:
-        pytest.skip("No bundle products")
-    bp = bundles[0]
-    bp_id = bp["id"]
+    bp = next((b for b in bundles if b.get("components") and len(b["components"]) >= 2), None)
 
-    if not bp["components"] or len(bp["components"]) < 2:
-        pytest.skip("Bundle needs at least 2 components for this test")
+    if bp is None:
+        # Create a multi-component bundle using available menu items.
+        r_items = await client.get(f"{base_url}/admin/menu/items?store_id={store_id}&per_page=10", headers=admin_headers)
+        assert r_items.status_code == 200, f"Menu items fetch failed: {r_items.text}"
+        items = r_items.json().get("data", {}).get("items", r_items.json().get("data", []))
+        item_ids = [it["id"] for it in items if it.get("is_available") and not it.get("deleted_at")][:2]
+        if len(item_ids) < 2:
+            pytest.skip("Need at least 2 available menu items to create a bundle")
+
+        r_create = await client.post(
+            f"{base_url}/admin/menu/bundle-products",
+            headers=admin_headers,
+            json={
+                "bundle_type": "combo",
+                "title": f"E2E Multi-Component Bundle {uuid.uuid4().hex[:8]}",
+                "bundle_price": 10.0,
+                "store_id": store_id,
+                "max_per_order": 10,
+                "components": [
+                    {"menu_item_id": item_ids[0], "default_quantity": 1, "sort_order": 0},
+                    {"menu_item_id": item_ids[1], "default_quantity": 1, "sort_order": 1},
+                ],
+            },
+        )
+        assert r_create.status_code in (200, 201), f"Bundle creation failed: {r_create.text}"
+        bp = r_create.json().get("data", {})
+
+    bp_id = bp["id"]
+    assert bp["components"] and len(bp["components"]) >= 2, "Bundle has fewer than 2 components"
 
     # Customer auth
     import uuid

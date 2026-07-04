@@ -127,10 +127,32 @@ async def test_voucher_create_and_redeem_flow(
 @pytest.mark.asyncio
 async def test_staff_clock_in_flow(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Staff login, clock in, verify time event created, clock out."""
-    # 1. Login as staff
-    r_login = await client.post(f"{base_url}/staff/auth/login", json={
+    # 1. Log in as admin to create a real non-admin staff account
+    r_admin = await client.post(f"{base_url}/admin/auth/login", json={
         "email": ADMIN_EMAIL,
         "password": ADMIN_PASSWORD,
+    })
+    assert r_admin.status_code == 200, f"Admin login failed: {r_admin.text}"
+    admin_token = r_admin.json()["tokens"]["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}", "Content-Type": "application/json"}
+
+    ts = uuid.uuid4().hex[:8]
+    staff_email = f"clock-staff-{ts}@test.com"
+    r_create = await client.post(f"{base_url}/admin/staff", headers=admin_headers, json={
+        "display_name": f"Clock Staff {ts}",
+        "email": staff_email,
+        "password": "StaffPass123!",
+        "pin": "1234",
+        "role": "server",
+        "store_id": store_id,
+        "is_active": True,
+    })
+    assert r_create.status_code in (200, 201), f"Staff creation failed: {r_create.text}"
+
+    # 2. Login as the newly created staff
+    r_login = await client.post(f"{base_url}/staff/auth/login", json={
+        "email": staff_email,
+        "password": "StaffPass123!",
         "store_id": store_id,
     })
     assert r_login.status_code == 200, f"Staff login failed: {r_login.text}"

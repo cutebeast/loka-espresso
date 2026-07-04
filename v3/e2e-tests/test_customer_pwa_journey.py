@@ -13,6 +13,22 @@ pytestmark = [pytest.mark.customer, pytest.mark.browser]
 BASE_URL = "http://localhost:13810"
 
 
+def _dismiss_auth_wall(page):
+    """The PWA shows a splash screen + auth wall on first visit. Skip both."""
+    page.goto(f"{BASE_URL}/#home", wait_until="networkidle")
+    page.wait_for_timeout(1500)
+    # Splash screen has a "Skip" button; click it if present.
+    skip_btn = page.locator("button").filter(has_text=re.compile(r"skip", re.IGNORECASE))
+    if skip_btn.count() > 0:
+        skip_btn.first.click()
+        page.wait_for_timeout(800)
+    # Phone-auth screen offers "Browse as Guest".
+    guest_btn = page.locator("button").filter(has_text="Browse as Guest")
+    if guest_btn.count() > 0:
+        guest_btn.first.click()
+        page.wait_for_timeout(1500)
+
+
 @pytest.fixture(scope="function")
 def page():
     pytest.importorskip("playwright")
@@ -25,6 +41,7 @@ def page():
             java_script_enabled=True,
         )
         pg = context.new_page()
+        _dismiss_auth_wall(pg)
         yield pg
         context.close()
         browser.close()
@@ -33,15 +50,17 @@ def page():
 def test_pwa_homepage_loads(page):
     """Customer PWA homepage renders with stores or menu content."""
     page.goto(f"{BASE_URL}/#home", wait_until="networkidle")
+    page.wait_for_timeout(1000)
     body = page.locator("body").inner_text()
     assert len(body) > 100, "Homepage body is empty — possible crash"
-    assert "loka" in body.lower() or "espresso" in body.lower() or "menu" in body.lower() or "store" in body.lower(), \
+    assert "loka" in body.lower() or "espresso" in body.lower() or "menu" in body.lower() or "store" in body.lower() or "discover" in body.lower(), \
         f"Homepage missing expected branding: {body[:300]}"
 
 
 def test_pwa_store_menu_renders(page):
     """Store menu page shows menu items that can be interacted with."""
     page.goto(f"{BASE_URL}/#menu", wait_until="networkidle")
+    page.wait_for_timeout(1500)
     body = page.locator("body").inner_text()
     assert len(body) > 100, "Menu page body is empty"
 
@@ -49,6 +68,7 @@ def test_pwa_store_menu_renders(page):
 def test_pwa_menu_item_detail_renders(page):
     """Individual menu item page renders (item details open as overlay in PWA)."""
     page.goto(f"{BASE_URL}/#menu", wait_until="networkidle")
+    page.wait_for_timeout(1500)
     body = page.locator("body").inner_text()
     assert len(body) > 50, "Menu page is empty"
 
@@ -56,6 +76,7 @@ def test_pwa_menu_item_detail_renders(page):
 def test_pwa_cart_page_renders(page):
     """Cart page renders even when empty."""
     page.goto(f"{BASE_URL}/#cart", wait_until="networkidle")
+    page.wait_for_timeout(1000)
     body = page.locator("body").inner_text()
     assert len(body) > 50, "Cart page is empty"
 

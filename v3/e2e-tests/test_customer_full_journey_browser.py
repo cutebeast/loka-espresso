@@ -18,6 +18,21 @@ BASE_URL = "http://localhost:13810"
 API_URL = "http://localhost:13800/api"
 
 
+def _dismiss_auth_wall(page):
+    """The PWA shows a splash screen + auth wall on first visit. Skip both."""
+    import re
+    page.goto(f"{BASE_URL}/#home", wait_until="networkidle")
+    page.wait_for_timeout(1500)
+    skip_btn = page.locator("button").filter(has_text=re.compile(r"skip", re.IGNORECASE))
+    if skip_btn.count() > 0:
+        skip_btn.first.click()
+        page.wait_for_timeout(800)
+    guest_btn = page.locator("button").filter(has_text="Browse as Guest")
+    if guest_btn.count() > 0:
+        guest_btn.first.click()
+        page.wait_for_timeout(1500)
+
+
 @pytest.fixture(scope="function")
 def page():
     """Launch a browser page for testing."""
@@ -28,6 +43,7 @@ def page():
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(viewport={"width": 1280, "height": 720})
         pg = context.new_page()
+        _dismiss_auth_wall(pg)
         yield pg
         context.close()
         browser.close()

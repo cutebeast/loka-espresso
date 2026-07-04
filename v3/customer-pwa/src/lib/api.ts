@@ -1,6 +1,24 @@
 import axios from 'axios';
 
-export const API_BASE = '/api';
+function resolveApiBase(): string {
+  const envUrl =
+    typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined;
+  // In local dev/test the Next.js app is served on a different port than the
+  // backend, so a relative /api path resolves back to the PWA itself. Use the
+  // known backend port when running on localhost unless an absolute URL is set.
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ) {
+    if (!envUrl || envUrl.startsWith('/')) {
+      return 'http://127.0.0.1:13800/api';
+    }
+    return envUrl;
+  }
+  return envUrl && envUrl.startsWith('http') ? envUrl : '/api';
+}
+
+export const API_BASE = resolveApiBase();
 
 const api = axios.create({
   baseURL: API_BASE,

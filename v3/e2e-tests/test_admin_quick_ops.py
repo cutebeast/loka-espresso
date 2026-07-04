@@ -158,11 +158,11 @@ async def test_admin_wallet_topup(
 
 @pytest.mark.asyncio
 async def test_staff_login_and_token_refresh(
-    client: httpx.AsyncClient, base_url: str
+    client: httpx.AsyncClient, base_url: str, store_id: int
 ):
     """Staff can login with display_name+PIN and refresh token."""
     # This test requires seeded staff; skip gracefully if none exist
-    r = await client.get(f"{base_url}/staff/auth/names")
+    r = await client.get(f"{base_url}/staff/auth/names?store_id={store_id}")
     if r.status_code != 200:
         pytest.skip("Staff list endpoint unavailable")
     staff_list = r.json().get("data", [])

@@ -2,6 +2,7 @@
 
 import pytest
 import httpx
+import uuid
 
 pytestmark = [pytest.mark.admin]
 
@@ -27,11 +28,27 @@ async def test_audit_log_list(client: httpx.AsyncClient, admin_headers: dict, ba
 @pytest.mark.asyncio
 async def test_audit_log_detail(client: httpx.AsyncClient, admin_headers: dict, base_url: str, store_id: int):
     """A single audit-log entry can be fetched by ID."""
-    r = await client.get(f"{base_url}/admin/audit-log?store_id={store_id}&per_page=1", headers=admin_headers)
+    # Create a staff member to generate an audit log entry.
+    suffix = uuid.uuid4().hex[:8]
+    r_create = await client.post(
+        f"{base_url}/admin/staff",
+        headers=admin_headers,
+        json={
+            "display_name": f"Audit Staff {suffix}",
+            "email": f"audit-staff-{suffix}@test.com",
+            "password": "TempPass123!",
+            "pin": "1234",
+            "role": "server",
+            "store_id": store_id,
+            "is_active": True,
+        },
+    )
+    assert r_create.status_code in (200, 201), f"Staff creation failed: {r_create.text}"
+
+    r = await client.get(f"{base_url}/admin/audit-log?resource_type=staff&per_page=1", headers=admin_headers)
     assert r.status_code == 200
     items = r.json()["data"]["items"]
-    if not items:
-        pytest.skip("No audit log entries available")
+    assert items, "No audit log entries available after creating staff"
 
     log_id = items[0]["id"]
     r2 = await client.get(f"{base_url}/admin/audit-log/{log_id}", headers=admin_headers)

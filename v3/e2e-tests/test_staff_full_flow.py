@@ -38,7 +38,7 @@ async def test_staff_login_success(client: httpx.AsyncClient, base_url: str, sto
 @pytest.mark.asyncio
 async def test_staff_login_pin_success(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Staff can log in with display_name + correct PIN."""
-    r = await client.get(f"{base_url}/staff/auth/names")
+    r = await client.get(f"{base_url}/staff/auth/names?store_id={store_id}")
     if r.status_code != 200:
         pytest.skip("Staff list endpoint unavailable")
     staff_list = r.json().get("data", [])
