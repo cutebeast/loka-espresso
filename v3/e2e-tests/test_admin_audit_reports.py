@@ -44,13 +44,18 @@ async def test_audit_log_detail(client: httpx.AsyncClient, admin_headers: dict, 
         },
     )
     assert r_create.status_code in (200, 201), f"Staff creation failed: {r_create.text}"
+    staff_id = r_create.json().get("data", {}).get("id")
 
-    r = await client.get(f"{base_url}/admin/audit-log?resource_type=staff&per_page=1", headers=admin_headers)
-    assert r.status_code == 200
-    items = r.json()["data"]["items"]
-    assert items, "No audit log entries available after creating staff"
+    try:
+        r = await client.get(f"{base_url}/admin/audit-log?resource_type=staff&per_page=1", headers=admin_headers)
+        assert r.status_code == 200
+        items = r.json()["data"]["items"]
+        assert items, "No audit log entries available after creating staff"
 
-    log_id = items[0]["id"]
-    r2 = await client.get(f"{base_url}/admin/audit-log/{log_id}", headers=admin_headers)
-    assert r2.status_code == 200
-    assert r2.json()["data"]["id"] == log_id
+        log_id = items[0]["id"]
+        r2 = await client.get(f"{base_url}/admin/audit-log/{log_id}", headers=admin_headers)
+        assert r2.status_code == 200
+        assert r2.json()["data"]["id"] == log_id
+    finally:
+        if staff_id:
+            await client.delete(f"{base_url}/admin/staff/{staff_id}", headers=admin_headers)

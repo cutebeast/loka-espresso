@@ -148,66 +148,71 @@ async def test_staff_clock_in_flow(client: httpx.AsyncClient, base_url: str, sto
         "is_active": True,
     })
     assert r_create.status_code in (200, 201), f"Staff creation failed: {r_create.text}"
+    staff_id = r_create.json().get("data", {}).get("id")
 
-    # 2. Login as the newly created staff
-    r_login = await client.post(f"{base_url}/staff/auth/login", json={
-        "email": staff_email,
-        "password": "StaffPass123!",
-        "store_id": store_id,
-    })
-    assert r_login.status_code == 200, f"Staff login failed: {r_login.text}"
-    staff_token = r_login.json()["tokens"]["access_token"]
-    staff_headers = {"Authorization": f"Bearer {staff_token}", "Content-Type": "application/json"}
-
-    # 2. Clock in
     try:
-        r_clock_in = await client.post(
-            f"{base_url}/staff/time-events?event_type=clock_in",
+        # 2. Login as the newly created staff
+        r_login = await client.post(f"{base_url}/staff/auth/login", json={
+            "email": staff_email,
+            "password": "StaffPass123!",
+            "store_id": store_id,
+        })
+        assert r_login.status_code == 200, f"Staff login failed: {r_login.text}"
+        staff_token = r_login.json()["tokens"]["access_token"]
+        staff_headers = {"Authorization": f"Bearer {staff_token}", "Content-Type": "application/json"}
+
+        # 3. Clock in
+        try:
+            r_clock_in = await client.post(
+                f"{base_url}/staff/time-events?event_type=clock_in",
+                headers=staff_headers,
+            )
+        except httpx.ConnectError:
+            pytest.skip("Time events endpoint not available")
+
+        if r_clock_in.status_code == 404:
+            pytest.skip("Time events endpoint not implemented")
+        if r_clock_in.status_code == 403:
+            pytest.skip("Admin users cannot clock in — test requires a non-admin staff account")
+        assert r_clock_in.status_code in (200, 201), (
+            f"Clock-in failed: {r_clock_in.status_code}: {r_clock_in.text}"
+        )
+        clock_in_data = r_clock_in.json().get("data", r_clock_in.json())
+        assert clock_in_data.get("event_type") in ("clock_in", None)
+        time_event_id = clock_in_data.get("id")
+
+        # 4. Verify time event appears in history
+        r_history = await client.get(
+            f"{base_url}/staff/time-events/me?per_page=50",
             headers=staff_headers,
         )
-    except httpx.ConnectError:
-        pytest.skip("Time events endpoint not available")
+        if r_history.status_code == 404:
+            pytest.skip("Time events history endpoint not implemented")
+        assert r_history.status_code == 200
+        if time_event_id:
+            history = r_history.json()["data"]["items"]
+            found = any(e["id"] == time_event_id for e in history)
+            assert found, f"Clock-in event {time_event_id} not found in history"
 
-    if r_clock_in.status_code == 404:
-        pytest.skip("Time events endpoint not implemented")
-    if r_clock_in.status_code == 403:
-        pytest.skip("Admin users cannot clock in — test requires a non-admin staff account")
-    assert r_clock_in.status_code in (200, 201), (
-        f"Clock-in failed: {r_clock_in.status_code}: {r_clock_in.text}"
-    )
-    clock_in_data = r_clock_in.json().get("data", r_clock_in.json())
-    assert clock_in_data.get("event_type") in ("clock_in", None)
-    time_event_id = clock_in_data.get("id")
+        # 5. Clock out
+        try:
+            r_clock_out = await client.post(
+                f"{base_url}/staff/time-events?event_type=clock_out",
+                headers=staff_headers,
+            )
+        except httpx.ConnectError:
+            pytest.skip("Clock-out endpoint not available")
 
-    # 3. Verify time event appears in history
-    r_history = await client.get(
-        f"{base_url}/staff/time-events/me?per_page=50",
-        headers=staff_headers,
-    )
-    if r_history.status_code == 404:
-        pytest.skip("Time events history endpoint not implemented")
-    assert r_history.status_code == 200
-    if time_event_id:
-        history = r_history.json()["data"]["items"]
-        found = any(e["id"] == time_event_id for e in history)
-        assert found, f"Clock-in event {time_event_id} not found in history"
-
-    # 4. Clock out
-    try:
-        r_clock_out = await client.post(
-            f"{base_url}/staff/time-events?event_type=clock_out",
-            headers=staff_headers,
+        if r_clock_out.status_code == 404:
+            pytest.skip("Clock-out endpoint not implemented")
+        assert r_clock_out.status_code in (200, 201), (
+            f"Clock-out failed: {r_clock_out.status_code}: {r_clock_out.text}"
         )
-    except httpx.ConnectError:
-        pytest.skip("Clock-out endpoint not available")
-
-    if r_clock_out.status_code == 404:
-        pytest.skip("Clock-out endpoint not implemented")
-    assert r_clock_out.status_code in (200, 201), (
-        f"Clock-out failed: {r_clock_out.status_code}: {r_clock_out.text}"
-    )
-    clock_out_data = r_clock_out.json().get("data", r_clock_out.json())
-    assert clock_out_data.get("event_type") == "clock_out"
+        clock_out_data = r_clock_out.json().get("data", r_clock_out.json())
+        assert clock_out_data.get("event_type") == "clock_out"
+    finally:
+        if staff_id:
+            await client.delete(f"{base_url}/admin/staff/{staff_id}", headers=admin_headers)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

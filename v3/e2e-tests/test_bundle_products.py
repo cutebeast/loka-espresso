@@ -459,6 +459,7 @@ async def test_bundle_add_all_components_succeeds(
     bundles = r.json().get("data", [])
     bp = next((b for b in bundles if b.get("components") and len(b["components"]) >= 2), None)
 
+    created_bundle_id = None
     if bp is None:
         # Create a multi-component bundle using available menu items.
         r_items = await client.get(f"{base_url}/admin/menu/items?store_id={store_id}&per_page=10", headers=admin_headers)
@@ -485,48 +486,52 @@ async def test_bundle_add_all_components_succeeds(
         )
         assert r_create.status_code in (200, 201), f"Bundle creation failed: {r_create.text}"
         bp = r_create.json().get("data", {})
+        created_bundle_id = bp.get("id")
 
     bp_id = bp["id"]
     assert bp["components"] and len(bp["components"]) >= 2, "Bundle has fewer than 2 components"
 
-    # Customer auth
-    import uuid
-    phone = _random_phone("+6014")
-    r_login = await client.post(f"{base_url}/auth/login", json={"phone_number": phone})
-    if r_login.status_code != 200:
-        pytest.skip("Customer auth not available")
-    token = r_login.json().get("tokens", {}).get("access_token", "")
-    cust_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    try:
+        # Customer auth
+        phone = _random_phone("+6014")
+        r_login = await client.post(f"{base_url}/auth/login", json={"phone_number": phone})
+        if r_login.status_code != 200:
+            pytest.skip("Customer auth not available")
+        token = r_login.json().get("tokens", {}).get("access_token", "")
+        cust_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
-    # Add ALL bundle components — each should succeed
-    for comp in bp["components"]:
-        r_add = await client.post(
-            f"{base_url}/cart/items?store_id={store_id}",
-            headers=cust_headers,
-            json={
-                "menu_item_id": comp["menu_item_id"],
-                "quantity": comp.get("default_quantity", 1),
-                "selected_modifiers": [],
-                "bundle_product_id": bp_id,
-            },
+        # Add ALL bundle components — each should succeed
+        for comp in bp["components"]:
+            r_add = await client.post(
+                f"{base_url}/cart/items?store_id={store_id}",
+                headers=cust_headers,
+                json={
+                    "menu_item_id": comp["menu_item_id"],
+                    "quantity": comp.get("default_quantity", 1),
+                    "selected_modifiers": [],
+                    "bundle_product_id": bp_id,
+                },
+            )
+            assert r_add.status_code == 200, (
+                f"Adding component {comp['menu_item_id']} should succeed. "
+                f"Got {r_add.status_code}: {r_add.text}"
+            )
+
+        # Verify cart has correct number of line items
+        r_cart = await client.get(f"{base_url}/cart?store_id={store_id}", headers=cust_headers)
+        assert r_cart.status_code == 200
+        line_items = r_cart.json().get("data", {}).get("line_items", [])
+        bundle_lines = [li for li in line_items if li.get("bundle_product_id") == bp_id]
+        assert len(bundle_lines) >= len(bp["components"]), (
+            f"Expected at least {len(bp['components'])} bundle lines, got {len(bundle_lines)}"
         )
-        assert r_add.status_code == 200, (
-            f"Adding component {comp['menu_item_id']} should succeed. "
-            f"Got {r_add.status_code}: {r_add.text}"
-        )
 
-    # Verify cart has correct number of line items
-    r_cart = await client.get(f"{base_url}/cart?store_id={store_id}", headers=cust_headers)
-    assert r_cart.status_code == 200
-    line_items = r_cart.json().get("data", {}).get("line_items", [])
-    bundle_lines = [li for li in line_items if li.get("bundle_product_id") == bp_id]
-    assert len(bundle_lines) >= len(bp["components"]), (
-        f"Expected at least {len(bp['components'])} bundle lines, got {len(bundle_lines)}"
-    )
-
-    # Verify all bundle lines have the correct bundle_product_id
-    for li in bundle_lines:
-        assert li["bundle_product_id"] == bp_id, f"Line {li['id']} has wrong bundle_product_id"
+        # Verify all bundle lines have the correct bundle_product_id
+        for li in bundle_lines:
+            assert li["bundle_product_id"] == bp_id, f"Line {li['id']} has wrong bundle_product_id"
+    finally:
+        if created_bundle_id:
+            await client.delete(f"{base_url}/admin/menu/bundle-products/{created_bundle_id}", headers=admin_headers)
 
 
 # ───────────────────────────────────────────────────────

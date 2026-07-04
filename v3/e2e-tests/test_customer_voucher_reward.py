@@ -23,7 +23,7 @@ MENU_ITEM_ID = None  # populated in test
 
 @pytest.mark.customer
 @pytest.mark.asyncio
-async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: str, store_id: int, admin_token: str, admin_headers: dict):
+async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: str, store_id: int, admin_token: str, admin_headers: dict, cleanup_registry: dict):
     """Place order with a valid voucher_code — discount should be applied."""
     # Login / register with a unique phone to avoid shared-number state pollution
     customer_phone = _unique_phone()
@@ -73,6 +73,7 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
         cust_id = me.json().get("data", {}).get("profile", {}).get("id")
         if not cust_id:
             pytest.skip("Cannot determine customer ID from /me response")
+        cleanup_registry["customers"].append({"id": cust_id})
         r_assign = await client.post(
             f"{base_url}/admin/customers/{cust_id}/award-voucher",
             headers=admin_headers,
@@ -134,12 +135,13 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
 
 @pytest.mark.customer
 @pytest.mark.asyncio
-async def test_voucher_discount_field_in_order_response(client: httpx.AsyncClient, base_url: str, store_id: int):
+async def test_voucher_discount_field_in_order_response(client: httpx.AsyncClient, base_url: str, store_id: int, cleanup_registry: dict):
     """GET /orders/{id} includes voucher_discount and reward_discount fields."""
     customer_phone = _unique_phone()
     r_login = await client.post(f"{base_url}/auth/login", json={
         "phone_number": customer_phone,
     })
+    customer_id = None
     if r_login.status_code != 200:
         r_reg = await client.post(f"{base_url}/auth/register", json={
             "phone_number": customer_phone,
@@ -148,11 +150,14 @@ async def test_voucher_discount_field_in_order_response(client: httpx.AsyncClien
         })
         if r_reg.status_code not in (200, 201, 409):
             pytest.skip(f"Cannot register/login customer: {r_reg.status_code} {r_reg.text}")
+        customer_id = r_reg.json().get("user_id")
         r_login = await client.post(f"{base_url}/auth/login", json={
             "phone_number": customer_phone,
         })
     if r_login.status_code != 200:
         pytest.skip("Customer not available")
+    if customer_id:
+        cleanup_registry["customers"].append({"id": customer_id})
     token = r_login.json().get("tokens", {}).get("access_token", "")
     cust_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
