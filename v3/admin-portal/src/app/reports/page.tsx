@@ -43,7 +43,7 @@ export default function ReportsPage() {
       });
     } catch (err: any) { console.error("Failed to load reports:", err); setError(err.message); }
     finally { setLoading(false); }
-  }, [selectedStore, dateFrom, dateTo]);
+  }, [selectedStore, dateFrom, dateTo, stores]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

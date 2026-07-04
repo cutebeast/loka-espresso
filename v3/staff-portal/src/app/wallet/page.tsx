@@ -14,12 +14,13 @@ import EmptyState from "@/components/EmptyState";
 import QrScannerModal from "@/components/QrScannerModal";
 import SkeletonCard from "@/components/SkeletonCard";
 import {
-  Search, QrCode, Wallet, Banknote, CreditCard, Smartphone,
+  Search, QrCode, Wallet, Banknote,
   Gift, Ticket, User, Lock, CheckCircle, ScanLine
 } from "lucide-react";
 
 type Tab = "topup" | "rewards";
-type PaymentMethod = "cash" | "card" | "qr";
+// Admin top-up credits the wallet directly; only cash/counter payment is supported.
+type PaymentMethod = "cash";
 
 const QUICK_AMOUNTS = [20, 50, 100, 200, 300, 500];
 
@@ -35,7 +36,7 @@ export default function WalletPage() {
 
   // Top-up state
   const [amount, setAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [paymentMethod] = useState<PaymentMethod>("cash");
   const [notes, setNotes] = useState("");
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
@@ -368,16 +369,10 @@ export default function WalletPage() {
 
               <label className="form-label">Payment Method</label>
               <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                {(["cash", "card", "qr"] as PaymentMethod[]).map(m => (
-                  <button
-                    key={m}
-                    className={`btn flex-1 ${paymentMethod === m ? "btn-primary" : "btn-ghost"}`}
-                    onClick={() => setPaymentMethod(m)}
-                  >
-                    {m === "cash" ? <Banknote size={16} /> : m === "card" ? <CreditCard size={16} /> : <Smartphone size={16} />}
-                    {m.toUpperCase()}
-                  </button>
-                ))}
+                <div className="btn btn-primary flex-1" style={{ cursor: "default" }}>
+                  <Banknote size={16} />
+                  {paymentMethod.toUpperCase()}
+                </div>
               </div>
 
               <label className="form-label">Notes (optional)</label>

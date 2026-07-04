@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { Save } from "lucide-react";
 
 export default function ReferralSettingsPage() {
@@ -27,8 +28,7 @@ export default function ReferralSettingsPage() {
       setMsg(`${key} updated`);
       setIsError(false);
     } catch (e: unknown) {
-      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setMsg(detail || "Failed to save");
+      setMsg(parseApiError(e, "Failed to save"));
       setIsError(true);
     } finally {
       setSaving(null);

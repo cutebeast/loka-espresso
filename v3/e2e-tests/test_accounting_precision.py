@@ -20,11 +20,25 @@ async def test_accounting_precision_config_exists(client: httpx.AsyncClient, bas
 @pytest.mark.asyncio
 async def test_accounting_rounding_mode_is_editable(client: httpx.AsyncClient, base_url: str, admin_headers: dict):
     """Admins can change the accounting rounding mode via the config endpoint."""
-    r = await client.put(
-        f"{base_url}/admin/config?key=accounting.rounding_mode&value=ROUND_HALF_UP",
-        headers=admin_headers,
-    )
-    assert r.status_code == 200, f"Config update failed: {r.text}"
-    data = r.json()["data"]
-    assert data["config_key"] == "accounting.rounding_mode"
-    assert data["config_value"] == "ROUND_HALF_UP"
+    # Capture original value so we can restore it after the test.
+    r_orig = await client.get(f"{base_url}/admin/config?key=accounting.rounding_mode", headers=admin_headers)
+    original_value = "ROUND_HALF_UP"
+    if r_orig.status_code == 200:
+        items = r_orig.json().get("data") or []
+        if items:
+            original_value = items[0].get("config_value", original_value)
+
+    try:
+        r = await client.put(
+            f"{base_url}/admin/config?key=accounting.rounding_mode&value=ROUND_HALF_UP",
+            headers=admin_headers,
+        )
+        assert r.status_code == 200, f"Config update failed: {r.text}"
+        data = r.json()["data"]
+        assert data["config_key"] == "accounting.rounding_mode"
+        assert data["config_value"] == "ROUND_HALF_UP"
+    finally:
+        await client.put(
+            f"{base_url}/admin/config?key=accounting.rounding_mode&value={original_value}",
+            headers=admin_headers,
+        )

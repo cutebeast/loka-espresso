@@ -89,7 +89,8 @@ export default function PosCheckoutPanel({
   const discountBase = (order as any).items_subtotal || orderBase;
   const manualDisc = discountType === "percentage" ? discountBase * (discountAmount / 100) : discountAmount;
   const walletPaid = discountsApplied.wallet || 0;
-  const checkoutTotal = Math.max(0, orderBase - manualDisc + tipAmount - walletPaid);
+  const preTipDue = Math.max(0, orderBase - manualDisc - walletPaid);
+  const checkoutTotal = Math.max(0, preTipDue + tipAmount);
 
   const discountPresets = discountType === "percentage" ? [5, 10, 15, 20] : [5, 10, 20, 50];
 
@@ -206,7 +207,7 @@ export default function PosCheckoutPanel({
         <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700 }}>Tip</h4>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
           {[0, 5, 10, 15, 20].map((pct) => {
-            const tip = Math.round(checkoutTotal * pct / 100 * 100) / 100;
+            const tip = Math.round(preTipDue * pct / 100 * 100) / 100;
             return (
               <button key={pct} className={`btn btn-sm ${tipAmount === tip ? "btn-primary" : "btn-ghost"}`} onClick={() => onSetTipAmount(tip)}>
                 {pct === 0 ? "None" : `${pct}% (RM ${tip.toFixed(0)})`}

@@ -25,8 +25,8 @@ pytestmark = [pytest.mark.staff]
 
 @pytest.mark.asyncio
 async def test_staff_login_success(client: httpx.AsyncClient, base_url: str, store_id: int):
-    """Admin can log in via the staff endpoint with correct credentials."""
-    payload = {"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD, "store_id": store_id}
+    """Staff can log in via the staff endpoint with email+password credentials."""
+    payload = {"email": "teststaff@lokaespresso.my", "password": "TestStaff123!", "store_id": store_id}
     r = await client.post(f"{base_url}/staff/auth/login", json=payload)
     assert r.status_code == 200, f"Staff login failed: {r.text}"
     data = r.json()
@@ -188,8 +188,8 @@ async def test_staff_create_maintenance_log(client: httpx.AsyncClient, admin_hea
 async def test_staff_token_access_staff_endpoints(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Staff obtains token via staff auth and accesses staff endpoints."""
     r = await client.post(f"{base_url}/staff/auth/login", json={
-        "email": ADMIN_EMAIL,
-        "password": ADMIN_PASSWORD,
+        "email": "teststaff@lokaespresso.my",
+        "password": "TestStaff123!",
         "store_id": store_id,
     })
     assert r.status_code == 200

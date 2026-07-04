@@ -278,8 +278,25 @@ async def _create_stripe_refund(
     """Create a real Stripe refund."""
     assert payment.provider_transaction_id is not None
 
+    transaction_id = payment.provider_transaction_id
+    # Checkout Session ids must be resolved to their PaymentIntent before refunding.
+    if transaction_id.startswith("cs_"):
+        try:
+            session = await anyio.to_thread.run_sync(
+                lambda: stripe.checkout.Session.retrieve(
+                    transaction_id,
+                    api_key=api_key,
+                )
+            )
+        except StripeError as exc:
+            logger.error("Stripe Checkout Session retrieve for refund failed: %s", exc)
+            raise PaymentError(f"Stripe error: {exc.user_message or str(exc)}", 402) from exc
+        transaction_id = session.get("payment_intent") or transaction_id
+        if not transaction_id or transaction_id.startswith("cs_"):
+            raise PaymentError("Checkout Session has no associated PaymentIntent; cannot refund yet", 400)
+
     params: dict = {
-        "payment_intent": payment.provider_transaction_id,
+        "payment_intent": transaction_id,
         "amount": _to_cents(amount),
         "reason": "requested_by_customer",
         "metadata": {
@@ -526,7 +543,9 @@ async def create_payment_intent(
     """Create a payment intent for an order."""
     key = (idempotency_key or "").strip()[:255]
     if key:
-        existing = await db.execute(select(Payment).where(Payment.idempotency_key == key))
+        existing = await db.execute(
+            select(Payment).where(Payment.idempotency_key == key).with_for_update()
+        )
         existing_payment = existing.scalar_one_or_none()
         if existing_payment:
             # Verify ownership before returning the cached intent
@@ -675,7 +694,7 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
 
             payment.status = "captured"
             payment.captured_amount = _from_cents(intent.amount_received) if intent.amount_received else payment.amount
-            await _apply_capture_fees(payment, precision, rounding_mode)
+            await _apply_capture_fees(db, payment, precision, rounding_mode)
             await _add_payment_event(
                 db,
                 payment,
@@ -713,7 +732,7 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
             payment.status = "captured"
             payment.captured_amount = to_decimal(hitpay_request.get("amount", payment.amount))
             fee = _parse_hitpay_fee(hitpay_request)
-            await _apply_capture_fees(payment, precision, rounding_mode, fee_amount=fee)
+            await _apply_capture_fees(db, payment, precision, rounding_mode, fee_amount=fee)
             _record_hitpay_payment_id(payment, hitpay_request)
             await _add_payment_event(
                 db,
@@ -739,7 +758,7 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
             rounding_mode = await config_service.get_accounting_rounding()
             payment.status = "captured"
             payment.captured_amount = payment.amount
-            await _apply_capture_fees(payment, precision, rounding_mode)
+            await _apply_capture_fees(db, payment, precision, rounding_mode)
             await _add_payment_event(
                 db,
                 payment,
@@ -764,16 +783,89 @@ async def confirm_payment(db: AsyncSession, payment_id: int) -> Payment:
     return payment
 
 
+async def _fetch_stripe_fee_amount(db: AsyncSession, payment: Payment) -> Decimal | None:
+    """Fetch the actual Stripe fee from the captured charge's balance transaction.
+
+    Returns None if Stripe is not enabled, the transaction id is missing,
+    or the balance transaction cannot be retrieved.
+    """
+    if payment.provider != "stripe":
+        return None
+    if not await _stripe_enabled(db):
+        return None
+    if not payment.provider_transaction_id:
+        return None
+
+    api_key = await _get_stripe_secret_key(db)
+    if not api_key:
+        return None
+
+    try:
+        tx_id = payment.provider_transaction_id
+        if tx_id.startswith("cs_"):
+            session = await anyio.to_thread.run_sync(
+                lambda: stripe.checkout.Session.retrieve(tx_id, api_key=api_key)
+            )
+            tx_id = session.get("payment_intent") or tx_id
+            if not tx_id or tx_id.startswith("cs_"):
+                return None
+
+        intent = await anyio.to_thread.run_sync(
+            lambda: stripe.PaymentIntent.retrieve(tx_id, api_key=api_key)
+        )
+        charge_id = intent.get("latest_charge") or (
+            intent.charges.data[0].id if intent.get("charges") and intent.charges.data else None
+        )
+        if not charge_id:
+            return None
+
+        charge = await anyio.to_thread.run_sync(
+            lambda: stripe.Charge.retrieve(charge_id, api_key=api_key, expand=["balance_transaction"])
+        )
+        bt = charge.get("balance_transaction")
+        if isinstance(bt, dict):
+            fee_cents = bt.get("fee")
+        elif bt:
+            bt_obj = await anyio.to_thread.run_sync(
+                lambda: stripe.BalanceTransaction.retrieve(bt, api_key=api_key)
+            )
+            fee_cents = bt_obj.get("fee")
+        else:
+            return None
+
+        if fee_cents is None:
+            return None
+        return _from_cents(fee_cents)
+    except StripeError as exc:
+        logger.warning("Could not fetch Stripe fee for payment %s: %s", payment.id, exc)
+        return None
+    except Exception:
+        logger.exception("Unexpected error fetching Stripe fee for payment %s", payment.id)
+        return None
+
+
 async def _apply_capture_fees(
+    db: AsyncSession,
     payment: Payment,
     precision: int,
     rounding_mode: str,
     fee_amount: Decimal | None = None,
 ) -> None:
-    """Apply provider fee estimate and net amount to a captured payment."""
+    """Apply provider fee and net amount to a captured payment."""
     if fee_amount is not None:
         fee = money_round(fee_amount, precision, rounding_mode)
-    elif payment.provider in ("stripe", "adyen", "braintree", "paypal"):
+    elif payment.provider == "stripe":
+        actual_fee = await _fetch_stripe_fee_amount(db, payment)
+        if actual_fee is not None:
+            fee = money_round(actual_fee, precision, rounding_mode)
+        else:
+            # Fallback estimate only when the real fee cannot be retrieved.
+            fee = money_round(
+                payment.captured_amount * Decimal("0.029") + Decimal("0.30"),
+                precision,
+                rounding_mode,
+            )
+    elif payment.provider in ("adyen", "braintree", "paypal"):
         fee = money_round(
             payment.captured_amount * Decimal("0.029") + Decimal("0.30"),
             precision,
@@ -786,7 +878,7 @@ async def _apply_capture_fees(
 
 
 async def _sync_order_payment_status(db: AsyncSession, payment: Payment) -> None:
-    """Recompute and persist an order's payment status from its captured payments."""
+    """Recompute and persist an order's payment status from its payments."""
     order_result = await db.execute(
         select(Order).where(Order.id == payment.order_id).with_for_update()
     )
@@ -798,23 +890,36 @@ async def _sync_order_payment_status(db: AsyncSession, payment: Payment) -> None
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
 
-    captured_payments = (
+    relevant_statuses = ("captured", "partially_refunded", "refunded")
+    payments = (
         await db.execute(
             select(Payment).where(
                 Payment.order_id == order.id,
-                Payment.status == "captured",
+                Payment.status.in_(relevant_statuses),
             )
         )
     ).scalars().all()
+
     total_captured = money_round(
-        sum(to_decimal(p.amount) for p in captured_payments),
+        sum(to_decimal(p.captured_amount or 0) for p in payments),
         precision,
         rounding_mode,
     )
+    total_refunded = money_round(
+        sum(to_decimal(p.refunded_amount or 0) for p in payments),
+        precision,
+        rounding_mode,
+    )
+    order_total = money_round(to_decimal(order.total_amount or 0), precision, rounding_mode)
 
-    if total_captured >= money_round(to_decimal(order.total_amount or 0), precision, rounding_mode):
+    if total_refunded > 0:
+        if total_refunded >= total_captured:
+            order.payment_status = "refunded"
+        else:
+            order.payment_status = "partially_refunded"
+    elif total_captured >= order_total:
         order.payment_status = "captured"
-    else:
+    elif total_captured > 0:
         order.payment_status = "initiated"
     order.updated_at = datetime.now(timezone.utc)
 
@@ -899,7 +1004,7 @@ async def capture_payment(db: AsyncSession, payment_id: int) -> Payment:
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()
-    await _apply_capture_fees(payment, precision, rounding_mode)
+    await _apply_capture_fees(db, payment, precision, rounding_mode)
 
     await _add_payment_event(
         db,
@@ -1279,13 +1384,41 @@ async def process_webhook_event(
     )
     payment = result.scalar_one_or_none()
 
+    # Stripe charge events reference a Charge id, but our provider_transaction_id
+    # is normally the PaymentIntent id. Try to resolve via payment_intent or metadata.
+    if payment is None and provider == "stripe" and event_type.startswith("charge."):
+        pi_id = data.get("payment_intent")
+        if pi_id:
+            result = await db.execute(
+                select(Payment).where(Payment.provider_transaction_id == pi_id).with_for_update()
+            )
+            payment = result.scalar_one_or_none()
+        metadata = data.get("metadata", {})
+        payment_id = metadata.get("payment_id")
+        if payment is None and payment_id:
+            result = await db.execute(
+                select(Payment).where(Payment.id == int(payment_id)).with_for_update()
+            )
+            payment = result.scalar_one_or_none()
+
     # Stripe Checkout Sessions are created with metadata pointing back to our payment/order.
-    if payment is None and provider == "stripe" and event_type in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
+    if payment is None and provider == "stripe" and event_type in (
+        "checkout.session.completed",
+        "checkout.session.async_payment_succeeded",
+        "checkout.session.async_payment_failed",
+        "checkout.session.expired",
+    ):
         metadata = data.get("metadata", {})
         payment_id = metadata.get("payment_id")
         if payment_id:
             result = await db.execute(
                 select(Payment).where(Payment.id == int(payment_id)).with_for_update()
+            )
+            payment = result.scalar_one_or_none()
+        # Also try resolving via the session's payment_intent id.
+        if payment is None and data.get("payment_intent"):
+            result = await db.execute(
+                select(Payment).where(Payment.provider_transaction_id == data["payment_intent"]).with_for_update()
             )
             payment = result.scalar_one_or_none()
 
@@ -1361,6 +1494,7 @@ async def process_webhook_event(
             precision = await config_service.get_accounting_precision()
             rounding_mode = await config_service.get_accounting_rounding()
             await _apply_capture_fees(
+                db,
                 payment,
                 precision,
                 rounding_mode,

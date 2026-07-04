@@ -16,6 +16,11 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None  # type: ignore
+
 BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:13800/api")
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-for-development-only-12345")
 JWT_ALGORITHM = "HS256"
@@ -416,6 +421,87 @@ def _ensure_baseline_data(base_url: str, _admin_token_session: str):
 # Cleanup helpers
 # ---------------------------------------------------------------------------
 
+def _purge_customer_records(customer_ids: list[int]) -> None:
+    """Hard-delete test customers and all their dependent records from the DB.
+
+    This complements the API-level cleanup by removing rows that would otherwise
+    be left behind (payments, refunds, ledger entries, addresses, etc.).
+    """
+    if not psycopg2 or not customer_ids:
+        return
+
+    db_url = _get_database_url()
+    if not db_url:
+        logger.warning("[cleanup] No DATABASE_URL available for DB purge")
+        return
+
+    sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
+    ids_sql = ",".join(str(cid) for cid in customer_ids)
+
+    # Delete leaf-to-root. Errors are logged and skipped so a single stuck
+    # dependency does not abort the whole cleanup.
+    ids_sql = ",".join(str(cid) for cid in customer_ids)
+    order_subquery = "SELECT id FROM orders WHERE customer_id IN ({})".format(ids_sql)
+    payment_subquery = "SELECT id FROM payments WHERE order_id IN ({})".format(order_subquery)
+    cart_subquery = "SELECT id FROM customer_carts WHERE customer_id IN ({})".format(ids_sql)
+    wallet_subquery = "SELECT id FROM wallets WHERE customer_id IN ({})".format(ids_sql)
+
+    delete_statements = [
+        ("payment_events", f"payment_id IN ({payment_subquery})"),
+        ("refunds", f"order_id IN ({order_subquery}) OR payment_id IN ({payment_subquery})"),
+        ("payments", f"order_id IN ({order_subquery})"),
+        ("order_status_log", f"order_id IN ({order_subquery})"),
+        ("order_modification_logs", f"order_id IN ({order_subquery})"),
+        ("order_adjustments", f"order_id IN ({order_subquery})"),
+        ("order_fulfillment", f"order_id IN ({order_subquery})"),
+        ("order_line_items", f"order_id IN ({order_subquery})"),
+        ("tip_allocations", f"order_id IN ({order_subquery})"),
+        ("orders", f"customer_id IN ({ids_sql})"),
+        ("cart_line_items", f"cart_id IN ({cart_subquery})"),
+        ("customer_carts", f"customer_id IN ({ids_sql})"),
+        ("loyalty_points_ledger", f"customer_id IN ({ids_sql})"),
+        ("loyalty_accounts", f"customer_id IN ({ids_sql})"),
+        ("customer_vouchers", f"customer_id IN ({ids_sql})"),
+        ("customer_rewards", f"customer_id IN ({ids_sql})"),
+        ("customer_consents", f"customer_id IN ({ids_sql})"),
+        ("notification_delivery_log", f"message_id IN (SELECT id FROM notification_messages WHERE customer_id IN ({ids_sql}))"),
+        ("notification_messages", f"customer_id IN ({ids_sql})"),
+        ("notification_preferences", f"customer_id IN ({ids_sql})"),
+        ("customer_devices", f"customer_id IN ({ids_sql})"),
+        ("customer_addresses", f"customer_id IN ({ids_sql})"),
+        ("feedback_entries", f"customer_id IN ({ids_sql})"),
+        ("reservations", f"customer_id IN ({ids_sql})"),
+        ("referral_events", f"referrer_customer_id IN ({ids_sql}) OR invitee_customer_id IN ({ids_sql})"),
+        ("event_rsvps", f"customer_id IN ({ids_sql})"),
+        ("survey_responses", f"customer_id IN ({ids_sql})"),
+        ("wallet_ledger_entries", f"wallet_id IN ({wallet_subquery})"),
+        ("wallets", f"customer_id IN ({ids_sql})"),
+        ("wallet_topup_sessions", f"customer_id IN ({ids_sql})"),
+        ("customers", f"id IN ({ids_sql})"),
+    ]
+
+    conn = None
+    try:
+        conn = psycopg2.connect(sync_url)
+        for table, where in delete_statements:
+            cur = conn.cursor()
+            try:
+                cur.execute(f"DELETE FROM {table} WHERE {where}")
+                if cur.rowcount:
+                    logger.info("[cleanup] Deleted %d rows from %s", cur.rowcount, table)
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                logger.warning("[cleanup] Failed to delete from %s: %s", table, e)
+            finally:
+                cur.close()
+    except Exception as e:
+        logger.warning("[cleanup] DB purge failed: %s", e)
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_registry():
     """Track created resources for cleanup after all tests.
@@ -480,7 +566,7 @@ def cleanup_registry():
                 except Exception as e:
                     logger.warning("[cleanup] Failed to cancel order %d: %s", order.get("id"), e)
 
-            # Delete customers
+            # Delete customers via API (soft delete)
             for cust in registry["customers"]:
                 try:
                     c.delete(f"{BASE_URL}/admin/customers/{cust['id']}", headers=headers)
@@ -489,3 +575,8 @@ def cleanup_registry():
 
     except Exception:
         logger.warning("[cleanup] Cleanup failed — skipping", exc_info=True)
+
+    # Hard-delete test customers and all dependent rows to prevent DB bloat.
+    customer_ids = [cust["id"] for cust in registry.get("customers", []) if cust.get("id")]
+    if customer_ids:
+        _purge_customer_records(customer_ids)

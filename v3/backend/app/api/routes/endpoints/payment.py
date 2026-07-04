@@ -3,9 +3,12 @@
 import hmac
 import hashlib
 import json
+import logging
 import uuid
 
 import anyio
+
+logger = logging.getLogger(__name__)
 import stripe
 from stripe._error import SignatureVerificationError
 from fastapi import APIRouter, Body, HTTPException, Query, Request, status
@@ -482,39 +485,13 @@ async def list_payments(
     )
 
 
-def _verify_stripe_signature(payload_bytes: bytes, sig_header: str, secret: str) -> bool:
-    if not secret:
-        from app.core.config import get_settings
-        settings = get_settings()
-        if settings.is_production or settings.webhook_verify_in_dev:
-            import logging
-            logging.getLogger("payment").critical("Stripe webhook signing secret not configured")
-            return False
-        return True
-    try:
-        timestamp = None
-        signatures = []
-        for item in sig_header.split(","):
-            if item.startswith("t="):
-                timestamp = item[2:]
-            elif item.startswith("v1="):
-                signatures.append(item[3:])
-        if not timestamp or not signatures:
-            return False
-        signed_payload = f"{timestamp}.{payload_bytes.decode('utf-8')}".encode("utf-8")
-        expected = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
-        return any(hmac.compare_digest(expected, sig) for sig in signatures)
-    except Exception:
-        return False
-
-
 def _verify_grabpay_signature(payload_bytes: bytes, sig_header: str, secret: str) -> bool:
     if not secret:
         from app.core.config import get_settings
         settings = get_settings()
         if settings.is_production or settings.webhook_verify_in_dev:
             import logging
-            logging.getLogger("payment").critical("GrabPay webhook signing secret not configured")
+            logger.critical("GrabPay webhook signing secret not configured")
             return False
         return True
     try:
@@ -572,8 +549,22 @@ async def stripe_webhook(
                 )
             # Development-only: accept the event but log a warning.
             logger.warning("Stripe webhook accepted in dev without signature verification")
-        elif not _verify_stripe_signature(payload_bytes, sig_header, stripe_secret):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature")
+        else:
+            try:
+                event = await anyio.to_thread.run_sync(
+                    stripe.Webhook.construct_event,
+                    payload_bytes,
+                    sig_header,
+                    stripe_secret,
+                )
+            except (ValueError, SignatureVerificationError) as exc:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature") from exc
+            payload = {"type": event.type, "data": {"object": event.data.object.to_dict()}}
+            try:
+                payment = await process_webhook_event(db, "stripe", payload)
+            except PaymentError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+            return APIResponse(data={"received": True, "payment_id": payment.id if payment else None})
         try:
             payload = json.loads(payload_bytes)
         except Exception as exc:

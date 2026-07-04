@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, type OrderDetail } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 
 interface Payment {
@@ -79,8 +80,8 @@ export default function OrderDetailPage() {
       setRefundReasons((prev) => ({ ...prev, [payment.id]: "" }));
       await loadPayments();
       setOrder(await load());
-    } catch (e: any) {
-      setError(e.response?.data?.detail || e.message || "Refund failed");
+    } catch (e: unknown) {
+      setError(parseApiError(e, "Refund failed"));
     } finally {
       setRefundLoading(null);
     }

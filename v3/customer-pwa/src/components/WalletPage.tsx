@@ -73,10 +73,14 @@ export default function WalletPage() {
 
   // Handle return from Stripe Checkout wallet top-up
   useEffect(() => {
-    if (returnHandledRef.current) return;
     const status = pageParams?.status as string | undefined;
     const sessionId = pageParams?.topup_session as string | undefined;
-    if (!status || !sessionId) return;
+    if (!status || !sessionId) {
+      // Reset so the next top-up return is processed after the hash is cleared.
+      returnHandledRef.current = false;
+      return;
+    }
+    if (returnHandledRef.current) return;
     returnHandledRef.current = true;
 
     const handleReturn = async () => {

@@ -28,6 +28,7 @@ export default function PosQrPaymentScreen({
   const [error, setError] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completeRef = useRef(false);
+  const startedAtRef = useRef<number>(0);
 
   // Generate QR image from the Stripe Checkout URL.
   useEffect(() => {
@@ -53,10 +54,30 @@ export default function PosQrPaymentScreen({
     };
   }, [paymentUrl]);
 
-  // Poll order payment status until captured or failed.
+  // Poll order payment status until captured, failed, or timed out.
   useEffect(() => {
+    const POLL_INTERVAL_MS = 3000;
+    const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+    startedAtRef.current = Date.now();
+
+    const stopPolling = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+
     const check = async () => {
       try {
+        if (Date.now() - startedAtRef.current > TIMEOUT_MS) {
+          setStatus("failed");
+          const msg = "Payment session expired";
+          setError(msg);
+          onError?.(msg);
+          stopPolling();
+          return;
+        }
+
         const order = await getOrderById(orderId);
         const ps = order.payment_status;
         if (ps === "captured" || ps === "paid" || ps === "settled" || ps === "authorized") {
@@ -65,19 +86,13 @@ export default function PosQrPaymentScreen({
             completeRef.current = true;
             onComplete({ order_id: orderId, order_number: orderNumber || order.order_number, total });
           }
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
+          stopPolling();
         } else if (ps === "failed" || ps === "voided" || ps === "refunded" || ps?.includes("cancelled")) {
           setStatus("failed");
           const msg = `Payment ${ps}`;
           setError(msg);
           onError?.(msg);
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
+          stopPolling();
         }
       } catch (e: unknown) {
         console.error("QR payment polling failed:", e);
@@ -85,13 +100,8 @@ export default function PosQrPaymentScreen({
     };
 
     check();
-    intervalRef.current = setInterval(check, 3000);
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+    intervalRef.current = setInterval(check, POLL_INTERVAL_MS);
+    return stopPolling;
   }, [orderId, orderNumber, total, onComplete, onError]);
 
   return (

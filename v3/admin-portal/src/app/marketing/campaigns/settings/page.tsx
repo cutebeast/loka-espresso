@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { Eye, EyeOff, Save } from "lucide-react";
 
 const KEYS = [
@@ -50,8 +51,7 @@ export default function CampaignSettingsPage() {
       setConfig(prev => ({ ...prev, [key]: val }));
       showMsg(`${key.replace("integration.", "")} updated`);
     } catch (e: unknown) {
-      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      showMsg(detail || "Failed to save", true);
+      showMsg(parseApiError(e, "Failed to save"), true);
     } finally { setSaving(null); }
   };
 

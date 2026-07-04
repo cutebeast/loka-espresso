@@ -125,7 +125,9 @@ async def staff_login(request: Request, db: DBDependency, data: StaffLoginReques
             StaffProfile.is_active.is_(True),
         )
     )
-    staff = result.scalar_one_or_none()
+    # Use .first() instead of .one_or_none() so duplicate seeded staff emails
+    # do not cause a 500; the first active record wins.
+    staff = result.scalars().first()
 
     if staff and (staff.password_hash or staff.pin_hash):
         # Check lockout
@@ -399,6 +401,8 @@ async def staff_profile_me(db: DBDependency, request: Request):
         raise HTTPException(status_code=401, detail="Invalid token")
 
     token_type = payload.get("type", "")
+    if token_type not in ("admin", "staff"):
+        raise HTTPException(status_code=403, detail="Access denied: staff or admin token required")
     is_admin = token_type == "admin"
 
     if token_type == "admin":

@@ -880,6 +880,7 @@ async def pay_with_wallet(
         amount=amount,
         currency_code=order.total_amount_currency,
         status="captured",
+        captured_amount=amount,
         net_amount=amount,
         idempotency_key=f"wallet-payment-{order.id}-{uuid.uuid4().hex}",
     )

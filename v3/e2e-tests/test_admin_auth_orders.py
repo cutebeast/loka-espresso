@@ -463,12 +463,10 @@ async def test_cross_role_token_rejection(
     except httpx.ConnectError:
         pytest.skip("Staff auth/me endpoint not available")
 
-    assert r.status_code in (200, 401, 403), (
-        f"Customer token on staff endpoint return: "
+    assert r.status_code in (401, 403), (
+        f"Customer token on staff endpoint should be rejected, "
         f"got {r.status_code}: {r.text[:100]}"
     )
-    if r.status_code == 200:
-        pytest.skip("Customer has dual staff access — not a security issue")
 
     # Also try a staff POS endpoint
     try:

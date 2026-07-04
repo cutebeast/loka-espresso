@@ -19,6 +19,12 @@ function getSteps(orderType?: string): string[] {
   return orderType === 'delivery' ? DELIVERY_STEPS : PICKUP_STEPS;
 }
 
+function getStripeRedirectStatus(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('redirect_status');
+}
+
 function stepIdx(status: string, orderType?: string): number {
   const s = status?.toLowerCase();
   const isDelivery = orderType === 'delivery';
@@ -51,8 +57,12 @@ export default function OrderDetailPage() {
   const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [hitpayEnabled, setHitpayEnabled] = useState(false);
   const orderId = pageParams.orderId ?? currentOrder?.id ?? null;
-  const returnStatus = pageParams.status as string | undefined;
+  const hashStatus = pageParams.status as string | undefined;
   const returnPaymentId = pageParams.paymentId as string | undefined;
+  // Stripe redirect methods (FPX/GrabPay/3DS) append redirect_status to the
+  // query string, while our hash fragment may hard-code status=success.
+  const redirectStatus = getStripeRedirectStatus();
+  const returnStatus = redirectStatus ?? hashStatus;
 
   const fetchOrder = useCallback(async (id: number) => {
     setLoading(true);

@@ -125,11 +125,11 @@ async def test_order_with_voucher_discount(client: httpx.AsyncClient, base_url: 
 
     assert r_order.status_code in (200, 201), f"Order with voucher failed: {r_order.text}"
     order_data = r_order.json().get("data", r_order.json())
-    # Voucher discount should be > 0
+    # Voucher discount should be > 0 for a freshly assigned voucher.
     voucher_discount = order_data.get("voucher_discount", 0)
     discount_amount = order_data.get("discount_amount", 0)
     print(f"voucher_discount={voucher_discount}, discount_amount={discount_amount}")
-    # Discount may be 0 if voucher already used — that's OK for test
+    assert voucher_discount > 0 or discount_amount > 0, "Voucher was applied but produced no discount"
 
 
 @pytest.mark.customer

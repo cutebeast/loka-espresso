@@ -150,9 +150,12 @@ export async function placeOrder(params: {
 
   await syncCartToServer(items);
 
+  // The backend enum uses 'takeaway' for customer-collected orders; UI labels it 'pickup'.
+  const backendOrderType = params.orderType === 'pickup' ? 'takeaway' : params.orderType;
+
   const orderPayload: Record<string, unknown> = {
     store_id: params.storeId,
-    order_type: params.orderType,
+    order_type: backendOrderType,
     payment_method: params.paymentMethod,
     status: (params.paymentMethod === 'wallet' || params.paymentMethod === 'gateway' || params.paymentMethod === 'hitpay')
       ? 'awaiting_payment'
@@ -229,15 +232,6 @@ export async function placeOrder(params: {
     // Refresh wallet balance in case of partial deduction
     useWalletStore.getState().refreshWallet().catch((err) => console.error('[CartSync] Wallet refresh after payment failure failed:', err));
     throw error;
-  }
-
-  if (params.paymentMethod !== 'wallet' && newOrder?.id) {
-    try {
-      // v3 doesn't have /orders/{id}/confirm — order status managed by backend
-      newOrder.status = 'confirmed';
-    } catch {
-      console.error('Order confirm failed, order stays pending');
-    }
   }
 
   clearCart();

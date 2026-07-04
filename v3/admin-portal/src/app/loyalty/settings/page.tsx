@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { Save } from "lucide-react";
 
 interface ConfigItem { id: number; config_key: string; config_value: string; value_type: string; is_editable: boolean; }
@@ -40,8 +41,7 @@ export default function LoyaltySettingsPage() {
       setConfigs(prev => ({ ...prev, [key]: { ...prev[key], config_value: value } as ConfigItem }));
       showMsg(`${key} updated`);
     } catch (e: unknown) {
-      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      showMsg(detail || "Failed to save", true);
+      showMsg(parseApiError(e, "Failed to save"), true);
     } finally { setSaving(null); }
   };
 

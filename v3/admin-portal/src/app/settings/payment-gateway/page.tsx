@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { CreditCard, Wallet, Globe, Save, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 interface ConfigItem {
@@ -90,7 +91,7 @@ function WebhookHint({ provider }: { provider: "stripe" | "hitpay" }) {
   const [origin, setOrigin] = useState("");
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setOrigin(window.location.origin.replace(/^http:/, "https:"));
+      setOrigin(window.location.origin);
     }
   }, []);
   const isStripe = provider === "stripe";
@@ -270,8 +271,7 @@ export default function PaymentGatewaySettingsPage() {
       setMethodValues(refreshedMethods);
       showMsg(`${updates.length} setting(s) saved`);
     } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      showMsg(detail || "Failed to save settings", true);
+      showMsg(parseApiError(err, "Failed to save settings"), true);
     } finally {
       setSaving(false);
     }

@@ -9,11 +9,14 @@ pytestmark = [pytest.mark.customer]
 
 
 def _ensure_store_config(store_id: int, key: str, value: str):
-    """Insert or update a StoreConfiguration row directly (no dedicated admin endpoint)."""
+    """Insert or update a StoreConfiguration row directly (no dedicated admin endpoint).
+
+    Returns the previous value (or None) so tests can restore it in teardown.
+    """
     try:
         import psycopg2
     except ImportError:
-        return
+        return None
 
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
@@ -33,6 +36,13 @@ def _ensure_store_config(store_id: int, key: str, value: str):
     conn = psycopg2.connect(sync_url)
     cur = conn.cursor()
     cur.execute(
+        "SELECT config_value FROM store_configuration WHERE store_id = %s AND config_key = %s",
+        (store_id, key),
+    )
+    row = cur.fetchone()
+    previous_value = row[0] if row else None
+
+    cur.execute(
         """
         INSERT INTO store_configuration (store_id, config_key, config_value, description)
         VALUES (%s, %s, to_jsonb(%s::text), 'E2E test config')
@@ -40,6 +50,49 @@ def _ensure_store_config(store_id: int, key: str, value: str):
         """,
         (store_id, key, value),
     )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return previous_value
+
+
+def _restore_store_config(store_id: int, key: str, value):
+    """Restore a StoreConfiguration row to a previous value, or delete it if it did not exist."""
+    try:
+        import psycopg2
+    except ImportError:
+        return
+
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        backend_env = os.path.join(os.path.dirname(__file__), "..", "backend", ".env")
+        if os.path.exists(backend_env):
+            with open(backend_env, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("DATABASE_URL="):
+                        db_url = line.split("=", 1)[1]
+                        break
+    if not db_url:
+        db_url = "postgresql://fnb_user:fnb_pass@localhost:13334/fnb_enterprise_v3"
+
+    sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
+    conn = psycopg2.connect(sync_url)
+    cur = conn.cursor()
+    if value is None:
+        cur.execute(
+            "DELETE FROM store_configuration WHERE store_id = %s AND config_key = %s",
+            (store_id, key),
+        )
+    else:
+        cur.execute(
+            """
+            INSERT INTO store_configuration (store_id, config_key, config_value, description)
+            VALUES (%s, %s, to_jsonb(%s::text), 'E2E test config')
+            ON CONFLICT (store_id, config_key) DO UPDATE SET config_value = EXCLUDED.config_value
+            """,
+            (store_id, key, value),
+        )
     conn.commit()
     cur.close()
     conn.close()
@@ -86,88 +139,55 @@ async def test_customer_orders_for_all_types(
 ):
     """Place dine_in, takeaway and delivery orders using normal and bundle items."""
 
-    # Ensure delivery fee config exists so delivery orders can compute a total
-    _ensure_store_config(store_id, "order.delivery_fee", "5.00")
+    # Ensure delivery fee config exists so delivery orders can compute a total.
+    # Capture the previous value so we can restore it after the test.
+    previous_delivery_fee = _ensure_store_config(store_id, "order.delivery_fee", "5.00")
 
-    # Fetch a normal menu item and an active bundle product
-    r_menu = await client.get(f"{base_url}/menu/stores/{store_id}")
-    assert r_menu.status_code == 200
-    menu_data = r_menu.json()["data"]
-    items = menu_data["items"]
-    assert len(items) >= 1, "Need at least one menu item"
-    normal_item = items[0]
-
-    bundle_id = None
-    bundle_components = []
-    bundles = menu_data.get("bundle_products", [])
-    if bundles:
-        bundle = bundles[0]
-        bundle_id = bundle["id"]
-        # For fixed bundles, add every component in default_quantity
-        for comp in bundle.get("components", []):
-            bundle_components.append({
-                "bundle_product_id": bundle_id,
-                "bundle_component_id": comp["id"],
-                "menu_item_id": comp["menu_item_id"],
-                "qty": comp.get("default_quantity", 1),
-            })
-
-    # Dine-in order with normal item
-    customer_id, token = await _register_customer(client, base_url, cleanup_registry)
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    await _add_to_cart(client, base_url, store_id, headers, normal_item["id"], qty=1)
-    cart_id = await _get_cart_id(client, base_url, store_id, headers)
-    r_order = await client.post(f"{base_url}/orders", headers=headers, json={
-        "store_id": store_id,
-        "cart_id": cart_id,
-        "order_type": "dine_in",
-        "fulfillment_type": "dine_in_service",
-    })
-    assert r_order.status_code == 201, f"Dine-in order failed: {r_order.text}"
-    order = r_order.json()["data"]
-    cleanup_registry["orders"].append({"id": order["id"]})
-    assert order["order_type"] == "dine_in"
-    assert order["fulfillment_type"] == "dine_in_service"
-
-    # Takeaway order with normal item
-    customer_id, token = await _register_customer(client, base_url, cleanup_registry)
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    await _add_to_cart(client, base_url, store_id, headers, normal_item["id"], qty=2)
-    cart_id = await _get_cart_id(client, base_url, store_id, headers)
-    r_order = await client.post(f"{base_url}/orders", headers=headers, json={
-        "store_id": store_id,
-        "cart_id": cart_id,
-        "order_type": "takeaway",
-        "fulfillment_type": "counter_pickup",
-    })
-    assert r_order.status_code == 201, f"Takeaway order failed: {r_order.text}"
-    order = r_order.json()["data"]
-    cleanup_registry["orders"].append({"id": order["id"]})
-    assert order["order_type"] == "takeaway"
-
-    # Delivery order with normal item
-    customer_id, token = await _register_customer(client, base_url, cleanup_registry)
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    await _add_to_cart(client, base_url, store_id, headers, normal_item["id"], qty=1)
-    cart_id = await _get_cart_id(client, base_url, store_id, headers)
-    r_order = await client.post(f"{base_url}/orders", headers=headers, json={
-        "store_id": store_id,
-        "cart_id": cart_id,
-        "order_type": "delivery",
-        "fulfillment_type": "standard_delivery",
-    })
-    assert r_order.status_code == 201, f"Delivery order failed: {r_order.text}"
-    order = r_order.json()["data"]
-    cleanup_registry["orders"].append({"id": order["id"]})
-    assert order["order_type"] == "delivery"
-    assert order["delivery_fee"] > 0
-
-    # Bundle order (takeaway) if a bundle is available
-    if bundle_id and bundle_components:
+    try:
+        # Fetch a normal menu item and an active bundle product
+        r_menu = await client.get(f"{base_url}/menu/stores/{store_id}")
+        assert r_menu.status_code == 200
+        menu_data = r_menu.json()["data"]
+        items = menu_data["items"]
+        assert len(items) >= 1, "Need at least one menu item"
+        normal_item = items[0]
+    
+        bundle_id = None
+        bundle_components = []
+        bundles = menu_data.get("bundle_products", [])
+        if bundles:
+            bundle = bundles[0]
+            bundle_id = bundle["id"]
+            # For fixed bundles, add every component in default_quantity
+            for comp in bundle.get("components", []):
+                bundle_components.append({
+                    "bundle_product_id": bundle_id,
+                    "bundle_component_id": comp["id"],
+                    "menu_item_id": comp["menu_item_id"],
+                    "qty": comp.get("default_quantity", 1),
+                })
+    
+        # Dine-in order with normal item
         customer_id, token = await _register_customer(client, base_url, cleanup_registry)
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-        for comp in bundle_components:
-            await _add_to_cart(client, base_url, store_id, headers, comp["menu_item_id"], qty=comp["qty"], bundle=comp)
+        await _add_to_cart(client, base_url, store_id, headers, normal_item["id"], qty=1)
+        cart_id = await _get_cart_id(client, base_url, store_id, headers)
+        r_order = await client.post(f"{base_url}/orders", headers=headers, json={
+            "store_id": store_id,
+            "cart_id": cart_id,
+            "order_type": "dine_in",
+            "fulfillment_type": "dine_in_service",
+        })
+        assert r_order.status_code == 201, f"Dine-in order failed: {r_order.text}"
+        order = r_order.json()["data"]
+        cleanup_registry["orders"].append({"id": order["id"]})
+        assert order["order_type"] == "dine_in"
+        assert order["fulfillment_type"] == "dine_in_service"
+    
+        # Takeaway order with normal item
+        customer_id, token = await _register_customer(client, base_url, cleanup_registry)
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        await _add_to_cart(client, base_url, store_id, headers, normal_item["id"], qty=2)
         cart_id = await _get_cart_id(client, base_url, store_id, headers)
         r_order = await client.post(f"{base_url}/orders", headers=headers, json={
             "store_id": store_id,
@@ -175,7 +195,44 @@ async def test_customer_orders_for_all_types(
             "order_type": "takeaway",
             "fulfillment_type": "counter_pickup",
         })
-        assert r_order.status_code == 201, f"Bundle order failed: {r_order.text}"
+        assert r_order.status_code == 201, f"Takeaway order failed: {r_order.text}"
         order = r_order.json()["data"]
         cleanup_registry["orders"].append({"id": order["id"]})
         assert order["order_type"] == "takeaway"
+    
+        # Delivery order with normal item
+        customer_id, token = await _register_customer(client, base_url, cleanup_registry)
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        await _add_to_cart(client, base_url, store_id, headers, normal_item["id"], qty=1)
+        cart_id = await _get_cart_id(client, base_url, store_id, headers)
+        r_order = await client.post(f"{base_url}/orders", headers=headers, json={
+            "store_id": store_id,
+            "cart_id": cart_id,
+            "order_type": "delivery",
+            "fulfillment_type": "standard_delivery",
+        })
+        assert r_order.status_code == 201, f"Delivery order failed: {r_order.text}"
+        order = r_order.json()["data"]
+        cleanup_registry["orders"].append({"id": order["id"]})
+        assert order["order_type"] == "delivery"
+        assert order["delivery_fee"] > 0
+    
+        # Bundle order (takeaway) if a bundle is available
+        if bundle_id and bundle_components:
+            customer_id, token = await _register_customer(client, base_url, cleanup_registry)
+            headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+            for comp in bundle_components:
+                await _add_to_cart(client, base_url, store_id, headers, comp["menu_item_id"], qty=comp["qty"], bundle=comp)
+            cart_id = await _get_cart_id(client, base_url, store_id, headers)
+            r_order = await client.post(f"{base_url}/orders", headers=headers, json={
+                "store_id": store_id,
+                "cart_id": cart_id,
+                "order_type": "takeaway",
+                "fulfillment_type": "counter_pickup",
+            })
+            assert r_order.status_code == 201, f"Bundle order failed: {r_order.text}"
+            order = r_order.json()["data"]
+            cleanup_registry["orders"].append({"id": order["id"]})
+            assert order["order_type"] == "takeaway"
+    finally:
+        _restore_store_config(store_id, "order.delivery_fee", previous_delivery_fee)

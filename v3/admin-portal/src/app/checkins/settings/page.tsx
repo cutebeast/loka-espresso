@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 
 export default function CheckinSettingsPage() {
   const [config, setConfig] = useState<Record<string, string>>({});
@@ -37,8 +38,7 @@ export default function CheckinSettingsPage() {
       setConfig({ ...values });
       showMsg("Settings saved");
     } catch (e: unknown) {
-      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      showMsg(detail || "Failed to save settings", true);
+      showMsg(parseApiError(e, "Failed to save settings"), true);
     } finally { setSaving(false); }
   };
 

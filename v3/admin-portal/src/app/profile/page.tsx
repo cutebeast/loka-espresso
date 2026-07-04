@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { Shield, Mail, Lock, KeyRound } from "lucide-react";
 
 interface AdminProfile {
@@ -46,8 +47,7 @@ export default function AdminProfilePage() {
       setNewPw("");
     } catch (e: unknown) {
       console.error("Password change failed:", e);
-      const errMsg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setMsg(errMsg || "Failed to update password");
+      setMsg(parseApiError(e, "Failed to update password"));
       setIsError(true);
     } finally { setSaving(false); }
   };

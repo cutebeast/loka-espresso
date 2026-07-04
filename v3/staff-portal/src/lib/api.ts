@@ -1,3 +1,5 @@
+import { setAuthCookie, clearAuthCookie } from "@/lib/cookies";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 function getAuthHeaders(): HeadersInit {
@@ -25,6 +27,7 @@ function clearAuthStorage(): void {
   localStorage.removeItem("isAdmin");
   localStorage.removeItem("pos_active_cart");
   localStorage.removeItem("pos_held_orders");
+  clearAuthCookie();
 }
 
 /* ------------------------------------------------------------------ */
@@ -51,6 +54,7 @@ export async function refreshToken(): Promise<boolean> {
       const data = json.data || json;
       if (data.tokens?.access_token) {
         localStorage.setItem("token", data.tokens.access_token);
+        setAuthCookie(data.tokens.access_token);
         if (data.tokens.refresh_token) localStorage.setItem("refreshToken", data.tokens.refresh_token);
         return true;
       }
@@ -309,6 +313,7 @@ export async function staffLogin(email: string, password: string, storeId?: numb
   const refresh = data.tokens?.refresh_token;
   if (token) {
     localStorage.setItem("token", token);
+    setAuthCookie(token);
     if (refresh) localStorage.setItem("refreshToken", refresh);
     if (data.profile) {
       localStorage.setItem("staffProfile", JSON.stringify(data.profile));
@@ -332,6 +337,7 @@ export async function staffLoginByName(name: string, pin: string, storeId: numbe
   const refresh = data.tokens?.refresh_token;
   if (token) {
     localStorage.setItem("token", token);
+    setAuthCookie(token);
     if (refresh) localStorage.setItem("refreshToken", refresh);
     if (data.profile) {
       localStorage.setItem("staffProfile", JSON.stringify(data.profile));

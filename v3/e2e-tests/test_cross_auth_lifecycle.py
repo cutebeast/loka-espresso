@@ -63,9 +63,10 @@ async def test_customer_token_refresh(
 @pytest.mark.asyncio
 async def test_staff_token_refresh(client: httpx.AsyncClient, base_url: str, store_id: int):
     """Staff can login with email+password and refresh token via POST /staff/auth/refresh."""
+    # Use the seeded Test Staff credentials, not the admin fallback.
     r = await client.post(f"{base_url}/staff/auth/login", json={
-        "email": ADMIN_EMAIL,
-        "password": ADMIN_PASSWORD,
+        "email": "teststaff@lokaespresso.my",
+        "password": "TestStaff123!",
         "store_id": store_id,
     })
     assert r.status_code == 200, f"Staff login failed: {r.text}"
