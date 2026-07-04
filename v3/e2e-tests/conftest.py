@@ -581,17 +581,24 @@ def cleanup_registry():
     if tracked_ids:
         _purge_customer_records(tracked_ids)
 
-    # Safety net: purge any other customers that match the e2e email prefix
+    # Safety net: purge any other customers that match known test email patterns
     # (catches tests that register customers but forget to add them to the registry).
     try:
         sync_url = _get_database_url()
         conn = psycopg2.connect(sync_url)
         cur = conn.cursor()
-        cur.execute("SELECT id FROM customers WHERE email_address LIKE 'e2e_%'")
+        cur.execute(
+            """
+            SELECT id FROM customers
+            WHERE email_address LIKE 'e2e_%%'
+               OR email_address LIKE '%%@example.com'
+               OR email_address LIKE '%%@test.com'
+            """
+        )
         leftover_ids = [r[0] for r in cur.fetchall()]
         conn.close()
         if leftover_ids:
-            logger.info("[cleanup] Purging %d leftover e2e customers not in registry", len(leftover_ids))
+            logger.info("[cleanup] Purging %d leftover test customers not in registry", len(leftover_ids))
             _purge_customer_records(leftover_ids)
     except Exception:
-        logger.warning("[cleanup] Failed to purge leftover e2e customers", exc_info=True)
+        logger.warning("[cleanup] Failed to purge leftover test customers", exc_info=True)

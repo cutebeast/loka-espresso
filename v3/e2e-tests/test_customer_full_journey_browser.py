@@ -50,7 +50,7 @@ def page():
 
 
 @pytest.mark.asyncio
-async def test_api_customer_journey():
+async def test_api_customer_journey(cleanup_registry: dict):
     """Full customer journey via API (no browser) — mirrors what the PWA does."""
     import httpx
 
@@ -74,6 +74,7 @@ async def test_api_customer_journey():
             json={"email_address": email, "display_name": f"Journey {ts}"},
         )
         assert r_reg.status_code == 201, f"Register failed: {r_reg.text}"
+        cleanup_registry["customers"].append({"id": r_reg.json()["user_id"]})
         token = r_reg.json()["tokens"]["access_token"]
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
