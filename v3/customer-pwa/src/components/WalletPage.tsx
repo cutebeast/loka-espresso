@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ArrowLeft,
   Wallet,
@@ -31,7 +31,7 @@ const TOPUP_LABELS = ['wallet.labelStarter', 'wallet.labelPopular', 'wallet.labe
 export default function WalletPage() {
   const { t } = useTranslation();
   const { balance, transactions, setTransactions } = useWalletStore();
-  const { setPage, showToast } = useUIStore();
+  const { setPage, showToast, pageParams } = useUIStore();
   const config = useConfigStore((s) => s.config);
 
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
@@ -64,10 +64,36 @@ export default function WalletPage() {
     }
   }, [setTransactions]);
 
+  const returnHandledRef = useRef(false);
+
   useEffect(() => {
     fetchBalance();
     fetchTransactions();
   }, [fetchBalance, fetchTransactions]);
+
+  // Handle return from Stripe Checkout wallet top-up
+  useEffect(() => {
+    if (returnHandledRef.current) return;
+    const status = pageParams?.status as string | undefined;
+    const sessionId = pageParams?.topup_session as string | undefined;
+    if (!status || !sessionId) return;
+    returnHandledRef.current = true;
+
+    const handleReturn = async () => {
+      if (status === 'success' || status === 'completed') {
+        await fetchBalance();
+        await fetchTransactions();
+        showToast(t('toast.topUpSuccessReturn'), 'success');
+      } else if (status === 'cancel' || status === 'canceled' || status === 'failed') {
+        showToast(t('toast.topUpFailed'), 'error');
+      }
+      // Clean hash params so a refresh doesn't re-trigger the toast
+      if (typeof window !== 'undefined' && window.location.hash.includes('topup_session')) {
+        window.location.hash = 'wallet';
+      }
+    };
+    handleReturn();
+  }, [pageParams, fetchBalance, fetchTransactions, showToast, t]);
 
   const handleSelectAmount = (amount: number) => {
     setSelectedAmount(amount);
@@ -104,7 +130,7 @@ export default function WalletPage() {
     try {
       const res = await api.post('/wallet/topup/checkout', {
         amount,
-        return_url: typeof window !== 'undefined' ? `${window.location.origin}/wallet` : undefined,
+        return_url: typeof window !== 'undefined' ? `${window.location.origin}/#wallet` : undefined,
       });
       if (res.data?.checkout_url) {
         window.location.href = res.data.checkout_url;

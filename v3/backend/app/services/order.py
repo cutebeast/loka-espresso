@@ -3,7 +3,7 @@
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import select, func
+from sqlalchemy import inspect as sa_inspect, select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -219,11 +219,16 @@ def _build_order_out(order: Order):
     Shared utility used by admin and customer order endpoints."""
     from app.schemas.order import OrderOut
     order_dict = {c: getattr(order, c) for c in order.__table__.columns.keys()}
-    # Merge fulfillment fields when the relationship is available.
-    if order.fulfillment:
-        order_dict.setdefault("delivery_address", order.fulfillment.delivery_address_snapshot)
-        order_dict.setdefault("recipient_name", order.fulfillment.recipient_name)
-        order_dict.setdefault("recipient_phone", order.fulfillment.recipient_phone)
+    # Merge fulfillment fields only when the relationship is already loaded.
+    # In async SQLAlchemy, touching an unloaded relationship after the session
+    # has closed raises MissingGreenlet; we avoid that by checking load state.
+    insp = sa_inspect(order)
+    if "fulfillment" not in insp.unloaded:
+        fulfillment = order.fulfillment
+        if fulfillment:
+            order_dict.setdefault("delivery_address", fulfillment.delivery_address_snapshot)
+            order_dict.setdefault("recipient_name", fulfillment.recipient_name)
+            order_dict.setdefault("recipient_phone", fulfillment.recipient_phone)
     return OrderOut.model_validate(order_dict)
 
 

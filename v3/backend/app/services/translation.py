@@ -1,5 +1,6 @@
 """Translation service layer — DeepL + DeepSeek v4 Pro integration, content merging, CRUD hooks."""
 
+import asyncio
 import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
@@ -144,6 +145,26 @@ async def _call_deepseek(text: str, target_locale: str) -> str | None:
         return None
 
 
+async def _fetch_translation(text: str, target_locale: str) -> str | None:
+    """Call translation providers without touching the database.
+    Primary: DeepL → Fallback: DeepSeek → Last resort: None.
+    Returns translated text or None if both providers fail."""
+    # Ensure creds are loaded from DB; _get_translation_creds handles its own cache.
+    await _get_translation_creds()
+
+    translated = await _call_deepl(text, target_locale)
+    if translated is not None:
+        return translated
+
+    translated = await _call_deepseek(text, target_locale)
+    if translated is not None:
+        logger.info(f"DeepSeek success for {target_locale}: {translated[:30]}")
+        return translated
+
+    logger.warning(f"DeepSeek also failed for {target_locale}, using English fallback")
+    return None
+
+
 async def auto_translate_text(
     db: AsyncSession,
     text: str,
@@ -166,19 +187,7 @@ async def auto_translate_text(
 
     ctx.misses += 1
 
-    # Ensure creds are loaded from DB
-    await _get_translation_creds(db)
-
-    # Try DeepL first (limited language support)
-    translated = await _call_deepl(text, target_locale)
-    # Fallback to DeepSeek v4 Pro (supports all languages)
-    if translated is None:
-        translated = await _call_deepseek(text, target_locale)
-        if translated is not None:
-            logger.info(f"DeepSeek success for {target_locale}: {translated[:30]}")
-        else:
-            logger.warning(f"DeepSeek also failed for {target_locale}, using English fallback")
-    # Last resort: keep English
+    translated = await _fetch_translation(text, target_locale)
     if translated is None:
         translated = text
 
@@ -253,21 +262,60 @@ async def auto_translate_record(
     fields: dict[str, str],
 ) -> int:
     """Auto-translate all fields for all supported locales on create/update.
-    Uses retry-on-conflict for concurrent upsert safety."""
+    Uses retry-on-conflict for concurrent upsert safety.
+    API calls for missing translations are executed concurrently to reduce latency."""
     columns = TRANSLATABLE_ENTITIES.get(table_name, [])
-    ops: list[dict] = []
+    if not columns:
+        return 0
 
+    # Build the list of (column, locale, text) we need translations for.
+    needed: list[tuple[str, str, str]] = []
     for col in columns:
         text = fields.get(col)
         if not text or not isinstance(text, str) or not text.strip():
             continue
         for loc in SUPPORTED_LOCALES:
-            translated, _ = await auto_translate_text(db, text, SOURCE_LOCALE, loc)
-            ops.append({"col": col, "loc": loc, "text": text, "translated": translated})
+            needed.append((col, loc, text))
 
-    if not ops:
+    if not needed:
         return 0
 
+    # Load credentials once so concurrent API calls can reuse the in-memory cache.
+    await _get_translation_creds(db)
+
+    # Check the translation cache for all needed items in a single query.
+    hashes = {_compute_hash(SOURCE_LOCALE, loc, text) for _, loc, text in needed}
+    cache_result = await db.execute(
+        select(TranslationCache).where(TranslationCache.hash.in_(hashes))
+    )
+    cache_map = {c.hash: c.translated_text for c in cache_result.scalars().all()}
+
+    ops: list[dict] = []
+    missing_tasks: list[asyncio.Task] = []
+    missing_meta: list[tuple[str, str, str, str]] = []  # col, loc, text, cache_hash
+
+    for col, loc, text in needed:
+        cache_hash = _compute_hash(SOURCE_LOCALE, loc, text)
+        cached = cache_map.get(cache_hash)
+        if cached is not None:
+            ops.append({"col": col, "loc": loc, "text": text, "translated": cached})
+        else:
+            task = asyncio.create_task(_fetch_translation(text, loc))
+            missing_tasks.append(task)
+            missing_meta.append((col, loc, text, cache_hash))
+
+    # Fetch missing translations concurrently.
+    if missing_tasks:
+        fetched = await asyncio.gather(*missing_tasks, return_exceptions=True)
+        for (col, loc, text, cache_hash), translated in zip(missing_meta, fetched):
+            if isinstance(translated, Exception):
+                logger.warning(f"Translation fetch failed for {loc}: {translated}")
+                translated = None
+            translated = translated or text  # Fallback to source text.
+            ops.append({"col": col, "loc": loc, "text": text, "translated": translated})
+            cache_map[cache_hash] = translated
+
+    # Upsert Translation records.
     for attempt in range(2):
         try:
             count = 0
@@ -302,6 +350,18 @@ async def auto_translate_record(
                     )
                     db.add(new_t)
                 count += 1
+
+            # Persist new cache entries in the same transaction.
+            for _, loc, text, cache_hash in missing_meta:
+                translated = cache_map[cache_hash]
+                db.add(TranslationCache(
+                    source_text=text,
+                    source_locale=SOURCE_LOCALE,
+                    target_locale=loc,
+                    translated_text=translated,
+                    hash=cache_hash,
+                ))
+
             await db.commit()
             return count
         except IntegrityError:

@@ -886,8 +886,7 @@ async def pay_with_wallet(
     db.add(payment)
 
     # Update order payment status if order is fully paid
-    order.captured_amount = money_round(to_decimal(order.captured_amount or 0) + amount, precision, rounding_mode)
-    new_total_paid = money_round(to_decimal(order.captured_amount), precision, rounding_mode)
+    new_total_paid = money_round(already_paid + amount, precision, rounding_mode)
     if new_total_paid >= to_decimal(order.total_amount):
         order.payment_status = "captured"
     order.updated_at = now

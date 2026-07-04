@@ -1,9 +1,13 @@
 """Shared fixtures for FNB v3 E2E API test suite."""
 
+import hashlib
+import hmac
+import json
+import logging
 import os
 import sys
+import time
 import jwt as pyjwt
-import logging
 import pytest
 import pytest_asyncio
 from datetime import datetime, timezone
@@ -83,6 +87,50 @@ def _is_token_expired(token: str) -> bool:
         return now >= exp - 60
     except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError, pyjwt.DecodeError):
         return True
+
+
+def _get_database_url() -> str:
+    """Return the sync PostgreSQL URL used by the backend."""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        backend_env = os.path.join(os.path.dirname(__file__), "..", "backend", ".env")
+        if os.path.exists(backend_env):
+            with open(backend_env, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("DATABASE_URL="):
+                        db_url = line.split("=", 1)[1]
+                        break
+    if not db_url:
+        db_url = "postgresql://fnb_user:fnb_pass@localhost:13334/fnb_enterprise_v3"
+    return db_url.replace("postgresql+asyncpg://", "postgresql://")
+
+
+def _get_stripe_webhook_secret() -> str | None:
+    """Read the configured Stripe webhook secret from platform_config."""
+    try:
+        import psycopg2
+        conn = psycopg2.connect(_get_database_url())
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT config_value FROM platform_config WHERE config_key = 'stripe.webhook_secret' LIMIT 1"
+        )
+        row = cur.fetchone()
+        conn.close()
+        if row and row[0]:
+            return row[0]
+    except Exception as e:
+        logger.warning("Failed to read stripe.webhook_secret from DB: %s", e)
+    return os.getenv("STRIPE_WEBHOOK_SECRET") or None
+
+
+def sign_stripe_webhook_payload(payload: dict, secret: str, timestamp: int | None = None) -> str:
+    """Generate a Stripe-Signature header value for a synthetic webhook event."""
+    ts = timestamp or int(time.time())
+    payload_bytes = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    signed_payload = f"{ts}.".encode("utf-8") + payload_bytes
+    signature = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
+    return f"t={ts},v1={signature}"
 
 
 # ---------------------------------------------------------------------------
@@ -255,21 +303,7 @@ def _ensure_baseline_data(base_url: str, _admin_token_session: str):
     # Unlock any locked staff accounts so PIN login tests don't hit 423
     try:
         import psycopg2
-        db_url = os.getenv("DATABASE_URL")
-        if not db_url:
-            backend_env = os.path.join(os.path.dirname(__file__), "..", "backend", ".env")
-            if os.path.exists(backend_env):
-                with open(backend_env, "r") as f:
-                    for line in f:
-                        line = line.strip()
-                        if line.startswith("DATABASE_URL="):
-                            db_url = line.split("=", 1)[1]
-                            break
-        if not db_url:
-            db_url = "postgresql://fnb_user:fnb_pass@localhost:13334/fnb_enterprise_v3"
-        # Strip asyncpg prefix for sync connection
-        sync_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
-        conn = psycopg2.connect(sync_url)
+        conn = psycopg2.connect(_get_database_url())
         cur = conn.cursor()
         cur.execute(
             "UPDATE staff_profiles SET locked_until = NULL, failed_login_count = 0 WHERE locked_until IS NOT NULL"
@@ -280,6 +314,33 @@ def _ensure_baseline_data(base_url: str, _admin_token_session: str):
         conn.close()
     except Exception as e:
         logger.warning("Failed to unlock staff accounts: %s", e)
+
+    # Replenish inventory stock so order-creation tests don't hit "Insufficient stock".
+    try:
+        import psycopg2
+        conn = psycopg2.connect(_get_database_url())
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO inventory_stock (inventory_item_id, store_id, current_stock, reserved_stock, reorder_level, reorder_quantity, par_level)
+            SELECT ii.id, s.id, 10000, 0, 100, 1000, 10000
+            FROM inventory_items ii
+            CROSS JOIN stores s
+            WHERE s.deleted_at IS NULL
+            ON CONFLICT (inventory_item_id, store_id)
+            DO UPDATE SET current_stock = EXCLUDED.current_stock,
+                          reserved_stock = EXCLUDED.reserved_stock,
+                          reorder_level = EXCLUDED.reorder_level,
+                          reorder_quantity = EXCLUDED.reorder_quantity,
+                          par_level = EXCLUDED.par_level
+            """
+        )
+        if cur.rowcount > 0:
+            logger.info("Replenished stock for %d inventory/store combinations", cur.rowcount)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed to replenish inventory stock: %s", e)
 
     try:
         with httpx.Client(timeout=15.0) as c:

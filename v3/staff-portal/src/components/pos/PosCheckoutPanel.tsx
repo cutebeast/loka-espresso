@@ -67,6 +67,7 @@ interface PosCheckoutPanelProps {
   onApplyReward: (id: number) => void;
   onWalletPayment: (amount: number) => void;
   onCheckout: () => void;
+  stripeEnabled?: boolean | null;
 }
 
 export default function PosCheckoutPanel({
@@ -78,6 +79,7 @@ export default function PosCheckoutPanel({
   onSetShowDiscounts, onSetCustomer, onSetWalletData,
   onSetError, onSetMsg, onScanCustomer,
   onApplyVoucher, onApplyReward, onWalletPayment, onCheckout,
+  stripeEnabled,
 }: PosCheckoutPanelProps) {
   const voucherDisc = Number(order.voucher_discount ?? 0);
   const rewardDisc = Number(order.reward_discount ?? 0);
@@ -228,12 +230,21 @@ export default function PosCheckoutPanel({
       <div className="card" style={{ marginBottom: 16 }}>
         <h4 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700 }}>Payment</h4>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          {(["cash", "card", "stripe_qr"] as PaymentMethod[]).map((m) => (
-            <button key={m} className={`btn flex-1 ${paymentMethod === m ? "btn-primary" : "btn-ghost"}`} onClick={() => onSetPaymentMethod(m)}>
-              {m === "cash" ? <Banknote size={16} /> : m === "card" ? <CreditCard size={16} /> : <Smartphone size={16} />}
-              {m === "stripe_qr" ? "QR" : m.toUpperCase()}
-            </button>
-          ))}
+          {(["cash", "card", "stripe_qr"] as PaymentMethod[]).map((m) => {
+            const disabled = m === "stripe_qr" && stripeEnabled === false;
+            return (
+              <button
+                key={m}
+                className={`btn flex-1 ${paymentMethod === m ? "btn-primary" : "btn-ghost"} ${disabled ? "btn-disabled" : ""}`}
+                onClick={() => !disabled && onSetPaymentMethod(m)}
+                disabled={disabled}
+                title={disabled ? "Stripe is not configured" : undefined}
+              >
+                {m === "cash" ? <Banknote size={16} /> : m === "card" ? <CreditCard size={16} /> : <Smartphone size={16} />}
+                {m === "stripe_qr" ? "QR" : m.toUpperCase()}
+              </button>
+            );
+          })}
         </div>
 
         {paymentMethod === "cash" && (

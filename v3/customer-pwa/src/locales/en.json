@@ -448,6 +448,7 @@
     "cardRemoved": "Card removed",
     "defaultCardUpdated": "Default card updated",
     "topUpSuccess": "Successfully topped up {amount}",
+    "topUpSuccessReturn": "Wallet topped up successfully",
     "topUpFailed": "Top-up failed. Please try again.",
     "codeCopied": "Code copied!",
     "linkCopied": "Link copied!",

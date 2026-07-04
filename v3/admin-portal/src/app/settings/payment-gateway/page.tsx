@@ -35,7 +35,7 @@ const PUBLIC_URL_KEYS = [
   { key: "staff.public_url", label: "Staff Portal Public URL", type: "text" },
 ];
 
-const STRIPE_METHOD_OPTIONS = ["card", "fpx", "grabpay", "alipay"];
+const STRIPE_METHOD_OPTIONS = ["card", "fpx", "grabpay", "alipay", "duitnow", "touchngo"];
 const HITPAY_METHOD_OPTIONS = ["duitnow", "touch_n_go", "paynow_online", "boost", "shopee_pay", "grabpay", "fpx", "card"];
 
 const LABEL_MAP: Record<string, string> = Object.fromEntries(
@@ -86,21 +86,24 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   );
 }
 
-function WebhookHint() {
+function WebhookHint({ provider }: { provider: "stripe" | "hitpay" }) {
   const [origin, setOrigin] = useState("");
   useEffect(() => {
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin.replace(/^http:/, "https:"));
     }
   }, []);
+  const isStripe = provider === "stripe";
   return (
     <div style={{ background: "var(--color-bg-soft, #f9fafb)", borderRadius: "var(--radius-sm)", padding: 12, fontSize: 13 }}>
       <strong>Webhook URL:</strong>
       <code style={{ display: "block", marginTop: 4, wordBreak: "break-all" }}>
-        {origin}/api/webhooks/hitpay
+        {origin}/api/webhooks/{provider}
       </code>
       <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 6 }}>
-        Register this URL in your HitPay dashboard under Developers → Webhook Endpoints.
+        {isStripe
+          ? "Register this URL in your Stripe dashboard under Developers → Webhook Endpoints. Subscribe to: payment_intent.succeeded, payment_intent.payment_failed, payment_intent.canceled, checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, charge.dispute.created."
+          : "Register this URL in your HitPay dashboard under Developers → Webhook Endpoints."}
       </p>
     </div>
   );
@@ -370,6 +373,7 @@ export default function PaymentGatewaySettingsPage() {
               <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 8 }}>
                 Select the Stripe-enabled methods for your currency.
               </p>
+              <WebhookHint provider="stripe" />
             </div>
           </div>
         </div>
@@ -411,7 +415,7 @@ export default function PaymentGatewaySettingsPage() {
                 Recommended for Malaysia/Singapore local methods only (DuitNow, Touch &apos;n Go, PayNow). Card/e-wallets can stay on Stripe.
               </p>
             </div>
-            <WebhookHint />
+            <WebhookHint provider="hitpay" />
           </div>
         </div>
 

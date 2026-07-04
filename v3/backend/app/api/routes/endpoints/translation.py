@@ -134,49 +134,6 @@ async def upsert_translation(
         return APIResponse(data=TranslationOut.model_validate(translation))
 
 
-@router.get("/{translation_id}", response_model=APIResponse[TranslationOut])
-async def get_translation(
-    db: DBDependency,
-    translation_id: int,
-):
-    """Get a single translation by ID."""
-    translation = await _get_translation_or_404(db, translation_id)
-    return APIResponse(data=TranslationOut.model_validate(translation))
-
-
-@router.put("/{translation_id}", response_model=APIResponse[TranslationOut])
-async def update_translation(
-    db: DBDependency,
-    admin: CurrentAdmin,
-    translation_id: int,
-    data: TranslationUpdate,
-):
-    """Update a translation."""
-    translation = await _get_translation_or_404(db, translation_id)
-
-    update_data = data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(translation, field, value)
-
-    translation.updated_at = datetime.now(timezone.utc)
-    await db.commit()
-    await db.refresh(translation)
-    return APIResponse(data=TranslationOut.model_validate(translation))
-
-
-@router.delete("/{translation_id}", response_model=APIResponse[dict])
-async def delete_translation(
-    db: DBDependency,
-    admin: CurrentAdmin,
-    translation_id: int,
-):
-    """Delete a translation."""
-    translation = await _get_translation_or_404(db, translation_id)
-    await db.delete(translation)
-    await db.commit()
-    return APIResponse(data={"id": translation.id, "deleted": True})
-
-
 @router.post("/translate", response_model=APIResponse[TranslateResponse])
 async def translate_text(
     db: DBDependency,
@@ -221,6 +178,49 @@ async def clear_cache(
     """Clear old translation cache entries (admin only)."""
     deleted = await clear_old_cache(db, days)
     return APIResponse(data={"deleted": deleted})
+
+
+@router.get("/{translation_id}", response_model=APIResponse[TranslationOut])
+async def get_translation(
+    db: DBDependency,
+    translation_id: int,
+):
+    """Get a single translation by ID."""
+    translation = await _get_translation_or_404(db, translation_id)
+    return APIResponse(data=TranslationOut.model_validate(translation))
+
+
+@router.put("/{translation_id}", response_model=APIResponse[TranslationOut])
+async def update_translation(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    translation_id: int,
+    data: TranslationUpdate,
+):
+    """Update a translation."""
+    translation = await _get_translation_or_404(db, translation_id)
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(translation, field, value)
+
+    translation.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(translation)
+    return APIResponse(data=TranslationOut.model_validate(translation))
+
+
+@router.delete("/{translation_id}", response_model=APIResponse[dict])
+async def delete_translation(
+    db: DBDependency,
+    admin: CurrentAdmin,
+    translation_id: int,
+):
+    """Delete a translation."""
+    translation = await _get_translation_or_404(db, translation_id)
+    await db.delete(translation)
+    await db.commit()
+    return APIResponse(data={"id": translation.id, "deleted": True})
 
 
 @router.post("/sync-to-json", response_model=APIResponse[dict])

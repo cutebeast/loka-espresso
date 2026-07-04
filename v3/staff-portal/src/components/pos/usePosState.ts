@@ -20,6 +20,7 @@ import {
   type MenuItem, type Category, type Customer, type Table,
   type Reward, type Voucher, type BundleProduct
 } from "@/lib/api";
+import { api } from "@/lib/api";
 import { usePosCart, type HeldOrder } from "./usePosCart";
 import { usePosCustomer } from "./usePosCustomer";
 import { usePosCheckout } from "./usePosCheckout";
@@ -90,6 +91,7 @@ export function usePosState() {
   const [successChange, setSuccessChange] = useState(0);
   const [qrPayment, setQrPayment] = useState<QrPaymentState | null>(null);
   const [pickerBundle, setPickerBundle] = useState<BundleProduct | null>(null);
+  const [stripeEnabled, setStripeEnabled] = useState<boolean | null>(null);
 
   // Runtime helpers
   const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
@@ -139,6 +141,16 @@ export function usePosState() {
 
         if (checkoutOrderId) {
           await checkoutHook.loadCheckoutOrder(checkoutOrderId);
+        }
+
+        // Load payment gateway config so we can disable QR when Stripe is off
+        try {
+          const configRes = await api.get<{ stripe_enabled?: boolean }>("/payments/config");
+          const cfg = configRes || {};
+          setStripeEnabled(Boolean(cfg.stripe_enabled));
+        } catch (cfgErr) {
+          console.error("Failed to load payment gateway config:", cfgErr);
+          setStripeEnabled(false);
         }
       } catch (e: unknown) {
         if (mounted) setError((e as Error).message);
@@ -612,6 +624,7 @@ export function usePosState() {
 
     // Payment
     paymentMethod, setPaymentMethod,
+    stripeEnabled,
     amountTendered, setAmountTendered,
     discountAmount, setDiscountAmount,
     tipAmount, setTipAmount,

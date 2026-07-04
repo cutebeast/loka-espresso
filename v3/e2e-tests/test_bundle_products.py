@@ -8,6 +8,7 @@ import pytest
 import httpx
 import asyncio
 import random
+import uuid
 
 from conftest import ADMIN_EMAIL, ADMIN_PASSWORD, BASE_URL
 
@@ -82,7 +83,7 @@ async def _ensure_category_id(client: httpx.AsyncClient, base_url: str, admin_he
 
 
 async def _create_test_menu_item(client: httpx.AsyncClient, base_url: str, admin_headers: dict, suffix: str, category_id: int, price: float = 10.0):
-    token = f"{suffix}-{random.randint(1000, 9999)}"
+    token = f"{suffix}-{uuid.uuid4().hex[:8].upper()}"
     r = await client.post(
         f"{base_url}/admin/menu/items",
         headers=admin_headers,

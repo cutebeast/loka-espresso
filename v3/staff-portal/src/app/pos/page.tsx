@@ -102,6 +102,7 @@ export default function PosPage() {
         onApplyReward={pos.handleApplyCheckoutReward}
         onWalletPayment={pos.handleCheckoutWalletPayment}
         onCheckout={pos.handleCheckout}
+        stripeEnabled={pos.stripeEnabled}
       />
     );
   }
