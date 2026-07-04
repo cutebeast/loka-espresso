@@ -1,7 +1,21 @@
  
 import { STORAGE_KEYS, API as API_CONST } from "./constants";
 
-export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+function resolveApiBase(): string {
+  const envUrl = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_API_URL : undefined;
+  if (
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+  ) {
+    if (!envUrl || envUrl.startsWith("/")) {
+      return "http://127.0.0.1:13800/api";
+    }
+    return envUrl;
+  }
+  return envUrl && envUrl.startsWith("http") ? envUrl : "/api";
+}
+
+export const BASE_URL = resolveApiBase();
 
 function createAbortController(timeoutMs = API_CONST.DEFAULT_TIMEOUT_MS): { signal: AbortSignal; clear: () => void } {
   if (typeof AbortController === "undefined") return { signal: undefined as unknown as AbortSignal, clear: () => {} };
