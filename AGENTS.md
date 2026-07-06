@@ -54,7 +54,7 @@ pytest -q
 ## Known quirks
 
 - Backend `ENVIRONMENT=production` on the dev server disables OpenAPI docs, so `scripts/validate-routes.py` falls back to generating the schema from code.
-- `otp.bypass_enabled` is now seeded `false` for production safety. The E2E suite re-enables it temporarily via the admin API at session start.
+- `otp.bypass_enabled` is seeded `true` by default so dev/E2E can log in without Twilio credentials. **Disable it on the live server** and rotate `otp.bypass_code` if an emergency fallback is kept.
 - `currency.default` is seeded `"MYR"`; wallets created without an explicit currency use this value.
 - All three portals use HttpOnly cookie auth:
   - Admin: `admin_token` / `admin_refresh_token`
