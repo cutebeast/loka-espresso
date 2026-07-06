@@ -6,41 +6,47 @@ import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { LanguageSelectorModal } from '@/components/shared/LanguageSelectorModal';
 import api from '@/lib/api';
-
 export default function SettingsPage() {
-  const { setPage } = useUIStore();
-  const { t, locale } = useTranslation();
+  const {
+    setPage
+  } = useUIStore();
+  const {
+    t,
+    locale
+  } = useTranslation();
   const [showLangSheet, setShowLangSheet] = useState(false);
   const [aboutText, setAboutText] = useState('');
   const [appVersion, setAppVersion] = useState('0.1.0');
-
   useEffect(() => {
-    api.get('/content/legal/about')
-      .then((res) => {
-        // v3 returns array of content blocks; find the "about" or "system" type
-        const data = res.data;
-        let desc = null;
-        if (Array.isArray(data)) {
-          const aboutBlock = data.find((b: { content_type?: string; block_key?: string; block_name?: string; long_description?: string; body_text?: string; short_description?: string }) => 
-            b.content_type === 'system' || b.block_key === 'about' || b.block_name?.toLowerCase().includes('about')
-          );
-          desc = aboutBlock?.long_description || aboutBlock?.body_text || aboutBlock?.short_description;
-        } else if (data && typeof data === 'object') {
-          desc = data.long_description || data.body_text;
-        }
-        if (desc) setAboutText(desc);
-        else setAboutText(t('settings.aboutFallback'));
-      })
-      .catch((err) => { console.error('[Settings] About fetch failed:', err); setAboutText(t('settings.aboutFallback')); });
-
-    fetch('/version.json')
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (data?.version) setAppVersion(data.version); })
-      .catch((err) => { console.error('[Settings] Version fetch failed:', err); });
+    api.get('/content/legal/about').then(res => {
+      // v3 returns array of content blocks; find the "about" or "system" type
+      const data = res.data;
+      let desc = null;
+      if (Array.isArray(data)) {
+        const aboutBlock = data.find((b: {
+          content_type?: string;
+          block_key?: string;
+          block_name?: string;
+          long_description?: string;
+          body_text?: string;
+          short_description?: string;
+        }) => b.content_type === 'system' || b.block_key === 'about' || b.block_name?.toLowerCase().includes('about'));
+        desc = aboutBlock?.long_description || aboutBlock?.body_text || aboutBlock?.short_description;
+      } else if (data && typeof data === 'object') {
+        desc = data.long_description || data.body_text;
+      }
+      if (desc) setAboutText(desc);else setAboutText(t('settings.aboutFallback'));
+    }).catch(err => {
+      console.error('[Settings] About fetch failed:', err);
+      setAboutText(t('settings.aboutFallback'));
+    });
+    fetch('/version.json').then(res => res.ok ? res.json() : null).then(data => {
+      if (data?.version) setAppVersion(data.version);
+    }).catch(err => {
+      console.error('[Settings] Version fetch failed:', err);
+    });
   }, [t]);
-
-  return (
-    <div className="settings-screen">
+  return <div className="settings-screen">
       <div className="sub-page-header">
         <div className="sub-header-left">
           <button className="sub-back-btn" onClick={() => setPage('profile')} aria-label={t('common.back')}>
@@ -55,10 +61,7 @@ export default function SettingsPage() {
         {/* Language */}
         <div className="settings-section-title">{t('settings.language')}</div>
         <div className="settings-menu-card">
-          <button
-            className="settings-menu-item"
-            onClick={() => setShowLangSheet(true)}
-          >
+          <button className="settings-menu-item" onClick={() => setShowLangSheet(true)}>
             <div className="settings-menu-icon settings-icon-language">
               <Globe size={18} />
             </div>
@@ -72,14 +75,20 @@ export default function SettingsPage() {
         {/* Privacy & Legal */}
         <div className="settings-section-title">{t('settings.privacyLegal')}</div>
         <div className="settings-menu-card">
-          <button className="settings-menu-item" onClick={() => setPage('legal', { legalKey: 'terms', backTo: 'settings' })}>
+          <button className="settings-menu-item" onClick={() => setPage('legal', {
+          legalKey: 'terms',
+          backTo: 'settings'
+        })}>
             <div className="settings-menu-icon settings-icon-terms">
               <FileText size={18} />
             </div>
             <span className="settings-menu-label">{t('settings.termsOfService')}</span>
             <ChevronRight size={16} className="settings-menu-arrow" />
           </button>
-          <button className="settings-menu-item" onClick={() => setPage('legal', { legalKey: 'privacy', backTo: 'settings' })}>
+          <button className="settings-menu-item" onClick={() => setPage('legal', {
+          legalKey: 'privacy',
+          backTo: 'settings'
+        })}>
             <div className="settings-menu-icon settings-icon-privacy">
               <Shield size={18} />
             </div>
@@ -95,7 +104,7 @@ export default function SettingsPage() {
             <div className="settings-about-dot">
               <Coffee size={12} color="#fff" />
             </div>
-            <h3 className="settings-about-title">LOKA Espresso</h3>
+            <h3 className="settings-about-title">{t("profile.settings_page.loka_espresso")}</h3>
           </div>
           <p className="settings-about-desc">{aboutText}</p>
         </div>
@@ -107,10 +116,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <LanguageSelectorModal
-        isOpen={showLangSheet}
-        onClose={() => setShowLangSheet(false)}
-      />
-    </div>
-  );
+      <LanguageSelectorModal isOpen={showLangSheet} onClose={() => setShowLangSheet(false)} />
+    </div>;
 }

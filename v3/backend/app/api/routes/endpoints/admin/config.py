@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.api.routes.deps import CurrentAdmin, DBDependency
 from app.models.platform import PlatformConfig
 from app.schemas.base import APIResponse
+from app.services.translation import clear_translation_creds_cache
 
 router = APIRouter(prefix="/admin/config", tags=["admin — config"])
 
@@ -89,6 +90,11 @@ async def update_config(
         config.config_value = effective_value
     await db.commit()
     await db.refresh(config)
+
+    # Invalidate the in-memory translation credentials cache so key/model
+    # changes take effect immediately instead of waiting up to 60s.
+    if effective_key.startswith(("integration.deepseek", "integration.deepl")):
+        clear_translation_creds_cache()
 
     return APIResponse(
         data={

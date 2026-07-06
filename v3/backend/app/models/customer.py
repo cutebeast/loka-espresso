@@ -49,6 +49,8 @@ class Customer(Base, SoftDeleteMixin):
     order_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_order_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    marketing_opt_out: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    marketing_opt_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

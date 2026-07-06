@@ -1,22 +1,37 @@
 "use client";
+
+import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { ChevronLeft, ChevronRight, Download, ChevronDown, ChevronUp } from "lucide-react";
-
 const PAGE_SIZE = 10;
-
 interface Survey {
-  id: number; survey_name: string; is_active: boolean;
-  question_count?: number; response_count?: number;
+  id: number;
+  survey_name: string;
+  is_active: boolean;
+  question_count?: number;
+  response_count?: number;
 }
-interface Answer { question_id: number; question_text?: string; question_type?: string; answer_value?: string; }
+interface Answer {
+  question_id: number;
+  question_text?: string;
+  question_type?: string;
+  answer_value?: string;
+}
 interface Response {
-  id: number; customer_id?: number; customer_name?: string; respondent_email?: string;
-  nps_score?: number; overall_satisfaction?: number;
-  created_at: string; answers?: Answer[];
+  id: number;
+  customer_id?: number;
+  customer_name?: string;
+  respondent_email?: string;
+  nps_score?: number;
+  overall_satisfaction?: number;
+  created_at: string;
+  answers?: Answer[];
 }
-
 export default function SurveyReportPage() {
+  const {
+    t
+  } = useTranslation();
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [responses, setResponses] = useState<Response[]>([]);
@@ -25,207 +40,268 @@ export default function SurveyReportPage() {
   const [totalResponses, setTotalResponses] = useState(0);
   const [loading, setLoading] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
-
   useEffect(() => {
-    api.get<{ items: Survey[] }>("/admin/surveys?per_page=100")
-      .then(d => {
-        const list = (Array.isArray(d) ? d : (d.items || [])) as Survey[];
-        setSurveys(list);
-      })
-      .catch((e) => { console.error('surveys:', e); });
+    api.get<{
+      items: Survey[];
+    }>("/admin/surveys?per_page=100").then(d => {
+      const list = (Array.isArray(d) ? d : d.items || []) as Survey[];
+      setSurveys(list);
+    }).catch(e => {
+      console.error('surveys:', e);
+    });
   }, []);
-
   const fetchResponses = useCallback(async (p: number = 1) => {
-    if (!selectedId) return { items: [] as Response[], total: 0, total_pages: 1 };
-    return api.getRaw<{ items: Response[]; total: number; page: number; total_pages: number }>(
-      `/admin/surveys/${selectedId}/responses?page=${p}&per_page=${PAGE_SIZE}`
-    );
+    if (!selectedId) return {
+      items: [] as Response[],
+      total: 0,
+      total_pages: 1
+    };
+    return api.getRaw<{
+      items: Response[];
+      total: number;
+      page: number;
+      total_pages: number;
+    }>(`/admin/surveys/${selectedId}/responses?page=${p}&per_page=${PAGE_SIZE}`);
   }, [selectedId]);
-
-  const applyResponses = useCallback((d: { items: Response[]; total: number; total_pages: number }, p: number) => {
+  const applyResponses = useCallback((d: {
+    items: Response[];
+    total: number;
+    total_pages: number;
+  }, p: number) => {
     setResponses(d.items || []);
     setTotalPages(d.total_pages || 1);
     setTotalResponses(d.total || 0);
     setPage(p);
   }, []);
-
   useEffect(() => {
     let cancelled = false;
     if (selectedId) {
-      fetchResponses(1)
-        .then((d) => { if (!cancelled && d) applyResponses(d, 1); })
-        .finally(() => { if (!cancelled) setLoading(false); });
+      fetchResponses(1).then(d => {
+        if (!cancelled && d) applyResponses(d, 1);
+      }).finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     } else {
       Promise.resolve().then(() => {
-        if (!cancelled) { setResponses([]); setTotalPages(1); setTotalResponses(0); setPage(1); }
+        if (!cancelled) {
+          setResponses([]);
+          setTotalPages(1);
+          setTotalResponses(0);
+          setPage(1);
+        }
       });
     }
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedId, fetchResponses, applyResponses]);
-
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id);else next.add(id);
       return next;
     });
   };
-
   const selected = surveys.find(s => s.id === selectedId);
   const totalNps = responses.reduce((s, r) => s + (r.nps_score || 0), 0);
   const avgNps = responses.length ? (totalNps / responses.length).toFixed(1) : "—";
-
   const renderAnswer = (a: Answer) => {
     const val = a.answer_value;
-    if (!val) return <span style={{ color: "var(--color-text-muted)" }}>—</span>;
+    if (!val) return <span style={{
+      color: "var(--color-text-muted)"
+    }}>—</span>;
     if (a.question_type === "rating_scale") {
       const stars = parseInt(val) || 0;
-      return <span>{Array.from({ length: 5 }, (_, i) => <span key={i} style={{ color: i < stars ? "#F59E0B" : "#D1D5DB" }}>★</span>)}</span>;
+      return <span>{Array.from({
+          length: 5
+        }, (_, i) => <span key={i} style={{
+          color: i < stars ? "#F59E0B" : "#D1D5DB"
+        }}>★</span>)}</span>;
     }
     return <span>{val}</span>;
   };
-
-  return (
-    <div style={{ padding: 32 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+  return <div style={{
+    padding: 32
+  }}>
+      <div style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 24
+    }}>
         <div>
-          <h1 className="page-title" style={{ margin: 0 }}>Survey Report</h1>
-          <p className="page-subtitle" style={{ marginTop: 4 }}>View responses per survey</p>
+          <h1 className="page-title" style={{
+          margin: 0
+        }}>{t("surveys_report.survey_report")}</h1>
+          <p className="page-subtitle" style={{
+          marginTop: 4
+        }}>{t("surveys_report.view_responses_per_survey")}</p>
         </div>
-        {selectedId && (
-          <button
-            className="btn btn-sm btn-outline"
-            onClick={async () => {
-              try {
-                const res = await api.fetchRaw("GET", `/admin/surveys/${selectedId}/responses/export`);
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url; a.download = `survey-${selectedId}-responses.json`; a.click();
-                URL.revokeObjectURL(url);
-              } catch (e) { console.error(e); }
-            }}
-          >
-            <Download size={14} /> Export JSON
-          </button>
-        )}
+        {selectedId && <button className="btn btn-sm btn-outline" onClick={async () => {
+        try {
+          const res = await api.fetchRaw("GET", `/admin/surveys/${selectedId}/responses/export`);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `survey-${selectedId}-responses.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error(e);
+        }
+      }}>
+            <Download size={14} />{t("surveys_report.export_json")}</button>}
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <select
-          value={selectedId || ""}
-          onChange={e => { const v = e.target.value; setSelectedId(v ? Number(v) : null); }}
-          style={{ padding: "8px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", minWidth: 300 }}
-        >
-          <option value="">— Select a survey —</option>
-          {surveys.map(s => (
-            <option key={s.id} value={s.id}>
-              {s.survey_name} ({s.response_count ?? 0} response{(s.response_count ?? 0) !== 1 ? "s" : ""})
-            </option>
-          ))}
+      <div style={{
+      marginBottom: 16
+    }}>
+        <select value={selectedId || ""} onChange={e => {
+        const v = e.target.value;
+        setSelectedId(v ? Number(v) : null);
+      }} style={{
+        padding: "8px 12px",
+        fontSize: 13,
+        borderRadius: "var(--radius-sm)",
+        minWidth: 300
+      }}>
+          <option value="">{t("surveys_report.select_a_survey")}</option>
+          {surveys.map(s => <option key={s.id} value={s.id}>
+              {s.survey_name} ({s.response_count ?? 0}{t("surveys_report.response")}{(s.response_count ?? 0) !== 1 ? "s" : ""})
+            </option>)}
         </select>
-        {surveys.length === 0 && (
-          <p style={{ color: "var(--color-text-muted)", fontSize: 13, marginTop: 8 }}>
-            No surveys with responses yet.
-          </p>
-        )}
+        {surveys.length === 0 && <p style={{
+        color: "var(--color-text-muted)",
+        fontSize: 13,
+        marginTop: 8
+      }}>{t("surveys_report.no_surveys_with_responses_yet")}</p>}
       </div>
 
-      {selected && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <h3 style={{ margin: 0 }}>{selected.survey_name}</h3>
-          <div style={{ display: "flex", gap: 24, marginTop: 8, fontSize: 13 }}>
-            <div><strong>{totalResponses}</strong> response{totalResponses !== 1 ? "s" : ""}</div>
-            <div><strong>Avg NPS: {avgNps}</strong></div>
-            <div style={{ color: "var(--color-text-muted)" }}>
-              Showing {responses.length} on page {page} of {totalPages || 1}
+      {selected && <div className="card" style={{
+      marginBottom: 16
+    }}>
+          <h3 style={{
+        margin: 0
+      }}>{selected.survey_name}</h3>
+          <div style={{
+        display: "flex",
+        gap: 24,
+        marginTop: 8,
+        fontSize: 13
+      }}>
+            <div><strong>{totalResponses}</strong>{t("surveys_report.response_2")}{totalResponses !== 1 ? "s" : ""}</div>
+            <div><strong>{t("surveys_report.avg_nps")}{avgNps}</strong></div>
+            <div style={{
+          color: "var(--color-text-muted)"
+        }}>{t("surveys_report.showing")}{responses.length}{t("surveys_report.on_page")}{page}{t("surveys_report.of")}{totalPages || 1}
             </div>
           </div>
-        </div>
-      )}
+        </div>}
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : responses.length > 0 ? (
-        <>
-          <div className="table-container" style={{ marginBottom: 16 }}>
+      {loading ? <p>{t("surveys_report.loading")}</p> : responses.length > 0 ? <>
+          <div className="table-container" style={{
+        marginBottom: 16
+      }}>
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: 50 }}>#</th>
-                  <th>Customer</th>
-                  <th>NPS</th>
-                  <th>Satisfaction</th>
-                  <th>Date</th>
-                  <th style={{ width: 50 }}></th>
+                  <th style={{
+                width: 50
+              }}>#</th>
+                  <th>{t("surveys_report.customer")}</th>
+                  <th>{t("surveys_report.nps")}</th>
+                  <th>{t("surveys_report.satisfaction")}</th>
+                  <th>{t("surveys_report.date")}</th>
+                  <th style={{
+                width: 50
+              }}></th>
                 </tr>
               </thead>
               <tbody>
                 {responses.map((r, i) => {
-                  const globalIdx = (page - 1) * PAGE_SIZE + i + 1;
-                  const isExpanded = expandedIds.has(r.id);
-                  return (
-                    <>
-                      <tr key={r.id} onClick={() => toggleExpand(r.id)} style={{ cursor: "pointer" }}>
-                        <td style={{ color: "var(--color-text-muted)", fontSize: 12 }}>{globalIdx}</td>
+              const globalIdx = (page - 1) * PAGE_SIZE + i + 1;
+              const isExpanded = expandedIds.has(r.id);
+              return <>
+                      <tr key={r.id} onClick={() => toggleExpand(r.id)} style={{
+                  cursor: "pointer"
+                }}>
+                        <td style={{
+                    color: "var(--color-text-muted)",
+                    fontSize: 12
+                  }}>{globalIdx}</td>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{r.customer_name || `#${r.customer_id || "—"}`}</div>
-                          {r.respondent_email && <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{r.respondent_email}</div>}
+                          <div style={{
+                      fontWeight: 600
+                    }}>{r.customer_name || `#${r.customer_id || "—"}`}</div>
+                          {r.respondent_email && <div style={{
+                      fontSize: 11,
+                      color: "var(--color-text-muted)"
+                    }}>{r.respondent_email}</div>}
                         </td>
                         <td>{r.nps_score ?? "—"}</td>
                         <td>{r.overall_satisfaction ?? "—"}</td>
-                        <td style={{ fontSize: 12 }}>{r.created_at?.slice(0, 10)}</td>
+                        <td style={{
+                    fontSize: 12
+                  }}>{r.created_at?.slice(0, 10)}</td>
                         <td>{isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</td>
                       </tr>
-                      {isExpanded && r.answers && (
-                        <tr key={`${r.id}-exp`}>
-                          <td colSpan={6} style={{ background: "var(--color-bg-muted)", padding: "12px 16px" }}>
-                            {r.answers.map((a, ai) => (
-                              <div key={ai} style={{ marginBottom: ai < (r.answers?.length || 0) - 1 ? 8 : 0 }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-muted)", marginBottom: 2 }}>
-                                  Q{ai + 1}: {a.question_text || `Question #${a.question_id}`}
-                                  {a.question_type && <span style={{ fontWeight: 400, marginLeft: 6 }}>({a.question_type})</span>}
+                      {isExpanded && r.answers && <tr key={`${r.id}-exp`}>
+                          <td colSpan={6} style={{
+                    background: "var(--color-bg-muted)",
+                    padding: "12px 16px"
+                  }}>
+                            {r.answers.map((a, ai) => <div key={ai} style={{
+                      marginBottom: ai < (r.answers?.length || 0) - 1 ? 8 : 0
+                    }}>
+                                <div style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "var(--color-text-muted)",
+                        marginBottom: 2
+                      }}>{t("surveys_report.q")}{ai + 1}: {a.question_text || `Question #${a.question_id}`}
+                                  {a.question_type && <span style={{
+                          fontWeight: 400,
+                          marginLeft: 6
+                        }}>({a.question_type})</span>}
                                 </div>
-                                <div style={{ fontSize: 13 }}>{renderAnswer(a)}</div>
-                              </div>
-                            ))}
+                                <div style={{
+                        fontSize: 13
+                      }}>{renderAnswer(a)}</div>
+                              </div>)}
                           </td>
-                        </tr>
-                      )}
-                    </>
-                  );
-                })}
+                        </tr>}
+                    </>;
+            })}
               </tbody>
             </table>
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 8, alignItems: "center" }}>
-              <button
-                className="btn btn-sm btn-ghost"
-                disabled={page <= 1}
-                onClick={async () => { const d = await fetchResponses(page - 1); if (d) applyResponses(d, page - 1); }}
-              >
-                <ChevronLeft size={14} /> Prev
-              </button>
-              <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>
-                Page {page} of {totalPages}
+          {totalPages > 1 && <div style={{
+        display: "flex",
+        justifyContent: "center",
+        gap: 8,
+        alignItems: "center"
+      }}>
+              <button className="btn btn-sm btn-ghost" disabled={page <= 1} onClick={async () => {
+          const d = await fetchResponses(page - 1);
+          if (d) applyResponses(d, page - 1);
+        }}>
+                <ChevronLeft size={14} />{t("surveys_report.prev")}</button>
+              <span style={{
+          fontSize: 13,
+          color: "var(--color-text-muted)"
+        }}>{t("surveys_report.page")}{page}{t("surveys_report.of_2")}{totalPages}
               </span>
-              <button
-                className="btn btn-sm btn-ghost"
-                disabled={page >= totalPages}
-                onClick={async () => { const d = await fetchResponses(page + 1); if (d) applyResponses(d, page + 1); }}
-              >
-                Next <ChevronRight size={14} />
+              <button className="btn btn-sm btn-ghost" disabled={page >= totalPages} onClick={async () => {
+          const d = await fetchResponses(page + 1);
+          if (d) applyResponses(d, page + 1);
+        }}>{t("surveys_report.next")}<ChevronRight size={14} />
               </button>
-            </div>
-          )}
-        </>
-      ) : selectedId ? (
-        <p style={{ color: "var(--color-text-muted)" }}>No responses yet for this survey.</p>
-      ) : null}
-    </div>
-  );
+            </div>}
+        </> : selectedId ? <p style={{
+      color: "var(--color-text-muted)"
+    }}>{t("surveys_report.no_responses_yet_for_this_survey")}</p> : null}
+    </div>;
 }

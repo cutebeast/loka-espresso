@@ -1,8 +1,8 @@
 "use client";
 
+import { useTranslation } from "@/hooks/useTranslation";
 import { X } from "lucide-react";
 import { useEffect, useId } from "react";
-
 interface ModalProps {
   open: boolean;
   onClose: () => void;
@@ -11,8 +11,17 @@ interface ModalProps {
   footer?: React.ReactNode;
   size?: "sm" | "md" | "lg";
 }
-
-export default function Modal({ open, onClose, title, children, footer, size = "md" }: ModalProps) {
+export default function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  size = "md"
+}: ModalProps) {
+  const {
+    t
+  } = useTranslation();
   const modalId = useId();
   useEffect(() => {
     if (open) {
@@ -20,9 +29,10 @@ export default function Modal({ open, onClose, title, children, footer, size = "
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -32,23 +42,18 @@ export default function Modal({ open, onClose, title, children, footer, size = "
     }
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
-
   if (!open) return null;
-
   const maxWidth = size === "sm" ? 400 : size === "lg" ? 800 : 600;
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? `modal-title-${modalId}` : undefined}>
-        {(title) && (
-          <div className="modal-header">
+  return <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{
+      maxWidth
+    }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? `modal-title-${modalId}` : undefined}>
+        {title && <div className="modal-header">
             {title && <h3 className="modal-title" id={`modal-title-${modalId}`}>{title}</h3>}
-            <button type="button" className="modal-close" onClick={onClose} aria-label="Close"><X size={18} /></button>
-          </div>
-        )}
+            <button type="button" className="modal-close" onClick={onClose} aria-label={t("common.close")}><X size={18} /></button>
+          </div>}
         <div>{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
       </div>
-    </div>
-  );
+    </div>;
 }

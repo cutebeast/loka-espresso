@@ -34,6 +34,7 @@ class CustomerRegisterRequest(BaseSchema):
 
     email_address: EmailStr | None = None
     phone_number: str | None = Field(None, pattern=r"^\+?[1-9]\d{7,14}$")
+    otp_code: str | None = Field(None, pattern=r"^\d{6}$")
     display_name: str = Field(..., min_length=1, max_length=100)
     device_fingerprint: str | None = Field(None, max_length=64)
     referral_code: str | None = Field(None, max_length=20)

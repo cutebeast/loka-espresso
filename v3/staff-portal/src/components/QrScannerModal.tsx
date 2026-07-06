@@ -1,36 +1,45 @@
 "use client";
 
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useRef, useState } from "react";
 import Modal from "./Modal";
-
 interface QrScannerModalProps {
   open: boolean;
   onClose: () => void;
   onScan: (code: string) => void;
   title?: string;
 }
-
 interface Html5QrcodeScanner {
-  start(
-    facingModeOrDeviceId: { facingMode: string },
-    config: { fps: number; qrbox: { width: number; height: number } },
-    onScanSuccess: (decodedText: string) => void,
-    onScanFailure: (err: unknown) => void
-  ): Promise<void | null>;
+  start(facingModeOrDeviceId: {
+    facingMode: string;
+  }, config: {
+    fps: number;
+    qrbox: {
+      width: number;
+      height: number;
+    };
+  }, onScanSuccess: (decodedText: string) => void, onScanFailure: (err: unknown) => void): Promise<void | null>;
   stop(): Promise<void>;
 }
-
-export default function QrScannerModal({ open, onClose, onScan, title = "Scan QR Code" }: QrScannerModalProps) {
+export default function QrScannerModal({
+  open,
+  onClose,
+  onScan,
+  title = "Scan QR Code"
+}: QrScannerModalProps) {
+  const {
+    t
+  } = useTranslation();
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const decodedRef = useRef(false);
   const mountedRef = useRef(true);
   const [error, setError] = useState("");
-
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
-
   useEffect(() => {
     if (!open) {
       setError("");
@@ -42,25 +51,29 @@ export default function QrScannerModal({ open, onClose, onScan, title = "Scan QR
     }
     decodedRef.current = false;
     setError("");
-
     const start = async () => {
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
+        const {
+          Html5Qrcode
+        } = await import("html5-qrcode");
         if (!mountedRef.current) return;
         const scanner = new Html5Qrcode("qr-reader-modal");
         scannerRef.current = scanner;
-        await scanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          (decodedText: string) => {
-            if (decodedRef.current) return;
-            decodedRef.current = true;
-            onScan(decodedText);
-            scanner.stop().catch((err) => console.error("QR scanner stop failed:", err));
-            scannerRef.current = null;
-          },
-          (err) => console.warn("QR scan error:", err)
-        );
+        await scanner.start({
+          facingMode: "environment"
+        }, {
+          fps: 10,
+          qrbox: {
+            width: 250,
+            height: 250
+          }
+        }, (decodedText: string) => {
+          if (decodedRef.current) return;
+          decodedRef.current = true;
+          onScan(decodedText);
+          scanner.stop().catch(err => console.error("QR scanner stop failed:", err));
+          scannerRef.current = null;
+        }, err => console.warn("QR scan error:", err));
       } catch (err: unknown) {
         console.error("QR scanner failed:", err);
         const msg = (err as Error)?.message || String(err);
@@ -73,9 +86,7 @@ export default function QrScannerModal({ open, onClose, onScan, title = "Scan QR
         }
       }
     };
-
     start();
-
     return () => {
       if (scannerRef.current) {
         scannerRef.current.stop().catch((err: Error) => console.error("QR scanner cleanup failed:", err));
@@ -83,22 +94,29 @@ export default function QrScannerModal({ open, onClose, onScan, title = "Scan QR
       }
     };
   }, [open, onScan]);
-
-  return (
-    <Modal open={open} onClose={onClose} title={title} size="sm">
-      {error ? (
-        <div style={{ padding: 20, textAlign: "center" }}>
-          <div style={{ fontSize: 14, color: "var(--color-error)", fontWeight: 600, marginBottom: 12 }}>{error}</div>
-          <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
-        </div>
-      ) : (
-        <>
-          <div id="qr-reader-modal" style={{ width: "100%", minHeight: 250 }} />
-          <p style={{ textAlign: "center", fontSize: 12, color: "var(--color-text-muted)", marginTop: 12 }}>
-            Point camera at the QR code
-          </p>
-        </>
-      )}
-    </Modal>
-  );
+  return <Modal open={open} onClose={onClose} title={title} size="sm">
+      {error ? <div style={{
+      padding: 20,
+      textAlign: "center"
+    }}>
+          <div style={{
+        fontSize: 14,
+        color: "var(--color-error)",
+        fontWeight: 600,
+        marginBottom: 12
+      }}>{error}</div>
+          <button type="button" className="btn btn-primary" onClick={onClose}>{t("common.close")}</button>
+        </div> : <>
+          <div id="qr-reader-modal" style={{
+        width: "100%",
+        minHeight: 250
+      }} />
+          <p style={{
+        textAlign: "center",
+        fontSize: 12,
+        color: "var(--color-text-muted)",
+        marginTop: 12
+      }}>{t("common.point_camera_at_the_qr_code")}</p>
+        </>}
+    </Modal>;
 }

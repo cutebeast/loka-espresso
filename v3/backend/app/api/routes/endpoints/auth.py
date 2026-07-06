@@ -25,7 +25,13 @@ from app.services.auth import (
     refresh_customer_tokens,
     register_customer,
 )
-from app.services.otp import OTPConfigError, TwilioVerifyClient
+from app.services.otp import (
+    OTPConfigError,
+    TwilioVerifyClient,
+    check_otp_rate_limit,
+    record_otp_send,
+    is_otp_send_active,
+)
 from app.services.platform_config import PlatformConfigService
 from app.core.auth_cookies import (
     clear_customer_auth_cookies,
@@ -63,6 +69,10 @@ async def _require_otp_or_bypass(
     if not otp_code:
         return False
 
+    # Enforce otp.expiry_minutes: reject codes sent outside the configured window.
+    if not await is_otp_send_active(config_svc, phone):
+        return False
+
     client = TwilioVerifyClient(config_svc)
     if not await client.is_configured():
         raise HTTPException(
@@ -85,11 +95,26 @@ async def _require_otp_or_bypass(
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
 async def customer_register(request: Request, response: Response, db: DBDependency, data: CustomerRegisterRequest):
-    """Register a new customer account (passwordless / OTP)."""
+    """Register a new customer account (passwordless / OTP).
+
+    If a phone_number is supplied, OTP verification is required unless
+    otp.bypass_enabled is true (dev/E2E).
+    """
+    config_svc = PlatformConfigService(db)
+
+    if data.phone_number:
+        verified = await _require_otp_or_bypass(config_svc, data.phone_number, data.otp_code)
+        if not verified:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired OTP")
+
     try:
         customer = await register_customer(db, data)
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    if data.phone_number and customer:
+        customer.phone_verified_at = datetime.now(timezone.utc)
+        await db.commit()
 
     tokens = await create_customer_tokens(customer)
     set_customer_auth_cookies(response, tokens.access_token, tokens.refresh_token)
@@ -212,6 +237,11 @@ async def send_otp(request: Request, db: DBDependency, data: OTPRequest):
         logger.info("OTP send bypassed via platform config")
         return {"success": True, "message": "OTP bypassed"}
 
+    # Enforce per-hour send limit from platform config.
+    ok, msg = await check_otp_rate_limit(config_svc, data.phone_number)
+    if not ok:
+        raise HTTPException(status_code=429, detail=msg)
+
     client = TwilioVerifyClient(config_svc)
     if not await client.is_configured():
         raise HTTPException(
@@ -225,6 +255,7 @@ async def send_otp(request: Request, db: DBDependency, data: OTPRequest):
         logger.error("Twilio Verify send OTP failed: %s", exc.message)
         raise HTTPException(status_code=500, detail="Failed to send OTP. Please try again later.") from exc
 
+    await record_otp_send(config_svc, data.phone_number)
     return {"success": True, "message": "OTP sent"}
 
 

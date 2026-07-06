@@ -55,6 +55,7 @@ from app.api.routes.endpoints.public import menu as public_menu
 from app.api.routes.endpoints.public import rsvp as public_rsvp
 from app.api.routes.endpoints.public import store as public_store
 from app.api.routes.endpoints.public import ui_translations as public_ui_translations
+from app.api.routes.endpoints.public import marketing as public_marketing
 from app.api.routes.endpoints.staff import staff_ops as staff_operations
 from app.api.routes.endpoints.admin import scan as admin_scan
 from app.api.routes.endpoints.admin import pos as admin_pos
@@ -112,6 +113,7 @@ api_router.include_router(public_store.router, tags=["public — stores"])
 api_router.include_router(public_menu.router, tags=["public — menu"])
 api_router.include_router(public_content.router, tags=["public — content"])
 api_router.include_router(public_ui_translations.router, prefix="/public/translations", tags=["public — translations"])
+api_router.include_router(public_marketing.router, tags=["public — marketing"])
 api_router.include_router(staff_operations.router, tags=["staff — operations"])
 api_router.include_router(public_rsvp.router, tags=["public — events"])
 

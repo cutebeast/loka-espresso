@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getOrders, type Order } from "@/lib/api";
@@ -11,18 +12,15 @@ import Alert from "@/components/Alert";
 import EmptyState from "@/components/EmptyState";
 import SearchInput from "@/components/SearchInput";
 import SkeletonCard from "@/components/SkeletonCard";
-import {
-  RefreshCw, LayoutGrid, ClipboardList, Wallet, CheckCircle,
-  UtensilsCrossed, Package, Truck, Filter
-} from "lucide-react";
-
+import { RefreshCw, LayoutGrid, ClipboardList, Wallet, CheckCircle, UtensilsCrossed, Package, Truck, Filter } from "lucide-react";
 type Tab = "queue" | "unpaid" | "history";
-
 function isPaid(ps?: string): boolean {
   return ps === "paid" || ps === "captured" || ps === "settled" || ps === "authorized";
 }
-
 export default function OrdersPage() {
+  const {
+    t
+  } = useTranslation();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const storeId = Number(typeof window !== "undefined" ? localStorage.getItem("staffStoreId") || "0" : "0");
@@ -31,10 +29,13 @@ export default function OrdersPage() {
   const [tab, setTab] = useState<Tab>("queue");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
-
   const fetchOrders = useCallback(async () => {
     try {
-      if (!storeId) { setLoading(false); setError("Store not selected"); return; }
+      if (!storeId) {
+        setLoading(false);
+        setError("Store not selected");
+        return;
+      }
       const data = await getOrders(storeId, undefined);
       const list = Array.isArray(data) ? data : [];
       setOrders(list);
@@ -46,174 +47,177 @@ export default function OrdersPage() {
       setLoading(false);
     }
   }, [storeId]);
-
-  usePolling(fetchOrders, [storeId], { interval: 10000 });
-
+  usePolling(fetchOrders, [storeId], {
+    interval: 10000
+  });
   const filteredOrders = useMemo(() => {
     let list = orders;
 
     // Tab filter
     if (tab === "queue") {
-      list = list.filter((o) => o.status !== "delivered" && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "refunded" && o.status !== "partially_refunded" && o.status !== "disputed");
+      list = list.filter(o => o.status !== "delivered" && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "refunded" && o.status !== "partially_refunded" && o.status !== "disputed");
     } else if (tab === "unpaid") {
-      list = list.filter((o) => !isPaid(o.payment_status) && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "delivered");
+      list = list.filter(o => !isPaid(o.payment_status) && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "delivered");
     } else if (tab === "history") {
-      list = list.filter((o) => o.status === "delivered" || o.status === "cancelled_by_customer" || o.status === "cancelled_by_merchant");
+      list = list.filter(o => o.status === "delivered" || o.status === "cancelled_by_customer" || o.status === "cancelled_by_merchant");
     }
 
     // Type filter
     if (typeFilter !== "all") {
-      list = list.filter((o) => o.order_type === typeFilter);
+      list = list.filter(o => o.order_type === typeFilter);
     }
 
     // Search
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter((o) =>
-        (o.order_number?.toLowerCase() || "").includes(q) ||
-        (o.customer_name?.toLowerCase() || "").includes(q) ||
-        (o.table_number?.toLowerCase() || "").includes(q)
-      );
+      list = list.filter(o => (o.order_number?.toLowerCase() || "").includes(q) || (o.customer_name?.toLowerCase() || "").includes(q) || (o.table_number?.toLowerCase() || "").includes(q));
     }
-
     return list;
   }, [orders, tab, typeFilter, search]);
-
   const unpaidByType = useMemo(() => {
-      const all = orders.filter((o) => !isPaid(o.payment_status) && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "delivered");
+    const all = orders.filter(o => !isPaid(o.payment_status) && o.status !== "cancelled_by_customer" && o.status !== "cancelled_by_merchant" && o.status !== "delivered");
     return {
-      dine_in: all.filter((o) => o.order_type === "dine_in"),
-      takeaway: all.filter((o) => o.order_type === "takeaway"),
-      delivery: all.filter((o) => o.order_type === "delivery"),
+      dine_in: all.filter(o => o.order_type === "dine_in"),
+      takeaway: all.filter(o => o.order_type === "takeaway"),
+      delivery: all.filter(o => o.order_type === "delivery")
     };
   }, [orders]);
-
   const totalUnpaid = unpaidByType.dine_in.length + unpaidByType.takeaway.length + unpaidByType.delivery.length;
-
-  const tabConfig = [
-    { key: "queue" as Tab, label: "Queue", icon: LayoutGrid },
-    { key: "unpaid" as Tab, label: `Unpaid${totalUnpaid > 0 ? ` (${totalUnpaid})` : ""}`, icon: Wallet },
-    { key: "history" as Tab, label: "History", icon: CheckCircle },
-  ];
-
-  return (
-    <div style={{ padding: 24, maxWidth: 1400, margin: "0 auto" }}>
-      <PageHeader
-        title="Order Queue"
-        subtitle={`${orders.filter((o) => !o.status.includes("delivered") && !o.status.includes("cancelled")).length} active`}
-        action={
-          <button onClick={fetchOrders} className="btn btn-ghost btn-sm">
-            <RefreshCw size={14} /> Refresh
-          </button>
-        }
-      />
+  const tabConfig = [{
+    key: "queue" as Tab,
+    label: "Queue",
+    icon: LayoutGrid
+  }, {
+    key: "unpaid" as Tab,
+    label: `Unpaid${totalUnpaid > 0 ? ` (${totalUnpaid})` : ""}`,
+    icon: Wallet
+  }, {
+    key: "history" as Tab,
+    label: "History",
+    icon: CheckCircle
+  }];
+  return <div style={{
+    padding: 24,
+    maxWidth: 1400,
+    margin: "0 auto"
+  }}>
+      <PageHeader title={t("orders.order_queue")} subtitle={`${orders.filter(o => !o.status.includes("delivered") && !o.status.includes("cancelled")).length} active`} action={<button onClick={fetchOrders} className="btn btn-ghost btn-sm">
+            <RefreshCw size={14} />{t("orders.refresh")}</button>} />
 
       {error && <Alert variant="error" onDismiss={() => setError("")} autoDismiss={5000}>{error}</Alert>}
 
       {/* Tabs */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, borderBottom: "1px solid var(--color-border-light)", paddingBottom: 8 }}>
-        {tabConfig.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`btn btn-sm ${tab === t.key ? "btn-primary" : "btn-ghost"}`}
-          >
+      <div style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 16,
+      borderBottom: "1px solid var(--color-border-light)",
+      paddingBottom: 8
+    }}>
+        {tabConfig.map(t => <button key={t.key} onClick={() => setTab(t.key)} className={`btn btn-sm ${tab === t.key ? "btn-primary" : "btn-ghost"}`}>
             <t.icon size={14} /> {t.label}
-          </button>
-        ))}
+          </button>)}
       </div>
 
       {/* Filters */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      flexWrap: "wrap",
+      gap: 12,
+      marginBottom: 16
+    }}>
+        <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }}>
           <Filter size={16} className="text-gray-400 shrink-0" />
-          {[
-            { value: "all", label: "All Types", icon: null },
-            { value: "dine_in", label: "Dine-in", icon: <UtensilsCrossed size={12} /> },
-            { value: "takeaway", label: "Takeaway", icon: <Package size={12} /> },
-            { value: "delivery", label: "Delivery", icon: <Truck size={12} /> },
-          ].map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setTypeFilter(t.value)}
-              className={`badge badge-sm flex items-center gap-1 cursor-pointer ${typeFilter === t.value ? "badge-primary" : "badge-outline"}`}
-            >
+          {[{
+          value: "all",
+          label: "All Types",
+          icon: null
+        }, {
+          value: "dine_in",
+          label: "Dine-in",
+          icon: <UtensilsCrossed size={12} />
+        }, {
+          value: "takeaway",
+          label: "Takeaway",
+          icon: <Package size={12} />
+        }, {
+          value: "delivery",
+          label: "Delivery",
+          icon: <Truck size={12} />
+        }].map(t => <button key={t.value} onClick={() => setTypeFilter(t.value)} className={`badge badge-sm flex items-center gap-1 cursor-pointer ${typeFilter === t.value ? "badge-primary" : "badge-outline"}`}>
               {t.icon}
               {t.label}
-            </button>
-          ))}
+            </button>)}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <SearchInput value={search} onChange={setSearch} placeholder="Search order #, customer..." />
+        <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }}>
+          <SearchInput value={search} onChange={setSearch} placeholder={t("orders.search_order_customer")} />
         </div>
       </div>
 
-      {loading ? (
-        <SkeletonCard count={6} />
-      ) : filteredOrders.length === 0 ? (
-        <EmptyState
-          title="No orders found"
-          description={`No ${tab} orders match your filters.`}
-          icon={<ClipboardList size={48} />}
-        />
-      ) : tab === "unpaid" ? (
-        /* ── Unpaid List View ── */
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {loading ? <SkeletonCard count={6} /> : filteredOrders.length === 0 ? <EmptyState title={t("orders.no_orders_found")} description={`No ${tab} orders match your filters.`} icon={<ClipboardList size={48} />} /> : tab === "unpaid" ? (/* ── Unpaid List View ── */
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: 20
+    }}>
           {/* Takeaway / Delivery unpaid — flagged */}
-          {(unpaidByType.takeaway.length > 0 || unpaidByType.delivery.length > 0) && (
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#DC2626", marginBottom: 10 }}>Needs Payment (Do Not Hand Over)</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
-                {[...unpaidByType.takeaway, ...unpaidByType.delivery].map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    onClick={(o) => router.push(`/pos?checkout=${o.id}`)}
-                  />
-                ))}
+          {(unpaidByType.takeaway.length > 0 || unpaidByType.delivery.length > 0) && <div>
+              <h3 style={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: "#DC2626",
+          marginBottom: 10
+        }}>{t("orders.needs_payment_do_not_hand_over")}</h3>
+              <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gap: 12
+        }}>
+                {[...unpaidByType.takeaway, ...unpaidByType.delivery].map(order => <OrderCard key={order.id} order={order} onClick={o => router.push(`/pos?checkout=${o.id}`)} />)}
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* Dine-in unpaid — normal */}
-          {unpaidByType.dine_in.length > 0 && (
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#D97706", marginBottom: 10 }}>Dine-in Checks (Pay After Meal)</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
-                {unpaidByType.dine_in.map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    onClick={(o) => router.push(`/pos?checkout=${o.id}`)}
-                  />
-                ))}
+          {unpaidByType.dine_in.length > 0 && <div>
+              <h3 style={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: "#D97706",
+          marginBottom: 10
+        }}>{t("orders.dine_in_checks_pay_after_meal")}</h3>
+              <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gap: 12
+        }}>
+                {unpaidByType.dine_in.map(order => <OrderCard key={order.id} order={order} onClick={o => router.push(`/pos?checkout=${o.id}`)} />)}
               </div>
-            </div>
-          )}
-        </div>
-      ) : tab === "history" ? (
-        /* ── History List ── */
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
-          {filteredOrders.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onClick={(o) => router.push(`/kitchen/${o.id}`)}
-            />
-          ))}
-        </div>
-      ) : (
-        /* ── Queue List ── */
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12 }}>
-          {filteredOrders.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onClick={(o) => router.push(`/kitchen/${o.id}`)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
+            </div>}
+        </div>) : tab === "history" ? (/* ── History List ── */
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+      gap: 12
+    }}>
+          {filteredOrders.map(order => <OrderCard key={order.id} order={order} onClick={o => router.push(`/kitchen/${o.id}`)} />)}
+        </div>) : (/* ── Queue List ── */
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+      gap: 12
+    }}>
+          {filteredOrders.map(order => <OrderCard key={order.id} order={order} onClick={o => router.push(`/kitchen/${o.id}`)} />)}
+        </div>)}
+    </div>;
 }

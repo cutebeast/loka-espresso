@@ -1108,6 +1108,9 @@ async def refund_payment(
     if payment.status not in ("captured", "partially_refunded"):
         raise PaymentError(f"Cannot refund payment with status {payment.status}", 400)
 
+    if approved_by is None:
+        raise PaymentError("Refund must be approved by an admin account", 403)
+
     config_service = PlatformConfigService(db)
     precision = await config_service.get_accounting_precision()
     rounding_mode = await config_service.get_accounting_rounding()

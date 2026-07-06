@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { clockIn, clockOut, startBreak, endBreak, getMyTimeEvents, api, type TimeEvent } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
@@ -11,9 +12,7 @@ import Card from "@/components/Card";
 import EmptyState from "@/components/EmptyState";
 import SkeletonCard from "@/components/SkeletonCard";
 import { Play, Pause, Coffee, LogOut, Timer, AlertCircle } from "lucide-react";
-
 type ShiftStatus = "out" | "in" | "break";
-
 interface ActionConfig {
   key: string;
   label: string;
@@ -24,7 +23,6 @@ interface ActionConfig {
   border: string;
   action: () => Promise<TimeEvent>;
 }
-
 const ACTIONS: Record<ShiftStatus, ActionConfig> = {
   out: {
     key: "clock_in",
@@ -34,7 +32,7 @@ const ACTIONS: Record<ShiftStatus, ActionConfig> = {
     color: "#166534",
     bg: "#DCFCE7",
     border: "#86EFAC",
-    action: clockIn,
+    action: clockIn
   },
   in: {
     key: "break_start",
@@ -44,7 +42,7 @@ const ACTIONS: Record<ShiftStatus, ActionConfig> = {
     color: "#92400E",
     bg: "#FEF3C7",
     border: "#FDE68A",
-    action: startBreak,
+    action: startBreak
   },
   break: {
     key: "break_end",
@@ -54,18 +52,19 @@ const ACTIONS: Record<ShiftStatus, ActionConfig> = {
     color: "#1E40AF",
     bg: "#DBEAFE",
     border: "#BFDBFE",
-    action: endBreak,
-  },
+    action: endBreak
+  }
 };
-
 const ALL_ACTIONS: Record<string, () => Promise<TimeEvent>> = {
   clock_in: clockIn,
   clock_out: clockOut,
   break_start: startBreak,
-  break_end: endBreak,
+  break_end: endBreak
 };
-
 export default function TimeClockPage() {
+  const {
+    t
+  } = useTranslation();
   const isAdmin = useIsAdmin();
   const [events, setEvents] = useState<TimeEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,9 +77,7 @@ export default function TimeClockPage() {
   const [attemptCount, setAttemptCount] = useState(0);
   const breakAccumulatedRef = useRef(0);
   const breakStartMsRef = useRef<number | null>(null);
-
   const today = new Date().toISOString().split("T")[0];
-
   const fetchEvents = useCallback(async () => {
     try {
       const data = await getMyTimeEvents(today);
@@ -93,9 +90,9 @@ export default function TimeClockPage() {
       setLoading(false);
     }
   }, [today]);
-
-  usePolling(fetchEvents, [today], { interval: 30000 });
-
+  usePolling(fetchEvents, [today], {
+    interval: 30000
+  });
   const shiftStatus: ShiftStatus = (() => {
     if (events.length === 0) return "out";
     const last = events[events.length - 1];
@@ -106,7 +103,6 @@ export default function TimeClockPage() {
     if (last.event_type === "clock_in") return "in";
     return "out";
   })();
-
   const lastClockInMs = useMemo(() => {
     for (let i = events.length - 1; i >= 0; i--) {
       const ev = events[i];
@@ -118,7 +114,6 @@ export default function TimeClockPage() {
     }
     return null;
   }, [events]);
-
   useEffect(() => {
     if (shiftStatus !== "in" || !lastClockInMs) {
       setElapsed(0);
@@ -130,7 +125,6 @@ export default function TimeClockPage() {
     const interval = setInterval(updateElapsed, 1000);
     return () => clearInterval(interval);
   }, [shiftStatus, lastClockInMs]);
-
   useEffect(() => {
     if (shiftStatus === "break" && breakStartMsRef.current === null) {
       breakStartMsRef.current = Date.now();
@@ -143,14 +137,12 @@ export default function TimeClockPage() {
       breakStartMsRef.current = null;
     }
   }, [shiftStatus]);
-
   const formatElapsed = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
+    const m = Math.floor(seconds % 3600 / 60);
     const s = seconds % 60;
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
-
   const handleMainAction = () => {
     if (isAdmin) return;
     const cfg = ACTIONS[shiftStatus];
@@ -159,7 +151,6 @@ export default function TimeClockPage() {
     setShowPin(true);
     setPin("");
   };
-
   const verifyAndExecute = async () => {
     if (!pendingAction || !pin || pin.length < 4) {
       setError("Enter 4-digit PIN");
@@ -168,10 +159,17 @@ export default function TimeClockPage() {
     setActionLoading(true);
     try {
       const delay = Math.min(3000, attemptCount * 1000);
-      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
-      const vd = await api.post<{ valid?: boolean; data?: { valid?: boolean } }>("/staff/auth/verify-pin", { pin });
+      if (delay > 0) await new Promise(r => setTimeout(r, delay));
+      const vd = await api.post<{
+        valid?: boolean;
+        data?: {
+          valid?: boolean;
+        };
+      }>("/staff/auth/verify-pin", {
+        pin
+      });
       if (!(vd?.valid || vd?.data?.valid)) {
-        setAttemptCount((c) => c + 1);
+        setAttemptCount(c => c + 1);
         setError("Wrong PIN. Try again.");
         setActionLoading(false);
         return;
@@ -195,181 +193,215 @@ export default function TimeClockPage() {
       setActionLoading(false);
     }
   };
-
   const handleClockOut = () => {
     if (isAdmin) return;
     setPendingAction("clock_out");
     setShowPin(true);
     setPin("");
   };
-
   if (loading) {
-    return (
-      <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
-        <PageHeader title="Time Clock" />
+    return <div style={{
+      padding: 24,
+      maxWidth: 600,
+      margin: "0 auto"
+    }}>
+        <PageHeader title={t("time_clock.time_clock")} />
         <SkeletonCard count={3} />
-      </div>
-    );
+      </div>;
   }
-
   const cfg = ACTIONS[shiftStatus];
   const Icon = cfg?.icon || Play;
+  return <div style={{
+    padding: 24,
+    maxWidth: 600,
+    margin: "0 auto"
+  }}>
+      <PageHeader title={t("time_clock.time_clock_2")} />
 
-  return (
-    <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
-      <PageHeader title="Time Clock" />
-
-      {isAdmin && (
-        <Alert variant="warning" style={{ marginBottom: 16 }}>
+      {isAdmin && <Alert variant="warning" style={{
+      marginBottom: 16
+    }}>
           <div className="flex items-start gap-3">
-            <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span>Admin view only. You cannot clock in/out.</span>
+            <AlertCircle size={18} style={{
+          flexShrink: 0,
+          marginTop: 2
+        }} />
+            <span>{t("time_clock.admin_view_only_you_cannot_clock")}</span>
           </div>
-        </Alert>
-      )}
+        </Alert>}
 
       {error && <Alert variant="error" onDismiss={() => setError("")}>{error}</Alert>}
 
       {/* Big Status Circle */}
-      <div style={{ textAlign: "center", marginBottom: 24 }}>
+      <div style={{
+      textAlign: "center",
+      marginBottom: 24
+    }}>
         <div style={{
-          width: 140, height: 140, borderRadius: "50%", margin: "0 auto 16px",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: shiftStatus === "in" ? "#DCFCE7" : shiftStatus === "break" ? "#FEF3C7" : "#F3F4F6",
-          border: `6px solid ${shiftStatus === "in" ? "#86EFAC" : shiftStatus === "break" ? "#FDE68A" : "#E5E7EB"}`,
-        }}>
+        width: 140,
+        height: 140,
+        borderRadius: "50%",
+        margin: "0 auto 16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: shiftStatus === "in" ? "#DCFCE7" : shiftStatus === "break" ? "#FEF3C7" : "#F3F4F6",
+        border: `6px solid ${shiftStatus === "in" ? "#86EFAC" : shiftStatus === "break" ? "#FDE68A" : "#E5E7EB"}`
+      }}>
           <Icon size={56} style={{
-            color: shiftStatus === "in" ? "#166534" : shiftStatus === "break" ? "#92400E" : "#6B7280",
-          }} />
+          color: shiftStatus === "in" ? "#166534" : shiftStatus === "break" ? "#92400E" : "#6B7280"
+        }} />
         </div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: "var(--color-text-primary)" }}>
+        <div style={{
+        fontSize: 24,
+        fontWeight: 800,
+        color: "var(--color-text-primary)"
+      }}>
           {shiftStatus === "in" ? "Working Now" : shiftStatus === "break" ? "On Break" : "Not Clocked In"}
         </div>
-        {shiftStatus === "in" && (
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8, marginTop: 12,
-            fontSize: 32, fontFamily: "var(--font-mono)", fontWeight: 700,
-            background: "var(--color-bg-muted)", padding: "10px 24px", borderRadius: "var(--radius-md)",
-            border: "2px solid var(--color-border-light)",
-          }}>
+        {shiftStatus === "in" && <div style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        marginTop: 12,
+        fontSize: 32,
+        fontFamily: "var(--font-mono)",
+        fontWeight: 700,
+        background: "var(--color-bg-muted)",
+        padding: "10px 24px",
+        borderRadius: "var(--radius-md)",
+        border: "2px solid var(--color-border-light)"
+      }}>
             <Timer size={24} />
             {formatElapsed(elapsed)}
-          </div>
-        )}
+          </div>}
       </div>
 
       {/* One Big Action Button */}
-      {!showPin && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
-          <button
-            onClick={handleMainAction}
-            disabled={isAdmin || actionLoading}
-            className="btn"
-            style={{
-              width: "100%",
-              padding: "32px 16px",
-              flexDirection: "column",
-              gap: 8,
-              border: `4px solid ${cfg?.border || "#E5E7EB"}`,
-              background: cfg?.bg || "#F9FAFB",
-              color: cfg?.color || "#374151",
-              fontSize: 22,
-              fontWeight: 800,
-              borderRadius: "var(--radius-lg)",
-              opacity: isAdmin ? 0.4 : 1,
-              cursor: isAdmin ? "not-allowed" : "pointer",
-            }}
-          >
+      {!showPin && <div style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      marginBottom: 24
+    }}>
+          <button onClick={handleMainAction} disabled={isAdmin || actionLoading} className="btn" style={{
+        width: "100%",
+        padding: "32px 16px",
+        flexDirection: "column",
+        gap: 8,
+        border: `4px solid ${cfg?.border || "#E5E7EB"}`,
+        background: cfg?.bg || "#F9FAFB",
+        color: cfg?.color || "#374151",
+        fontSize: 22,
+        fontWeight: 800,
+        borderRadius: "var(--radius-lg)",
+        opacity: isAdmin ? 0.4 : 1,
+        cursor: isAdmin ? "not-allowed" : "pointer"
+      }}>
             {actionLoading ? <Timer size={40} /> : <cfg.icon size={40} />}
             {actionLoading ? "Please wait..." : cfg?.label}
-            <span style={{ fontSize: 13, fontWeight: 400, opacity: 0.7 }}>{cfg?.sublabel}</span>
+            <span style={{
+          fontSize: 13,
+          fontWeight: 400,
+          opacity: 0.7
+        }}>{cfg?.sublabel}</span>
           </button>
 
           {/* Clock Out button - only when clocked in */}
-          {shiftStatus === "in" && (
-            <button
-              onClick={handleClockOut}
-              disabled={isAdmin || actionLoading}
-              className="btn"
-              style={{
-                width: "100%",
-                padding: "20px 16px",
-                flexDirection: "column",
-                gap: 6,
-                border: "2px solid #FECACA",
-                background: "#FEF2F2",
-                color: "#991B1B",
-                fontSize: 16,
-                fontWeight: 700,
-                borderRadius: "var(--radius-lg)",
-                opacity: isAdmin ? 0.4 : 1,
-                cursor: isAdmin ? "not-allowed" : "pointer",
-              }}
-            >
-              <LogOut size={28} />
-              CLOCK OUT
-              <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.7 }}>End your shift</span>
-            </button>
-          )}
-        </div>
-      )}
+          {shiftStatus === "in" && <button onClick={handleClockOut} disabled={isAdmin || actionLoading} className="btn" style={{
+        width: "100%",
+        padding: "20px 16px",
+        flexDirection: "column",
+        gap: 6,
+        border: "2px solid #FECACA",
+        background: "#FEF2F2",
+        color: "#991B1B",
+        fontSize: 16,
+        fontWeight: 700,
+        borderRadius: "var(--radius-lg)",
+        opacity: isAdmin ? 0.4 : 1,
+        cursor: isAdmin ? "not-allowed" : "pointer"
+      }}>
+              <LogOut size={28} />{t("time_clock.clock_out")}<span style={{
+          fontSize: 12,
+          fontWeight: 400,
+          opacity: 0.7
+        }}>{t("time_clock.end_your_shift")}</span>
+            </button>}
+        </div>}
 
       {/* PIN Entry */}
-      {showPin && (
-        <Card style={{ marginBottom: 24, textAlign: "center" }}>
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
-            Enter your PIN
-          </div>
-          <form onSubmit={e => e.preventDefault()} style={{ display: "inline" }}>
-          <input
-            type="password"
-            inputMode="numeric"
-            value={pin}
-            onChange={e => setPin(e.target.value)}
-            placeholder="4 digits"
-            maxLength={6}
-            className="form-input"
-            style={{ textAlign: "center", fontSize: 24, letterSpacing: 8, marginBottom: 16 }}
-            autoFocus
-          />
+      {showPin && <Card style={{
+      marginBottom: 24,
+      textAlign: "center"
+    }}>
+          <div style={{
+        fontSize: 18,
+        fontWeight: 700,
+        marginBottom: 16
+      }}>{t("time_clock.enter_your_pin")}</div>
+          <form onSubmit={e => e.preventDefault()} style={{
+        display: "inline"
+      }}>
+          <input type="password" inputMode="numeric" value={pin} onChange={e => setPin(e.target.value)} placeholder={t("time_clock.4_digits")} maxLength={6} className="form-input" style={{
+          textAlign: "center",
+          fontSize: 24,
+          letterSpacing: 8,
+          marginBottom: 16
+        }} autoFocus />
           </form>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn btn-ghost flex-1" onClick={() => { setShowPin(false); setPin(""); setPendingAction(null); }}>
-              Cancel
-            </button>
-            <button
-              className="btn btn-primary flex-1"
-              onClick={verifyAndExecute}
-              disabled={actionLoading || pin.length < 4}
-            >
+          <div style={{
+        display: "flex",
+        gap: 10
+      }}>
+            <button className="btn btn-ghost flex-1" onClick={() => {
+          setShowPin(false);
+          setPin("");
+          setPendingAction(null);
+        }}>{t("time_clock.cancel")}</button>
+            <button className="btn btn-primary flex-1" onClick={verifyAndExecute} disabled={actionLoading || pin.length < 4}>
               {actionLoading ? "Checking..." : "OK"}
             </button>
           </div>
-        </Card>
-      )}
+        </Card>}
 
       {/* Today's Events - simplified */}
-      <Card title="Today">
-        {events.length === 0 ? (
-          <EmptyState icon={<Timer size={48} />} title="No records yet" description="Clock in to start tracking your time" />
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {events.slice().reverse().map((evt) => (
-              <div key={evt.id} style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "10px 12px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)"
-              }}>
-                <span style={{ fontSize: 14, fontWeight: 600, textTransform: "capitalize" }}>
+      <Card title={t("time_clock.today")}>
+        {events.length === 0 ? <EmptyState icon={<Timer size={48} />} title={t("time_clock.no_records_yet")} description={t("time_clock.clock_in_to_start_tracking_your")} /> : <div style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 8
+      }}>
+            {events.slice().reverse().map(evt => <div key={evt.id} style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 12px",
+          background: "var(--color-bg-muted)",
+          borderRadius: "var(--radius-md)"
+        }}>
+                <span style={{
+            fontSize: 14,
+            fontWeight: 600,
+            textTransform: "capitalize"
+          }}>
                   {evt.event_type.replace(/_/g, " ")}
                 </span>
-                <span style={{ fontSize: 13, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
-                  {(() => { const d = new Date(evt.event_timestamp); return isNaN(d.getTime()) ? "—" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); })()}
+                <span style={{
+            fontSize: 13,
+            color: "var(--color-text-muted)",
+            fontFamily: "var(--font-mono)"
+          }}>
+                  {(() => {
+              const d = new Date(evt.event_timestamp);
+              return isNaN(d.getTime()) ? "—" : d.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+              });
+            })()}
                 </span>
-              </div>
-            ))}
-          </div>
-        )}
+              </div>)}
+          </div>}
       </Card>
-    </div>
-  );
+    </div>;
 }

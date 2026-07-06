@@ -1,25 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  Crown,
-  ArrowLeft,
-  Gift,
-  Ticket,
-  CreditCard,
-  MapPin,
-  Users,
-  SlidersHorizontal,
-  Headset,
-  LogOut,
-  ChevronRight,
-  Pen,
-  IdCard,
-  Bell,
-  ShoppingBag,
-  CalendarCheck,
-  Tag,
-} from 'lucide-react';
+import { Crown, ArrowLeft, Gift, Ticket, CreditCard, MapPin, Users, SlidersHorizontal, Headset, LogOut, ChevronRight, Pen, IdCard, Bell, ShoppingBag, CalendarCheck, Tag } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletStore } from '@/stores/walletStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -30,7 +12,6 @@ import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import type { Order } from '@/lib/api';
 import { getLocale } from '@/stores/localeStore';
-
 interface OrderPreview {
   id: number;
   items: string;
@@ -39,82 +20,153 @@ interface OrderPreview {
   total: number;
   imageUrl: string | null;
 }
-
 export default function ProfilePage() {
-  const { user, logout } = useAuthStore();
-  const { points, tier } = useWalletStore();
-  const { setPage } = useUIStore();
-  const { t } = useTranslation();
-  const configTiers = useConfigStore((s) => s.tiers);
-
+  const {
+    user,
+    logout
+  } = useAuthStore();
+  const {
+    points,
+    tier
+  } = useWalletStore();
+  const {
+    setPage
+  } = useUIStore();
+  const {
+    t
+  } = useTranslation();
+  const configTiers = useConfigStore(s => s.tiers);
   const [showLogout, setShowLogout] = useState(false);
   const [recentOrders, setRecentOrders] = useState<OrderPreview[]>([]);
 
   /* Tier progress — use configStore tiers, fall back to sensible defaults */
-  const tierThresholds: Record<string, number> = configTiers?.length
-    ? configTiers.reduce((acc: Record<string, number>, t) => {
-        acc[t.name] = t.min_points;
-        return acc;
-      }, {} as Record<string, number>)
-    : { Bronze: 0, Silver: 1000, Gold: 3000, Platinum: 5000 };
+  const tierThresholds: Record<string, number> = configTiers?.length ? configTiers.reduce((acc: Record<string, number>, t) => {
+    acc[t.name] = t.min_points;
+    return acc;
+  }, {} as Record<string, number>) : {
+    Bronze: 0,
+    Silver: 1000,
+    Gold: 3000,
+    Platinum: 5000
+  };
   const tiers = Object.keys(tierThresholds);
   const currentTierIdx = tiers.indexOf(tier || 'Bronze');
   const nextTier = tiers[currentTierIdx + 1] || 'Platinum';
   const nextThreshold = tierThresholds[nextTier] || 5000;
-  const progress = Math.min((points / nextThreshold) * 100, 100);
+  const progress = Math.min(points / nextThreshold * 100, 100);
   const ptsToNext = Math.max(0, nextThreshold - points);
-
   useEffect(() => {
     if (!useAuthStore.getState().isAuthenticated) return;
-    api.get('/orders?per_page=3')
-      .then((res) => {
-        const data: Order[] = Array.isArray(res.data) ? res.data : (res.data?.items ?? []);
-        setRecentOrders(data.slice(0, 3).map((o) => ({
-          id: o.id,
-          items: o.line_items?.map((i) => i.item_name).filter(Boolean).join(', ') || t('profile.orderNumber', { id: o.id }),
-          date: o.created_at ? new Date(o.created_at).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' }) : '',
-          status: o.status || 'Completed',
-          total: o.total_amount || 0,
-          imageUrl: o.line_items?.[0]?.image_url ? resolveAssetUrl(o.line_items[0].image_url) : null,
-        })));
-      })
-      .catch((err) => { console.error('[Profile] Recent orders fetch failed:', err); setRecentOrders([]); });
+    api.get('/orders?per_page=3').then(res => {
+      const data: Order[] = Array.isArray(res.data) ? res.data : res.data?.items ?? [];
+      setRecentOrders(data.slice(0, 3).map(o => ({
+        id: o.id,
+        items: o.line_items?.map(i => i.item_name).filter(Boolean).join(', ') || t('profile.orderNumber', {
+          id: o.id
+        }),
+        date: o.created_at ? new Date(o.created_at).toLocaleDateString(getLocale(), {
+          month: 'short',
+          day: 'numeric'
+        }) : '',
+        status: o.status || 'Completed',
+        total: o.total_amount || 0,
+        imageUrl: o.line_items?.[0]?.image_url ? resolveAssetUrl(o.line_items[0].image_url) : null
+      })));
+    }).catch(err => {
+      console.error('[Profile] Recent orders fetch failed:', err);
+      setRecentOrders([]);
+    });
   }, [t]);
-
   const handleLogout = async () => {
     logout();
     setShowLogout(false);
   };
-
   const initials = user?.display_name?.charAt(0)?.toUpperCase() || 'U';
-
-  const menuItems = [
-    { id: 'rewards', icon: Gift, label: t('profile.myRewards'), iconClass: 'profile-icon-reward', onClick: () => setPage('my-rewards', { initialTab: 'rewards' }) },
-    { id: 'vouchers', icon: Ticket, label: t('profile.myVouchers'), iconClass: 'profile-icon-voucher', onClick: () => setPage('my-rewards', { initialTab: 'vouchers' }) },
-    { id: 'referral', icon: Users, label: t('profile.referral'), iconClass: 'profile-icon-referral', onClick: () => setPage('referral') },
-    { id: 'payment', icon: CreditCard, label: t('profile.paymentMethods'), iconClass: 'profile-icon-payment', onClick: () => setPage('payment-methods') },
-    { id: 'addresses', icon: MapPin, label: t('profile.savedAddresses'), iconClass: 'profile-icon-address', onClick: () => setPage('saved-addresses') },
-    { id: 'card', icon: IdCard, label: t('profile.myCard'), iconClass: 'profile-icon-card', onClick: () => setPage('my-card') },
-    { id: 'notification', icon: Bell, label: t('profile.notifications'), iconClass: 'profile-icon-notif', onClick: () => setPage('notifications') },
-    { id: 'reservations', icon: CalendarCheck, label: t('profile.reservations') || 'Reservations', iconClass: 'profile-icon-notif', onClick: () => setPage('reservations') },
-    { id: 'events', icon: CalendarCheck, label: t('profile.events'), iconClass: 'profile-icon-notif', onClick: () => setPage('events') },
-    { id: 'promotions', icon: Tag, label: t('profile.promotions') || 'Promotions', iconClass: 'profile-icon-reward', onClick: () => setPage('promotions') },
-  ];
-
-  const menuItems2 = [
-    { id: 'settings', icon: SlidersHorizontal, label: t('profile.settings'), iconClass: 'profile-icon-settings', onClick: () => setPage('settings') },
-    { id: 'help', icon: Headset, label: t('profile.helpSupport'), iconClass: 'profile-icon-help', onClick: () => setPage('help-support') },
-  ];
-
+  const menuItems = [{
+    id: 'rewards',
+    icon: Gift,
+    label: t('profile.myRewards'),
+    iconClass: 'profile-icon-reward',
+    onClick: () => setPage('my-rewards', {
+      initialTab: 'rewards'
+    })
+  }, {
+    id: 'vouchers',
+    icon: Ticket,
+    label: t('profile.myVouchers'),
+    iconClass: 'profile-icon-voucher',
+    onClick: () => setPage('my-rewards', {
+      initialTab: 'vouchers'
+    })
+  }, {
+    id: 'referral',
+    icon: Users,
+    label: t('profile.referral'),
+    iconClass: 'profile-icon-referral',
+    onClick: () => setPage('referral')
+  }, {
+    id: 'payment',
+    icon: CreditCard,
+    label: t('profile.paymentMethods'),
+    iconClass: 'profile-icon-payment',
+    onClick: () => setPage('payment-methods')
+  }, {
+    id: 'addresses',
+    icon: MapPin,
+    label: t('profile.savedAddresses'),
+    iconClass: 'profile-icon-address',
+    onClick: () => setPage('saved-addresses')
+  }, {
+    id: 'card',
+    icon: IdCard,
+    label: t('profile.myCard'),
+    iconClass: 'profile-icon-card',
+    onClick: () => setPage('my-card')
+  }, {
+    id: 'notification',
+    icon: Bell,
+    label: t('profile.notifications'),
+    iconClass: 'profile-icon-notif',
+    onClick: () => setPage('notifications')
+  }, {
+    id: 'reservations',
+    icon: CalendarCheck,
+    label: t('profile.reservations') || 'Reservations',
+    iconClass: 'profile-icon-notif',
+    onClick: () => setPage('reservations')
+  }, {
+    id: 'events',
+    icon: CalendarCheck,
+    label: t('profile.events'),
+    iconClass: 'profile-icon-notif',
+    onClick: () => setPage('events')
+  }, {
+    id: 'promotions',
+    icon: Tag,
+    label: t('profile.promotions') || 'Promotions',
+    iconClass: 'profile-icon-reward',
+    onClick: () => setPage('promotions')
+  }];
+  const menuItems2 = [{
+    id: 'settings',
+    icon: SlidersHorizontal,
+    label: t('profile.settings'),
+    iconClass: 'profile-icon-settings',
+    onClick: () => setPage('settings')
+  }, {
+    id: 'help',
+    icon: Headset,
+    label: t('profile.helpSupport'),
+    iconClass: 'profile-icon-help',
+    onClick: () => setPage('help-support')
+  }];
   function statusClass(status: string) {
     const s = status.toLowerCase();
     if (s === 'delivered' || s.startsWith('completed')) return 'completed';
     if (s.startsWith('cancelled') || s.includes('cancelled')) return 'cancelled';
     return '';
   }
-
-  return (
-    <div className="profile-screen">
+  return <div className="profile-screen">
       {/* Header */}
       <div className="sub-page-header">
         <div className="sub-header-left">
@@ -138,16 +190,21 @@ export default function ProfilePage() {
               <div className="profile-user-name">{user?.display_name || t('profile.guest')}</div>
               <div className="profile-user-phone">{user?.phone_number || t('profile.noPhone')}</div>
               <div className={`profile-tier-badge ${(tier || 'Bronze').toLowerCase()}`}>
-                <Crown size={12} /> {t('profile.tierMember', { tier })}
+                <Crown size={12} /> {t('profile.tierMember', {
+                tier
+              })}
               </div>
-              {ptsToNext > 0 && (
-                <div className="profile-tier-progress">
+              {ptsToNext > 0 && <div className="profile-tier-progress">
                   <div className="profile-tier-track">
-                    <div className="profile-tier-fill" style={{ width: `${progress}%` }} />
+                    <div className="profile-tier-fill" style={{
+                  width: `${progress}%`
+                }} />
                   </div>
-                  <span className="profile-tier-text">{t('profile.ptsToNext', { points: ptsToNext.toLocaleString(), tier: nextTier })}</span>
-                </div>
-              )}
+                  <span className="profile-tier-text">{t('profile.ptsToNext', {
+                  points: ptsToNext.toLocaleString(),
+                  tier: nextTier
+                })}</span>
+                </div>}
             </div>
           </div>
 
@@ -157,19 +214,13 @@ export default function ProfilePage() {
             <button className="profile-see-all" onClick={() => setPage('orders')}>{t('common.seeAll')}</button>
           </div>
           <div className="profile-preview-card">
-            {recentOrders.length === 0 ? (
-              <div className="profile-empty-orders">
+            {recentOrders.length === 0 ? <div className="profile-empty-orders">
                 {t('profile.noOrders')}
-              </div>
-            ) : (
-              recentOrders.map((order) => (
-                <div key={order.id} className="profile-order-item" onClick={() => setPage('order-detail', { orderId: order.id })}>
+              </div> : recentOrders.map(order => <div key={order.id} className="profile-order-item" onClick={() => setPage('order-detail', {
+            orderId: order.id
+          })}>
                   <div className="profile-order-thumb">
-                    {order.imageUrl ? (
-                      <img src={order.imageUrl} alt="Order item" loading="lazy" />
-                    ) : (
-                      <ShoppingBag size={22} color={LOKA.border} />
-                    )}
+                    {order.imageUrl ? <img src={order.imageUrl} alt={t("profile_page.order_item")} loading="lazy" /> : <ShoppingBag size={22} color={LOKA.border} />}
                   </div>
                   <div className="profile-order-info">
                     <div className="profile-order-name">{order.items}</div>
@@ -181,9 +232,7 @@ export default function ProfilePage() {
                       {order.status}
                     </div>
                   </div>
-                </div>
-              ))
-            )}
+                </div>)}
             <button className="profile-view-all" onClick={() => setPage('orders')}>
               {t('profile.viewAll')}
             </button>
@@ -192,33 +241,29 @@ export default function ProfilePage() {
           {/* Menu links */}
           <div className="h-3" />
           <div className="profile-menu-card">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button key={item.id} className="profile-menu-item" onClick={item.onClick}>
+            {menuItems.map(item => {
+            const Icon = item.icon;
+            return <button key={item.id} className="profile-menu-item" onClick={item.onClick}>
                   <div className={`profile-menu-icon ${item.iconClass}`}>
                     <Icon size={18} />
                   </div>
                   <span className="profile-menu-label">{item.label}</span>
                   <ChevronRight size={16} color={LOKA.border} />
-                </button>
-              );
-            })}
+                </button>;
+          })}
           </div>
 
           <div className="profile-menu-card">
-            {menuItems2.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button key={item.id} className="profile-menu-item" onClick={item.onClick}>
+            {menuItems2.map(item => {
+            const Icon = item.icon;
+            return <button key={item.id} className="profile-menu-item" onClick={item.onClick}>
                   <div className={`profile-menu-icon ${item.iconClass}`}>
                     <Icon size={18} />
                   </div>
                   <span className="profile-menu-label">{item.label}</span>
                   <ChevronRight size={16} color={LOKA.border} />
-                </button>
-              );
-            })}
+                </button>;
+          })}
           </div>
 
           {/* Logout */}
@@ -235,7 +280,9 @@ export default function ProfilePage() {
       </div>
 
       {/* Logout modal */}
-      <div className={`profile-modal-overlay ${showLogout ? 'show' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setShowLogout(false); }}>
+      <div className={`profile-modal-overlay ${showLogout ? 'show' : ''}`} onClick={e => {
+      if (e.target === e.currentTarget) setShowLogout(false);
+    }}>
         <div className="profile-modal-box">
           <h3>{t('profile.logout')}</h3>
           <p>{t('profile.logoutConfirm')}</p>
@@ -245,6 +292,5 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }

@@ -5,60 +5,87 @@ import { getTipAllocations, type TipAllocation } from "@/lib/api";
 import { api } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { useCurrency } from "@/hooks/useCurrency";
-
-interface Store { id: number; store_name: string; }
-
+interface Store {
+  id: number;
+  store_name: string;
+}
 export default function StaffTipsPage() {
-  const { t } = useTranslation();
-  const { format } = useCurrency();
+  const {
+    t
+  } = useTranslation();
+  const {
+    format
+  } = useCurrency();
   const [items, setItems] = useState<TipAllocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [storeId, setStoreId] = useState("");
   const [stores, setStores] = useState<Store[]>([]);
-
   useEffect(() => {
-    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch((e) => { console.error('stores:', e); });
+    api.get<Store[]>("/admin/stores?per_page=50").then(d => setStores(Array.isArray(d) ? d : [])).catch(e => {
+      console.error('stores:', e);
+    });
   }, []);
-
   const fetchData = useCallback(async () => {
-    return getTipAllocations({ store_id: storeId ? Number(storeId) : undefined });
+    return getTipAllocations({
+      store_id: storeId ? Number(storeId) : undefined
+    });
   }, [storeId]);
-
   useEffect(() => {
     let cancelled = false;
-    fetchData()
-      .then((d) => { if (!cancelled) setItems(d); })
-      .catch((e) => { if (!cancelled) setError(e.message); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    fetchData().then(d => {
+      if (!cancelled) setItems(d);
+    }).catch(e => {
+      if (!cancelled) setError(e.message);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [fetchData]);
-
-  return (
-    <div style={{ padding: 32 }}>
-      <div className="page-header"><div><h1 className="page-title">Tip Allocations</h1><p className="page-subtitle">{items.length} tips</p></div></div>
+  return <div style={{
+    padding: 32
+  }}>
+      <div className="page-header"><div><h1 className="page-title">{t("staff_tips.tip_allocations")}</h1><p className="page-subtitle">{items.length}{t("staff_tips.tips")}</p></div></div>
       {error && <div className="alert alert-error">{error}</div>}
-      <div style={{ marginBottom: 12 }}>
-        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{ padding: "6px 12px", fontSize: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-light)" }}>
+      <div style={{
+      marginBottom: 12
+    }}>
+        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={{
+        padding: "6px 12px",
+        fontSize: 13,
+        borderRadius: "var(--radius-sm)",
+        border: "1px solid var(--color-border-light)"
+      }}>
           <option value="">{t("admin.common.allStores")}</option>{stores.map(s => <option key={s.id} value={s.id}>{s.store_name}</option>)}
         </select>
       </div>
-      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length} allocations</span></div>
+      <div className="table-header-bar"><span className="text-sm font-semibold">{items.length}{t("staff_tips.allocations")}</span></div>
       <div className="table-container"><table className="data-table">
-        <thead><tr><th>Order</th><th>Store</th><th style={{ textAlign: "right" }}>Total Tip</th><th>Method</th><th>Distributed By</th><th>Date</th></tr></thead>
+        <thead><tr><th>{t("staff_tips.order")}</th><th>{t("staff_tips.store")}</th><th style={{
+              textAlign: "right"
+            }}>{t("staff_tips.total_tip")}</th><th>{t("staff_tips.method")}</th><th>{t("staff_tips.distributed_by")}</th><th>{t("staff_tips.date")}</th></tr></thead>
         <tbody>
-          {loading ? <tr><td colSpan={6} className="data-table-empty">Loading...</td></tr>
-          : items.length === 0 ? <tr><td colSpan={6} className="data-table-empty">No tip allocations found.</td></tr>
-          : items.map(t => (<tr key={t.id}>
-            <td className="font-mono" style={{ fontSize: 11 }}>#{t.order_id}</td>
+          {loading ? <tr><td colSpan={6} className="data-table-empty">{t("staff_tips.loading")}</td></tr> : items.length === 0 ? <tr><td colSpan={6} className="data-table-empty">{t("staff_tips.no_tip_allocations_found")}</td></tr> : items.map(t => <tr key={t.id}>
+            <td className="font-mono" style={{
+              fontSize: 11
+            }}>#{t.order_id}</td>
             <td>{t.store_name || `Store #${t.store_id}`}</td>
-            <td style={{ textAlign: "right", fontWeight: 600 }}>{format(t.total_tip)}</td>
-            <td style={{ textTransform: "capitalize", fontSize: 12 }}>{t.payment_method || "—"}</td>
+            <td style={{
+              textAlign: "right",
+              fontWeight: 600
+            }}>{format(t.total_tip)}</td>
+            <td style={{
+              textTransform: "capitalize",
+              fontSize: 12
+            }}>{t.payment_method || "—"}</td>
             <td>{t.distributed_by_name || "—"}</td>
-            <td style={{ fontSize: 12 }}>{t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
-          </tr>))}
+            <td style={{
+              fontSize: 12
+            }}>{t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
+          </tr>)}
         </tbody>
       </table></div>
-    </div>
-  );
+    </div>;
 }

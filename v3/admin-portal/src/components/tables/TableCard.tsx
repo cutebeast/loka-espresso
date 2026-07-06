@@ -1,9 +1,9 @@
 "use client";
 
+import { useTranslation } from "@/lib/i18n";
 import { QrCode, Download, RefreshCw, ToggleLeft, ToggleRight, Edit2, Trash2, Users, Circle, Receipt } from "lucide-react";
 import { QRCodeDisplay } from "./QRCodeGenerator";
 import { useCurrency } from "@/hooks/useCurrency";
-
 export interface TableItem {
   id: number;
   table_number: string;
@@ -23,11 +23,13 @@ export interface TableItem {
     total_amount: number;
   } | null;
 }
-
 interface TableCardProps {
   table: TableItem;
   qrImageUrl?: string;
-  expiry: { remaining: number; expired: boolean };
+  expiry: {
+    remaining: number;
+    expired: boolean;
+  };
   onGenerateQr: (table: TableItem) => void;
   onDownloadQr: (table: TableItem) => void;
   onRegenerateQr: (table: TableItem) => void;
@@ -38,7 +40,6 @@ interface TableCardProps {
   confirmDelete: number | null;
   onConfirmDelete: (id: number | null) => void;
 }
-
 const STATUS_BADGE_CLASSES: Record<string, string> = {
   pending: "tp-badge-yellow",
   preparing: "tp-badge-blue",
@@ -47,46 +48,65 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
   confirmed: "tp-badge-blue",
   completed: "tp-badge-green",
   delivered: "tp-badge-green",
-  cancelled: "tp-badge-red",
+  cancelled: "tp-badge-red"
 };
-
 export default function TableCard({
-  table, qrImageUrl, expiry,
-  onGenerateQr, onDownloadQr, onRegenerateQr,
-  onToggle, onEdit, onDelete, onViewOrder,
-  confirmDelete, onConfirmDelete,
+  table,
+  qrImageUrl,
+  expiry,
+  onGenerateQr,
+  onDownloadQr,
+  onRegenerateQr,
+  onToggle,
+  onEdit,
+  onDelete,
+  onViewOrder,
+  confirmDelete,
+  onConfirmDelete
 }: TableCardProps) {
-  const { format } = useCurrency();
+  const {
+    t
+  } = useTranslation();
+  const {
+    format
+  } = useCurrency();
   const hasQr = !!(table.qr_code_url || table.qr_code_token) && !expiry.expired;
-
   const getStatusBadge = () => {
-    if (table.is_occupied) return { text: "In Use", cls: "tp-badge-red" };
-    if (!table.qr_code_token) return { text: "Pending", cls: "tp-badge-yellow" };
-    if (expiry.expired) return { text: "Expired", cls: "tp-badge-red" };
-    if (table.is_active) return { text: "Active", cls: "tp-badge-green" };
-    return { text: "Inactive", cls: "tp-badge-gray" };
+    if (table.is_occupied) return {
+      text: "In Use",
+      cls: "tp-badge-red"
+    };
+    if (!table.qr_code_token) return {
+      text: "Pending",
+      cls: "tp-badge-yellow"
+    };
+    if (expiry.expired) return {
+      text: "Expired",
+      cls: "tp-badge-red"
+    };
+    if (table.is_active) return {
+      text: "Active",
+      cls: "tp-badge-green"
+    };
+    return {
+      text: "Inactive",
+      cls: "tp-badge-gray"
+    };
   };
-
   const badge = getStatusBadge();
-
-  return (
-    <div className={`tp-table-card ${table.is_active ? "tp-table-active" : "tp-table-inactive"}`}>
+  return <div className={`tp-table-card ${table.is_active ? "tp-table-active" : "tp-table-inactive"}`}>
       {/* Header */}
       <div className="tp-33">
         <h4 className="tp-34">{table.table_number}</h4>
         {table.display_name && <span className="tp-display-name">{table.display_name}</span>}
-        {table.capacity != null && table.capacity > 0 && (
-          <div className="tp-occupancy">
+        {table.capacity != null && table.capacity > 0 && <div className="tp-occupancy">
             <Users size={12} />
             <span>{table.capacity}</span>
-          </div>
-        )}
-        {table.is_occupied && (
-          <div className="tp-occupied-indicator">
+          </div>}
+        {table.is_occupied && <div className="tp-occupied-indicator">
             <Circle size={8} fill="currentColor" />
-            <span>Occupied</span>
-          </div>
-        )}
+            <span>{t("common.tables_table_card.occupied")}</span>
+          </div>}
       </div>
 
       {/* Status badge */}
@@ -95,11 +115,7 @@ export default function TableCard({
       </div>
 
       {/* Active order */}
-      {table.active_order && (
-        <div
-          className={`tp-order-indicator ${table.active_order.payment_status === "paid" ? "tp-order-paid" : "tp-order-unpaid"}`}
-          onClick={() => onViewOrder(table.active_order!.id)}
-        >
+      {table.active_order && <div className={`tp-order-indicator ${table.active_order.payment_status === "paid" ? "tp-order-paid" : "tp-order-unpaid"}`} onClick={() => onViewOrder(table.active_order!.id)}>
           <div className="tp-order-row">
             <Receipt size={14} />
             <span className="tp-order-number">{table.active_order.order_number}</span>
@@ -108,13 +124,9 @@ export default function TableCard({
             </span>
           </div>
           <div className="tp-order-total">{format(table.active_order.total_amount)}</div>
-          {table.active_order.payment_status !== "paid" && (
-            <div className="tp-order-unpaid-warn">
-              <Circle size={6} fill="currentColor" /> Unpaid
-            </div>
-          )}
-        </div>
-      )}
+          {table.active_order.payment_status !== "paid" && <div className="tp-order-unpaid-warn">
+              <Circle size={6} fill="currentColor" />{t("common.tables_table_card.unpaid")}</div>}
+        </div>}
 
       {/* QR Code */}
       <div className="tp-46">
@@ -123,41 +135,30 @@ export default function TableCard({
 
       {/* Actions */}
       <div className="tp-49">
-        {!hasQr ? (
-          <button type="button" onClick={() => onGenerateQr(table)} className="tp-btn-qr">
-            <QrCode size={14} /> Generate QR
-          </button>
-        ) : (
-          <>
-            <button type="button" onClick={() => onDownloadQr(table)} className="tp-btn-download" aria-label="Download QR" title="Download QR">
+        {!hasQr ? <button type="button" onClick={() => onGenerateQr(table)} className="tp-btn-qr">
+            <QrCode size={14} />{t("common.tables_table_card.generate_qr")}</button> : <>
+            <button type="button" onClick={() => onDownloadQr(table)} className="tp-btn-download" aria-label={t("common.tables_table_card.download_qr")} title={t("common.tables_table_card.download_qr_2")}>
               <Download size={14} />
             </button>
-            <button type="button" onClick={() => onRegenerateQr(table)} className="tp-btn-regen" aria-label="Regenerate QR" title="Regenerate QR">
+            <button type="button" onClick={() => onRegenerateQr(table)} className="tp-btn-regen" aria-label={t("common.tables_table_card.regenerate_qr")} title={t("common.tables_table_card.regenerate_qr_2")}>
               <RefreshCw size={14} />
             </button>
-          </>
-        )}
+          </>}
         <button type="button" onClick={() => onToggle(table)} className="tp-btn-toggle" aria-label={table.is_active ? "Deactivate" : "Activate"} title={table.is_active ? "Deactivate" : "Activate"}>
           {table.is_active ? <ToggleRight size={18} className="text-green-600" /> : <ToggleLeft size={18} className="text-gray-400" />}
         </button>
-        <button type="button" onClick={() => onEdit(table)} className="tp-btn-edit" aria-label="Edit table" title="Edit">
+        <button type="button" onClick={() => onEdit(table)} className="tp-btn-edit" aria-label={t("common.tables_table_card.edit_table")} title={t("common.tables_table_card.edit")}>
           <Edit2 size={14} />
         </button>
-        {confirmDelete === table.id ? (
-          <>
-            <button type="button" onClick={() => { onDelete(table); onConfirmDelete(null); }} className="tp-btn-delete-confirm">
-              Confirm
-            </button>
-            <button type="button" onClick={() => onConfirmDelete(null)} className="tp-btn-delete-cancel">
-              Cancel
-            </button>
-          </>
-        ) : (
-          <button type="button" onClick={() => onConfirmDelete(table.id)} className="tp-btn-delete" aria-label="Delete table" title="Delete">
+        {confirmDelete === table.id ? <>
+            <button type="button" onClick={() => {
+          onDelete(table);
+          onConfirmDelete(null);
+        }} className="tp-btn-delete-confirm">{t("common.tables_table_card.confirm")}</button>
+            <button type="button" onClick={() => onConfirmDelete(null)} className="tp-btn-delete-cancel">{t("common.tables_table_card.cancel")}</button>
+          </> : <button type="button" onClick={() => onConfirmDelete(table.id)} className="tp-btn-delete" aria-label={t("common.tables_table_card.delete_table")} title={t("common.tables_table_card.delete")}>
             <Trash2 size={14} />
-          </button>
-        )}
+          </button>}
       </div>
-    </div>
-  );
+    </div>;
 }

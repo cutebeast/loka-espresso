@@ -6,11 +6,15 @@ from typing import Any
 
 import httpx
 
+from app.core.cache import get_redis_client
 from app.services.platform_config import PlatformConfigService
 
 logger = logging.getLogger("otp")
 
 VERIFY_BASE_URL = "https://verify.twilio.com/v2"
+
+OTP_SEND_PREFIX = "otp:send"
+OTP_COUNT_PREFIX = "otp:count"
 
 
 class OTPConfigError(Exception):
@@ -19,6 +23,52 @@ class OTPConfigError(Exception):
     def __init__(self, message: str = "Twilio Verify is not configured"):
         self.message = message
         super().__init__(self.message)
+
+
+def _redis_key(prefix: str, phone: str) -> str:
+    return f"{prefix}:{phone}"
+
+
+async def check_otp_rate_limit(config_svc: PlatformConfigService, phone: str) -> tuple[bool, str]:
+    """Return (ok, error_message). Enforces otp.max_send_per_hour."""
+    redis = get_redis_client()
+    if redis is None:
+        logger.warning("Redis unavailable; cannot enforce OTP rate limit for %s", phone)
+        return False, "OTP service is temporarily unavailable. Please try again later."
+
+    max_sends = await config_svc.get_otp_max_send_per_hour()
+    count_key = _redis_key(OTP_COUNT_PREFIX, phone)
+    current = await redis.get(count_key)
+    if current and int(current) >= max_sends:
+        return False, f"OTP send limit reached. Please try again later."
+    return True, ""
+
+
+async def record_otp_send(config_svc: PlatformConfigService, phone: str) -> None:
+    """Record an OTP send in Redis for expiry and hourly rate counting."""
+    redis = get_redis_client()
+    if redis is None:
+        return
+
+    expiry_minutes = await config_svc.get_otp_expiry_minutes()
+    send_key = _redis_key(OTP_SEND_PREFIX, phone)
+    count_key = _redis_key(OTP_COUNT_PREFIX, phone)
+
+    pipe = redis.pipeline()
+    pipe.setex(send_key, expiry_minutes * 60, "1")
+    pipe.incr(count_key)
+    pipe.expire(count_key, 3600)
+    await pipe.execute()
+
+
+async def is_otp_send_active(config_svc: PlatformConfigService, phone: str) -> bool:
+    """Return True if a recent OTP send is still within otp.expiry_minutes."""
+    redis = get_redis_client()
+    if redis is None:
+        # Without Redis we cannot confirm expiry; fail closed.
+        return False
+    send_key = _redis_key(OTP_SEND_PREFIX, phone)
+    return await redis.exists(send_key) > 0
 
 
 class TwilioVerifyClient:

@@ -6,13 +6,11 @@ import { useUIStore } from '@/stores/uiStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import api from '@/lib/api';
 import { getLocale } from '@/stores/localeStore';
-
 interface LegalSection {
   heading: string;
   body: string;
   items?: string[];
 }
-
 interface LegalContent {
   id: number;
   title: string;
@@ -22,23 +20,27 @@ interface LegalContent {
   content_type: string;
   updated_at: string | null;
 }
-
 interface LegalPageProps {
   legalKey?: 'terms' | 'privacy';
 }
-
-export default function LegalPage({ legalKey }: LegalPageProps) {
-  const { t } = useTranslation();
-  const { setPage, pageParams } = useUIStore();
-  const key = legalKey || (pageParams.legalKey as 'terms' | 'privacy') || 'terms';
-  const backTo = (pageParams.backTo as 'profile' | 'settings') || 'profile';
+export default function LegalPage({
+  legalKey
+}: LegalPageProps) {
+  const {
+    t
+  } = useTranslation();
+  const {
+    setPage,
+    pageParams
+  } = useUIStore();
+  const key = legalKey || pageParams.legalKey as 'terms' | 'privacy' || 'terms';
+  const backTo = pageParams.backTo as 'profile' | 'settings' || 'profile';
   const [content, setContent] = useState<LegalContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
   const tocRef = useRef<HTMLDivElement>(null);
-
   const loadContent = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -55,47 +57,40 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
       setLoading(false);
     }
   }, [key, t]);
-
   useEffect(() => {
     loadContent();
   }, [loadContent]);
-
   const toggleSection = (idx: number) => {
     setExpanded(prev => {
       const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
+      if (next.has(idx)) next.delete(idx);else next.add(idx);
       return next;
     });
   };
-
   const scrollToSection = (idx: number) => {
-    document.getElementById(`legal-section-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById(`legal-section-${idx}`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
   };
-
-  const sections: LegalSection[] = content?.sections?.length
-    ? content.sections
-    : content?.long_description
-      ? [{ heading: content.title, body: content.long_description }]
-      : content?.body_text
-        ? [{ heading: content.title, body: content.body_text }]
-        : [];
-
-  const filtered = search.trim()
-    ? sections.map(s => ({
-        ...s,
-        _match: s.heading.toLowerCase().includes(search.toLowerCase()) ||
-                s.body.toLowerCase().includes(search.toLowerCase()),
-      })).filter(s => s._match)
-    : sections;
-
+  const sections: LegalSection[] = content?.sections?.length ? content.sections : content?.long_description ? [{
+    heading: content.title,
+    body: content.long_description
+  }] : content?.body_text ? [{
+    heading: content.title,
+    body: content.body_text
+  }] : [];
+  const filtered = search.trim() ? sections.map(s => ({
+    ...s,
+    _match: s.heading.toLowerCase().includes(search.toLowerCase()) || s.body.toLowerCase().includes(search.toLowerCase())
+  })).filter(s => s._match) : sections;
   const title = content?.title || (key === 'terms' ? 'Terms of Service' : 'Privacy Policy');
-  const updatedAt = content?.updated_at
-    ? new Date(content.updated_at).toLocaleDateString(getLocale(), { year: 'numeric', month: 'long', day: 'numeric' })
-    : null;
-
-  return (
-    <div className="legal-screen">
+  const updatedAt = content?.updated_at ? new Date(content.updated_at).toLocaleDateString(getLocale(), {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }) : null;
+  return <div className="legal-screen">
       <div className="legal-header">
         <button className="legal-back-btn" onClick={() => setPage(backTo)} aria-label={t('common.back')}>
           <ArrowLeft size={20} />
@@ -104,19 +99,11 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
       </div>
 
       <div className="legal-content">
-        {loading ? (
-          <div className="legal-skeleton-list">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className={`skeleton legal-skeleton-line ${i === 1 ? '' : 'w-2_3'}`} />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="legal-error">{error}</div>
-        ) : (
-          <>
+        {loading ? <div className="legal-skeleton-list">
+            {[1, 2, 3, 4].map(i => <div key={i} className={`skeleton legal-skeleton-line ${i === 1 ? '' : 'w-2_3'}`} />)}
+          </div> : error ? <div className="legal-error">{error}</div> : <>
             {/* Updated banner */}
-            {updatedAt && (
-              <div className="legal-updated-banner">
+            {updatedAt && <div className="legal-updated-banner">
                 <div className="legal-updated-icon">
                   <Calendar size={16} color="#fff" />
                 </div>
@@ -124,71 +111,45 @@ export default function LegalPage({ legalKey }: LegalPageProps) {
                   <div className="legal-updated-label">{t('common.lastUpdated')}</div>
                   <div className="legal-updated-date">{updatedAt}</div>
                 </div>
-              </div>
-            )}
+              </div>}
 
             {/* Search bar */}
             <div className="legal-search-bar">
               <Search size={16} className="legal-search-icon" />
-              <input
-                type="text"
-                placeholder={`Search in ${title}...`}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              <input type="text" placeholder={`Search in ${title}...`} value={search} onChange={e => setSearch(e.target.value)} />
             </div>
 
             {/* Table of Contents — only show when no search filter active */}
-            {!search.trim() && sections.length > 0 && (
-              <div className="legal-toc-card" ref={tocRef}>
+            {!search.trim() && sections.length > 0 && <div className="legal-toc-card" ref={tocRef}>
                 <div className="legal-toc-title">{t('legal.tableOfContents')}</div>
-                {sections.map((s, i) => (
-                  <button key={i} className="legal-toc-item" onClick={() => scrollToSection(i)}>
+                {sections.map((s, i) => <button key={i} className="legal-toc-item" onClick={() => scrollToSection(i)}>
                     <span className="legal-toc-num">{i + 1}</span>
                     <span className="legal-toc-text">{s.heading}</span>
                     <ChevronRight size={12} className="legal-toc-arrow" />
-                  </button>
-                ))}
-              </div>
-            )}
+                  </button>)}
+              </div>}
 
             {/* Collapsible sections */}
             {filtered.map((s: LegalSection, _i: number) => {
-              const actualIdx = sections.indexOf(s);
-              const isExpanded = expanded.has(actualIdx);
-              return (
-                <div key={actualIdx} className="legal-section" id={`legal-section-${actualIdx}`}>
+          const actualIdx = sections.indexOf(s);
+          const isExpanded = expanded.has(actualIdx);
+          return <div key={actualIdx} className="legal-section" id={`legal-section-${actualIdx}`}>
                   <button className="legal-section-header" onClick={() => toggleSection(actualIdx)}>
                     <span className="legal-section-num">{actualIdx + 1}</span>
                     <span className="legal-section-title">{s.heading}</span>
-                    {isExpanded ? (
-                      <ChevronUp size={14} className="legal-section-chevron" />
-                    ) : (
-                      <ChevronDown size={14} className="legal-section-chevron" />
-                    )}
+                    {isExpanded ? <ChevronUp size={14} className="legal-section-chevron" /> : <ChevronDown size={14} className="legal-section-chevron" />}
                   </button>
-                  {isExpanded && (
-                    <div className="legal-section-body">
+                  {isExpanded && <div className="legal-section-body">
                       <p>{s.body}</p>
-                      {s.items?.length ? (
-                        <ul>
-                          {s.items.map((item: string, j: number) => (
-                            <li key={j}>{item}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                      {s.items?.length ? <ul>
+                          {s.items.map((item: string, j: number) => <li key={j}>{item}</li>)}
+                        </ul> : null}
+                    </div>}
+                </div>;
+        })}
 
-            <div className="legal-footer">
-              Made with care by LOKA Espresso
-            </div>
-          </>
-        )}
+            <div className="legal-footer">{t("legal_page.made_with_care_by_loka_espresso")}</div>
+          </>}
       </div>
-    </div>
-  );
+    </div>;
 }

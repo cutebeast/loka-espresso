@@ -4,54 +4,57 @@ import { useCallback, useRef, useState, memo, useMemo } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { resolveAssetUrl } from '@/lib/tokens';
 import type { PromoBanner, InformationCard } from '@/lib/api';
-
 const InfoCard = memo(function InfoCard({
   card,
-  onClick,
+  onClick
 }: {
   card: InformationCard;
   onClick: () => void;
 }) {
-  const { t } = useTranslation();
+  const {
+    t
+  } = useTranslation();
   const cardImage = resolveAssetUrl(card.image_url);
-  return (
-    <div className="homepage-info-card" onClick={onClick}>
-      {cardImage && <img src={cardImage} alt="Featured card" className="card-bg-img" loading="lazy" />}
+  return <div className="homepage-info-card" onClick={onClick}>
+      {cardImage && <img src={cardImage} alt={t("home.home_carousel.featured_card")} className="card-bg-img" loading="lazy" />}
       <div className="homepage-info-content">
         <span className="homepage-info-badge">{card.content_type === 'product' ? t('home.badgeProduct') : t('home.badgeExperience')}</span>
         <div className="homepage-info-title">{card.title}</div>
         {card.short_description && <div className="homepage-info-desc">{card.short_description}</div>}
-        <button className="homepage-info-btn" onClick={(e) => { e.stopPropagation(); onClick(); }}>
+        <button className="homepage-info-btn" onClick={e => {
+        e.stopPropagation();
+        onClick();
+      }}>
           {t('home.learnMore')}
         </button>
       </div>
-    </div>
-  );
+    </div>;
 });
-
 const PromoCard = memo(function PromoCard({
   banner,
-  onClick,
+  onClick
 }: {
   banner: PromoBanner;
   onClick: () => void;
 }) {
-  const { t } = useTranslation();
+  const {
+    t
+  } = useTranslation();
   const bannerImage = resolveAssetUrl(banner.image_url);
-  return (
-    <div className="homepage-promo-card" onClick={onClick}>
-      {bannerImage && <img src={bannerImage} alt="Featured banner" className="card-bg-img" loading="lazy" />}
+  return <div className="homepage-promo-card" onClick={onClick}>
+      {bannerImage && <img src={bannerImage} alt={t("home.home_carousel.featured_banner")} className="card-bg-img" loading="lazy" />}
       <div className="homepage-promo-content">
         <div className="homepage-promo-title">{banner.title}</div>
         {banner.short_description && <div className="homepage-promo-sub">{banner.short_description}</div>}
-        <button className="homepage-promo-btn" onClick={(e) => { e.stopPropagation(); onClick(); }}>
+        <button className="homepage-promo-btn" onClick={e => {
+        e.stopPropagation();
+        onClick();
+      }}>
           {banner.action_type === 'survey' ? t('home.takeSurvey') : banner.action_type === 'detail' ? t('home.learnMore') : t('home.view')}
         </button>
       </div>
-    </div>
-  );
+    </div>;
 });
-
 interface HomeCarouselProps {
   banners: PromoBanner[];
   loading: boolean;
@@ -62,9 +65,19 @@ interface HomeCarouselProps {
   onViewAllPromos?: () => void;
   onViewAllDiscover?: () => void;
 }
-
-export default function HomeCarousel({ banners, loading, infoCards, productCards, onPromoClick, onInfoClick, onViewAllPromos, onViewAllDiscover }: HomeCarouselProps) {
-  const { t } = useTranslation();
+export default function HomeCarousel({
+  banners,
+  loading,
+  infoCards,
+  productCards,
+  onPromoClick,
+  onInfoClick,
+  onViewAllPromos,
+  onViewAllDiscover
+}: HomeCarouselProps) {
+  const {
+    t
+  } = useTranslation();
   const promoScrollRef = useRef<HTMLDivElement>(null);
   const discoverScrollRef = useRef<HTMLDivElement>(null);
   const [promoIndex, setPromoIndex] = useState(0);
@@ -84,10 +97,8 @@ export default function HomeCarousel({ banners, loading, infoCards, productCards
     }
     return result.slice(0, 6);
   }, [infoCards, productCards]);
-
   const showPromos = !loading && banners.length > 0;
   const showDiscover = !loading && discoverCards.length > 0;
-
   const handlePromoScroll = useCallback(() => {
     const el = promoScrollRef.current;
     if (!el) return;
@@ -98,7 +109,6 @@ export default function HomeCarousel({ banners, loading, infoCards, productCards
       setPromoIndex(clamped);
     }
   }, [banners.length]);
-
   const handleDiscoverScroll = useCallback(() => {
     const el = discoverScrollRef.current;
     if (!el) return;
@@ -109,26 +119,31 @@ export default function HomeCarousel({ banners, loading, infoCards, productCards
       setDiscoverIndex(clamped);
     }
   }, [discoverCards.length]);
-
-  return (
-    <>
+  return <>
       {/* Discover Carousel */}
-      {loading ? (
-        <div>
+      {loading ? <div>
           <div className="home-section-header">
-            <div className="skeleton" style={{ width: 80, height: 18, borderRadius: 4 }} />
-            <div className="skeleton" style={{ width: 50, height: 14, borderRadius: 4 }} />
+            <div className="skeleton" style={{
+          width: 80,
+          height: 18,
+          borderRadius: 4
+        }} />
+            <div className="skeleton" style={{
+          width: 50,
+          height: 14,
+          borderRadius: 4
+        }} />
           </div>
           <div className="homepage-carousel">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="homepage-info-card">
-                <div className="skeleton" style={{ width: '100%', height: '100%', borderRadius: 12 }} />
-              </div>
-            ))}
+            {[1, 2, 3].map(i => <div key={i} className="homepage-info-card">
+                <div className="skeleton" style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: 12
+          }} />
+              </div>)}
           </div>
-        </div>
-      ) : showDiscover ? (
-        <div>
+        </div> : showDiscover ? <div>
           <div className="home-section-header">
             <h3 className="home-section-title">{t('home.discoverTitle')}</h3>
             <button className="home-see-all-link" onClick={onViewAllDiscover}>
@@ -136,47 +151,45 @@ export default function HomeCarousel({ banners, loading, infoCards, productCards
             </button>
           </div>
           <div className="homepage-carousel" ref={discoverScrollRef} onScroll={handleDiscoverScroll}>
-            {discoverCards.map((card) => (
-              <InfoCard
-                key={card.id}
-                card={card}
-                onClick={() => onInfoClick(card.id, card.content_type || undefined)}
-              />
-            ))}
+            {discoverCards.map(card => <InfoCard key={card.id} card={card} onClick={() => onInfoClick(card.id, card.content_type || undefined)} />)}
           </div>
           <div className="homepage-carousel-dots">
-            {discoverCards.map((_, i) => (
-              <button
-                key={i}
-                className={`homepage-dot ${i === discoverIndex ? 'active' : ''}`}
-                onClick={() => {
-                  const el = discoverScrollRef.current;
-                  if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
-                }}
-                aria-label={t('home.goToSlide', { n: i + 1 })}
-              />
-            ))}
+            {discoverCards.map((_, i) => <button key={i} className={`homepage-dot ${i === discoverIndex ? 'active' : ''}`} onClick={() => {
+          const el = discoverScrollRef.current;
+          if (el) el.scrollTo({
+            left: i * el.clientWidth,
+            behavior: 'smooth'
+          });
+        }} aria-label={t('home.goToSlide', {
+          n: i + 1
+        })} />)}
           </div>
-        </div>
-      ) : null}
+        </div> : null}
 
       {/* Promotion Carousel */}
-      {loading ? (
-        <div>
+      {loading ? <div>
           <div className="home-section-header">
-            <div className="skeleton" style={{ width: 100, height: 18, borderRadius: 4 }} />
-            <div className="skeleton" style={{ width: 50, height: 14, borderRadius: 4 }} />
+            <div className="skeleton" style={{
+          width: 100,
+          height: 18,
+          borderRadius: 4
+        }} />
+            <div className="skeleton" style={{
+          width: 50,
+          height: 14,
+          borderRadius: 4
+        }} />
           </div>
           <div className="homepage-carousel">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="homepage-promo-card">
-                <div className="skeleton" style={{ width: '100%', height: '100%', borderRadius: 12 }} />
-              </div>
-            ))}
+            {[1, 2, 3].map(i => <div key={i} className="homepage-promo-card">
+                <div className="skeleton" style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: 12
+          }} />
+              </div>)}
           </div>
-        </div>
-      ) : showPromos ? (
-        <div>
+        </div> : showPromos ? <div>
           <div className="home-section-header">
             <h3 className="home-section-title">{t('home.promotionsTitle')}</h3>
             <button className="home-see-all-link" onClick={onViewAllPromos}>
@@ -184,29 +197,19 @@ export default function HomeCarousel({ banners, loading, infoCards, productCards
             </button>
           </div>
           <div className="homepage-carousel" ref={promoScrollRef} onScroll={handlePromoScroll}>
-            {banners.map((banner) => (
-              <PromoCard
-                key={banner.id}
-                banner={banner}
-                onClick={() => onPromoClick(banner.id)}
-              />
-            ))}
+            {banners.map(banner => <PromoCard key={banner.id} banner={banner} onClick={() => onPromoClick(banner.id)} />)}
           </div>
           <div className="homepage-carousel-dots">
-            {banners.map((_, i) => (
-              <button
-                key={i}
-                className={`homepage-dot ${i === promoIndex ? 'active' : ''}`}
-                onClick={() => {
-                  const el = promoScrollRef.current;
-                  if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
-                }}
-                aria-label={t('home.goToSlide', { n: i + 1 })}
-              />
-            ))}
+            {banners.map((_, i) => <button key={i} className={`homepage-dot ${i === promoIndex ? 'active' : ''}`} onClick={() => {
+          const el = promoScrollRef.current;
+          if (el) el.scrollTo({
+            left: i * el.clientWidth,
+            behavior: 'smooth'
+          });
+        }} aria-label={t('home.goToSlide', {
+          n: i + 1
+        })} />)}
           </div>
-        </div>
-      ) : null}
-    </>
-  );
+        </div> : null}
+    </>;
 }

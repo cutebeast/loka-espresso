@@ -66,9 +66,15 @@ export function useTranslation() {
     return () => { cancelled = true; };
   }, [locale]);
 
-  const t = useCallback((key: string): string => {
+  const t = useCallback((key: string, vars?: Record<string, string | number>): string => {
     if (!hydrated) return key;
-    return translations[key] || key;
+    let text = translations[key] || key;
+    if (vars) {
+      Object.entries(vars).forEach(([k, v]) => {
+        text = text.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+      });
+    }
+    return text;
   }, [translations, hydrated]);
 
   return { t, locale, setLocale };

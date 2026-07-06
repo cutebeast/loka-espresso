@@ -127,7 +127,7 @@ export default function LoginPage() {
 
       const delay = Math.min(3000, attemptCountRef.current * 1000);
       if (delay > 0) {
-        setError(t("login.error_too_many").replace("{seconds}", String(Math.ceil(delay / 1000))));
+        setError(t("login.error_too_many", { seconds: Math.ceil(delay / 1000) }));
         await new Promise((r) => setTimeout(r, delay));
         setError("");
       }

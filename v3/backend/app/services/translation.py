@@ -41,6 +41,13 @@ _creds_cache: dict[str, str] | None = None
 _creds_cache_ts: float = 0
 
 
+def clear_translation_creds_cache() -> None:
+    """Invalidate the in-memory translation credentials cache."""
+    global _creds_cache, _creds_cache_ts
+    _creds_cache = None
+    _creds_cache_ts = 0
+
+
 async def _get_translation_creds(db: AsyncSession | None = None) -> dict[str, str]:
     """Read translation API credentials from platform_config table."""
     global _creds_cache, _creds_cache_ts
@@ -65,7 +72,8 @@ async def _get_translation_creds(db: AsyncSession | None = None) -> dict[str, st
             "deepl_key": rows.get("integration.deepl_api_key", ""),
             "deepl_url": rows.get("integration.deepl_api_url", "https://api-free.deepl.com/v2/translate"),
             "deepseek_key": rows.get("integration.deepseek_api_key", ""),
-            "deepseek_model": rows.get("integration.deepseek_model", "deepseek-v4-pro"),
+            "deepseek_model": rows.get("integration.deepseek_model", "deepseek-chat"),
+            "deepseek_fallback_model": rows.get("integration.deepseek_fallback_model", "deepseek-reasoner"),
         }
         _creds_cache_ts = now
     except Exception:
@@ -110,11 +118,12 @@ async def _call_deepl(text: str, target_locale: str) -> str | None:
     return None
 
 
-async def _call_deepseek(text: str, target_locale: str) -> str | None:
-    """Call DeepSeek LLM API (fallback). Returns translated text or None."""
+async def _call_deepseek(text: str, target_locale: str, model: str | None = None) -> str | None:
+    """Call DeepSeek LLM API. Returns translated text or None."""
     creds = await _get_translation_creds()
     api_key = creds.get("deepseek_key", "")
-    model = creds.get("deepseek_model", "deepseek-v4-flash")
+    if model is None:
+        model = creds.get("deepseek_model", "deepseek-chat")
     if not api_key:
         return None
     locale_names = {"ms": "Bahasa Melayu", "zh": "Simplified Chinese", "ta": "Tamil", "tr": "Turkish"}
@@ -147,10 +156,10 @@ async def _call_deepseek(text: str, target_locale: str) -> str | None:
 
 async def _fetch_translation(text: str, target_locale: str) -> str | None:
     """Call translation providers without touching the database.
-    Primary: DeepL → Fallback: DeepSeek → Last resort: None.
-    Returns translated text or None if both providers fail."""
+    Primary: DeepL (if configured) → DeepSeek flash → DeepSeek pro fallback → None.
+    Returns translated text or None if all providers fail."""
     # Ensure creds are loaded from DB; _get_translation_creds handles its own cache.
-    await _get_translation_creds()
+    creds = await _get_translation_creds()
 
     translated = await _call_deepl(text, target_locale)
     if translated is not None:
@@ -158,10 +167,16 @@ async def _fetch_translation(text: str, target_locale: str) -> str | None:
 
     translated = await _call_deepseek(text, target_locale)
     if translated is not None:
-        logger.info(f"DeepSeek success for {target_locale}: {translated[:30]}")
+        logger.info(f"DeepSeek primary success for {target_locale}: {translated[:30]}")
         return translated
 
-    logger.warning(f"DeepSeek also failed for {target_locale}, using English fallback")
+    fallback_model = creds.get("deepseek_fallback_model", "deepseek-reasoner")
+    translated = await _call_deepseek(text, target_locale, model=fallback_model)
+    if translated is not None:
+        logger.info(f"DeepSeek fallback success for {target_locale}: {translated[:30]}")
+        return translated
+
+    logger.warning(f"All translation providers failed for {target_locale}, using English fallback")
     return None
 
 
@@ -172,7 +187,7 @@ async def auto_translate_text(
     target_locale: str,
 ) -> tuple[str, bool]:
     """Auto-translate text with caching.
-    Primary: DeepL → Fallback: DeepSeek v4 Pro → Last resort: keep English.
+    Primary: DeepL (if configured) → DeepSeek flash → DeepSeek pro fallback → Last resort: keep English.
     Returns (translated_text, was_cached)."""
     ctx = _get_cache_stats_ctx()
 

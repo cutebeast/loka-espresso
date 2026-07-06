@@ -37,8 +37,8 @@ class Translation(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "translation_key", "locale",
-            name="uq_translations_key_locale"
+            "namespace", "translation_key", "locale",
+            name="uq_translations_namespace_key_locale"
         ),
     )
 

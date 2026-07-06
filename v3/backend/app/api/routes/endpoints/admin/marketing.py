@@ -30,22 +30,42 @@ admin_router = APIRouter(prefix="/admin/marketing", tags=["admin — marketing"]
 
 async def _get_twilio_creds(db) -> tuple[str, str, str, str]:
     """Get Twilio credentials from platform_config (set via Campaign Settings page).
-    Returns (account_sid, auth_token, sms_from, whatsapp_from)."""
-    keys = [
-        "integration.twilio_account_sid",
-        "integration.twilio_auth_token",
-        "integration.twilio_from_number",
-        "integration.twilio_whatsapp_from",
-    ]
+
+    Returns (account_sid, auth_token, sms_from, whatsapp_from).
+    Uses test credentials when integration.twilio_use_test_credentials is true.
+    """
+    use_test_result = await db.execute(
+        select(PlatformConfig).where(PlatformConfig.config_key == "integration.twilio_use_test_credentials")
+    )
+    use_test_row = use_test_result.scalar_one_or_none()
+    use_test = bool(
+        use_test_row and str(use_test_row.config_value).lower() in ("true", "1", "yes", "on")
+    )
+
+    if use_test:
+        keys = [
+            "integration.twilio_test_account_sid",
+            "integration.twilio_test_auth_token",
+            "integration.twilio_test_from_number",
+            "integration.twilio_test_whatsapp_from",
+        ]
+    else:
+        keys = [
+            "integration.twilio_account_sid",
+            "integration.twilio_auth_token",
+            "integration.twilio_from_number",
+            "integration.twilio_whatsapp_from",
+        ]
+
     result = await db.execute(
         select(PlatformConfig).where(PlatformConfig.config_key.in_(keys))
     )
     rows = {r.config_key: str(r.config_value or "") for r in result.scalars().all()}
     return (
-        rows.get("integration.twilio_account_sid", ""),
-        rows.get("integration.twilio_auth_token", ""),
-        rows.get("integration.twilio_from_number", ""),
-        rows.get("integration.twilio_whatsapp_from", ""),
+        rows.get(keys[0], ""),
+        rows.get(keys[1], ""),
+        rows.get(keys[2], ""),
+        rows.get(keys[3], ""),
     )
 
 
@@ -61,13 +81,40 @@ async def _get_resend_api_url(db) -> str:
 
 
 async def _send_email_via_resend(
-    api_key: str, from_email: str, to_email: str,
+    to_email: str,
     subject: str, body: str,
     db = None,
+    api_key: str | None = None,
+    from_email: str | None = None,
 ) -> bool:
-    """Send an email via Resend API. Returns True on success."""
-    if not api_key or not from_email or not to_email:
+    """Send an email via Resend API. Returns True on success.
+
+    If api_key/from_email are not provided, reads from platform_config and
+    respects the integration.resend_use_test_credentials toggle.
+    """
+    if not to_email:
         return False
+
+    if db is not None and (api_key is None or from_email is None):
+        use_test_result = await db.execute(
+            select(PlatformConfig).where(PlatformConfig.config_key == "integration.resend_use_test_credentials")
+        )
+        use_test_row = use_test_result.scalar_one_or_none()
+        use_test = bool(
+            use_test_row and str(use_test_row.config_value).lower() in ("true", "1", "yes", "on")
+        )
+        api_key_key = "integration.resend_test_api_key" if use_test else "integration.resend_api_key"
+        from_email_key = "integration.resend_test_from_email" if use_test else "integration.resend_from_email"
+        resend_result = await db.execute(
+            select(PlatformConfig).where(PlatformConfig.config_key.in_([api_key_key, from_email_key]))
+        )
+        resend_rows = {r.config_key: str(r.config_value or "") for r in resend_result.scalars().all()}
+        api_key = api_key or resend_rows.get(api_key_key, "")
+        from_email = from_email or resend_rows.get(from_email_key, "")
+
+    if not api_key or not from_email:
+        return False
+
     url = await _get_resend_api_url(db) if db else "https://api.resend.com/emails"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
@@ -116,10 +163,11 @@ async def _send_sms_via_twilio(
 
 
 async def _resolve_audience_customers(db, segment: str) -> list[int]:
-    """Get customer IDs matching an audience segment."""
+    """Get customer IDs matching an audience segment (excluding opt-outs)."""
     stmt = select(Customer.id).where(
         Customer.is_active.is_(True),
         Customer.deleted_at.is_(None),
+        Customer.marketing_opt_out.is_(False),
     )
     now = datetime.now(timezone.utc)
 
@@ -361,37 +409,26 @@ async def send_campaign(
                 delivered_count = sum(1 for r in results if r)
 
     elif campaign.channel == "email" and customer_ids:
-        # Get Resend credentials from config, fallback to env
-        resend_result = await db.execute(
-            select(PlatformConfig).where(PlatformConfig.config_key.in_([
-                "integration.resend_api_key", "integration.resend_from_email"
-            ]))
+        email_result = await db.execute(
+            select(Customer.id, Customer.email_address)
+            .where(Customer.id.in_(customer_ids))
+            .where(Customer.email_address.isnot(None))
+            .where(Customer.email_address != "")
         )
-        resend_rows = {r.config_key: str(r.config_value or "") for r in resend_result.scalars().all()}
-        api_key = resend_rows.get("integration.resend_api_key", "")
-        from_email = resend_rows.get("integration.resend_from_email", "")
+        email_map = {row[0]: row[1] for row in email_result.all()}
 
-        if api_key and from_email:
-            email_result = await db.execute(
-                select(Customer.id, Customer.email_address)
-                .where(Customer.id.in_(customer_ids))
-                .where(Customer.email_address.isnot(None))
-                .where(Customer.email_address != "")
-            )
-            email_map = {row[0]: row[1] for row in email_result.all()}
-
-            sem = asyncio.Semaphore(50)
-            async def _send_email(addr: str, cid: int) -> bool:
-                async with sem:
-                    return await _send_email_via_resend(
-                        api_key, from_email, addr,
-                        campaign.campaign_name, campaign.body_content or "",
-                        db=db,
-                    )
-            tasks = [_send_email(addr, cid) for cid in customer_ids if (addr := email_map.get(cid))]
-            if tasks:
-                results = await asyncio.gather(*tasks)
-                delivered_count = sum(1 for r in results if r)
+        sem = asyncio.Semaphore(50)
+        async def _send_email(addr: str, cid: int) -> bool:
+            async with sem:
+                return await _send_email_via_resend(
+                    addr,
+                    campaign.campaign_name, campaign.body_content or "",
+                    db=db,
+                )
+        tasks = [_send_email(addr, cid) for cid in customer_ids if (addr := email_map.get(cid))]
+        if tasks:
+            results = await asyncio.gather(*tasks)
+            delivered_count = sum(1 for r in results if r)
 
     await db.commit()
     await db.refresh(campaign)

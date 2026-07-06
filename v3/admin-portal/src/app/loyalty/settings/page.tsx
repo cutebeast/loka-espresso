@@ -1,25 +1,29 @@
 "use client";
+
+import { useTranslation } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { parseApiError } from "@/lib/errors";
 import { Save } from "lucide-react";
-
-interface ConfigItem { id: number; config_key: string; config_value: string; value_type: string; is_editable: boolean; }
-
-const KEYS = [
-  "loyalty.points_per_currency",
-  "loyalty.welcome_bonus",
-];
-
+interface ConfigItem {
+  id: number;
+  config_key: string;
+  config_value: string;
+  value_type: string;
+  is_editable: boolean;
+}
+const KEYS = ["loyalty.points_per_currency", "loyalty.welcome_bonus"];
 export default function LoyaltySettingsPage() {
+  const {
+    t
+  } = useTranslation();
   const [configs, setConfigs] = useState<Record<string, ConfigItem>>({});
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [isError, setIsError] = useState(false);
-
-  useEffect(() => { 
+  useEffect(() => {
     api.get<ConfigItem[]>("/admin/config").then(d => {
       const map: Record<string, ConfigItem> = {};
       const vals: Record<string, string> = {};
@@ -29,69 +33,84 @@ export default function LoyaltySettingsPage() {
       });
       setConfigs(map);
       setValues(vals);
-    }).catch((e)=>{console.error('loyalty config:',e)}).finally(() => setLoading(false));
+    }).catch(e => {
+      console.error('loyalty config:', e);
+    }).finally(() => setLoading(false));
   }, []);
-
   const save = async (key: string, value: string) => {
     setSaving(key);
     setIsError(false);
     try {
-      await api.put("/admin/config", { key, value });
-      setConfigs(prev => ({ ...prev, [key]: { ...prev[key], config_value: value } as ConfigItem }));
+      await api.put("/admin/config", {
+        key,
+        value
+      });
+      setConfigs(prev => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          config_value: value
+        } as ConfigItem
+      }));
       showMsg(`${key} updated`);
     } catch (e: unknown) {
       showMsg(parseApiError(e, "Failed to save"), true);
-    } finally { setSaving(null); }
+    } finally {
+      setSaving(null);
+    }
   };
-
   const showMsg = (text: string, error = false) => {
     setMsg(text);
     setIsError(error);
     setTimeout(() => setMsg(""), 3000);
   };
-
-  return (
-    <div style={{ padding: 32 }}>
-      <h1 className="page-title">Loyalty Settings</h1>
-      <p className="page-subtitle" style={{ marginBottom: 24 }}>Points earning rules & welcome bonus</p>
+  return <div style={{
+    padding: 32
+  }}>
+      <h1 className="page-title">{t("loyalty_settings.loyalty_settings")}</h1>
+      <p className="page-subtitle" style={{
+      marginBottom: 24
+    }}>{t("loyalty_settings.points_earning_rules_welcome_bonus")}</p>
       {msg && <div className={`alert ${isError ? "alert-error" : "alert-success"}`}>{msg}</div>}
-      {loading ? <p>Loading...</p> : (
-        <div className="card" style={{ maxWidth: 500 }}>
+      {loading ? <p>{t("loyalty_settings.loading")}</p> : <div className="card" style={{
+      maxWidth: 500
+    }}>
           <table className="data-table">
-            <thead><tr><th>Setting</th><th style={{ width: 150 }}>Value</th><th style={{ width: 80 }}></th></tr></thead>
+            <thead><tr><th>{t("loyalty_settings.setting")}</th><th style={{
+              width: 150
+            }}>{t("loyalty_settings.value")}</th><th style={{
+              width: 80
+            }}></th></tr></thead>
             <tbody>
               {KEYS.map(key => {
-                const c = configs[key];
-                if (!c) return null;
-                const val = values[key] ?? c.config_value;
-                return (
-                  <tr key={key}>
-                    <td style={{ textTransform: "capitalize" }}>{key.replace("loyalty.","").replace(/_/g," ")}</td>
+            const c = configs[key];
+            if (!c) return null;
+            const val = values[key] ?? c.config_value;
+            return <tr key={key}>
+                    <td style={{
+                textTransform: "capitalize"
+              }}>{key.replace("loyalty.", "").replace(/_/g, " ")}</td>
                     <td>
-                      <input
-                        type="number"
-                        value={val}
-                        onChange={e => setValues(prev => ({ ...prev, [key]: e.target.value }))}
-                        style={{ border: "1px solid var(--color-border-light)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: 13, width: 100 }}
-                      />
+                      <input type="number" value={val} onChange={e => setValues(prev => ({
+                  ...prev,
+                  [key]: e.target.value
+                }))} style={{
+                  border: "1px solid var(--color-border-light)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "4px 8px",
+                  fontSize: 13,
+                  width: 100
+                }} />
                     </td>
                     <td>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary"
-                        onClick={() => save(key, values[key] ?? c.config_value)}
-                        disabled={saving !== null}
-                      >
-                        <Save size={12}/> {saving === key ? "..." : "Save"}
+                      <button type="button" className="btn btn-sm btn-primary" onClick={() => save(key, values[key] ?? c.config_value)} disabled={saving !== null}>
+                        <Save size={12} /> {saving === key ? "..." : "Save"}
                       </button>
                     </td>
-                  </tr>
-                );
-              })}
+                  </tr>;
+          })}
             </tbody>
           </table>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 }
