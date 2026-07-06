@@ -59,7 +59,6 @@ async def test_stripe_rejected_without_secret(webhook_client, monkeypatch):
     async def empty_secret(db): return ""
     monkeypatch.setattr("app.api.routes.endpoints.payment.get_stripe_webhook_secret", empty_secret)
     monkeypatch.setattr(get_settings(), "stripe_webhook_secret", None)
-    monkeypatch.setattr(get_settings(), "webhook_api_key", None)
 
     res = await webhook_client.post(
         "/api/webhooks/stripe",
@@ -75,7 +74,6 @@ async def test_stripe_rejected_invalid_signature(webhook_client, monkeypatch):
     """Stripe webhook must reject invalid signatures."""
     async def test_secret(db): return "whsec_test"
     monkeypatch.setattr("app.api.routes.endpoints.payment.get_stripe_webhook_secret", test_secret)
-    monkeypatch.setattr(get_settings(), "webhook_api_key", None)
 
     res = await webhook_client.post(
         "/api/webhooks/stripe",
@@ -91,7 +89,6 @@ async def test_grabpay_rejected_without_secret(webhook_client, monkeypatch):
     """GrabPay webhook must fail closed when no signing secret is configured."""
     monkeypatch.setattr(get_settings(), "grabpay_webhook_secret", None)
     monkeypatch.setattr(get_settings(), "webhook_signing_secret", None)
-    monkeypatch.setattr(get_settings(), "webhook_api_key", None)
 
     res = await webhook_client.post(
         "/api/webhooks/grabpay",
@@ -107,7 +104,6 @@ async def test_grabpay_rejected_invalid_signature(webhook_client, monkeypatch):
     """GrabPay webhook must reject invalid signatures."""
     monkeypatch.setattr(get_settings(), "grabpay_webhook_secret", "grabpay_secret")
     monkeypatch.setattr(get_settings(), "webhook_signing_secret", None)
-    monkeypatch.setattr(get_settings(), "webhook_api_key", None)
 
     res = await webhook_client.post(
         "/api/webhooks/grabpay",
@@ -124,7 +120,6 @@ async def test_grabpay_accepts_valid_signature(webhook_client, monkeypatch):
     secret = "grabpay_secret"
     monkeypatch.setattr(get_settings(), "grabpay_webhook_secret", secret)
     monkeypatch.setattr(get_settings(), "webhook_signing_secret", None)
-    monkeypatch.setattr(get_settings(), "webhook_api_key", None)
 
     payload = b'{"data": {"transaction": {"id": "tx1"}}}'
     expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
@@ -151,7 +146,6 @@ async def test_hitpay_rejected_without_secret(webhook_client, monkeypatch):
         return ""
 
     monkeypatch.setattr(PlatformConfigService, "get_str", empty_config)
-    monkeypatch.setattr(get_settings(), "webhook_api_key", None)
 
     res = await webhook_client.post(
         "/api/webhooks/hitpay",

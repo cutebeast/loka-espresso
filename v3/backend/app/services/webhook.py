@@ -1,4 +1,4 @@
-"""Webhook helpers: idempotency, provider secret resolution, API key gate."""
+"""Webhook helpers: idempotency and provider secret resolution."""
 
 import hashlib
 import json
@@ -75,16 +75,6 @@ async def get_provider_secret(
         return settings.webhook_signing_secret or None
 
     return None
-
-
-def verify_webhook_api_key(request_api_key: str | None) -> bool:
-    """If WEBHOOK_API_KEY is configured, require it."""
-    settings = get_settings()
-    if not settings.webhook_api_key:
-        return True
-    if not request_api_key:
-        return False
-    return request_api_key == settings.webhook_api_key
 
 
 def extract_event_id(provider: str, payload: dict) -> str | None:

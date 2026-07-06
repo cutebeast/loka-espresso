@@ -274,11 +274,35 @@ async def create_hitpay_refund(
 
     hitpay_payment_id = (payment.extra_metadata or {}).get("hitpay_payment_id")
     if not hitpay_payment_id:
-        raise HitPayError(
-            "Cannot refund HitPay payment: missing underlying HitPay payment id. "
-            "Wait for the payment_request.completed webhook before refunding.",
-            400,
-        )
+        # The webhook may not have arrived yet. Query the payment request to discover
+        # the underlying payment id so refunds can be issued immediately after capture.
+        request_id = payment.provider_transaction_id
+        if not request_id:
+            raise HitPayError(
+                "Cannot refund HitPay payment: missing payment request id.", 400
+            )
+        try:
+            request_data = await get_hitpay_payment_request(db, request_id)
+        except HitPayError:
+            raise HitPayError(
+                "Cannot refund HitPay payment: payment request lookup failed. "
+                "Wait for the payment_request.completed webhook before refunding.",
+                400,
+            ) from None
+        payments = request_data.get("payments") or []
+        if payments and payments[0].get("id"):
+            payment.extra_metadata = {
+                **(payment.extra_metadata or {}),
+                "hitpay_payment_id": payments[0]["id"],
+                "hitpay_payment_type": payments[0].get("payment_type"),
+            }
+        hitpay_payment_id = (payment.extra_metadata or {}).get("hitpay_payment_id")
+        if not hitpay_payment_id:
+            raise HitPayError(
+                "Cannot refund HitPay payment: no completed payment found. "
+                "Wait for the payment_request.completed webhook before refunding.",
+                400,
+            )
 
     request_id = str(uuid4())
     body = {

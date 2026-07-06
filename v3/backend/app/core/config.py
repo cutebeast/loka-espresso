@@ -134,7 +134,6 @@ class Settings(BaseSettings):
         return self.max_upload_size_mb * 1024 * 1024
 
     # Webhooks
-    webhook_api_key: str | None = None
     webhook_signing_secret: str | None = None  # generic fallback secret
     grabpay_webhook_secret: str | None = None
     webhook_verify_in_dev: bool = False  # If true, webhook signatures are required even in development

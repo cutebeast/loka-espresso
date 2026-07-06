@@ -58,7 +58,6 @@ services:
       TRUSTED_HOSTS: ${TRUSTED_HOSTS:-localhost,127.0.0.1,app.lokaespresso.com,admin.lokaespresso.com,staff.lokaespresso.com}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-10}
-      WEBHOOK_API_KEY: ${WEBHOOK_API_KEY:-}
       WEBHOOK_SIGNING_SECRET: ${WEBHOOK_SIGNING_SECRET:-}
     volumes:
       - fnb_v3_uploads:/app/uploads
