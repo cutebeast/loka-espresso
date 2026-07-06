@@ -6,7 +6,7 @@ import { X, Check, Coffee, ArrowRight } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useCartStore } from '@/stores/cartStore';
 import { useUIStore } from '@/stores/uiStore';
-import { formatPrice, resolveAssetUrl, LOKA } from '@/lib/tokens';
+import { formatPrice, getCurrencySymbol, resolveAssetUrl, LOKA } from '@/lib/tokens';
 import type { BundleProduct } from '@/lib/api';
 
 interface MultiCourseBundleSheetProps {
@@ -113,7 +113,7 @@ export default function MultiCourseBundleSheet({ bundle, onClose, onDone }: Mult
     }
 
     const msg = totalExtraPrice > 0
-      ? `${bundle.title} added (+RM ${totalExtraPrice.toFixed(2)} extras)`
+      ? `${bundle.title} added (+${formatPrice(totalExtraPrice)} extras)`
       : `${bundle.title} added`;
     showToast(msg, 'success');
     onDone(bundle);
@@ -191,7 +191,7 @@ export default function MultiCourseBundleSheet({ bundle, onClose, onDone }: Mult
                   </p>
                 </div>
                 {currentSelections.size >= pickCount && currentSelections.size < maxPick && (
-                  <span style={{ fontSize: 11, color: "var(--color-warning)" }}>+RM each extra</span>
+                  <span style={{ fontSize: 11, color: "var(--color-warning)" }}>+{getCurrencySymbol()} each extra</span>
                 )}
               </div>
 

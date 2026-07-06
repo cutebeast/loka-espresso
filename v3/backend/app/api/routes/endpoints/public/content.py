@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 
 from app.api.routes.deps import DBDependency, OptionalLocale, CurrentCustomer
+from app.services.platform_config import PlatformConfigService
 from app.services.translation import merge_translations, translate_single
 from app.models.info_card import (
     EventCard,
@@ -384,7 +385,9 @@ async def get_config_bootstrap(
         config = {row.config_key: row.config_value for row in config_rows}
 
     # Default currency
-    currency = config.get("currency", "USD")
+    config_svc = PlatformConfigService(db)
+    currency = await config_svc.get_str("app.currency", config.get("currency", "USD"))
+    currency_symbol = await config_svc.get_str("app.currency_symbol", "RM" if currency == "MYR" else ("$" if currency == "USD" else currency))
     delivery_fee = config.get("base_delivery_fee", "0")
     min_order = config.get("minimum_order_amount", "0")
 
@@ -403,7 +406,7 @@ async def get_config_bootstrap(
 
     return APIResponse(data={
         "currency": currency,
-        "currency_symbol": "RM" if currency == "MYR" else ("$" if currency == "USD" else currency),
+        "currency_symbol": currency_symbol,
         "delivery_fee": float(delivery_fee) if delivery_fee else 0,
         "minimum_order_amount": float(min_order) if min_order else 0,
         "loyalty_tiers": [

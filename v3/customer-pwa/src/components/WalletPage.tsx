@@ -119,7 +119,7 @@ export default function WalletPage() {
   const handleTopUp = async () => {
     const amount = getTopUpAmount();
     if (!amount) {
-      showToast(t('wallet.minTopUp'), 'error');
+      showToast(t('wallet.minTopUp', { amount: formatPrice(config.topup_min_amount) }), 'error');
       return;
     }
     setSelectedPayment('');

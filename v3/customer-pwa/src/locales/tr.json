@@ -261,7 +261,8 @@
     "view": "Görüntüle",
     "year": "Yıl",
     "yourCode": "Kodunuz",
-    "pay": "Pay"
+    "pay": "Pay",
+    "minOrderDelivery": "Geçerli bir tutar seçin veya girin (en az {amount})"
   },
   "errorBoundary": {
     "message": "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
@@ -456,14 +457,14 @@
     "totalPoints": "Toplam Puan"
   },
   "myRewards": {
-    "amountOff": "RM {tutar} İNDİRİM",
+    "amountOff": "{tutar} İNDİRİM",
     "claimDesc": "Promosyonlardan yararlanın ve anketleri doldurarak kupon kazanın.",
     "expires": "Son kullanma tarihi {tarih}",
     "expiresIn_one": "{days} gün içinde sona eriyor",
     "expiresIn_other": "{gün} gün sonra sona erecek",
     "expiresToday": "Bugün sona eriyor",
     "freeItem": "Ücretsiz Ürün",
-    "minSpend": "Minimum harcama: RM {tutar}",
+    "minSpend": "Minimum harcama: {tutar}",
     "myRewards": "Ödüllerim",
     "myVouchers": "Kuponlarım",
     "noRewards": "Henüz ödül yok",
@@ -667,7 +668,7 @@
     "survey": "Anket",
     "surveyCompleted": "Anket tamamlandı!",
     "surveyDuration": "{minutes} dakikalık anket",
-    "surveyReward": "RM{amount} tutarında kupon",
+    "surveyReward": "{amount} tutarında kupon",
     "surveyThankYou": "Geri bildiriminiz için teşekkür ederiz. Ödülünüz cüzdanınıza eklendi.",
     "tagOffer": "Teklif",
     "tagPromo": "Kampanya",
@@ -878,7 +879,7 @@
     "loadOrdersFailed": "Siparişler yüklenemedi",
     "loginFailed": "Giriş yapılamadı. Lütfen tekrar deneyin.",
     "loginFailedTitle": "Giriş başarısız",
-    "minOrderDelivery": "Geçerli bir tutar seçin veya girin (en az 5 RM)",
+    "minOrderDelivery": "Geçerli bir tutar seçin veya girin (en az {amount})",
     "nameRequired": "Ad girilmesi zorunludur",
     "notCancellable": "Bu sipariş artık iptal edilemez",
     "notificationReadFailed": "Hepsini okundu olarak işaretleme işlemi başarısız oldu",
@@ -927,7 +928,7 @@
     "labelStarter": "Başlangıç",
     "labelValue": "Değer",
     "lokaBalance": "Loka Balance",
-    "minTopUp": "Geçerli bir tutar seçin veya girin (en az 5 RM)",
+    "minTopUp": "Geçerli bir tutar seçin veya girin (en az {amount})",
     "noTransactions": "Henüz işlem yok",
     "offlineTopUp": "Çevrimdışı Kontör Yükleme",
     "offlineTopUpDesc": "Ayrıca herhangi bir LOKA Espresso şubesinde nakit olarak da bakiye yükleyebilirsiniz. Tezgâhta sadakat kartınızın QR kodunu taramanız yeterlidir.",

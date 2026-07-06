@@ -261,7 +261,8 @@
     "view": "视图",
     "year": "年",
     "yourCode": "您的代码",
-    "pay": "Pay"
+    "pay": "Pay",
+    "minOrderDelivery": "请选择或输入有效金额（最低 {amount}）"
   },
   "errorBoundary": {
     "message": "发生了意外错误。请重试。",
@@ -456,14 +457,14 @@
     "totalPoints": "总分"
   },
   "myRewards": {
-    "amountOff": "立减 {amount} 令吉",
+    "amountOff": "立减 {amount}",
     "claimDesc": "领取优惠并完成问卷调查，即可获得优惠券。",
     "expires": "有效期至 {日期}",
     "expiresIn_one": "有效期至 {days} 天后",
     "expiresIn_other": "有效期至 {days} 天后",
     "expiresToday": "今日到期",
     "freeItem": "免费商品",
-    "minSpend": "最低消费：RM {amount}",
+    "minSpend": "最低消费：{amount}",
     "myRewards": "我的奖励",
     "myVouchers": "我的优惠券",
     "noRewards": "目前尚无奖励",
@@ -667,7 +668,7 @@
     "survey": "调查",
     "surveyCompleted": "调查已完成！",
     "surveyDuration": "{minutes} 分钟的调查",
-    "surveyReward": "RM{amount} 优惠券",
+    "surveyReward": "{amount} 优惠券",
     "surveyThankYou": "感谢您的反馈。您的奖励已添加到您的钱包中。",
     "tagOffer": "优惠",
     "tagPromo": "促销",
@@ -878,7 +879,7 @@
     "loadOrdersFailed": "无法加载订单",
     "loginFailed": "登录失败。请重试。",
     "loginFailedTitle": "登录失败",
-    "minOrderDelivery": "请选择或输入有效金额（最低 5 马币）",
+    "minOrderDelivery": "请选择或输入有效金额（最低 {amount}）",
     "nameRequired": "姓名为必填项",
     "notCancellable": "此订单已无法取消",
     "notificationReadFailed": "无法将所有邮件标记为已读",
@@ -927,7 +928,7 @@
     "labelStarter": "开始",
     "labelValue": "值",
     "lokaBalance": "Loka Balance",
-    "minTopUp": "请选择或输入有效金额（最低 5 马币）",
+    "minTopUp": "请选择或输入有效金额（最低 {amount}）",
     "noTransactions": "尚无交易",
     "offlineTopUp": "离线充值",
     "offlineTopUpDesc": "您还可以在任何一家LOKA Espresso门店使用现金充值。只需在柜台扫描您的会员二维码即可。",

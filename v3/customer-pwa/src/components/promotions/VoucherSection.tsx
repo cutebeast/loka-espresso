@@ -3,7 +3,7 @@
 import { Gift, ArrowLeft, ArrowRight, Calendar, Clock, Star, Tag, PenLine, HelpCircle, CheckCircle, Flame, List, Circle, Share2 } from 'lucide-react';
 import { RedemptionCodeModal } from '@/components/shared';
 import { useUIStore } from '@/stores/uiStore';
-import { resolveAssetUrl } from '@/lib/tokens';
+import { formatPrice, resolveAssetUrl } from '@/lib/tokens';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { PromoBanner } from '@/lib/api';
 import { getLocale } from '@/stores/localeStore';
@@ -136,7 +136,7 @@ export default function VoucherSection({
             {isSurvey ? t('promotions.surveyDuration', { minutes: 2 }) : `${formatDate(selectedPromo.start_date)} – ${formatDate(selectedPromo.end_date)}`}
           </span>
           <span className={`rd-meta-pill ${isSurvey ? 'rd-pill-green' : 'rd-pill-brown'}`}>
-            {isSurvey ? t('promotions.surveyReward', { amount: 5 }) : t('promotions.limitedVouchers')}
+            {isSurvey ? t('promotions.surveyReward', { amount: formatPrice(5) }) : t('promotions.limitedVouchers')}
           </span>
         </div>
 

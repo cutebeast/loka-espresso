@@ -261,7 +261,8 @@
     "view": "Tonton",
     "year": "Tahun",
     "yourCode": "Kod anda",
-    "pay": "Pay"
+    "pay": "Pay",
+    "minOrderDelivery": "Pilih atau masukkan jumlah yang sah (minimum {amount})"
   },
   "errorBoundary": {
     "message": "Ralat yang tidak dijangka telah berlaku. Sila cuba lagi.",
@@ -456,14 +457,14 @@
     "totalPoints": "Jumlah Mata"
   },
   "myRewards": {
-    "amountOff": "RM {jumlah} OFF",
+    "amountOff": "{jumlah} OFF",
     "claimDesc": "Tuntut promosi dan lengkapkan tinjauan untuk memperoleh baucar.",
     "expires": "Tamat pada {tarikh}",
     "expiresIn_one": "Tamat dalam {days} hari",
     "expiresIn_other": "Tamat dalam {days} hari",
     "expiresToday": "Tamat hari ini",
     "freeItem": "Barang Percuma",
-    "minSpend": "Perbelanjaan minimum: RM {jumlah}",
+    "minSpend": "Perbelanjaan minimum: {jumlah}",
     "myRewards": "Ganjaran Saya",
     "myVouchers": "Voucher Saya",
     "noRewards": "Tiada ganjaran lagi",
@@ -667,7 +668,7 @@
     "survey": "Tinjauan",
     "surveyCompleted": "Kaji selidik selesai!",
     "surveyDuration": "{minit} min tinjauan",
-    "surveyReward": "Baucar RM{amount}",
+    "surveyReward": "Baucar {amount}",
     "surveyThankYou": "Terima kasih atas maklum balas anda. Ganjaran anda telah ditambah ke dompet anda.",
     "tagOffer": "Tawaran",
     "tagPromo": "Promosi",
@@ -878,7 +879,7 @@
     "loadOrdersFailed": "Gagal memuatkan pesanan",
     "loginFailed": "Gagal log masuk. Sila cuba lagi.",
     "loginFailedTitle": "Log masuk gagal",
-    "minOrderDelivery": "Pilih atau masukkan jumlah yang sah (minimum RM 5)",
+    "minOrderDelivery": "Pilih atau masukkan jumlah yang sah (minimum {amount})",
     "nameRequired": "Nama diperlukan",
     "notCancellable": "Pesanan ini tidak dapat dibatalkan lagi.",
     "notificationReadFailed": "Gagal menandakan semuanya sebagai telah dibaca",
@@ -927,7 +928,7 @@
     "labelStarter": "Mula",
     "labelValue": "Nilai",
     "lokaBalance": "Keseimbangan Tempatan",
-    "minTopUp": "Pilih atau masukkan jumlah yang sah (minimum RM 5)",
+    "minTopUp": "Pilih atau masukkan jumlah yang sah (minimum {amount})",
     "noTransactions": "Tiada transaksi lagi",
     "offlineTopUp": "Pengisian Semula Luar Talian",
     "offlineTopUpDesc": "Anda juga boleh menambah nilai dengan wang tunai di mana-mana cawangan LOKA Espresso. Cuma imbas QR kesetiaan anda di kaunter.",

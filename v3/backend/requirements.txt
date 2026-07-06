@@ -18,3 +18,5 @@ prometheus-client==0.21.1
 structlog==25.3.0
 stripe==15.3.0
 pywebpush==2.3.0
+# Optional sync PostgreSQL driver (required for cleanup_e2e_test_data.py and DATABASE_URL_SYNC)
+psycopg2-binary==2.9.10

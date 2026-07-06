@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import LoggerInit from "@/components/LoggerInit";
 import { BrandProvider, useBrand } from "@/components/BrandProvider";
 import { TranslationProvider, useTranslation } from "@/lib/i18n";
 import { STORAGE_KEYS, ROUTES } from "@/lib/constants";
@@ -154,6 +155,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <BrandProvider>
       <TranslationProvider>
+        <LoggerInit />
         <LayoutInner>{children}</LayoutInner>
       </TranslationProvider>
     </BrandProvider>

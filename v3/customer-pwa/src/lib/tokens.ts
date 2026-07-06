@@ -93,14 +93,18 @@ export const LOKA = {
   shadowWallet: '0 12px 24px -8px rgba(26, 35, 9, 0.35)',
 } as const;
 
+/** Return the configured currency symbol. */
+export function getCurrencySymbol(): string {
+  return useConfigStore.getState().config.currency_symbol || 'RM';
+}
+
 /** Format a number using the configured currency symbol.
  *  NOTE: This reads config store via getState() directly.
  *  Callers must subscribe to useConfigStore to re-render on currency changes. */
 export function formatPrice(val: number | string): string {
   const n = Number(val);
   if (!isFinite(n)) return '--';
-  const symbol = useConfigStore.getState().config.currency_symbol || 'RM';
-  return `${symbol} ${n.toFixed(2)}`;
+  return `${getCurrencySymbol()} ${n.toFixed(2)}`;
 }
 
 // Use the current browser origin for deep links so the PWA works on any domain.

@@ -5,6 +5,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ChevronRight, Wallet, Crown, Award, Gift, Ticket, CalendarCheck } from 'lucide-react';
 import { useFitText } from '@/hooks/useFitText';
 import { getLocale } from '@/stores/localeStore';
+import { getCurrencySymbol } from '@/lib/tokens';
 
 interface WalletCardProps {
   isGuest: boolean;
@@ -19,7 +20,7 @@ interface WalletCardProps {
   onSignIn: () => void;
 }
 
-function formatRM(value: number): string {
+function formatAmount(value: number): string {
   return value.toLocaleString(getLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -65,8 +66,8 @@ export default function WalletCard({ isGuest: _isGuest, isAuthenticated, balance
       </div>
       <div className="wallet-row wallet-row-mt">
         <span className="amount-row">
-          <span className="currency-symbol">RM</span>
-          <span className="amount-number" ref={amountRef}>{formatRM(balance)}</span>
+          <span className="currency-symbol">{getCurrencySymbol()}</span>
+          <span className="amount-number" ref={amountRef}>{formatAmount(balance)}</span>
         </span>
         <span className="homepage-points-badge">
           <span className="homepage-points-icon"><Crown size={16} color="#C9A84C" /></span>

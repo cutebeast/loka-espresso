@@ -252,7 +252,7 @@ export default function ItemCustomizeSheet({
                               {milkColor && <span className="ics-milk-dot" style={{ background: milkColor }} />}
                               <span>{opt.name}</span>
                               <span className="ics-option-price">
-                                {opt.price_adjustment > 0 ? `+RM ${opt.price_adjustment.toFixed(2)}` : ''}
+                                {opt.price_adjustment > 0 ? `+${formatPrice(opt.price_adjustment)}` : ''}
                               </span>
                             </button>
                           );
