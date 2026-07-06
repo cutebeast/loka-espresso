@@ -21,8 +21,17 @@ function getSteps(orderType?: string): string[] {
 
 function getStripeRedirectStatus(): string | null {
   if (typeof window === 'undefined') return null;
-  const params = new URLSearchParams(window.location.search);
-  return params.get('redirect_status');
+  // Stripe may append redirect_status to the query string (web) or to the hash fragment (PWA hash router).
+  let params = new URLSearchParams(window.location.search);
+  const status = params.get('redirect_status');
+  if (status) return status;
+  const hash = window.location.hash;
+  const queryStart = hash.indexOf('?');
+  if (queryStart !== -1) {
+    params = new URLSearchParams(hash.slice(queryStart + 1));
+    return params.get('redirect_status');
+  }
+  return null;
 }
 
 function stepIdx(status: string, orderType?: string): number {

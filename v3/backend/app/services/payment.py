@@ -26,6 +26,7 @@ from app.services.hitpay import (
 from app.models.customer import Customer
 from app.models.order import Order
 from app.models.payment import Payment, PaymentEvent, Refund
+from app.models.wallet import Wallet, WalletLedgerEntry
 
 logger = logging.getLogger(__name__)
 
@@ -1118,6 +1119,7 @@ async def refund_payment(
 
     provider_refund_id = f"re_sim_{uuid4().hex}"
     refund_status = "pending"
+    completed_at: datetime | None = None
 
     stripe_enabled = await _stripe_enabled(db)
     is_real_provider = (payment.provider == "stripe" and stripe_enabled) or (
@@ -1132,6 +1134,9 @@ async def refund_payment(
         hitpay_refund = await create_hitpay_refund(db, payment, refund_amount)
         provider_refund_id = hitpay_refund["id"]
         refund_status = "completed" if hitpay_refund.get("status") == "completed" else "pending"
+    elif payment.provider == "internal_wallet":
+        refund_status = "completed"
+        completed_at = datetime.now(timezone.utc)
 
     refund = Refund(
         payment_id=payment_id,
@@ -1142,6 +1147,7 @@ async def refund_payment(
         approved_by=approved_by,
         provider_refund_id=provider_refund_id,
         status=refund_status,
+        completed_at=completed_at,
     )
     db.add(refund)
     await db.flush()
@@ -1167,6 +1173,43 @@ async def refund_payment(
         provider_response={"action": "refund", "refund_id": refund.id, "simulated": not is_real_provider},
     )
     await db.flush()
+
+    if payment.provider == "internal_wallet" and refund_status == "completed":
+        order_customer = await db.execute(
+            select(Order.customer_id).where(Order.id == payment.order_id)
+        )
+        customer_id = order_customer.scalar_one()
+        wallet_res = await db.execute(
+            select(Wallet).where(Wallet.customer_id == customer_id).with_for_update()
+        )
+        wallet = wallet_res.scalar_one_or_none()
+        if wallet is None:
+            wallet = Wallet(customer_id=customer_id, currency_code=payment.currency_code)
+            db.add(wallet)
+            await db.flush()
+            await db.refresh(wallet)
+        last_res = await db.execute(
+            select(WalletLedgerEntry)
+            .where(WalletLedgerEntry.wallet_id == wallet.id)
+            .order_by(WalletLedgerEntry.id.desc())
+            .limit(1)
+            .with_for_update()
+        )
+        last_entry = last_res.scalar_one_or_none()
+        current_balance = to_decimal(last_entry.running_balance) if last_entry else Decimal(0)
+        new_balance = money_round(current_balance + refund_amount, precision, rounding_mode)
+        db.add(
+            WalletLedgerEntry(
+                wallet_id=wallet.id,
+                entry_type="credit",
+                amount=refund_amount,
+                running_balance=new_balance,
+                description=f"Refund for payment {payment.id}",
+                reference_type="refund",
+                reference_id=refund.id,
+            )
+        )
+
     await _sync_order_payment_status(db, payment)
     await db.commit()
     await db.refresh(refund)

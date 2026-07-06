@@ -303,6 +303,22 @@ def _ensure_baseline_data(base_url: str, _admin_token_session: str):
     This keeps the seed minimal and tests self-contained.
     """
     admin_headers = {"Authorization": f"Bearer {_admin_token_session}", "Content-Type": "application/json"}
+
+    # E2E tests rely on OTP bypass; ensure it is enabled for the test session.
+    try:
+        with httpx.Client(timeout=10) as c:
+            r = c.put(
+                f"{base_url}/admin/config",
+                headers=admin_headers,
+                json={"key": "otp.bypass_enabled", "value": "true"},
+            )
+            if r.status_code in (200, 201, 204):
+                logger.info("Enabled OTP bypass for E2E session")
+            else:
+                logger.warning("Could not enable OTP bypass for E2E: %s %s", r.status_code, r.text)
+    except Exception as e:
+        logger.warning("Failed to enable OTP bypass for E2E: %s", e)
+
     created = False
 
     # Unlock any locked staff accounts so PIN login tests don't hit 423

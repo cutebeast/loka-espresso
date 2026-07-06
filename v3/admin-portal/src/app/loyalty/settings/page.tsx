@@ -36,8 +36,7 @@ export default function LoyaltySettingsPage() {
     setSaving(key);
     setIsError(false);
     try {
-      const qs = new URLSearchParams({ key, value });
-      await api.put(`/admin/config?${qs.toString()}`);
+      await api.put("/admin/config", { key, value });
       setConfigs(prev => ({ ...prev, [key]: { ...prev[key], config_value: value } as ConfigItem }));
       showMsg(`${key} updated`);
     } catch (e: unknown) {

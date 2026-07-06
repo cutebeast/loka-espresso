@@ -32,7 +32,7 @@ export default function CampaignSettingsPage() {
         const m: Record<string, string> = {};
         (Array.isArray(d) ? d : []).forEach((c: any) => {
           if (c.config_key.startsWith("integration.")) {
-            m[c.config_key] = c.config_value;
+            m[c.config_key] = (c.is_sensitive && c.config_value === "***") ? "" : c.config_value;
           }
         });
         setConfig(m);
@@ -46,8 +46,13 @@ export default function CampaignSettingsPage() {
     setSaving(key);
     setIsError(false);
     try {
-      const qs = new URLSearchParams({ key, value: val });
-      await api.put(`/admin/config?${qs.toString()}`);
+      // Avoid overwriting a redacted secret with an empty value.
+      if (val === "" && config[key] === "") {
+        showMsg(`${key.replace("integration.", "")} unchanged`);
+        setSaving(null);
+        return;
+      }
+      await api.put("/admin/config", { key, value: val });
       setConfig(prev => ({ ...prev, [key]: val }));
       showMsg(`${key.replace("integration.", "")} updated`);
     } catch (e: unknown) {

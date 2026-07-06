@@ -31,8 +31,7 @@ export default function CheckinSettingsPage() {
     try {
       for (const [key, val] of Object.entries(values)) {
         if (val !== config[key]) {
-          const qs = new URLSearchParams({ key, value: val });
-          await api.put(`/admin/config?${qs.toString()}`);
+          await api.put("/admin/config", { key, value: val });
         }
       }
       setConfig({ ...values });

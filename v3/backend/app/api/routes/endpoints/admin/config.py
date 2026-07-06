@@ -70,23 +70,23 @@ async def update_config(
     vt = config.value_type or "string"
     if vt == "json":
         try:
-            config.config_value = json.loads(value)
+            config.config_value = json.loads(effective_value)
         except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail=f"Invalid JSON for config key '{effective_key}'")
     elif vt == "integer":
         try:
-            config.config_value = int(value)
+            config.config_value = int(effective_value)
         except (ValueError, TypeError):
             raise HTTPException(status_code=400, detail=f"Invalid integer for config key '{effective_key}'")
     elif vt in ("float", "decimal"):
         try:
-            config.config_value = float(value)
+            config.config_value = float(effective_value)
         except (ValueError, TypeError):
             raise HTTPException(status_code=400, detail=f"Invalid number for config key '{effective_key}'")
     elif vt == "boolean":
-        config.config_value = effective_value.lower() in ("true", "1", "yes")
+        config.config_value = str(effective_value).lower() in ("true", "1", "yes")
     else:
-        config.config_value = value
+        config.config_value = effective_value
     await db.commit()
     await db.refresh(config)
 

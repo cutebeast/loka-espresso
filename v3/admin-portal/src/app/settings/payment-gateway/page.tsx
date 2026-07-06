@@ -36,7 +36,7 @@ const PUBLIC_URL_KEYS = [
   { key: "staff.public_url", label: "Staff Portal Public URL", type: "text" },
 ];
 
-const STRIPE_METHOD_OPTIONS = ["card", "fpx", "grabpay", "alipay", "duitnow", "touchngo"];
+const STRIPE_METHOD_OPTIONS = ["card", "fpx", "grabpay", "alipay", "wechat_pay"];
 const HITPAY_METHOD_OPTIONS = ["duitnow", "touch_n_go", "paynow_online", "boost", "shopee_pay", "grabpay", "fpx", "card"];
 
 const LABEL_MAP: Record<string, string> = Object.fromEntries(
@@ -162,6 +162,8 @@ export default function PaymentGatewaySettingsPage() {
           map[item.config_key] = item;
           if (item.config_key === "stripe.payment_method_types" || item.config_key === "hitpay.payment_methods") {
             initialMethods[item.config_key] = Array.isArray(item.config_value) ? item.config_value.map(String) : [];
+          } else if (item.is_sensitive && normalizeValue(item.config_value) === "***") {
+            initialValues[item.config_key] = "";
           } else {
             initialValues[item.config_key] = normalizeValue(item.config_value);
           }
@@ -234,7 +236,11 @@ export default function PaymentGatewaySettingsPage() {
       const updates: { key: string; value: string }[] = [];
 
       for (const [key, val] of Object.entries(values)) {
-        const original = normalizeValue(configs[key]?.config_value);
+        const item = configs[key];
+        const rawOriginal = normalizeValue(item?.config_value);
+        // If the backend redacted a sensitive value, we cannot tell whether it changed,
+        // so avoid overwriting it with an empty value.
+        const original = item?.is_sensitive && rawOriginal === "***" ? val : rawOriginal;
         if (val !== original) {
           updates.push({ key, value: val });
         }
@@ -248,8 +254,7 @@ export default function PaymentGatewaySettingsPage() {
       }
 
       for (const { key, value } of updates) {
-        const qs = new URLSearchParams({ key, value });
-        await api.put(`/admin/config?${qs.toString()}`);
+        await api.put("/admin/config", { key, value });
       }
 
       // Refresh state from server so any type-cast values match

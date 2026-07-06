@@ -23,8 +23,7 @@ export default function ReferralSettingsPage() {
     setSaving(key);
     setIsError(false);
     try {
-      const qs = new URLSearchParams({ key, value: val });
-      await api.put(`/admin/config?${qs.toString()}`);
+      await api.put("/admin/config", { key, value: val });
       setMsg(`${key} updated`);
       setIsError(false);
     } catch (e: unknown) {

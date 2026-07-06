@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { STAFF_EN_TRANSLATIONS } from "@/lib/translations";
 
 type Translations = Record<string, string>;
 
@@ -48,7 +49,7 @@ async function fetchTranslations(locale: string): Promise<Translations> {
 
 export function useTranslation() {
   const [locale, setLocale] = useState("en");
-  const [translations, setTranslations] = useState<Translations>({});
+  const [translations, setTranslations] = useState<Translations>(STAFF_EN_TRANSLATIONS);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => { setHydrated(true); }, []);
@@ -60,7 +61,7 @@ export function useTranslation() {
     if (!locale) return;
     let cancelled = false;
     fetchTranslations(locale).then((t) => {
-      if (!cancelled) setTranslations(t);
+      if (!cancelled) setTranslations({ ...STAFF_EN_TRANSLATIONS, ...t });
     });
     return () => { cancelled = true; };
   }, [locale]);

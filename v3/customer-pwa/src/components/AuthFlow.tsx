@@ -126,7 +126,7 @@ export default function AuthFlow({ onAuthDone }: AuthFlowProps) {
                 phone={phoneNumber}
                 onSubmit={handleOTPSubmit}
                 onResend={handleResendOTP}
-                initialRetryAfterSeconds={0}
+                initialRetryAfterSeconds={60}
                 onBack={() => setAuthStep('phone')}
               />
             </motion.div>

@@ -21,37 +21,38 @@ settings = get_settings()
 security_scheme = HTTPBearer(auto_error=False)
 
 SUPPORTED_LOCALES = {"en", "ms", "zh", "ta", "tr"}
-SUPPORTED_LOCALE_PREFIXES = {locale.split("-")[0] if "-" in locale else locale for locale in SUPPORTED_LOCALES} | SUPPORTED_LOCALES
 SOURCE_LOCALE = "en"
+
+
+def _normalize_locale(raw: str | None) -> str | None:
+    """Return a supported base locale, normalising regional variants (e.g. zh-CN -> zh)."""
+    if not raw:
+        return None
+    locale = raw.strip().lower()
+    if locale in SUPPORTED_LOCALES:
+        return locale
+    if "-" in locale:
+        prefix = locale.split("-")[0]
+        if prefix in SUPPORTED_LOCALES:
+            return prefix
+    return None
 
 
 def get_locale_from_request(request: Request) -> str:
     """Extract locale from query param or Accept-Language header.
-    Falls back to 'en'. Only allows supported locales.
-    Supports regional variants (e.g. zh-CN, zh-TW) by preserving the full code
-    when the prefix matches a supported locale."""
+    Falls back to SOURCE_LOCALE. Regional variants are normalised to the supported base locale."""
     # 1. Check query param
-    locale = request.query_params.get("locale")
+    locale = _normalize_locale(request.query_params.get("locale"))
     if locale:
-        locale = locale.strip()
-        if locale in SUPPORTED_LOCALE_PREFIXES:
-            return locale
-        if "-" in locale:
-            prefix = locale.split("-")[0]
-            if prefix in SUPPORTED_LOCALE_PREFIXES:
-                return locale
+        return locale
+
     # 2. Check Accept-Language header
     accept_lang = request.headers.get("accept-language", "")
     if accept_lang:
         for part in accept_lang.replace(";", ",").split(","):
-            part = part.strip()
-            lower_part = part.lower()
-            if lower_part in SUPPORTED_LOCALE_PREFIXES:
-                return lower_part
-            if "-" in lower_part:
-                prefix = lower_part.split("-")[0]
-                if prefix in SUPPORTED_LOCALE_PREFIXES:
-                    return lower_part
+            locale = _normalize_locale(part)
+            if locale:
+                return locale
     return SOURCE_LOCALE
 
 

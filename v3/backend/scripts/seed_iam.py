@@ -126,13 +126,13 @@ async def seed():
         )
         principal_id = principal.scalar_one()
 
-        await db.execute(
+        admin_res = await db.execute(
             text("""
                 INSERT INTO admin_accounts (
                     principal_id, email, display_name, password_hash, password_algorithm, is_active
                 ) VALUES (
                     :principal_id, :email, :display_name, :password_hash, 'argon2id', true
-                )
+                ) RETURNING id
             """),
             {
                 "principal_id": principal_id,
@@ -141,17 +141,18 @@ async def seed():
                 "password_hash": ph.hash(ADMIN_PASS),
             },
         )
+        admin_id = admin_res.scalar_one()
 
         await db.execute(
             text("""
                 INSERT INTO role_assignments (assignee_id, role_id, effective_from, is_active)
-                SELECT :principal_id, id, now(), true
+                SELECT :admin_id, id, now(), true
                 FROM iam_roles WHERE role_key = 'system_admin'
             """),
-            {"principal_id": principal_id},
+            {"admin_id": admin_id},
         )
 
-        print(f"  Created admin '{ADMIN_EMAIL}' (principal_id={principal_id})")
+        print(f"  Created admin '{ADMIN_EMAIL}' (admin_id={admin_id})")
 
 
 async def main():

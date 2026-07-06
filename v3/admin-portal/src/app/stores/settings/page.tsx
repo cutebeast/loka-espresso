@@ -37,8 +37,7 @@ export default function StoreSettingsPage() {
     setMsg("");
     setError("");
     try {
-      const qs = new URLSearchParams({ key, value });
-      await api.put(`/admin/config?${qs.toString()}`);
+      await api.put("/admin/config", { key, value });
       setMsg(`${key} updated`);
       setTimeout(() => setMsg(""), 2000);
     } catch (e: any) { setError(e.message); }

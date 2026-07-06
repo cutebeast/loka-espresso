@@ -66,8 +66,8 @@ async def _require_otp_or_bypass(
     client = TwilioVerifyClient(config_svc)
     if not await client.is_configured():
         raise HTTPException(
-            status_code=501,
-            detail="OTP provider is not configured. Set otp.bypass_enabled=true for temporary bypass.",
+            status_code=503,
+            detail="OTP service is temporarily unavailable. Please try again later.",
         )
 
     try:
@@ -215,8 +215,8 @@ async def send_otp(request: Request, db: DBDependency, data: OTPRequest):
     client = TwilioVerifyClient(config_svc)
     if not await client.is_configured():
         raise HTTPException(
-            status_code=501,
-            detail="OTP provider is not configured. Set otp.bypass_enabled=true for temporary bypass.",
+            status_code=503,
+            detail="OTP service is temporarily unavailable. Please try again later.",
         )
 
     try:
