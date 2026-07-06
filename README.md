@@ -14,15 +14,28 @@ Full-stack F&B ordering and loyalty platform. The active codebase is in `v3/`.
 
 ## Current status
 
-See [`v3/docs/000-project-status.md`](v3/docs/000-project-status.md) for the full project status, deployment notes, domain setup, upload handling, test results, and recent cleanup.
+- **Backend unit tests:** 24 passed, 0 failed
+- **E2E tests:** 199 passed, 16 skipped, 0 failed
+- **TypeScript strict:** 0 errors across admin, staff, and customer PWA
+- **Route validation:** 0 unmatched frontend API calls
+- Root repository is cleaned of legacy v1/v2 artifacts; all active code stays in `v3/`
+- Round 26 security, auth, currency, payment, and deployment fixes are applied
 
-Highlights:
-- **189 passed, 26 skipped, 0 failed** in the E2E suite (browser tests enabled).
-- **24 passed, 0 failed** in the backend unit-test suite.
-- TypeScript strict: 0 errors across all 3 portals.
-- Root repository has been cleaned of legacy v1/v2 files; all active code stays in `v3/`.
-- Round 26 security/auth fixes applied across backend, admin, staff, and customer PWA.
-- Docker Compose stack is domain-agnostic and ready for dev (`loyaltysystem.uk`), production (`lokaespresso.com`), and future brand servers.
+## Repository layout
+
+```
+/root/fnb-super-app/
+├── AGENTS.md            # Agent quick-reference
+├── README.md            # This file
+└── v3/                  # Active application code
+    ├── backend/         # FastAPI
+    ├── admin-portal/    # Admin dashboard
+    ├── staff-portal/    # Staff portal / POS
+    ├── customer-pwa/    # Customer PWA
+    ├── e2e-tests/       # pytest API + browser E2E suite
+    ├── infra/           # Docker, Caddy, DB init scripts
+    └── scripts/         # Seed / operational scripts
+```
 
 ## Quick start
 
@@ -36,13 +49,25 @@ cd backend && uvicorn app.main:app --host 0.0.0.0 --port 13800
 cd admin-portal && npm run dev    # localhost:13830
 cd staff-portal && npm run dev    # localhost:13820
 cd customer-pwa && npm run dev    # localhost:13810
+```
 
-# Tests
-cd e2e-tests
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-playwright install chromium
+## Tests
+
+```bash
+# Backend unit tests
+cd v3/backend
+source .venv/bin/activate
+pytest tests/
+
+# Full E2E suite
+cd v3/e2e-tests
+source ../backend/.venv/bin/activate
 pytest -q
+
+# TypeScript strict checks
+for dir in admin-portal staff-portal customer-pwa; do
+  (cd "v3/$dir" && npx tsc --noEmit)
+done
 ```
 
 ## Full-Docker deployment
@@ -54,4 +79,15 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-See the status doc for multi-server domain configuration and operational commands.
+## Live cut-over checklist (loyaltysystem.uk → lokaespresso.com)
+
+- Rotate all secrets: `JWT_SECRET`, DB/Redis passwords, Stripe/HitPay keys, VAPID keys, webhook secrets.
+- Update `v3/backend/.env`: `CORS_ORIGINS`, `TRUSTED_HOSTS`, live payment keys.
+- Update `v3/infra/docker/.env`: `APP_DOMAIN`, `ADMIN_DOMAIN`, `STAFF_DOMAIN`, secrets.
+- Update portal `.env.local` files: replace `loyaltysystem.uk` with `lokaespresso.com`.
+- Replace host Caddy configs (`/etc/caddy/sites/fnb-*.conf`) or switch to Docker Caddy.
+- Provision TLS certificates for `*.lokaespresso.com`.
+- Run `alembic upgrade head` on the live database.
+- Set strong admin credentials; verify `otp.bypass_enabled=false` and `currency.default=MYR`.
+- Register Stripe/HitPay webhooks on the new domains.
+- Run the full test suite after cut-over.
