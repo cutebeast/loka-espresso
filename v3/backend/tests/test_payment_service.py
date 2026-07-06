@@ -248,3 +248,65 @@ async def test_refund_payment_credits_wallet_for_internal_wallet(monkeypatch, fa
     assert refund.status == "completed"
     assert payment.status == "refunded"
     credit_mock.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# HitPay refund fallback
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_hitpay_refund_looks_up_payment_request_when_payment_id_missing(monkeypatch, fake_config):
+    """If the webhook hasn't arrived, create_hitpay_refund should query the payment request."""
+    from app.services import hitpay
+
+    payment = Payment(
+        id=20,
+        order_id=1,
+        provider="hitpay",
+        provider_transaction_id="hpr_789",
+        status="captured",
+        amount=Decimal("15.00"),
+        captured_amount=Decimal("15.00"),
+        refunded_amount=Decimal("0"),
+        currency_code="MYR",
+        extra_metadata={"redirect_url": "https://example.com"},
+    )
+
+    async def fake_get_request(db, request_id):
+        assert request_id == "hpr_789"
+        return {
+            "id": "hpr_789",
+            "status": "completed",
+            "payments": [{"id": "hpay_999", "payment_type": "duitnow"}],
+        }
+
+    monkeypatch.setattr(hitpay, "get_hitpay_payment_request", fake_get_request)
+    monkeypatch.setattr(hitpay, "_hitpay_enabled", AsyncMock(return_value=True))
+    monkeypatch.setattr(hitpay, "_get_api_key", AsyncMock(return_value="live_key"))
+    monkeypatch.setattr(hitpay, "_get_base_url", AsyncMock(return_value="https://api.hit-pay.com"))
+
+    class FakeClient:
+        async def post(self, *args, **kwargs):
+            class Response:
+                status_code = 200
+                def json(self):
+                    return {"id": "ref_111", "status": "completed"}
+            return Response()
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+    async def fake_client():
+        return FakeClient()
+
+    monkeypatch.setattr(hitpay, "_hitpay_client", fake_client)
+
+    result = await hitpay.create_hitpay_refund(None, payment, Decimal("15.00"))
+
+    assert result["id"] == "ref_111"
+    assert result["status"] == "completed"
+    assert payment.extra_metadata["hitpay_payment_id"] == "hpay_999"

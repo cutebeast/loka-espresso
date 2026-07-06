@@ -42,7 +42,7 @@ from app.schemas.staff import (
 )
 from app.services.auth import blacklist_refresh_token
 from app.services.order import _compute_bundle_discount, _deduct_stock_for_order
-from app.services.payment import PaymentError, create_stripe_checkout_session
+from app.services.payment import PaymentError, _add_payment_event, create_stripe_checkout_session
 from app.services.platform_config import PlatformConfigService
 from app.core.auth_cookies import (
     clear_staff_auth_cookies,
@@ -987,7 +987,9 @@ async def staff_pos_create_order(
 
             idempotency_key = f"pos-order-{order.id}-{payment_method_type}-{total:.2f}"
             dup = await db.execute(
-                select(Payment).where(Payment.idempotency_key == idempotency_key, Payment.status == "captured")
+                select(Payment)
+                .where(Payment.idempotency_key == idempotency_key, Payment.status == "captured")
+                .with_for_update()
             )
             if dup.scalar_one_or_none():
                 raise HTTPException(status_code=409, detail="Duplicate payment request")
@@ -1016,6 +1018,16 @@ async def staff_pos_create_order(
                     raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
                 payment.provider_transaction_id = checkout["id"]
                 payment_url = checkout["url"]
+            else:
+                # Record a lifecycle event for captured POS payments (cash / manual card).
+                await _add_payment_event(
+                    db,
+                    payment,
+                    to_status="captured",
+                    from_status="initiated",
+                    amount=total,
+                    provider_response={"method": payment_data.method, "tendered": float(amount_tendered) if payment_data.method == "cash" else None},
+                )
 
         # Update table status if dine-in
         if dining_table_id and order_type == "dine_in":

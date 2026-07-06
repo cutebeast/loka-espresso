@@ -82,8 +82,12 @@ def extract_event_id(provider: str, payload: dict) -> str | None:
     if provider == "stripe":
         return str(payload.get("id", "")) or None
     if provider == "hitpay":
-        # HitPay payload wraps payment requests
-        obj = payload.get("payment_request") or payload.get("object") or payload
+        # HitPay payload wraps payment requests under data.object
+        obj = payload.get("payment_request") or payload.get("object")
+        if not obj and isinstance(payload.get("data"), dict):
+            obj = payload["data"].get("object")
+        if not obj:
+            obj = payload
         if isinstance(obj, dict):
             return str(obj.get("id", "")) or None
         return None

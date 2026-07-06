@@ -7,6 +7,7 @@ import json
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
+from unittest.mock import AsyncMock
 
 from app.core.config import get_settings
 
@@ -39,6 +40,8 @@ def webhook_app(monkeypatch):
         return SimpleNamespace(id=999)
 
     monkeypatch.setattr("app.api.routes.endpoints.payment.process_webhook_event", _fake_process)
+    monkeypatch.setattr("app.api.routes.endpoints.payment.is_event_processed", AsyncMock(return_value=False))
+    monkeypatch.setattr("app.api.routes.endpoints.payment.mark_event_processed", AsyncMock())
 
     app = FastAPI()
     app.state.limiter = limiter
@@ -155,3 +158,60 @@ async def test_hitpay_rejected_without_secret(webhook_client, monkeypatch):
     assert res.status_code == 400
     assert "salt/webhook_secret not configured" in res.text.lower()
 
+
+# ---------------------------------------------------------------------------
+# HitPay idempotency
+# ---------------------------------------------------------------------------
+
+
+def test_extract_hitpay_event_id_from_wrapped_payload():
+    """extract_event_id must find the payment request id inside data.object."""
+    from app.services.webhook import extract_event_id
+
+    payload = {
+        "type": "payment_request.completed",
+        "data": {
+            "object": {
+                "id": "hpr_123",
+                "status": "completed",
+            }
+        },
+    }
+    assert extract_event_id("hitpay", payload) == "hpr_123"
+
+
+@pytest.mark.asyncio
+async def test_hitpay_webhook_deduplicates_replays(webhook_client, monkeypatch):
+    """A duplicate HitPay webhook should be acknowledged without reprocessing."""
+    import hmac
+    import hashlib
+    import json
+    from app.services.platform_config import PlatformConfigService
+
+    secret = "hitpay_salt"
+
+    async def fake_config(*args, **kwargs):
+        return secret
+
+    monkeypatch.setattr(PlatformConfigService, "get_str", fake_config)
+
+    payload = {
+        "id": "hpr_123",
+        "status": "completed",
+        "payments": [{"id": "hpay_456"}],
+    }
+    body = json.dumps(payload).encode()
+    signature = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+
+    # First request: mark as already processed
+    monkeypatch.setattr("app.api.routes.endpoints.payment.is_event_processed", AsyncMock(return_value=True))
+
+    res = await webhook_client.post(
+        "/api/webhooks/hitpay",
+        headers={"Hitpay-Signature": signature, "Hitpay-Event-Type": "completed"},
+        content=body,
+    )
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["received"] is True
+    assert data["duplicate"] is True

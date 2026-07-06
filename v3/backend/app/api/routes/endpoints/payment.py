@@ -38,6 +38,7 @@ from app.services.webhook import (
 )
 from app.services.payment import (
     PaymentError,
+    _add_payment_event,
     cancel_payment,
     capture_payment,
     confirm_payment,
@@ -226,6 +227,13 @@ async def create_checkout_session(
 
     payment.provider_transaction_id = checkout["id"]
     order.payment_status = "pending_authorization"
+    await _add_payment_event(
+        db,
+        payment,
+        to_status="pending_authorization",
+        from_status="initiated",
+        provider_response={"checkout_session_id": checkout["id"], "checkout_url": checkout["url"]},
+    )
     await db.commit()
     await db.refresh(payment)
 
@@ -640,7 +648,8 @@ async def hitpay_webhook(
         event_type = f"{event_object}.{event_type}"
 
     payload = {"type": event_type, "data": {"object": body}}
-    event_id = extract_event_id("hitpay", payload)
+    raw_event_id = extract_event_id("hitpay", payload)
+    event_id = f"{event_type}:{raw_event_id}" if raw_event_id else None
     if event_id and await is_event_processed("hitpay", event_id):
         logger.info("HitPay webhook duplicate event ignored: %s", event_id)
         return APIResponse(data={"received": True, "duplicate": True, "payment_id": None})
